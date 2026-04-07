@@ -83,9 +83,240 @@ function saveAutomationSettings() {
   }
 }
 
+function saveAdminAuthSettings() {
+  try {
+    localStorage.setItem(ADMIN_AUTH_SETTINGS_STORAGE_KEY, JSON.stringify(adminAuthSettings));
+  } catch (error) {
+    // Ignore storage issues and keep the in-memory state.
+  }
+}
+
+function requiresAdminUnlock() {
+  return adminAuthSettings.require_unlock && Boolean(String(adminAuthSettings.local_passcode || "").trim());
+}
+
+function isAdminSessionUnlocked() {
+  try {
+    return sessionStorage.getItem(ADMIN_AUTH_SESSION_KEY) === "true";
+  } catch (error) {
+    return false;
+  }
+}
+
+function setAdminSessionUnlocked(unlocked) {
+  try {
+    sessionStorage.setItem(ADMIN_AUTH_SESSION_KEY, unlocked ? "true" : "false");
+    if (unlocked) {
+      sessionStorage.setItem(ADMIN_AUTH_ACTIVITY_KEY, new Date().toISOString());
+    } else {
+      sessionStorage.removeItem(ADMIN_AUTH_ACTIVITY_KEY);
+    }
+  } catch (error) {
+    // Ignore storage issues and still update the UI state.
+  }
+}
+
+function recordAdminSessionActivity() {
+  if (!requiresAdminUnlock() || !isAdminSessionUnlocked()) return;
+  try {
+    sessionStorage.setItem(ADMIN_AUTH_ACTIVITY_KEY, new Date().toISOString());
+  } catch (error) {
+    // Ignore storage issues.
+  }
+}
+
+function getAdminSessionExpired() {
+  if (!requiresAdminUnlock() || !isAdminSessionUnlocked()) return false;
+
+  try {
+    const raw = sessionStorage.getItem(ADMIN_AUTH_ACTIVITY_KEY);
+    if (!raw) return true;
+    const lastActivity = new Date(raw);
+    if (Number.isNaN(lastActivity.getTime())) return true;
+    const expiresAt = lastActivity.getTime() + (Number(adminAuthSettings.session_timeout_minutes || 30) * 60 * 1000);
+    return Date.now() >= expiresAt;
+  } catch (error) {
+    return true;
+  }
+}
+
+function isPortalLocked() {
+  if (!requiresAdminUnlock()) return false;
+  if (getAdminSessionExpired()) {
+    setAdminSessionUnlocked(false);
+    return true;
+  }
+  return !isAdminSessionUnlocked();
+}
+
+function setAdminAuthMessage(message, tone = "warm") {
+  adminAuthMessage = String(message || "").trim();
+  adminAuthTone = tone || "warm";
+}
+
+function clearAdminAuthMessage() {
+  adminAuthMessage = "";
+  adminAuthTone = "warm";
+}
+
+function getAdminAuthMessageMarkup() {
+  if (!adminAuthMessage) return "";
+  const toneClass =
+    adminAuthTone === "error"
+      ? "border-burgundy/20 bg-burgundy/5 text-burgundy"
+      : adminAuthTone === "success"
+        ? "border-sage/20 bg-sage/5 text-sage"
+        : "border-gold/20 bg-gold/5 text-warmblack";
+
+  return `
+    <div class="rounded-xl border ${toneClass} px-4 py-3 mb-4">
+      <p class="text-sm wrap-anywhere">${escapeHtml(adminAuthMessage)}</p>
+    </div>
+  `;
+}
+
+function renderAdminAuthOverlay() {
+  const root = document.getElementById("admin-auth-root");
+  if (!root) return;
+
+  if (!isPortalLocked()) {
+    root.innerHTML = "";
+    document.body.classList.remove("app-locked");
+    return;
+  }
+
+  document.body.classList.add("app-locked");
+
+  root.innerHTML = `
+    <div class="admin-auth-overlay fixed inset-0 z-[120] bg-black/55 flex items-center justify-center p-4">
+      <div class="w-full max-w-md rounded-3xl border border-white/10 theatrical-gradient text-cream p-6 sm:p-7 shadow-2xl">
+        <div class="flex items-center gap-3 mb-4">
+          <div class="w-11 h-11 rounded-2xl gold-gradient flex items-center justify-center text-warmblack">
+            <i data-lucide="shield-check" class="w-5 h-5"></i>
+          </div>
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-warmgray">Admin Access</p>
+            <h2 class="font-display text-2xl font-bold text-white">Unlock Studio Portal</h2>
+          </div>
+        </div>
+
+        <p class="text-sm text-cream/80 mb-4">This portal is locked to protect student records, notes, and finance data on the live site.</p>
+        ${getAdminAuthMessageMarkup()}
+
+        <form class="space-y-4" onsubmit="submitAdminUnlock(event)">
+          <div>
+            <label class="block text-xs uppercase tracking-wider text-warmgray mb-2">Passcode</label>
+            <input
+              id="admin-unlock-passcode"
+              type="password"
+              autocomplete="current-password"
+              class="w-full rounded-xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white placeholder:text-cream/40"
+              placeholder="Enter admin passcode"
+            />
+          </div>
+          <button type="submit" class="w-full px-4 py-3 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Unlock Portal</button>
+        </form>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+}
+
+function updateSidebarLockButtonState() {
+  const button = document.getElementById("sidebar-lock-btn");
+  if (!button) return;
+
+  const enabled = requiresAdminUnlock();
+  button.disabled = !enabled;
+  button.classList.toggle("opacity-50", !enabled);
+  button.classList.toggle("cursor-not-allowed", !enabled);
+  button.textContent = enabled ? "Lock Portal" : "Lock Disabled";
+  button.title = enabled ? "Lock the admin session" : "Set an admin passcode in Settings first";
+}
+
+function applyAdminAccessState() {
+  updateSidebarLockButtonState();
+  renderAdminAuthOverlay();
+}
+
+function lockPortalSession(message = "") {
+  if (!requiresAdminUnlock()) return;
+  setAdminSessionUnlocked(false);
+  setAdminAuthMessage(message || "Portal locked. Enter your passcode to continue.", message ? "warm" : "warm");
+  applyAdminAccessState();
+}
+
+function submitAdminUnlock(event) {
+  if (event) event.preventDefault();
+
+  const passcodeInput = document.getElementById("admin-unlock-passcode");
+  const submitted = String(passcodeInput?.value || "").trim();
+  const expected = String(adminAuthSettings.local_passcode || "").trim();
+
+  if (!submitted || submitted !== expected) {
+    setAdminAuthMessage("That passcode didn’t match. Try again.", "error");
+    applyAdminAccessState();
+    return;
+  }
+
+  clearAdminAuthMessage();
+  setAdminSessionUnlocked(true);
+  recordAdminSessionActivity();
+  applyAdminAccessState();
+  renderCurrentPage();
+}
+
+function initializeAdminAccess() {
+  if (adminAuthActivityInterval) {
+    clearInterval(adminAuthActivityInterval);
+  }
+
+  document.addEventListener("click", recordAdminSessionActivity, true);
+  document.addEventListener("keydown", recordAdminSessionActivity, true);
+  adminAuthActivityInterval = setInterval(() => {
+    if (isPortalLocked()) {
+      setAdminAuthMessage("Your admin session timed out. Unlock the portal to continue.", "warm");
+      applyAdminAccessState();
+    }
+  }, 30000);
+
+  applyAdminAccessState();
+}
+
 let automationSettings = loadAutomationSettings();
 let settingsActionMessage = "";
 let settingsActionTone = "warm";
+const ADMIN_AUTH_SETTINGS_STORAGE_KEY = "studioPortal.adminAuthSettings";
+const ADMIN_AUTH_SESSION_KEY = "studioPortal.adminSessionUnlocked";
+const ADMIN_AUTH_ACTIVITY_KEY = "studioPortal.adminSessionLastActivity";
+const DEFAULT_ADMIN_AUTH_SETTINGS = {
+  require_unlock: false,
+  local_passcode: "",
+  session_timeout_minutes: 30
+};
+let adminAuthMessage = "";
+let adminAuthTone = "warm";
+
+function loadAdminAuthSettings() {
+  try {
+    const raw = localStorage.getItem(ADMIN_AUTH_SETTINGS_STORAGE_KEY);
+    if (!raw) return { ...DEFAULT_ADMIN_AUTH_SETTINGS };
+    const parsed = JSON.parse(raw);
+    return {
+      ...DEFAULT_ADMIN_AUTH_SETTINGS,
+      ...parsed,
+      require_unlock: parsed.require_unlock === true,
+      local_passcode: String(parsed.local_passcode || "").trim(),
+      session_timeout_minutes: Math.max(5, Number(parsed.session_timeout_minutes || DEFAULT_ADMIN_AUTH_SETTINGS.session_timeout_minutes))
+    };
+  } catch (error) {
+    return { ...DEFAULT_ADMIN_AUTH_SETTINGS };
+  }
+}
+
+let adminAuthSettings = loadAdminAuthSettings();
+let adminAuthActivityInterval = null;
 
 
 /*********************************
@@ -6833,7 +7064,7 @@ function renderAutomationsPage() {
         </div>
       </header>
 
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
+      <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
         <div class="rounded-2xl border border-cream bg-white px-4 py-3 min-w-0">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Enabled Workflows</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${enabledWorkflows.length}</p>
@@ -6996,6 +7227,18 @@ function getSettingsStatusBadgeClass(status) {
   return "bg-warmgray/10 text-warmgray";
 }
 
+function getAdminSecurityStatusLabel() {
+  if (!adminAuthSettings.require_unlock || !adminAuthSettings.local_passcode) return "Open";
+  return isPortalLocked() ? "Locked" : "Unlocked";
+}
+
+function getAdminSecurityStatusBadgeClass() {
+  const label = getAdminSecurityStatusLabel();
+  if (label === "Unlocked") return "bg-sage/10 text-sage";
+  if (label === "Locked") return "bg-burgundy/10 text-burgundy";
+  return "bg-gold/10 text-gold";
+}
+
 function openGoogleSheetsBlueprintReference() {
   navigateTo("settings");
 }
@@ -7017,6 +7260,51 @@ async function savePersistenceSettings(event) {
     nextSettings.persistence_mode === "google_sheets"
       ? "Backend settings saved. Use a server-side proxy/backend URL here, then test the connection and sync a snapshot."
       : "Settings saved. The portal is currently persisting to local cache on this browser.",
+    "success"
+  );
+  renderSettingsPage();
+}
+
+function saveAdminSecuritySettings(event) {
+  if (event) event.preventDefault();
+  const form = document.getElementById("settings-admin-security-form");
+  if (!form) return;
+
+  const passcode = String(form.elements.local_passcode.value || "").trim();
+  const confirmPasscode = String(form.elements.confirm_passcode.value || "").trim();
+  const requireUnlock = form.elements.require_unlock.checked;
+  const timeoutMinutes = Math.max(5, Number(form.elements.session_timeout_minutes.value || 30));
+
+  if (requireUnlock && !passcode) {
+    setSettingsActionFeedback("Set a passcode before turning on the admin access gate.", "error");
+    renderSettingsPage();
+    return;
+  }
+
+  if (passcode && passcode !== confirmPasscode) {
+    setSettingsActionFeedback("Passcode confirmation didn’t match.", "error");
+    renderSettingsPage();
+    return;
+  }
+
+  adminAuthSettings = {
+    require_unlock: requireUnlock,
+    local_passcode: passcode,
+    session_timeout_minutes: timeoutMinutes
+  };
+  saveAdminAuthSettings();
+
+  if (!requiresAdminUnlock()) {
+    setAdminSessionUnlocked(true);
+    clearAdminAuthMessage();
+  } else {
+    lockPortalSession("Admin security settings updated. Unlock the portal with your new passcode.");
+  }
+
+  setSettingsActionFeedback(
+    requiresAdminUnlock()
+      ? "Admin access gate saved. The hosted portal will now require your passcode after refresh or timeout."
+      : "Admin access gate is turned off for now.",
     "success"
   );
   renderSettingsPage();
@@ -7107,6 +7395,14 @@ function renderSettingsPage() {
             </span>
           </p>
         </div>
+        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Admin Access</p>
+          <p class="mt-1">
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getAdminSecurityStatusBadgeClass()}">
+              ${escapeHtml(getAdminSecurityStatusLabel())}
+            </span>
+          </p>
+        </div>
       </div>
 
       <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-5">
@@ -7172,6 +7468,67 @@ function renderSettingsPage() {
             <div class="flex flex-wrap items-center gap-2 mt-5">
               <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Settings</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runBackendConnectionTest()">Test Connection</button>
+            </div>
+          </form>
+
+          <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.05s" onsubmit="saveAdminSecuritySettings(event)">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+              <div class="min-w-0">
+                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Admin Security</p>
+                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Session lock for the hosted portal</h3>
+                <p class="text-sm text-warmgray mt-1">This is a practical admin gate for the live portal right now. Deeper production auth can still layer on later.</p>
+              </div>
+              ${
+                requiresAdminUnlock()
+                  ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover self-start" onclick="lockPortalSession('Portal locked manually from Settings.')">Lock Now</button>`
+                  : ""
+              }
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3 xl:col-span-2">
+                <input type="checkbox" name="require_unlock" class="mt-1" ${adminAuthSettings.require_unlock ? "checked" : ""}>
+                <span class="min-w-0">
+                  <span class="block text-sm font-medium text-warmblack">Require passcode to unlock the portal</span>
+                  <span class="block text-xs text-warmgray mt-1">Turn this on after you set a passcode. It will lock the hosted portal after refresh and after inactivity.</span>
+                </span>
+              </label>
+
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Passcode</span>
+                <input
+                  name="local_passcode"
+                  type="password"
+                  value="${escapeHtml(adminAuthSettings.local_passcode)}"
+                  placeholder="Set admin passcode"
+                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+                />
+              </label>
+
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Confirm Passcode</span>
+                <input
+                  name="confirm_passcode"
+                  type="password"
+                  value="${escapeHtml(adminAuthSettings.local_passcode)}"
+                  placeholder="Re-enter passcode"
+                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+                />
+              </label>
+
+              <label class="block xl:max-w-xs">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Session Timeout</span>
+                <select name="session_timeout_minutes" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                  <option value="15" ${Number(adminAuthSettings.session_timeout_minutes) === 15 ? "selected" : ""}>15 minutes</option>
+                  <option value="30" ${Number(adminAuthSettings.session_timeout_minutes) === 30 ? "selected" : ""}>30 minutes</option>
+                  <option value="60" ${Number(adminAuthSettings.session_timeout_minutes) === 60 ? "selected" : ""}>60 minutes</option>
+                  <option value="120" ${Number(adminAuthSettings.session_timeout_minutes) === 120 ? "selected" : ""}>2 hours</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-5">
+              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Security</button>
             </div>
           </form>
 

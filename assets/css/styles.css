@@ -130,6 +130,14 @@ body {
   overflow-wrap: anywhere;
 }
 
+.app-locked #app-root {
+  visibility: hidden;
+}
+
+.admin-auth-overlay {
+  backdrop-filter: blur(8px);
+}
+
 .profile-shell {
   max-width: 1600px;
   margin: 0 auto;

@@ -64,6 +64,11 @@ function navigateTo(page) {
 }
 
 function renderCurrentPage() {
+  if (typeof isPortalLocked === "function" && isPortalLocked()) {
+    applyAdminAccessState();
+    return;
+  }
+
   updateNavState(currentPage);
 
   if (currentPage === "dashboard") {

@@ -753,6 +753,7 @@ document.addEventListener("DOMContentLoaded", () => {
   initializeSidebarState();
   applyConfig();
   studioDataService.initializePersistence();
+  initializeAdminAccess();
 
   rebuildStudentViewModels();
 
