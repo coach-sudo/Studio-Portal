@@ -1,0 +1,9 @@
+[build]
+  publish = "."
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/studio-sync"
+  to = "/.netlify/functions/studio-sync"
+  status = 200
+

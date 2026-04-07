@@ -1,0 +1,483 @@
+<!doctype html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Acting Studio Portal</title>
+
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js" type="text/javascript"></script>
+
+  <link
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap"
+    rel="stylesheet"
+  />
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warmblack: "#1f1a17",
+            charcoal: "#2c2623",
+            parchment: "#f7f3ee",
+            cream: "#e7ddd0",
+            warmgray: "#7d746d",
+            gold: "#c9a84c",
+            burgundy: "#8c2f39",
+            sage: "#6f8f72"
+          },
+          fontFamily: {
+            sans: ["DM Sans", "sans-serif"],
+            display: ["Playfair Display", "serif"]
+          }
+        }
+      }
+    };
+  </script>
+
+  <link rel="stylesheet" href="assets/css/styles.css" />
+  <style>
+    body { box-sizing: border-box; }
+  </style>
+</head>
+
+<body class="h-full bg-parchment text-warmblack">
+  <div id="app-root" class="min-h-screen w-full flex">
+    <!-- Sidebar -->
+    <aside id="sidebar" class="w-64 min-w-[256px] theatrical-gradient text-cream flex flex-col min-h-screen shrink-0">
+      <div class="p-6 border-b border-white/10">
+        <div class="flex items-start justify-between gap-3 mb-1">
+          <div class="flex items-center gap-3 min-w-0">
+          <div class="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
+            <i data-lucide="drama" class="w-5 h-5 text-warmblack"></i>
+          </div>
+          <div class="sidebar-brand-copy min-w-0">
+            <h1 id="sidebar-studio-name" class="font-display text-lg font-bold text-white leading-tight">
+              Stage &amp; Story
+            </h1>
+            <p id="sidebar-tagline" class="text-[11px] text-warmgray tracking-wider uppercase">
+              Studio Management
+            </p>
+          </div>
+        </div>
+          <button
+            id="sidebar-toggle"
+            type="button"
+            onclick="toggleSidebar()"
+            class="sidebar-toggle-btn inline-flex items-center justify-center w-9 h-9 rounded-lg border border-white/10 bg-white/5 text-cream/80 hover:text-white hover:bg-white/10 shrink-0"
+            aria-label="Collapse sidebar"
+            title="Collapse sidebar"
+          >
+            <i id="sidebar-toggle-icon" data-lucide="panel-left-close" class="w-[18px] h-[18px]"></i>
+          </button>
+        </div>
+      </div>
+
+      <nav class="flex-1 py-4 px-3 space-y-1 overflow-auto">
+        <button
+          onclick="navigateTo('dashboard')"
+          data-nav="dashboard"
+          class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/90"
+        >
+          <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Dashboard</span>
+        </button>
+
+        <button
+          onclick="navigateTo('students')"
+          data-nav="students"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="users" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Students</span>
+        </button>
+
+        <button
+          onclick="navigateTo('lessons')"
+          data-nav="lessons"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="calendar-days" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Lessons</span>
+        </button>
+
+        <button
+          onclick="navigateTo('finance')"
+          data-nav="finance"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="wallet" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Finance</span>
+        </button>
+
+        <button
+          onclick="navigateTo('notes')"
+          data-nav="notes"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Notes Queue</span>
+        </button>
+
+        <button
+          onclick="navigateTo('profile')"
+          data-nav="profile"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="user" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Student Profile</span>
+        </button>
+
+        <button
+          onclick="navigateTo('public')"
+          data-nav="public"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="globe" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Public Page</span>
+        </button>
+
+        <div class="pt-4 pb-2 px-3">
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Quick Links</p>
+        </div>
+
+        <button
+          onclick="navigateTo('schedule')"
+          data-nav="schedule"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Schedule</span>
+        </button>
+
+        <button onclick="openQuickLinkPackages()" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70">
+          <i data-lucide="package" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Packages</span>
+        </button>
+
+        <button
+          onclick="navigateTo('automations')"
+          data-nav="automations"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="bot" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Automations</span>
+        </button>
+
+        <button
+          onclick="navigateTo('settings')"
+          data-nav="settings"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-coach-card p-4 mx-3 mb-4 rounded-lg bg-white/5 border border-white/10">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-full bg-burgundy/30 flex items-center justify-center text-sm font-semibold text-white">
+            DA
+          </div>
+          <div class="sidebar-coach-copy min-w-0">
+            <p id="sidebar-coach-name" class="text-sm font-medium text-white">Darius A. Journigan</p>
+            <p id="sidebar-coach-title" class="text-[11px] text-warmgray">Acting Coach</p>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Mount -->
+    <main id="page-root" class="flex-1 min-h-screen overflow-y-auto"></main>
+  </div>
+
+  <!-- Student Modal -->
+  <div id="student-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="app-modal-shell bg-white rounded-2xl border border-cream w-full max-w-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <div class="app-modal-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h3 id="student-modal-title" class="font-display text-xl font-bold text-warmblack">Add Student</h3>
+        <button type="button" onclick="closeStudentModal()" class="self-start text-sm text-warmgray">Close</button>
+      </div>
+
+      <form id="student-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Full Name</label>
+            <input name="full_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Email</label>
+            <input name="email" type="email" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Phone</label>
+            <input name="phone" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Timezone</label>
+            <input name="timezone" type="text" placeholder="America/New_York" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Studio Status</label>
+            <select name="studio_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="LEAD">Lead</option>
+              <option value="ACTIVE">Active</option>
+              <option value="PAUSED">Paused</option>
+              <option value="INACTIVE">Inactive</option>
+              <option value="ALUMNI">Alumni</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Billing Model</label>
+            <select name="billing_model" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="PAYG">Pay As You Go</option>
+              <option value="PACKAGE">Package</option>
+              <option value="CUSTOM">Custom</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Booking Behavior</label>
+            <select name="booking_behavior" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="SELF_BOOKING">Self Booking</option>
+              <option value="COACH_BOOKED">Coach Booked</option>
+              <option value="MIXED">Mixed</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Lead Source</label>
+            <select name="lead_source" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="">Not Tracked Yet</option>
+              <option value="LESSONS_COM">Lessons.com</option>
+              <option value="LESSONFACE">Lessonface</option>
+              <option value="ACUITY">Acuity</option>
+              <option value="WORD_OF_MOUTH">Word of Mouth</option>
+              <option value="FLYER">Flyer</option>
+              <option value="GOOGLE">Google</option>
+              <option value="DIRECT">Direct</option>
+              <option value="REFERRAL">Referral</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Lead Source Note</label>
+            <input name="lead_source_detail" type="text" placeholder="Friend referral, city flyer, Google Maps..." class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Focus Area</label>
+            <input name="focus_area" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div class="col-span-2">
+            <label class="flex items-center gap-2 text-sm">
+              <input name="actor_page_eligible" type="checkbox">
+              <span>Actor Page Eligible</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+          <button type="button" onclick="closeStudentModal()" class="px-4 py-2.5 rounded-xl border border-cream bg-parchment text-sm font-medium">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">
+            Save Student
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Lesson Modal -->
+  <div id="lesson-modal" class="hidden fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div class="app-modal-shell bg-white rounded-2xl border border-cream w-full max-w-3xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <div class="app-modal-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <h3 id="lesson-modal-title" class="font-display text-xl font-bold text-warmblack">Add Lesson</h3>
+        <button type="button" onclick="closeLessonModal()" class="self-start text-sm text-warmgray">Close</button>
+      </div>
+
+      <form id="lesson-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Student</label>
+            <select name="student_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"></select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Scheduled Start</label>
+            <div class="space-y-2">
+              <input name="scheduled_start_date" type="date" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <div class="grid grid-cols-3 gap-2">
+                <div>
+                  <label class="block text-[11px] font-medium text-warmgray mb-1">Hour</label>
+                  <select name="scheduled_start_hour" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5">5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                    <option value="8">8</option>
+                    <option value="9">9</option>
+                    <option value="10" selected>10</option>
+                    <option value="11">11</option>
+                    <option value="12">12</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-warmgray mb-1">Minute</label>
+                  <select name="scheduled_start_minute" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                    <option value="00" selected>00</option>
+                    <option value="15">15</option>
+                    <option value="30">30</option>
+                    <option value="45">45</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-medium text-warmgray mb-1">AM / PM</label>
+                  <select name="scheduled_start_period" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                    <option value="AM" selected>AM</option>
+                    <option value="PM">PM</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Duration</label>
+            <select name="duration_minutes" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="30">30 Minutes</option>
+              <option value="60" selected>60 Minutes</option>
+              <option value="90">90 Minutes</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Lesson Status</label>
+            <select name="lesson_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="SCHEDULED">Scheduled</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="CANCELLED">Cancelled</option>
+              <option value="LATE_CANCEL">Late Cancel</option>
+              <option value="NO_SHOW">No Show</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Lesson Type</label>
+            <select name="lesson_type" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="Audition Coaching" selected>Audition Coaching</option>
+              <option value="Role Coaching">Role Coaching</option>
+              <option value="Acting Coaching">Acting Coaching</option>
+              <option value="Public Speaking">Public Speaking</option>
+              <option value="Free Intro Session">Free Intro Session</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Payment Mark</label>
+            <select name="manual_payment_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="">Not Marked</option>
+              <option value="PAID">Paid</option>
+              <option value="UNPAID">Unpaid</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Location</label>
+            <select name="location_type" onchange="updateLessonLocationFieldsVisibility(this.form)" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="VIRTUAL" selected>Virtual</option>
+              <option value="IN_PERSON">In Person</option>
+            </select>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Topic</label>
+            <input name="topic" type="text" placeholder="Scene Study – Tennessee Williams" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div class="col-span-2">
+            <div data-location-field="virtual">
+              <label class="block text-xs font-medium text-warmgray mb-1">Virtual Link</label>
+              <input name="join_link" type="url" placeholder="https://meet.google.com/..." class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            </div>
+            <div data-location-field="in-person" class="hidden">
+              <label class="block text-xs font-medium text-warmgray mb-1">In-Person Address</label>
+              <input name="location_address" type="text" placeholder="123 Main St, New York, NY" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Completion Time</label>
+            <input name="actual_completion_date" type="datetime-local" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Cancellation Type</label>
+            <select name="cancellation_type" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="">None</option>
+              <option value="STUDENT">Student</option>
+              <option value="COACH">Coach</option>
+              <option value="SYSTEM">System</option>
+              <option value="WEATHER">Weather</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Source</label>
+            <select name="source" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="manual">Manual</option>
+              <option value="google_calendar">Google Calendar</option>
+              <option value="lessonface">Lessonface</option>
+              <option value="lessons_com">Lessons.com</option>
+              <option value="acuity">Acuity</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">External Event ID</label>
+            <input name="external_event_id" type="text" placeholder="Future calendar event id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Internal Comments</label>
+            <textarea name="internal_comments" rows="3" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"></textarea>
+          </div>
+        </div>
+
+        <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+          <button type="button" onclick="closeLessonModal()" class="px-4 py-2.5 rounded-xl border border-cream bg-parchment text-sm font-medium">
+            Cancel
+          </button>
+          <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">
+            Save Lesson
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="assets/js/schema.js"></script>
+  <script src="assets/js/data.js"></script>
+  <script src="assets/js/student-store.js"></script>
+  <script src="assets/js/lesson-store.js"></script>
+  <script src="assets/js/navigation.js"></script>
+  <script src="assets/js/ui.js"></script>
+  <script src="assets/js/config.js"></script>
+  <script src="assets/js/app.js"></script>
+</body>
+</html>

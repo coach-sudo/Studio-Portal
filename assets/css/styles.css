@@ -1,0 +1,429 @@
+
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: #f7f3ee;
+  color: #1f1a17;
+  overflow-wrap: break-word;
+}
+
+#sidebar {
+  transition: width 0.25s ease, min-width 0.25s ease;
+}
+
+.sidebar-toggle-btn {
+  transition: all 0.2s ease;
+}
+
+#app-root.sidebar-collapsed #sidebar {
+  width: 88px;
+  min-width: 88px;
+}
+
+#app-root.sidebar-collapsed .sidebar-label,
+#app-root.sidebar-collapsed .sidebar-section-label,
+#app-root.sidebar-collapsed .sidebar-brand-copy,
+#app-root.sidebar-collapsed .sidebar-coach-copy {
+  display: none;
+}
+
+#app-root.sidebar-collapsed nav .nav-item {
+  justify-content: center;
+}
+
+#app-root.sidebar-collapsed nav .nav-item i {
+  margin-right: 0;
+}
+
+#app-root.sidebar-collapsed .sidebar-coach-card {
+  padding: 0.75rem;
+}
+
+#app-root.sidebar-collapsed .sidebar-coach-card > div {
+  justify-content: center;
+}
+
+.font-display {
+  font-family: 'Playfair Display', serif;
+}
+
+.theatrical-gradient {
+  background: linear-gradient(180deg, #2c2623 0%, #1f1a17 100%);
+}
+
+.gold-gradient {
+  background: linear-gradient(135deg, #d8bb63 0%, #c9a84c 100%);
+}
+
+.headshot-placeholder {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255,255,255,0.8), rgba(231,221,208,0.6)),
+    linear-gradient(135deg, #f3ece3 0%, #e7ddd0 100%);
+}
+
+.nav-item {
+  transition: all 0.25s ease;
+  border-radius: 0.5rem;
+}
+
+.nav-item:hover {
+  background: rgba(201, 168, 76, 0.12);
+  color: #ffffff;
+}
+
+.nav-item.active {
+  background: rgba(201, 168, 76, 0.16);
+  color: #ffffff;
+  border-left: 3px solid #c9a84c;
+}
+
+.card-hover {
+  transition: all 0.25s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(31, 26, 23, 0.08);
+}
+
+.dashboard-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.dashboard-stat-card {
+  min-height: 152px;
+}
+
+.dashboard-panel {
+  overflow: hidden;
+}
+
+.app-modal-shell {
+  overflow: hidden;
+}
+
+.app-modal-header,
+.app-modal-footer {
+  min-width: 0;
+}
+
+.dashboard-panel-header {
+  min-width: 0;
+}
+
+.dashboard-panel h3,
+.dashboard-panel p,
+.dashboard-panel span,
+.dashboard-stat-card p,
+.dashboard-stat-card span,
+.app-modal-shell h3,
+.app-modal-shell h4,
+.app-modal-shell p,
+.app-modal-shell span,
+.app-modal-shell button,
+.sidebar-coach-card p,
+.sidebar-coach-card span {
+  overflow-wrap: anywhere;
+}
+
+.wrap-anywhere {
+  overflow-wrap: anywhere;
+}
+
+.profile-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.lessons-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.schedule-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.automation-shell,
+.settings-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.schedule-day-cell {
+  min-width: 0;
+}
+
+.finance-shell {
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.profile-panel {
+  overflow: hidden;
+}
+
+.profile-meta-row span:last-child,
+.lesson-detail-meta-row span:last-child,
+.profile-panel h3,
+.profile-panel h4,
+.profile-panel p,
+.profile-panel span,
+.profile-panel button,
+.schedule-shell p,
+.schedule-shell span,
+.schedule-shell button,
+.automation-shell p,
+.automation-shell span,
+.automation-shell button,
+.settings-shell p,
+.settings-shell span,
+.settings-shell button,
+.finance-results-panel p,
+.finance-results-panel span,
+.finance-filter-panel p,
+.finance-filter-panel span {
+  overflow-wrap: anywhere;
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease forwards;
+  opacity: 0;
+}
+
+@keyframes fadeIn {
+  to { opacity: 1; }
+}
+
+.slide-up {
+  animation: slideUp 0.45s ease forwards;
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+@keyframes slideUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.status-pulse {
+  animation: pulse 1.8s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.checkbox-custom {
+  accent-color: #c9a84c;
+}
+
+.active-tab {
+  color: #c9a84c;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+  border-color: #c9a84c;
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.14);
+}
+
+button:focus {
+  outline: none;
+}
+
+::placeholder {
+  color: #7d746d;
+  opacity: 0.8;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d6c8b6;
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #c9b59d;
+}
+
+.page-content {
+  width: 100%;
+}
+
+.page-content.hidden {
+  display: none !important;
+}
+
+.note-rich-text p,
+.note-rich-text div {
+  margin: 0 0 0.75rem 0;
+}
+
+.note-rich-text ul,
+.note-rich-text ol {
+  margin: 0.5rem 0 0.75rem 1.25rem;
+  padding-left: 1rem;
+}
+
+.note-rich-text li {
+  margin: 0.25rem 0;
+}
+
+.note-rich-text b,
+.note-rich-text strong {
+  font-weight: 700;
+}
+
+.note-rich-text i,
+.note-rich-text em {
+  font-style: italic;
+}
+
+.note-rich-text u {
+  text-decoration: underline;
+}
+
+[contenteditable="true"] ul,
+[contenteditable="true"] ol {
+  margin-left: 1.25rem;
+  padding-left: 1rem;
+}
+
+[contenteditable="true"] p,
+[contenteditable="true"] div {
+  margin-bottom: 0.75rem;
+}
+
+#lesson-detail-note-body {
+  scrollbar-width: thin;
+}
+
+#lesson-detail-note-body::-webkit-scrollbar {
+  width: 6px;
+}
+
+#lesson-detail-note-body::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+main {
+  align-self: stretch;
+}
+
+#student-grid {
+  align-items: start;
+}
+
+#profile-tab-homework {
+  max-height: 520px;
+  overflow: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  min-width: 0;
+}
+
+table td,
+table th {
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1024px) {
+  .card-hover:hover {
+    transform: none;
+    box-shadow: 0 8px 20px rgba(31, 26, 23, 0.06);
+  }
+
+  .dashboard-panel-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .app-modal-header {
+    align-items: flex-start;
+  }
+
+  .profile-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .lesson-detail-meta-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media (max-width: 768px) {
+  #sidebar {
+    width: 220px;
+    min-width: 220px;
+  }
+
+  #app-root.sidebar-collapsed #sidebar {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  #page-root {
+    min-width: 0;
+  }
+
+  .dashboard-header-meta {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .dashboard-stat-card {
+    min-height: 0;
+  }
+
+  .profile-header-actions {
+    width: 100%;
+  }
+
+  .profile-header-actions button {
+    flex: 1 1 160px;
+  }
+
+  .profile-tab-bar .tab-btn {
+    flex: 1 1 140px;
+    text-align: center;
+  }
+
+  .finance-header-actions {
+    width: 100%;
+  }
+
+  .finance-header-actions > * {
+    flex: 1 1 180px;
+  }
+
+  .app-modal-footer > * {
+    width: 100%;
+  }
+
+  .schedule-day-cell {
+    min-height: 110px;
+  }
+}
