@@ -17,6 +17,36 @@ function getAppsScriptToken() {
   return String(process.env.GOOGLE_APPS_SCRIPT_TOKEN || process.env.STUDIO_PORTAL_TOKEN || "").trim();
 }
 
+function getGoogleAccountEmail() {
+  return String(process.env.GOOGLE_ACCOUNT_EMAIL || "coach@d-a-j.com").trim();
+}
+
+function getBooleanEnv(name) {
+  var raw = String(process.env[name] || "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+}
+
+function getGoogleIntegrationStatusPayload() {
+  var calendarReady = getBooleanEnv("GOOGLE_CALENDAR_LIVE_READY");
+  var gmailReady = getBooleanEnv("GOOGLE_GMAIL_LIVE_READY");
+
+  return {
+    ok: true,
+    google: {
+      account_email: getGoogleAccountEmail(),
+      sync_mode: "manual",
+      gmail_filter_scope: "booking_only",
+      import_review_mode: "review_first",
+      calendar: {
+        status: calendarReady ? "live_ready" : "demo_ready"
+      },
+      gmail: {
+        status: gmailReady ? "live_ready" : "demo_ready"
+      }
+    }
+  };
+}
+
 function buildTargetUrl(action) {
   var baseUrl = getAppsScriptUrl();
   if (!baseUrl) {
@@ -99,6 +129,66 @@ async function proxyPush(eventBody) {
   return json(200, payload);
 }
 
+async function getGoogleStatus() {
+  return json(200, getGoogleIntegrationStatusPayload());
+}
+
+async function runCalendarSync() {
+  var statusPayload = getGoogleIntegrationStatusPayload();
+  if (statusPayload.google.calendar.status !== "live_ready") {
+    return json(200, {
+      ok: true,
+      status: "demo_ready",
+      source: "backend",
+      imported: 0,
+      updated: 0,
+      flagged: 0,
+      skipped: 0,
+      message: "Live Google Calendar sync is not configured in Netlify yet. The portal can keep using the current demo intake feed until OAuth is added.",
+      google: statusPayload.google
+    });
+  }
+
+  return json(200, {
+    ok: true,
+    status: "live_ready",
+    source: "backend",
+    imported: 0,
+    updated: 0,
+    flagged: 0,
+    skipped: 0,
+    message: "Google Calendar backend is marked live-ready. Add the server-side Calendar sync implementation next.",
+    google: statusPayload.google
+  });
+}
+
+async function runGmailSync() {
+  var statusPayload = getGoogleIntegrationStatusPayload();
+  if (statusPayload.google.gmail.status !== "live_ready") {
+    return json(200, {
+      ok: true,
+      status: "demo_ready",
+      source: "backend",
+      imported: 0,
+      flagged: 0,
+      skipped: 0,
+      message: "Live Gmail sync is not configured in Netlify yet. The portal can keep using the current Gmail assist demo feed until OAuth is added.",
+      google: statusPayload.google
+    });
+  }
+
+  return json(200, {
+    ok: true,
+    status: "live_ready",
+    source: "backend",
+    imported: 0,
+    flagged: 0,
+    skipped: 0,
+    message: "Gmail backend is marked live-ready. Add the server-side Gmail pull implementation next.",
+    google: statusPayload.google
+  });
+}
+
 exports.handler = async function (event) {
   try {
     var method = String(event.httpMethod || "GET").toUpperCase();
@@ -121,6 +211,10 @@ exports.handler = async function (event) {
         return await proxySnapshot();
       }
 
+      if (action === "google_status") {
+        return await getGoogleStatus();
+      }
+
       return json(400, {
         ok: false,
         error: "Unsupported action."
@@ -135,6 +229,14 @@ exports.handler = async function (event) {
 
       if (String(body.action || "").trim() === "push_snapshot") {
         return await proxyPush(body);
+      }
+
+      if (String(body.action || "").trim() === "calendar_sync") {
+        return await runCalendarSync();
+      }
+
+      if (String(body.action || "").trim() === "gmail_sync") {
+        return await runGmailSync();
       }
 
       return json(400, {
@@ -154,4 +256,3 @@ exports.handler = async function (event) {
     });
   }
 };
-

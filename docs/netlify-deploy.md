@@ -19,6 +19,14 @@ Yes, you can host the full portal on Netlify, including the static frontend and 
   - your deployed Apps Script URL
 - `GOOGLE_APPS_SCRIPT_TOKEN`
   - only if you configured a token in Apps Script
+- `GOOGLE_ACCOUNT_EMAIL`
+  - set this to `coach@d-a-j.com`
+
+Optional later, when live Google OAuth/server-side sync is ready:
+- `GOOGLE_CALENDAR_LIVE_READY`
+  - set to `true` when the backend can pull real Calendar events
+- `GOOGLE_GMAIL_LIVE_READY`
+  - set to `true` when the backend can pull real Gmail booking emails
 
 ## What to put in the portal Settings page after deployment
 
@@ -48,6 +56,7 @@ Do not use the raw Apps Script URL in the portal frontend.
    - set backend URL to `/api/studio-sync`
    - save
    - test connection
+   - save Google account email in the Google Connections section
    - push snapshot
 
 ## Why this works better

@@ -148,6 +148,20 @@ const DEFAULT_BACKEND_SETTINGS = {
   auto_sync: false,
   google_sheets_web_app_url: "",
   api_token: "",
+  google_account_email: "coach@d-a-j.com",
+  google_sync_mode: "manual",
+  gmail_filter_scope: "booking_only",
+  import_review_mode: "review_first",
+  google_calendar_status: "demo_ready",
+  google_gmail_status: "demo_ready",
+  google_status_checked_at: "",
+  google_status_error: "",
+  google_calendar_last_sync_at: "",
+  google_calendar_last_sync_status: "idle",
+  google_calendar_last_sync_error: "",
+  google_gmail_last_sync_at: "",
+  google_gmail_last_sync_status: "idle",
+  google_gmail_last_sync_error: "",
   last_sync_at: "",
   last_pull_at: "",
   last_sync_status: "idle",
@@ -181,6 +195,20 @@ function sanitizeBackendSettings(settings = {}) {
     auto_sync: settings.auto_sync === true,
     google_sheets_web_app_url: String(settings.google_sheets_web_app_url || "").trim(),
     api_token: String(settings.api_token || "").trim(),
+    google_account_email: String(settings.google_account_email || DEFAULT_BACKEND_SETTINGS.google_account_email).trim(),
+    google_sync_mode: String(settings.google_sync_mode || DEFAULT_BACKEND_SETTINGS.google_sync_mode).trim() === "automatic" ? "automatic" : "manual",
+    gmail_filter_scope: String(settings.gmail_filter_scope || DEFAULT_BACKEND_SETTINGS.gmail_filter_scope).trim() === "all_mail" ? "all_mail" : "booking_only",
+    import_review_mode: String(settings.import_review_mode || DEFAULT_BACKEND_SETTINGS.import_review_mode).trim() === "auto_match" ? "auto_match" : "review_first",
+    google_calendar_status: String(settings.google_calendar_status || DEFAULT_BACKEND_SETTINGS.google_calendar_status).trim() || "demo_ready",
+    google_gmail_status: String(settings.google_gmail_status || DEFAULT_BACKEND_SETTINGS.google_gmail_status).trim() || "demo_ready",
+    google_status_checked_at: String(settings.google_status_checked_at || "").trim(),
+    google_status_error: String(settings.google_status_error || "").trim(),
+    google_calendar_last_sync_at: String(settings.google_calendar_last_sync_at || "").trim(),
+    google_calendar_last_sync_status: String(settings.google_calendar_last_sync_status || "idle").trim(),
+    google_calendar_last_sync_error: String(settings.google_calendar_last_sync_error || "").trim(),
+    google_gmail_last_sync_at: String(settings.google_gmail_last_sync_at || "").trim(),
+    google_gmail_last_sync_status: String(settings.google_gmail_last_sync_status || "idle").trim(),
+    google_gmail_last_sync_error: String(settings.google_gmail_last_sync_error || "").trim(),
     last_sync_at: String(settings.last_sync_at || "").trim(),
     last_pull_at: String(settings.last_pull_at || "").trim(),
     last_sync_status: String(settings.last_sync_status || DEFAULT_BACKEND_SETTINGS.last_sync_status).trim(),
@@ -450,6 +478,111 @@ async function pullSnapshotFromStudioBackend() {
   return snapshot;
 }
 
+async function getGoogleIntegrationStatusFromBackend() {
+  const url = resolveBackendUrl("google_status");
+  const response = await fetch(url, {
+    method: "GET",
+    headers: getBackendRequestHeaders()
+  });
+
+  if (!response.ok) {
+    throw new Error(`Google status check failed (${response.status}).`);
+  }
+
+  const payload = await response.json().catch(() => ({}));
+  const google = payload?.google || payload || {};
+  const calendar = google.calendar || {};
+  const gmail = google.gmail || {};
+
+  updateBackendSettings({
+    google_account_email: String(google.account_email || backendSettings.google_account_email || "").trim(),
+    google_sync_mode: String(google.sync_mode || backendSettings.google_sync_mode || "manual").trim() === "automatic" ? "automatic" : "manual",
+    gmail_filter_scope: String(google.gmail_filter_scope || backendSettings.gmail_filter_scope || "booking_only").trim() === "all_mail" ? "all_mail" : "booking_only",
+    import_review_mode: String(google.import_review_mode || backendSettings.import_review_mode || "review_first").trim() === "auto_match" ? "auto_match" : "review_first",
+    google_calendar_status: String(calendar.status || backendSettings.google_calendar_status || "demo_ready").trim(),
+    google_gmail_status: String(gmail.status || backendSettings.google_gmail_status || "demo_ready").trim(),
+    google_status_checked_at: new Date().toISOString(),
+    google_status_error: ""
+  });
+
+  return google;
+}
+
+async function runGoogleCalendarBackendSync() {
+  const url = resolveBackendUrl("calendar_sync");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: getBackendRequestHeaders(),
+    body: JSON.stringify({
+      action: "calendar_sync",
+      token: backendSettings.api_token || "",
+      account_email: backendSettings.google_account_email || "",
+      sync_mode: backendSettings.google_sync_mode || "manual",
+      import_mode: "lesson_like_only",
+      window: {
+        past_days: 30,
+        future_days: 60
+      }
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || payload?.ok === false) {
+    const message = payload?.error || `Google Calendar sync failed (${response.status}).`;
+    updateBackendSettings({
+      google_calendar_last_sync_status: "error",
+      google_calendar_last_sync_error: message
+    });
+    throw new Error(message);
+  }
+
+  updateBackendSettings({
+    google_calendar_status: String(payload?.google?.calendar?.status || payload?.status || backendSettings.google_calendar_status || "demo_ready").trim(),
+    google_calendar_last_sync_at: new Date().toISOString(),
+    google_calendar_last_sync_status: String(payload?.status || "success").trim(),
+    google_calendar_last_sync_error: ""
+  });
+
+  return payload;
+}
+
+async function runGmailBackendSync() {
+  const url = resolveBackendUrl("gmail_sync");
+  const response = await fetch(url, {
+    method: "POST",
+    headers: getBackendRequestHeaders(),
+    body: JSON.stringify({
+      action: "gmail_sync",
+      token: backendSettings.api_token || "",
+      account_email: backendSettings.google_account_email || "",
+      sync_mode: backendSettings.google_sync_mode || "manual",
+      gmail_filter_scope: backendSettings.gmail_filter_scope || "booking_only",
+      import_review_mode: backendSettings.import_review_mode || "review_first"
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+
+  if (!response.ok || payload?.ok === false) {
+    const message = payload?.error || `Gmail sync failed (${response.status}).`;
+    updateBackendSettings({
+      google_gmail_last_sync_status: "error",
+      google_gmail_last_sync_error: message
+    });
+    throw new Error(message);
+  }
+
+  updateBackendSettings({
+    google_gmail_status: String(payload?.google?.gmail?.status || payload?.status || backendSettings.google_gmail_status || "demo_ready").trim(),
+    google_gmail_last_sync_at: new Date().toISOString(),
+    google_gmail_last_sync_status: String(payload?.status || "success").trim(),
+    google_gmail_last_sync_error: ""
+  });
+
+  return payload;
+}
+
 async function syncStudioDataToBackend(options = {}) {
   const { silent = false } = options;
 
@@ -638,6 +771,9 @@ function createStudioDataService() {
     syncToBackend: syncStudioDataToBackend,
     pullFromBackend: pullStudioDataFromBackend,
     testBackendConnection: testStudioBackendConnection,
+    getGoogleStatus: getGoogleIntegrationStatusFromBackend,
+    runGoogleCalendarSync: runGoogleCalendarBackendSync,
+    runGmailSync: runGmailBackendSync,
     getGoogleSheetsBlueprint: getGoogleSheetsCollectionBlueprint,
     list(collectionKey) {
       return getDataCollection(collectionKey);

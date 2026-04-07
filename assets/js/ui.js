@@ -1030,6 +1030,48 @@ function setCalendarSyncState(updates = {}) {
   return calendarSyncState;
 }
 
+function syncCalendarStateFromBackendSettings() {
+  if (typeof studioDataService === "undefined" || !studioDataService?.getBackendSettings) {
+    return calendarSyncState;
+  }
+
+  const backend = studioDataService.getBackendSettings();
+  const hasGoogleAccount = Boolean(String(backend.google_account_email || "").trim());
+
+  calendarSyncState = {
+    ...calendarSyncState,
+    connected: hasGoogleAccount,
+    gmail_connected: hasGoogleAccount,
+    selected_calendar_id: "primary",
+    selected_calendar_label: "Main Calendar",
+    connection_mode: hasGoogleAccount ? "backend-manual" : "local-demo"
+  };
+  saveCalendarSyncState();
+  return calendarSyncState;
+}
+
+function getGoogleServiceStatusBadgeClass(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (["live_ready", "connected", "success"].includes(normalized)) return "bg-sage/10 text-sage";
+  if (["demo_ready", "demo-fallback", "manual"].includes(normalized)) return "bg-gold/10 text-warmblack";
+  if (["error", "failed"].includes(normalized)) return "bg-burgundy/10 text-burgundy";
+  return "bg-warmgray/10 text-warmgray";
+}
+
+function getGoogleServiceStatusLabel(status) {
+  const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "live_ready") return "Live Ready";
+  if (normalized === "demo_ready") return "Demo Ready";
+  if (normalized === "demo-fallback") return "Demo Fallback";
+  if (normalized === "connected") return "Connected";
+  if (normalized === "success") return "Synced";
+  if (normalized === "error") return "Needs Attention";
+  if (normalized === "failed") return "Failed";
+  return "Not Checked";
+}
+
+syncCalendarStateFromBackendSettings();
+
 const sampleGoogleCalendarFeed = [
   {
     id: "gcal_evt_20260408_maya_callback",
@@ -1594,9 +1636,9 @@ function getChangedCalendarFields(existingLesson, candidate) {
   return changedFields;
 }
 
-function runGoogleCalendarSync() {
+function runDemoGoogleCalendarSync() {
   if (!calendarSyncState.connected) {
-    alert("Connect your main calendar before running sync.");
+    alert("Add your Google account in Settings before running sync.");
     return;
   }
 
@@ -1702,18 +1744,38 @@ function runGoogleCalendarSync() {
   alert(`Google Calendar sync complete.\nImported: ${importedCount}\nUpdated: ${updatedCount}\nFlagged for review: ${flaggedCount}\nSkipped: ${skippedCount}`);
 }
 
-function connectGoogleCalendar() {
-  setCalendarSyncState({
-    connected: true,
-    selected_calendar_id: "primary",
-    selected_calendar_label: "Main Calendar"
-  });
-  renderSchedulePage();
+async function runGoogleCalendarSync() {
+  syncCalendarStateFromBackendSettings();
+
+  const backend = studioDataService.getBackendSettings();
+  if (!backend.google_account_email) {
+    alert("Add your Google account email in Settings before running calendar sync.");
+    return;
+  }
+
+  if (backend.google_sheets_web_app_url) {
+    try {
+      const payload = await studioDataService.runGoogleCalendarSync();
+      if (payload?.google?.calendar?.status === "live_ready") {
+        alert(payload.message || "Google Calendar backend is connected. Live event import is ready for the next server-side step.");
+        renderSchedulePage();
+        return;
+      }
+
+      if (payload?.message) {
+        alert(`${payload.message}\n\nThe portal will use the current intake feed for now so your workflow keeps moving.`);
+      }
+    } catch (error) {
+      alert(`${error.message || "Unable to reach the Google Calendar backend."}\n\nThe portal will use the current intake feed for now.`);
+    }
+  }
+
+  runDemoGoogleCalendarSync();
 }
 
-function runGmailAssistSync() {
+function runDemoGmailAssistSync() {
   if (!calendarSyncState.gmail_connected) {
-    alert("Connect Gmail assist before running sync.");
+    alert("Add your Google account in Settings before running Gmail assist.");
     return;
   }
 
@@ -1811,25 +1873,76 @@ function runGmailAssistSync() {
   alert(`Gmail assist sync complete.\nImported: ${importedCount}\nFlagged for review: ${flaggedCount}\nSkipped: ${skippedCount}`);
 }
 
-function connectGmailAssist() {
-  setCalendarSyncState({
-    gmail_connected: true
-  });
-  renderSchedulePage();
+async function runGmailAssistSync() {
+  syncCalendarStateFromBackendSettings();
+
+  const backend = studioDataService.getBackendSettings();
+  if (!backend.google_account_email) {
+    alert("Add your Google account email in Settings before running Gmail assist.");
+    return;
+  }
+
+  if (backend.google_sheets_web_app_url) {
+    try {
+      const payload = await studioDataService.runGmailSync();
+      if (payload?.google?.gmail?.status === "live_ready") {
+        alert(payload.message || "Gmail backend is connected. Live mailbox intake is ready for the next server-side step.");
+        renderSchedulePage();
+        return;
+      }
+
+      if (payload?.message) {
+        alert(`${payload.message}\n\nThe portal will use the current Gmail intake feed for now so review can keep working.`);
+      }
+    } catch (error) {
+      alert(`${error.message || "Unable to reach the Gmail backend."}\n\nThe portal will use the current Gmail intake feed for now.`);
+    }
+  }
+
+  runDemoGmailAssistSync();
 }
 
-function disconnectGmailAssist() {
-  setCalendarSyncState({
-    gmail_connected: false
-  });
-  renderSchedulePage();
+async function checkGoogleConnectionStatus() {
+  const backend = studioDataService.getBackendSettings();
+  if (!backend.google_sheets_web_app_url) {
+    alert("Add your backend / proxy URL in Settings before checking Google connection status.");
+    return;
+  }
+
+  try {
+    const google = await studioDataService.getGoogleStatus();
+    syncCalendarStateFromBackendSettings();
+    const calendarLabel = getGoogleServiceStatusLabel(google?.calendar?.status);
+    const gmailLabel = getGoogleServiceStatusLabel(google?.gmail?.status);
+    alert(`Google connection status refreshed.\nAccount: ${google?.account_email || backend.google_account_email}\nCalendar: ${calendarLabel}\nGmail: ${gmailLabel}`);
+  } catch (error) {
+    alert(error.message || "Unable to check Google connection status.");
+  }
+
+  renderCurrentPage();
 }
 
-function disconnectGoogleCalendar() {
-  setCalendarSyncState({
-    connected: false
+function saveGoogleConnectionSettings(event) {
+  event.preventDefault();
+  const form = document.getElementById("settings-google-connections-form");
+  if (!form) return;
+
+  const accountEmail = String(form.google_account_email.value || "").trim().toLowerCase();
+  if (!accountEmail) {
+    setSettingsActionFeedback("Add the Google account email before saving Google connection settings.", "error");
+    renderSettingsPage();
+    return;
+  }
+
+  studioDataService.updateBackendSettings({
+    google_account_email: accountEmail,
+    google_sync_mode: "manual",
+    gmail_filter_scope: "booking_only",
+    import_review_mode: "review_first"
   });
-  renderSchedulePage();
+  syncCalendarStateFromBackendSettings();
+  setSettingsActionFeedback("Google connection preferences saved. Calendar and Gmail are set to one shared account, manual sync first, booking-only Gmail, and review-first intake.", "success");
+  renderSettingsPage();
 }
 
 function createStudentFromImportedLesson(lessonId) {
@@ -6546,6 +6659,7 @@ function renderSchedulePage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
+  syncCalendarStateFromBackendSettings();
   const importedRows = getScheduleIntakeRows();
   const allCalendarRows = getScheduleCalendarRows();
   const actionRows = importedRows.filter((row) => row.action_required);
@@ -6553,6 +6667,10 @@ function renderSchedulePage() {
   const confirmedRows = importedRows.filter((row) => row.intake_review_state === "CONFIRMED");
   const externallyUpdatedRows = importedRows.filter((row) => ["UPDATED_EXTERNALLY", "NEEDS_REVIEW"].includes(row.sync_state));
   const unmatchedRows = importedRows.filter((row) => !row.student_id);
+  const backend = studioDataService.getBackendSettings();
+  const googleAccountEmail = backend.google_account_email || "coach@d-a-j.com";
+  const calendarStatus = backend.google_calendar_status || "demo_ready";
+  const gmailStatus = backend.google_gmail_status || "demo_ready";
   const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0 };
   const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, flagged: 0, skipped: 0 };
 
@@ -6598,21 +6716,19 @@ function renderSchedulePage() {
               <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div class="min-w-0">
                   <p class="text-xs font-medium uppercase tracking-wider text-warmgray">Google Calendar Sync</p>
-                  <p class="text-sm text-warmgray mt-1">Main calendar only. Imports lesson-like events from the past 30 days and next 60 days. Unmatched events stay in review, and changed events are flagged instead of silently trusted.</p>
+                  <p class="text-sm text-warmgray mt-1">Main calendar only under ${escapeHtml(googleAccountEmail)}. Manual sync first. Lesson-like events from the past 30 days and next 60 days stay review-first, and external changes are flagged instead of silently trusted.</p>
                   <div class="flex flex-wrap gap-2 mt-3">
-                    <span class="text-[11px] px-2 py-1 rounded-full ${calendarSyncState.connected ? "bg-sage/10 text-sage" : "bg-warmgray/10 text-warmgray"}">${calendarSyncState.connected ? "Main Calendar Connected" : "Not Connected"}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(calendarStatus)}">${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Account · ${escapeHtml(googleAccountEmail)}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Manual Sync</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Window · Past ${calendarSyncState.sync_window_past_days} / Next ${calendarSyncState.sync_window_future_days}</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Filter · Lesson-Like Events Only</span>
                   </div>
-                  <p class="text-xs text-warmgray mt-3">${calendarSyncState.last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.last_sync_at))}` : "No sync has run yet."}</p>
+                  <p class="text-xs text-warmgray mt-3">${backend.google_calendar_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_calendar_last_sync_at))}` : calendarSyncState.last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.last_sync_at))}` : "No sync has run yet."}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  ${
-                    calendarSyncState.connected
-                      ? `<button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGoogleCalendarSync()">Run Sync</button>
-                         <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="disconnectGoogleCalendar()">Disconnect</button>`
-                      : `<button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="connectGoogleCalendar()">Connect Main Calendar</button>`
-                  }
+                  <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGoogleCalendarSync()">Run Sync</button>
+                  <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="checkGoogleConnectionStatus()">Refresh Status</button>
                 </div>
               </div>
               <div class="grid grid-cols-2 xl:grid-cols-4 gap-3 mt-4">
@@ -6639,21 +6755,19 @@ function renderSchedulePage() {
               <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div class="min-w-0">
                   <p class="text-xs font-medium uppercase tracking-wider text-warmgray">Gmail Assist</p>
-                  <p class="text-sm text-warmgray mt-1">Use Gmail as a supplemental intake source when calendar coverage is incomplete. Lesson-like emails are parsed, cross-checked against existing lessons, and sent to review instead of being blindly trusted.</p>
+                  <p class="text-sm text-warmgray mt-1">Supplemental booking-email intake under ${escapeHtml(googleAccountEmail)}. Manual sync only, booking-related messages only, and unmatched items always stay in review until you take action.</p>
                   <div class="flex flex-wrap gap-2 mt-3">
-                    <span class="text-[11px] px-2 py-1 rounded-full ${calendarSyncState.gmail_connected ? "bg-sage/10 text-sage" : "bg-warmgray/10 text-warmgray"}">${calendarSyncState.gmail_connected ? "Gmail Assist Connected" : "Not Connected"}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(gmailStatus)}">${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Account · ${escapeHtml(googleAccountEmail)}</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Booking Emails Only</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Supplemental Only</span>
-                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Cross-Check With Calendar</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Review First</span>
                   </div>
-                  <p class="text-xs text-warmgray mt-3">${calendarSyncState.gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
+                  <p class="text-xs text-warmgray mt-3">${backend.google_gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_gmail_last_sync_at))}` : calendarSyncState.gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
-                  ${
-                    calendarSyncState.gmail_connected
-                      ? `<button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGmailAssistSync()">Run Gmail Assist</button>
-                         <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="disconnectGmailAssist()">Disconnect</button>`
-                      : `<button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="connectGmailAssist()">Connect Gmail Assist</button>`
-                  }
+                  <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+                  <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="checkGoogleConnectionStatus()">Refresh Status</button>
                 </div>
               </div>
               <div class="grid grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
@@ -7354,6 +7468,7 @@ function renderSettingsPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
+  syncCalendarStateFromBackendSettings();
   const backend = studioDataService.getBackendSettings();
   const status = studioDataService.getPersistenceStatus();
   const blueprint = studioDataService.getGoogleSheetsBlueprint();
@@ -7364,7 +7479,7 @@ function renderSettingsPage() {
       <header class="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Settings</h2>
-          <p class="text-sm text-warmgray mt-0.5">Phase 5A persistence controls. Local cache is live now, and Google Sheets should connect through a backend/proxy endpoint when you are ready.</p>
+          <p class="text-sm text-warmgray mt-0.5">Persistence, hosted admin access, and manual Google connection controls now live together here. Google Calendar and Gmail still stay review-first until the live OAuth layer is added.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
@@ -7374,7 +7489,7 @@ function renderSettingsPage() {
 
       ${getSettingsActionFeedbackMarkup()}
 
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
+      <div class="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
         <div class="rounded-2xl border border-cream bg-white px-4 py-3">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Mode</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${escapeHtml(getPersistenceModeLabel(status.mode))}</p>
@@ -7401,6 +7516,17 @@ function renderSettingsPage() {
             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getAdminSecurityStatusBadgeClass()}">
               ${escapeHtml(getAdminSecurityStatusLabel())}
             </span>
+          </p>
+        </div>
+        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Account</p>
+          <p class="text-sm font-semibold text-warmblack mt-1 wrap-anywhere">${escapeHtml(backend.google_account_email || "Not set")}</p>
+        </div>
+        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Intake</p>
+          <p class="mt-1 flex flex-wrap gap-1.5">
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
           </p>
         </div>
       </div>
@@ -7468,6 +7594,57 @@ function renderSettingsPage() {
             <div class="flex flex-wrap items-center gap-2 mt-5">
               <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Settings</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runBackendConnectionTest()">Test Connection</button>
+            </div>
+          </form>
+
+          <form id="settings-google-connections-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.045s" onsubmit="saveGoogleConnectionSettings(event)">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+              <div class="min-w-0">
+                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Connections</p>
+                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">One account, manual sync, review-first intake</h3>
+                <p class="text-sm text-warmgray mt-1">Calendar and Gmail both live under one Google account. Gmail stays booking-related only, and unmatched imports still wait for your review.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+              <label class="block xl:col-span-2">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Account Email</span>
+                <input
+                  name="google_account_email"
+                  type="email"
+                  value="${escapeHtml(backend.google_account_email)}"
+                  placeholder="coach@d-a-j.com"
+                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+                />
+              </label>
+
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wider text-warmgray">Calendar</p>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Manual Sync</span>
+                </div>
+                <p class="text-xs text-warmgray mt-2">${backend.google_calendar_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_calendar_last_sync_at))}` : "No calendar sync has run yet."}</p>
+                ${backend.google_calendar_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_calendar_last_sync_error)}</p>` : ""}
+              </div>
+
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wider text-warmgray">Gmail Assist</p>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Booking Emails Only</span>
+                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Review First</span>
+                </div>
+                <p class="text-xs text-warmgray mt-2">${backend.google_gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
+                ${backend.google_gmail_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_gmail_last_sync_error)}</p>` : ""}
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-5">
+              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Google Setup</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
             </div>
           </form>
 
