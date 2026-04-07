@@ -1053,6 +1053,8 @@ function syncCalendarStateFromBackendSettings() {
 function getGoogleServiceStatusBadgeClass(status) {
   const normalized = String(status || "").trim().toLowerCase();
   if (["live_ready", "connected", "success"].includes(normalized)) return "bg-sage/10 text-sage";
+  if (normalized === "auth_needed") return "bg-gold/10 text-warmblack";
+  if (normalized === "backend_incomplete") return "bg-burgundy/10 text-burgundy";
   if (["demo_ready", "demo-fallback", "manual"].includes(normalized)) return "bg-gold/10 text-warmblack";
   if (["error", "failed"].includes(normalized)) return "bg-burgundy/10 text-burgundy";
   return "bg-warmgray/10 text-warmgray";
@@ -1661,12 +1663,7 @@ function getChangedCalendarFields(existingLesson, candidate) {
   return changedFields;
 }
 
-function runDemoGoogleCalendarSync() {
-  if (!calendarSyncState.connected) {
-    alert("Add your Google account in Settings before running sync.");
-    return;
-  }
-
+function processGoogleCalendarImportFeed(feed = []) {
   const nowIso = new Date().toISOString();
   const syncWindow = getCalendarSyncWindow();
   let importedCount = 0;
@@ -1674,7 +1671,7 @@ function runDemoGoogleCalendarSync() {
   let flaggedCount = 0;
   let skippedCount = 0;
 
-  sampleGoogleCalendarFeed.forEach((event) => {
+  (Array.isArray(feed) ? feed : []).forEach((event) => {
     const eventStart = event.start ? new Date(event.start) : null;
     if (!eventStart || Number.isNaN(eventStart.getTime())) {
       skippedCount += 1;
@@ -1755,18 +1752,34 @@ function runDemoGoogleCalendarSync() {
     }
   });
 
+  return {
+    imported: importedCount,
+    updated: updatedCount,
+    flagged: flaggedCount,
+    skipped: skippedCount,
+    synced_at: nowIso
+  };
+}
+
+function runDemoGoogleCalendarSync() {
+  if (!calendarSyncState.connected) {
+    alert("Add your Google account in Settings before running sync.");
+    return;
+  }
+
+  const summary = processGoogleCalendarImportFeed(sampleGoogleCalendarFeed);
   setCalendarSyncState({
-    last_sync_at: nowIso,
+    last_sync_at: summary.synced_at,
     last_sync_summary: {
-      imported: importedCount,
-      updated: updatedCount,
-      flagged: flaggedCount,
-      skipped: skippedCount
+      imported: summary.imported,
+      updated: summary.updated,
+      flagged: summary.flagged,
+      skipped: summary.skipped
     }
   });
 
   renderAppFromSchema();
-  alert(`Google Calendar sync complete.\nImported: ${importedCount}\nUpdated: ${updatedCount}\nFlagged for review: ${flaggedCount}\nSkipped: ${skippedCount}`);
+  alert(`Google Calendar sync complete.\nImported: ${summary.imported}\nUpdated: ${summary.updated}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
 }
 
 async function runGoogleCalendarSync() {
@@ -1781,8 +1794,24 @@ async function runGoogleCalendarSync() {
   if (backend.google_sheets_web_app_url) {
     try {
       const payload = await studioDataService.runGoogleCalendarSync();
+      if (payload?.google?.calendar?.status === "live_ready" && Array.isArray(payload?.events)) {
+        const summary = processGoogleCalendarImportFeed(payload.events);
+        setCalendarSyncState({
+          last_sync_at: summary.synced_at,
+          last_sync_summary: {
+            imported: summary.imported,
+            updated: summary.updated,
+            flagged: summary.flagged,
+            skipped: summary.skipped
+          }
+        });
+        renderAppFromSchema();
+        alert(`Google Calendar sync complete.\nImported: ${summary.imported}\nUpdated: ${summary.updated}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+        return;
+      }
+
       if (payload?.google?.calendar?.status === "live_ready") {
-        alert(payload.message || "Google Calendar backend is connected. Live event import is ready for the next server-side step.");
+        alert(payload.message || "Google Calendar backend is connected, but no event payload came back yet.");
         renderSchedulePage();
         return;
       }
@@ -1798,19 +1827,14 @@ async function runGoogleCalendarSync() {
   runDemoGoogleCalendarSync();
 }
 
-function runDemoGmailAssistSync() {
-  if (!calendarSyncState.gmail_connected) {
-    alert("Add your Google account in Settings before running Gmail assist.");
-    return;
-  }
-
+function processGmailImportFeed(feed = []) {
   const nowIso = new Date().toISOString();
   const syncWindow = getCalendarSyncWindow();
   let importedCount = 0;
   let flaggedCount = 0;
   let skippedCount = 0;
 
-  sampleGmailLessonFeed.forEach((message) => {
+  (Array.isArray(feed) ? feed : []).forEach((message) => {
     if (!isLikelyLessonGmailMessage(message)) {
       skippedCount += 1;
       return;
@@ -1885,17 +1909,32 @@ function runDemoGmailAssistSync() {
     }
   });
 
+  return {
+    imported: importedCount,
+    flagged: flaggedCount,
+    skipped: skippedCount,
+    synced_at: nowIso
+  };
+}
+
+function runDemoGmailAssistSync() {
+  if (!calendarSyncState.gmail_connected) {
+    alert("Add your Google account in Settings before running Gmail assist.");
+    return;
+  }
+
+  const summary = processGmailImportFeed(sampleGmailLessonFeed);
   setCalendarSyncState({
-    gmail_last_sync_at: nowIso,
+    gmail_last_sync_at: summary.synced_at,
     gmail_last_sync_summary: {
-      imported: importedCount,
-      flagged: flaggedCount,
-      skipped: skippedCount
+      imported: summary.imported,
+      flagged: summary.flagged,
+      skipped: summary.skipped
     }
   });
 
   renderAppFromSchema();
-  alert(`Gmail assist sync complete.\nImported: ${importedCount}\nFlagged for review: ${flaggedCount}\nSkipped: ${skippedCount}`);
+  alert(`Gmail assist sync complete.\nImported: ${summary.imported}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
 }
 
 async function runGmailAssistSync() {
@@ -1910,8 +1949,23 @@ async function runGmailAssistSync() {
   if (backend.google_sheets_web_app_url) {
     try {
       const payload = await studioDataService.runGmailSync();
+      if (payload?.google?.gmail?.status === "live_ready" && Array.isArray(payload?.messages)) {
+        const summary = processGmailImportFeed(payload.messages);
+        setCalendarSyncState({
+          gmail_last_sync_at: summary.synced_at,
+          gmail_last_sync_summary: {
+            imported: summary.imported,
+            flagged: summary.flagged,
+            skipped: summary.skipped
+          }
+        });
+        renderAppFromSchema();
+        alert(`Gmail assist sync complete.\nImported: ${summary.imported}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+        return;
+      }
+
       if (payload?.google?.gmail?.status === "live_ready") {
-        alert(payload.message || "Gmail backend is connected. Live mailbox intake is ready for the next server-side step.");
+        alert(payload.message || "Gmail backend is connected, but no message payload came back yet.");
         renderSchedulePage();
         return;
       }

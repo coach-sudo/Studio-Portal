@@ -37,6 +37,23 @@ function getGoogleRefreshToken() {
   return String(process.env.GOOGLE_REFRESH_TOKEN || "").trim();
 }
 
+function getGoogleCalendarId() {
+  return String(process.env.GOOGLE_CALENDAR_ID || "primary").trim();
+}
+
+function getGmailMaxResults() {
+  var value = Number(process.env.GMAIL_SYNC_MAX_RESULTS || 25);
+  if (!value || Number.isNaN(value)) return 25;
+  return Math.min(Math.max(value, 1), 100);
+}
+
+function getCalendarSyncWindowDays() {
+  return {
+    past: 30,
+    future: 60
+  };
+}
+
 function getBooleanEnv(name) {
   var raw = String(process.env[name] || "").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
@@ -74,6 +91,196 @@ async function getAccessTokenFromRefreshToken() {
   }
 
   return payload.access_token;
+}
+
+async function fetchGoogleJson(url, accessToken) {
+  var response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: "Bearer " + accessToken
+    }
+  });
+
+  var payload = await response.json().catch(function () {
+    return {};
+  });
+
+  if (!response.ok) {
+    throw new Error(payload.error && payload.error.message ? payload.error.message : "Google API request failed.");
+  }
+
+  return payload;
+}
+
+function addDays(date, days) {
+  var next = new Date(date.getTime());
+  next.setDate(next.getDate() + days);
+  return next;
+}
+
+function stripHtml(html) {
+  return String(html || "")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/\s+\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function decodeBase64Url(value) {
+  if (!value) return "";
+  return Buffer.from(String(value).replace(/-/g, "+").replace(/_/g, "/"), "base64").toString("utf8");
+}
+
+function getHeaderValue(headers, name) {
+  var target = String(name || "").toLowerCase();
+  var found = (headers || []).find(function (header) {
+    return String(header.name || "").toLowerCase() === target;
+  });
+  return found ? String(found.value || "").trim() : "";
+}
+
+function collectMessageBodies(part, chunks) {
+  if (!part) return;
+  var mimeType = String(part.mimeType || "").toLowerCase();
+  var bodyData = part.body && part.body.data ? decodeBase64Url(part.body.data) : "";
+
+  if (bodyData && mimeType === "text/plain") {
+    chunks.plain.push(bodyData);
+  } else if (bodyData && mimeType === "text/html") {
+    chunks.html.push(bodyData);
+  }
+
+  (part.parts || []).forEach(function (child) {
+    collectMessageBodies(child, chunks);
+  });
+}
+
+function getMessageBodyText(payload) {
+  var chunks = {
+    plain: [],
+    html: []
+  };
+
+  collectMessageBodies(payload, chunks);
+  if (chunks.plain.length) {
+    return chunks.plain.join("\n").trim();
+  }
+  if (chunks.html.length) {
+    return stripHtml(chunks.html.join("\n"));
+  }
+  return "";
+}
+
+function isLikelyLessonCalendarEventBackend(event) {
+  var blob = ((event.summary || "") + "\n" + (event.description || "")).toLowerCase();
+  if (/^busy\b|\bto do\b|\bpop up\b|\bbackstage\b|\bpersonal\b/.test(blob)) return false;
+  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bintro session\b|\blessonface\b|\bacuity\b|\bpublic speaking\b|\bservice:\b/.test(blob);
+}
+
+function isLikelyLessonGmailMessageBackend(message) {
+  var blob = ((message.subject || "") + "\n" + (message.body || "") + "\n" + (message.from || "")).toLowerCase();
+  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b/.test(blob);
+}
+
+function inferCalendarLocation(event) {
+  if (event.location) return String(event.location).trim();
+  return "";
+}
+
+function inferCalendarDescription(event) {
+  return String(event.description || "").trim();
+}
+
+function getRelevantAttendee(event) {
+  var accountEmail = getGoogleAccountEmail().toLowerCase();
+  var attendees = Array.isArray(event.attendees) ? event.attendees : [];
+  return attendees.find(function (attendee) {
+    var email = String(attendee.email || "").toLowerCase();
+    return email && email !== accountEmail && attendee.self !== true;
+  }) || null;
+}
+
+function normalizeCalendarEvent(event) {
+  var attendee = getRelevantAttendee(event);
+  return {
+    id: String(event.id || "").trim(),
+    calendar_id: getGoogleCalendarId(),
+    title: String(event.summary || "").trim(),
+    description: inferCalendarDescription(event),
+    location: inferCalendarLocation(event),
+    start: event.start && (event.start.dateTime || event.start.date) ? String(event.start.dateTime || event.start.date).trim() : "",
+    end: event.end && (event.end.dateTime || event.end.date) ? String(event.end.dateTime || event.end.date).trim() : "",
+    updated_at: String(event.updated || "").trim(),
+    attendee_email: attendee ? String(attendee.email || "").trim() : "",
+    attendee_name: attendee ? String(attendee.displayName || "").trim() : ""
+  };
+}
+
+function normalizeGmailMessage(message) {
+  var headers = message.payload && Array.isArray(message.payload.headers) ? message.payload.headers : [];
+  var receivedAtRaw = getHeaderValue(headers, "Date");
+  var receivedAtDate = receivedAtRaw ? new Date(receivedAtRaw) : null;
+  return {
+    id: String(message.id || "").trim(),
+    subject: getHeaderValue(headers, "Subject"),
+    from: getHeaderValue(headers, "From"),
+    reply_to: getHeaderValue(headers, "Reply-To"),
+    received_at: receivedAtDate && !Number.isNaN(receivedAtDate.getTime()) ? receivedAtDate.toISOString() : "",
+    body: getMessageBodyText(message.payload || {})
+  };
+}
+
+async function fetchLiveCalendarEvents() {
+  var accessToken = await getAccessTokenFromRefreshToken();
+  var windowDays = getCalendarSyncWindowDays();
+  var now = new Date();
+  var timeMin = addDays(now, -1 * windowDays.past).toISOString();
+  var timeMax = addDays(now, windowDays.future).toISOString();
+  var url = new URL("https://www.googleapis.com/calendar/v3/calendars/" + encodeURIComponent(getGoogleCalendarId()) + "/events");
+  url.searchParams.set("timeMin", timeMin);
+  url.searchParams.set("timeMax", timeMax);
+  url.searchParams.set("singleEvents", "true");
+  url.searchParams.set("orderBy", "startTime");
+  url.searchParams.set("maxResults", "250");
+
+  var payload = await fetchGoogleJson(url.toString(), accessToken);
+  return (payload.items || [])
+    .filter(isLikelyLessonCalendarEventBackend)
+    .map(normalizeCalendarEvent)
+    .filter(function (event) {
+      return event.id && event.start;
+    });
+}
+
+async function fetchLiveGmailMessages() {
+  var accessToken = await getAccessTokenFromRefreshToken();
+  var listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
+  listUrl.searchParams.set("maxResults", String(getGmailMaxResults()));
+  listUrl.searchParams.set("q", "newer_than:90d");
+
+  var payload = await fetchGoogleJson(listUrl.toString(), accessToken);
+  var messages = Array.isArray(payload.messages) ? payload.messages : [];
+  var results = [];
+
+  for (var i = 0; i < messages.length; i += 1) {
+    var messageRef = messages[i];
+    var detailUrl = "https://gmail.googleapis.com/gmail/v1/users/me/messages/" + encodeURIComponent(messageRef.id) + "?format=full";
+    var detail = await fetchGoogleJson(detailUrl, accessToken);
+    var normalized = normalizeGmailMessage(detail);
+    if (isLikelyLessonGmailMessageBackend(normalized)) {
+      results.push(normalized);
+    }
+  }
+
+  return results;
 }
 
 function getSiteUrl(event) {
@@ -265,15 +472,17 @@ async function runCalendarSync() {
     });
   }
 
+  var events = await fetchLiveCalendarEvents();
   return json(200, {
     ok: true,
     status: "live_ready",
     source: "backend",
-    imported: 0,
+    events: events,
+    imported: events.length,
     updated: 0,
     flagged: 0,
     skipped: 0,
-    message: "Google Calendar backend is marked live-ready. Add the server-side Calendar sync implementation next.",
+    message: events.length ? "Live Google Calendar events pulled through the backend." : "Live Google Calendar sync ran, but no lesson-like events were found in the current window.",
     google: statusPayload.google
   });
 }
@@ -323,14 +532,16 @@ async function runGmailSync() {
     });
   }
 
+  var messages = await fetchLiveGmailMessages();
   return json(200, {
     ok: true,
     status: "live_ready",
     source: "backend",
-    imported: 0,
+    messages: messages,
+    imported: messages.length,
     flagged: 0,
     skipped: 0,
-    message: "Gmail backend is marked live-ready. Add the server-side Gmail pull implementation next.",
+    message: messages.length ? "Live Gmail booking messages pulled through the backend." : "Live Gmail sync ran, but no booking-like emails matched the current filter.",
     google: statusPayload.google
   });
 }
