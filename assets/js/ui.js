@@ -1060,14 +1060,39 @@ function getGoogleServiceStatusBadgeClass(status) {
 
 function getGoogleServiceStatusLabel(status) {
   const normalized = String(status || "").trim().toLowerCase();
+  if (normalized === "backend_incomplete") return "Backend Incomplete";
+  if (normalized === "auth_needed") return "Auth Needed";
   if (normalized === "live_ready") return "Live Ready";
+  if (normalized === "connected") return "Connected";
   if (normalized === "demo_ready") return "Demo Ready";
   if (normalized === "demo-fallback") return "Demo Fallback";
-  if (normalized === "connected") return "Connected";
   if (normalized === "success") return "Synced";
   if (normalized === "error") return "Needs Attention";
   if (normalized === "failed") return "Failed";
   return "Not Checked";
+}
+
+function getGoogleOAuthStartUrl() {
+  const backend = studioDataService.getBackendSettings();
+  if (backend.google_auth_start_url) return backend.google_auth_start_url;
+
+  const configuredBackendUrl = String(backend.google_sheets_web_app_url || "").trim();
+  if (!configuredBackendUrl) return "/api/google-oauth-start";
+
+  try {
+    const url = new URL(configuredBackendUrl, window.location.origin);
+    url.search = "";
+    url.hash = "";
+    url.pathname = url.pathname.replace(/\/api\/studio-sync$/, "/api/google-oauth-start");
+    return url.toString();
+  } catch (error) {
+    return "/api/google-oauth-start";
+  }
+}
+
+function startGoogleOAuthFlow() {
+  const url = getGoogleOAuthStartUrl();
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 syncCalendarStateFromBackendSettings();
@@ -1914,7 +1939,10 @@ async function checkGoogleConnectionStatus() {
     syncCalendarStateFromBackendSettings();
     const calendarLabel = getGoogleServiceStatusLabel(google?.calendar?.status);
     const gmailLabel = getGoogleServiceStatusLabel(google?.gmail?.status);
-    alert(`Google connection status refreshed.\nAccount: ${google?.account_email || backend.google_account_email}\nCalendar: ${calendarLabel}\nGmail: ${gmailLabel}`);
+    const authHint = google?.calendar?.status === "auth_needed" || google?.gmail?.status === "auth_needed"
+      ? "\nNext step: use Connect Google Account in Settings."
+      : "";
+    alert(`Google connection status refreshed.\nAccount: ${google?.account_email || backend.google_account_email}\nCalendar: ${calendarLabel}\nGmail: ${gmailLabel}${authHint}`);
   } catch (error) {
     alert(error.message || "Unable to check Google connection status.");
   }
@@ -7642,10 +7670,12 @@ function renderSettingsPage() {
 
             <div class="flex flex-wrap items-center gap-2 mt-5">
               <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Google Setup</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="startGoogleOAuthFlow()">Connect Google Account</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
             </div>
+            ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
           </form>
 
           <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.05s" onsubmit="saveAdminSecuritySettings(event)">

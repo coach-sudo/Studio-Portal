@@ -156,6 +156,7 @@ const DEFAULT_BACKEND_SETTINGS = {
   google_gmail_status: "demo_ready",
   google_status_checked_at: "",
   google_status_error: "",
+  google_auth_start_url: "",
   google_calendar_last_sync_at: "",
   google_calendar_last_sync_status: "idle",
   google_calendar_last_sync_error: "",
@@ -203,6 +204,7 @@ function sanitizeBackendSettings(settings = {}) {
     google_gmail_status: String(settings.google_gmail_status || DEFAULT_BACKEND_SETTINGS.google_gmail_status).trim() || "demo_ready",
     google_status_checked_at: String(settings.google_status_checked_at || "").trim(),
     google_status_error: String(settings.google_status_error || "").trim(),
+    google_auth_start_url: String(settings.google_auth_start_url || "").trim(),
     google_calendar_last_sync_at: String(settings.google_calendar_last_sync_at || "").trim(),
     google_calendar_last_sync_status: String(settings.google_calendar_last_sync_status || "idle").trim(),
     google_calendar_last_sync_error: String(settings.google_calendar_last_sync_error || "").trim(),
@@ -501,8 +503,9 @@ async function getGoogleIntegrationStatusFromBackend() {
     import_review_mode: String(google.import_review_mode || backendSettings.import_review_mode || "review_first").trim() === "auto_match" ? "auto_match" : "review_first",
     google_calendar_status: String(calendar.status || backendSettings.google_calendar_status || "demo_ready").trim(),
     google_gmail_status: String(gmail.status || backendSettings.google_gmail_status || "demo_ready").trim(),
+    google_auth_start_url: String(google.auth_start_url || backendSettings.google_auth_start_url || "").trim(),
     google_status_checked_at: new Date().toISOString(),
-    google_status_error: ""
+    google_status_error: String(google.error || "").trim()
   });
 
   return google;

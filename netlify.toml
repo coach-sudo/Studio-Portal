@@ -7,3 +7,12 @@
   to = "/.netlify/functions/studio-sync"
   status = 200
 
+[[redirects]]
+  from = "/api/google-oauth-start"
+  to = "/.netlify/functions/google-oauth-start"
+  status = 200
+
+[[redirects]]
+  from = "/api/google-oauth-callback"
+  to = "/.netlify/functions/google-oauth-callback"
+  status = 200

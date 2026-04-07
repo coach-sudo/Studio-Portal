@@ -21,14 +21,81 @@ function getGoogleAccountEmail() {
   return String(process.env.GOOGLE_ACCOUNT_EMAIL || "coach@d-a-j.com").trim();
 }
 
+function getGoogleClientId() {
+  return String(process.env.GOOGLE_OAUTH_CLIENT_ID || "").trim();
+}
+
+function getGoogleClientSecret() {
+  return String(process.env.GOOGLE_OAUTH_CLIENT_SECRET || "").trim();
+}
+
+function getGoogleRedirectUri() {
+  return String(process.env.GOOGLE_OAUTH_REDIRECT_URI || "").trim();
+}
+
+function getGoogleRefreshToken() {
+  return String(process.env.GOOGLE_REFRESH_TOKEN || "").trim();
+}
+
 function getBooleanEnv(name) {
   var raw = String(process.env[name] || "").trim().toLowerCase();
   return raw === "1" || raw === "true" || raw === "yes";
 }
 
-function getGoogleIntegrationStatusPayload() {
+async function getAccessTokenFromRefreshToken() {
+  var clientId = getGoogleClientId();
+  var clientSecret = getGoogleClientSecret();
+  var refreshToken = getGoogleRefreshToken();
+
+  if (!clientId || !clientSecret || !refreshToken) {
+    throw new Error("Google OAuth is not fully configured yet.");
+  }
+
+  var body = new URLSearchParams();
+  body.set("client_id", clientId);
+  body.set("client_secret", clientSecret);
+  body.set("refresh_token", refreshToken);
+  body.set("grant_type", "refresh_token");
+
+  var response = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded"
+    },
+    body: body.toString()
+  });
+
+  var payload = await response.json().catch(function () {
+    return {};
+  });
+
+  if (!response.ok || !payload.access_token) {
+    throw new Error(payload.error_description || payload.error || "Unable to refresh Google access token.");
+  }
+
+  return payload.access_token;
+}
+
+function getSiteUrl(event) {
+  var envUrl = String(process.env.URL || process.env.DEPLOY_PRIME_URL || "").trim();
+  if (envUrl) {
+    return envUrl.replace(/\/$/, "");
+  }
+
+  var headers = event && event.headers ? event.headers : {};
+  var protocol = String(headers["x-forwarded-proto"] || headers["X-Forwarded-Proto"] || "https").trim();
+  var host = String(headers.host || headers.Host || "").trim();
+  if (!host) return "";
+  return protocol + "://" + host;
+}
+
+function getGoogleIntegrationStatusPayload(event) {
   var calendarReady = getBooleanEnv("GOOGLE_CALENDAR_LIVE_READY");
   var gmailReady = getBooleanEnv("GOOGLE_GMAIL_LIVE_READY");
+  var oauthConfigured = Boolean(getGoogleClientId() && getGoogleClientSecret());
+  var refreshTokenPresent = Boolean(getGoogleRefreshToken());
+  var siteUrl = getSiteUrl(event);
+  var authStartUrl = siteUrl ? siteUrl + "/api/google-oauth-start" : "/api/google-oauth-start";
 
   return {
     ok: true,
@@ -37,11 +104,14 @@ function getGoogleIntegrationStatusPayload() {
       sync_mode: "manual",
       gmail_filter_scope: "booking_only",
       import_review_mode: "review_first",
+      oauth_configured: oauthConfigured,
+      refresh_token_present: refreshTokenPresent,
+      auth_start_url: authStartUrl,
       calendar: {
-        status: calendarReady ? "live_ready" : "demo_ready"
+        status: oauthConfigured ? (refreshTokenPresent ? (calendarReady ? "live_ready" : "connected") : "auth_needed") : "backend_incomplete"
       },
       gmail: {
-        status: gmailReady ? "live_ready" : "demo_ready"
+        status: oauthConfigured ? (refreshTokenPresent ? (gmailReady ? "live_ready" : "connected") : "auth_needed") : "backend_incomplete"
       }
     }
   };
@@ -129,22 +199,68 @@ async function proxyPush(eventBody) {
   return json(200, payload);
 }
 
-async function getGoogleStatus() {
-  return json(200, getGoogleIntegrationStatusPayload());
+async function getGoogleStatus(event) {
+  var payload = getGoogleIntegrationStatusPayload(event);
+
+  if (!payload.google.oauth_configured || !payload.google.refresh_token_present) {
+    return json(200, payload);
+  }
+
+  try {
+    await getAccessTokenFromRefreshToken();
+    return json(200, payload);
+  } catch (error) {
+    payload.google.calendar.status = "error";
+    payload.google.gmail.status = "error";
+    payload.google.error = String(error && error.message ? error.message : error || "Unable to validate Google token.");
+    return json(200, payload);
+  }
 }
 
 async function runCalendarSync() {
   var statusPayload = getGoogleIntegrationStatusPayload();
-  if (statusPayload.google.calendar.status !== "live_ready") {
+  if (statusPayload.google.calendar.status === "backend_incomplete" || statusPayload.google.calendar.status === "auth_needed") {
     return json(200, {
       ok: true,
-      status: "demo_ready",
+      status: statusPayload.google.calendar.status,
       source: "backend",
       imported: 0,
       updated: 0,
       flagged: 0,
       skipped: 0,
-      message: "Live Google Calendar sync is not configured in Netlify yet. The portal can keep using the current demo intake feed until OAuth is added.",
+      message: statusPayload.google.calendar.status === "auth_needed"
+        ? "Google OAuth is configured, but Netlify still needs a refresh token before live Calendar sync can run."
+        : "Google OAuth client credentials are not configured in Netlify yet.",
+      google: statusPayload.google
+    });
+  }
+
+  try {
+    await getAccessTokenFromRefreshToken();
+  } catch (error) {
+    return json(200, {
+      ok: true,
+      status: "error",
+      source: "backend",
+      imported: 0,
+      updated: 0,
+      flagged: 0,
+      skipped: 0,
+      message: String(error && error.message ? error.message : error || "Unable to validate Google Calendar credentials."),
+      google: statusPayload.google
+    });
+  }
+
+  if (statusPayload.google.calendar.status !== "live_ready") {
+    return json(200, {
+      ok: true,
+      status: "connected",
+      source: "backend",
+      imported: 0,
+      updated: 0,
+      flagged: 0,
+      skipped: 0,
+      message: "Google Calendar authentication is live, but the server-side event pull is still the next step. The portal can keep using the current intake feed for now.",
       google: statusPayload.google
     });
   }
@@ -164,15 +280,45 @@ async function runCalendarSync() {
 
 async function runGmailSync() {
   var statusPayload = getGoogleIntegrationStatusPayload();
-  if (statusPayload.google.gmail.status !== "live_ready") {
+  if (statusPayload.google.gmail.status === "backend_incomplete" || statusPayload.google.gmail.status === "auth_needed") {
     return json(200, {
       ok: true,
-      status: "demo_ready",
+      status: statusPayload.google.gmail.status,
       source: "backend",
       imported: 0,
       flagged: 0,
       skipped: 0,
-      message: "Live Gmail sync is not configured in Netlify yet. The portal can keep using the current Gmail assist demo feed until OAuth is added.",
+      message: statusPayload.google.gmail.status === "auth_needed"
+        ? "Google OAuth is configured, but Netlify still needs a refresh token before live Gmail sync can run."
+        : "Google OAuth client credentials are not configured in Netlify yet.",
+      google: statusPayload.google
+    });
+  }
+
+  try {
+    await getAccessTokenFromRefreshToken();
+  } catch (error) {
+    return json(200, {
+      ok: true,
+      status: "error",
+      source: "backend",
+      imported: 0,
+      flagged: 0,
+      skipped: 0,
+      message: String(error && error.message ? error.message : error || "Unable to validate Gmail credentials."),
+      google: statusPayload.google
+    });
+  }
+
+  if (statusPayload.google.gmail.status !== "live_ready") {
+    return json(200, {
+      ok: true,
+      status: "connected",
+      source: "backend",
+      imported: 0,
+      flagged: 0,
+      skipped: 0,
+      message: "Gmail authentication is live, but the server-side booking email pull is still the next step. The portal can keep using the current Gmail assist feed for now.",
       google: statusPayload.google
     });
   }
@@ -193,7 +339,19 @@ exports.handler = async function (event) {
   try {
     var method = String(event.httpMethod || "GET").toUpperCase();
 
-    if (!getAppsScriptUrl()) {
+    var requestedAction = "";
+    if (method === "GET") {
+      requestedAction = String((event.queryStringParameters && event.queryStringParameters.action) || "").trim();
+    } else if (method === "POST" && event.body) {
+      try {
+        requestedAction = String((JSON.parse(event.body).action || "")).trim();
+      } catch (error) {
+        requestedAction = "";
+      }
+    }
+
+    var appsScriptRequired = ["ping", "snapshot", "push_snapshot"].indexOf(requestedAction) !== -1;
+    if (appsScriptRequired && !getAppsScriptUrl()) {
       return json(500, {
         ok: false,
         error: "Netlify function is missing GOOGLE_APPS_SCRIPT_URL."
@@ -201,7 +359,7 @@ exports.handler = async function (event) {
     }
 
     if (method === "GET") {
-      var action = String((event.queryStringParameters && event.queryStringParameters.action) || "").trim();
+      var action = requestedAction;
 
       if (action === "ping") {
         return await proxyPing();
@@ -212,7 +370,7 @@ exports.handler = async function (event) {
       }
 
       if (action === "google_status") {
-        return await getGoogleStatus();
+        return await getGoogleStatus(event);
       }
 
       return json(400, {
