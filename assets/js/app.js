@@ -239,25 +239,14 @@ function renderDashboardPage() {
         </div>
         <div class="dashboard-header-meta flex items-center gap-3 self-start lg:self-auto">
           <span class="text-sm text-warmgray">${escapeHtml(`${getDashboardHeaderDate()} · ${getDashboardHeaderTime()}`)}</span>
-          <button class="w-10 h-10 rounded-full bg-white border border-cream flex items-center justify-center card-hover">
+          <button type="button" onclick="openNotificationCenter()" class="w-10 h-10 rounded-full bg-white border border-cream flex items-center justify-center card-hover" aria-label="Open notifications">
             <i data-lucide="bell" class="w-[18px] h-[18px] text-charcoal"></i>
           </button>
         </div>
       </header>
 
-      <div class="dashboard-stats-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5 gap-5 mb-6">
-        <button type="button" onclick="openDashboardStudentsTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.05s">
-          <div class="flex items-center justify-between mb-3">
-            <div class="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
-              <i data-lucide="users" class="w-5 h-5 text-gold"></i>
-            </div>
-            <span class="text-xs font-medium text-sage bg-sage/10 px-2 py-1 rounded-full">Live</span>
-          </div>
-          <p id="dash-active-students" class="text-3xl font-bold text-warmblack">0</p>
-          <p class="text-sm text-warmgray mt-0.5">Active Students</p>
-        </button>
-
-        <button type="button" onclick="openDashboardLessonsTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.1s">
+      <div class="dashboard-stats-grid grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5 mb-6">
+        <button type="button" onclick="openDashboardLessonsTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.05s">
           <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-burgundy/10 flex items-center justify-center">
               <i data-lucide="calendar" class="w-5 h-5 text-burgundy"></i>
@@ -268,7 +257,7 @@ function renderDashboardPage() {
           <p class="text-sm text-warmgray mt-0.5">Upcoming Lessons</p>
         </button>
 
-        <button type="button" onclick="openDashboardNotesDueTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.15s">
+        <button type="button" onclick="openDashboardNotesDueTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.1s">
           <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-burgundy/10 flex items-center justify-center">
               <i data-lucide="file-text" class="w-5 h-5 text-burgundy"></i>
@@ -276,21 +265,21 @@ function renderDashboardPage() {
             <span id="dash-notes-due-badge" class="text-xs font-medium text-sage bg-sage/10 px-2 py-1 rounded-full">On track</span>
           </div>
           <p id="dash-notes-due" class="text-3xl font-bold text-warmblack">0</p>
-          <p class="text-sm text-warmgray mt-0.5">Notes Due</p>
+          <p class="text-sm text-warmgray mt-0.5">Urgent Notes</p>
         </button>
 
-        <button type="button" onclick="openDashboardFinanceTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.2s">
+        <button type="button" onclick="openDashboardFinanceTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.15s">
           <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-gold/10 flex items-center justify-center">
               <i data-lucide="refresh-cw" class="w-5 h-5 text-gold"></i>
             </div>
-            <span class="text-xs font-medium text-gold bg-gold/10 px-2 py-1 rounded-full">Finance</span>
+            <span class="text-xs font-medium text-gold bg-gold/10 px-2 py-1 rounded-full">Next 14d</span>
           </div>
           <p id="dash-package-renewals" class="text-3xl font-bold text-warmblack">0</p>
-          <p class="text-sm text-warmgray mt-0.5">Package Renewals / Pressure</p>
+          <p class="text-sm text-warmgray mt-0.5">Packages Expiring Soon</p>
         </button>
 
-        <button type="button" onclick="openDashboardFinanceTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.25s">
+        <button type="button" onclick="openDashboardFinanceTarget()" class="dashboard-stat-card w-full min-w-0 bg-white rounded-2xl p-5 border border-cream card-hover slide-up text-left overflow-hidden" style="animation-delay:0.2s">
           <div class="flex items-center justify-between mb-3">
             <div class="w-10 h-10 rounded-xl bg-burgundy/10 flex items-center justify-center">
               <i data-lucide="wallet" class="w-5 h-5 text-burgundy"></i>
@@ -327,7 +316,7 @@ function renderDashboardPage() {
           <div class="p-5 border-b border-cream">
             <h3 class="font-display text-lg font-semibold">Reconnect Queue</h3>
           </div>
-          <div id="dashboard-inactive-students" class="p-3 space-y-2"></div>
+          <div id="dashboard-inactive-students" class="dashboard-scroll-list p-3 space-y-2"></div>
         </div>
 
         <div class="dashboard-panel xl:col-span-2 min-w-0 bg-white rounded-2xl border border-cream slide-up" style="animation-delay:0.4s">
@@ -369,7 +358,6 @@ function renderDashboardPage() {
 }
 
 function renderDashboardStats() {
-  const activeEl = document.getElementById("dash-active-students");
   const upcomingEl = document.getElementById("dash-upcoming-lessons");
   const notesDueEl = document.getElementById("dash-notes-due");
   const notesDueBadgeEl = document.getElementById("dash-notes-due-badge");
@@ -377,7 +365,6 @@ function renderDashboardStats() {
   const outstandingEl = document.getElementById("dash-outstanding-balance");
   const notesSummary = getDashboardNotesAlertSummary();
 
-  if (activeEl) activeEl.textContent = String(getActiveStudentsCount());
   if (upcomingEl) upcomingEl.textContent = String(getThisWeeksLessonsCount());
   if (notesDueEl) notesDueEl.textContent = String(notesSummary.actionable.length);
   if (notesDueBadgeEl) {

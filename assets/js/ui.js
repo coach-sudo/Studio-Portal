@@ -40,6 +40,8 @@ let importedStudentFileName = "";
 let currentStudentFilters = new Set(["all"]);
 const CALENDAR_SYNC_STORAGE_KEY = "studioPortal.googleCalendarSync";
 const AUTOMATION_SETTINGS_STORAGE_KEY = "studioPortal.automationSettings";
+const UI_PREFERENCES_STORAGE_KEY = "studioPortal.uiPreferences";
+const NOTIFICATION_CENTER_STORAGE_KEY = "studioPortal.notifications";
 const DEFAULT_CALENDAR_SYNC_STATE = {
   connected: false,
   selected_calendar_id: "primary",
@@ -61,6 +63,59 @@ const DEFAULT_AUTOMATION_SETTINGS = {
   external_change_watch: true,
   public_page_policy: true
 };
+const DEFAULT_UI_PREFERENCES = {
+  compact: {
+    students: false,
+    lessons: false,
+    notes: false,
+    finance: false,
+    schedule: false
+  }
+};
+
+function loadUiPreferences() {
+  try {
+    const raw = localStorage.getItem(UI_PREFERENCES_STORAGE_KEY);
+    if (!raw) return JSON.parse(JSON.stringify(DEFAULT_UI_PREFERENCES));
+    return {
+      ...DEFAULT_UI_PREFERENCES,
+      ...JSON.parse(raw),
+      compact: {
+        ...DEFAULT_UI_PREFERENCES.compact,
+        ...(JSON.parse(raw).compact || {})
+      }
+    };
+  } catch (error) {
+    return JSON.parse(JSON.stringify(DEFAULT_UI_PREFERENCES));
+  }
+}
+
+function saveUiPreferences() {
+  try {
+    localStorage.setItem(UI_PREFERENCES_STORAGE_KEY, JSON.stringify(uiPreferences));
+  } catch (error) {
+    // Ignore storage issues and keep in-memory preferences.
+  }
+}
+
+function loadNotificationCenterItems() {
+  try {
+    const raw = localStorage.getItem(NOTIFICATION_CENTER_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveNotificationCenterItems() {
+  try {
+    localStorage.setItem(NOTIFICATION_CENTER_STORAGE_KEY, JSON.stringify(notificationCenterItems.slice(0, 30)));
+  } catch (error) {
+    // Ignore storage issues and keep in-memory notifications.
+  }
+}
 
 function loadAutomationSettings() {
   try {
@@ -81,6 +136,175 @@ function saveAutomationSettings() {
   } catch (error) {
     // Ignore storage issues and keep the in-memory state.
   }
+}
+
+function isCompactView(pageKey) {
+  return Boolean(uiPreferences?.compact?.[pageKey]);
+}
+
+function toggleCompactView(pageKey) {
+  uiPreferences = {
+    ...uiPreferences,
+    compact: {
+      ...uiPreferences.compact,
+      [pageKey]: !isCompactView(pageKey)
+    }
+  };
+  saveUiPreferences();
+  renderCurrentPage();
+}
+
+function getCompactToggleLabel(pageKey) {
+  return isCompactView(pageKey) ? "Comfortable View" : "Compact View";
+}
+
+function getToastToneClasses(tone = "warm") {
+  if (tone === "success") return "border-sage/20 bg-sage/5 text-sage";
+  if (tone === "error") return "border-burgundy/20 bg-burgundy/5 text-burgundy";
+  return "border-gold/20 bg-white text-warmblack";
+}
+
+function pushNotificationItem({ title, message, tone = "warm", source = "system" }) {
+  const item = {
+    id: `notice-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    title: String(title || "Studio Portal").trim() || "Studio Portal",
+    message: String(message || "").trim(),
+    tone,
+    source,
+    created_at: new Date().toISOString()
+  };
+
+  notificationCenterItems = [item, ...notificationCenterItems].slice(0, 30);
+  saveNotificationCenterItems();
+}
+
+function showToast(message, tone = "warm", title = "") {
+  const root = document.getElementById("toast-root");
+  const safeMessage = String(message || "").trim();
+  if (!root || !safeMessage) return;
+
+  const toast = document.createElement("div");
+  toast.className = `toast-card ${getToastToneClasses(tone)} fade-in`;
+  toast.innerHTML = `
+    ${title ? `<p class="text-xs uppercase tracking-wider font-medium mb-1">${escapeHtml(title)}</p>` : ""}
+    <p class="text-sm">${escapeHtml(safeMessage)}</p>
+  `;
+  root.appendChild(toast);
+
+  window.setTimeout(() => {
+    toast.remove();
+  }, 3200);
+}
+
+function notifyUser({ title = "", message = "", tone = "warm", source = "system", toast = true }) {
+  if (!message) return;
+  pushNotificationItem({ title, message, tone, source });
+  if (toast) {
+    showToast(message, tone, title);
+  }
+}
+
+function getNotificationAttentionRows() {
+  const rows = [];
+  const noteSummary = typeof getDashboardNotesAlertSummary === "function" ? getDashboardNotesAlertSummary() : null;
+  if (noteSummary?.actionable?.length) {
+    rows.push({
+      title: "Urgent Notes",
+      message: `${noteSummary.actionable.length} recent completed lessons still need note follow-up.`,
+      tone: noteSummary.overdue.length ? "error" : "warm",
+      action: "navigateTo('notes')"
+    });
+  }
+
+  const intakeRows = typeof getScheduleIntakeRows === "function" ? getScheduleIntakeRows().filter((row) => row.action_required) : [];
+  if (intakeRows.length) {
+    rows.push({
+      title: "Schedule Intake",
+      message: `${intakeRows.length} imported lessons still need review.`,
+      tone: "warm",
+      action: "openAutomationIntakeReview()"
+    });
+  }
+
+  const outstandingRows = typeof getOutstandingBalanceRows === "function" ? getOutstandingBalanceRows() : [];
+  if (outstandingRows.length) {
+    rows.push({
+      title: "Outstanding Balances",
+      message: `${outstandingRows.length} student balances are still open.`,
+      tone: "warm",
+      action: "navigateTo('finance')"
+    });
+  }
+
+  return rows;
+}
+
+function closeNotificationCenter() {
+  const overlay = document.getElementById("notification-center-overlay");
+  if (overlay) overlay.remove();
+}
+
+function openNotificationCenter() {
+  closeNotificationCenter();
+
+  const overlay = document.createElement("div");
+  overlay.id = "notification-center-overlay";
+  overlay.className = "fixed inset-0 z-[110] bg-black/40 flex items-start justify-end p-4";
+
+  const attentionRows = getNotificationAttentionRows();
+  overlay.innerHTML = `
+    <div class="notification-sheet app-modal-shell bg-white rounded-2xl border border-cream w-full max-w-xl p-4 sm:p-5">
+      <div class="app-modal-header flex items-start justify-between gap-4 mb-4">
+        <div class="min-w-0">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Notification Center</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Recent updates and attention items</h3>
+        </div>
+        <button type="button" id="close-notification-center" class="text-sm text-warmgray">Close</button>
+      </div>
+
+      ${
+        attentionRows.length
+          ? `
+            <div class="space-y-3 mb-5">
+              ${attentionRows.map((row) => `
+                <button type="button" class="w-full text-left rounded-2xl border border-cream bg-parchment/70 p-4 card-hover" onclick="${row.action}; closeNotificationCenter();">
+                  <p class="text-sm font-semibold ${row.tone === "error" ? "text-burgundy" : "text-warmblack"}">${escapeHtml(row.title)}</p>
+                  <p class="text-xs text-warmgray mt-1">${escapeHtml(row.message)}</p>
+                </button>
+              `).join("")}
+            </div>
+          `
+          : ""
+      }
+
+      <div class="space-y-3">
+        ${
+          notificationCenterItems.length
+            ? notificationCenterItems.map((item) => `
+              <div class="rounded-2xl border ${getToastToneClasses(item.tone)} p-4">
+                <div class="flex items-center justify-between gap-3">
+                  <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.title)}</p>
+                  <span class="text-[11px] text-warmgray">${escapeHtml(formatLastSyncMeta(item.created_at))}</span>
+                </div>
+                <p class="text-sm mt-2 ${item.tone === "error" ? "text-burgundy" : "text-warmblack"}">${escapeHtml(item.message)}</p>
+              </div>
+            `).join("")
+            : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No notifications yet</p><p class="text-xs text-warmgray mt-1">Saves, syncs, and workflow prompts will land here.</p></div>`
+        }
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  const closeBtn = document.getElementById("close-notification-center");
+  if (closeBtn) closeBtn.onclick = closeNotificationCenter;
+  overlay.onclick = (event) => {
+    if (event.target === overlay) closeNotificationCenter();
+  };
+}
+
+function getStatusFilterPill(label, value) {
+  return `<span class="page-filter-pill">${escapeHtml(label)} · ${escapeHtml(value)}</span>`;
 }
 
 function saveAdminAuthSettings() {
@@ -285,6 +509,8 @@ function initializeAdminAccess() {
 }
 
 let automationSettings = loadAutomationSettings();
+let uiPreferences = loadUiPreferences();
+let notificationCenterItems = loadNotificationCenterItems();
 let settingsActionMessage = "";
 let settingsActionTone = "warm";
 const ADMIN_AUTH_SETTINGS_STORAGE_KEY = "studioPortal.adminAuthSettings";
@@ -426,6 +652,57 @@ function normalizePhoneForMatch(phone) {
   return digits.length > 10 ? digits.slice(-10) : digits;
 }
 
+function normalizeNameForMatch(name) {
+  return String(name || "")
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, " ")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getNameMatchVariants(name) {
+  const rawName = String(name || "").trim();
+  if (!rawName) return [];
+
+  const variants = new Set();
+  const pushVariant = (value) => {
+    const normalized = normalizeNameForMatch(value);
+    if (normalized) variants.add(normalized);
+  };
+
+  pushVariant(rawName);
+  pushVariant(rawName.replace(/\([^)]*\)/g, " "));
+
+  const parentheticalMatches = Array.from(rawName.matchAll(/\(([^)]*)\)/g));
+  parentheticalMatches.forEach((match) => {
+    pushVariant(match[1]);
+  });
+
+  return Array.from(variants);
+}
+
+function getNameTokensForMatch(name) {
+  return normalizeNameForMatch(name)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter(Boolean);
+}
+
+function hasStrongNameTokenOverlap(sourceName, targetName) {
+  const sourceTokens = getNameTokensForMatch(sourceName);
+  const targetTokens = getNameTokensForMatch(targetName);
+
+  if (sourceTokens.length < 2 || targetTokens.length < 2) return false;
+
+  const sourceSet = new Set(sourceTokens);
+  const targetSet = new Set(targetTokens);
+  const overlap = sourceTokens.filter((token) => targetSet.has(token)).length;
+  const smallerSize = Math.min(sourceSet.size, targetSet.size);
+
+  return smallerSize >= 2 && overlap >= smallerSize - 0;
+}
+
 function parseCsvText(csvText) {
   const rows = [];
   let current = "";
@@ -505,33 +782,65 @@ function getImportedContactValue(record, keys) {
 }
 
 function findPotentialStudentMatches({ full_name, email, phone }) {
-  const targetName = String(full_name || "").trim().toLowerCase();
+  const targetNameVariants = getNameMatchVariants(full_name);
   const targetEmail = String(email || "").trim().toLowerCase();
   const targetPhone = normalizePhoneForMatch(phone);
 
   return getStudentRecords()
     .map((student) => {
       let score = 0;
+      const reasons = [];
+      const studentNameVariants = getNameMatchVariants(student.full_name || "");
+      const exactNameMatch = targetNameVariants.some((variant) => studentNameVariants.includes(variant));
+      const strongNameOverlap = !exactNameMatch && hasStrongNameTokenOverlap(full_name, student.full_name);
+      const emailMatch = targetEmail && String(student.email || "").trim().toLowerCase() === targetEmail;
+      const phoneMatch = targetPhone && normalizePhoneForMatch(student.phone) === targetPhone;
 
-      if (targetEmail && String(student.email || "").trim().toLowerCase() === targetEmail) {
-        score += 3;
+      if (emailMatch) {
+        score += 6;
+        reasons.push("Email match");
       }
 
-      if (targetPhone && normalizePhoneForMatch(student.phone) === targetPhone) {
+      if (phoneMatch) {
+        score += 5;
+        reasons.push("Phone match");
+      }
+
+      if (exactNameMatch) {
+        score += 4;
+        reasons.push("Name match");
+      } else if (strongNameOverlap) {
         score += 2;
+        reasons.push("Close name match");
       }
 
-      if (targetName && String(student.full_name || "").trim().toLowerCase() === targetName) {
-        score += 1;
+      if ((exactNameMatch || strongNameOverlap) && emailMatch) {
+        score += 3;
+        reasons.push("Name + email");
+      }
+
+      if ((exactNameMatch || strongNameOverlap) && phoneMatch) {
+        score += 3;
+        reasons.push("Name + phone");
       }
 
       return {
         student,
-        score
+        score,
+        reasons,
+        exact_name_match: exactNameMatch,
+        strong_name_overlap: strongNameOverlap,
+        email_match: Boolean(emailMatch),
+        phone_match: Boolean(phoneMatch),
+        merge_ready: Boolean((exactNameMatch || strongNameOverlap) && (emailMatch || phoneMatch))
       };
     })
     .filter((candidate) => candidate.score > 0)
-    .sort((a, b) => b.score - a.score);
+    .sort((a, b) => {
+      if (a.merge_ready !== b.merge_ready) return a.merge_ready ? -1 : 1;
+      if (a.score !== b.score) return b.score - a.score;
+      return a.student.full_name.localeCompare(b.student.full_name);
+    });
 }
 
 function buildImportedStudentRowsFromCsvRecords(records) {
@@ -700,7 +1009,12 @@ function handleStudentImportFileChange(event) {
     try {
       const records = parseCsvText(String(reader.result || ""));
       if (!records.length) {
-        alert("This CSV did not contain any rows to import.");
+        notifyUser({
+          title: "Student Import",
+          message: "This CSV did not contain any rows to import.",
+          tone: "warm",
+          source: "students"
+        });
         importedStudentRows = [];
         renderStudentImportModalBody();
         return;
@@ -710,7 +1024,12 @@ function handleStudentImportFileChange(event) {
       renderStudentImportModalBody();
     } catch (error) {
       console.error(error);
-      alert("Unable to read that CSV file.");
+      notifyUser({
+        title: "Student Import",
+        message: "Unable to read that CSV file.",
+        tone: "error",
+        source: "students"
+      });
     }
   };
 
@@ -720,13 +1039,23 @@ function handleStudentImportFileChange(event) {
 function executeStudentCsvImport() {
   const unresolvedRows = importedStudentRows.filter((row) => row.action === "review");
   if (unresolvedRows.length > 0) {
-    alert("Review each flagged duplicate row before importing.");
+    notifyUser({
+      title: "Student Import",
+      message: "Review each flagged duplicate row before importing.",
+      tone: "error",
+      source: "students"
+    });
     return;
   }
 
   const actionableRows = importedStudentRows.filter((row) => ["import", "create_new", "update_existing"].includes(row.action));
   if (!actionableRows.length) {
-    alert("There are no rows ready to import.");
+    notifyUser({
+      title: "Student Import",
+      message: "There are no rows ready to import.",
+      tone: "warm",
+      source: "students"
+    });
     return;
   }
 
@@ -769,13 +1098,23 @@ function executeStudentCsvImport() {
   });
 
   if (errors.length > 0) {
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Student Import",
+      message: errors[0],
+      tone: "error",
+      source: "students"
+    });
     return;
   }
 
   renderAppFromSchema();
   closeStudentImportModal();
-  alert(`Student import complete.\nCreated: ${createdCount}\nMatched existing: ${updatedCount}\nSkipped: ${skippedCount}`);
+  notifyUser({
+    title: "Student Import Complete",
+    message: `Created ${createdCount}, matched ${updatedCount}, skipped ${skippedCount}.`,
+    tone: "success",
+    source: "students"
+  });
 }
 
 function renderStudentImportModalBody() {
@@ -1763,7 +2102,12 @@ function processGoogleCalendarImportFeed(feed = []) {
 
 function runDemoGoogleCalendarSync() {
   if (!calendarSyncState.connected) {
-    alert("Add your Google account in Settings before running sync.");
+    notifyUser({
+      title: "Calendar Sync",
+      message: "Add your Google account in Settings before running sync.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
@@ -1779,7 +2123,12 @@ function runDemoGoogleCalendarSync() {
   });
 
   renderAppFromSchema();
-  alert(`Google Calendar sync complete.\nImported: ${summary.imported}\nUpdated: ${summary.updated}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+  notifyUser({
+    title: "Calendar Sync Complete",
+    message: `Imported ${summary.imported}, updated ${summary.updated}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+    tone: "success",
+    source: "schedule"
+  });
 }
 
 async function runGoogleCalendarSync() {
@@ -1787,7 +2136,12 @@ async function runGoogleCalendarSync() {
 
   const backend = studioDataService.getBackendSettings();
   if (!backend.google_account_email) {
-    alert("Add your Google account email in Settings before running calendar sync.");
+    notifyUser({
+      title: "Calendar Sync",
+      message: "Add your Google account email in Settings before running calendar sync.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
@@ -1806,21 +2160,41 @@ async function runGoogleCalendarSync() {
           }
         });
         renderAppFromSchema();
-        alert(`Google Calendar sync complete.\nImported: ${summary.imported}\nUpdated: ${summary.updated}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+        notifyUser({
+          title: "Calendar Sync Complete",
+          message: `Imported ${summary.imported}, updated ${summary.updated}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+          tone: "success",
+          source: "schedule"
+        });
         return;
       }
 
       if (payload?.google?.calendar?.status === "live_ready") {
-        alert(payload.message || "Google Calendar backend is connected, but no event payload came back yet.");
+        notifyUser({
+          title: "Calendar Sync",
+          message: payload.message || "Google Calendar backend is connected, but no event payload came back yet.",
+          tone: "warm",
+          source: "schedule"
+        });
         renderSchedulePage();
         return;
       }
 
       if (payload?.message) {
-        alert(`${payload.message}\n\nThe portal will use the current intake feed for now so your workflow keeps moving.`);
+        notifyUser({
+          title: "Calendar Sync",
+          message: `${payload.message} The portal will use the current intake feed for now so your workflow keeps moving.`,
+          tone: "warm",
+          source: "schedule"
+        });
       }
     } catch (error) {
-      alert(`${error.message || "Unable to reach the Google Calendar backend."}\n\nThe portal will use the current intake feed for now.`);
+      notifyUser({
+        title: "Calendar Sync",
+        message: `${error.message || "Unable to reach the Google Calendar backend."} The portal will use the current intake feed for now.`,
+        tone: "error",
+        source: "schedule"
+      });
     }
   }
 
@@ -1919,7 +2293,12 @@ function processGmailImportFeed(feed = []) {
 
 function runDemoGmailAssistSync() {
   if (!calendarSyncState.gmail_connected) {
-    alert("Add your Google account in Settings before running Gmail assist.");
+    notifyUser({
+      title: "Gmail Assist",
+      message: "Add your Google account in Settings before running Gmail assist.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
@@ -1934,7 +2313,12 @@ function runDemoGmailAssistSync() {
   });
 
   renderAppFromSchema();
-  alert(`Gmail assist sync complete.\nImported: ${summary.imported}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+  notifyUser({
+    title: "Gmail Assist Complete",
+    message: `Imported ${summary.imported}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+    tone: "success",
+    source: "schedule"
+  });
 }
 
 async function runGmailAssistSync() {
@@ -1942,7 +2326,12 @@ async function runGmailAssistSync() {
 
   const backend = studioDataService.getBackendSettings();
   if (!backend.google_account_email) {
-    alert("Add your Google account email in Settings before running Gmail assist.");
+    notifyUser({
+      title: "Gmail Assist",
+      message: "Add your Google account email in Settings before running Gmail assist.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
@@ -1960,21 +2349,41 @@ async function runGmailAssistSync() {
           }
         });
         renderAppFromSchema();
-        alert(`Gmail assist sync complete.\nImported: ${summary.imported}\nFlagged for review: ${summary.flagged}\nSkipped: ${summary.skipped}`);
+        notifyUser({
+          title: "Gmail Assist Complete",
+          message: `Imported ${summary.imported}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+          tone: "success",
+          source: "schedule"
+        });
         return;
       }
 
       if (payload?.google?.gmail?.status === "live_ready") {
-        alert(payload.message || "Gmail backend is connected, but no message payload came back yet.");
+        notifyUser({
+          title: "Gmail Assist",
+          message: payload.message || "Gmail backend is connected, but no message payload came back yet.",
+          tone: "warm",
+          source: "schedule"
+        });
         renderSchedulePage();
         return;
       }
 
       if (payload?.message) {
-        alert(`${payload.message}\n\nThe portal will use the current Gmail intake feed for now so review can keep working.`);
+        notifyUser({
+          title: "Gmail Assist",
+          message: `${payload.message} The portal will use the current Gmail intake feed for now so review can keep working.`,
+          tone: "warm",
+          source: "schedule"
+        });
       }
     } catch (error) {
-      alert(`${error.message || "Unable to reach the Gmail backend."}\n\nThe portal will use the current Gmail intake feed for now.`);
+      notifyUser({
+        title: "Gmail Assist",
+        message: `${error.message || "Unable to reach the Gmail backend."} The portal will use the current Gmail intake feed for now.`,
+        tone: "error",
+        source: "schedule"
+      });
     }
   }
 
@@ -1984,7 +2393,12 @@ async function runGmailAssistSync() {
 async function checkGoogleConnectionStatus() {
   const backend = studioDataService.getBackendSettings();
   if (!backend.google_sheets_web_app_url) {
-    alert("Add your backend / proxy URL in Settings before checking Google connection status.");
+    notifyUser({
+      title: "Google Connections",
+      message: "Add your backend / proxy URL in Settings before checking Google connection status.",
+      tone: "error",
+      source: "settings"
+    });
     return;
   }
 
@@ -1994,11 +2408,21 @@ async function checkGoogleConnectionStatus() {
     const calendarLabel = getGoogleServiceStatusLabel(google?.calendar?.status);
     const gmailLabel = getGoogleServiceStatusLabel(google?.gmail?.status);
     const authHint = google?.calendar?.status === "auth_needed" || google?.gmail?.status === "auth_needed"
-      ? "\nNext step: use Connect Google Account in Settings."
+      ? " Next step: use Connect Google Account in Settings."
       : "";
-    alert(`Google connection status refreshed.\nAccount: ${google?.account_email || backend.google_account_email}\nCalendar: ${calendarLabel}\nGmail: ${gmailLabel}${authHint}`);
+    notifyUser({
+      title: "Google Connections Refreshed",
+      message: `Account ${google?.account_email || backend.google_account_email}. Calendar: ${calendarLabel}. Gmail: ${gmailLabel}.${authHint}`,
+      tone: "info",
+      source: "settings"
+    });
   } catch (error) {
-    alert(error.message || "Unable to check Google connection status.");
+    notifyUser({
+      title: "Google Connections",
+      message: error.message || "Unable to check Google connection status.",
+      tone: "error",
+      source: "settings"
+    });
   }
 
   renderCurrentPage();
@@ -2047,7 +2471,12 @@ function createStudentFromImportedLesson(lessonId) {
 
   const result = createStudent(payload);
   if (!result || result.ok === false) {
-    alert((result?.errors || ["Unable to create student from imported lesson."]).join("\n"));
+    notifyUser({
+      title: "Schedule Intake",
+      message: (result?.errors || ["Unable to create student from imported lesson."]).join(" "),
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
@@ -2058,6 +2487,134 @@ function createStudentFromImportedLesson(lessonId) {
   });
 
   renderAppFromSchema();
+  notifyUser({
+    title: "Student Created",
+    message: `${payload.full_name} was created from imported lesson details and left inactive for review.`,
+    tone: "success",
+    source: "schedule"
+  });
+}
+
+function getImportedLessonStudentMergePatch(lesson, student) {
+  if (!lesson || !student) return {};
+
+  const patch = {};
+  const importedLeadSource = getLeadSourceFromImportedLesson(lesson);
+  const importedLeadDetail = lesson.source === "gmail_assist"
+    ? "Matched from Gmail-assisted intake"
+    : lesson.source === "google_calendar"
+      ? "Matched from Google Calendar intake"
+      : lesson.external_platform_hint
+        ? `Matched from ${getImportedLessonPlatformLabel(lesson.external_platform_hint)} intake`
+        : "";
+
+  if (!String(student.email || "").trim() && String(lesson.external_contact_email || "").trim()) {
+    patch.email = String(lesson.external_contact_email).trim();
+  }
+
+  if (!String(student.phone || "").trim() && String(lesson.external_contact_phone || "").trim()) {
+    patch.phone = String(lesson.external_contact_phone).trim();
+  }
+
+  if (!String(student.lead_source || "").trim() && importedLeadSource) {
+    patch.lead_source = importedLeadSource;
+  }
+
+  if (!String(student.lead_source_detail || "").trim() && importedLeadDetail) {
+    patch.lead_source_detail = importedLeadDetail;
+  }
+
+  return patch;
+}
+
+function getImportedLessonStudentMergeSummary(patch) {
+  const updates = [];
+  if (patch.email) updates.push("email");
+  if (patch.phone) updates.push("phone");
+  if (patch.lead_source) updates.push("lead source");
+  if (patch.lead_source_detail && !patch.lead_source) updates.push("lead source detail");
+  return updates;
+}
+
+function mergeImportedLessonIntoStudentRecord(lessonId, studentId) {
+  const lesson = getSchemaLessonById(lessonId);
+  const student = getSchemaStudentById(studentId);
+  if (!lesson || !student) {
+    return {
+      ok: false,
+      errors: ["Unable to load the imported lesson or student for merging."]
+    };
+  }
+
+  const patch = getImportedLessonStudentMergePatch(lesson, student);
+  let studentResult = null;
+
+  if (Object.keys(patch).length) {
+    studentResult = updateStudent(studentId, patch);
+    if (!studentResult || studentResult.ok === false) {
+      return {
+        ok: false,
+        errors: studentResult?.errors || ["Unable to merge imported lesson info into the student record."]
+      };
+    }
+  }
+
+  const mergedFields = getImportedLessonStudentMergeSummary(patch);
+  const intakeNote = mergedFields.length
+    ? `Matched to an existing student and merged ${mergedFields.join(", ")} from the imported lesson. Review and confirm this intake item.`
+    : "Matched to an existing student. Review and confirm this intake item.";
+
+  const lessonResult = updateLesson(lessonId, {
+    student_id: studentId,
+    intake_review_state: "UNREVIEWED",
+    intake_conflict_note: intakeNote
+  });
+
+  if (!lessonResult || lessonResult.ok === false) {
+    return {
+      ok: false,
+      errors: lessonResult?.errors || ["Unable to attach the imported lesson to the selected student."]
+    };
+  }
+
+  return {
+    ok: true,
+    merged_fields: mergedFields,
+    student_result: studentResult,
+    lesson_result: lessonResult
+  };
+}
+
+function pullStudentInfoFromLesson(lessonId) {
+  const lesson = getSchemaLessonById(lessonId);
+  if (!lesson || !lesson.student_id) {
+    notifyUser({
+      title: "Imported Contact",
+      message: "Match this lesson to a student before pulling contact details into the profile.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+
+  const result = mergeImportedLessonIntoStudentRecord(lessonId, lesson.student_id);
+  if (!result || result.ok === false) {
+    notifyUser({
+      title: "Imported Contact",
+      message: (result?.errors || ["Unable to pull imported student info from this lesson."]).join(" "),
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+
+  renderAppFromSchema();
+  notifyUser({
+    title: "Student Updated",
+    message: result.merged_fields.length ? `Pulled ${result.merged_fields.join(", ")} into the student record.` : "Student was already up to date with the imported lesson details.",
+    tone: "success",
+    source: "schedule"
+  });
 }
 
 function closeScheduleStudentMatchModal() {
@@ -2071,23 +2628,35 @@ function saveScheduleStudentMatch(lessonId) {
 
   const studentId = select.value;
   if (!studentId) {
-    alert("Choose a student to match.");
+    notifyUser({
+      title: "Schedule Intake",
+      message: "Choose a student to merge this lesson with.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
-  const result = updateLesson(lessonId, {
-    student_id: studentId,
-    intake_review_state: "UNREVIEWED",
-    intake_conflict_note: "Matched to an existing student. Review and confirm this intake item."
-  });
+  const result = mergeImportedLessonIntoStudentRecord(lessonId, studentId);
 
   if (!result || result.ok === false) {
-    alert((result?.errors || ["Unable to match imported lesson to a student."]).join("\n"));
+    notifyUser({
+      title: "Schedule Intake",
+      message: (result?.errors || ["Unable to merge this imported lesson with the selected student."]).join(" "),
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
   closeScheduleStudentMatchModal();
   renderAppFromSchema();
+  notifyUser({
+    title: "Lesson Matched",
+    message: result.merged_fields.length ? `Lesson merged with the selected student and updated ${result.merged_fields.join(", ")}.` : "Lesson matched to the selected student.",
+    tone: "success",
+    source: "schedule"
+  });
 }
 
 function openScheduleStudentMatchModal(lessonId) {
@@ -2101,6 +2670,7 @@ function openScheduleStudentMatchModal(lessonId) {
     email: lesson.external_contact_email || "",
     phone: lesson.external_contact_phone || ""
   });
+  const recommendedStudentId = candidates.find((candidate) => candidate.merge_ready)?.student?.student_id || candidates[0]?.student?.student_id || "";
 
   const overlay = document.createElement("div");
   overlay.id = "schedule-student-match-modal";
@@ -2110,7 +2680,7 @@ function openScheduleStudentMatchModal(lessonId) {
       <div class="app-modal-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
         <div class="min-w-0">
           <h3 class="font-display text-xl font-bold text-warmblack">Match Imported Lesson</h3>
-          <p class="text-sm text-warmgray mt-1">Choose which student this calendar event belongs to.</p>
+          <p class="text-sm text-warmgray mt-1">Merge this lesson with an existing student when the contact details line up, or create a new inactive student from intake.</p>
         </div>
         <button type="button" id="close-schedule-student-match-modal" class="self-start text-sm text-warmgray">Close</button>
       </div>
@@ -2119,6 +2689,7 @@ function openScheduleStudentMatchModal(lessonId) {
         <div class="rounded-2xl border border-cream bg-parchment p-4">
           <p class="text-sm font-semibold text-warmblack">${escapeHtml(lesson.external_contact_name || lesson.external_event_title || "Imported Lesson")}</p>
           <p class="text-xs text-warmgray mt-1">${escapeHtml(lesson.external_contact_email || "No email detected")} ${lesson.external_contact_phone ? `· ${escapeHtml(lesson.external_contact_phone)}` : ""}</p>
+          <p class="text-xs text-warmgray mt-2">Source · ${escapeHtml(getLessonSourceLabel(lesson.source))}${lesson.external_platform_hint ? ` · ${escapeHtml(getImportedLessonPlatformLabel(lesson.external_platform_hint))}` : ""}</p>
         </div>
 
         ${
@@ -2127,8 +2698,16 @@ function openScheduleStudentMatchModal(lessonId) {
               <div class="space-y-2">
                 ${candidates.map((candidate) => `
                   <div class="rounded-xl border border-cream bg-white px-4 py-3">
-                    <p class="text-sm font-semibold text-warmblack">${escapeHtml(candidate.student.full_name)}</p>
-                    <p class="text-xs text-warmgray mt-1">Match score ${candidate.score} · ${escapeHtml(candidate.student.email || "No email on file")}</p>
+                    <div class="flex flex-wrap items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <p class="text-sm font-semibold text-warmblack">${escapeHtml(candidate.student.full_name)}</p>
+                        <p class="text-xs text-warmgray mt-1">${escapeHtml(candidate.student.email || "No email on file")}${candidate.student.phone ? ` · ${escapeHtml(candidate.student.phone)}` : ""}</p>
+                      </div>
+                      <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${candidate.merge_ready ? "bg-sage/10 text-sage" : "bg-parchment text-warmgray border border-cream"}">
+                        ${candidate.merge_ready ? "Ready to Merge" : "Possible Match"}
+                      </span>
+                    </div>
+                    <p class="text-xs text-warmgray mt-2">Match score ${candidate.score}${candidate.reasons.length ? ` · ${escapeHtml(candidate.reasons.join(", "))}` : ""}</p>
                   </div>
                 `).join("")}
               </div>
@@ -2140,14 +2719,15 @@ function openScheduleStudentMatchModal(lessonId) {
           <label class="block text-xs font-medium text-warmgray mb-1">Student</label>
           <select id="schedule-student-match-select" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
             ${getStudentRecords().slice().sort((a, b) => a.full_name.localeCompare(b.full_name)).map((student) => `
-              <option value="${student.student_id}" ${candidates[0]?.student?.student_id === student.student_id ? "selected" : ""}>${escapeHtml(student.full_name)} (${escapeHtml(student.student_id)})</option>
+              <option value="${student.student_id}" ${recommendedStudentId === student.student_id ? "selected" : ""}>${escapeHtml(student.full_name)} (${escapeHtml(student.student_id)})</option>
             `).join("")}
           </select>
+          <p class="text-xs text-warmgray mt-2">Choosing a student here will also pull missing email, phone, and intake source details from the lesson into that student record when available.</p>
         </div>
 
         <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
           <button type="button" id="cancel-schedule-student-match-modal" class="px-4 py-2.5 rounded-xl border border-cream bg-parchment text-sm font-medium">Cancel</button>
-          <button type="button" id="save-schedule-student-match-modal" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Match Student</button>
+          <button type="button" id="save-schedule-student-match-modal" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Merge & Match Student</button>
         </div>
       </div>
     </div>
@@ -2751,13 +3331,26 @@ function toggleHomeworkStatusFromProfile(homeworkId, isDone) {
   const result = toggleHomeworkStatus(homeworkId, isDone);
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to update homework."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Homework Update",
+      message: errors.join(" "),
+      tone: "error",
+      source: "profile"
+    });
     return;
   }
 
   if (selectedStudentId) {
     renderProfileHomeworkTab(selectedStudentId);
   }
+
+  notifyUser({
+    title: "Homework Updated",
+    message: `Homework was marked ${isDone ? "done" : "not done"}.`,
+    tone: "success",
+    source: "profile",
+    toast: true
+  });
 }
 
 function switchLessonDetailTab(tab) {
@@ -2788,7 +3381,12 @@ function toggleHomeworkStatusFromDetail(homeworkId, isDone, lessonId) {
   const result = toggleHomeworkStatus(homeworkId, isDone);
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to update homework."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Homework Update",
+      message: errors.join(" "),
+      tone: "error",
+      source: "lessons"
+    });
     return;
   }
 
@@ -2798,6 +3396,13 @@ function toggleHomeworkStatusFromDetail(homeworkId, isDone, lessonId) {
 
   activeLessonDetailTab = "homework";
   openLessonDetailModal(lessonId);
+  notifyUser({
+    title: "Homework Updated",
+    message: `Homework was marked ${isDone ? "done" : "not done"}.`,
+    tone: "success",
+    source: "lessons",
+    toast: true
+  });
 }
 
 function resetLessonHomeworkForm() {
@@ -2856,7 +3461,12 @@ function removeHomeworkFromLessonDetail(homeworkId, lessonId) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to delete homework."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Homework Delete",
+      message: errors.join(" "),
+      tone: "error",
+      source: "lessons"
+    });
     return;
   }
 
@@ -2866,6 +3476,12 @@ function removeHomeworkFromLessonDetail(homeworkId, lessonId) {
 
   activeLessonDetailTab = "homework";
   openLessonDetailModal(lessonId);
+  notifyUser({
+    title: "Homework Deleted",
+    message: "The homework item was removed from this lesson.",
+    tone: "success",
+    source: "lessons"
+  });
 }
 
 function saveHomeworkFromLessonDetail(lessonId, studentId) {
@@ -2873,6 +3489,7 @@ function saveHomeworkFromLessonDetail(lessonId, studentId) {
   const detailsEl = document.getElementById("lesson-homework-details");
   const dueDateEl = document.getElementById("lesson-homework-due-date");
   const statusEl = document.getElementById("lesson-homework-status");
+  const wasEditingHomework = Boolean(editingHomeworkId);
 
   const result = upsertHomeworkItem({
     homework_id: editingHomeworkId,
@@ -2886,7 +3503,12 @@ function saveHomeworkFromLessonDetail(lessonId, studentId) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to save homework."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Homework Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "lessons"
+    });
     return;
   }
 
@@ -2897,6 +3519,12 @@ function saveHomeworkFromLessonDetail(lessonId, studentId) {
   editingHomeworkId = null;
   activeLessonDetailTab = "homework";
   openLessonDetailModal(lessonId);
+  notifyUser({
+    title: wasEditingHomework ? "Homework Updated" : "Homework Added",
+    message: "Homework is saved and linked to this lesson.",
+    tone: "success",
+    source: "lessons"
+  });
 }
 
 /*********************************
@@ -2998,7 +3626,7 @@ function upsertLessonNote({ lesson_id, title, body, status }) {
       published_at:
         normalizedStatus === "PUBLISHED"
           ? (existing.published_at || new Date().toISOString())
-          : normalizedStatus === "DRAFT"
+          : normalizedStatus === "DRAFT" || normalizedStatus === "NO_NOTES"
             ? null
             : existing.published_at || null
     });
@@ -3044,6 +3672,7 @@ function formatPreviewTextAsHtml(text) {
 function normalizeNoteStatus(status) {
   const normalized = String(status || "").trim().toUpperCase();
 
+  if (normalized === "NO_NOTES" || normalized === "NO NOTES" || normalized === "NONE") return "NO_NOTES";
   if (normalized === "PUBLISHED" || normalized === "PUBLISH") return "PUBLISHED";
   if (normalized === "ARCHIVED" || normalized === "ARCHIVE") return "ARCHIVED";
   return "DRAFT";
@@ -3052,6 +3681,7 @@ function normalizeNoteStatus(status) {
 function getNoteStatusLabel(status) {
   const normalized = normalizeNoteStatus(status);
 
+  if (normalized === "NO_NOTES") return "No Notes";
   if (normalized === "PUBLISHED") return "Published";
   if (normalized === "ARCHIVED") return "Archived";
   return "Draft";
@@ -3060,6 +3690,7 @@ function getNoteStatusLabel(status) {
 function getNoteStatusBadge(status) {
   const normalized = normalizeNoteStatus(status);
 
+  if (normalized === "NO_NOTES") return "bg-blue-100 text-blue-700";
   if (normalized === "PUBLISHED") return "bg-sage/10 text-sage";
   if (normalized === "ARCHIVED") return "bg-warmgray/10 text-warmgray";
   return "bg-gold/10 text-gold";
@@ -3067,6 +3698,10 @@ function getNoteStatusBadge(status) {
 
 function getNoteStateGuidance(status) {
   const normalized = normalizeNoteStatus(status);
+
+  if (normalized === "NO_NOTES") {
+    return "Use this when no written note needs to be sent for the lesson. It counts as complete for follow-up but stays admin-only.";
+  }
 
   if (normalized === "PUBLISHED") {
     return "This note is student-ready and counts as complete for follow-up.";
@@ -3089,6 +3724,14 @@ function getQueueNoteStateMeta(noteStatus) {
   }
 
   const normalized = normalizeNoteStatus(noteStatus);
+
+  if (normalized === "NO_NOTES") {
+    return {
+      label: "No Notes",
+      badge: "bg-blue-100 text-blue-700",
+      actionLabel: "View Decision"
+    };
+  }
 
   if (normalized === "PUBLISHED") {
     return {
@@ -3537,7 +4180,12 @@ function deleteMaterialPermanently(fileId) {
   if (!file) return;
 
   if (String(file.status || "").toLowerCase() !== "vaulted") {
-    alert("Only vaulted materials can be permanently deleted.");
+    notifyUser({
+      title: "Materials Vault",
+      message: "Only vaulted materials can be permanently deleted.",
+      tone: "error",
+      source: "materials"
+    });
     return;
   }
 
@@ -3554,6 +4202,13 @@ function deleteMaterialPermanently(fileId) {
   if (selectedStudentId) {
     populateStudentProfile(selectedStudentId);
   }
+
+  notifyUser({
+    title: "Material Deleted",
+    message: `${getMaterialDisplayName(file)} was permanently removed from the vault.`,
+    tone: "success",
+    source: "materials"
+  });
 }
 
 function toggleProfileMaterialsVault() {
@@ -3570,10 +4225,13 @@ function getNoteSortTime(note) {
 function getNoteCountsByStatus(notes) {
   return notes.reduce((counts, note) => {
     const status = normalizeNoteStatus(note.status);
-    counts[status] += 1;
+    if (typeof counts[status] === "number") {
+      counts[status] += 1;
+    }
     return counts;
   }, {
     DRAFT: 0,
+    NO_NOTES: 0,
     PUBLISHED: 0,
     ARCHIVED: 0
   });
@@ -3581,6 +4239,13 @@ function getNoteCountsByStatus(notes) {
 
 function getNoteLastActivityLabel(note) {
   const status = normalizeNoteStatus(note?.status);
+
+  if (status === "NO_NOTES") {
+    if (note?.updated_at) {
+      return `Marked no notes ${formatLongDate(note.updated_at)}`;
+    }
+    return "Marked no notes";
+  }
 
   if (status === "PUBLISHED" && note?.published_at) {
     return `Published ${formatLongDate(note.published_at)}`;
@@ -3649,6 +4314,15 @@ function setProfileNotesFilter(filter) {
 function getNoteQueueUrgencyMeta(hoursSinceLesson, noteStatus) {
   const normalizedStatus = normalizeNoteStatus(noteStatus);
 
+  if (normalizedStatus === "NO_NOTES") {
+    return {
+      key: "complete",
+      label: "Complete",
+      badge: "bg-blue-100 text-blue-700",
+      sortWeight: 4
+    };
+  }
+
   if (normalizedStatus === "PUBLISHED") {
     return {
       key: "published",
@@ -3691,9 +4365,20 @@ function getHoursSinceLesson(dateString) {
   return Math.max(0, Math.floor((APP_NOW.getTime() - lessonTime) / (1000 * 60 * 60)));
 }
 
+function isLessonWithinNotesWindow(lesson, maxDays = 14) {
+  const referenceDate = getLessonReferenceDate(lesson);
+  if (!referenceDate) return false;
+
+  const lessonTime = new Date(referenceDate).getTime();
+  if (Number.isNaN(lessonTime)) return false;
+
+  const diffDays = (APP_NOW.getTime() - lessonTime) / (1000 * 60 * 60 * 24);
+  return diffDays >= 0 && diffDays <= maxDays;
+}
+
 function getCompletedLessonsNeedingNotesRows() {
   return getLessonRecords()
-    .filter((lesson) => doesLessonRequireNotes(lesson))
+    .filter((lesson) => doesLessonRequireNotes(lesson) && isLessonWithinNotesWindow(lesson, 14))
     .map((lesson) => {
       const student = getSchemaStudentById(lesson.student_id);
       const note = getLessonNoteByLessonId(lesson.lesson_id);
@@ -3701,7 +4386,7 @@ function getCompletedLessonsNeedingNotesRows() {
       const noteStateMeta = getQueueNoteStateMeta(noteStatus);
       const hoursSinceLesson = getHoursSinceLesson(getLessonReferenceDate(lesson));
       const urgency = getNoteQueueUrgencyMeta(hoursSinceLesson, noteStatus);
-      const actionRequired = noteStatus !== "PUBLISHED";
+      const actionRequired = noteStatus !== "PUBLISHED" && noteStatus !== "NO_NOTES";
 
       return {
         lesson_id: lesson.lesson_id,
@@ -3765,6 +4450,23 @@ function resetNotesQueueFilters() {
   renderNotesQueuePage();
 }
 
+function getNotesQueueFilterPills() {
+  const pills = [];
+  if (currentNotesQueueFilter !== "all") {
+    const labelMap = {
+      overdue: "Overdue",
+      "due-now": "Due Now",
+      "within-window": "Within 48h",
+      published: "Published"
+    };
+    pills.push(getStatusFilterPill("Filter", labelMap[currentNotesQueueFilter] || currentNotesQueueFilter));
+  }
+  if (currentNotesQueueSearchQuery) {
+    pills.push(getStatusFilterPill("Search", currentNotesQueueSearchQuery));
+  }
+  return pills;
+}
+
 function toggleNotesQueueWorkflow() {
   currentNotesQueueShowWorkflow = !currentNotesQueueShowWorkflow;
   renderNotesQueuePage();
@@ -3799,6 +4501,7 @@ function saveNoteFromWorkspace(studentId, lessonId) {
   const titleEl = document.getElementById("note-workspace-title");
   const statusEl = document.getElementById("note-workspace-status");
   const bodyEl = document.getElementById("note-workspace-body");
+  const normalizedStatus = normalizeNoteStatus(statusEl ? statusEl.value : "DRAFT");
 
   const result = upsertLessonNote({
     lesson_id: lessonId,
@@ -3809,12 +4512,25 @@ function saveNoteFromWorkspace(studentId, lessonId) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to save lesson note."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Notes Workspace",
+      message: errors.join(" "),
+      tone: "error",
+      source: "notes"
+    });
     return;
   }
 
   renderAppFromSchema();
   openNoteWorkspace(studentId, lessonId);
+  notifyUser({
+    title: normalizedStatus === "NO_NOTES" ? "No Notes Saved" : "Notes Workspace Saved",
+    message: normalizedStatus === "NO_NOTES"
+      ? "This lesson is marked as not needing a published note."
+      : "The note workspace was saved successfully.",
+    tone: "success",
+    source: "notes"
+  });
 }
 
 function openNoteWorkspace(studentId = selectedStudentId, lessonId = null) {
@@ -3826,7 +4542,12 @@ function openNoteWorkspace(studentId = selectedStudentId, lessonId = null) {
 
   const lessons = getStudentLessonsForNotes(resolvedStudentId);
   if (!lessons.length) {
-    alert("This student does not have any lessons yet.");
+    notifyUser({
+      title: "Notes Workspace",
+      message: "This student does not have any lessons yet.",
+      tone: "warm",
+      source: "notes"
+    });
     return;
   }
 
@@ -3911,6 +4632,7 @@ function openNoteWorkspace(studentId = selectedStudentId, lessonId = null) {
               <label class="block text-xs font-medium text-warmgray mb-1">Note Status</label>
               <select id="note-workspace-status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
                 <option value="DRAFT" ${noteStatus === "DRAFT" ? "selected" : ""}>Draft</option>
+                <option value="NO_NOTES" ${noteStatus === "NO_NOTES" ? "selected" : ""}>No Notes</option>
                 <option value="PUBLISHED" ${noteStatus === "PUBLISHED" ? "selected" : ""}>Published</option>
                 <option value="ARCHIVED" ${noteStatus === "ARCHIVED" ? "selected" : ""}>Archived</option>
               </select>
@@ -5118,12 +5840,23 @@ function handlePackageFormSubmit(event) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to save package."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Package Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "finance"
+    });
     return;
   }
 
   closeFinanceModal();
   renderFinancePage();
+  notifyUser({
+    title: editingPackageId ? "Package Updated" : "Package Added",
+    message: "Package details are saved and reflected in finance.",
+    tone: "success",
+    source: "finance"
+  });
 }
 
 function handlePaymentFormSubmit(event) {
@@ -5144,12 +5877,23 @@ function handlePaymentFormSubmit(event) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to save payment."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Payment Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "finance"
+    });
     return;
   }
 
   closeFinanceModal();
   renderFinancePage();
+  notifyUser({
+    title: editingPaymentId ? "Payment Updated" : "Payment Added",
+    message: "Payment details are saved and finance totals are up to date.",
+    tone: "success",
+    source: "finance"
+  });
 }
 
 function handleMaterialFormSubmit(event) {
@@ -5193,7 +5937,12 @@ function handleMaterialFormSubmit(event) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to save material."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Material Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "materials"
+    });
     return;
   }
 
@@ -5206,6 +5955,13 @@ function handleMaterialFormSubmit(event) {
   if (selectedStudentId) {
     populateStudentProfile(selectedStudentId);
   }
+
+  notifyUser({
+    title: editingMaterialId ? "Material Updated" : "Material Added",
+    message: "The material is saved and ready to reference from the student record.",
+    tone: "success",
+    source: "materials"
+  });
 }
 
 /*********************************
@@ -5323,6 +6079,47 @@ function getLessonsStudentFilterOptionsMarkup() {
   `;
 }
 
+function getLessonsPageSummaryRows() {
+  const rows = getAllLessonsPageRows();
+  const now = getReferenceNow();
+  const weekStart = getStartOfWeek(now);
+  const weekEnd = getEndOfWeek(now);
+
+  return {
+    upcoming: rows.filter((row) => row.lesson_status === "SCHEDULED" && row.scheduled_start && new Date(row.scheduled_start) >= now).length,
+    completedThisWeek: rows.filter((row) => row.lesson_status === "COMPLETED" && row.scheduled_start && new Date(row.scheduled_start) >= weekStart && new Date(row.scheduled_start) <= weekEnd).length,
+    intakeReview: rows.filter((row) => row.source !== "manual" && isLessonIntakeActionRequired(getSchemaLessonById(row.lesson_id))).length,
+    imported: rows.filter((row) => row.source !== "manual").length
+  };
+}
+
+function getLessonsFilterPills() {
+  const pills = [];
+  if (currentLessonsDateRangeFilter !== "all") {
+    const labels = {
+      today: "Today",
+      "this-week": "This Week",
+      "this-month": "This Month",
+      "next-7": "Next 7 Days",
+      "next-30": "Next 30 Days",
+      "previous-7": "Previous 7 Days",
+      "previous-30": "Previous 30 Days"
+    };
+    pills.push(getStatusFilterPill("Date", labels[currentLessonsDateRangeFilter] || currentLessonsDateRangeFilter));
+  }
+  if (currentLessonsStatusFilter !== "all") {
+    pills.push(getStatusFilterPill("Status", getLessonStatusLabel(currentLessonsStatusFilter)));
+  }
+  if (currentLessonsStudentFilter !== "all") {
+    const student = getSchemaStudentById(currentLessonsStudentFilter);
+    pills.push(getStatusFilterPill("Student", student?.full_name || currentLessonsStudentFilter));
+  }
+  if (currentLessonsSearchQuery) {
+    pills.push(getStatusFilterPill("Search", currentLessonsSearchQuery));
+  }
+  return pills;
+}
+
 function setLessonsStatusFilter(value) {
   currentLessonsStatusFilter = value || "all";
   renderLessonsRows();
@@ -5358,6 +6155,7 @@ function renderNotesQueueResults() {
   if (!resultsEl) return;
 
   const rows = getFilteredNotesQueueRows();
+  const compact = isCompactView("notes");
   const overdueCount = rows.filter((row) => row.urgency_key === "overdue" && row.action_required).length;
   const missingCount = rows.filter((row) => row.note_status === "MISSING" && row.action_required).length;
   const draftCount = rows.filter((row) => row.note_status === "DRAFT" && row.action_required).length;
@@ -5369,7 +6167,7 @@ function renderNotesQueueResults() {
   resultsEl.innerHTML = `
     <div class="bg-white rounded-2xl border border-cream overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[1320px] text-sm">
+        <table class="w-full min-w-[1320px] text-sm ${compact ? "compact-table" : ""}">
           <thead class="bg-parchment/70">
             <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
               <th class="px-5 py-3 font-medium">Urgency</th>
@@ -5444,10 +6242,10 @@ function renderNotesQueueResults() {
                 : `
                   <tr>
                     <td colspan="8" class="px-5 py-12 text-center">
-                      <div class="flex flex-col items-center justify-center text-warmgray">
+                      <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
                         <i data-lucide="notebook-tabs" class="w-8 h-8 mb-3 opacity-50"></i>
-                        <p class="text-sm font-medium">No queue items found</p>
-                        <p class="text-xs mt-1">Try changing your filters or search.</p>
+                        <p class="text-sm font-medium">No note follow-up in this view</p>
+                        <p class="text-xs mt-1">Try changing your filters, or use No Notes when a written note is not needed.</p>
                       </div>
                     </td>
                   </tr>
@@ -5474,13 +6272,15 @@ function renderNotesQueuePage() {
   const missingRows = actionableRows.filter((row) => row.note_status === "MISSING");
   const draftRows = actionableRows.filter((row) => row.note_status === "DRAFT");
   const archivedRows = actionableRows.filter((row) => row.note_status === "ARCHIVED");
+  const compact = isCompactView("notes");
+  const filterPills = getNotesQueueFilterPills();
 
   root.innerHTML = `
-    <div class="p-4 sm:p-6 xl:p-8 w-full">
+    <div class="p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Notes Queue</h2>
-          <p class="text-sm text-warmgray mt-0.5">Completed lessons that still need published notes within 48 hours.</p>
+          <p class="text-sm text-warmgray mt-0.5">Completed lessons from the last 14 days that still need published follow-up, or to be marked as no notes.</p>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full lg:w-auto">
@@ -5576,7 +6376,7 @@ function renderNotesQueuePage() {
           : ""
       }
 
-      <div class="bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.05s">
+      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.05s">
         <div class="grid grid-cols-1 xl:grid-cols-12 gap-4">
           <div class="xl:col-span-7 relative min-w-0">
             <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
@@ -5602,8 +6402,12 @@ function renderNotesQueuePage() {
 
         <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <p id="notes-queue-results-count" class="text-xs text-warmgray">0 completed lessons shown</p>
-          <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="resetNotesQueueFilters()">Reset filters</button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('notes')">${getCompactToggleLabel("notes")}</button>
+            <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="resetNotesQueueFilters()">Reset filters</button>
+          </div>
         </div>
+        ${filterPills.length ? `<div class="page-filter-summary mt-3">${filterPills.join("")}</div>` : ""}
       </div>
 
       <div id="notes-queue-results" class="fade-in" style="animation-delay:0.08s"></div>
@@ -5631,6 +6435,7 @@ function updateStudentsHeaderCounts(list = students) {
 
 function renderStudents(list) {
   const grid = document.getElementById("student-grid");
+  const filterSummaryEl = document.getElementById("students-filter-summary");
   if (!grid) return;
 
   grid.innerHTML = "";
@@ -5669,11 +6474,17 @@ function renderStudents(list) {
 
   if (list.length === 0) {
     grid.innerHTML = `
-      <div class="col-span-3 text-center py-16 text-warmgray">
+      <div class="col-span-3 page-empty-state text-warmgray">
         <i data-lucide="search" class="w-8 h-8 mx-auto mb-3 opacity-40"></i>
-        <p class="text-sm">No students found</p>
+        <p class="text-sm font-medium text-warmblack">No students match this view</p>
+        <p class="text-xs mt-1">Try widening your filters, or import a CSV and merge contacts into existing students.</p>
       </div>
     `;
+  }
+
+  if (filterSummaryEl) {
+    const pills = getStudentsFilterPills();
+    filterSummaryEl.innerHTML = pills.length ? pills.join("") : `<span class="text-xs text-warmgray">Showing the full student roster right now.</span>`;
   }
 
   updateStudentsHeaderCounts(list);
@@ -5750,12 +6561,41 @@ function setFilter(f) {
   filterStudents();
 }
 
+function getStudentsPageSummaryRows() {
+  const studentRows = Array.isArray(students) ? students : [];
+  const records = getStudentRecords();
+  return {
+    active: studentRows.filter((student) => student.status === "active").length,
+    expiring: studentRows.filter((student) => student.status === "expiring").length,
+    inactive: studentRows.filter((student) => student.status === "inactive").length,
+    importedInactive: records.filter((student) => student.studio_status === "INACTIVE" && student.lead_source).length
+  };
+}
+
+function getStudentsFilterPills() {
+  const pills = [];
+  const filters = getActiveStudentFilterValues();
+  if (!currentStudentFilters.has("all")) {
+    pills.push(getStatusFilterPill("Status", filters.map((filter) => filter.charAt(0).toUpperCase() + filter.slice(1)).join(", ")));
+  }
+
+  const searchInput = document.getElementById("student-search");
+  const query = String(searchInput?.value || "").trim();
+  if (query) {
+    pills.push(getStatusFilterPill("Search", query));
+  }
+
+  return pills;
+}
+
 function renderStudentsPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
+  const summary = getStudentsPageSummaryRows();
+  const compact = isCompactView("students");
 
   root.innerHTML = `
-    <div class="students-shell p-4 sm:p-6 xl:p-8 w-full">
+    <div class="students-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Students</h2>
@@ -5774,7 +6614,26 @@ function renderStudentsPage() {
         </div>
       </header>
 
-      <div class="bg-white rounded-2xl border border-cream p-4 mb-5 flex flex-col lg:flex-row lg:items-center gap-4 fade-in" style="animation-delay:0.05s">
+      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.03s">
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Active Students</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.active}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Expiring Soon</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.expiring}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Inactive</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.inactive}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported to Review</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.importedInactive}</p>
+        </div>
+      </div>
+
+      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 flex flex-col lg:flex-row lg:items-center gap-4 fade-in" style="animation-delay:0.05s">
         <div class="flex-1 relative min-w-0">
           <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
           <input
@@ -5792,6 +6651,10 @@ function renderStudentsPage() {
           <button onclick="setFilter('expiring')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="expiring">Expiring</button>
           <button onclick="setFilter('inactive')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="inactive">Inactive</button>
         </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('students')">${getCompactToggleLabel("students")}</button>
+        </div>
+        <div id="students-filter-summary" class="page-filter-summary w-full lg:order-last"></div>
       </div>
 
       <div id="student-grid" class="grid grid-cols-1 xl:grid-cols-3 gap-4"></div>
@@ -5823,6 +6686,7 @@ function renderLessonsRows() {
   if (!tbody) return;
 
   const rows = getFilteredLessonsRows();
+  const compact = isCompactView("lessons");
 
   if (countEl) {
     countEl.textContent = `${rows.length} lesson${rows.length === 1 ? "" : "s"} shown`;
@@ -5832,10 +6696,10 @@ function renderLessonsRows() {
     tbody.innerHTML = `
       <tr>
         <td colspan="8" class="px-5 py-12 text-center">
-          <div class="flex flex-col items-center justify-center text-warmgray">
+          <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
             <i data-lucide="calendar-x-2" class="w-8 h-8 mb-3 opacity-50"></i>
-            <p class="text-sm font-medium">No lessons found</p>
-            <p class="text-xs mt-1">Try changing your filters or add a new lesson.</p>
+            <p class="text-sm font-medium">No lessons found in this view</p>
+            <p class="text-xs mt-1">Try widening your filters, switching the date range, or adding a lesson.</p>
           </div>
         </td>
       </tr>
@@ -5915,7 +6779,7 @@ function renderLessonsRows() {
               class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack card-hover"
               onclick="openLessonDetailModal('${lesson.lesson_id}')"
             >
-              Details
+              Open Lesson
             </button>
             <button
               type="button"
@@ -5929,7 +6793,7 @@ function renderLessonsRows() {
               class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
               onclick="quickChangeLessonStatus('${lesson.lesson_id}')"
             >
-              Status
+              Update Status
             </button>
             ${
               lesson.student_id
@@ -5938,7 +6802,7 @@ function renderLessonsRows() {
                     class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                     onclick="viewStudentProfileFromLesson('${lesson.student_id}')"
                   >
-                    View Student
+                    Open Student
                   </button>`
                 : ""
             }
@@ -5954,9 +6818,12 @@ function renderLessonsRows() {
 function renderLessonsPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
+  const summary = getLessonsPageSummaryRows();
+  const compact = isCompactView("lessons");
+  const filterPills = getLessonsFilterPills();
 
   root.innerHTML = `
-    <div class="lessons-shell p-4 sm:p-6 xl:p-8 w-full">
+    <div class="lessons-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Lessons</h2>
@@ -5972,7 +6839,26 @@ function renderLessonsPage() {
         </button>
       </header>
 
-      <div class="lessons-filter-panel bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.05s">
+      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.03s">
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Upcoming</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.upcoming}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Completed This Week</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.completedThisWeek}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Needs Intake Review</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.intakeReview}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported Lessons</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.imported}</p>
+        </div>
+      </div>
+
+      <div class="lessons-filter-panel page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.05s">
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4">
           <div class="xl:col-span-4 relative">
             <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
@@ -6031,19 +6917,23 @@ function renderLessonsPage() {
 
         <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <p id="lessons-results-count" class="text-xs text-warmgray">0 lessons shown</p>
-          <button
-            type="button"
-            class="text-xs font-medium text-gold hover:underline"
-            onclick="currentLessonsStatusFilter='all'; currentLessonsStudentFilter='all'; currentLessonsSearchQuery=''; currentLessonsDateRangeFilter='all'; renderLessonsPage();"
-          >
-            Reset filters
-          </button>
+          <div class="flex flex-wrap items-center gap-3">
+            <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('lessons')">${getCompactToggleLabel("lessons")}</button>
+            <button
+              type="button"
+              class="text-xs font-medium text-gold hover:underline"
+              onclick="currentLessonsStatusFilter='all'; currentLessonsStudentFilter='all'; currentLessonsSearchQuery=''; currentLessonsDateRangeFilter='all'; renderLessonsPage();"
+            >
+              Reset filters
+            </button>
+          </div>
         </div>
+        ${filterPills.length ? `<div class="page-filter-summary mt-3">${filterPills.join("")}</div>` : ""}
       </div>
 
       <div class="lessons-results-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in" style="animation-delay:0.1s">
         <div class="overflow-x-auto">
-          <table class="w-full min-w-[980px] text-sm">
+          <table class="w-full min-w-[980px] text-sm ${compact ? "compact-table" : ""}">
             <thead class="bg-parchment/70">
               <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
                 <th class="px-5 py-3 font-medium">Date</th>
@@ -6157,7 +7047,9 @@ function getFilteredScheduleIntakeRows() {
     const query = currentScheduleSearchQuery.toLowerCase();
     rows = rows.filter((row) =>
       row.student_name.toLowerCase().includes(query) ||
+      row.external_contact_name.toLowerCase().includes(query) ||
       row.external_contact_email.toLowerCase().includes(query) ||
+      row.external_contact_phone.toLowerCase().includes(query) ||
       row.platform_hint_label.toLowerCase().includes(query) ||
       row.topic.toLowerCase().includes(query) ||
       row.lesson_type.toLowerCase().includes(query) ||
@@ -6195,6 +7087,26 @@ function resetScheduleFilters() {
   currentScheduleSourceFilter = "all";
   currentScheduleSearchQuery = "";
   renderSchedulePage();
+}
+
+function getScheduleFilterPills() {
+  const pills = [];
+  pills.push(getStatusFilterPill("View", currentScheduleView === "calendar" ? `Calendar · ${currentScheduleCalendarMode}` : "Schedule Intake"));
+  if (currentScheduleView === "intake") {
+    if (currentScheduleTimingFilter !== "all") {
+      pills.push(getStatusFilterPill("Timing", currentScheduleTimingFilter));
+    }
+    if (currentScheduleReviewFilter !== "all") {
+      pills.push(getStatusFilterPill("Review", currentScheduleReviewFilter));
+    }
+    if (currentScheduleSourceFilter !== "all") {
+      pills.push(getStatusFilterPill("Source", currentScheduleSourceFilter));
+    }
+    if (currentScheduleSearchQuery) {
+      pills.push(getStatusFilterPill("Search", currentScheduleSearchQuery));
+    }
+  }
+  return pills;
 }
 
 function setScheduleView(view) {
@@ -6327,12 +7239,16 @@ function renderScheduleDayView() {
                     <span class="text-[11px] px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Lead Source · ${escapeHtml(getStudentLeadSourceLabel(row.lead_source))}</span>
                     ${row.source !== "manual" ? `<span class="text-[11px] px-2 py-1 rounded-full ${row.intake_action_required ? "bg-burgundy/10 text-burgundy" : "bg-sage/10 text-sage"}">${row.intake_action_required ? "Needs Intake Review" : "Imported"}</span>` : ""}
                   </div>
-                  <div class="flex flex-wrap gap-2 mt-3">
-                    <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${row.lesson_id}')">Open Lesson</button>
-                    <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="viewStudentProfileFromLesson('${row.student_id}')">Student</button>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${row.lesson_id}')">Open Lesson</button>
+                      ${
+                        row.student_id
+                          ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="viewStudentProfileFromLesson('${row.student_id}')">Student</button>`
+                          : `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openScheduleStudentMatchModal('${row.lesson_id}')">Merge Student</button>`
+                      }
+                    </div>
                   </div>
-                </div>
-              `).join("")
+                `).join("")
             : `<div class="rounded-2xl border border-cream bg-parchment p-5 text-sm text-warmgray">No lessons on this day yet.</div>`
         }
       </div>
@@ -6516,18 +7432,34 @@ function confirmScheduleIntake(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
   if (!lesson.student_id) {
-    alert("Match this imported event to a student before confirming it.");
+    notifyUser({
+      title: "Schedule Intake",
+      message: "Match this imported event to a student before confirming it.",
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
   const result = setLessonIntakeReviewState(lessonId, "CONFIRMED");
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to confirm imported lesson."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Schedule Intake",
+      message: errors.join(" "),
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
   renderAppFromSchema();
+  notifyUser({
+    title: "Lesson Confirmed",
+    message: "The imported lesson is confirmed and ready to drive workflow.",
+    tone: "success",
+    source: "schedule"
+  });
 }
 
 function flagScheduleNeedsAttention(lessonId) {
@@ -6542,22 +7474,44 @@ function flagScheduleNeedsAttention(lessonId) {
 
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to flag imported lesson."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Schedule Intake",
+      message: errors.join(" "),
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
   renderAppFromSchema();
+  notifyUser({
+    title: "Needs Attention",
+    message: "This imported lesson was moved into the attention queue.",
+    tone: "warm",
+    source: "schedule"
+  });
 }
 
 function ignoreScheduleIntake(lessonId) {
   const result = setLessonIntakeReviewState(lessonId, "IGNORED");
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to ignore imported lesson."];
-    alert(errors.join("\n"));
+    notifyUser({
+      title: "Schedule Intake",
+      message: errors.join(" "),
+      tone: "error",
+      source: "schedule"
+    });
     return;
   }
 
   renderAppFromSchema();
+  notifyUser({
+    title: "Lesson Ignored",
+    message: "The imported lesson was removed from the active intake queue.",
+    tone: "info",
+    source: "schedule"
+  });
 }
 
 function renderScheduleResults() {
@@ -6681,14 +7635,14 @@ function renderScheduleResults() {
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                                   onclick="openScheduleStudentMatchModal('${row.lesson_id}')"
                                 >
-                                  Match Student
+                                  Merge Student
                                 </button>
                                 <button
                                   type="button"
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                                   onclick="createStudentFromImportedLesson('${row.lesson_id}')"
                                 >
-                                  Create Student
+                                  Create New Student
                                 </button>`
                           }
                           <button
@@ -6755,9 +7709,11 @@ function renderSchedulePage() {
   const gmailStatus = backend.google_gmail_status || "demo_ready";
   const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0 };
   const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, flagged: 0, skipped: 0 };
+  const compact = isCompactView("schedule");
+  const filterPills = getScheduleFilterPills();
 
   root.innerHTML = `
-    <div class="schedule-shell p-4 sm:p-6 xl:p-8 w-full">
+    <div class="schedule-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Schedule</h2>
@@ -6769,6 +7725,13 @@ function renderSchedulePage() {
             <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "calendar" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('calendar')">Calendar</button>
             <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "intake" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('intake')">Schedule Intake</button>
           </div>
+          <button
+            type="button"
+            class="self-start lg:self-auto px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
+            onclick="toggleCompactView('schedule')"
+          >
+            ${getCompactToggleLabel("schedule")}
+          </button>
           <button
             type="button"
             class="self-start lg:self-auto px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
@@ -6871,7 +7834,8 @@ function renderSchedulePage() {
           : ""
       }
 
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-5 fade-in" style="animation-delay:0.03s">
+      <div class="page-toolbar-sticky">
+      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-3 fade-in" style="animation-delay:0.03s">
         <div class="rounded-2xl border border-cream bg-white px-4 py-3 min-w-0">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "This Month" : "Imported Upcoming"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${currentScheduleView === "calendar" ? allCalendarRows.filter((row) => {
@@ -6891,6 +7855,8 @@ function renderSchedulePage() {
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "Imported Total" : "External Changes"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${currentScheduleView === "calendar" ? importedRows.length : externallyUpdatedRows.length}</p>
         </div>
+      </div>
+      ${filterPills.length ? `<div class="page-filter-summary mb-5 fade-in" style="animation-delay:0.035s">${filterPills.join("")}</div>` : ""}
       </div>
 
       ${
@@ -7876,6 +8842,7 @@ function renderFinanceResults() {
 
   const packageRows = getFilteredFinancePackagesRows();
   const paymentRows = getFilteredFinancePaymentsRows();
+  const compact = isCompactView("finance");
 
   if (countEl) {
     countEl.textContent =
@@ -7890,7 +8857,7 @@ function renderFinanceResults() {
         ${
           currentFinanceTab === "packages"
             ? `
-              <table class="w-full min-w-[1120px] text-sm">
+              <table class="w-full min-w-[1120px] text-sm ${compact ? "compact-table" : ""}">
                 <thead class="bg-parchment/70">
                   <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
                     <th class="px-5 py-3 font-medium">Student</th>
@@ -7971,11 +8938,11 @@ function renderFinanceResults() {
                       : `
                         <tr>
                           <td colspan="11" class="px-5 py-12 text-center">
-                            <div class="flex flex-col items-center justify-center text-warmgray">
-                              <i data-lucide="package-x" class="w-8 h-8 mb-3 opacity-50"></i>
-                              <p class="text-sm font-medium">No packages found</p>
-                              <p class="text-xs mt-1">Try changing your filters.</p>
-                            </div>
+                              <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
+                                <i data-lucide="package-x" class="w-8 h-8 mb-3 opacity-50"></i>
+                                <p class="text-sm font-medium">No packages found in this view</p>
+                                <p class="text-xs mt-1">Try widening your filters or add a package.</p>
+                              </div>
                           </td>
                         </tr>
                       `
@@ -7984,7 +8951,7 @@ function renderFinanceResults() {
               </table>
             `
             : `
-              <table class="w-full min-w-[980px] text-sm">
+              <table class="w-full min-w-[980px] text-sm ${compact ? "compact-table" : ""}">
                 <thead class="bg-parchment/70">
                   <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
                     <th class="px-5 py-3 font-medium">Student</th>
@@ -8059,10 +9026,10 @@ function renderFinanceResults() {
                       : `
                         <tr>
                           <td colspan="8" class="px-5 py-12 text-center">
-                            <div class="flex flex-col items-center justify-center text-warmgray">
+                            <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
                               <i data-lucide="receipt-text" class="w-8 h-8 mb-3 opacity-50"></i>
-                              <p class="text-sm font-medium">No payments found</p>
-                              <p class="text-xs mt-1">Try changing your filters.</p>
+                              <p class="text-sm font-medium">No payments found in this view</p>
+                              <p class="text-xs mt-1">Try widening your filters or add a payment.</p>
                             </div>
                           </td>
                         </tr>
@@ -8079,9 +9046,38 @@ function renderFinanceResults() {
   lucide.createIcons();
 }
 
+function getFinancePageSummaryRows() {
+  const outstandingRows = getOutstandingBalanceRows();
+  return {
+    outstandingTotal: formatCurrency(getOutstandingBalanceTotal()),
+    outstandingStudents: outstandingRows.length,
+    packagePressure: getExpiringPackagesList().length,
+    pendingPayments: getPaymentRecords().filter((payment) => !isPaymentArchived(payment) && String(payment.status || "").toLowerCase() === "pending").length
+  };
+}
+
+function getFinanceFilterPills() {
+  const pills = [];
+  pills.push(getStatusFilterPill("Scope", currentFinanceHistoryMode === "history" ? "History" : "Active"));
+  pills.push(getStatusFilterPill("Tab", currentFinanceTab === "packages" ? "Packages" : "Payments"));
+  if (currentFinanceBillingFilter !== "all") {
+    pills.push(getStatusFilterPill("Billing", getBillingModelLabel(currentFinanceBillingFilter)));
+  }
+  if (currentFinanceStatusFilter !== "all") {
+    pills.push(getStatusFilterPill("Status", currentFinanceStatusFilter));
+  }
+  if (currentFinanceSearchQuery) {
+    pills.push(getStatusFilterPill("Search", currentFinanceSearchQuery));
+  }
+  return pills;
+}
+
 function renderFinancePage() {
   const root = document.getElementById("page-root");
   if (!root) return;
+  const summary = getFinancePageSummaryRows();
+  const compact = isCompactView("finance");
+  const filterPills = getFinanceFilterPills();
 
   const statusOptions =
     currentFinanceHistoryMode === "history"
@@ -8106,7 +9102,7 @@ function renderFinancePage() {
         `;
 
   root.innerHTML = `
-    <div class="finance-shell p-4 sm:p-6 xl:p-8 w-full">
+    <div class="finance-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Finance</h2>
@@ -8147,7 +9143,23 @@ function renderFinancePage() {
         </div>
       </header>
 
-      <div class="finance-filter-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in" style="animation-delay:0.03s">
+      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.02s">
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Outstanding Balance</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.outstandingTotal}</p>
+          <p class="text-xs text-warmgray mt-1">${summary.outstandingStudents} student${summary.outstandingStudents === 1 ? "" : "s"} with open balances</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Pressure</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.packagePressure}</p>
+        </div>
+        <div class="page-summary-card">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Payments</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.pendingPayments}</p>
+        </div>
+      </div>
+
+      <div class="finance-filter-panel page-toolbar-sticky bg-white rounded-2xl border border-cream overflow-hidden fade-in" style="animation-delay:0.03s">
         <div class="flex flex-wrap border-b border-cream">
           <button
             type="button"
@@ -8203,14 +9215,18 @@ function renderFinancePage() {
 
           <div class="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p id="finance-results-count" class="text-xs text-warmgray">0 records shown</p>
-            <button
-              type="button"
-              class="text-xs font-medium text-gold hover:underline"
-              onclick="resetFinanceFilters()"
-            >
-              Reset filters
-            </button>
+            <div class="flex flex-wrap items-center gap-3">
+              <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('finance')">${getCompactToggleLabel("finance")}</button>
+              <button
+                type="button"
+                class="text-xs font-medium text-gold hover:underline"
+                onclick="resetFinanceFilters()"
+              >
+                Reset filters
+              </button>
+            </div>
           </div>
+          ${filterPills.length ? `<div class="page-filter-summary mt-3">${filterPills.join("")}</div>` : ""}
         </div>
       </div>
 
@@ -9356,6 +10372,14 @@ function populateStudentProfile(studentId) {
   const emailBtn = document.getElementById("profile-email-btn");
   if (emailBtn) {
     emailBtn.href = schemaStudent.email ? `mailto:${schemaStudent.email}` : "#";
+    emailBtn.target = schemaStudent.email ? "_blank" : "";
+    emailBtn.rel = schemaStudent.email ? "noopener noreferrer" : "";
+    emailBtn.onclick = schemaStudent.email
+      ? () => {
+          window.open(`mailto:${schemaStudent.email}`, "_blank", "noopener");
+          return false;
+        }
+      : null;
 
     if (!schemaStudent.email) {
       emailBtn.classList.add("pointer-events-none", "opacity-60");
@@ -9652,12 +10676,23 @@ function changeSelectedStudentStatus() {
 
       if (!result || result.ok === false) {
         const errors = result?.errors || ["Unable to update status."];
-        alert(errors.join("\\n"));
+        notifyUser({
+          title: "Student Status",
+          message: errors.join(" "),
+          tone: "error",
+          source: "students"
+        });
         return;
       }
 
       closeStudentStatusPicker();
       renderAppFromSchema();
+      notifyUser({
+        title: "Student Status Updated",
+        message: "The student status was updated successfully.",
+        tone: "success",
+        source: "students"
+      });
     };
   }
 }
@@ -9692,7 +10727,12 @@ function handleStudentFormSubmit(event) {
 
   if (!result || result.ok === false) {
     const errors = result && Array.isArray(result.errors) ? result.errors : ["Unable to save student."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Student Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "students"
+    });
     return;
   }
 
@@ -9702,6 +10742,12 @@ function handleStudentFormSubmit(event) {
 
   renderAppFromSchema();
   closeStudentModal();
+  notifyUser({
+    title: editingStudentId ? "Student Updated" : "Student Added",
+    message: `${payload.full_name} is saved and ready to work with.`,
+    tone: "success",
+    source: "students"
+  });
 }
 
 function handleLessonFormSubmit(event) {
@@ -9744,7 +10790,12 @@ function handleLessonFormSubmit(event) {
 
   if (!result || result.ok === false) {
     const errors = result && Array.isArray(result.errors) ? result.errors : ["Unable to save lesson."];
-    alert(errors.join("\\n"));
+    notifyUser({
+      title: "Lesson Save",
+      message: errors.join(" "),
+      tone: "error",
+      source: "lessons"
+    });
     return;
   }
 
@@ -9754,6 +10805,12 @@ function handleLessonFormSubmit(event) {
 
   renderAppFromSchema();
   closeLessonModal();
+  notifyUser({
+    title: editingLessonId ? "Lesson Updated" : "Lesson Added",
+    message: `${payload.topic || "Lesson"} is saved and visible in the schedule.`,
+    tone: "success",
+    source: "lessons"
+  });
 }
 
 /*********************************
@@ -9990,7 +11047,12 @@ function quickChangeLessonStatus(lessonId) {
 
       if (!result || result.ok === false) {
         const errors = result?.errors || ["Unable to update lesson status."];
-        alert(errors.join("\\n"));
+        notifyUser({
+          title: "Lesson Status",
+          message: errors.join(" "),
+          tone: "error",
+          source: "lessons"
+        });
         return;
       }
 
@@ -10000,6 +11062,12 @@ function quickChangeLessonStatus(lessonId) {
       if (activeLessonDetailId === lessonId) {
         setTimeout(() => openLessonDetailModal(lessonId), 0);
       }
+      notifyUser({
+        title: "Lesson Status Updated",
+        message: "The lesson status was updated successfully.",
+        tone: "success",
+        source: "lessons"
+      });
     };
   }
 }
@@ -10168,6 +11236,18 @@ function openLessonDetailModal(lessonId) {
                       ${lesson.pending_external_start ? `<p class="text-burgundy wrap-anywhere"><span class="text-warmgray">Pending External Time</span> · ${escapeHtml(formatLessonTimeRange(lesson.pending_external_start, lesson.pending_external_end || lesson.pending_external_start))}</p>` : ""}
                       ${lesson.intake_conflict_note ? `<p class="text-burgundy wrap-anywhere">${escapeHtml(lesson.intake_conflict_note)}</p>` : ""}
                     </div>
+                    <div class="flex flex-wrap gap-2 mt-3">
+                      ${
+                        !lesson.student_id
+                          ? `
+                            <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openScheduleStudentMatchModal('${lesson.lesson_id}')">Merge Student</button>
+                            <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="createStudentFromImportedLesson('${lesson.lesson_id}')">Create New Student</button>
+                          `
+                          : Object.keys(getImportedLessonStudentMergePatch(lesson, getSchemaStudentById(lesson.student_id))).length
+                            ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="pullStudentInfoFromLesson('${lesson.lesson_id}')">Pull Contact Into Student</button>`
+                            : ""
+                      }
+                    </div>
                   </div>
                 `
                 : ""
@@ -10316,6 +11396,7 @@ function openLessonDetailModal(lessonId) {
                   <label class="block text-xs font-medium text-warmgray mb-1">Note Status</label>
                   <select id="lesson-detail-note-status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
                     <option value="DRAFT" ${normalizeNoteStatus(note?.status) === "DRAFT" ? "selected" : ""}>Draft</option>
+                    <option value="NO_NOTES" ${normalizeNoteStatus(note?.status) === "NO_NOTES" ? "selected" : ""}>No Notes</option>
                     <option value="PUBLISHED" ${normalizeNoteStatus(note?.status) === "PUBLISHED" ? "selected" : ""}>Published</option>
                     <option value="ARCHIVED" ${normalizeNoteStatus(note?.status) === "ARCHIVED" ? "selected" : ""}>Archived</option>
                   </select>
@@ -10523,7 +11604,12 @@ function openLessonDetailModal(lessonId) {
 
       if (!result || result.ok === false) {
         const errors = result?.errors || ["Unable to save lesson note."];
-        alert(errors.join("\\n"));
+        notifyUser({
+          title: "Lesson Note",
+          message: errors.join(" "),
+          tone: "error",
+          source: "notes"
+        });
         return;
       }
 
@@ -10534,6 +11620,14 @@ function openLessonDetailModal(lessonId) {
       }
 
       openLessonDetailModal(lessonId);
+      notifyUser({
+        title: normalizeNoteStatus(statusEl ? statusEl.value : "DRAFT") === "NO_NOTES" ? "No Notes Saved" : "Lesson Note Saved",
+        message: normalizeNoteStatus(statusEl ? statusEl.value : "DRAFT") === "NO_NOTES"
+          ? "This lesson is marked as not needing a follow-up note."
+          : "The lesson note was saved successfully.",
+        tone: "success",
+        source: "notes"
+      });
     };
   }
 
