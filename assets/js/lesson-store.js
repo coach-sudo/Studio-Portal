@@ -119,6 +119,30 @@ function getLessonByIdForStore(lessonId) {
   return getLessonRecords().find((lesson) => lesson.lesson_id === lessonId) || null;
 }
 
+function sanitizeImportedLessonContactText(value) {
+  return String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/p>/gi, "\n")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractImportedLessonEmail(value) {
+  const match = sanitizeImportedLessonContactText(value).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+  return match ? String(match[0] || "").trim().toLowerCase() : "";
+}
+
+function sanitizeImportedLessonContactName(value) {
+  return sanitizeImportedLessonContactText(value)
+    .replace(/\bEMAIL\b\s*:\s*[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "")
+    .replace(/\bPHONE\b\s*:\s*[\d().+\-\s]{7,}/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function deriveCountsAgainstPackage(studentId, fallbackValue = null) {
   if (typeof fallbackValue === "boolean") {
     return fallbackValue;
@@ -149,9 +173,9 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
   let sourceCalendarId = String(("source_calendar_id" in payload ? payload.source_calendar_id : currentLesson?.source_calendar_id) || "").trim();
   let externalPlatformHint = String(("external_platform_hint" in payload ? payload.external_platform_hint : currentLesson?.external_platform_hint) || "").trim();
   let externalEventTitle = String(("external_event_title" in payload ? payload.external_event_title : currentLesson?.external_event_title) || "").trim();
-  let externalContactName = String(("external_contact_name" in payload ? payload.external_contact_name : currentLesson?.external_contact_name) || "").trim();
-  let externalContactEmail = String(("external_contact_email" in payload ? payload.external_contact_email : currentLesson?.external_contact_email) || "").trim();
-  let externalContactPhone = String(("external_contact_phone" in payload ? payload.external_contact_phone : currentLesson?.external_contact_phone) || "").trim();
+  let externalContactName = sanitizeImportedLessonContactName(("external_contact_name" in payload ? payload.external_contact_name : currentLesson?.external_contact_name) || "");
+  let externalContactEmail = extractImportedLessonEmail(("external_contact_email" in payload ? payload.external_contact_email : currentLesson?.external_contact_email) || "");
+  let externalContactPhone = sanitizeImportedLessonContactText(("external_contact_phone" in payload ? payload.external_contact_phone : currentLesson?.external_contact_phone) || "");
   let syncState = normalizeLessonSyncStateValue(("sync_state" in payload ? payload.sync_state : currentLesson?.sync_state) || "", source);
   let intakeReviewState = normalizeLessonIntakeReviewStateValue(("intake_review_state" in payload ? payload.intake_review_state : currentLesson?.intake_review_state) || "", source);
   let importedAt = String(("imported_at" in payload ? payload.imported_at : currentLesson?.imported_at) || "").trim();

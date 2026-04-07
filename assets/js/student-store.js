@@ -28,6 +28,19 @@ function splitFullName(fullName) {
   };
 }
 
+function isValidEmailAddress(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || "").trim());
+}
+
+function normalizeEmailListValue(value) {
+  return Array.from(new Set(
+    String(value || "")
+      .split(/[,\n;]/)
+      .map((entry) => String(entry || "").trim().toLowerCase())
+      .filter(Boolean)
+  )).join(", ");
+}
+
 function normalizeBoolean(value) {
   return Boolean(value);
 }
@@ -115,7 +128,11 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
 
   const fullName = String(payload.full_name || "").trim();
   const email = String(payload.email || "").trim();
+  const additionalEmails = normalizeEmailListValue(payload.additional_emails || "");
   const phone = String(payload.phone || "").trim();
+  const guardianName = String(payload.guardian_name || "").trim();
+  const guardianEmail = String(payload.guardian_email || "").trim();
+  const guardianPhone = String(payload.guardian_phone || "").trim();
   const timezone = String(payload.timezone || "").trim();
   const studioStatus = normalizeStudioStatusValue(payload.studio_status);
   const billingModel = normalizeBillingModelValue(payload.billing_model);
@@ -129,16 +146,31 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
     if (!fullName) errors.push("Full name is required.");
   }
 
-  if ((!isEdit || "email" in payload) && email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+  if ((!isEdit || "email" in payload) && email && !isValidEmailAddress(email)) {
     errors.push("Enter a valid email address.");
   }
 
-  if (!isEdit) {
-    if (!email && !phone) {
-      errors.push("Provide at least an email or phone number.");
+  if (additionalEmails) {
+    const invalidAdditionalEmail = additionalEmails
+      .split(",")
+      .map((entry) => entry.trim())
+      .find((entry) => entry && !isValidEmailAddress(entry));
+
+    if (invalidAdditionalEmail) {
+      errors.push(`Enter a valid additional email address. "${invalidAdditionalEmail}" is not valid.`);
     }
-  } else if (("email" in payload || "phone" in payload) && !email && !phone) {
-    errors.push("Provide at least an email or phone number.");
+  }
+
+  if (guardianEmail && !isValidEmailAddress(guardianEmail)) {
+    errors.push("Enter a valid guardian email address.");
+  }
+
+  if (!isEdit) {
+    if (!email && !phone && !guardianEmail && !guardianPhone) {
+      errors.push("Provide at least a direct or guardian email / phone number.");
+    }
+  } else if (("email" in payload || "phone" in payload || "guardian_email" in payload || "guardian_phone" in payload) && !email && !phone && !guardianEmail && !guardianPhone) {
+    errors.push("Provide at least a direct or guardian email / phone number.");
   }
 
   if (!["LEAD", "ACTIVE", "PAUSED", "INACTIVE", "ALUMNI"].includes(studioStatus)) {
@@ -163,7 +195,11 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
     cleaned: {
       ...splitFullName(fullName),
       email,
+      additional_emails: additionalEmails,
       phone,
+      guardian_name: guardianName,
+      guardian_email: guardianEmail,
+      guardian_phone: guardianPhone,
       timezone,
       studio_status: studioStatus,
       billing_model: billingModel,
@@ -195,7 +231,11 @@ function createStudent(payload) {
     last_name: result.cleaned.last_name,
     full_name: result.cleaned.full_name,
     email: result.cleaned.email,
+    additional_emails: result.cleaned.additional_emails,
     phone: result.cleaned.phone,
+    guardian_name: result.cleaned.guardian_name,
+    guardian_email: result.cleaned.guardian_email,
+    guardian_phone: result.cleaned.guardian_phone,
     timezone: result.cleaned.timezone,
     studio_status: result.cleaned.studio_status,
     billing_model: result.cleaned.billing_model,
@@ -245,7 +285,11 @@ function updateStudent(studentId, payload) {
   }
 
   if ("email" in payload) updates.email = result.cleaned.email;
+  if ("additional_emails" in payload) updates.additional_emails = result.cleaned.additional_emails;
   if ("phone" in payload) updates.phone = result.cleaned.phone;
+  if ("guardian_name" in payload) updates.guardian_name = result.cleaned.guardian_name;
+  if ("guardian_email" in payload) updates.guardian_email = result.cleaned.guardian_email;
+  if ("guardian_phone" in payload) updates.guardian_phone = result.cleaned.guardian_phone;
   if ("timezone" in payload) updates.timezone = result.cleaned.timezone;
   if ("studio_status" in payload) updates.studio_status = result.cleaned.studio_status;
   if ("billing_model" in payload) updates.billing_model = result.cleaned.billing_model;

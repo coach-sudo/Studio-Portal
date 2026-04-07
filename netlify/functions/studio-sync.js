@@ -47,6 +47,13 @@ function getGmailMaxResults() {
   return Math.min(Math.max(value, 1), 100);
 }
 
+function getGmailSyncQuery() {
+  return String(
+    process.env.GMAIL_SYNC_QUERY ||
+    'newer_than:120d ((from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com) OR (subject:booking OR subject:appointment OR subject:"upcoming booking" OR subject:lesson OR subject:session))'
+  ).trim();
+}
+
 function getCalendarSyncWindowDays() {
   return {
     past: 30,
@@ -230,6 +237,7 @@ function normalizeGmailMessage(message) {
   var receivedAtDate = receivedAtRaw ? new Date(receivedAtRaw) : null;
   return {
     id: String(message.id || "").trim(),
+    thread_id: String(message.threadId || "").trim(),
     subject: getHeaderValue(headers, "Subject"),
     from: getHeaderValue(headers, "From"),
     reply_to: getHeaderValue(headers, "Reply-To"),
@@ -264,7 +272,7 @@ async function fetchLiveGmailMessages() {
   var accessToken = await getAccessTokenFromRefreshToken();
   var listUrl = new URL("https://gmail.googleapis.com/gmail/v1/users/me/messages");
   listUrl.searchParams.set("maxResults", String(getGmailMaxResults()));
-  listUrl.searchParams.set("q", "newer_than:90d");
+  listUrl.searchParams.set("q", getGmailSyncQuery());
 
   var payload = await fetchGoogleJson(listUrl.toString(), accessToken);
   var messages = Array.isArray(payload.messages) ? payload.messages : [];

@@ -790,20 +790,35 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
     .map((student) => {
       let score = 0;
       const reasons = [];
-      const studentNameVariants = getNameMatchVariants(student.full_name || "");
+      const studentNameVariants = [
+        ...getNameMatchVariants(student.full_name || ""),
+        ...getNameMatchVariants(student.guardian_name || "")
+      ];
       const exactNameMatch = targetNameVariants.some((variant) => studentNameVariants.includes(variant));
-      const strongNameOverlap = !exactNameMatch && hasStrongNameTokenOverlap(full_name, student.full_name);
-      const emailMatch = targetEmail && String(student.email || "").trim().toLowerCase() === targetEmail;
-      const phoneMatch = targetPhone && normalizePhoneForMatch(student.phone) === targetPhone;
+      const strongNameOverlap = !exactNameMatch && (
+        hasStrongNameTokenOverlap(full_name, student.full_name) ||
+        hasStrongNameTokenOverlap(full_name, student.guardian_name || "")
+      );
+      const studentEmails = [
+        String(student.email || "").trim().toLowerCase(),
+        ...parseStoredEmailList(student.additional_emails || ""),
+        String(student.guardian_email || "").trim().toLowerCase()
+      ].filter(Boolean);
+      const studentPhones = [
+        normalizePhoneForMatch(student.phone),
+        normalizePhoneForMatch(student.guardian_phone)
+      ].filter(Boolean);
+      const emailMatch = targetEmail && studentEmails.includes(targetEmail);
+      const phoneMatch = targetPhone && studentPhones.includes(targetPhone);
 
       if (emailMatch) {
         score += 6;
-        reasons.push("Email match");
+        reasons.push(student.guardian_email && String(student.guardian_email).trim().toLowerCase() === targetEmail ? "Guardian email match" : "Email match");
       }
 
       if (phoneMatch) {
         score += 5;
-        reasons.push("Phone match");
+        reasons.push(student.guardian_phone && normalizePhoneForMatch(student.guardian_phone) === targetPhone ? "Guardian phone match" : "Phone match");
       }
 
       if (exactNameMatch) {
@@ -849,7 +864,10 @@ function buildImportedStudentRowsFromCsvRecords(records) {
     const middleName = getImportedContactValue(record, ["Middle Name"]);
     const lastName = getImportedContactValue(record, ["Last Name"]);
     const fullName = [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
-    const email = getImportedContactValue(record, ["E-mail 1 - Value", "E-mail 2 - Value"]);
+    const primaryEmail = getImportedContactValue(record, ["E-mail 1 - Value"]);
+    const secondaryEmail = getImportedContactValue(record, ["E-mail 2 - Value"]);
+    const email = primaryEmail || secondaryEmail;
+    const additionalEmails = primaryEmail && secondaryEmail && primaryEmail !== secondaryEmail ? secondaryEmail : "";
     const phone = getImportedContactValue(record, ["Phone 1 - Value", "Phone 2 - Value"]);
     const leadSourceInfo = extractImportedLeadSource(record);
     const matches = findPotentialStudentMatches({
@@ -874,6 +892,7 @@ function buildImportedStudentRowsFromCsvRecords(records) {
       source_row_number: index + 2,
       full_name: fullName,
       email,
+      additional_emails: additionalEmails,
       phone,
       lead_source: leadSourceInfo.source,
       lead_source_detail: leadSourceInfo.detail,
@@ -974,7 +993,11 @@ function buildImportedStudentCreatePayload(row) {
   return {
     full_name: row.full_name,
     email: row.email,
+    additional_emails: row.additional_emails || "",
     phone: row.phone,
+    guardian_name: "",
+    guardian_email: "",
+    guardian_phone: "",
     timezone: "",
     studio_status: row.studio_status || "LEAD",
     billing_model: row.billing_model || "PAYG",
@@ -989,7 +1012,15 @@ function buildImportedStudentCreatePayload(row) {
 function buildImportedStudentUpdatePayload(row, existingStudent) {
   const payload = {};
 
-  if (row.email && !existingStudent.email) payload.email = row.email;
+  if (row.email && !existingStudent.email) {
+    payload.email = row.email;
+  } else if (
+    row.email &&
+    String(existingStudent.email || "").trim().toLowerCase() !== String(row.email).trim().toLowerCase() &&
+    !parseStoredEmailList(existingStudent.additional_emails || "").includes(String(row.email).trim().toLowerCase())
+  ) {
+    payload.additional_emails = appendEmailToList(existingStudent.additional_emails || "", row.email);
+  }
   if (row.phone && !existingStudent.phone) payload.phone = row.phone;
   if (row.lead_source && !existingStudent.lead_source) payload.lead_source = row.lead_source;
   if (row.lead_source_detail && !existingStudent.lead_source_detail) payload.lead_source_detail = row.lead_source_detail;
@@ -1572,9 +1603,122 @@ function extractFirstUrl(text) {
   return match ? match[0] : "";
 }
 
+function sanitizeImportedContactText(value) {
+  const htmlNormalized = String(value || "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/div>/gi, "\n")
+    .replace(/<\/p>/gi, "\n");
+
+  return String(stripHtmlForPreview(htmlNormalized) || htmlNormalized)
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\u00a0/g, " ")
+    .replace(/\r\n/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+function extractEmailsFromText(value) {
+  return Array.from(new Set(
+    sanitizeImportedContactText(value)
+      .match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || []
+  )).map((entry) => entry.toLowerCase());
+}
+
+function extractPhonesFromText(value) {
+  return Array.from(new Set(
+    (sanitizeImportedContactText(value).match(/(?:\+?1[\s.-]*)?(?:\(?\d{3}\)?[\s.-]*)\d{3}[\s.-]*\d{4}/g) || [])
+      .map((entry) => entry.trim())
+      .filter(Boolean)
+  ));
+}
+
+function cleanImportedContactName(value) {
+  return sanitizeImportedContactText(value)
+    .replace(/\bEMAIL\b\s*:\s*[^\n\r]+/gi, "")
+    .replace(/\bPHONE\b\s*:\s*[^\n\r]+/gi, "")
+    .replace(/\bPAID ONLINE\b\s*:\s*[^\n\r]+/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function normalizeEmailListForStorage(value) {
+  return Array.from(new Set(
+    String(value || "")
+      .split(/[,\n;]/)
+      .map((entry) => String(entry || "").trim().toLowerCase())
+      .filter(Boolean)
+  )).join(", ");
+}
+
+function parseStoredEmailList(value) {
+  return String(value || "")
+    .split(/[,\n;]/)
+    .map((entry) => String(entry || "").trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function appendEmailToList(existing, nextEmail) {
+  return normalizeEmailListForStorage([
+    ...parseStoredEmailList(existing),
+    String(nextEmail || "").trim().toLowerCase()
+  ].filter(Boolean).join(", "));
+}
+
+function parseImportedContactIdentity(rawName) {
+  const cleanedName = cleanImportedContactName(rawName);
+  const parentheticalMatch = cleanedName.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+
+  if (!parentheticalMatch) {
+    return {
+      student_full_name: cleanedName || "Imported Student",
+      guardian_name: "",
+      display_name: cleanedName || "Imported Student"
+    };
+  }
+
+  const outsideName = String(parentheticalMatch[1] || "").trim();
+  const insideName = String(parentheticalMatch[2] || "").trim();
+  const outsideTokens = outsideName.split(/\s+/).filter(Boolean);
+  const insideTokens = insideName.split(/\s+/).filter(Boolean);
+
+  if (outsideTokens.length >= 2 && insideTokens.length >= 1 && insideTokens.length <= 3) {
+    const inferredStudentName = insideTokens.length === 1
+      ? `${insideTokens[0]} ${outsideTokens[outsideTokens.length - 1]}`
+      : insideName;
+
+    return {
+      student_full_name: inferredStudentName.trim(),
+      guardian_name: outsideName,
+      display_name: `${inferredStudentName.trim()} (guardian: ${outsideName})`
+    };
+  }
+
+  return {
+    student_full_name: cleanedName || "Imported Student",
+    guardian_name: "",
+    display_name: cleanedName || "Imported Student"
+  };
+}
+
+function getImportedLessonContactInfo(lesson) {
+  const rawName = cleanImportedContactName(lesson?.external_contact_name || "");
+  const identity = parseImportedContactIdentity(rawName);
+  const importedEmail = extractEmailsFromText(`${lesson?.external_contact_email || ""}\n${lesson?.external_contact_name || ""}`)[0] || "";
+  const importedPhone = extractPhonesFromText(`${lesson?.external_contact_phone || ""}\n${lesson?.external_contact_name || ""}`)[0] || "";
+
+  return {
+    raw_name: rawName,
+    student_full_name: identity.student_full_name,
+    guardian_name: identity.guardian_name,
+    display_name: identity.display_name,
+    email: importedEmail,
+    phone: importedPhone
+  };
+}
+
 function extractNamedValue(text, label) {
   const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const match = String(text || "").match(new RegExp(`${escapedLabel}\\s*[:=]\\s*([^\\n\\r]+)`, "i"));
+  const match = sanitizeImportedContactText(text).match(new RegExp(`${escapedLabel}\\s*[:=]\\s*([^\\n\\r]+)`, "i"));
   return match ? String(match[1] || "").trim() : "";
 }
 
@@ -1624,84 +1768,86 @@ function inferLessonTopicFromGmailMessage(message) {
 }
 
 function inferExternalContactName(event) {
-  const blob = `${event.title || ""}\n${event.description || ""}`;
+  const blob = sanitizeImportedContactText(`${event.title || ""}\n${event.description || ""}`);
   const explicitName =
     extractNamedValue(blob, "NAME") ||
     extractNamedValue(blob, "Name") ||
     extractNamedValue(blob, "Student Name");
 
-  if (explicitName) return explicitName;
+  if (explicitName) return cleanImportedContactName(explicitName);
 
   const title = String(event.title || "");
   let match = title.match(/^(.+?)\s*:\s*\d+\s*min/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = title.match(/^(.+?)\s+for\s+\d+\s*min/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = title.match(/with\s+(.+?)(?:\s+\(|$)/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
 
   return "";
 }
 
 function inferExternalContactNameFromGmail(message) {
-  const blob = `${message.subject || ""}\n${message.body || ""}`;
+  const blob = sanitizeImportedContactText(`${message.subject || ""}\n${message.body || ""}`);
   const explicitName =
     extractNamedValue(blob, "Student") ||
     extractNamedValue(blob, "NAME") ||
     extractNamedValue(blob, "Name") ||
     extractNamedValue(blob, "Student Name");
 
-  if (explicitName) return explicitName;
+  if (explicitName) return cleanImportedContactName(explicitName);
 
   const subject = String(message.subject || "");
   let match = subject.match(/Student:\s*([^\n\r]+)/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = subject.match(/New Appointment:\s*.+?\(([^)]+)\)\s+on/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = subject.match(/^(.+?)\s*:\s*\d+\s*min/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = subject.match(/^(.+?)\s+for\s+\d+\s*min/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = subject.match(/with\s+(.+?)(?:\s+\(|$)/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = blob.match(/upcoming booking with\s+([^\n\r]+)/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
   match = blob.match(/\bfor\s+([A-Z][A-Za-z'.-]+(?:\s+[A-Z][A-Za-z'.() -]+)+)\b/i);
-  if (match) return String(match[1] || "").trim();
+  if (match) return cleanImportedContactName(match[1] || "");
 
   return "";
 }
 
 function inferExternalContactEmail(event) {
-  const blob = `${event.title || ""}\n${event.description || ""}`;
+  const blob = sanitizeImportedContactText(`${event.title || ""}\n${event.description || ""}`);
   return (
     extractNamedValue(blob, "EMAIL") ||
     extractNamedValue(blob, "Email") ||
     extractNamedValue(blob, "Student Email") ||
-    (String(blob).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [""])[0]
+    extractEmailsFromText(blob)[0] ||
+    ""
   );
 }
 
 function inferExternalContactPhone(event) {
-  const blob = `${event.title || ""}\n${event.description || ""}`;
-  return extractNamedValue(blob, "PHONE") || extractNamedValue(blob, "Phone");
+  const blob = sanitizeImportedContactText(`${event.title || ""}\n${event.description || ""}`);
+  return extractNamedValue(blob, "PHONE") || extractNamedValue(blob, "Phone") || extractPhonesFromText(blob)[0] || "";
 }
 
 function inferExternalContactEmailFromGmail(message) {
   const replyTo = String(message.reply_to || "");
-  const blob = `${message.subject || ""}\n${message.body || ""}\n${replyTo}`;
+  const blob = sanitizeImportedContactText(`${message.subject || ""}\n${message.body || ""}\n${replyTo}`);
   return (
-    (replyTo.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [""])[0] ||
+    extractEmailsFromText(replyTo)[0] ||
     extractNamedValue(blob, "EMAIL") ||
     extractNamedValue(blob, "Email") ||
     extractNamedValue(blob, "Student Email") ||
-    (String(blob).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i) || [""])[0]
+    extractEmailsFromText(blob)[0] ||
+    ""
   );
 }
 
 function inferExternalContactPhoneFromGmail(message) {
-  const blob = `${message.subject || ""}\n${message.body || ""}`;
-  return extractNamedValue(blob, "PHONE") || extractNamedValue(blob, "Phone");
+  const blob = sanitizeImportedContactText(`${message.subject || ""}\n${message.body || ""}`);
+  return extractNamedValue(blob, "PHONE") || extractNamedValue(blob, "Phone") || extractPhonesFromText(blob)[0] || "";
 }
 
 function isLikelyLessonCalendarEvent(event) {
@@ -1855,8 +2001,9 @@ function buildImportedLessonFromCalendarEvent(event) {
   const externalContactName = inferExternalContactName(event);
   const externalContactEmail = inferExternalContactEmail(event);
   const externalContactPhone = inferExternalContactPhone(event);
+  const contactIdentity = parseImportedContactIdentity(externalContactName);
   const matchCandidates = findPotentialStudentMatches({
-    full_name: externalContactName,
+    full_name: contactIdentity.student_full_name,
     email: externalContactEmail,
     phone: externalContactPhone
   });
@@ -1906,8 +2053,9 @@ function buildImportedLessonFromGmailMessage(message) {
   const externalContactName = inferExternalContactNameFromGmail(message);
   const externalContactEmail = inferExternalContactEmailFromGmail(message);
   const externalContactPhone = inferExternalContactPhoneFromGmail(message);
+  const contactIdentity = parseImportedContactIdentity(externalContactName);
   const matchCandidates = findPotentialStudentMatches({
-    full_name: externalContactName,
+    full_name: contactIdentity.student_full_name,
     email: externalContactEmail,
     phone: externalContactPhone
   });
@@ -1976,21 +2124,177 @@ function findLessonByExternalEventId(externalEventId) {
   return getLessonRecords().find((lesson) => String(lesson.external_event_id || "") === String(externalEventId || "")) || null;
 }
 
-function findPotentialExistingLessonFromImportedCandidate(candidate) {
-  const candidateStart = candidate.scheduled_start ? new Date(candidate.scheduled_start) : null;
-  if (!candidateStart || Number.isNaN(candidateStart.getTime())) return null;
+function normalizeIntakeComparableValue(value) {
+  return String(value || "").trim().toLowerCase();
+}
 
-  return getLessonRecords().find((lesson) => {
-    const lessonStart = lesson.scheduled_start ? new Date(lesson.scheduled_start) : null;
-    if (!lessonStart || Number.isNaN(lessonStart.getTime())) return false;
+function getImportedCandidateContactInfo(candidate) {
+  const parsed = parseImportedContactIdentity(candidate?.external_contact_name || "");
+  return {
+    student_full_name: normalizeIntakeComparableValue(parsed.student_full_name),
+    guardian_name: normalizeIntakeComparableValue(parsed.guardian_name),
+    email: normalizeIntakeComparableValue(candidate?.external_contact_email || ""),
+    phone: normalizeIntakeComparableValue(candidate?.external_contact_phone || ""),
+    join_link: normalizeIntakeComparableValue(candidate?.join_link || ""),
+    lesson_type: normalizeIntakeComparableValue(candidate?.lesson_type || ""),
+    topic: normalizeIntakeComparableValue(candidate?.topic || ""),
+    source: normalizeIntakeComparableValue(candidate?.source || ""),
+    external_event_id: normalizeIntakeComparableValue(candidate?.external_event_id || "")
+  };
+}
 
-    const sameStudent = candidate.student_id && lesson.student_id === candidate.student_id;
-    const sameEmail = candidate.external_contact_email && candidate.external_contact_email === lesson.external_contact_email;
-    const sameName = candidate.external_contact_name && candidate.external_contact_name === lesson.external_contact_name;
-    const closeInTime = Math.abs(lessonStart.getTime() - candidateStart.getTime()) <= 30 * 60 * 1000;
+function getExistingLessonContactInfoForIntake(lesson) {
+  const importedContact = getImportedLessonContactInfo(lesson);
+  const student = lesson?.student_id ? getSchemaStudentById(lesson.student_id) : null;
+  const studentEmails = parseStoredEmailList(student?.additional_emails || "");
 
-    return closeInTime && (sameStudent || sameEmail || sameName);
-  }) || null;
+  return {
+    student_full_name: normalizeIntakeComparableValue(importedContact.student_full_name || student?.full_name || ""),
+    guardian_name: normalizeIntakeComparableValue(importedContact.guardian_name || student?.guardian_name || ""),
+    email_values: Array.from(new Set([
+      normalizeIntakeComparableValue(importedContact.email || ""),
+      normalizeIntakeComparableValue(student?.email || ""),
+      normalizeIntakeComparableValue(student?.guardian_email || ""),
+      ...studentEmails.map((entry) => normalizeIntakeComparableValue(entry))
+    ].filter(Boolean))),
+    phone_values: Array.from(new Set([
+      normalizeIntakeComparableValue(importedContact.phone || ""),
+      normalizeIntakeComparableValue(student?.phone || ""),
+      normalizeIntakeComparableValue(student?.guardian_phone || "")
+    ].filter(Boolean))),
+    join_link: normalizeIntakeComparableValue(lesson?.join_link || ""),
+    lesson_type: normalizeIntakeComparableValue(lesson?.lesson_type || ""),
+    topic: normalizeIntakeComparableValue(lesson?.topic || ""),
+    source: normalizeIntakeComparableValue(lesson?.source || ""),
+    external_event_id: normalizeIntakeComparableValue(lesson?.external_event_id || "")
+  };
+}
+
+function getLessonTimeDistanceMinutes(startA, startB) {
+  const dateA = startA ? new Date(startA) : null;
+  const dateB = startB ? new Date(startB) : null;
+  if (!dateA || !dateB || Number.isNaN(dateA.getTime()) || Number.isNaN(dateB.getTime())) return Number.POSITIVE_INFINITY;
+  return Math.abs(dateA.getTime() - dateB.getTime()) / (60 * 1000);
+}
+
+function compareImportedCandidateToExistingLesson(candidate, lesson) {
+  const candidateInfo = getImportedCandidateContactInfo(candidate);
+  const lessonInfo = getExistingLessonContactInfoForIntake(lesson);
+  const reasons = [];
+  let score = 0;
+
+  const timeDistanceMinutes = getLessonTimeDistanceMinutes(candidate?.scheduled_start, lesson?.scheduled_start);
+  const candidateDurationMinutes = getLessonDurationMinutes(candidate?.scheduled_start, candidate?.scheduled_end);
+  const lessonDurationMinutes = getLessonDurationMinutes(lesson?.scheduled_start, lesson?.scheduled_end);
+  const sameExternalRecord = Boolean(candidateInfo.external_event_id && candidateInfo.external_event_id === lessonInfo.external_event_id);
+  const sameStudent = Boolean(candidate?.student_id && lesson?.student_id && candidate.student_id === lesson.student_id);
+  const sameEmail = Boolean(candidateInfo.email && lessonInfo.email_values.includes(candidateInfo.email));
+  const samePhone = Boolean(candidateInfo.phone && lessonInfo.phone_values.includes(candidateInfo.phone));
+  const sameName = Boolean(
+    candidateInfo.student_full_name &&
+    (candidateInfo.student_full_name === lessonInfo.student_full_name || candidateInfo.student_full_name === lessonInfo.guardian_name)
+  );
+  const sameJoinLink = Boolean(candidateInfo.join_link && candidateInfo.join_link === lessonInfo.join_link);
+  const sameLessonType = Boolean(candidateInfo.lesson_type && candidateInfo.lesson_type === lessonInfo.lesson_type);
+  const sameTopic = Boolean(candidateInfo.topic && candidateInfo.topic === lessonInfo.topic);
+  const sameDay = timeDistanceMinutes <= (24 * 60);
+
+  if (sameExternalRecord) {
+    score += 100;
+    reasons.push("same external record");
+  }
+
+  if (sameStudent) {
+    score += 6;
+    reasons.push("same student");
+  }
+
+  if (sameEmail) {
+    score += 5;
+    reasons.push("same email");
+  }
+
+  if (samePhone) {
+    score += 4;
+    reasons.push("same phone");
+  }
+
+  if (sameName) {
+    score += 3;
+    reasons.push("same name");
+  }
+
+  if (timeDistanceMinutes <= 10) {
+    score += 5;
+    reasons.push("same start time");
+  } else if (timeDistanceMinutes <= 30) {
+    score += 3;
+    reasons.push("nearby start time");
+  } else if (timeDistanceMinutes <= 120) {
+    score += 1;
+    reasons.push("same session window");
+  }
+
+  if (candidateDurationMinutes && lessonDurationMinutes && Math.abs(candidateDurationMinutes - lessonDurationMinutes) <= 5) {
+    score += 2;
+    reasons.push("same duration");
+  }
+
+  if (sameJoinLink) {
+    score += 2;
+    reasons.push("same meeting link");
+  }
+
+  if (sameLessonType) {
+    score += 1;
+    reasons.push("same lesson type");
+  }
+
+  if (sameTopic) {
+    score += 1;
+    reasons.push("same topic");
+  }
+
+  if (sameDay && candidateInfo.source && lessonInfo.source && candidateInfo.source !== lessonInfo.source) {
+    score += 1;
+    reasons.push("cross-source confirmation");
+  }
+
+  let relation = "unrelated";
+  if (sameExternalRecord) {
+    relation = "exact";
+  } else if (score >= 10) {
+    relation = "likely_duplicate";
+  } else if (score >= 6) {
+    relation = "possible_duplicate";
+  }
+
+  let confidence = "low";
+  if (relation === "exact" || score >= 12) {
+    confidence = "high";
+  } else if (score >= 7) {
+    confidence = "medium";
+  }
+
+  return {
+    lesson,
+    score,
+    confidence,
+    relation,
+    time_distance_minutes: timeDistanceMinutes,
+    reasons: Array.from(new Set(reasons))
+  };
+}
+
+function findPotentialExistingLessonFromImportedCandidate(candidate, options = {}) {
+  const ignoreLessonId = String(options.ignoreLessonId || "").trim();
+  const comparisons = getLessonRecords()
+    .filter((lesson) => lesson.lesson_id !== ignoreLessonId)
+    .map((lesson) => compareImportedCandidateToExistingLesson(candidate, lesson))
+    .filter((comparison) => comparison.relation !== "unrelated")
+    .sort((left, right) => right.score - left.score);
+
+  return comparisons[0] || null;
 }
 
 function getChangedCalendarFields(existingLesson, candidate) {
@@ -1999,7 +2303,130 @@ function getChangedCalendarFields(existingLesson, candidate) {
   if (existingLesson.scheduled_end !== candidate.scheduled_end) changedFields.push("end time");
   if (String(existingLesson.join_link || "") !== String(candidate.join_link || "")) changedFields.push("meeting link");
   if (String(existingLesson.topic || "") !== String(candidate.topic || "")) changedFields.push("title");
+  if (String(existingLesson.lesson_type || "") !== String(candidate.lesson_type || "")) changedFields.push("lesson type");
+  if (String(existingLesson.location_type || "") !== String(candidate.location_type || "")) changedFields.push("location type");
+  if (String(existingLesson.location_address || "") !== String(candidate.location_address || "")) changedFields.push("location details");
+  if (String(existingLesson.external_contact_name || "") !== String(candidate.external_contact_name || "")) changedFields.push("contact name");
+  if (String(existingLesson.external_contact_email || "") !== String(candidate.external_contact_email || "")) changedFields.push("contact email");
+  if (String(existingLesson.external_contact_phone || "") !== String(candidate.external_contact_phone || "")) changedFields.push("contact phone");
   return changedFields;
+}
+
+function getImportedLessonReviewGuidance(lesson) {
+  const reviewState = normalizeLessonIntakeReviewStateValue(lesson?.intake_review_state, lesson?.source);
+  const syncState = normalizeLessonSyncStateValue(lesson?.sync_state, lesson?.source);
+  const candidateContact = getImportedLessonContactInfo(lesson);
+  const matchCandidates = findPotentialStudentMatches({
+    full_name: candidateContact.student_full_name,
+    email: candidateContact.email,
+    phone: candidateContact.phone
+  });
+  const highConfidenceMatches = matchCandidates.filter((candidate) => candidate.score >= 3);
+  const selectedStudent = lesson?.student_id ? getSchemaStudentById(lesson.student_id) : null;
+  const mergePatch = selectedStudent ? getImportedLessonStudentMergePatch(lesson, selectedStudent) : {};
+  const reasons = [];
+  let priority = "low";
+  let recommendedAction = "confirm";
+  let blocking = false;
+  const crossSourceMatch = findPotentialExistingLessonFromImportedCandidate(lesson, {
+    ignoreLessonId: lesson?.lesson_id || ""
+  });
+
+  if (!lesson?.student_id) {
+    blocking = true;
+    priority = "high";
+    if (highConfidenceMatches.length > 1) {
+      reasons.push(`Multiple possible students (${highConfidenceMatches.length})`);
+      recommendedAction = "match_student";
+    } else if (highConfidenceMatches.length === 1) {
+      reasons.push(`Likely student match found: ${highConfidenceMatches[0].student.full_name}`);
+      recommendedAction = "match_student";
+    } else {
+      reasons.push("No student linked yet");
+      recommendedAction = "create_student";
+    }
+  }
+
+  if (!lesson?.scheduled_start) {
+    blocking = true;
+    priority = "high";
+    reasons.push("Lesson time is missing");
+    recommendedAction = "review";
+  }
+
+  if (!lesson?.scheduled_end) {
+    blocking = true;
+    priority = "high";
+    reasons.push("End time still needs review");
+    recommendedAction = "review";
+  }
+
+  if (lesson?.pending_external_start || lesson?.pending_external_end) {
+    blocking = true;
+    priority = "high";
+    reasons.push("External source changed the lesson timing");
+    recommendedAction = "review_change";
+  }
+
+  if (syncState === "UPDATED_EXTERNALLY" || syncState === "NEEDS_REVIEW") {
+    priority = priority === "high" ? "high" : "medium";
+    reasons.push("Sync needs manual verification");
+    if (!blocking) recommendedAction = "review";
+  }
+
+  if (lesson?.source === "gmail" && crossSourceMatch?.lesson?.source && crossSourceMatch.lesson.source !== lesson.source) {
+    reasons.push(`Cross-check against ${getLessonSourceLabel(crossSourceMatch.lesson.source)} import`);
+    if (!blocking && recommendedAction === "confirm") recommendedAction = "review";
+  }
+
+  if (Object.keys(mergePatch).length) {
+    reasons.push(`Student record can be enriched (${getImportedLessonStudentMergeSummary(mergePatch).join(", ")})`);
+    if (!blocking && recommendedAction === "confirm") recommendedAction = "pull_contact";
+  }
+
+  if (reviewState === "UNREVIEWED" && !reasons.length) {
+    reasons.push("Imported lesson is ready for final confirmation");
+  }
+
+  if (reviewState === "CONFIRMED" && !reasons.length) {
+    reasons.push("Already confirmed");
+    recommendedAction = "open";
+  }
+
+  if (reviewState === "IGNORED") {
+    reasons.push("Ignored from active intake");
+    recommendedAction = "open";
+  }
+
+  const priorityLabelMap = {
+    high: "High Priority",
+    medium: "Review Soon",
+    low: "Ready"
+  };
+  const priorityBadgeMap = {
+    high: "bg-burgundy/10 text-burgundy",
+    medium: "bg-gold/15 text-warmblack",
+    low: "bg-sage/10 text-sage"
+  };
+  const actionLabelMap = {
+    confirm: "Confirm Intake",
+    create_student: "Create Student",
+    match_student: "Match Student",
+    review: "Review Details",
+    review_change: "Review Change",
+    pull_contact: "Pull Contact",
+    open: "Open Lesson"
+  };
+
+  return {
+    reasons: Array.from(new Set(reasons)),
+    blocking,
+    priority,
+    priority_label: priorityLabelMap[priority],
+    priority_badge: priorityBadgeMap[priority],
+    recommended_action: recommendedAction,
+    recommended_action_label: actionLabelMap[recommendedAction] || "Review"
+  };
 }
 
 function processGoogleCalendarImportFeed(feed = []) {
@@ -2031,6 +2458,46 @@ function processGoogleCalendarImportFeed(feed = []) {
     const existingLesson = findLessonByExternalEventId(event.id);
 
     if (!existingLesson) {
+      const relatedLesson = findPotentialExistingLessonFromImportedCandidate(candidate);
+
+      if (relatedLesson?.relation === "likely_duplicate") {
+        const matchedLesson = relatedLesson.lesson;
+        const sameTiming = matchedLesson.scheduled_start === candidate.scheduled_start && matchedLesson.scheduled_end === candidate.scheduled_end;
+        const preservedConfirmed = normalizeLessonIntakeReviewStateValue(matchedLesson.intake_review_state, matchedLesson.source) === "CONFIRMED" && sameTiming;
+        const result = updateLesson(matchedLesson.lesson_id, {
+          source: "google_calendar",
+          external_event_id: candidate.external_event_id,
+          source_calendar_id: candidate.source_calendar_id,
+          external_platform_hint: candidate.external_platform_hint,
+          external_event_title: candidate.external_event_title,
+          external_contact_name: candidate.external_contact_name || matchedLesson.external_contact_name || "",
+          external_contact_email: candidate.external_contact_email || matchedLesson.external_contact_email || "",
+          external_contact_phone: candidate.external_contact_phone || matchedLesson.external_contact_phone || "",
+          last_synced_at: nowIso,
+          external_updated_at: event.updated_at || nowIso,
+          sync_state: sameTiming ? "SYNCED" : "UPDATED_EXTERNALLY",
+          intake_review_state: preservedConfirmed ? "CONFIRMED" : sameTiming ? "UNREVIEWED" : "NEEDS_ATTENTION",
+          intake_conflict_note: preservedConfirmed ? "" : sameTiming
+            ? `Google Calendar matched this lesson with high confidence (${relatedLesson.reasons.join(", ")}). Confirm once before relying on it.`
+            : `Google Calendar likely matches this lesson (${relatedLesson.reasons.join(", ")}), but timing/details changed. Review before trusting it.`,
+          pending_external_start: sameTiming ? "" : candidate.scheduled_start,
+          pending_external_end: sameTiming ? "" : candidate.scheduled_end,
+          student_id: matchedLesson.student_id || candidate.student_id || matchedLesson.student_id
+        });
+
+        if (result && result.ok) {
+          flaggedCount += 1;
+        } else {
+          skippedCount += 1;
+        }
+        return;
+      }
+
+      if (relatedLesson?.relation === "possible_duplicate") {
+        candidate.intake_review_state = "NEEDS_ATTENTION";
+        candidate.intake_conflict_note = `Possible duplicate of ${relatedLesson.lesson.lesson_id} (${relatedLesson.reasons.join(", ")}). Review before keeping both lesson records.`;
+      }
+
       const result = createLesson({
         ...candidate,
         imported_at: nowIso,
@@ -2059,7 +2526,8 @@ function processGoogleCalendarImportFeed(feed = []) {
         external_contact_name: candidate.external_contact_name,
         external_contact_email: candidate.external_contact_email,
         external_contact_phone: candidate.external_contact_phone,
-        external_platform_hint: candidate.external_platform_hint
+        external_platform_hint: candidate.external_platform_hint,
+        source_calendar_id: candidate.source_calendar_id
       });
 
       if (result && result.ok) {
@@ -2081,7 +2549,9 @@ function processGoogleCalendarImportFeed(feed = []) {
       external_contact_name: candidate.external_contact_name,
       external_contact_email: candidate.external_contact_email,
       external_contact_phone: candidate.external_contact_phone,
-      external_platform_hint: candidate.external_platform_hint
+      external_platform_hint: candidate.external_platform_hint,
+      source_calendar_id: candidate.source_calendar_id,
+      student_id: existingLesson.student_id || candidate.student_id || existingLesson.student_id
     });
 
     if (result && result.ok) {
@@ -2250,16 +2720,23 @@ function processGmailImportFeed(feed = []) {
 
     const overlappingLesson = findPotentialExistingLessonFromImportedCandidate(candidate);
     if (overlappingLesson) {
-      const updateResult = updateLesson(overlappingLesson.lesson_id, {
+      const matchedLesson = overlappingLesson.lesson;
+      const isLikelyDuplicate = overlappingLesson.relation === "likely_duplicate";
+      const preservedConfirmed = normalizeLessonIntakeReviewStateValue(matchedLesson.intake_review_state, matchedLesson.source) === "CONFIRMED" && isLikelyDuplicate;
+      const updateResult = updateLesson(matchedLesson.lesson_id, {
         last_synced_at: nowIso,
         external_updated_at: message.received_at || nowIso,
-        sync_state: "NEEDS_REVIEW",
-        intake_review_state: "NEEDS_ATTENTION",
-        intake_conflict_note: "Gmail lesson confirmation appears to match this lesson. Cross-check against calendar intake before confirming it.",
+        sync_state: isLikelyDuplicate ? "SYNCED" : "NEEDS_REVIEW",
+        intake_review_state: preservedConfirmed ? "CONFIRMED" : isLikelyDuplicate ? "UNREVIEWED" : "NEEDS_ATTENTION",
+        intake_conflict_note: preservedConfirmed ? "" : isLikelyDuplicate
+          ? `Gmail confirmation likely matches this lesson (${overlappingLesson.reasons.join(", ")}). Confirm once before relying on it.`
+          : `Gmail confirmation may match this lesson (${overlappingLesson.reasons.join(", ")}). Review before keeping both records.`,
         external_platform_hint: candidate.external_platform_hint,
-        external_contact_name: candidate.external_contact_name || overlappingLesson.external_contact_name || "",
-        external_contact_email: candidate.external_contact_email || overlappingLesson.external_contact_email || "",
-        external_contact_phone: candidate.external_contact_phone || overlappingLesson.external_contact_phone || ""
+        external_contact_name: candidate.external_contact_name || matchedLesson.external_contact_name || "",
+        external_contact_email: candidate.external_contact_email || matchedLesson.external_contact_email || "",
+        external_contact_phone: candidate.external_contact_phone || matchedLesson.external_contact_phone || "",
+        join_link: matchedLesson.join_link || candidate.join_link || "",
+        student_id: matchedLesson.student_id || candidate.student_id || matchedLesson.student_id
       });
 
       if (updateResult && updateResult.ok) {
@@ -2272,6 +2749,7 @@ function processGmailImportFeed(feed = []) {
 
     const createResult = createLesson({
       ...candidate,
+      intake_review_state: candidate.student_id && candidate.scheduled_end ? "UNREVIEWED" : "NEEDS_ATTENTION",
       imported_at: nowIso,
       last_synced_at: nowIso
     });
@@ -2454,17 +2932,26 @@ function saveGoogleConnectionSettings(event) {
 function createStudentFromImportedLesson(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
+  const contact = getImportedLessonContactInfo(lesson);
 
   const payload = {
-    full_name: lesson.external_contact_name || "Imported Student",
-    email: lesson.external_contact_email || "",
-    phone: lesson.external_contact_phone || "",
+    full_name: contact.student_full_name || "Imported Student",
+    email: contact.guardian_name ? "" : contact.email,
+    additional_emails: "",
+    phone: contact.guardian_name ? "" : contact.phone,
+    guardian_name: contact.guardian_name || "",
+    guardian_email: contact.guardian_name ? contact.email : "",
+    guardian_phone: contact.guardian_name ? contact.phone : "",
     timezone: "America/New_York",
     studio_status: "INACTIVE",
     billing_model: "PAYG",
     booking_behavior: "SELF_BOOKING",
     lead_source: getLeadSourceFromImportedLesson(lesson),
-    lead_source_detail: lesson.source === "google_calendar" ? "Created from Google Calendar intake" : "",
+    lead_source_detail: lesson.source === "google_calendar"
+      ? `Created from Google Calendar intake${contact.guardian_name ? ` · Guardian contact: ${contact.guardian_name}` : ""}`
+      : contact.guardian_name
+        ? `Created from intake · Guardian contact: ${contact.guardian_name}`
+        : "",
     focus_area: "",
     actor_page_eligible: false
   };
@@ -2499,6 +2986,7 @@ function getImportedLessonStudentMergePatch(lesson, student) {
   if (!lesson || !student) return {};
 
   const patch = {};
+  const contact = getImportedLessonContactInfo(lesson);
   const importedLeadSource = getLeadSourceFromImportedLesson(lesson);
   const importedLeadDetail = lesson.source === "gmail_assist"
     ? "Matched from Gmail-assisted intake"
@@ -2508,12 +2996,39 @@ function getImportedLessonStudentMergePatch(lesson, student) {
         ? `Matched from ${getImportedLessonPlatformLabel(lesson.external_platform_hint)} intake`
         : "";
 
-  if (!String(student.email || "").trim() && String(lesson.external_contact_email || "").trim()) {
-    patch.email = String(lesson.external_contact_email).trim();
-  }
+  if (contact.guardian_name) {
+    if (!String(student.guardian_name || "").trim()) {
+      patch.guardian_name = contact.guardian_name;
+    }
+    if (contact.email) {
+      if (!String(student.guardian_email || "").trim()) {
+        patch.guardian_email = contact.email;
+      } else if (
+        String(student.guardian_email || "").trim().toLowerCase() !== contact.email.toLowerCase() &&
+        !parseStoredEmailList(student.additional_emails || "").includes(contact.email.toLowerCase()) &&
+        String(student.email || "").trim().toLowerCase() !== contact.email.toLowerCase()
+      ) {
+        patch.additional_emails = appendEmailToList(student.additional_emails || "", contact.email);
+      }
+    }
+    if (contact.phone && !String(student.guardian_phone || "").trim()) {
+      patch.guardian_phone = contact.phone;
+    }
+  } else {
+    if (contact.email) {
+      if (!String(student.email || "").trim()) {
+        patch.email = contact.email;
+      } else if (
+        String(student.email || "").trim().toLowerCase() !== contact.email.toLowerCase() &&
+        !parseStoredEmailList(student.additional_emails || "").includes(contact.email.toLowerCase())
+      ) {
+        patch.additional_emails = appendEmailToList(student.additional_emails || "", contact.email);
+      }
+    }
 
-  if (!String(student.phone || "").trim() && String(lesson.external_contact_phone || "").trim()) {
-    patch.phone = String(lesson.external_contact_phone).trim();
+    if (contact.phone && !String(student.phone || "").trim()) {
+      patch.phone = contact.phone;
+    }
   }
 
   if (!String(student.lead_source || "").trim() && importedLeadSource) {
@@ -2530,7 +3045,11 @@ function getImportedLessonStudentMergePatch(lesson, student) {
 function getImportedLessonStudentMergeSummary(patch) {
   const updates = [];
   if (patch.email) updates.push("email");
+  if (patch.additional_emails) updates.push("additional emails");
   if (patch.phone) updates.push("phone");
+  if (patch.guardian_name) updates.push("guardian name");
+  if (patch.guardian_email) updates.push("guardian email");
+  if (patch.guardian_phone) updates.push("guardian phone");
   if (patch.lead_source) updates.push("lead source");
   if (patch.lead_source_detail && !patch.lead_source) updates.push("lead source detail");
   return updates;
@@ -2664,11 +3183,12 @@ function openScheduleStudentMatchModal(lessonId) {
   if (!lesson) return;
 
   closeScheduleStudentMatchModal();
+  const contact = getImportedLessonContactInfo(lesson);
 
   const candidates = findPotentialStudentMatches({
-    full_name: lesson.external_contact_name || "",
-    email: lesson.external_contact_email || "",
-    phone: lesson.external_contact_phone || ""
+    full_name: contact.student_full_name || "",
+    email: contact.email || "",
+    phone: contact.phone || ""
   });
   const recommendedStudentId = candidates.find((candidate) => candidate.merge_ready)?.student?.student_id || candidates[0]?.student?.student_id || "";
 
@@ -2687,8 +3207,8 @@ function openScheduleStudentMatchModal(lessonId) {
 
       <div class="space-y-4">
         <div class="rounded-2xl border border-cream bg-parchment p-4">
-          <p class="text-sm font-semibold text-warmblack">${escapeHtml(lesson.external_contact_name || lesson.external_event_title || "Imported Lesson")}</p>
-          <p class="text-xs text-warmgray mt-1">${escapeHtml(lesson.external_contact_email || "No email detected")} ${lesson.external_contact_phone ? `· ${escapeHtml(lesson.external_contact_phone)}` : ""}</p>
+          <p class="text-sm font-semibold text-warmblack">${escapeHtml(contact.display_name || lesson.external_event_title || "Imported Lesson")}</p>
+          <p class="text-xs text-warmgray mt-1">${escapeHtml(contact.email || "No email detected")} ${contact.phone ? `· ${escapeHtml(contact.phone)}` : ""}</p>
           <p class="text-xs text-warmgray mt-2">Source · ${escapeHtml(getLessonSourceLabel(lesson.source))}${lesson.external_platform_hint ? ` · ${escapeHtml(getImportedLessonPlatformLabel(lesson.external_platform_hint))}` : ""}</p>
         </div>
 
@@ -6528,7 +7048,10 @@ function filterStudents() {
         s.focus.toLowerCase().includes(query) ||
         getStudentLeadSourceLabel(s.leadSource).toLowerCase().includes(query) ||
         (s.leadSourceDetail && s.leadSourceDetail.toLowerCase().includes(query)) ||
-        (s.email && s.email.toLowerCase().includes(query))
+        (s.email && s.email.toLowerCase().includes(query)) ||
+        (s.additionalEmails && s.additionalEmails.toLowerCase().includes(query)) ||
+        (s.guardianName && s.guardianName.toLowerCase().includes(query)) ||
+        (s.guardianEmail && s.guardianEmail.toLowerCase().includes(query))
     );
   }
 
@@ -6974,6 +7497,7 @@ function getScheduleIntakeRows() {
       const isUpcoming = lessonDate && !Number.isNaN(lessonDate.getTime()) ? lessonDate >= APP_NOW : false;
       const reviewState = normalizeLessonIntakeReviewStateValue(lesson.intake_review_state, lesson.source);
       const syncState = normalizeLessonSyncStateValue(lesson.sync_state, lesson.source);
+      const reviewGuidance = getImportedLessonReviewGuidance(lesson);
 
       return {
         lesson_id: lesson.lesson_id,
@@ -7010,11 +7534,25 @@ function getScheduleIntakeRows() {
         operational_status_badge: formatLessonStatusBadge(getEffectiveLessonStatus(lesson)),
         timing_key: isUpcoming ? "upcoming" : "past",
         action_required: isLessonIntakeActionRequired(lesson),
+        review_priority: reviewGuidance.priority,
+        review_priority_label: reviewGuidance.priority_label,
+        review_priority_badge: reviewGuidance.priority_badge,
+        review_reasons: reviewGuidance.reasons,
+        recommended_action: reviewGuidance.recommended_action,
+        recommended_action_label: reviewGuidance.recommended_action_label,
+        review_blocking: reviewGuidance.blocking,
         sort_time: lessonDate && !Number.isNaN(lessonDate.getTime()) ? lessonDate.getTime() : 0
       };
     })
     .sort((a, b) => {
+      const priorityWeight = { high: 0, medium: 1, low: 2 };
       if (a.timing_key === b.timing_key) {
+        if (a.action_required !== b.action_required) {
+          return a.action_required ? -1 : 1;
+        }
+        if (a.review_priority !== b.review_priority) {
+          return (priorityWeight[a.review_priority] ?? 99) - (priorityWeight[b.review_priority] ?? 99);
+        }
         return a.timing_key === "upcoming" ? a.sort_time - b.sort_time : b.sort_time - a.sort_time;
       }
 
@@ -7054,7 +7592,9 @@ function getFilteredScheduleIntakeRows() {
       row.topic.toLowerCase().includes(query) ||
       row.lesson_type.toLowerCase().includes(query) ||
       row.lesson_id.toLowerCase().includes(query) ||
-      row.external_event_id.toLowerCase().includes(query)
+      row.external_event_id.toLowerCase().includes(query) ||
+      row.review_reasons.some((reason) => reason.toLowerCase().includes(query)) ||
+      row.recommended_action_label.toLowerCase().includes(query)
     );
   }
 
@@ -7431,10 +7971,20 @@ function renderScheduleCalendarView() {
 function confirmScheduleIntake(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
+  const reviewGuidance = getImportedLessonReviewGuidance(lesson);
   if (!lesson.student_id) {
     notifyUser({
       title: "Schedule Intake",
       message: "Match this imported event to a student before confirming it.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+  if (reviewGuidance.blocking) {
+    notifyUser({
+      title: "Schedule Intake",
+      message: reviewGuidance.reasons[0] || "This imported lesson still needs review before it can be confirmed.",
       tone: "error",
       source: "schedule"
     });
@@ -7523,18 +8073,20 @@ function renderScheduleResults() {
 
   if (countEl) {
     const actionCount = rows.filter((row) => row.action_required).length;
-    countEl.textContent = `${rows.length} imported lesson${rows.length === 1 ? "" : "s"} shown${actionCount ? ` · ${actionCount} action needed` : ""}`;
+    const highPriorityCount = rows.filter((row) => row.review_priority === "high").length;
+    countEl.textContent = `${rows.length} imported lesson${rows.length === 1 ? "" : "s"} shown${actionCount ? ` · ${actionCount} action needed` : ""}${highPriorityCount ? ` · ${highPriorityCount} high priority` : ""}`;
   }
 
   resultsEl.innerHTML = `
     <div class="bg-white rounded-2xl border border-cream overflow-hidden">
       <div class="overflow-x-auto">
-        <table class="w-full min-w-[1240px] text-sm">
+        <table class="w-full min-w-[1380px] text-sm">
           <thead class="bg-parchment/70">
             <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
               <th class="px-5 py-3 font-medium">When</th>
               <th class="px-5 py-3 font-medium">Student</th>
               <th class="px-5 py-3 font-medium">Lesson</th>
+              <th class="px-5 py-3 font-medium">Review Guidance</th>
               <th class="px-5 py-3 font-medium">Operational Status</th>
               <th class="px-5 py-3 font-medium">Intake Review</th>
               <th class="px-5 py-3 font-medium">Sync</th>
@@ -7592,6 +8144,15 @@ function renderScheduleResults() {
                         }
                       </td>
                       <td class="px-5 py-4 align-top">
+                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.review_priority_badge}">
+                          ${escapeHtml(row.review_priority_label)}
+                        </span>
+                        <div class="text-xs text-warmgray mt-2">${escapeHtml(row.recommended_action_label)}</div>
+                        <div class="space-y-1 mt-2">
+                          ${row.review_reasons.slice(0, 3).map((reason) => `<div class="text-xs text-warmgray wrap-anywhere">${escapeHtml(reason)}</div>`).join("")}
+                        </div>
+                      </td>
+                      <td class="px-5 py-4 align-top">
                         <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.operational_status_badge}">
                           ${escapeHtml(row.operational_status_label)}
                         </span>
@@ -7625,32 +8186,40 @@ function renderScheduleResults() {
                             class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack card-hover"
                             onclick="openLessonDetailModal('${row.lesson_id}')"
                           >
-                            Review
+                            ${row.review_blocking ? "Review Intake" : "Open Lesson"}
                           </button>
                           ${
                             row.student_id
-                              ? ""
+                              ? row.recommended_action === "pull_contact"
+                                ? `<button
+                                    type="button"
+                                    class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+                                    onclick="pullStudentInfoFromLesson('${row.lesson_id}')"
+                                  >
+                                    Pull Contact
+                                  </button>`
+                                : ""
                               : `<button
                                   type="button"
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                                   onclick="openScheduleStudentMatchModal('${row.lesson_id}')"
                                 >
-                                  Merge Student
+                                  ${row.recommended_action === "match_student" ? "Review Match" : "Merge Student"}
                                 </button>
                                 <button
                                   type="button"
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                                   onclick="createStudentFromImportedLesson('${row.lesson_id}')"
                                 >
-                                  Create New Student
+                                  Create Student
                                 </button>`
                           }
                           <button
                             type="button"
-                            class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+                            class="px-3 py-2 rounded-lg ${row.review_blocking ? "bg-white border border-cream text-warmgray" : "bg-white border border-cream text-warmblack"} text-xs font-medium card-hover"
                             onclick="confirmScheduleIntake('${row.lesson_id}')"
                           >
-                            Confirm
+                            ${row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
                           </button>
                           <button
                             type="button"
@@ -7672,7 +8241,7 @@ function renderScheduleResults() {
                   `).join("")
                 : `
                   <tr>
-                    <td colspan="8" class="px-5 py-12 text-center">
+                    <td colspan="9" class="px-5 py-12 text-center">
                       <div class="flex flex-col items-center justify-center text-warmgray">
                         <i data-lucide="calendar-days" class="w-8 h-8 mb-3 opacity-50"></i>
                         <p class="text-sm font-medium">No imported lessons found</p>
@@ -10023,6 +10592,22 @@ function renderProfilePage() {
                 <span id="profile-phone" class="font-medium text-right">—</span>
               </div>
               <div class="profile-meta-row flex justify-between text-sm gap-4">
+                <span class="text-warmgray">Additional Emails</span>
+                <span id="profile-additional-emails" class="font-medium text-right break-all">—</span>
+              </div>
+              <div class="profile-meta-row flex justify-between text-sm gap-4">
+                <span class="text-warmgray">Guardian / Parent</span>
+                <span id="profile-guardian-name" class="font-medium text-right">—</span>
+              </div>
+              <div class="profile-meta-row flex justify-between text-sm gap-4">
+                <span class="text-warmgray">Guardian Email</span>
+                <span id="profile-guardian-email" class="font-medium text-right break-all">—</span>
+              </div>
+              <div class="profile-meta-row flex justify-between text-sm gap-4">
+                <span class="text-warmgray">Guardian Phone</span>
+                <span id="profile-guardian-phone" class="font-medium text-right">—</span>
+              </div>
+              <div class="profile-meta-row flex justify-between text-sm gap-4">
                 <span class="text-warmgray">Timezone</span>
                 <span id="profile-timezone" class="font-medium text-right">—</span>
               </div>
@@ -10360,6 +10945,18 @@ function populateStudentProfile(studentId) {
   const phoneEl = document.getElementById("profile-phone");
   if (phoneEl) phoneEl.textContent = schemaStudent.phone || "—";
 
+  const additionalEmailsEl = document.getElementById("profile-additional-emails");
+  if (additionalEmailsEl) additionalEmailsEl.textContent = schemaStudent.additional_emails || "—";
+
+  const guardianNameEl = document.getElementById("profile-guardian-name");
+  if (guardianNameEl) guardianNameEl.textContent = schemaStudent.guardian_name || "—";
+
+  const guardianEmailEl = document.getElementById("profile-guardian-email");
+  if (guardianEmailEl) guardianEmailEl.textContent = schemaStudent.guardian_email || "—";
+
+  const guardianPhoneEl = document.getElementById("profile-guardian-phone");
+  if (guardianPhoneEl) guardianPhoneEl.textContent = schemaStudent.guardian_phone || "—";
+
   const timezoneEl = document.getElementById("profile-timezone");
   if (timezoneEl) timezoneEl.textContent = schemaStudent.timezone || "—";
 
@@ -10370,18 +10967,19 @@ function populateStudentProfile(studentId) {
   }
 
   const emailBtn = document.getElementById("profile-email-btn");
+  const bestContactEmail = String(schemaStudent.email || schemaStudent.guardian_email || parseStoredEmailList(schemaStudent.additional_emails || "")[0] || "").trim();
   if (emailBtn) {
-    emailBtn.href = schemaStudent.email ? `mailto:${schemaStudent.email}` : "#";
-    emailBtn.target = schemaStudent.email ? "_blank" : "";
-    emailBtn.rel = schemaStudent.email ? "noopener noreferrer" : "";
-    emailBtn.onclick = schemaStudent.email
+    emailBtn.href = bestContactEmail ? `mailto:${bestContactEmail}` : "#";
+    emailBtn.target = bestContactEmail ? "_blank" : "";
+    emailBtn.rel = bestContactEmail ? "noopener noreferrer" : "";
+    emailBtn.onclick = bestContactEmail
       ? () => {
-          window.open(`mailto:${schemaStudent.email}`, "_blank", "noopener");
+          window.open(`mailto:${bestContactEmail}`, "_blank", "noopener");
           return false;
         }
       : null;
 
-    if (!schemaStudent.email) {
+    if (!bestContactEmail) {
       emailBtn.classList.add("pointer-events-none", "opacity-60");
     } else {
       emailBtn.classList.remove("pointer-events-none", "opacity-60");
@@ -10581,7 +11179,11 @@ function openStudentModal(mode = "create", studentId = null) {
 
     if (form.elements.full_name) form.elements.full_name.value = schemaStudent.full_name || "";
     if (form.elements.email) form.elements.email.value = schemaStudent.email || "";
+    if (form.elements.additional_emails) form.elements.additional_emails.value = schemaStudent.additional_emails || "";
     if (form.elements.phone) form.elements.phone.value = schemaStudent.phone || "";
+    if (form.elements.guardian_name) form.elements.guardian_name.value = schemaStudent.guardian_name || "";
+    if (form.elements.guardian_email) form.elements.guardian_email.value = schemaStudent.guardian_email || "";
+    if (form.elements.guardian_phone) form.elements.guardian_phone.value = schemaStudent.guardian_phone || "";
     if (form.elements.timezone) form.elements.timezone.value = schemaStudent.timezone || "";
     if (form.elements.studio_status) form.elements.studio_status.value = schemaStudent.studio_status || "ACTIVE";
     if (form.elements.billing_model) form.elements.billing_model.value = schemaStudent.billing_model || "PAYG";
@@ -10710,7 +11312,11 @@ function handleStudentFormSubmit(event) {
   const payload = {
     full_name: form.elements.full_name ? form.elements.full_name.value.trim() : "",
     email: form.elements.email ? form.elements.email.value.trim() : "",
+    additional_emails: form.elements.additional_emails ? form.elements.additional_emails.value.trim() : "",
     phone: form.elements.phone ? form.elements.phone.value.trim() : "",
+    guardian_name: form.elements.guardian_name ? form.elements.guardian_name.value.trim() : "",
+    guardian_email: form.elements.guardian_email ? form.elements.guardian_email.value.trim() : "",
+    guardian_phone: form.elements.guardian_phone ? form.elements.guardian_phone.value.trim() : "",
     timezone: form.elements.timezone ? form.elements.timezone.value.trim() : "",
     studio_status: form.elements.studio_status ? form.elements.studio_status.value : "ACTIVE",
     billing_model: form.elements.billing_model ? form.elements.billing_model.value : "PAYG",
@@ -11095,6 +11701,7 @@ function openLessonDetailModal(lessonId) {
   const note = getLessonNoteByLessonId(lessonId);
   const homeworkItems = getHomeworkByLessonId(lessonId);
   const lessonFiles = getLessonFiles(lessonId);
+  const importedContact = getImportedLessonContactInfo(lesson);
   const effectiveStatus = getEffectiveLessonStatus(lesson);
   const paymentStatusLabel = getLessonManualPaymentStatusLabel(lesson.manual_payment_status);
   const paymentStatusClass = getLessonManualPaymentStatusBadge(lesson.manual_payment_status);
@@ -11229,9 +11836,9 @@ function openLessonDetailModal(lessonId) {
                       ${lesson.external_event_id ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">External Event</span> · ${escapeHtml(lesson.external_event_id)}</p>` : ""}
                       ${lesson.source_calendar_id ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Calendar</span> · ${escapeHtml(lesson.source_calendar_id)}</p>` : ""}
                       ${lesson.external_platform_hint ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Platform</span> · ${escapeHtml(getImportedLessonPlatformLabel(lesson.external_platform_hint))}</p>` : ""}
-                      ${lesson.external_contact_name ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Contact</span> · ${escapeHtml(lesson.external_contact_name)}</p>` : ""}
-                      ${lesson.external_contact_email ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Email</span> · ${escapeHtml(lesson.external_contact_email)}</p>` : ""}
-                      ${lesson.external_contact_phone ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Phone</span> · ${escapeHtml(lesson.external_contact_phone)}</p>` : ""}
+                      ${importedContact.raw_name ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Contact</span> · ${escapeHtml(importedContact.display_name)}</p>` : ""}
+                      ${importedContact.email ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Email</span> · ${escapeHtml(importedContact.email)}</p>` : ""}
+                      ${importedContact.phone ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">Imported Phone</span> · ${escapeHtml(importedContact.phone)}</p>` : ""}
                       ${lesson.external_updated_at ? `<p class="text-warmblack wrap-anywhere"><span class="text-warmgray">External Update</span> · ${escapeHtml(formatLastSyncMeta(lesson.external_updated_at))}</p>` : ""}
                       ${lesson.pending_external_start ? `<p class="text-burgundy wrap-anywhere"><span class="text-warmgray">Pending External Time</span> · ${escapeHtml(formatLessonTimeRange(lesson.pending_external_start, lesson.pending_external_end || lesson.pending_external_start))}</p>` : ""}
                       ${lesson.intake_conflict_note ? `<p class="text-burgundy wrap-anywhere">${escapeHtml(lesson.intake_conflict_note)}</p>` : ""}
