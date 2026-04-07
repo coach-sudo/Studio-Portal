@@ -1,4 +1,5 @@
-const APP_NOW = new Date();
+var APP_NOW = window.APP_NOW instanceof Date ? window.APP_NOW : new Date();
+window.APP_NOW = APP_NOW;
 
 function getDashboardGreeting(date = APP_NOW) {
   const hour = date.getHours();

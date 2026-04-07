@@ -3552,6 +3552,13 @@ function addMinutesToIso(isoString, minutes) {
   return date.toISOString();
 }
 
+function getLessonDurationMinutes(startIso, endIso) {
+  const start = startIso ? new Date(startIso) : null;
+  const end = endIso ? new Date(endIso) : null;
+  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) return 0;
+  return Math.round((end.getTime() - start.getTime()) / 60000);
+}
+
 function getDurationFromLesson(lesson) {
   if (!lesson?.scheduled_start || !lesson?.scheduled_end) return "60";
 
@@ -7137,20 +7144,20 @@ function renderStudentsPage() {
         </div>
       </header>
 
-      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.03s">
-        <div class="page-summary-card">
+      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.03s">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Active Students</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.active}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--warm">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Expiring Soon</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.expiring}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Inactive</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.inactive}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact ${summary.importedInactive ? "page-stat-chip--alert" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported to Review</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.importedInactive}</p>
         </div>
@@ -7362,20 +7369,20 @@ function renderLessonsPage() {
         </button>
       </header>
 
-      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.03s">
-        <div class="page-summary-card">
+      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.03s">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Upcoming</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.upcoming}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--good">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Completed This Week</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.completedThisWeek}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact ${summary.intakeReview ? "page-stat-chip--alert" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Needs Intake Review</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.intakeReview}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported Lessons</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.imported}</p>
         </div>
@@ -8404,23 +8411,23 @@ function renderSchedulePage() {
       }
 
       <div class="page-toolbar-sticky">
-      <div class="grid grid-cols-2 xl:grid-cols-4 gap-4 mb-3 fade-in" style="animation-delay:0.03s">
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3 min-w-0">
+      <div class="page-stats-strip mb-3 fade-in" style="animation-delay:0.03s">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "This Month" : "Imported Upcoming"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${currentScheduleView === "calendar" ? allCalendarRows.filter((row) => {
             const start = new Date(row.scheduled_start);
             return start.getMonth() === currentScheduleCalendarMonth.getMonth() && start.getFullYear() === currentScheduleCalendarMonth.getFullYear();
           }).length : upcomingRows.length}</p>
         </div>
-        <div class="rounded-2xl border ${actionRows.length ? "border-burgundy/20 bg-burgundy/5" : "border-cream bg-white"} px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact ${actionRows.length ? "page-stat-chip--alert" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "Needs Intake Review" : "Action Needed"}</p>
           <p class="text-lg font-semibold ${actionRows.length ? "text-burgundy" : "text-warmblack"} mt-1">${actionRows.length}</p>
         </div>
-        <div class="rounded-2xl border border-sage/20 bg-sage/5 px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--good">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "Imported Confirmed" : "Confirmed"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${confirmedRows.length}</p>
         </div>
-        <div class="rounded-2xl border border-gold/20 bg-gold/5 px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--warm">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentScheduleView === "calendar" ? "Imported Total" : "External Changes"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${currentScheduleView === "calendar" ? importedRows.length : externallyUpdatedRows.length}</p>
         </div>
@@ -8795,20 +8802,20 @@ function renderAutomationsPage() {
         </div>
       </header>
 
-      <div class="grid grid-cols-2 xl:grid-cols-5 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3 min-w-0">
+      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Enabled Workflows</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${enabledWorkflows.length}</p>
         </div>
-        <div class="rounded-2xl border ${attentionRows.length ? "border-burgundy/20 bg-burgundy/5" : "border-sage/20 bg-sage/5"} px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact ${attentionRows.length ? "page-stat-chip--alert" : "page-stat-chip--good"}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Attention Now</p>
           <p class="text-lg font-semibold ${attentionRows.length ? "text-burgundy" : "text-warmblack"} mt-1">${attentionRows.length}</p>
         </div>
-        <div class="rounded-2xl border ${notesWorkflow?.signal_count ? "border-gold/20 bg-gold/5" : "border-cream bg-white"} px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact ${notesWorkflow?.signal_count ? "page-stat-chip--warm" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Notes Follow-Up</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${notesWorkflow?.signal_count || 0}</p>
         </div>
-        <div class="rounded-2xl border ${intakeWorkflow?.signal_count || blockedPolicyWorkflow?.signal_count ? "border-blue-200 bg-blue-50" : "border-cream bg-white"} px-4 py-3 min-w-0">
+        <div class="page-stat-chip page-stat-chip--compact ${(intakeWorkflow?.signal_count || blockedPolicyWorkflow?.signal_count) ? "page-stat-chip--warm" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Intake / Policy</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${(intakeWorkflow?.signal_count || 0) + (blockedPolicyWorkflow?.signal_count || 0)}</p>
         </div>
@@ -9106,20 +9113,20 @@ function renderSettingsPage() {
 
       ${getSettingsActionFeedbackMarkup()}
 
-      <div class="grid grid-cols-2 xl:grid-cols-6 gap-4 mb-6 fade-in" style="animation-delay:0.02s">
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Mode</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${escapeHtml(getPersistenceModeLabel(status.mode))}</p>
         </div>
-        <div class="rounded-2xl border ${status.queue_count ? "border-gold/20 bg-gold/5" : "border-sage/20 bg-sage/5"} px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact ${status.queue_count ? "page-stat-chip--warm" : "page-stat-chip--good"}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Changes</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${status.queue_count}</p>
         </div>
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Last Sync</p>
           <p class="text-sm font-semibold text-warmblack mt-1">${escapeHtml(formatLastSyncMeta(status.last_sync_at))}</p>
         </div>
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Status</p>
           <p class="mt-1">
             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getSettingsStatusBadgeClass(status.last_sync_status)}">
@@ -9127,7 +9134,7 @@ function renderSettingsPage() {
             </span>
           </p>
         </div>
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Admin Access</p>
           <p class="mt-1">
             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getAdminSecurityStatusBadgeClass()}">
@@ -9135,11 +9142,11 @@ function renderSettingsPage() {
             </span>
           </p>
         </div>
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Account</p>
           <p class="text-sm font-semibold text-warmblack mt-1 wrap-anywhere">${escapeHtml(backend.google_account_email || "Not set")}</p>
         </div>
-        <div class="rounded-2xl border border-cream bg-white px-4 py-3">
+        <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Intake</p>
           <p class="mt-1 flex flex-wrap gap-1.5">
             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
@@ -9712,17 +9719,17 @@ function renderFinancePage() {
         </div>
       </header>
 
-      <div class="page-summary-grid mb-5 fade-in" style="animation-delay:0.02s">
-        <div class="page-summary-card">
+      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
+        <div class="page-stat-chip page-stat-chip--compact ${summary.outstandingStudents ? "page-stat-chip--alert" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Outstanding Balance</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.outstandingTotal}</p>
           <p class="text-xs text-warmgray mt-1">${summary.outstandingStudents} student${summary.outstandingStudents === 1 ? "" : "s"} with open balances</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--warm">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Pressure</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.packagePressure}</p>
         </div>
-        <div class="page-summary-card">
+        <div class="page-stat-chip page-stat-chip--compact ${summary.pendingPayments ? "page-stat-chip--warm" : ""}">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Payments</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.pendingPayments}</p>
         </div>

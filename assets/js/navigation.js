@@ -70,45 +70,54 @@ function renderCurrentPage() {
   }
 
   updateNavState(currentPage);
+  const pageRenderers = {
+    dashboard: typeof renderDashboardPage === "function" ? renderDashboardPage : null,
+    students: typeof renderStudentsPage === "function" ? renderStudentsPage : null,
+    lessons: typeof renderLessonsPage === "function" ? renderLessonsPage : null,
+    schedule: typeof renderSchedulePage === "function" ? renderSchedulePage : null,
+    automations: typeof renderAutomationsPage === "function" ? renderAutomationsPage : null,
+    finance: typeof renderFinancePage === "function" ? renderFinancePage : null,
+    notes: typeof renderNotesQueuePage === "function" ? renderNotesQueuePage : null,
+    profile: typeof renderProfilePage === "function" ? renderProfilePage : null,
+    public: typeof renderPublicPage === "function" ? renderPublicPage : null,
+    settings: typeof renderSettingsPage === "function" ? renderSettingsPage : null
+  };
 
-  if (currentPage === "dashboard") {
-    renderDashboardPage();
-  }
+  const renderer = pageRenderers[currentPage] || pageRenderers.dashboard;
 
-  if (currentPage === "students") {
-    renderStudentsPage();
-  }
+  try {
+    if (typeof renderer !== "function") {
+      throw new Error(`No renderer is available for "${currentPage}" right now.`);
+    }
 
-  if (currentPage === "lessons") {
-    renderLessonsPage();
-  }
+    renderer();
+  } catch (error) {
+    const root = document.getElementById("page-root");
+    if (root) {
+      root.innerHTML = `
+        <div class="p-4 sm:p-6 xl:p-8 w-full">
+          <div class="page-empty-state">
+            <p class="text-sm font-semibold text-warmblack">This page hit an unexpected error.</p>
+            <p class="text-xs text-warmgray mt-2 wrap-anywhere">${String(error?.message || error || "Unknown page error.")}</p>
+            <div class="mt-4 flex flex-wrap justify-center gap-2">
+              <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('dashboard')">Go to Dashboard</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="renderCurrentPage()">Retry</button>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
-  if (currentPage === "schedule") {
-    renderSchedulePage();
-  }
-
-  if (currentPage === "automations") {
-    renderAutomationsPage();
-  }
-
-  if (currentPage === "finance") {
-    renderFinancePage();
-  }
-
-  if (currentPage === "notes") {
-    renderNotesQueuePage();
-  }
-
-  if (currentPage === "profile") {
-    renderProfilePage();
-  }
-
-  if (currentPage === "public") {
-    renderPublicPage();
-  }
-
-  if (currentPage === "settings") {
-    renderSettingsPage();
+    if (typeof notifyUser === "function") {
+      notifyUser({
+        title: "Page Error",
+        message: `The ${String(currentPage || "current")} page ran into an error: ${String(error?.message || error || "Unknown error")}`,
+        tone: "error",
+        source: "navigation"
+      });
+    } else {
+      console.error(error);
+    }
   }
 
   const mainEl = document.getElementById("page-root");
