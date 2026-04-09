@@ -229,7 +229,8 @@ body {
 .schedule-shell.compact-view,
 .finance-shell.compact-view,
 .settings-shell.compact-view,
-.automation-shell.compact-view {
+.automation-shell.compact-view,
+.todo-shell.compact-view {
   font-size: 0.96rem;
 }
 
@@ -238,7 +239,8 @@ body {
 .schedule-shell.compact-view .page-stats-strip,
 .finance-shell.compact-view .page-stats-strip,
 .settings-shell.compact-view .page-stats-strip,
-.automation-shell.compact-view .page-stats-strip {
+.automation-shell.compact-view .page-stats-strip,
+.todo-shell.compact-view .page-stats-strip {
   gap: 0.5rem;
 }
 
@@ -247,7 +249,8 @@ body {
 .schedule-shell.compact-view .page-stat-chip,
 .finance-shell.compact-view .page-stat-chip,
 .settings-shell.compact-view .page-stat-chip,
-.automation-shell.compact-view .page-stat-chip {
+.automation-shell.compact-view .page-stat-chip,
+.todo-shell.compact-view .page-stat-chip {
   padding: 0.6rem 0.75rem;
   border-radius: 0.8rem;
 }

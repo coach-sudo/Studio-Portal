@@ -161,6 +161,7 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
   const lessonStatus = normalizeLessonStatusValue(("lesson_status" in payload ? payload.lesson_status : currentLesson?.lesson_status) || "SCHEDULED");
   const lessonType = String(("lesson_type" in payload ? payload.lesson_type : currentLesson?.lesson_type) || "").trim();
   const manualPaymentStatus = normalizeLessonManualPaymentStatusValue(("manual_payment_status" in payload ? payload.manual_payment_status : currentLesson?.manual_payment_status) || "");
+  const linkedPackageId = String(("linked_package_id" in payload ? payload.linked_package_id : currentLesson?.linked_package_id) || "").trim();
   const locationType = String(("location_type" in payload ? payload.location_type : currentLesson?.location_type) || "VIRTUAL").trim().toUpperCase();
   const locationAddress = String(("location_address" in payload ? payload.location_address : currentLesson?.location_address) || "").trim();
   const topic = String(("topic" in payload ? payload.topic : currentLesson?.topic) || "").trim();
@@ -220,6 +221,19 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
 
   if (!["VIRTUAL", "IN_PERSON"].includes(locationType)) {
     errors.push("Location must be VIRTUAL or IN_PERSON.");
+  }
+
+  if (linkedPackageId) {
+    if (!studentId) {
+      errors.push("Choose a student before linking a package.");
+    } else {
+      const linkedPackage = getPackageRecords().find((pkg) => pkg.package_id === linkedPackageId);
+      if (!linkedPackage) {
+        errors.push("Linked package was not found.");
+      } else if (linkedPackage.student_id !== studentId) {
+        errors.push("A lesson can only link to a package owned by the same student.");
+      }
+    }
   }
 
   if (locationType === "VIRTUAL" && !joinLink) {
@@ -287,6 +301,7 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
       lesson_status: lessonStatus,
       lesson_type: lessonType,
       manual_payment_status: manualPaymentStatus,
+      linked_package_id: linkedPackageId,
       location_type: locationType,
       location_address: locationAddress,
       topic,
@@ -330,6 +345,7 @@ function createLesson(payload) {
     lesson_status: result.cleaned.lesson_status,
     lesson_type: result.cleaned.lesson_type,
     manual_payment_status: result.cleaned.manual_payment_status,
+    linked_package_id: result.cleaned.linked_package_id,
     location_type: result.cleaned.location_type,
     location_address: result.cleaned.location_address,
     topic: result.cleaned.topic,
@@ -391,6 +407,7 @@ function updateLesson(lessonId, payload) {
   if ("lesson_status" in payload) updates.lesson_status = result.cleaned.lesson_status;
   if ("lesson_type" in payload) updates.lesson_type = result.cleaned.lesson_type;
   if ("manual_payment_status" in payload) updates.manual_payment_status = result.cleaned.manual_payment_status;
+  if ("linked_package_id" in payload) updates.linked_package_id = result.cleaned.linked_package_id;
   if ("location_type" in payload) updates.location_type = result.cleaned.location_type;
   if ("location_address" in payload) updates.location_address = result.cleaned.location_address;
   if ("topic" in payload) updates.topic = result.cleaned.topic;

@@ -41,6 +41,7 @@ const DATA_RECORD_SHAPES = {
     "actual_completion_date",
     "cancellation_type",
     "counts_against_package",
+    "linked_package_id",
     "note_id",
     "join_link",
     "internal_comments",

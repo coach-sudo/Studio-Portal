@@ -101,7 +101,8 @@ function isPackagePressure(pkg) {
   if (!pkg || isPackageArchived(pkg)) return false;
 
   const finance = buildFinanceSummary(pkg.student_id, getSchemaStudentById(pkg.student_id));
-  const expiresOn = pkg.expires_on ? new Date(pkg.expires_on) : null;
+  const effectiveExpiration = buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "";
+  const expiresOn = effectiveExpiration ? new Date(effectiveExpiration) : null;
   const daysUntilExpiry = expiresOn ? Math.ceil((startOfDay(expiresOn) - startOfDay(APP_NOW)) / (1000 * 60 * 60 * 24)) : 999;
 
   return (
@@ -115,8 +116,8 @@ function getExpiringPackagesList() {
   return getPackageRecords()
     .filter(isPackagePressure)
     .sort((a, b) => {
-      const aDate = a.expires_on ? new Date(a.expires_on).getTime() : 0;
-      const bDate = b.expires_on ? new Date(b.expires_on).getTime() : 0;
+      const aDate = (buildStudentPackageAllocation(a.student_id).package_stats[a.package_id]?.effective_expiration || a.expires_on) ? new Date(buildStudentPackageAllocation(a.student_id).package_stats[a.package_id]?.effective_expiration || a.expires_on).getTime() : 0;
+      const bDate = (buildStudentPackageAllocation(b.student_id).package_stats[b.package_id]?.effective_expiration || b.expires_on) ? new Date(buildStudentPackageAllocation(b.student_id).package_stats[b.package_id]?.effective_expiration || b.expires_on).getTime() : 0;
       return aDate - bDate;
     });
 }
@@ -315,9 +316,9 @@ function renderDashboardPage() {
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-6">
         <div class="dashboard-panel min-w-0 bg-white rounded-2xl border border-cream slide-up" style="animation-delay:0.38s">
           <div class="p-5 border-b border-cream">
-            <h3 class="font-display text-lg font-semibold">Reconnect Queue</h3>
+            <h3 class="font-display text-lg font-semibold">Today's Priorities</h3>
           </div>
-          <div id="dashboard-inactive-students" class="dashboard-scroll-list p-3 space-y-2"></div>
+          <div id="dashboard-daily-priorities" class="dashboard-scroll-list p-3 space-y-2"></div>
         </div>
 
         <div class="dashboard-panel xl:col-span-2 min-w-0 bg-white rounded-2xl border border-cream slide-up" style="animation-delay:0.4s">
@@ -493,6 +494,33 @@ function renderDashboardInactiveStudents() {
         <p class="text-[11px] text-warmgray">Last seen: ${student.lastSeen}</p>
       </div>
       <span class="text-xs text-burgundy font-medium shrink-0">Follow up</span>
+    </div>
+  `).join("");
+}
+
+function renderDashboardDailyPriorities() {
+  const container = document.getElementById("dashboard-daily-priorities");
+  if (!container) return;
+
+  const tasks = typeof getDailyTodoItems === "function" ? getDailyTodoItems().slice(0, 6) : [];
+  if (!tasks.length) {
+    container.innerHTML = `<div class="p-4 text-sm text-warmgray">No high-priority tasks right now.</div>`;
+    return;
+  }
+
+  container.innerHTML = tasks.map((task) => `
+    <div class="rounded-xl border border-cream bg-parchment/70 p-3">
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <p class="text-sm font-medium text-warmblack">${escapeHtml(task.title)}</p>
+          <p class="text-[11px] text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "")}</p>
+        </div>
+        <span class="text-[11px] shrink-0 px-2 py-1 rounded-full ${task.priority >= 5 ? "bg-burgundy/10 text-burgundy" : task.priority >= 4 ? "bg-gold/10 text-gold" : "bg-white border border-cream text-warmgray"}">${task.priority >= 5 ? "Urgent" : task.priority >= 4 ? "Priority" : "Queued"}</span>
+      </div>
+      <div class="mt-3 flex flex-wrap gap-2">
+        ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
+        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Check Off</button>
+      </div>
     </div>
   `).join("");
 }
@@ -696,7 +724,7 @@ function renderDashboardExpiringPackages() {
   tbody.innerHTML = packages.map((pkg) => {
     const studentName = getStudentNameById(pkg.student_id);
     const usage = getResolvedPackageUsage(pkg.student_id, pkg);
-    const finance = buildFinanceSummary(pkg.student_id, getSchemaStudentById(pkg.student_id));
+    const remainingBalance = Math.max(0, Number(pkg.package_price || 0) - getPackageLinkedPaidTotal(pkg.package_id));
     const remainingClass = usage.remaining <= 1 ? "text-burgundy" : "text-gold";
 
     return `
@@ -706,8 +734,8 @@ function renderDashboardExpiringPackages() {
         <td class="px-5 py-3">
           <span class="${remainingClass} font-medium">${usage.remaining} ${usage.remaining === 1 ? "session" : "sessions"}</span>
         </td>
-        <td class="px-5 py-3 ${finance.remainingAmount > 0 ? "text-burgundy font-medium" : "text-sage font-medium"}">${formatCurrency(finance.remainingAmount)}</td>
-        <td class="px-5 py-3 text-warmgray">${formatMonthDay(pkg.expires_on)}</td>
+        <td class="px-5 py-3 ${remainingBalance > 0 ? "text-burgundy font-medium" : "text-sage font-medium"}">${formatCurrency(remainingBalance)}</td>
+        <td class="px-5 py-3 text-warmgray">${formatMonthDay(buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on)}</td>
         <td class="px-5 py-3">
           <button class="text-xs text-gold font-medium hover:underline" onclick="navigateTo('finance')">Review</button>
         </td>
@@ -720,7 +748,7 @@ function renderDashboard() {
   renderDashboardStats();
   renderDashboardUpcomingLessons();
   renderDashboardOutstandingBalances();
-  renderDashboardInactiveStudents();
+  renderDashboardDailyPriorities();
   renderDashboardNotesAlert();
   renderDashboardRecentNotes();
   renderDashboardExpiringPackages();

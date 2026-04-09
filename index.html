@@ -154,6 +154,15 @@
           <span class="sidebar-label">Schedule</span>
         </button>
 
+        <button
+          onclick="navigateTo('todo')"
+          data-nav="todo"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="list-todo" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">To-Do</span>
+        </button>
+
         <button onclick="openQuickLinkPackages()" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70">
           <i data-lucide="package" class="w-[18px] h-[18px]"></i>
           <span class="sidebar-label">Packages</span>
@@ -426,6 +435,14 @@
               <option value="PAID">Paid</option>
               <option value="UNPAID">Unpaid</option>
             </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Package Link</label>
+            <select name="linked_package_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="">No package link</option>
+            </select>
+            <p id="lesson-package-help" class="text-[11px] text-warmgray mt-1">Package students can link lessons to the active package so sessions, expiry, and balances stay aligned.</p>
           </div>
 
           <div>

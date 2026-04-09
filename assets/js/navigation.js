@@ -75,6 +75,7 @@ function renderCurrentPage() {
     students: typeof renderStudentsPage === "function" ? renderStudentsPage : null,
     lessons: typeof renderLessonsPage === "function" ? renderLessonsPage : null,
     schedule: typeof renderSchedulePage === "function" ? renderSchedulePage : null,
+    todo: typeof renderTodoPage === "function" ? renderTodoPage : null,
     automations: typeof renderAutomationsPage === "function" ? renderAutomationsPage : null,
     finance: typeof renderFinancePage === "function" ? renderFinancePage : null,
     notes: typeof renderNotesQueuePage === "function" ? renderNotesQueuePage : null,

@@ -38,10 +38,14 @@ let editingPaymentId = null;
 let importedStudentRows = [];
 let importedStudentFileName = "";
 let currentStudentFilters = new Set(["all"]);
+let manualTodoItems = [];
+let dismissedTodoIds = [];
 const CALENDAR_SYNC_STORAGE_KEY = "studioPortal.googleCalendarSync";
 const AUTOMATION_SETTINGS_STORAGE_KEY = "studioPortal.automationSettings";
 const UI_PREFERENCES_STORAGE_KEY = "studioPortal.uiPreferences";
 const NOTIFICATION_CENTER_STORAGE_KEY = "studioPortal.notifications";
+const TODO_ITEMS_STORAGE_KEY = "studioPortal.todoItems";
+const TODO_DISMISSED_STORAGE_KEY = "studioPortal.todoDismissed";
 const DEFAULT_CALENDAR_SYNC_STATE = {
   connected: false,
   selected_calendar_id: "primary",
@@ -69,7 +73,8 @@ const DEFAULT_UI_PREFERENCES = {
     lessons: false,
     notes: false,
     finance: false,
-    schedule: false
+    schedule: false,
+    todo: false
   }
 };
 
@@ -114,6 +119,44 @@ function saveNotificationCenterItems() {
     localStorage.setItem(NOTIFICATION_CENTER_STORAGE_KEY, JSON.stringify(notificationCenterItems.slice(0, 30)));
   } catch (error) {
     // Ignore storage issues and keep in-memory notifications.
+  }
+}
+
+function loadManualTodoItems() {
+  try {
+    const raw = localStorage.getItem(TODO_ITEMS_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveManualTodoItems() {
+  try {
+    localStorage.setItem(TODO_ITEMS_STORAGE_KEY, JSON.stringify(manualTodoItems));
+  } catch (error) {
+    // Ignore storage issues and keep in-memory tasks.
+  }
+}
+
+function loadDismissedTodoIds() {
+  try {
+    const raw = localStorage.getItem(TODO_DISMISSED_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (error) {
+    return [];
+  }
+}
+
+function saveDismissedTodoIds() {
+  try {
+    localStorage.setItem(TODO_DISMISSED_STORAGE_KEY, JSON.stringify(dismissedTodoIds));
+  } catch (error) {
+    // Ignore storage issues and keep in-memory task dismissals.
   }
 }
 
@@ -389,6 +432,227 @@ function openNotificationCenter() {
   };
 }
 
+function getManualTodoId() {
+  return `todo-manual-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function buildTodoLinkAction(page, entityId = "") {
+  return { page, entityId: entityId || "" };
+}
+
+function getActiveManualTodoItems() {
+  return manualTodoItems
+    .filter((item) => !item.completed_at && !item.deleted_at)
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at || 0).getTime();
+      const bTime = new Date(b.created_at || 0).getTime();
+      return aTime - bTime;
+    });
+}
+
+function getTomorrowLessonPrepTasks() {
+  const tomorrowStart = startOfLocalDay(addDaysToDate(APP_NOW, 1));
+  const tomorrowEnd = endOfLocalDay(addDaysToDate(APP_NOW, 1));
+
+  return getLessonRecords()
+    .filter((lesson) => getEffectiveLessonStatus(lesson) === "SCHEDULED")
+    .filter((lesson) => {
+      const start = new Date(lesson.scheduled_start || 0);
+      return !Number.isNaN(start.getTime()) && start >= tomorrowStart && start <= tomorrowEnd;
+    })
+    .map((lesson) => ({
+      id: `todo-prep-${lesson.lesson_id}`,
+      type: "auto",
+      title: `Prepare for ${getStudentNameById(lesson.student_id)}`,
+      detail: `${formatLessonDateTime(lesson.scheduled_start)} · ${lesson.topic || lesson.lesson_type || "Lesson"} tomorrow`,
+      due_at: lesson.scheduled_start || "",
+      priority: 2,
+      source: "lessons",
+      action: buildTodoLinkAction("lessons", lesson.lesson_id)
+    }));
+}
+
+function getAutoTodoItems() {
+  const tasks = [];
+  const noteRows = getCompletedLessonsNeedingNotesRows().filter((row) => row.action_required);
+  noteRows.forEach((row) => {
+    tasks.push({
+      id: `todo-note-${row.lesson_id}`,
+      type: "auto",
+      title: `Finish notes for ${getStudentNameById(row.student_id)}`,
+      detail: `${row.lesson_label || "Completed lesson"} still needs follow-up`,
+      due_at: row.due_at || row.lesson_completed_at || "",
+      priority: row.urgency_key === "overdue" ? 5 : row.urgency_key === "due-now" ? 4 : 3,
+      source: "notes",
+      action: buildTodoLinkAction("notes", row.lesson_id)
+    });
+  });
+
+  getStaleDraftNotes(7).forEach((note) => {
+    tasks.push({
+      id: `todo-draft-${note.note_id}`,
+      type: "auto",
+      title: `Clean up draft for ${getStudentNameById(note.student_id)}`,
+      detail: `${note.title || "Untitled note"} has been sitting for ${getNoteAgeInDays(note)} days`,
+      due_at: note.updated_at || note.created_at || "",
+      priority: 3,
+      source: "notes",
+      action: buildTodoLinkAction("notes", note.lesson_id || note.note_id)
+    });
+  });
+
+  getExpiringPackagesList()
+    .filter((pkg) => {
+      const effectiveExpiration = buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "";
+      if (!effectiveExpiration) return false;
+      const diffDays = Math.ceil((startOfLocalDay(new Date(effectiveExpiration)) - startOfLocalDay(APP_NOW)) / (1000 * 60 * 60 * 24));
+      return diffDays <= 7;
+    })
+    .forEach((pkg) => {
+      const finance = buildFinanceSummary(pkg.student_id, getSchemaStudentById(pkg.student_id));
+      tasks.push({
+        id: `todo-package-${pkg.package_id}`,
+        type: "auto",
+        title: `Review package for ${getStudentNameById(pkg.student_id)}`,
+        detail: `${pkg.package_name || "Package"} expires soon${finance.remainingAmount > 0 ? ` · ${formatCurrency(finance.remainingAmount)} still owed` : ""}`,
+        due_at: buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "",
+        priority: finance.remainingAmount > 0 ? 5 : 3,
+        source: "finance",
+        action: buildTodoLinkAction("finance", pkg.package_id)
+      });
+    });
+
+  getScheduleIntakeRows()
+    .filter((row) => row.action_required)
+    .forEach((row) => {
+      tasks.push({
+        id: `todo-intake-${row.lesson_id}`,
+        type: "auto",
+        title: `Review imported lesson for ${row.student_name || row.external_contact_name || "Unknown student"}`,
+        detail: row.recommended_action_label || "Needs attention in intake review",
+        due_at: row.scheduled_start || row.imported_at || "",
+        priority: row.priority_score >= 95 ? 5 : 4,
+        source: "schedule",
+        action: buildTodoLinkAction("schedule", row.lesson_id)
+      });
+    });
+
+  return [
+    ...tasks,
+    ...getTomorrowLessonPrepTasks()
+  ]
+    .filter((task) => !dismissedTodoIds.includes(task.id))
+    .sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority;
+      const aTime = new Date(a.due_at || 0).getTime();
+      const bTime = new Date(b.due_at || 0).getTime();
+      return aTime - bTime;
+    });
+}
+
+function getDailyTodoItems() {
+  const manual = getActiveManualTodoItems().map((item) => ({
+    ...item,
+    priority: 4,
+    type: "manual"
+  }));
+  const auto = getAutoTodoItems();
+  return [...manual, ...auto].sort((a, b) => {
+    if (b.priority !== a.priority) return b.priority - a.priority;
+    const aTime = new Date(a.due_at || a.created_at || 0).getTime();
+    const bTime = new Date(b.due_at || b.created_at || 0).getTime();
+    return aTime - bTime;
+  });
+}
+
+function addManualTodoItem(title) {
+  const cleaned = String(title || "").trim();
+  if (!cleaned) {
+    return { ok: false, errors: ["Enter a task before adding it to your checklist."] };
+  }
+
+  const item = {
+    id: getManualTodoId(),
+    title: cleaned,
+    detail: "",
+    created_at: new Date().toISOString(),
+    completed_at: "",
+    deleted_at: "",
+    source: "manual",
+    action: null
+  };
+  manualTodoItems = [item, ...manualTodoItems];
+  saveManualTodoItems();
+  return { ok: true, item };
+}
+
+function completeTodoItem(taskId) {
+  const manualTask = manualTodoItems.find((item) => item.id === taskId);
+  if (manualTask) {
+    manualTask.completed_at = new Date().toISOString();
+    saveManualTodoItems();
+    return { ok: true };
+  }
+
+  if (!dismissedTodoIds.includes(taskId)) {
+    dismissedTodoIds = [...dismissedTodoIds, taskId];
+    saveDismissedTodoIds();
+  }
+  return { ok: true };
+}
+
+function deleteTodoItem(taskId) {
+  const manualTask = manualTodoItems.find((item) => item.id === taskId);
+  if (manualTask) {
+    manualTask.deleted_at = new Date().toISOString();
+    saveManualTodoItems();
+    return { ok: true };
+  }
+
+  if (!dismissedTodoIds.includes(taskId)) {
+    dismissedTodoIds = [...dismissedTodoIds, taskId];
+    saveDismissedTodoIds();
+  }
+  return { ok: true };
+}
+
+function openTodoTask(taskId) {
+  const task = getDailyTodoItems().find((item) => item.id === taskId);
+  if (!task?.action) return;
+
+  if (task.action.page === "notes" && task.action.entityId) {
+    const noteRow = getCompletedLessonsNeedingNotesRows().find((row) => row.lesson_id === task.action.entityId);
+    if (noteRow) {
+      openNoteWorkspace(noteRow.student_id, noteRow.lesson_id);
+      return;
+    }
+    const directNote = getNoteRecords().find((note) => note.lesson_id === task.action.entityId || note.note_id === task.action.entityId);
+    if (directNote) {
+      openNoteWorkspace(directNote.student_id, directNote.lesson_id);
+      return;
+    }
+  }
+
+  if (task.action.page === "schedule" && task.action.entityId) {
+    currentScheduleView = "intake";
+    navigateTo("schedule");
+    return;
+  }
+
+  if (task.action.page === "finance" && task.action.entityId) {
+    currentFinanceTab = "packages";
+    navigateTo("finance");
+    return;
+  }
+
+  if (task.action.page === "lessons" && task.action.entityId) {
+    openLessonDetailModal(task.action.entityId);
+    return;
+  }
+
+  navigateTo(task.action.page || "dashboard");
+}
+
 function getStatusFilterPill(label, value) {
   return `<span class="page-filter-pill">${escapeHtml(label)} · ${escapeHtml(value)}</span>`;
 }
@@ -597,6 +861,8 @@ function initializeAdminAccess() {
 let automationSettings = loadAutomationSettings();
 let uiPreferences = loadUiPreferences();
 let notificationCenterItems = loadNotificationCenterItems();
+manualTodoItems = loadManualTodoItems();
+dismissedTodoIds = loadDismissedTodoIds();
 let settingsActionMessage = "";
 let settingsActionTone = "warm";
 const ADMIN_AUTH_SETTINGS_STORAGE_KEY = "studioPortal.adminAuthSettings";
@@ -730,6 +996,20 @@ function getStudentLeadSourceLabel(source) {
   };
 
   return labels[normalized] || "Not Tracked";
+}
+
+function getStudioStatusLabel(status) {
+  const normalized = String(status || "").trim().toUpperCase();
+
+  const labels = {
+    LEAD: "Lead",
+    ACTIVE: "Active",
+    PAUSED: "Paused",
+    INACTIVE: "Inactive",
+    ALUMNI: "Alumni"
+  };
+
+  return labels[normalized] || "Unknown";
 }
 
 function normalizePhoneForMatch(phone) {
@@ -950,6 +1230,155 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
       if (a.score !== b.score) return b.score - a.score;
       return a.student.full_name.localeCompare(b.student.full_name);
     });
+}
+
+function getStudentDuplicateCompletenessScore(student) {
+  if (!student) return 0;
+  let score = 0;
+  if (student.email) score += 3;
+  if (student.phone) score += 2;
+  if (student.additional_emails) score += 1;
+  if (student.guardian_name) score += 1;
+  if (student.guardian_email) score += 2;
+  if (student.guardian_phone) score += 1;
+  if (student.focus_area) score += 1;
+  if (student.lead_source) score += 1;
+  if (student.actor_profile_id) score += 1;
+  if (String(student.studio_status || "").toUpperCase() === "ACTIVE") score += 2;
+  return score;
+}
+
+function getCurrentStudentDuplicateRows() {
+  const records = getStudentRecords();
+  const seenPairs = new Set();
+  const rows = [];
+
+  records.forEach((student) => {
+    const matches = findPotentialStudentMatches({
+      full_name: student.full_name || "",
+      email: student.email || student.guardian_email || parseStoredEmailList(student.additional_emails || "")[0] || "",
+      phone: student.phone || student.guardian_phone || ""
+    });
+
+    matches
+      .filter((candidate) => candidate.student.student_id !== student.student_id)
+      .filter((candidate) => candidate.merge_ready || candidate.score >= 10)
+      .forEach((candidate) => {
+        const other = candidate.student;
+        const pairKey = [student.student_id, other.student_id].sort().join("::");
+        if (seenPairs.has(pairKey)) return;
+        seenPairs.add(pairKey);
+
+        const studentScore = getStudentDuplicateCompletenessScore(student);
+        const otherScore = getStudentDuplicateCompletenessScore(other);
+        const primary = otherScore > studentScore ? other : student;
+        const duplicate = primary.student_id === student.student_id ? other : student;
+
+        rows.push({
+          pair_id: pairKey,
+          primary_student_id: primary.student_id,
+          duplicate_student_id: duplicate.student_id,
+          primary_name: primary.full_name || "Unknown Student",
+          duplicate_name: duplicate.full_name || "Unknown Student",
+          reasons: candidate.reasons,
+          score: candidate.score,
+          primary_status: primary.studio_status || "",
+          duplicate_status: duplicate.studio_status || "",
+          primary_email: primary.email || primary.guardian_email || parseStoredEmailList(primary.additional_emails || "")[0] || "",
+          duplicate_email: duplicate.email || duplicate.guardian_email || parseStoredEmailList(duplicate.additional_emails || "")[0] || ""
+        });
+      });
+  });
+
+  return rows.sort((a, b) => {
+    if (a.score !== b.score) return b.score - a.score;
+    return a.primary_name.localeCompare(b.primary_name);
+  });
+}
+
+function getMergedStudentPayload(primaryStudent, duplicateStudent) {
+  const combinedAdditionalEmails = Array.from(new Set([
+    ...parseStoredEmailList(primaryStudent.additional_emails || ""),
+    ...parseStoredEmailList(duplicateStudent.additional_emails || ""),
+    String(primaryStudent.email || "").trim().toLowerCase(),
+    String(primaryStudent.guardian_email || "").trim().toLowerCase(),
+    String(duplicateStudent.email || "").trim().toLowerCase(),
+    String(duplicateStudent.guardian_email || "").trim().toLowerCase()
+  ].filter((email) => email && email !== String(primaryStudent.email || "").trim().toLowerCase() && email !== String(primaryStudent.guardian_email || "").trim().toLowerCase())));
+
+  return {
+    full_name: primaryStudent.full_name || duplicateStudent.full_name || "",
+    email: primaryStudent.email || duplicateStudent.email || "",
+    additional_emails: combinedAdditionalEmails.join(", "),
+    phone: primaryStudent.phone || duplicateStudent.phone || "",
+    guardian_name: primaryStudent.guardian_name || duplicateStudent.guardian_name || "",
+    guardian_email: primaryStudent.guardian_email || duplicateStudent.guardian_email || "",
+    guardian_phone: primaryStudent.guardian_phone || duplicateStudent.guardian_phone || "",
+    timezone: primaryStudent.timezone || duplicateStudent.timezone || "",
+    studio_status: String(primaryStudent.studio_status || "").toUpperCase() === "INACTIVE" && duplicateStudent.studio_status
+      ? duplicateStudent.studio_status
+      : primaryStudent.studio_status || duplicateStudent.studio_status || "ACTIVE",
+    billing_model: primaryStudent.billing_model || duplicateStudent.billing_model || "PAYG",
+    booking_behavior: primaryStudent.booking_behavior || duplicateStudent.booking_behavior || "MIXED",
+    lead_source: primaryStudent.lead_source || duplicateStudent.lead_source || "",
+    lead_source_detail: primaryStudent.lead_source_detail || duplicateStudent.lead_source_detail || "",
+    focus_area: primaryStudent.focus_area || duplicateStudent.focus_area || "",
+    actor_page_eligible: Boolean(primaryStudent.actor_page_eligible || duplicateStudent.actor_page_eligible)
+  };
+}
+
+function mergeStudentRecords(primaryStudentId, duplicateStudentId) {
+  const primary = getSchemaStudentById(primaryStudentId);
+  const duplicate = getSchemaStudentById(duplicateStudentId);
+  if (!primary || !duplicate) {
+    return { ok: false, errors: ["One of the student records could not be found."] };
+  }
+  if (primary.student_id === duplicate.student_id) {
+    return { ok: false, errors: ["Choose two different students to merge."] };
+  }
+
+  const updateResult = updateStudent(primary.student_id, getMergedStudentPayload(primary, duplicate));
+  if (!updateResult || updateResult.ok === false) {
+    return { ok: false, errors: updateResult?.errors || ["Unable to merge the target student record."] };
+  }
+
+  ["lessons", "notes", "homework", "packages", "payments", "files"].forEach((collectionKey) => {
+    studioDataService.list(collectionKey)
+      .filter((record) => record.student_id === duplicate.student_id)
+      .forEach((record) => {
+        const idField = getCollectionIdField(collectionKey);
+        patchRecordById(collectionKey, record[idField], { student_id: primary.student_id });
+      });
+  });
+
+  const primaryActorProfile = getActorProfileRecords().find((record) => record.student_id === primary.student_id) || null;
+  const duplicateActorProfile = getActorProfileRecords().find((record) => record.student_id === duplicate.student_id) || null;
+  if (duplicateActorProfile && !primaryActorProfile) {
+    patchRecordById("actorProfiles", duplicateActorProfile.actor_profile_id, { student_id: primary.student_id });
+    patchRecordById("students", primary.student_id, { actor_profile_id: duplicateActorProfile.actor_profile_id });
+  } else if (duplicateActorProfile && primaryActorProfile) {
+    patchRecordById("actorProfiles", primaryActorProfile.actor_profile_id, {
+      slug: primaryActorProfile.slug || duplicateActorProfile.slug || "",
+      status: primaryActorProfile.status || duplicateActorProfile.status || "",
+      display_name: primaryActorProfile.display_name || duplicateActorProfile.display_name || "",
+      bio: primaryActorProfile.bio || duplicateActorProfile.bio || ""
+    });
+    removeRecordById("actorProfiles", duplicateActorProfile.actor_profile_id);
+    patchRecordById("students", primary.student_id, { actor_profile_id: primaryActorProfile.actor_profile_id });
+  }
+
+  removeRecordById("students", duplicate.student_id);
+
+  if (selectedStudentId === duplicate.student_id) {
+    selectedStudentId = primary.student_id;
+  }
+
+  return {
+    ok: true,
+    primary_student_id: primary.student_id,
+    primary_name: updateResult.student?.full_name || primary.full_name || "Merged Student",
+    duplicate_name: duplicate.full_name || "Duplicate Student"
+  };
 }
 
 function buildImportedStudentRowsFromCsvRecords(records) {
@@ -5403,7 +5832,7 @@ function getCurrentPackageByStudentId(studentId) {
 
   return (
     packages.find((pkg) => String(pkg.status || "").toLowerCase() === "active") ||
-    packages.find((pkg) => Number(pkg.sessions_remaining || 0) > 0) ||
+    packages.find((pkg) => getResolvedPackageUsage(studentId, pkg).remaining > 0) ||
     packages[0]
   );
 }
@@ -5426,6 +5855,99 @@ function getCompletedPackageLessonsCount(studentId) {
   }).length;
 }
 
+function getPackageEligibleLessonsByStudentId(studentId) {
+  return getLessonRecords()
+    .filter((lesson) => lesson.student_id === studentId && lesson.counts_against_package === true)
+    .filter((lesson) => {
+      const status = getEffectiveLessonStatus(lesson);
+      return ["SCHEDULED", "COMPLETED", "LATE_CANCEL", "NO_SHOW"].includes(status);
+    })
+    .slice()
+    .sort((a, b) => {
+      const aTime = new Date(getLessonReferenceDate(a) || a.scheduled_start || 0).getTime();
+      const bTime = new Date(getLessonReferenceDate(b) || b.scheduled_start || 0).getTime();
+      return aTime - bTime;
+    });
+}
+
+function buildStudentPackageAllocation(studentId) {
+  const packages = getPackagesByStudentId(studentId)
+    .filter((pkg) => !isPackageArchived(pkg))
+    .slice()
+    .sort((a, b) => {
+      const aTime = new Date(a.created_at || a.expires_on || 0).getTime();
+      const bTime = new Date(b.created_at || b.expires_on || 0).getTime();
+      return aTime - bTime;
+    });
+
+  const lessons = getPackageEligibleLessonsByStudentId(studentId);
+  const lessonToPackage = {};
+  const packageStats = {};
+
+  packages.forEach((pkg) => {
+    packageStats[pkg.package_id] = {
+      package_id: pkg.package_id,
+      total: Number(pkg.sessions_total || 0),
+      assigned: 0,
+      used: 0,
+      reserved: 0,
+      remaining: Number(pkg.sessions_total || 0),
+      latest_lesson_date: "",
+      effective_expiration: pkg.expires_on || "",
+      lessons: []
+    };
+  });
+
+  const assignLessonToPackage = (lesson, pkg) => {
+    if (!pkg || !packageStats[pkg.package_id]) return false;
+    const stats = packageStats[pkg.package_id];
+    if (stats.assigned >= stats.total && stats.total > 0) return false;
+
+    const status = getEffectiveLessonStatus(lesson);
+    const lessonDate = lesson.scheduled_start || getLessonReferenceDate(lesson) || "";
+    lessonToPackage[lesson.lesson_id] = pkg.package_id;
+    stats.assigned += 1;
+    if (status === "SCHEDULED") {
+      stats.reserved += 1;
+    } else {
+      stats.used += 1;
+    }
+    stats.remaining = Math.max(0, stats.total - stats.assigned);
+    stats.lessons.push(lesson.lesson_id);
+    if (lessonDate && (!stats.latest_lesson_date || new Date(lessonDate) > new Date(stats.latest_lesson_date))) {
+      stats.latest_lesson_date = lessonDate;
+    }
+    const baseExpiration = pkg.expires_on ? new Date(pkg.expires_on) : null;
+    const latestDate = stats.latest_lesson_date ? new Date(stats.latest_lesson_date) : null;
+    if (latestDate && !Number.isNaN(latestDate.getTime())) {
+      if (!baseExpiration || Number.isNaN(baseExpiration.getTime()) || latestDate > baseExpiration) {
+        stats.effective_expiration = latestDate.toISOString();
+      }
+    }
+    return true;
+  };
+
+  lessons.forEach((lesson) => {
+    if (lesson.linked_package_id && packageStats[lesson.linked_package_id]) {
+      assignLessonToPackage(lesson, packages.find((pkg) => pkg.package_id === lesson.linked_package_id));
+    }
+  });
+
+  lessons
+    .filter((lesson) => !lessonToPackage[lesson.lesson_id])
+    .forEach((lesson) => {
+      const nextPackage = packages.find((pkg) => packageStats[pkg.package_id].assigned < packageStats[pkg.package_id].total);
+      if (nextPackage) {
+        assignLessonToPackage(lesson, nextPackage);
+      }
+    });
+
+  return {
+    lesson_to_package: lessonToPackage,
+    package_stats: packageStats
+  };
+}
+
 function getCompletedPaygLessonsCount(studentId) {
   return getLessonRecords().filter((lesson) => {
     return lesson.student_id === studentId && isLessonPaygBillable(lesson);
@@ -5444,26 +5966,36 @@ function getResolvedPackageUsage(studentId, pkg) {
       remaining: 0
     };
   }
-
+  const allocation = buildStudentPackageAllocation(studentId);
+  const stats = allocation.package_stats[pkg.package_id];
   const total = Number(pkg.sessions_total || 0);
   const schemaUsed = Number(pkg.sessions_used || 0);
-  const schemaRemaining = Number(pkg.sessions_remaining || Math.max(total - schemaUsed, 0));
-  const countedCompletedLessons = getCompletedPackageLessonsCount(studentId);
-
-  const used = Math.max(schemaUsed, countedCompletedLessons);
-  const remaining = Math.max(0, Math.min(schemaRemaining, total - used >= 0 ? total - used : schemaRemaining));
+  const used = Math.max(Number(stats?.used || 0), schemaUsed);
+  const reserved = Number(stats?.reserved || 0);
+  const assigned = Math.max(Number(stats?.assigned || 0), used + reserved);
+  const remaining = Math.max(0, total - assigned);
 
   return {
     total,
     used,
+    reserved,
+    assigned,
     remaining
   };
+}
+
+function getPackageEffectiveExpirationLabel(studentId, pkg) {
+  if (!pkg) return "No expiry";
+  const allocation = buildStudentPackageAllocation(studentId);
+  const effectiveExpiration = allocation.package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "";
+  return effectiveExpiration ? formatLongDate(effectiveExpiration) : "No expiry";
 }
 
 function getPackageLinkedPaidTotal(packageId, excludePaymentId = null) {
   return getPaymentRecords().reduce((sum, payment) => {
     if (excludePaymentId && payment.payment_id === excludePaymentId) return sum;
     if (payment.related_package_id !== packageId) return sum;
+    if (isPaymentArchived(payment)) return sum;
     if (!isPaymentCountedAsPaid(payment)) return sum;
     return sum + Number(payment.amount || 0);
   }, 0);
@@ -5474,6 +6006,7 @@ function getUnlinkedPaidTotalByStudentId(studentId, excludePaymentId = null) {
     if (excludePaymentId && payment.payment_id === excludePaymentId) return sum;
     if (payment.student_id !== studentId) return sum;
     if (payment.related_package_id) return sum;
+    if (isPaymentArchived(payment)) return sum;
     if (!isPaymentCountedAsPaid(payment)) return sum;
     return sum + Number(payment.amount || 0);
   }, 0);
@@ -5497,7 +6030,8 @@ function getPackageStatusMeta(studentId, pkg) {
   }
 
   if (pkg.expires_on) {
-    const expires = new Date(pkg.expires_on);
+    const effectiveExpiration = buildStudentPackageAllocation(studentId).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on;
+    const expires = new Date(effectiveExpiration);
     const diffDays = Math.ceil((expires.getTime() - APP_NOW.getTime()) / (1000 * 60 * 60 * 24));
 
     if (diffDays <= 14) {
@@ -5548,31 +6082,36 @@ function getPaymentStatusBadge(status) {
 function buildFinanceSummary(studentId, schemaStudent) {
   const billingModel = String(schemaStudent?.billing_model || "CUSTOM").toUpperCase();
   const pkg = getCurrentPackageByStudentId(studentId);
+  const activePackages = getPackagesByStudentId(studentId).filter((packageRecord) => !isPackageArchived(packageRecord));
   const payments = getPaymentsByStudentId(studentId);
   const packageUsage = getResolvedPackageUsage(studentId, pkg);
   const packageMeta = getPackageStatusMeta(studentId, pkg);
 
   if (billingModel === "PACKAGE") {
-    const owed = Number(pkg?.package_price || 0);
-    const paid = pkg ? getPackageLinkedPaidTotal(pkg.package_id) : 0;
+    const owed = activePackages.reduce((sum, packageRecord) => sum + Number(packageRecord.package_price || 0), 0);
+    const paid = activePackages.reduce((sum, packageRecord) => sum + getPackageLinkedPaidTotal(packageRecord.package_id), 0);
     const remainingAmount = Math.max(0, owed - paid);
     const overpaidAmount = Math.max(0, paid - owed);
+    const effectiveExpirationLabel = pkg ? getPackageEffectiveExpirationLabel(studentId, pkg) : "—";
+    const packageCount = activePackages.length;
 
     return {
       mode: "PACKAGE",
       headline: pkg ? (pkg.package_name || "Package") : "Package Student",
       subline: pkg
-        ? `${packageUsage.remaining} session${packageUsage.remaining === 1 ? "" : "s"} remaining`
+        ? `${packageUsage.remaining} open · ${packageUsage.reserved || 0} scheduled · expires ${effectiveExpirationLabel}${packageCount > 1 ? ` · ${packageCount} active packages` : ""}`
         : "No active package on file",
       badgeLabel: packageMeta.label,
       badgeClass: packageMeta.badge,
       packageInfo: pkg,
+      packageCount,
       packageUsage,
       payments,
       owed,
       paid,
       remainingAmount,
       overpaidAmount,
+      effectiveExpirationLabel,
       defaultLessonRate: 0
     };
   }
@@ -5659,6 +6198,8 @@ function getFinancePackagesRows() {
       const price = Number(pkg.package_price || 0);
       const paid = getPackageLinkedPaidTotal(pkg.package_id);
       const remainingBalance = Math.max(0, price - paid);
+      const effectiveExpirationRaw = buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "";
+      const effectiveExpiration = effectiveExpirationRaw ? formatLongDate(effectiveExpirationRaw) : "No expiry";
 
       return {
         package_id: pkg.package_id,
@@ -5668,11 +6209,14 @@ function getFinancePackagesRows() {
         package_name: pkg.package_name || "Package",
         total: usage.total,
         used: usage.used,
+        reserved: usage.reserved || 0,
         remaining: usage.remaining,
         price,
         paid,
         remaining_balance: remainingBalance,
         expires_on: pkg.expires_on || "",
+        effective_expires_on: effectiveExpirationRaw,
+        effective_expires_label: effectiveExpiration,
         archived_at: pkg.archived_at || "",
         badge: currentFinanceHistoryMode === "history" ? "bg-warmgray/10 text-warmgray" : meta.badge,
         status_label: currentFinanceHistoryMode === "history" ? "Archived" : meta.label,
@@ -5725,8 +6269,8 @@ function getFilteredFinancePackagesRows() {
   }
 
   rows.sort((a, b) => {
-    const aKey = currentFinanceHistoryMode === "history" ? a.archived_at : a.expires_on;
-    const bKey = currentFinanceHistoryMode === "history" ? b.archived_at : b.expires_on;
+    const aKey = currentFinanceHistoryMode === "history" ? a.archived_at : a.effective_expires_on;
+    const bKey = currentFinanceHistoryMode === "history" ? b.archived_at : b.effective_expires_on;
     const aTime = aKey ? new Date(aKey).getTime() : 0;
     const bTime = bKey ? new Date(bKey).getTime() : 0;
     return bTime - aTime;
@@ -6040,7 +6584,7 @@ function syncPackagePricingFields(form) {
   }
 }
 
-function openPackageModal(packageId = null) {
+function openPackageModal(packageId = null, preselectedStudentId = "") {
   editingPackageId = packageId;
   editingPaymentId = null;
 
@@ -6063,8 +6607,8 @@ function openPackageModal(packageId = null) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Student</label>
-            <select name="student_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
-              ${getFinanceStudentOptionsMarkup(pkg?.student_id || "")}
+              <select name="student_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              ${getFinanceStudentOptionsMarkup(pkg?.student_id || preselectedStudentId || selectedStudentId || "")}
             </select>
           </div>
 
@@ -6158,6 +6702,55 @@ function getMaterialLessonOptionsMarkup(studentId, selectedLessonId = "") {
       `)
       .join("")}
   `;
+}
+
+function getLessonPackageOptionsMarkup(studentId = "", selectedPackageId = "") {
+  const resolvedStudentId = String(studentId || "").trim();
+  const packages = getPackagesByStudentId(resolvedStudentId)
+    .filter((pkg) => !isPackageArchived(pkg))
+    .sort((a, b) => {
+      const aTime = a.expires_on ? new Date(a.expires_on).getTime() : 0;
+      const bTime = b.expires_on ? new Date(b.expires_on).getTime() : 0;
+      return aTime - bTime;
+    });
+
+  return `
+    <option value="">No package link</option>
+    ${packages.map((pkg) => `
+      <option value="${pkg.package_id}" ${pkg.package_id === selectedPackageId ? "selected" : ""}>
+        ${escapeHtml(pkg.package_name || pkg.package_id)} · ${escapeHtml(getPackageEffectiveExpirationLabel(pkg.student_id, pkg))}
+      </option>
+    `).join("")}
+  `;
+}
+
+function syncLessonPackageFields(form, selectedPackageId = "") {
+  const targetForm = form || document.getElementById("lesson-form");
+  if (!targetForm || !targetForm.elements.student_id || !targetForm.elements.linked_package_id) return;
+
+  const studentId = String(targetForm.elements.student_id.value || "").trim();
+  const student = studentId ? getSchemaStudentById(studentId) : null;
+  const linkedPackageField = targetForm.elements.linked_package_id;
+  const helpField = document.getElementById("lesson-package-help");
+  const currentPackage = studentId ? getCurrentPackageByStudentId(studentId) : null;
+  const nextSelected = selectedPackageId || linkedPackageField.value || "";
+
+  linkedPackageField.innerHTML = getLessonPackageOptionsMarkup(studentId, nextSelected || currentPackage?.package_id || "");
+
+  if (!nextSelected && currentPackage && String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
+    linkedPackageField.value = currentPackage.package_id;
+  }
+
+  if (helpField) {
+    if (String(student?.billing_model || "").toUpperCase() === "PACKAGE" && currentPackage) {
+      const usage = getResolvedPackageUsage(studentId, currentPackage);
+      helpField.textContent = `${currentPackage.package_name || "Active package"} · ${usage.remaining} session${usage.remaining === 1 ? "" : "s"} still open. Lessons default to this package unless you change it.`;
+    } else if (String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
+      helpField.textContent = "This student is on package billing, but no active package is available yet.";
+    } else {
+      helpField.textContent = "Package students can link lessons to the active package so sessions, expiry, and balances stay aligned.";
+    }
+  }
 }
 
 function getMaterialHomeworkOptionsMarkup(studentId, selectedHomeworkId = "", selectedLessonId = "") {
@@ -6454,7 +7047,7 @@ function openMaterialModal(studentId, fileId = null, defaults = {}) {
   lucide.createIcons();
 }
 
-function openPaymentModal(paymentId = null) {
+function openPaymentModal(paymentId = null, preselectedStudentId = "") {
   editingPaymentId = paymentId;
   editingPackageId = null;
 
@@ -6477,8 +7070,8 @@ function openPaymentModal(paymentId = null) {
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Student</label>
-            <select name="student_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
-              ${getFinanceStudentOptionsMarkup(payment?.student_id || "")}
+              <select name="student_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              ${getFinanceStudentOptionsMarkup(payment?.student_id || preselectedStudentId || selectedStudentId || "")}
             </select>
           </div>
 
@@ -6600,6 +7193,19 @@ function restorePackage(packageId) {
   renderFinancePage();
 }
 
+function deletePackagePermanently(packageId) {
+  const pkg = getPackageById(packageId);
+  if (!pkg) return;
+  removeRecordById("packages", packageId);
+  renderFinancePage();
+  notifyUser({
+    title: "Package Deleted",
+    message: `${pkg.package_name || "The package"} was permanently deleted.`,
+    tone: "success",
+    source: "finance"
+  });
+}
+
 function archivePayment(paymentId) {
   const payment = getPaymentById(paymentId);
   if (!payment) return;
@@ -6616,6 +7222,19 @@ function restorePayment(paymentId) {
     archived_at: null
   });
   renderFinancePage();
+}
+
+function deletePaymentPermanently(paymentId) {
+  const payment = getPaymentById(paymentId);
+  if (!payment) return;
+  removeRecordById("payments", paymentId);
+  renderFinancePage();
+  notifyUser({
+    title: "Payment Deleted",
+    message: "The payment was permanently deleted.",
+    tone: "success",
+    source: "finance"
+  });
 }
 
 function handlePackageFormSubmit(event) {
@@ -7264,6 +7883,10 @@ function renderStudents(list) {
         <span>${s.pkg}</span>
         <span>${s.status !== "inactive" ? s.sessions + " sessions left" : "Last: " + s.lastSeen}</span>
       </div>
+      <div class="mt-3 flex flex-wrap gap-2" onclick="event.stopPropagation()">
+        <button type="button" class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack" onclick="openLessonModal('create', '', '${s.id}')">Add Lesson</button>
+        <button type="button" class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack" onclick="openPackageModal(null, '${s.id}')">Add Package</button>
+      </div>
     `;
 
     grid.appendChild(card);
@@ -7361,14 +7984,109 @@ function setFilter(f) {
   filterStudents();
 }
 
+function openDuplicateStudentsModal() {
+  const duplicateRows = getCurrentStudentDuplicateRows();
+  closeDuplicateStudentsModal();
+
+  const overlay = document.createElement("div");
+  overlay.id = "duplicate-students-modal-overlay";
+  overlay.className = "fixed inset-0 z-[85] bg-black/50 flex items-center justify-center p-4";
+
+  overlay.innerHTML = `
+    <div class="app-modal-shell bg-white rounded-2xl border border-cream w-full max-w-4xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+      <div class="app-modal-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div>
+          <h3 class="font-display text-xl font-bold text-warmblack">Duplicate Review</h3>
+          <p class="text-sm text-warmgray mt-1">Review likely duplicate students and merge them into the best existing record.</p>
+        </div>
+        <button type="button" id="close-duplicate-students-modal" class="self-start text-sm text-warmgray">Close</button>
+      </div>
+
+      <div class="space-y-3">
+        ${
+          duplicateRows.length
+            ? duplicateRows.map((row) => `
+                <div class="rounded-2xl border border-cream bg-parchment/70 p-4">
+                  <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 flex-1 min-w-0">
+                      <div class="rounded-xl bg-white border border-cream p-3">
+                        <p class="text-[11px] uppercase tracking-wider text-sage font-medium mb-1">Keep As Primary</p>
+                        <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.primary_name)}</p>
+                        <p class="text-xs text-warmgray mt-1">${escapeHtml(row.primary_student_id)} · ${escapeHtml(getStudioStatusLabel(row.primary_status || ""))}</p>
+                        <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.primary_email || "No email on file")}</p>
+                      </div>
+                      <div class="rounded-xl bg-white border border-cream p-3">
+                        <p class="text-[11px] uppercase tracking-wider text-burgundy font-medium mb-1">Merge This Record</p>
+                        <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.duplicate_name)}</p>
+                        <p class="text-xs text-warmgray mt-1">${escapeHtml(row.duplicate_student_id)} · ${escapeHtml(getStudioStatusLabel(row.duplicate_status || ""))}</p>
+                        <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.duplicate_email || "No email on file")}</p>
+                      </div>
+                    </div>
+                    <div class="lg:w-56 shrink-0">
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray font-medium mb-2">Why this looks duplicate</p>
+                      <div class="flex flex-wrap gap-1 mb-4">
+                        ${row.reasons.map((reason) => `<span class="inline-flex items-center px-2 py-1 rounded-full bg-white border border-cream text-[11px] text-warmgray">${escapeHtml(reason)}</span>`).join("")}
+                      </div>
+                      <button type="button" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="confirmMergeStudentRecords('${row.primary_student_id}', '${row.duplicate_student_id}')">Merge Into Primary</button>
+                    </div>
+                  </div>
+                </div>
+              `).join("")
+            : `
+              <div class="page-empty-state">
+                <i data-lucide="badge-check" class="w-8 h-8 mb-3 opacity-50"></i>
+                <p class="text-sm font-medium text-warmblack">No duplicate students are flagged right now</p>
+                <p class="text-xs text-warmgray mt-1">When the portal sees strong email, phone, and name overlap, it will surface them here for review.</p>
+              </div>
+            `
+        }
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  const closeBtn = document.getElementById("close-duplicate-students-modal");
+  if (closeBtn) closeBtn.onclick = closeDuplicateStudentsModal;
+  lucide.createIcons();
+}
+
+function closeDuplicateStudentsModal() {
+  const overlay = document.getElementById("duplicate-students-modal-overlay");
+  if (overlay) overlay.remove();
+}
+
+function confirmMergeStudentRecords(primaryStudentId, duplicateStudentId) {
+  const result = mergeStudentRecords(primaryStudentId, duplicateStudentId);
+  if (!result || result.ok === false) {
+    notifyUser({
+      title: "Student Merge",
+      message: (result?.errors || ["Unable to merge these student records."]).join(" "),
+      tone: "error",
+      source: "students"
+    });
+    return;
+  }
+
+  closeDuplicateStudentsModal();
+  renderAppFromSchema();
+  notifyUser({
+    title: "Students Merged",
+    message: `${result.duplicate_name} was merged into ${result.primary_name}.`,
+    tone: "success",
+    source: "students"
+  });
+}
+
 function getStudentsPageSummaryRows() {
   const studentRows = Array.isArray(students) ? students : [];
   const records = getStudentRecords();
+  const duplicates = getCurrentStudentDuplicateRows();
   return {
     active: studentRows.filter((student) => student.status === "active").length,
     expiring: studentRows.filter((student) => student.status === "expiring").length,
     inactive: studentRows.filter((student) => student.status === "inactive").length,
-    importedInactive: records.filter((student) => student.studio_status === "INACTIVE" && student.lead_source).length
+    importedInactive: records.filter((student) => student.studio_status === "INACTIVE" && student.lead_source).length,
+    duplicatePairs: duplicates.length
   };
 }
 
@@ -7403,6 +8121,10 @@ function renderStudentsPage() {
         </div>
 
         <div class="flex flex-wrap gap-2">
+          <button id="review-duplicates-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-semibold flex items-center gap-2 card-hover">
+            <i data-lucide="git-merge" class="w-4 h-4"></i>
+            Review Duplicates${summary.duplicatePairs ? ` (${summary.duplicatePairs})` : ""}
+          </button>
           <button id="import-students-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-semibold flex items-center gap-2 card-hover">
             <i data-lucide="upload" class="w-4 h-4"></i>
             Import CSV
@@ -7431,10 +8153,21 @@ function renderStudentsPage() {
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported to Review</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.importedInactive}</p>
         </div>
+        <div class="page-stat-chip page-stat-chip--compact ${summary.duplicatePairs ? "page-stat-chip--warm" : ""}">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Possible Duplicates</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.duplicatePairs}</p>
+        </div>
       </div>
 
       <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 flex flex-col lg:flex-row lg:items-center gap-4 fade-in" style="animation-delay:0.05s">
-        <div class="flex-1 relative min-w-0">
+        <div class="flex flex-wrap gap-2 shrink-0">
+          <button onclick="setFilter('all')" class="filter-btn active-filter px-3 py-2 rounded-lg text-xs font-medium bg-charcoal text-white transition-all" data-filter="all">All</button>
+          <button onclick="setFilter('active')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="active">Active</button>
+          <button onclick="setFilter('expiring')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="expiring">Expiring</button>
+          <button onclick="setFilter('inactive')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="inactive">Inactive</button>
+        </div>
+
+        <div class="flex-1 relative min-w-0 order-last lg:order-none">
           <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
           <input
             id="student-search"
@@ -7443,13 +8176,6 @@ function renderStudentsPage() {
             class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-parchment border border-cream text-sm placeholder:text-warmgray/60"
             oninput="filterStudents()"
           />
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <button onclick="setFilter('all')" class="filter-btn active-filter px-3 py-2 rounded-lg text-xs font-medium bg-charcoal text-white transition-all" data-filter="all">All</button>
-          <button onclick="setFilter('active')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="active">Active</button>
-          <button onclick="setFilter('expiring')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="expiring">Expiring</button>
-          <button onclick="setFilter('inactive')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="inactive">Inactive</button>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('students')">${getCompactToggleLabel("students")}</button>
@@ -7469,6 +8195,11 @@ function renderStudentsPage() {
   const importStudentsBtn = document.getElementById("import-students-btn");
   if (importStudentsBtn) {
     importStudentsBtn.onclick = openStudentImportModal;
+  }
+
+  const reviewDuplicatesBtn = document.getElementById("review-duplicates-btn");
+  if (reviewDuplicatesBtn) {
+    reviewDuplicatesBtn.onclick = openDuplicateStudentsModal;
   }
 
   refreshStudentFilterButtons();
@@ -9257,6 +9988,142 @@ function renderAutomationsPage() {
   lucide.createIcons();
 }
 
+function handleManualTodoSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const input = form?.elements?.todo_title;
+  const result = addManualTodoItem(input?.value || "");
+  if (!result || result.ok === false) {
+    notifyUser({
+      title: "To-Do Item",
+      message: (result?.errors || ["Unable to add this checklist item."]).join(" "),
+      tone: "error",
+      source: "todo"
+    });
+    return;
+  }
+
+  if (input) input.value = "";
+  renderTodoPage();
+  notifyUser({
+    title: "Checklist Updated",
+    message: "Your task was added to the to-do list.",
+    tone: "success",
+    source: "todo"
+  });
+}
+
+function completeTodoTask(taskId) {
+  completeTodoItem(taskId);
+  if (currentPage === "todo") {
+    renderTodoPage();
+  } else {
+    renderDashboard();
+  }
+}
+
+function deleteTodoTask(taskId) {
+  deleteTodoItem(taskId);
+  if (currentPage === "todo") {
+    renderTodoPage();
+  } else {
+    renderDashboard();
+  }
+}
+
+function renderTodoPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  const compact = isCompactView("todo");
+  const tasks = getDailyTodoItems();
+  const autoTasks = tasks.filter((task) => task.type === "auto");
+  const manualTasks = tasks.filter((task) => task.type === "manual");
+
+  root.innerHTML = `
+    <div class="todo-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
+      <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
+        <div class="min-w-0">
+          <h2 class="font-display text-2xl font-bold text-warmblack">To-Do</h2>
+          <p class="text-sm text-warmgray mt-1">One checklist for daily follow-up, prep, notes, intake review, and your own manual reminders.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('todo')">${getCompactToggleLabel("todo")}</button>
+        </div>
+      </header>
+
+      <div class="page-stats-strip mb-4 fade-in">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--alert">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Top Recommended</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${tasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Automatic</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${autoTasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Manual</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${manualTasks.length}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_360px] gap-6">
+        <div class="space-y-4">
+          <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
+            <div class="dashboard-panel-header p-5 border-b border-cream flex items-center justify-between gap-3">
+              <div>
+                <h3 class="font-display text-lg font-semibold">Recommended for Today</h3>
+                <p class="text-xs text-warmgray mt-1">These stay here until you check them off or delete them.</p>
+              </div>
+            </div>
+            <div class="p-4 space-y-3">
+              ${
+                tasks.length
+                  ? tasks.map((task) => `
+                    <div class="rounded-2xl border border-cream bg-parchment/60 p-4">
+                      <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+                        <div class="min-w-0 flex-1">
+                          <div class="flex flex-wrap items-center gap-2 mb-2">
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${task.priority >= 5 ? "bg-burgundy/10 text-burgundy" : task.priority >= 4 ? "bg-gold/10 text-gold" : "bg-white border border-cream text-warmgray"}">${task.priority >= 5 ? "Urgent" : task.priority >= 4 ? "Priority" : "Queued"}</span>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-white border border-cream text-warmgray">${task.type === "manual" ? "Manual" : "Automatic"}</span>
+                          </div>
+                          <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
+                          <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "Follow up when you're ready.")}</p>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2 shrink-0">
+                          ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
+                          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Check Off</button>
+                          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="deleteTodoTask('${task.id}')">Delete</button>
+                        </div>
+                      </div>
+                    </div>
+                  `).join("")
+                  : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">Nothing pressing right now</p><p class="text-xs text-warmgray mt-1">Automatic reminders and your manual checklist items will show up here.</p></div>`
+              }
+            </div>
+          </div>
+        </div>
+
+        <div class="space-y-4">
+          <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
+              <h3 class="font-display text-lg font-semibold">Add Manual Task</h3>
+            </div>
+            <form id="manual-todo-form" class="p-4 space-y-3">
+              <input name="todo_title" type="text" placeholder="Call parent back, prep headshot notes, follow up on package..." class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              <button type="submit" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Add To Checklist</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  const form = document.getElementById("manual-todo-form");
+  if (form) form.onsubmit = handleManualTodoSubmit;
+  lucide.createIcons();
+}
+
 /*********************************
  * SETTINGS / PERSISTENCE PAGE
  *********************************/
@@ -9809,6 +10676,7 @@ function renderFinanceResults() {
                     <th class="px-5 py-3 font-medium">Paid</th>
                     <th class="px-5 py-3 font-medium">Balance</th>
                     <th class="px-5 py-3 font-medium">Used</th>
+                    <th class="px-5 py-3 font-medium">Scheduled</th>
                     <th class="px-5 py-3 font-medium">Remaining</th>
                     <th class="px-5 py-3 font-medium">${currentFinanceHistoryMode === "history" ? "Archived" : "Expires"}</th>
                     <th class="px-5 py-3 font-medium">Status</th>
@@ -9836,8 +10704,9 @@ function renderFinanceResults() {
                           <td class="px-5 py-4 align-top">${escapeHtml(formatCurrency(row.paid || 0))}</td>
                           <td class="px-5 py-4 align-top ${row.remaining_balance > 0 ? "text-burgundy font-medium" : "text-sage font-medium"}">${escapeHtml(formatCurrency(row.remaining_balance || 0))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(String(row.used))}</td>
+                          <td class="px-5 py-4 align-top">${escapeHtml(String(row.reserved || 0))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(String(row.remaining))}</td>
-                          <td class="px-5 py-4 align-top">${escapeHtml((currentFinanceHistoryMode === "history" ? row.archived_at : row.expires_on) ? formatLongDate(currentFinanceHistoryMode === "history" ? row.archived_at : row.expires_on) : "—")}</td>
+                          <td class="px-5 py-4 align-top">${escapeHtml(currentFinanceHistoryMode === "history" ? ((row.archived_at) ? formatLongDate(row.archived_at) : "—") : (row.effective_expires_label || "—"))}</td>
                           <td class="px-5 py-4 align-top">
                             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.badge}">
                               ${escapeHtml(row.status_label)}
@@ -9854,6 +10723,13 @@ function renderFinanceResults() {
                                       onclick="restorePackage('${row.package_id}')"
                                     >
                                       Restore
+                                    </button>
+                                    <button
+                                      type="button"
+                                      class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-burgundy card-hover"
+                                      onclick="deletePackagePermanently('${row.package_id}')"
+                                    >
+                                      Delete
                                     </button>
                                   `
                                   : `
@@ -9879,7 +10755,7 @@ function renderFinanceResults() {
                       `).join("")
                       : `
                         <tr>
-                          <td colspan="11" class="px-5 py-12 text-center">
+                          <td colspan="12" class="px-5 py-12 text-center">
                               <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
                                 <i data-lucide="package-x" class="w-8 h-8 mb-3 opacity-50"></i>
                                 <p class="text-sm font-medium">No packages found in this view</p>
@@ -9942,6 +10818,13 @@ function renderFinanceResults() {
                                       onclick="restorePayment('${row.payment_id}')"
                                     >
                                       Restore
+                                    </button>
+                                    <button
+                                      type="button"
+                                      class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-burgundy card-hover"
+                                      onclick="deletePaymentPermanently('${row.payment_id}')"
+                                    >
+                                      Delete
                                     </button>
                                   `
                                   : `
@@ -10913,6 +11796,15 @@ function renderProfilePage() {
         </div>
 
         <div class="profile-header-actions flex flex-wrap items-center gap-2">
+          <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">
+            Add Lesson
+          </button>
+          <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
+            Add Package
+          </button>
+          <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
+            Add Payment
+          </button>
           <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
             Edit Student
           </button>
@@ -11131,6 +12023,21 @@ function renderProfilePage() {
   const statusBtn = document.getElementById("change-status-btn");
   if (statusBtn) {
     statusBtn.onclick = () => changeSelectedStudentStatus();
+  }
+
+  const profileAddLessonBtn = document.getElementById("profile-add-lesson-btn");
+  if (profileAddLessonBtn) {
+    profileAddLessonBtn.onclick = () => openLessonModal("create");
+  }
+
+  const profileAddPackageBtn = document.getElementById("profile-add-package-btn");
+  if (profileAddPackageBtn) {
+    profileAddPackageBtn.onclick = () => openPackageModal(null, selectedStudentId);
+  }
+
+  const profileAddPaymentBtn = document.getElementById("profile-add-payment-btn");
+  if (profileAddPaymentBtn) {
+    profileAddPaymentBtn.onclick = () => openPaymentModal(null, selectedStudentId);
   }
 
   const addLessonBtn = document.getElementById("add-lesson-btn");
@@ -11435,7 +12342,7 @@ if (financePackageRemainingEl) {
 }
 
 if (financePackageExpiresEl) {
-  financePackageExpiresEl.textContent = finance.packageInfo?.expires_on ? formatLongDate(finance.packageInfo.expires_on) : "—";
+  financePackageExpiresEl.textContent = finance.effectiveExpirationLabel || "—";
 }
 
 if (paymentsCountEl) {
@@ -11752,6 +12659,7 @@ function handleLessonFormSubmit(event) {
     lesson_status: form.elements.lesson_status.value,
     lesson_type: form.elements.lesson_type.value.trim(),
     manual_payment_status: form.elements.manual_payment_status.value,
+    linked_package_id: form.elements.linked_package_id ? form.elements.linked_package_id.value : "",
     location_type: form.elements.location_type.value,
     location_address: form.elements.location_address.value.trim(),
     topic: form.elements.topic.value.trim(),
@@ -11824,7 +12732,7 @@ function ensureLessonTypeOption(form, lessonType) {
   }
 }
 
-function openLessonModal(mode = "create", lessonId = null) {
+function openLessonModal(mode = "create", lessonId = null, preselectedStudentId = "") {
   const modal = document.getElementById("lesson-modal");
   const title = document.getElementById("lesson-modal-title");
   const form = document.getElementById("lesson-form");
@@ -11833,7 +12741,8 @@ function openLessonModal(mode = "create", lessonId = null) {
 
   form.reset();
   editingLessonId = null;
-  populateLessonStudentOptions(selectedStudentId || "");
+  const defaultStudentId = preselectedStudentId || selectedStudentId || "";
+  populateLessonStudentOptions(defaultStudentId);
 
   if (mode === "edit" && lessonId) {
     const lesson = getLessonRecords().find((item) => item.lesson_id === lessonId);
@@ -11865,6 +12774,10 @@ function openLessonModal(mode = "create", lessonId = null) {
 
     if (form.elements.manual_payment_status) {
       form.elements.manual_payment_status.value = lesson.manual_payment_status || "";
+    }
+
+    if (form.elements.linked_package_id) {
+      syncLessonPackageFields(form, lesson.linked_package_id || "");
     }
 
     if (form.elements.location_type) {
@@ -11904,10 +12817,10 @@ function openLessonModal(mode = "create", lessonId = null) {
     }
   } else {
     title.textContent = "Add Lesson";
-    populateLessonStudentOptions(selectedStudentId || "");
+    populateLessonStudentOptions(defaultStudentId);
 
-    if (selectedStudentId && form.elements.student_id) {
-      form.elements.student_id.value = selectedStudentId;
+    if (defaultStudentId && form.elements.student_id) {
+      form.elements.student_id.value = defaultStudentId;
     }
 
     if (form.elements.lesson_status) {
@@ -11928,6 +12841,10 @@ function openLessonModal(mode = "create", lessonId = null) {
       form.elements.manual_payment_status.value = "";
     }
 
+    if (form.elements.linked_package_id) {
+      syncLessonPackageFields(form, "");
+    }
+
     if (form.elements.location_type) {
       form.elements.location_type.value = "VIRTUAL";
     }
@@ -11942,6 +12859,10 @@ function openLessonModal(mode = "create", lessonId = null) {
   }
 
   updateLessonLocationFieldsVisibility(form);
+  if (form.elements.student_id) {
+    form.elements.student_id.onchange = () => syncLessonPackageFields(form, "");
+  }
+  syncLessonPackageFields(form, form.elements.linked_package_id ? form.elements.linked_package_id.value : "");
 
   modal.classList.remove("hidden");
 }
