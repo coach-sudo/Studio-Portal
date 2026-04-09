@@ -38,6 +38,8 @@ let editingPaymentId = null;
 let importedStudentRows = [];
 let importedStudentFileName = "";
 let currentStudentFilters = new Set(["all"]);
+let currentSettingsSection = "integrations";
+let currentAutomationTab = "attention";
 let manualTodoItems = [];
 let dismissedTodoIds = [];
 const CALENDAR_SYNC_STORAGE_KEY = "studioPortal.googleCalendarSync";
@@ -9845,16 +9847,18 @@ function renderAutomationsPage() {
   const workflows = getAutomationWorkflows();
   const enabledWorkflows = workflows.filter((workflow) => isAutomationEnabled(workflow.key));
   const attentionRows = getAutomationAttentionRows();
+  const pausedWorkflows = workflows.filter((workflow) => !isAutomationEnabled(workflow.key));
   const notesWorkflow = workflows.find((workflow) => workflow.key === "notes_follow_up");
   const intakeWorkflow = workflows.find((workflow) => workflow.key === "intake_review");
   const blockedPolicyWorkflow = workflows.find((workflow) => workflow.key === "public_page_policy");
+  const activeTab = ["attention", "active", "library"].includes(currentAutomationTab) ? currentAutomationTab : "attention";
 
   root.innerHTML = `
     <div class="p-4 sm:p-6 xl:p-8 w-full automation-shell">
-      <header class="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 fade-in">
+      <header class="mb-4 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Automations</h2>
-          <p class="text-sm text-warmgray mt-0.5">In-app reminder workflows for notes, intake follow-up, and policy watch. Live background delivery can plug into these rules later in Phase 5.</p>
+          <p class="text-sm text-warmgray mt-0.5">Workflows that keep notes, intake, payments, packages, and policy follow-up from slipping.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openAutomationNotesQueue()">Notes Queue</button>
@@ -9862,126 +9866,105 @@ function renderAutomationsPage() {
         </div>
       </header>
 
-      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Enabled Workflows</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${enabledWorkflows.length}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact ${attentionRows.length ? "page-stat-chip--alert" : "page-stat-chip--good"}">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Attention Now</p>
-          <p class="text-lg font-semibold ${attentionRows.length ? "text-burgundy" : "text-warmblack"} mt-1">${attentionRows.length}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact ${notesWorkflow?.signal_count ? "page-stat-chip--warm" : ""}">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Notes Follow-Up</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${notesWorkflow?.signal_count || 0}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact ${(intakeWorkflow?.signal_count || blockedPolicyWorkflow?.signal_count) ? "page-stat-chip--warm" : ""}">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Intake / Policy</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${(intakeWorkflow?.signal_count || 0) + (blockedPolicyWorkflow?.signal_count || 0)}</p>
+      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.03s">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2">
+            <button type="button" onclick="setAutomationTab('attention')" class="px-4 py-2.5 rounded-lg text-sm font-medium ${activeTab === "attention" ? "bg-charcoal text-white" : "bg-parchment text-warmgray"}">Needs Attention</button>
+            <button type="button" onclick="setAutomationTab('active')" class="px-4 py-2.5 rounded-lg text-sm font-medium ${activeTab === "active" ? "bg-charcoal text-white" : "bg-parchment text-warmgray"}">Active Workflows</button>
+            <button type="button" onclick="setAutomationTab('library')" class="px-4 py-2.5 rounded-lg text-sm font-medium ${activeTab === "library" ? "bg-charcoal text-white" : "bg-parchment text-warmgray"}">Workflow Library</button>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs text-warmgray">
+            <span>${enabledWorkflows.length} enabled</span>
+            <span>${attentionRows.length} need follow-up</span>
+          </div>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 mb-6 fade-in" style="animation-delay:0.04s">
-        ${workflows.map((workflow) => `
-          <div class="rounded-2xl border ${workflow.tone_class} p-4 sm:p-5 min-w-0">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-              <div class="min-w-0">
-                <div class="flex flex-wrap items-center gap-2 mb-2">
-                  <p class="text-xs font-medium uppercase tracking-wider text-warmgray">${escapeHtml(workflow.label)}</p>
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${isAutomationEnabled(workflow.key) ? "bg-white border border-cream text-warmblack" : "bg-warmgray/10 text-warmgray"}">
-                    ${isAutomationEnabled(workflow.key) ? escapeHtml(workflow.status_label) : "Paused"}
-                  </span>
+      ${
+        activeTab === "attention"
+          ? `
+            <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.05s">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+                <div class="min-w-0">
+                  <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Attention Queue</p>
+                  <h3 class="font-display text-xl font-semibold text-warmblack mt-1">What needs follow-up right now</h3>
                 </div>
-                <h3 class="font-display text-xl font-semibold text-warmblack">${workflow.signal_count}</h3>
-                <p class="text-sm text-warmgray mt-1">${escapeHtml(workflow.signal_label)}</p>
-                <p class="text-sm text-warmblack mt-3 wrap-anywhere">${escapeHtml(workflow.description)}</p>
-                <p class="text-xs text-warmgray mt-3">${escapeHtml(workflow.highlight)}</p>
+                <span class="text-xs text-warmgray">${attentionRows.length} active workflow${attentionRows.length === 1 ? "" : "s"}</span>
               </div>
-              <button
-                type="button"
-                class="px-3 py-2 rounded-xl ${isAutomationEnabled(workflow.key) ? "bg-white border border-cream text-warmblack" : "bg-parchment border border-cream text-warmgray"} text-sm font-medium self-start card-hover"
-                onclick="toggleAutomationEnabled('${workflow.key}')"
-              >
-                ${isAutomationEnabled(workflow.key) ? "Pause" : "Resume"}
-              </button>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 mt-4">
-              <button
-                type="button"
-                class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
-                onclick="${workflow.primary_action}"
-              >
-                ${escapeHtml(workflow.primary_action_label)}
-              </button>
               ${
-                workflow.secondary_action_label
-                  ? `
-                    <button
-                      type="button"
-                      class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-sm font-medium text-warmgray card-hover"
-                      onclick="${workflow.secondary_action}"
-                    >
-                      ${escapeHtml(workflow.secondary_action_label)}
-                    </button>
-                  `
-                  : ""
+                attentionRows.length
+                  ? `<div class="space-y-3">
+                      ${attentionRows.map((row) => `
+                        <div class="rounded-2xl border border-cream bg-parchment/60 p-4">
+                          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+                            <div class="min-w-0">
+                              <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.label)}</p>
+                                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.tone_class.includes("burgundy") ? "bg-burgundy/10 text-burgundy" : row.tone_class.includes("gold") ? "bg-gold/10 text-gold" : "bg-sage/10 text-sage"}">${escapeHtml(row.status_label)}</span>
+                              </div>
+                              <p class="text-sm text-warmgray wrap-anywhere">${escapeHtml(row.attention_summary)}</p>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="${row.primary_action}">${escapeHtml(row.primary_action_label)}</button>
+                              ${row.secondary_action_label ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-sm font-medium text-warmgray card-hover" onclick="${row.secondary_action}">${escapeHtml(row.secondary_action_label)}</button>` : ""}
+                            </div>
+                          </div>
+                        </div>
+                      `).join("")}
+                    </div>`
+                  : `<div class="rounded-2xl border border-sage/20 bg-sage/5 px-4 py-6 text-center">
+                      <p class="text-sm font-medium text-warmblack">No active automation follow-up right now.</p>
+                      <p class="text-xs text-warmgray mt-1">Your notes, intake queue, and policy watch are in a good place.</p>
+                    </div>`
               }
             </div>
-          </div>
-        `).join("")}
-      </div>
-
-      <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.06s">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div class="min-w-0">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Attention Queue</p>
-            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">What needs follow-up right now</h3>
-          </div>
-          <span class="text-xs text-warmgray">${attentionRows.length} active workflow${attentionRows.length === 1 ? "" : "s"}</span>
-        </div>
-
-        ${
-          attentionRows.length
+          `
+          : activeTab === "active"
             ? `
-              <div class="space-y-3">
-                ${attentionRows.map((row) => `
-                  <div class="rounded-2xl border border-cream bg-parchment/60 p-4">
-                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 fade-in" style="animation-delay:0.05s">
+                ${enabledWorkflows.map((workflow) => `
+                  <div class="rounded-2xl border ${workflow.tone_class} p-4 sm:p-5 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
                       <div class="min-w-0">
-                        <div class="flex flex-wrap items-center gap-2 mb-1">
-                          <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.label)}</p>
-                          <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.tone_class.includes("burgundy") ? "bg-burgundy/10 text-burgundy" : row.tone_class.includes("gold") ? "bg-gold/10 text-gold" : "bg-sage/10 text-sage"}">
-                            ${escapeHtml(row.status_label)}
-                          </span>
-                        </div>
-                        <p class="text-sm text-warmgray wrap-anywhere">${escapeHtml(row.attention_summary)}</p>
+                        <p class="text-xs font-medium uppercase tracking-wider text-warmgray">${escapeHtml(workflow.label)}</p>
+                        <p class="text-lg font-semibold text-warmblack mt-2">${workflow.signal_count} ${escapeHtml(workflow.signal_label)}</p>
+                        <p class="text-sm text-warmgray mt-2">${escapeHtml(workflow.highlight)}</p>
                       </div>
-                      <div class="flex flex-wrap gap-2">
-                        <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="${row.primary_action}">
-                          ${escapeHtml(row.primary_action_label)}
-                        </button>
-                        ${
-                          row.secondary_action_label
-                            ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-sm font-medium text-warmgray card-hover" onclick="${row.secondary_action}">
-                                ${escapeHtml(row.secondary_action_label)}
-                              </button>`
-                            : ""
-                        }
-                      </div>
+                      <button type="button" class="px-3 py-2 rounded-xl bg-white border border-cream text-sm font-medium self-start card-hover" onclick="toggleAutomationEnabled('${workflow.key}')">Pause</button>
+                    </div>
+                    <div class="flex flex-wrap gap-2 mt-4">
+                      <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="${workflow.primary_action}">${escapeHtml(workflow.primary_action_label)}</button>
+                      ${workflow.secondary_action_label ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-sm font-medium text-warmgray card-hover" onclick="${workflow.secondary_action}">${escapeHtml(workflow.secondary_action_label)}</button>` : ""}
                     </div>
                   </div>
                 `).join("")}
               </div>
             `
             : `
-              <div class="rounded-2xl border border-sage/20 bg-sage/5 px-4 py-6 text-center">
-                <p class="text-sm font-medium text-warmblack">No active automation follow-up right now.</p>
-                <p class="text-xs text-warmgray mt-1">Your notes, intake queue, and late-cancel policy watch are currently in a good place.</p>
+              <div class="grid grid-cols-1 xl:grid-cols-2 gap-5 fade-in" style="animation-delay:0.05s">
+                ${workflows.map((workflow) => `
+                  <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 min-w-0">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+                      <div class="min-w-0">
+                        <div class="flex flex-wrap items-center gap-2 mb-2">
+                          <p class="text-xs font-medium uppercase tracking-wider text-warmgray">${escapeHtml(workflow.label)}</p>
+                          <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${isAutomationEnabled(workflow.key) ? "bg-sage/10 text-sage" : "bg-parchment text-warmgray border border-cream"}">${isAutomationEnabled(workflow.key) ? "Live" : "Paused"}</span>
+                        </div>
+                        <p class="text-sm font-medium text-warmblack">${escapeHtml(workflow.description)}</p>
+                        <p class="text-xs text-warmgray mt-2">${escapeHtml(workflow.highlight)}</p>
+                      </div>
+                      <button type="button" class="px-3 py-2 rounded-xl ${isAutomationEnabled(workflow.key) ? "bg-white border border-cream text-warmblack" : "bg-charcoal text-white"} text-sm font-medium self-start card-hover" onclick="toggleAutomationEnabled('${workflow.key}')">${isAutomationEnabled(workflow.key) ? "Pause" : "Resume"}</button>
+                    </div>
+                  </div>
+                `).join("")}
+                ${
+                  pausedWorkflows.length
+                    ? ""
+                    : ""
+                }
               </div>
             `
-        }
-      </div>
+      }
     </div>
   `;
 
@@ -10130,6 +10113,46 @@ function renderTodoPage() {
 function setSettingsActionFeedback(message, tone = "warm") {
   settingsActionMessage = String(message || "").trim();
   settingsActionTone = tone || "warm";
+}
+
+function setSettingsSection(section) {
+  currentSettingsSection = String(section || "integrations");
+  renderSettingsPage();
+}
+
+function getSettingsSections(status, backend, blueprintRows) {
+  return [
+    {
+      key: "integrations",
+      label: "Integrations",
+      summary: `${getGoogleServiceStatusLabel(backend.google_calendar_status)} / ${getGoogleServiceStatusLabel(backend.google_gmail_status)}`
+    },
+    {
+      key: "persistence",
+      label: "Persistence",
+      summary: `${getPersistenceModeLabel(status.mode)}`
+    },
+    {
+      key: "pricing",
+      label: "Pricing",
+      summary: "Lesson defaults"
+    },
+    {
+      key: "security",
+      label: "Security",
+      summary: getAdminSecurityStatusLabel()
+    },
+    {
+      key: "backend",
+      label: "Backend",
+      summary: `${status.endpoint_configured ? "Configured" : "Not configured"} · ${blueprintRows.length} tabs`
+    }
+  ];
+}
+
+function setAutomationTab(tab) {
+  currentAutomationTab = String(tab || "attention");
+  renderAutomationsPage();
 }
 
 function getSettingsActionFeedbackMarkup() {
@@ -10632,6 +10655,357 @@ function renderSettingsPage() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+}
+
+function renderSettingsPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  syncCalendarStateFromBackendSettings();
+  const backend = studioDataService.getBackendSettings();
+  const status = studioDataService.getPersistenceStatus();
+  const blueprint = studioDataService.getGoogleSheetsBlueprint();
+  const blueprintRows = Object.entries(blueprint);
+  const sections = getSettingsSections(status, backend, blueprintRows);
+  const activeSection = sections.find((section) => section.key === currentSettingsSection) || sections[0];
+  const compact = isCompactView("settings");
+  const sectionHeader = {
+    integrations: {
+      eyebrow: "Google Connections",
+      title: "Connect once, review everything",
+      description: "Calendar and Gmail stay manual-sync and review-first, but the controls now live in one focused workspace."
+    },
+    persistence: {
+      eyebrow: "Persistence",
+      title: "Where the portal saves and syncs",
+      description: "Local cache stays dependable while the backend bridge handles snapshots, queue state, and connection health."
+    },
+    pricing: {
+      eyebrow: "Pricing Defaults",
+      title: "Studio prices that drive package logic",
+      description: "Set the lesson pricing defaults that power package totals, PAYG expectations, and student-level fallbacks."
+    },
+    security: {
+      eyebrow: "Admin Security",
+      title: "Keep the hosted portal protected",
+      description: "Use a passcode gate and timeout behavior without burying the actual working controls below a long scroll."
+    },
+    backend: {
+      eyebrow: "Backend Reference",
+      title: "Blueprint and sync notes",
+      description: "Your Google Sheets structure and backend notes stay available, but tucked behind their own section instead of filling the page."
+    }
+  }[activeSection.key];
+  const activePanel = (() => {
+    if (activeSection.key === "integrations") {
+      return `
+        <form id="settings-google-connections-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="saveGoogleConnectionSettings(event)">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <label class="block xl:col-span-2">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Account Email</span>
+              <input
+                name="google_account_email"
+                type="email"
+                value="${escapeHtml(backend.google_account_email)}"
+                placeholder="coach@d-a-j.com"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Calendar Intake</p>
+              <div class="flex flex-wrap items-center gap-2 mt-2">
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Manual Sync</span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Review First</span>
+              </div>
+              <p class="text-xs text-warmgray mt-2">${backend.google_calendar_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_calendar_last_sync_at))}` : "No calendar sync has run yet."}</p>
+              ${backend.google_calendar_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_calendar_last_sync_error)}</p>` : ""}
+            </div>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Gmail Assist</p>
+              <div class="flex flex-wrap items-center gap-2 mt-2">
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Booking Emails Only</span>
+                <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Manual Sync</span>
+              </div>
+              <p class="text-xs text-warmgray mt-2">${backend.google_gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
+              ${backend.google_gmail_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_gmail_last_sync_error)}</p>` : ""}
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Google Setup</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="startGoogleOAuthFlow()">Connect Google Account</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+          </div>
+          ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
+        </form>
+      `;
+    }
+
+    if (activeSection.key === "persistence") {
+      return `
+        <form id="settings-persistence-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="savePersistenceSettings(event)">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Persistence Mode</span>
+              <select name="persistence_mode" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                <option value="local_cache" ${backend.persistence_mode === "local_cache" ? "selected" : ""}>Local Cache</option>
+                <option value="google_sheets" ${backend.persistence_mode === "google_sheets" ? "selected" : ""}>Google Sheets via Backend</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Backend / Proxy URL</span>
+              <input
+                name="google_sheets_web_app_url"
+                type="url"
+                value="${escapeHtml(backend.google_sheets_web_app_url)}"
+                placeholder="https://your-backend.example.com/api/studio-sync"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label class="block xl:col-span-2">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Shared Token</span>
+              <input
+                name="api_token"
+                type="text"
+                value="${escapeHtml(backend.api_token)}"
+                placeholder="Optional shared secret for the backend"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+              <input type="checkbox" name="cache_enabled" class="mt-1" ${backend.cache_enabled ? "checked" : ""}>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-warmblack">Keep local cache on this browser</span>
+                <span class="block text-xs text-warmgray mt-1">Refresh persistence stays dependable even before remote sync runs.</span>
+              </span>
+            </label>
+            <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+              <input type="checkbox" name="auto_sync" class="mt-1" ${backend.auto_sync ? "checked" : ""}>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-warmblack">Auto-sync after changes</span>
+                <span class="block text-xs text-warmgray mt-1">Only runs when Google Sheets mode is active and a backend/proxy URL is configured.</span>
+              </span>
+            </label>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Persistence</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runBackendConnectionTest()">Test Connection</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="pullSettingsSnapshotFromBackend()">Pull Snapshot</button>
+          </div>
+        </form>
+      `;
+    }
+
+    if (activeSection.key === "pricing") {
+      return `
+        <form id="settings-pricing-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="savePricingSettings(event)">
+          <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">30-Minute Lesson</span>
+              <input name="lesson_rate_30" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_30 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">60-Minute Lesson</span>
+              <input name="lesson_rate_60" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_60 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">90-Minute Lesson</span>
+              <input name="lesson_rate_90" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_90 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Intro Session</span>
+              <input name="intro_session_rate" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.intro_session_rate || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+            </label>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Builder</p>
+              <p class="text-sm text-warmblack mt-1">Package totals will keep using these defaults when a student does not have a custom lesson rate.</p>
+            </div>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">PAYG Tracking</p>
+              <p class="text-sm text-warmblack mt-1">Outstanding balance and future lesson expectations stay aligned with the same pricing logic.</p>
+            </div>
+          </div>
+          <div class="rounded-xl border border-cream bg-parchment px-4 py-3 mt-4 text-sm text-warmgray">
+            A student-specific Default Lesson Rate still wins when it is set on that student profile. These values act as your studio-wide fallback.
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Pricing</button>
+          </div>
+        </form>
+      `;
+    }
+
+    if (activeSection.key === "security") {
+      return `
+        <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="saveAdminSecuritySettings(event)">
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3 xl:col-span-2">
+              <input type="checkbox" name="require_unlock" class="mt-1" ${adminAuthSettings.require_unlock ? "checked" : ""}>
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-warmblack">Require passcode to unlock the portal</span>
+                <span class="block text-xs text-warmgray mt-1">Turn this on after you set a passcode. The hosted portal will lock after refresh and after inactivity.</span>
+              </span>
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Passcode</span>
+              <input
+                name="local_passcode"
+                type="password"
+                value="${escapeHtml(adminAuthSettings.local_passcode)}"
+                placeholder="Set admin passcode"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Confirm Passcode</span>
+              <input
+                name="confirm_passcode"
+                type="password"
+                value="${escapeHtml(adminAuthSettings.local_passcode)}"
+                placeholder="Re-enter passcode"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label class="block xl:max-w-xs">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Session Timeout</span>
+              <select name="session_timeout_minutes" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+                <option value="15" ${Number(adminAuthSettings.session_timeout_minutes) === 15 ? "selected" : ""}>15 minutes</option>
+                <option value="30" ${Number(adminAuthSettings.session_timeout_minutes) === 30 ? "selected" : ""}>30 minutes</option>
+                <option value="60" ${Number(adminAuthSettings.session_timeout_minutes) === 60 ? "selected" : ""}>60 minutes</option>
+                <option value="120" ${Number(adminAuthSettings.session_timeout_minutes) === 120 ? "selected" : ""}>2 hours</option>
+              </select>
+            </label>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Security</button>
+            ${requiresAdminUnlock() ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="lockPortalSession('Portal locked manually from Settings.')">Lock Now</button>` : ""}
+          </div>
+        </form>
+      `;
+    }
+
+    return `
+      <div class="space-y-4 fade-in">
+        <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sheets Blueprint</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Expected Google Sheets tabs</h3>
+          <p class="text-sm text-warmgray mt-1">Use this as the quick reference for the backend tabs and the records each tab stores.</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+            ${blueprintRows.map(([collection, rows]) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">${escapeHtml(collection)}</p>
+                <p class="text-xs text-warmgray mt-1">${rows.length} column${rows.length === 1 ? "" : "s"}</p>
+                <p class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml(rows.slice(0, 4).join(", "))}${rows.length > 4 ? "..." : ""}</p>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+        <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Phase Notes</p>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="font-semibold text-warmblack">Local persistence is live</p>
+              <p class="text-warmgray mt-1">Student, lesson, note, finance, and materials changes persist in this browser instead of disappearing on refresh.</p>
+            </div>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="font-semibold text-warmblack">Proxy-backed sync is the path</p>
+              <p class="text-warmgray mt-1">The frontend now expects a backend/proxy instead of calling Apps Script directly from the browser.</p>
+            </div>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="font-semibold text-warmblack">Google stays review-first</p>
+              <p class="text-warmgray mt-1">Calendar and Gmail imports can sync live, but lessons still land in intake review before becoming trusted portal records.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    `;
+  })();
+
+  root.innerHTML = `
+    <div class="p-4 sm:p-6 xl:p-8 w-full settings-shell ${compact ? "compact-view" : ""}">
+      <header class="mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 fade-in">
+        <div class="min-w-0">
+          <h2 class="font-display text-2xl font-bold text-warmblack">Settings</h2>
+          <p class="text-sm text-warmgray mt-0.5">A focused control room for persistence, connections, pricing, security, and backend setup.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-3">
+          <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('settings')">${getCompactToggleLabel("settings")}</button>
+        </div>
+      </header>
+
+      ${getSettingsActionFeedbackMarkup()}
+
+      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.02s">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div class="flex flex-wrap gap-2">
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-parchment text-warmgray">${escapeHtml(getPersistenceModeLabel(status.mode))}</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getSettingsStatusBadgeClass(status.last_sync_status)}">${escapeHtml(status.last_sync_status || "idle")}</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getAdminSecurityStatusBadgeClass()}">${escapeHtml(getAdminSecurityStatusLabel())}</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">Calendar ${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
+            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">Gmail ${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="pullSettingsSnapshotFromBackend()">Pull Snapshot</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-[280px_minmax(0,1fr)] gap-5">
+        <aside class="settings-nav-column">
+          <div class="rounded-2xl border border-cream bg-white p-3 fade-in" style="animation-delay:0.03s">
+            <div class="space-y-1.5">
+              ${sections.map((section) => `
+                <button type="button" onclick="setSettingsSection('${section.key}')" class="settings-nav-button w-full text-left rounded-xl px-4 py-3 ${activeSection.key === section.key ? "is-active" : ""}">
+                  <span class="block text-sm font-semibold text-warmblack">${escapeHtml(section.label)}</span>
+                  <span class="block text-xs text-warmgray mt-1">${escapeHtml(section.summary)}</span>
+                </button>
+              `).join("")}
+            </div>
+          </div>
+        </aside>
+
+        <div class="space-y-4 min-w-0">
+          <div class="page-stats-strip fade-in" style="animation-delay:0.04s">
+            <div class="page-stat-chip page-stat-chip--compact">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Current Section</p>
+              <p class="text-sm font-semibold text-warmblack mt-1">${escapeHtml(activeSection.label)}</p>
+            </div>
+            <div class="page-stat-chip page-stat-chip--compact ${status.queue_count ? "page-stat-chip--warm" : "page-stat-chip--good"}">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Changes</p>
+              <p class="text-sm font-semibold text-warmblack mt-1">${status.queue_count}</p>
+            </div>
+            <div class="page-stat-chip page-stat-chip--compact">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Last Sync</p>
+              <p class="text-sm font-semibold text-warmblack mt-1">${escapeHtml(formatLastSyncMeta(status.last_sync_at))}</p>
+            </div>
+            <div class="page-stat-chip page-stat-chip--compact">
+              <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Account</p>
+              <p class="text-sm font-semibold text-warmblack mt-1 wrap-anywhere">${escapeHtml(backend.google_account_email || "Not set")}</p>
+            </div>
+          </div>
+
+          <section class="rounded-2xl border border-cream bg-parchment/70 px-4 py-4 fade-in" style="animation-delay:0.05s">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(sectionHeader.eyebrow)}</p>
+            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">${escapeHtml(sectionHeader.title)}</h3>
+            <p class="text-sm text-warmgray mt-1">${escapeHtml(sectionHeader.description)}</p>
+          </section>
+
+          ${activePanel}
         </div>
       </div>
     </div>
@@ -12048,6 +12422,240 @@ function renderProfilePage() {
   lucide.createIcons();
 }
 
+function renderProfilePage() {
+  if (!selectedStudentId || !getStudentById(selectedStudentId)) {
+    selectedStudentId = students.length > 0 ? students[0].id : null;
+  }
+
+  currentProfileNotesFilter = "all";
+
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  if (!selectedStudentId) {
+    root.innerHTML = `
+      <div class="p-8 w-full">
+        <h2 class="font-display text-2xl font-bold text-warmblack">Student Profile</h2>
+        <p class="text-warmgray mt-2">No student selected yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  root.innerHTML = `
+    <div class="profile-shell p-4 sm:p-6 xl:p-8 w-full">
+      <header class="profile-header mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3">
+        <div class="min-w-0 flex items-start gap-3">
+          <button onclick="navigateTo('students')" class="w-9 h-9 rounded-full bg-white border border-cream flex items-center justify-center card-hover shrink-0">
+            <i data-lucide="arrow-left" class="w-4 h-4 text-charcoal"></i>
+          </button>
+          <div class="min-w-0">
+            <h2 id="profile-page-title" class="font-display text-2xl font-bold text-warmblack">Student Profile</h2>
+            <p id="profile-page-subtitle" class="text-sm text-warmgray mt-0.5">Current work, lessons, finance, and contact details</p>
+          </div>
+        </div>
+
+        <div class="profile-header-actions flex flex-wrap items-center gap-2">
+          <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Lesson</button>
+          <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Package</button>
+          <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Payment</button>
+          <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Edit Student</button>
+          <button id="change-status-btn" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-warmblack text-sm font-medium card-hover">Change Status</button>
+        </div>
+      </header>
+
+      <div class="page-stats-strip mb-4">
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Billing Model</p>
+          <p id="profile-billing-model" class="text-sm font-semibold text-warmblack mt-1">—</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Finance Summary</p>
+          <p id="profile-finance-summary" class="text-sm font-semibold text-warmblack mt-1">—</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Last Lesson</p>
+          <p id="profile-last-lesson" class="text-sm font-semibold text-warmblack mt-1">—</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Public Page</p>
+          <div id="profile-public-status" class="text-sm font-semibold text-warmblack mt-1">—</div>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-5 profile-workspace">
+        <div class="space-y-5 min-w-0">
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in">
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 profile-overview-grid">
+              <div class="min-w-0">
+                <div class="flex items-start gap-4">
+                  <div class="w-20 h-20 rounded-2xl headshot-placeholder flex items-center justify-center shrink-0">
+                    <i data-lucide="user" class="w-9 h-9 text-warmgray/60"></i>
+                  </div>
+                  <div class="min-w-0">
+                    <h3 id="profile-student-name" class="font-display text-2xl font-bold text-warmblack">Student Name</h3>
+                    <p id="profile-student-focus" class="text-sm text-warmgray mt-1">Focus Area</p>
+                    <div id="profile-badges" class="flex flex-wrap items-center gap-2 mt-3"></div>
+                  </div>
+                </div>
+
+                <div class="profile-meta-grid grid grid-cols-1 md:grid-cols-2 gap-3 mt-5">
+                  <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-warmgray">Primary Email</p>
+                    <p id="profile-email" class="text-sm font-medium text-warmblack mt-1 wrap-anywhere">—</p>
+                  </div>
+                  <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-warmgray">Phone</p>
+                    <p id="profile-phone" class="text-sm font-medium text-warmblack mt-1">—</p>
+                  </div>
+                  <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-warmgray">Guardian / Parent</p>
+                    <p id="profile-guardian-name" class="text-sm font-medium text-warmblack mt-1">—</p>
+                    <p id="profile-guardian-email" class="text-xs text-warmgray mt-1 wrap-anywhere">—</p>
+                    <p id="profile-guardian-phone" class="text-xs text-warmgray mt-1">—</p>
+                  </div>
+                  <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                    <p class="text-[11px] uppercase tracking-wider text-warmgray">Lead Source</p>
+                    <p id="profile-lead-source" class="text-sm font-medium text-warmblack mt-1">—</p>
+                    <p class="text-xs text-warmgray mt-1">Timezone: <span id="profile-timezone">—</span></p>
+                  </div>
+                </div>
+              </div>
+
+              <div class="rounded-2xl border border-cream bg-parchment/70 p-4">
+                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Current Snapshot</p>
+                <div class="space-y-3 mt-3">
+                  <div>
+                    <span id="profile-finance-badge" class="inline-flex items-center gap-1 text-[11px] px-2 py-1 rounded-full bg-warmgray/10 text-warmgray">—</span>
+                    <p id="profile-finance-headline" class="text-sm font-semibold text-warmblack mt-2">—</p>
+                    <p id="profile-finance-subline" class="text-xs text-warmgray mt-1">—</p>
+                  </div>
+                  <div class="grid grid-cols-3 gap-2">
+                    <div class="rounded-xl bg-white border border-cream px-3 py-3">
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Paid</p>
+                      <p id="profile-finance-paid" class="text-sm font-semibold text-warmblack mt-1">—</p>
+                    </div>
+                    <div class="rounded-xl bg-white border border-cream px-3 py-3">
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Owed</p>
+                      <p id="profile-finance-owed" class="text-sm font-semibold text-warmblack mt-1">—</p>
+                    </div>
+                    <div class="rounded-xl bg-white border border-cream px-3 py-3">
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Balance</p>
+                      <p id="profile-finance-remaining-balance" class="text-sm font-semibold text-warmblack mt-1">—</p>
+                    </div>
+                  </div>
+                  <div id="profile-finance-package-block" class="rounded-xl bg-white border border-cream px-4 py-3 space-y-2">
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Package</span><span id="profile-finance-package-name" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Sessions Purchased</span><span id="profile-finance-package-total" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Used</span><span id="profile-finance-package-used" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Remaining</span><span id="profile-finance-package-remaining" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Expires</span><span id="profile-finance-package-expires" class="font-medium text-right">—</span></div>
+                  </div>
+                  <div class="flex flex-wrap gap-2">
+                    <a id="profile-email-btn" href="#" class="inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
+                      <i data-lucide="mail" class="w-4 h-4"></i>
+                      Email Student
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.05s">
+            <div class="profile-tab-bar flex flex-wrap border-b border-cream">
+              <button onclick="switchProfileTab('notes', this)" class="tab-btn active-tab px-5 py-3.5 text-sm font-medium text-gold border-b-2 border-gold">Lesson Notes</button>
+              <button onclick="switchProfileTab('homework', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Homework</button>
+              <button onclick="switchProfileTab('materials', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Materials</button>
+            </div>
+            <div id="profile-tab-notes" class="p-5 space-y-4"></div>
+            <div id="profile-tab-homework" class="p-5" style="display:none;"></div>
+            <div id="profile-tab-materials" class="p-5" style="display:none;"></div>
+          </section>
+
+          <section class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.08s">
+            <div class="dashboard-panel-header p-5 border-b border-cream flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <h3 class="font-display text-lg font-semibold">Lessons</h3>
+                <p class="text-xs text-warmgray mt-1">Upcoming, completed, and rescheduled lesson history for this student</p>
+              </div>
+              <button id="add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Lesson</button>
+            </div>
+            <div id="profile-lessons-list" class="p-5 space-y-3">
+              <div class="text-sm text-warmgray">No lessons yet.</div>
+            </div>
+          </section>
+        </div>
+
+        <aside class="profile-rail space-y-4 min-w-0">
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.03s">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h4 class="font-display font-semibold">Payments</h4>
+              <span id="profile-payments-count" class="text-xs text-warmgray">—</span>
+            </div>
+            <div id="profile-payments-list" class="space-y-3 max-h-[260px] overflow-y-auto pr-1">
+              <div class="text-sm text-warmgray">No payments yet.</div>
+            </div>
+          </section>
+
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.06s">
+            <h4 class="font-display font-semibold mb-3">Materials Snapshot</h4>
+            <div class="space-y-3">
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-[11px] uppercase tracking-wider text-warmgray">Resume</p>
+                <p id="profile-resume-name" class="text-sm font-medium text-warmblack mt-1">No resume uploaded</p>
+                <p id="profile-resume-meta" class="text-xs text-warmgray mt-1">No file available</p>
+              </div>
+              <div id="profile-material-1" class="p-3 bg-gold/5 border border-gold/15 rounded-xl"></div>
+              <div id="profile-material-2" class="p-3 bg-sage/5 border border-sage/15 rounded-xl"></div>
+            </div>
+          </section>
+
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
+            <h4 class="font-display font-semibold mb-3">Extended Contact</h4>
+            <div class="space-y-3 text-sm">
+              <div class="flex justify-between gap-4"><span class="text-warmgray">Additional Emails</span><span id="profile-additional-emails" class="font-medium text-right wrap-anywhere">—</span></div>
+              <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian / Parent</span><span id="profile-guardian-name-secondary" class="font-medium text-right">—</span></div>
+              <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian Email</span><span id="profile-guardian-email-secondary" class="font-medium text-right wrap-anywhere">—</span></div>
+              <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian Phone</span><span id="profile-guardian-phone-secondary" class="font-medium text-right">—</span></div>
+            </div>
+          </section>
+
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.12s">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h4 class="font-display font-semibold">Bio & Public Page</h4>
+              <span id="profile-public-status-secondary" class="text-xs text-warmgray">—</span>
+            </div>
+            <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere"></p>
+          </section>
+        </aside>
+      </div>
+    </div>
+  `;
+
+  populateStudentProfile(selectedStudentId);
+
+  const editBtn = document.getElementById("edit-student-btn");
+  if (editBtn) editBtn.onclick = () => openStudentModal("edit", selectedStudentId);
+
+  const statusBtn = document.getElementById("change-status-btn");
+  if (statusBtn) statusBtn.onclick = () => changeSelectedStudentStatus();
+
+  const profileAddLessonBtn = document.getElementById("profile-add-lesson-btn");
+  if (profileAddLessonBtn) profileAddLessonBtn.onclick = () => openLessonModal("create", null, selectedStudentId);
+
+  const profileAddPackageBtn = document.getElementById("profile-add-package-btn");
+  if (profileAddPackageBtn) profileAddPackageBtn.onclick = () => openPackageModal(null, selectedStudentId);
+
+  const profileAddPaymentBtn = document.getElementById("profile-add-payment-btn");
+  if (profileAddPaymentBtn) profileAddPaymentBtn.onclick = () => openPaymentModal(null, selectedStudentId);
+
+  const addLessonBtn = document.getElementById("add-lesson-btn");
+  if (addLessonBtn) addLessonBtn.onclick = () => openLessonModal("create", null, selectedStudentId);
+
+  lucide.createIcons();
+}
+
 /*********************************
  * PUBLIC PAGE RENDERER
  *********************************/
@@ -12207,16 +12815,17 @@ function populateStudentProfile(studentId) {
   if (lastLessonEl) lastLessonEl.textContent = student.lastSeen;
 
   const publicStatusEl = document.getElementById("profile-public-status");
+  const publicStatusSecondaryEl = document.getElementById("profile-public-status-secondary");
   if (publicStatusEl) {
     const isActive = actorProfile && actorProfile.status === "Active";
     const lateCancelCount = getLateCancelCountForStudent(studentId, 6);
     const blockedByPolicy = isStudentPublicPageBlockedByLessonPolicy(studentId);
+    const publicStatusMarkup = blockedByPolicy
+      ? `<span class="inline-flex items-center gap-1 text-burgundy"><span class="w-1.5 h-1.5 rounded-full bg-burgundy"></span>Blocked · ${lateCancelCount} late cancels in 6 months</span>`
+      : `<span class="inline-flex items-center gap-1 ${isActive ? "text-sage" : "text-warmgray"}"><span class="w-1.5 h-1.5 rounded-full ${isActive ? "bg-sage" : "bg-warmgray"}"></span>${actorProfile ? actorProfile.status : "Not Live"}</span>`;
 
-    if (blockedByPolicy) {
-      publicStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 text-burgundy"><span class="w-1.5 h-1.5 rounded-full bg-burgundy"></span>Blocked · ${lateCancelCount} late cancels in 6 months</span>`;
-    } else {
-      publicStatusEl.innerHTML = `<span class="inline-flex items-center gap-1 ${isActive ? "text-sage" : "text-warmgray"}"><span class="w-1.5 h-1.5 rounded-full ${isActive ? "bg-sage" : "bg-warmgray"}"></span>${actorProfile ? actorProfile.status : "Not Live"}</span>`;
-    }
+    publicStatusEl.innerHTML = publicStatusMarkup;
+    if (publicStatusSecondaryEl) publicStatusSecondaryEl.innerHTML = publicStatusMarkup;
   }
 
   const emailEl = document.getElementById("profile-email");
@@ -12230,12 +12839,18 @@ function populateStudentProfile(studentId) {
 
   const guardianNameEl = document.getElementById("profile-guardian-name");
   if (guardianNameEl) guardianNameEl.textContent = schemaStudent.guardian_name || "—";
+  const guardianNameSecondaryEl = document.getElementById("profile-guardian-name-secondary");
+  if (guardianNameSecondaryEl) guardianNameSecondaryEl.textContent = schemaStudent.guardian_name || "—";
 
   const guardianEmailEl = document.getElementById("profile-guardian-email");
   if (guardianEmailEl) guardianEmailEl.textContent = schemaStudent.guardian_email || "—";
+  const guardianEmailSecondaryEl = document.getElementById("profile-guardian-email-secondary");
+  if (guardianEmailSecondaryEl) guardianEmailSecondaryEl.textContent = schemaStudent.guardian_email || "—";
 
   const guardianPhoneEl = document.getElementById("profile-guardian-phone");
   if (guardianPhoneEl) guardianPhoneEl.textContent = schemaStudent.guardian_phone || "—";
+  const guardianPhoneSecondaryEl = document.getElementById("profile-guardian-phone-secondary");
+  if (guardianPhoneSecondaryEl) guardianPhoneSecondaryEl.textContent = schemaStudent.guardian_phone || "—";
 
   const timezoneEl = document.getElementById("profile-timezone");
   if (timezoneEl) timezoneEl.textContent = schemaStudent.timezone || "—";
