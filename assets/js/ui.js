@@ -526,6 +526,23 @@ function getAutoTodoItems() {
       });
     });
 
+  getPackageRecords()
+    .filter((pkg) => !isPackageArchived(pkg))
+    .forEach((pkg) => {
+      const financials = getPackageFinancials(pkg);
+      if (financials.remaining <= 0) return;
+      tasks.push({
+        id: `todo-package-payment-${pkg.package_id}`,
+        type: "auto",
+        title: `Follow up on payment for ${getStudentNameById(pkg.student_id)}`,
+        detail: `${pkg.package_name || "Package"} still has ${formatCurrency(financials.remaining)} due`,
+        due_at: pkg.payment_due_on || pkg.created_at || "",
+        priority: getPackageDeclaredPaymentStatus(pkg) === "OVERDUE" ? 5 : 4,
+        source: "finance",
+        action: buildTodoLinkAction("finance", pkg.package_id)
+      });
+    });
+
   getScheduleIntakeRows()
     .filter((row) => row.action_required)
     .forEach((row) => {
@@ -586,6 +603,19 @@ function getWeeklyTodoItems() {
       const bTime = new Date(b.due_at || b.created_at || 0).getTime();
       return aTime - bTime;
     });
+}
+
+function getOverdueTodoItems() {
+  const todayStart = startOfLocalDay(getReferenceNow());
+  return getDailyTodoItems().filter((task) => {
+    if (!task.due_at) {
+      if (task.type !== "manual" || !task.created_at) return false;
+      const created = new Date(task.created_at);
+      return !Number.isNaN(created.getTime()) && created < addDaysToDate(todayStart, -7);
+    }
+    const due = new Date(task.due_at);
+    return !Number.isNaN(due.getTime()) && due < todayStart;
+  });
 }
 
 function setTodoView(view) {
@@ -2166,6 +2196,13 @@ const sampleGmailLessonFeed = [
     from: "updates@example.com",
     received_at: "2026-04-07T08:30:00",
     body: "Not a lesson email."
+  },
+  {
+    id: "gmail_msg_payment_rosaria_20260409",
+    subject: "New order for Rosaria Arancio",
+    from: "payments@lessons.com",
+    received_at: "2026-04-09T14:15:00",
+    body: "New order\nStudent: Rosaria Arancio (Sofia)\nEmail: roarancio@gmail.com\nPayment received: $55.00\nBooking: Acting - Online Lessons - 30 Minutes"
   }
 ];
 
@@ -2491,6 +2528,116 @@ function isLikelyLessonGmailMessage(message) {
   ];
 
   return includePatterns.some((pattern) => pattern.test(blob));
+}
+
+function isLikelyPaymentGmailMessage(message) {
+  const blob = `${message.subject || ""}\n${message.body || ""}\n${message.from || ""}`.toLowerCase();
+  return /\bpayment\b|\bnew order\b|\bpaid online\b|\bpayment received\b|\border total\b/.test(blob);
+}
+
+function extractCurrencyAmountFromText(value) {
+  const match = String(value || "").match(/\$([0-9]+(?:\.[0-9]{2})?)/);
+  return match ? Number(match[1]) : 0;
+}
+
+function findPotentialPaymentStudentMatches(message) {
+  const blob = sanitizeImportedContactText(`${message.subject || ""}\n${message.body || ""}\n${message.reply_to || ""}`);
+  const emails = extractEmailsFromText(blob);
+  const phones = extractPhonesFromText(blob);
+  const names = [
+    inferExternalContactNameFromGmail(message),
+    extractNamedValue(blob, "Student"),
+    extractNamedValue(blob, "Name")
+  ].filter(Boolean);
+
+  return getStudentRecords()
+    .map((student) => {
+      let score = 0;
+      const reasons = [];
+      const studentEmails = [
+        String(student.email || "").trim().toLowerCase(),
+        ...parseStoredEmailList(student.additional_emails || ""),
+        String(student.guardian_email || "").trim().toLowerCase(),
+        String(student.preferred_contact_email || "").trim().toLowerCase()
+      ].filter(Boolean);
+      const studentPhones = [
+        normalizePhoneForMatch(student.phone),
+        ...parseStoredPhoneList(student.additional_phones || "").map((entry) => normalizePhoneForMatch(entry)),
+        normalizePhoneForMatch(student.guardian_phone),
+        normalizePhoneForMatch(student.preferred_contact_phone)
+      ].filter(Boolean);
+      const studentNames = [
+        student.full_name || "",
+        student.guardian_name || "",
+        student.preferred_contact_name || ""
+      ].filter(Boolean);
+
+      emails.forEach((email) => {
+        if (studentEmails.includes(email)) {
+          score += 6;
+          reasons.push(`Email match: ${email}`);
+        }
+      });
+
+      phones.forEach((phone) => {
+        const normalized = normalizePhoneForMatch(phone);
+        if (normalized && studentPhones.includes(normalized)) {
+          score += 5;
+          reasons.push("Phone match");
+        }
+      });
+
+      names.forEach((name) => {
+        if (studentNames.some((candidate) => hasStrongNameTokenOverlap(name, candidate))) {
+          score += 4;
+          reasons.push(`Name match: ${name}`);
+        }
+      });
+
+      return {
+        student,
+        score,
+        reasons: Array.from(new Set(reasons))
+      };
+    })
+    .filter((candidate) => candidate.score >= 4)
+    .sort((a, b) => b.score - a.score);
+}
+
+function findExistingPaymentByImportSignal(studentId, amount, paymentDate, sourceId) {
+  return getPaymentRecords().find((payment) => {
+    if (payment.student_id !== studentId) return false;
+    if (String(payment.applies_to || "") === String(sourceId || "")) return true;
+    const sameAmount = Math.abs(Number(payment.amount || 0) - Number(amount || 0)) < 0.01;
+    const sameDate = String(payment.payment_date || "") === String(paymentDate || "");
+    return sameAmount && sameDate && String(payment.payment_type || "").toLowerCase().includes("email");
+  }) || null;
+}
+
+function buildImportedPaymentFromGmailMessage(message) {
+  const matches = findPotentialPaymentStudentMatches(message);
+  const matchedStudent = matches[0]?.student || null;
+  const blob = sanitizeImportedContactText(`${message.subject || ""}\n${message.body || ""}`);
+  const amount =
+    extractCurrencyAmountFromText(extractNamedValue(blob, "Payment received")) ||
+    extractCurrencyAmountFromText(extractNamedValue(blob, "Paid Online")) ||
+    extractCurrencyAmountFromText(extractNamedValue(blob, "Price")) ||
+    extractCurrencyAmountFromText(blob);
+  const receivedDate = String(message.received_at || "").slice(0, 10);
+  const linkedPackage = matchedStudent ? getCurrentPackageByStudentId(matchedStudent.student_id) : null;
+
+  return {
+    student_id: matchedStudent?.student_id || "",
+    amount,
+    currency: "USD",
+    payment_date: receivedDate,
+    payment_type: "Email Payment Import",
+    status: "Paid",
+    related_package_id: linkedPackage?.package_id || "",
+    applies_to: message.id,
+    related_lesson_id: "",
+    match_candidates: matches
+  };
 }
 
 function inferLessonTypeFromGmailMessage(message) {
@@ -3328,8 +3475,42 @@ function processGmailImportFeed(feed = []) {
   let importedCount = 0;
   let flaggedCount = 0;
   let skippedCount = 0;
+  let paymentImportedCount = 0;
+  let paymentFlaggedCount = 0;
 
   (Array.isArray(feed) ? feed : []).forEach((message) => {
+    if (isLikelyPaymentGmailMessage(message)) {
+      const paymentCandidate = buildImportedPaymentFromGmailMessage(message);
+      if (!paymentCandidate.student_id || !paymentCandidate.amount || !paymentCandidate.payment_date) {
+        skippedCount += 1;
+      } else {
+        const existingPayment = findExistingPaymentByImportSignal(
+          paymentCandidate.student_id,
+          paymentCandidate.amount,
+          paymentCandidate.payment_date,
+          message.id
+        );
+
+        if (existingPayment) {
+          patchRecordById("payments", existingPayment.payment_id, {
+            amount: paymentCandidate.amount,
+            payment_date: paymentCandidate.payment_date,
+            status: paymentCandidate.status,
+            related_package_id: existingPayment.related_package_id || paymentCandidate.related_package_id || "",
+            applies_to: message.id
+          });
+          paymentFlaggedCount += 1;
+        } else {
+          const paymentResult = upsertPaymentRecord(paymentCandidate);
+          if (paymentResult && paymentResult.ok) {
+            paymentImportedCount += 1;
+          } else {
+            skippedCount += 1;
+          }
+        }
+      }
+    }
+
     if (!isLikelyLessonGmailMessage(message)) {
       skippedCount += 1;
       return;
@@ -3415,6 +3596,8 @@ function processGmailImportFeed(feed = []) {
   return {
     imported: importedCount,
     flagged: flaggedCount,
+    payment_imported: paymentImportedCount,
+    payment_flagged: paymentFlaggedCount,
     skipped: skippedCount,
     synced_at: nowIso
   };
@@ -3437,6 +3620,8 @@ function runDemoGmailAssistSync() {
     gmail_last_sync_summary: {
       imported: summary.imported,
       flagged: summary.flagged,
+      payment_imported: summary.payment_imported || 0,
+      payment_flagged: summary.payment_flagged || 0,
       skipped: summary.skipped
     }
   });
@@ -3444,7 +3629,7 @@ function runDemoGmailAssistSync() {
   renderAppFromSchema();
   notifyUser({
     title: "Gmail Assist Complete",
-    message: `Imported ${summary.imported}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+    message: `Lessons imported ${summary.imported}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
     tone: "success",
     source: "schedule"
   });
@@ -3474,13 +3659,15 @@ async function runGmailAssistSync() {
           gmail_last_sync_summary: {
             imported: summary.imported,
             flagged: summary.flagged,
+            payment_imported: summary.payment_imported || 0,
+            payment_flagged: summary.payment_flagged || 0,
             skipped: summary.skipped
           }
         });
         renderAppFromSchema();
         notifyUser({
           title: "Gmail Assist Complete",
-          message: `Imported ${summary.imported}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+          message: `Lessons imported ${summary.imported}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
           tone: "success",
           source: "schedule"
         });
@@ -3572,11 +3759,11 @@ function saveGoogleConnectionSettings(event) {
   studioDataService.updateBackendSettings({
     google_account_email: accountEmail,
     google_sync_mode: "manual",
-    gmail_filter_scope: "booking_only",
+    gmail_filter_scope: "booking_and_payments",
     import_review_mode: "review_first"
   });
   syncCalendarStateFromBackendSettings();
-  setSettingsActionFeedback("Google connection preferences saved. Calendar and Gmail are set to one shared account, manual sync first, booking-only Gmail, and review-first intake.", "success");
+  setSettingsActionFeedback("Google connection preferences saved. Calendar and Gmail are set to one shared account, manual sync first, booking/payment Gmail review, and review-first intake.", "success");
   renderSettingsPage();
 }
 
@@ -5970,6 +6157,10 @@ function isPaymentCountedAsPaid(payment) {
 
 function getPackageDeclaredPaymentStatus(pkg) {
   const normalized = String(pkg?.payment_status || "").trim().toUpperCase();
+  const linkedPaid = Number(pkg?.package_id ? getPackageLinkedPaidTotal(pkg.package_id) : 0);
+  const price = Number(pkg?.package_price || 0);
+  if (price > 0 && linkedPaid >= price) return "PAID";
+  if (price > 0 && linkedPaid > 0) return "PARTIAL";
   return ["PAID", "DUE", "PARTIAL", "OVERDUE"].includes(normalized) ? normalized : "DUE";
 }
 
@@ -6711,6 +6902,8 @@ function upsertPaymentRecord(payload) {
   const paymentType = String(payload.payment_type || "").trim();
   const status = String(payload.status || "Paid").trim() || "Paid";
   const relatedPackageId = String(payload.related_package_id || "").trim();
+  const relatedLessonId = String(payload.related_lesson_id || "").trim();
+  const appliesTo = String(payload.applies_to || "").trim();
   const normalizedStatus = status.toLowerCase();
 
   if (!studentId) return { ok: false, errors: ["Student is required."] };
@@ -6752,7 +6945,9 @@ function upsertPaymentRecord(payload) {
       payment_date: paymentDate,
       payment_type: paymentType,
       status,
-      related_package_id: relatedPackageId
+      related_package_id: relatedPackageId,
+      related_lesson_id: relatedLessonId,
+      applies_to: appliesTo
     });
 
     return { ok: true, payment: updated };
@@ -6767,6 +6962,8 @@ function upsertPaymentRecord(payload) {
     payment_type: paymentType,
     status,
     related_package_id: relatedPackageId,
+    related_lesson_id: relatedLessonId,
+    applies_to: appliesTo,
     archived_at: null
   };
 
@@ -10493,6 +10690,7 @@ function renderTodoPage() {
   const urgentTasks = tasks.filter((task) => task.priority >= 5);
   const todayPrepTasks = tasks.filter((task) => String(task.source || "").toLowerCase() === "prep");
   const financeTasks = tasks.filter((task) => String(task.source || "").toLowerCase() === "finance");
+  const overdueTasks = getOverdueTodoItems();
 
   root.innerHTML = `
     <div class="todo-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
@@ -10526,6 +10724,10 @@ function renderTodoPage() {
         <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Finance Follow-Up</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${financeTasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Still Open</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${overdueTasks.length}</p>
         </div>
         <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Manual</p>
@@ -10599,6 +10801,29 @@ function renderTodoPage() {
               <input name="todo_title" type="text" placeholder="Call parent back, prep headshot notes, follow up on package..." class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
               <button type="submit" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Add To Checklist</button>
             </form>
+          </div>
+
+          <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
+              <h3 class="font-display text-lg font-semibold">Still Open</h3>
+            </div>
+            <div class="p-4 space-y-3">
+              ${
+                overdueTasks.length
+                  ? overdueTasks.map((task) => `
+                    <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                      <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
+                      <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "Older unfinished task still worth closing out.")}</p>
+                      <div class="mt-3 flex flex-wrap gap-2">
+                        ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
+                        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Check Off</button>
+                        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="deleteTodoTask('${task.id}')">Delete</button>
+                      </div>
+                    </div>
+                  `).join("")
+                  : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No lingering open tasks</p><p class="text-xs text-warmgray mt-1">Anything older that still matters will show up here.</p></div>`
+              }
+            </div>
           </div>
         </div>
       </div>

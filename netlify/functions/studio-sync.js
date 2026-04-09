@@ -50,7 +50,7 @@ function getGmailMaxResults() {
 function getGmailSyncQuery() {
   return String(
     process.env.GMAIL_SYNC_QUERY ||
-    'newer_than:120d ((from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com) OR (subject:booking OR subject:appointment OR subject:"upcoming booking" OR subject:lesson OR subject:session))'
+    'newer_than:120d ((from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com) OR (subject:booking OR subject:appointment OR subject:"upcoming booking" OR subject:lesson OR subject:session OR subject:payment OR subject:"new order"))'
   ).trim();
 }
 
@@ -194,7 +194,7 @@ function isLikelyLessonCalendarEventBackend(event) {
 
 function isLikelyLessonGmailMessageBackend(message) {
   var blob = ((message.subject || "") + "\n" + (message.body || "") + "\n" + (message.from || "")).toLowerCase();
-  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b/.test(blob);
+  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b|\bpayment\b|\bnew order\b/.test(blob);
 }
 
 function inferCalendarLocation(event) {
@@ -317,7 +317,7 @@ function getGoogleIntegrationStatusPayload(event) {
     google: {
       account_email: getGoogleAccountEmail(),
       sync_mode: "manual",
-      gmail_filter_scope: "booking_only",
+      gmail_filter_scope: "booking_and_payments",
       import_review_mode: "review_first",
       oauth_configured: oauthConfigured,
       refresh_token_present: refreshTokenPresent,
