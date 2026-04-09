@@ -88,6 +88,15 @@
         </button>
 
         <button
+          onclick="navigateTo('operations')"
+          data-nav="operations"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="clipboard-list" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Operations</span>
+        </button>
+
+        <button
           onclick="navigateTo('students')"
           data-nav="students"
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
@@ -178,6 +187,15 @@
         </button>
 
         <button
+          onclick="navigateTo('reports')"
+          data-nav="reports"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Reports</span>
+        </button>
+
+        <button
           onclick="navigateTo('settings')"
           data-nav="settings"
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
@@ -246,6 +264,11 @@
           </div>
 
           <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Additional Phones</label>
+            <input name="additional_phones" type="text" placeholder="Comma-separated phones" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Guardian / Parent Name</label>
             <input name="guardian_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
@@ -258,6 +281,44 @@
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Guardian / Parent Phone</label>
             <input name="guardian_phone" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Preferred Contact Method</label>
+            <select name="preferred_contact_method" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="">Not Set</option>
+              <option value="STUDENT">Student</option>
+              <option value="GUARDIAN">Guardian / Parent</option>
+              <option value="EMAIL">Email</option>
+              <option value="PHONE">Phone</option>
+              <option value="TEXT">Text</option>
+              <option value="OTHER">Other</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Preferred Contact Name</label>
+            <input name="preferred_contact_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Preferred Contact Email</label>
+            <input name="preferred_contact_email" type="email" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Preferred Contact Phone</label>
+            <input name="preferred_contact_phone" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Emergency Contact Name</label>
+            <input name="emergency_contact_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Emergency Contact Phone</label>
+            <input name="emergency_contact_phone" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
 
           <div>
@@ -318,6 +379,11 @@
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Focus Area</label>
             <input name="focus_area" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Business / Family Notes</label>
+            <textarea name="business_notes" rows="3" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"></textarea>
           </div>
 
           <div class="col-span-2">

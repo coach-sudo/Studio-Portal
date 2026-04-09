@@ -72,10 +72,12 @@ function renderCurrentPage() {
   updateNavState(currentPage);
   const pageRenderers = {
     dashboard: typeof renderDashboardPage === "function" ? renderDashboardPage : null,
+    operations: typeof renderOperationsPage === "function" ? renderOperationsPage : null,
     students: typeof renderStudentsPage === "function" ? renderStudentsPage : null,
     lessons: typeof renderLessonsPage === "function" ? renderLessonsPage : null,
     schedule: typeof renderSchedulePage === "function" ? renderSchedulePage : null,
     todo: typeof renderTodoPage === "function" ? renderTodoPage : null,
+    reports: typeof renderReportsPage === "function" ? renderReportsPage : null,
     automations: typeof renderAutomationsPage === "function" ? renderAutomationsPage : null,
     finance: typeof renderFinancePage === "function" ? renderFinancePage : null,
     notes: typeof renderNotesQueuePage === "function" ? renderNotesQueuePage : null,

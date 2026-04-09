@@ -41,6 +41,15 @@ function normalizeEmailListValue(value) {
   )).join(", ");
 }
 
+function normalizePhoneListValue(value) {
+  return Array.from(new Set(
+    String(value || "")
+      .split(/[,\n;]/)
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean)
+  )).join(", ");
+}
+
 function normalizeBoolean(value) {
   return Boolean(value);
 }
@@ -130,9 +139,17 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
   const email = String(payload.email || "").trim();
   const additionalEmails = normalizeEmailListValue(payload.additional_emails || "");
   const phone = String(payload.phone || "").trim();
+  const additionalPhones = normalizePhoneListValue(payload.additional_phones || "");
   const guardianName = String(payload.guardian_name || "").trim();
   const guardianEmail = String(payload.guardian_email || "").trim();
   const guardianPhone = String(payload.guardian_phone || "").trim();
+  const preferredContactMethod = String(payload.preferred_contact_method || "").trim().toUpperCase();
+  const preferredContactName = String(payload.preferred_contact_name || "").trim();
+  const preferredContactEmail = String(payload.preferred_contact_email || "").trim();
+  const preferredContactPhone = String(payload.preferred_contact_phone || "").trim();
+  const emergencyContactName = String(payload.emergency_contact_name || "").trim();
+  const emergencyContactPhone = String(payload.emergency_contact_phone || "").trim();
+  const businessNotes = String(payload.business_notes || "").trim();
   const timezone = String(payload.timezone || "").trim();
   const studioStatus = normalizeStudioStatusValue(payload.studio_status);
   const billingModel = normalizeBillingModelValue(payload.billing_model);
@@ -163,6 +180,14 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
 
   if (guardianEmail && !isValidEmailAddress(guardianEmail)) {
     errors.push("Enter a valid guardian email address.");
+  }
+
+  if (preferredContactEmail && !isValidEmailAddress(preferredContactEmail)) {
+    errors.push("Enter a valid preferred contact email address.");
+  }
+
+  if (preferredContactMethod && !["STUDENT", "GUARDIAN", "EMAIL", "PHONE", "TEXT", "OTHER"].includes(preferredContactMethod)) {
+    errors.push("Preferred contact method must be STUDENT, GUARDIAN, EMAIL, PHONE, TEXT, or OTHER.");
   }
 
   if (!isEdit) {
@@ -197,9 +222,17 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
       email,
       additional_emails: additionalEmails,
       phone,
+      additional_phones: additionalPhones,
       guardian_name: guardianName,
       guardian_email: guardianEmail,
       guardian_phone: guardianPhone,
+      preferred_contact_method: preferredContactMethod,
+      preferred_contact_name: preferredContactName,
+      preferred_contact_email: preferredContactEmail,
+      preferred_contact_phone: preferredContactPhone,
+      emergency_contact_name: emergencyContactName,
+      emergency_contact_phone: emergencyContactPhone,
+      business_notes: businessNotes,
       timezone,
       studio_status: studioStatus,
       billing_model: billingModel,
@@ -233,9 +266,17 @@ function createStudent(payload) {
     email: result.cleaned.email,
     additional_emails: result.cleaned.additional_emails,
     phone: result.cleaned.phone,
+    additional_phones: result.cleaned.additional_phones,
     guardian_name: result.cleaned.guardian_name,
     guardian_email: result.cleaned.guardian_email,
     guardian_phone: result.cleaned.guardian_phone,
+    preferred_contact_method: result.cleaned.preferred_contact_method,
+    preferred_contact_name: result.cleaned.preferred_contact_name,
+    preferred_contact_email: result.cleaned.preferred_contact_email,
+    preferred_contact_phone: result.cleaned.preferred_contact_phone,
+    emergency_contact_name: result.cleaned.emergency_contact_name,
+    emergency_contact_phone: result.cleaned.emergency_contact_phone,
+    business_notes: result.cleaned.business_notes,
     timezone: result.cleaned.timezone,
     studio_status: result.cleaned.studio_status,
     billing_model: result.cleaned.billing_model,
@@ -287,9 +328,17 @@ function updateStudent(studentId, payload) {
   if ("email" in payload) updates.email = result.cleaned.email;
   if ("additional_emails" in payload) updates.additional_emails = result.cleaned.additional_emails;
   if ("phone" in payload) updates.phone = result.cleaned.phone;
+  if ("additional_phones" in payload) updates.additional_phones = result.cleaned.additional_phones;
   if ("guardian_name" in payload) updates.guardian_name = result.cleaned.guardian_name;
   if ("guardian_email" in payload) updates.guardian_email = result.cleaned.guardian_email;
   if ("guardian_phone" in payload) updates.guardian_phone = result.cleaned.guardian_phone;
+  if ("preferred_contact_method" in payload) updates.preferred_contact_method = result.cleaned.preferred_contact_method;
+  if ("preferred_contact_name" in payload) updates.preferred_contact_name = result.cleaned.preferred_contact_name;
+  if ("preferred_contact_email" in payload) updates.preferred_contact_email = result.cleaned.preferred_contact_email;
+  if ("preferred_contact_phone" in payload) updates.preferred_contact_phone = result.cleaned.preferred_contact_phone;
+  if ("emergency_contact_name" in payload) updates.emergency_contact_name = result.cleaned.emergency_contact_name;
+  if ("emergency_contact_phone" in payload) updates.emergency_contact_phone = result.cleaned.emergency_contact_phone;
+  if ("business_notes" in payload) updates.business_notes = result.cleaned.business_notes;
   if ("timezone" in payload) updates.timezone = result.cleaned.timezone;
   if ("studio_status" in payload) updates.studio_status = result.cleaned.studio_status;
   if ("billing_model" in payload) updates.billing_model = result.cleaned.billing_model;

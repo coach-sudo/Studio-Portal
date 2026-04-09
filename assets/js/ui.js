@@ -40,6 +40,8 @@ let importedStudentFileName = "";
 let currentStudentFilters = new Set(["all"]);
 let currentSettingsSection = "integrations";
 let currentAutomationTab = "attention";
+let currentTodoView = "daily";
+let selectedScheduleIntakeLessonIds = new Set();
 let manualTodoItems = [];
 let dismissedTodoIds = [];
 const CALENDAR_SYNC_STORAGE_KEY = "studioPortal.googleCalendarSync";
@@ -567,6 +569,30 @@ function getDailyTodoItems() {
   });
 }
 
+function getWeeklyTodoItems() {
+  const start = startOfLocalDay(getReferenceNow());
+  const end = endOfLocalDay(addDaysToDate(start, 6));
+
+  return getDailyTodoItems()
+    .filter((task) => {
+      if (!task.due_at) return task.type === "manual";
+      const due = new Date(task.due_at);
+      if (Number.isNaN(due.getTime())) return false;
+      return due >= start && due <= end;
+    })
+    .sort((a, b) => {
+      if (b.priority !== a.priority) return b.priority - a.priority;
+      const aTime = new Date(a.due_at || a.created_at || 0).getTime();
+      const bTime = new Date(b.due_at || b.created_at || 0).getTime();
+      return aTime - bTime;
+    });
+}
+
+function setTodoView(view) {
+  currentTodoView = view === "weekly" ? "weekly" : "daily";
+  renderTodoPage();
+}
+
 function addManualTodoItem(title) {
   const cleaned = String(title || "").trim();
   if (!cleaned) {
@@ -619,7 +645,7 @@ function deleteTodoItem(taskId) {
 }
 
 function openTodoTask(taskId) {
-  const task = getDailyTodoItems().find((item) => item.id === taskId);
+  const task = [...getDailyTodoItems(), ...getWeeklyTodoItems()].find((item) => item.id === taskId);
   if (!task?.action) return;
 
   if (task.action.page === "notes" && task.action.entityId) {
@@ -1170,11 +1196,15 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
       const studentEmails = [
         String(student.email || "").trim().toLowerCase(),
         ...parseStoredEmailList(student.additional_emails || ""),
-        String(student.guardian_email || "").trim().toLowerCase()
+        String(student.guardian_email || "").trim().toLowerCase(),
+        String(student.preferred_contact_email || "").trim().toLowerCase()
       ].filter(Boolean);
       const studentPhones = [
         normalizePhoneForMatch(student.phone),
-        normalizePhoneForMatch(student.guardian_phone)
+        ...parseStoredPhoneList(student.additional_phones || "").map((entry) => normalizePhoneForMatch(entry)),
+        normalizePhoneForMatch(student.guardian_phone),
+        normalizePhoneForMatch(student.preferred_contact_phone),
+        normalizePhoneForMatch(student.emergency_contact_phone)
       ].filter(Boolean);
       const emailMatch = targetEmail && studentEmails.includes(targetEmail);
       const phoneMatch = targetPhone && studentPhones.includes(targetPhone);
@@ -1240,9 +1270,13 @@ function getStudentDuplicateCompletenessScore(student) {
   if (student.email) score += 3;
   if (student.phone) score += 2;
   if (student.additional_emails) score += 1;
+  if (student.additional_phones) score += 1;
   if (student.guardian_name) score += 1;
   if (student.guardian_email) score += 2;
   if (student.guardian_phone) score += 1;
+  if (student.preferred_contact_email) score += 1;
+  if (student.preferred_contact_phone) score += 1;
+  if (student.emergency_contact_name) score += 1;
   if (student.focus_area) score += 1;
   if (student.lead_source) score += 1;
   if (student.actor_profile_id) score += 1;
@@ -1259,7 +1293,7 @@ function getCurrentStudentDuplicateRows() {
     const matches = findPotentialStudentMatches({
       full_name: student.full_name || "",
       email: student.email || student.guardian_email || parseStoredEmailList(student.additional_emails || "")[0] || "",
-      phone: student.phone || student.guardian_phone || ""
+      phone: student.phone || student.guardian_phone || parseStoredPhoneList(student.additional_phones || "")[0] || student.preferred_contact_phone || ""
     });
 
     matches
@@ -1287,7 +1321,9 @@ function getCurrentStudentDuplicateRows() {
           primary_status: primary.studio_status || "",
           duplicate_status: duplicate.studio_status || "",
           primary_email: primary.email || primary.guardian_email || parseStoredEmailList(primary.additional_emails || "")[0] || "",
-          duplicate_email: duplicate.email || duplicate.guardian_email || parseStoredEmailList(duplicate.additional_emails || "")[0] || ""
+          duplicate_email: duplicate.email || duplicate.guardian_email || parseStoredEmailList(duplicate.additional_emails || "")[0] || "",
+          primary_phone: primary.phone || primary.guardian_phone || parseStoredPhoneList(primary.additional_phones || "")[0] || "",
+          duplicate_phone: duplicate.phone || duplicate.guardian_phone || parseStoredPhoneList(duplicate.additional_phones || "")[0] || ""
         });
       });
   });
@@ -1307,15 +1343,33 @@ function getMergedStudentPayload(primaryStudent, duplicateStudent) {
     String(duplicateStudent.email || "").trim().toLowerCase(),
     String(duplicateStudent.guardian_email || "").trim().toLowerCase()
   ].filter((email) => email && email !== String(primaryStudent.email || "").trim().toLowerCase() && email !== String(primaryStudent.guardian_email || "").trim().toLowerCase())));
+  const combinedAdditionalPhones = Array.from(new Set([
+    primaryStudent.phone || "",
+    duplicateStudent.phone || "",
+    ...parseStoredPhoneList(primaryStudent.additional_phones || ""),
+    ...parseStoredPhoneList(duplicateStudent.additional_phones || ""),
+    primaryStudent.guardian_phone || "",
+    duplicateStudent.guardian_phone || "",
+    primaryStudent.preferred_contact_phone || "",
+    duplicateStudent.preferred_contact_phone || ""
+  ].map((entry) => String(entry || "").trim()).filter((entry) => entry && entry !== String(primaryStudent.phone || "").trim() && entry !== String(primaryStudent.guardian_phone || "").trim())));
 
   return {
     full_name: primaryStudent.full_name || duplicateStudent.full_name || "",
     email: primaryStudent.email || duplicateStudent.email || "",
     additional_emails: combinedAdditionalEmails.join(", "),
     phone: primaryStudent.phone || duplicateStudent.phone || "",
+    additional_phones: normalizePhoneListForStorage(combinedAdditionalPhones.join(", ")),
     guardian_name: primaryStudent.guardian_name || duplicateStudent.guardian_name || "",
     guardian_email: primaryStudent.guardian_email || duplicateStudent.guardian_email || "",
     guardian_phone: primaryStudent.guardian_phone || duplicateStudent.guardian_phone || "",
+    preferred_contact_method: primaryStudent.preferred_contact_method || duplicateStudent.preferred_contact_method || "",
+    preferred_contact_name: primaryStudent.preferred_contact_name || duplicateStudent.preferred_contact_name || "",
+    preferred_contact_email: primaryStudent.preferred_contact_email || duplicateStudent.preferred_contact_email || "",
+    preferred_contact_phone: primaryStudent.preferred_contact_phone || duplicateStudent.preferred_contact_phone || "",
+    emergency_contact_name: primaryStudent.emergency_contact_name || duplicateStudent.emergency_contact_name || "",
+    emergency_contact_phone: primaryStudent.emergency_contact_phone || duplicateStudent.emergency_contact_phone || "",
+    business_notes: primaryStudent.business_notes || duplicateStudent.business_notes || "",
     timezone: primaryStudent.timezone || duplicateStudent.timezone || "",
     studio_status: String(primaryStudent.studio_status || "").toUpperCase() === "INACTIVE" && duplicateStudent.studio_status
       ? duplicateStudent.studio_status
@@ -2182,6 +2236,22 @@ function parseStoredEmailList(value) {
     .filter(Boolean);
 }
 
+function normalizePhoneListForStorage(value) {
+  return Array.from(new Set(
+    String(value || "")
+      .split(/[,\n;]/)
+      .map((entry) => String(entry || "").trim())
+      .filter(Boolean)
+  )).join(", ");
+}
+
+function parseStoredPhoneList(value) {
+  return String(value || "")
+    .split(/[,\n;]/)
+    .map((entry) => String(entry || "").trim())
+    .filter(Boolean);
+}
+
 function appendEmailToList(existing, nextEmail) {
   return normalizeEmailListForStorage([
     ...parseStoredEmailList(existing),
@@ -2375,6 +2445,14 @@ function inferExternalContactPhoneFromGmail(message) {
   return extractNamedValue(blob, "PHONE") || extractNamedValue(blob, "Phone") || extractPhonesFromText(blob)[0] || "";
 }
 
+function buildImportedSourceGroupKey({ name = "", email = "", phone = "", start = "" }) {
+  const normalizedName = cleanImportedContactName(name).toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedPhone = normalizePhoneForMatch(phone);
+  const normalizedStart = String(start || "").slice(0, 16);
+  return [normalizedName || "unknown", normalizedEmail || normalizedPhone || "n-a", normalizedStart || "no-start"].join("::");
+}
+
 function isLikelyLessonCalendarEvent(event) {
   const blob = `${event.title || ""}\n${event.description || ""}`.toLowerCase();
   const exclusionPatterns = [/^busy\b/i, /\bto do\b/i, /\bpop up\b/i, /\bbackstage\b/i, /\bpersonal\b/i];
@@ -2537,6 +2615,12 @@ function buildImportedLessonFromCalendarEvent(event) {
   const matchedStudent = highConfidenceMatch ? highConfidenceMatch.student : null;
   const joinLink = extractFirstUrl(event.description || "");
   const hasJoinLink = Boolean(joinLink);
+  const sourceGroupKey = buildImportedSourceGroupKey({
+    name: externalContactName,
+    email: externalContactEmail,
+    phone: externalContactPhone,
+    start: event.start
+  });
 
   return {
     student_id: matchedStudent?.student_id || "",
@@ -2559,6 +2643,7 @@ function buildImportedLessonFromCalendarEvent(event) {
     external_contact_name: externalContactName,
     external_contact_email: externalContactEmail,
     external_contact_phone: externalContactPhone,
+    source_group_key: sourceGroupKey,
     sync_state: "SYNCED",
     intake_review_state: matchedStudent ? "UNREVIEWED" : "NEEDS_ATTENTION",
     imported_at: "",
@@ -2592,6 +2677,12 @@ function buildImportedLessonFromGmailMessage(message) {
   const hasTimeRange = Boolean(timeRange?.start);
   const hasResolvedEnd = Boolean(timeRange?.end);
   const locationType = inferLocationTypeFromGmailMessage(message, joinLink);
+  const sourceGroupKey = buildImportedSourceGroupKey({
+    name: externalContactName,
+    email: externalContactEmail,
+    phone: externalContactPhone,
+    start: timeRange?.start || ""
+  });
 
   return {
     student_id: matchedStudent?.student_id || "",
@@ -2614,6 +2705,7 @@ function buildImportedLessonFromGmailMessage(message) {
     external_contact_name: externalContactName,
     external_contact_email: externalContactEmail,
     external_contact_phone: externalContactPhone,
+    source_group_key: sourceGroupKey,
     sync_state: "SYNCED",
     intake_review_state: matchedStudent ? "UNREVIEWED" : "NEEDS_ATTENTION",
     imported_at: "",
@@ -2900,8 +2992,21 @@ function getImportedLessonReviewGuidance(lesson) {
   }
 
   if (lesson?.source === "gmail" && crossSourceMatch?.lesson?.source && crossSourceMatch.lesson.source !== lesson.source) {
-    reasons.push(`Cross-check against ${getLessonSourceLabel(crossSourceMatch.lesson.source)} import`);
+    reasons.push(`Corroborated by ${getLessonSourceLabel(crossSourceMatch.lesson.source)} import`);
     if (!blocking && recommendedAction === "confirm") recommendedAction = "review";
+  }
+
+  if (lesson?.source_group_key) {
+    const corroboratingSources = Array.from(new Set(
+      getLessonRecords()
+        .filter((candidate) => candidate.lesson_id !== lesson.lesson_id)
+        .filter((candidate) => candidate.source_group_key && candidate.source_group_key === lesson.source_group_key)
+        .map((candidate) => getLessonSourceLabel(candidate.source))
+    ));
+    if (corroboratingSources.length) {
+      reasons.push(`Also seen in ${corroboratingSources.join(", ")}`);
+      if (priority === "low") priority = "medium";
+    }
   }
 
   if (Object.keys(mergePatch).length) {
@@ -3757,6 +3862,35 @@ function saveScheduleStudentMatch(lessonId) {
   });
 }
 
+function getScheduleStudentMergePreviewMarkup(lesson, studentId) {
+  const student = getSchemaStudentById(studentId);
+  if (!student) {
+    return `<div class="text-xs text-warmgray">Choose a student to preview what will be merged.</div>`;
+  }
+  const patch = getImportedLessonStudentMergePatch(lesson, student);
+  const fields = getImportedLessonStudentMergeSummary(patch);
+  const evidence = [];
+  const contact = getImportedLessonContactInfo(lesson);
+
+  if (contact.email) evidence.push(`Imported email: ${contact.email}`);
+  if (contact.phone) evidence.push(`Imported phone: ${contact.phone}`);
+  if (contact.student_full_name) evidence.push(`Imported name: ${contact.student_full_name}`);
+
+  return `
+    <div class="rounded-xl border border-cream bg-parchment p-4">
+      <p class="text-xs uppercase tracking-wider text-warmgray">Merge Preview</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${escapeHtml(student.full_name)}</p>
+      <div class="space-y-1 mt-3">
+        ${evidence.map((item) => `<p class="text-xs text-warmgray wrap-anywhere">${escapeHtml(item)}</p>`).join("")}
+      </div>
+      <div class="mt-3">
+        <p class="text-xs uppercase tracking-wider text-warmgray">Fields to enrich</p>
+        <p class="text-sm text-warmblack mt-2">${fields.length ? escapeHtml(fields.join(", ")) : "No student fields need to be updated. This will just link the lesson."}</p>
+      </div>
+    </div>
+  `;
+}
+
 function openScheduleStudentMatchModal(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
@@ -3824,6 +3958,10 @@ function openScheduleStudentMatchModal(lessonId) {
           <p class="text-xs text-warmgray mt-2">Choosing a student here will also pull missing email, phone, and intake source details from the lesson into that student record when available.</p>
         </div>
 
+        <div id="schedule-student-match-preview">
+          ${getScheduleStudentMergePreviewMarkup(lesson, recommendedStudentId)}
+        </div>
+
         <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
           <button type="button" id="cancel-schedule-student-match-modal" class="px-4 py-2.5 rounded-xl border border-cream bg-parchment text-sm font-medium">Cancel</button>
           <button type="button" id="save-schedule-student-match-modal" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Merge & Match Student</button>
@@ -3837,9 +3975,16 @@ function openScheduleStudentMatchModal(lessonId) {
   const closeBtn = document.getElementById("close-schedule-student-match-modal");
   const cancelBtn = document.getElementById("cancel-schedule-student-match-modal");
   const saveBtn = document.getElementById("save-schedule-student-match-modal");
+  const select = document.getElementById("schedule-student-match-select");
+  const preview = document.getElementById("schedule-student-match-preview");
   if (closeBtn) closeBtn.onclick = closeScheduleStudentMatchModal;
   if (cancelBtn) cancelBtn.onclick = closeScheduleStudentMatchModal;
   if (saveBtn) saveBtn.onclick = () => saveScheduleStudentMatch(lessonId);
+  if (select && preview) {
+    select.onchange = () => {
+      preview.innerHTML = getScheduleStudentMergePreviewMarkup(lesson, select.value);
+    };
+  }
 }
 
 function getLessonSyncStateLabel(state, source = "manual") {
@@ -3934,6 +4079,14 @@ function getStartOfWeek(date) {
 
 function getEndOfWeek(date) {
   return endOfLocalDay(addDaysToDate(getStartOfWeek(date), 6));
+}
+
+function getWeekNumber(date) {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = target.getUTCDay() || 7;
+  target.setUTCDate(target.getUTCDate() + 4 - dayNumber);
+  const yearStart = new Date(Date.UTC(target.getUTCFullYear(), 0, 1));
+  return Math.ceil((((target - yearStart) / 86400000) + 1) / 7);
 }
 
 function getStartOfMonth(date) {
@@ -5815,6 +5968,25 @@ function isPaymentCountedAsPaid(payment) {
   return String(payment?.status || "").toLowerCase() === "paid" && !isPaymentArchived(payment);
 }
 
+function getPackageDeclaredPaymentStatus(pkg) {
+  const normalized = String(pkg?.payment_status || "").trim().toUpperCase();
+  return ["PAID", "DUE", "PARTIAL", "OVERDUE"].includes(normalized) ? normalized : "DUE";
+}
+
+function getPackageFinancials(pkg) {
+  const price = Number(pkg?.package_price || 0);
+  const linkedPaid = pkg?.package_id ? getPackageLinkedPaidTotal(pkg.package_id) : 0;
+  const declaredStatus = getPackageDeclaredPaymentStatus(pkg);
+  const paid = declaredStatus === "PAID" ? Math.max(price, linkedPaid) : Math.min(price, linkedPaid);
+  const remaining = Math.max(0, price - paid);
+  return {
+    price,
+    paid,
+    remaining,
+    declared_status: declaredStatus
+  };
+}
+
 function getPackagesByStudentId(studentId, options = {}) {
   const includeArchived = options.includeArchived === true;
 
@@ -5986,6 +6158,26 @@ function getResolvedPackageUsage(studentId, pkg) {
   };
 }
 
+function getPackageLifecycleStatus(studentId, pkg) {
+  if (!pkg) return "NONE";
+  const usage = getResolvedPackageUsage(studentId, pkg);
+  const finance = getPackageFinancials(pkg);
+  const allocation = buildStudentPackageAllocation(studentId).package_stats[pkg.package_id] || {};
+  const effectiveExpiration = allocation.effective_expiration || pkg.manual_extension_until || pkg.expires_on || "";
+  const expiryDate = effectiveExpiration ? new Date(effectiveExpiration) : null;
+  const expired = expiryDate && !Number.isNaN(expiryDate.getTime()) ? endOfLocalDay(expiryDate) < getReferenceNow() : false;
+
+  if (pkg.manual_extension_until && effectiveExpiration === pkg.manual_extension_until) {
+    return "MANUALLY_EXTENDED";
+  }
+  if (finance.remaining > 0 && usage.assigned > 0 && expired) return "OVERDUE_PAYMENT";
+  if (usage.assigned >= usage.total && usage.total > 0 && usage.used >= usage.total) return "COMPLETED";
+  if (usage.assigned >= usage.total && usage.total > 0) return "FULLY_SCHEDULED";
+  if (expired) return "EXPIRED";
+  if (finance.remaining > 0 && usage.assigned === 0) return "PURCHASED";
+  return "ACTIVE";
+}
+
 function getPackageEffectiveExpirationLabel(studentId, pkg) {
   if (!pkg) return "No expiry";
   const allocation = buildStudentPackageAllocation(studentId);
@@ -6022,32 +6214,27 @@ function getPackageStatusMeta(studentId, pkg) {
     };
   }
 
-  const usage = getResolvedPackageUsage(studentId, pkg);
+  const lifecycle = getPackageLifecycleStatus(studentId, pkg);
+  const labels = {
+    PURCHASED: { label: "Purchased", badge: "bg-parchment text-warmgray border border-cream" },
+    ACTIVE: { label: "Active", badge: "bg-sage/10 text-sage" },
+    FULLY_SCHEDULED: { label: "Fully Scheduled", badge: "bg-gold/10 text-gold" },
+    COMPLETED: { label: "Completed", badge: "bg-charcoal/10 text-charcoal" },
+    EXPIRED: { label: "Expired", badge: "bg-burgundy/10 text-burgundy" },
+    OVERDUE_PAYMENT: { label: "Overdue Payment", badge: "bg-burgundy/10 text-burgundy" },
+    MANUALLY_EXTENDED: { label: "Extended", badge: "bg-sage/10 text-sage" }
+  };
 
-  if (usage.remaining <= 0) {
-    return {
-      label: "Exhausted",
-      badge: "bg-burgundy/10 text-burgundy"
-    };
-  }
-
-  if (pkg.expires_on) {
-    const effectiveExpiration = buildStudentPackageAllocation(studentId).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on;
+  const meta = labels[lifecycle] || labels.ACTIVE;
+  if (lifecycle === "ACTIVE" && pkg.expires_on) {
+    const effectiveExpiration = buildStudentPackageAllocation(studentId).package_stats[pkg.package_id]?.effective_expiration || pkg.manual_extension_until || pkg.expires_on;
     const expires = new Date(effectiveExpiration);
-    const diffDays = Math.ceil((expires.getTime() - APP_NOW.getTime()) / (1000 * 60 * 60 * 24));
-
-    if (diffDays <= 14) {
-      return {
-        label: "Expiring Soon",
-        badge: "bg-gold/10 text-gold"
-      };
+    const diffDays = Math.ceil((expires.getTime() - getReferenceNow().getTime()) / (1000 * 60 * 60 * 24));
+    if (!Number.isNaN(diffDays) && diffDays <= 14) {
+      return { label: "Expiring Soon", badge: "bg-gold/10 text-gold" };
     }
   }
-
-  return {
-    label: "Active",
-    badge: "bg-sage/10 text-sage"
-  };
+  return meta;
 }
 
 function formatCurrency(amount, currency = "USD") {
@@ -6090,12 +6277,23 @@ function buildFinanceSummary(studentId, schemaStudent) {
   const packageMeta = getPackageStatusMeta(studentId, pkg);
 
   if (billingModel === "PACKAGE") {
-    const owed = activePackages.reduce((sum, packageRecord) => sum + Number(packageRecord.package_price || 0), 0);
-    const paid = activePackages.reduce((sum, packageRecord) => sum + getPackageLinkedPaidTotal(packageRecord.package_id), 0);
+    const owed = activePackages.reduce((sum, packageRecord) => sum + getPackageFinancials(packageRecord).price, 0);
+    const paid = activePackages.reduce((sum, packageRecord) => sum + getPackageFinancials(packageRecord).paid, 0);
     const remainingAmount = Math.max(0, owed - paid);
     const overpaidAmount = Math.max(0, paid - owed);
     const effectiveExpirationLabel = pkg ? getPackageEffectiveExpirationLabel(studentId, pkg) : "—";
     const packageCount = activePackages.length;
+    const unpaidCompletedLessons = getLessonRecords().filter((lesson) => {
+      if (lesson.student_id !== studentId) return false;
+      const status = getEffectiveLessonStatus(lesson);
+      return ["COMPLETED", "LATE_CANCEL", "NO_SHOW"].includes(status) && String(lesson.manual_payment_status || "").toUpperCase() === "UNPAID";
+    }).length;
+    const upcomingRenewals = activePackages.filter((packageRecord) => {
+      const effective = buildStudentPackageAllocation(studentId).package_stats[packageRecord.package_id]?.effective_expiration || packageRecord.manual_extension_until || packageRecord.expires_on || "";
+      if (!effective) return false;
+      const diffDays = Math.ceil((new Date(effective).getTime() - getReferenceNow().getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 14;
+    }).length;
 
     return {
       mode: "PACKAGE",
@@ -6114,7 +6312,9 @@ function buildFinanceSummary(studentId, schemaStudent) {
       remainingAmount,
       overpaidAmount,
       effectiveExpirationLabel,
-      defaultLessonRate: 0
+      defaultLessonRate: 0,
+      unpaidCompletedLessons,
+      upcomingRenewals
     };
   }
 
@@ -6197,10 +6397,8 @@ function getFinancePackagesRows() {
       const billingModel = getFinanceStudentBillingModel(pkg.student_id);
       const usage = getResolvedPackageUsage(pkg.student_id, pkg);
       const meta = getPackageStatusMeta(pkg.student_id, pkg);
-      const price = Number(pkg.package_price || 0);
-      const paid = getPackageLinkedPaidTotal(pkg.package_id);
-      const remainingBalance = Math.max(0, price - paid);
-      const effectiveExpirationRaw = buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.expires_on || "";
+      const financials = getPackageFinancials(pkg);
+      const effectiveExpirationRaw = buildStudentPackageAllocation(pkg.student_id).package_stats[pkg.package_id]?.effective_expiration || pkg.manual_extension_until || pkg.expires_on || "";
       const effectiveExpiration = effectiveExpirationRaw ? formatLongDate(effectiveExpirationRaw) : "No expiry";
 
       return {
@@ -6213,9 +6411,10 @@ function getFinancePackagesRows() {
         used: usage.used,
         reserved: usage.reserved || 0,
         remaining: usage.remaining,
-        price,
-        paid,
-        remaining_balance: remainingBalance,
+        price: financials.price,
+        paid: financials.paid,
+        remaining_balance: financials.remaining,
+        payment_status: financials.declared_status,
         expires_on: pkg.expires_on || "",
         effective_expires_on: effectiveExpirationRaw,
         effective_expires_label: effectiveExpiration,
@@ -6418,6 +6617,11 @@ function upsertPackageRecord(payload) {
   const sessionsUsed = Number(payload.sessions_used || 0);
   const packagePrice = Number(payload.package_price || 0);
   const expiresOn = String(payload.expires_on || "").trim();
+  const discountAmount = Math.max(0, Number(payload.discount_amount || 0));
+  const paymentStatus = String(payload.payment_status || "DUE").trim().toUpperCase() || "DUE";
+  const paymentDueOn = String(payload.payment_due_on || "").trim();
+  const expiryPolicy = String(payload.expiry_policy || "LAST_RESERVED_LESSON").trim().toUpperCase() || "LAST_RESERVED_LESSON";
+  const manualExtensionUntil = String(payload.manual_extension_until || "").trim();
 
   if (!studentId) return { ok: false, errors: ["Student is required."] };
   if (!packageName) return { ok: false, errors: ["Package name is required."] };
@@ -6425,6 +6629,9 @@ function upsertPackageRecord(payload) {
   if (sessionsUsed < 0) return { ok: false, errors: ["Used sessions cannot be negative."] };
   if (sessionsUsed > sessionsTotal) return { ok: false, errors: ["Used sessions cannot exceed purchased sessions."] };
   if (packagePrice < 0) return { ok: false, errors: ["Package price cannot be negative."] };
+  if (!["PAID", "DUE", "PARTIAL", "OVERDUE"].includes(paymentStatus)) return { ok: false, errors: ["Package payment status must be Paid, Due, Partial, or Overdue."] };
+  if (!["FIXED", "LAST_RESERVED_LESSON", "MANUAL_EXTENSION"].includes(expiryPolicy)) return { ok: false, errors: ["Expiry policy must be Fixed, Last Reserved Lesson, or Manual Extension."] };
+  if (expiryPolicy === "MANUAL_EXTENSION" && !manualExtensionUntil) return { ok: false, errors: ["Choose a manual extension date when using manual extension expiry."] };
 
   const remaining = Math.max(0, sessionsTotal - sessionsUsed);
   const status = remaining <= 0 ? "Depleted" : "Active";
@@ -6447,6 +6654,22 @@ function upsertPackageRecord(payload) {
       sessions_used: sessionsUsed,
       sessions_remaining: remaining,
       package_price: packagePrice,
+      discount_amount: discountAmount,
+      payment_status: paymentStatus,
+      payment_due_on: paymentDueOn,
+      expiry_policy: expiryPolicy,
+      manual_extension_until: manualExtensionUntil,
+      package_lifecycle_status: getPackageLifecycleStatus(studentId, {
+        ...existing,
+        package_id: editingPackageId,
+        sessions_total: sessionsTotal,
+        sessions_used: sessionsUsed,
+        package_price: packagePrice,
+        payment_status: paymentStatus,
+        expires_on: expiresOn,
+        expiry_policy: expiryPolicy,
+        manual_extension_until: manualExtensionUntil
+      }),
       status,
       expires_on: expiresOn
     });
@@ -6464,6 +6687,12 @@ function upsertPackageRecord(payload) {
     sessions_used: sessionsUsed,
     sessions_remaining: remaining,
     package_price: packagePrice,
+    discount_amount: discountAmount,
+    payment_status: paymentStatus,
+    payment_due_on: paymentDueOn,
+    expiry_policy: expiryPolicy,
+    manual_extension_until: manualExtensionUntil,
+    package_lifecycle_status: "PURCHASED",
     status,
     expires_on: expiresOn,
     archived_at: null
@@ -6559,6 +6788,7 @@ function syncPackagePricingFields(form) {
   const sessionsField = form.elements.sessions_total;
   const rateField = form.elements.lesson_rate_applied;
   const priceField = form.elements.package_price;
+  const discountField = form.elements.discount_amount;
   const nameField = form.elements.package_name;
   const autoNameField = form.elements.auto_package_name;
   const previewField = document.getElementById("package-pricing-preview");
@@ -6571,8 +6801,10 @@ function syncPackagePricingFields(form) {
   const nextRate = currentRate > 0 ? currentRate : defaultRate;
   rateField.value = nextRate ? String(nextRate) : "";
 
-  const total = nextRate * sessionsTotal;
-  priceField.value = total ? String(total) : "";
+  const subtotal = nextRate * sessionsTotal;
+  const discount = Math.max(0, Number(discountField?.value || 0));
+  const total = Math.max(0, subtotal - discount);
+  priceField.value = total || total === 0 ? String(total) : "";
 
   if (autoNameField && autoNameField.checked && nameField) {
     const durationLabel = durationMinutes ? `${durationMinutes}-Minute` : "Lesson";
@@ -6581,7 +6813,7 @@ function syncPackagePricingFields(form) {
 
   if (previewField) {
     previewField.textContent = nextRate && sessionsTotal
-      ? `${formatCurrency(nextRate)} × ${sessionsTotal} session${sessionsTotal === 1 ? "" : "s"} = ${formatCurrency(total)}`
+      ? `${formatCurrency(nextRate)} × ${sessionsTotal} session${sessionsTotal === 1 ? "" : "s"}${discount ? ` - ${formatCurrency(discount)} discount` : ""} = ${formatCurrency(total)}`
       : "Set a lesson length and session count to calculate the package total automatically.";
   }
 }
@@ -6649,6 +6881,11 @@ function openPackageModal(packageId = null, preselectedStudentId = "") {
           </div>
 
           <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Optional Discount</label>
+            <input name="discount_amount" type="number" min="0" step="0.01" value="${escapeHtml(String(pkg?.discount_amount ?? 0))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Sessions Used</label>
             <input name="sessions_used" type="number" min="0" value="${escapeHtml(String(pkg?.sessions_used ?? 0))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
@@ -6656,6 +6893,35 @@ function openPackageModal(packageId = null, preselectedStudentId = "") {
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Expires On</label>
             <input name="expires_on" type="date" value="${escapeHtml(pkg?.expires_on || "")}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Package Payment</label>
+            <select name="payment_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="PAID" ${String(pkg?.payment_status || "").toUpperCase() === "PAID" ? "selected" : ""}>Paid</option>
+              <option value="DUE" ${!pkg?.payment_status || String(pkg?.payment_status || "").toUpperCase() === "DUE" ? "selected" : ""}>Due</option>
+              <option value="PARTIAL" ${String(pkg?.payment_status || "").toUpperCase() === "PARTIAL" ? "selected" : ""}>Partial</option>
+              <option value="OVERDUE" ${String(pkg?.payment_status || "").toUpperCase() === "OVERDUE" ? "selected" : ""}>Overdue</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Payment Due On</label>
+            <input name="payment_due_on" type="date" value="${escapeHtml(pkg?.payment_due_on || "")}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Expiry Policy</label>
+            <select name="expiry_policy" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="LAST_RESERVED_LESSON" ${String(pkg?.expiry_policy || "LAST_RESERVED_LESSON").toUpperCase() === "LAST_RESERVED_LESSON" ? "selected" : ""}>Extend Through Reserved Lessons</option>
+              <option value="FIXED" ${String(pkg?.expiry_policy || "").toUpperCase() === "FIXED" ? "selected" : ""}>Fixed Expiry</option>
+              <option value="MANUAL_EXTENSION" ${String(pkg?.expiry_policy || "").toUpperCase() === "MANUAL_EXTENSION" ? "selected" : ""}>Manual Extension</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Manual Extension Until</label>
+            <input name="manual_extension_until" type="date" value="${escapeHtml(pkg?.manual_extension_until || "")}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
         </div>
 
@@ -6675,13 +6941,25 @@ function openPackageModal(packageId = null, preselectedStudentId = "") {
   document.getElementById("cancel-finance-modal").onclick = closeFinanceModal;
   const form = document.getElementById("package-form");
   form.onsubmit = handlePackageFormSubmit;
-  ["lesson_duration_minutes", "sessions_total", "lesson_rate_applied", "auto_package_name"].forEach((fieldName) => {
+  ["lesson_duration_minutes", "sessions_total", "lesson_rate_applied", "discount_amount", "auto_package_name"].forEach((fieldName) => {
     const field = form.elements[fieldName];
     if (field) {
       field.onchange = () => syncPackagePricingFields(form);
       field.oninput = () => syncPackagePricingFields(form);
     }
   });
+  const expiryPolicyField = form.elements.expiry_policy;
+  const manualExtensionField = form.elements.manual_extension_until;
+  const syncExpiryPolicy = () => {
+    if (!expiryPolicyField || !manualExtensionField) return;
+    const requiresManualExtension = String(expiryPolicyField.value || "").toUpperCase() === "MANUAL_EXTENSION";
+    manualExtensionField.disabled = !requiresManualExtension;
+    manualExtensionField.closest("div")?.classList.toggle("opacity-60", !requiresManualExtension);
+  };
+  if (expiryPolicyField) {
+    expiryPolicyField.onchange = syncExpiryPolicy;
+  }
+  syncExpiryPolicy();
   syncPackagePricingFields(form);
 
   lucide.createIcons();
@@ -7251,6 +7529,11 @@ function handlePackageFormSubmit(event) {
     sessions_total: form.elements.sessions_total.value,
     sessions_used: form.elements.sessions_used.value,
     package_price: form.elements.package_price.value,
+    discount_amount: form.elements.discount_amount.value,
+    payment_status: form.elements.payment_status.value,
+    payment_due_on: form.elements.payment_due_on.value,
+    expiry_policy: form.elements.expiry_policy.value,
+    manual_extension_until: form.elements.manual_extension_until.value,
     expires_on: form.elements.expires_on.value
   };
 
@@ -8639,6 +8922,53 @@ function resetScheduleFilters() {
   renderSchedulePage();
 }
 
+function toggleScheduleIntakeSelection(lessonId) {
+  const next = new Set(selectedScheduleIntakeLessonIds);
+  if (next.has(lessonId)) next.delete(lessonId);
+  else next.add(lessonId);
+  selectedScheduleIntakeLessonIds = next;
+  renderScheduleResults();
+}
+
+function toggleAllVisibleScheduleIntakeSelections() {
+  const rows = getFilteredScheduleIntakeRows();
+  const visibleIds = rows.map((row) => row.lesson_id);
+  const allSelected = visibleIds.length && visibleIds.every((id) => selectedScheduleIntakeLessonIds.has(id));
+  const next = new Set(selectedScheduleIntakeLessonIds);
+  visibleIds.forEach((id) => {
+    if (allSelected) next.delete(id);
+    else next.add(id);
+  });
+  selectedScheduleIntakeLessonIds = next;
+  renderScheduleResults();
+}
+
+function clearScheduleIntakeSelections() {
+  selectedScheduleIntakeLessonIds = new Set();
+  renderScheduleResults();
+}
+
+function applyBulkScheduleIntakeAction(action) {
+  const selectedIds = Array.from(selectedScheduleIntakeLessonIds);
+  if (!selectedIds.length) {
+    notifyUser({
+      title: "Schedule Intake",
+      message: "Select one or more intake rows first.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+
+  selectedIds.forEach((lessonId) => {
+    if (action === "confirm") confirmScheduleIntake(lessonId);
+    if (action === "needs_attention") flagScheduleNeedsAttention(lessonId);
+    if (action === "ignore") ignoreScheduleIntake(lessonId);
+  });
+  selectedScheduleIntakeLessonIds = new Set();
+  renderScheduleResults();
+}
+
 function getScheduleFilterPills() {
   const pills = [];
   pills.push(getStatusFilterPill("View", currentScheduleView === "calendar" ? `Calendar · ${currentScheduleCalendarMode}` : "Schedule Intake"));
@@ -9128,19 +9458,42 @@ function renderScheduleResults() {
   if (!resultsEl) return;
 
   const rows = getFilteredScheduleIntakeRows();
+  const visibleIds = new Set(rows.map((row) => row.lesson_id));
+  selectedScheduleIntakeLessonIds = new Set(Array.from(selectedScheduleIntakeLessonIds).filter((id) => visibleIds.has(id)));
+  const selectedCount = Array.from(selectedScheduleIntakeLessonIds).length;
 
   if (countEl) {
     const actionCount = rows.filter((row) => row.action_required).length;
     const highPriorityCount = rows.filter((row) => row.review_priority === "high").length;
-    countEl.textContent = `${rows.length} imported lesson${rows.length === 1 ? "" : "s"} shown${actionCount ? ` · ${actionCount} action needed` : ""}${highPriorityCount ? ` · ${highPriorityCount} high priority` : ""}`;
+    countEl.textContent = `${rows.length} imported lesson${rows.length === 1 ? "" : "s"} shown${actionCount ? ` · ${actionCount} action needed` : ""}${highPriorityCount ? ` · ${highPriorityCount} high priority` : ""}${selectedCount ? ` · ${selectedCount} selected` : ""}`;
   }
 
   resultsEl.innerHTML = `
     <div class="bg-white rounded-2xl border border-cream overflow-hidden">
+      ${
+        rows.length
+          ? `
+            <div class="px-4 sm:px-5 py-3 border-b border-cream bg-parchment/45 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="toggleAllVisibleScheduleIntakeSelections()">
+                  ${rows.every((row) => selectedScheduleIntakeLessonIds.has(row.lesson_id)) ? "Clear Visible" : "Select Visible"}
+                </button>
+                ${selectedCount ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="clearScheduleIntakeSelections()">Clear Selection</button>` : ""}
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('confirm')">Confirm Selected</button>
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('needs_attention')">Mark Needs Attention</button>
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="applyBulkScheduleIntakeAction('ignore')">Ignore Selected</button>
+              </div>
+            </div>
+          `
+          : ""
+      }
       <div class="overflow-x-auto">
         <table class="w-full min-w-[1380px] text-sm">
           <thead class="bg-parchment/70">
             <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
+              <th class="px-5 py-3 font-medium">Pick</th>
               <th class="px-5 py-3 font-medium">When</th>
               <th class="px-5 py-3 font-medium">Student</th>
               <th class="px-5 py-3 font-medium">Lesson</th>
@@ -9156,7 +9509,10 @@ function renderScheduleResults() {
             ${
               rows.length
                 ? rows.map((row) => `
-                    <tr class="border-t border-cream/80 hover:bg-parchment/60 transition-colors">
+                    <tr class="border-t border-cream/80 hover:bg-parchment/60 transition-colors ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "bg-gold/5" : ""}">
+                      <td class="px-5 py-4 align-top">
+                        <input type="checkbox" ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "checked" : ""} onclick="toggleScheduleIntakeSelection('${row.lesson_id}')" />
+                      </td>
                       <td class="px-5 py-4 align-top">
                         <button
                           type="button"
@@ -9181,6 +9537,7 @@ function renderScheduleResults() {
                             : `<div class="text-sm font-medium text-warmblack">${escapeHtml(row.student_name)}</div>`
                         }
                         <div class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_id)}</div>
+                        ${row.external_contact_name ? `<div class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml(row.external_contact_name)}</div>` : ""}
                         ${
                           row.external_contact_email || row.external_contact_phone
                             ? `<div class="text-xs text-warmgray mt-2">${escapeHtml(row.external_contact_email || row.external_contact_phone)}</div>`
@@ -10014,35 +10371,161 @@ function deleteTodoTask(taskId) {
   }
 }
 
+function renderOperationsPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  const dailyTasks = getDailyTodoItems();
+  const urgentTasks = dailyTasks.filter((task) => task.priority >= 5).slice(0, 8);
+  const intakeRows = getFilteredScheduleIntakeRows().filter((row) => row.action_required).slice(0, 8);
+  const packageFollowUps = getPackageRecords()
+    .filter((pkg) => !isPackageArchived(pkg))
+    .map((pkg) => {
+      const financials = getPackageFinancials(pkg);
+      const meta = getPackageStatusMeta(pkg.student_id, pkg);
+      return {
+        package_id: pkg.package_id,
+        student_name: getFinanceStudentName(pkg.student_id),
+        package_name: pkg.package_name || "Package",
+        remaining: financials.remaining,
+        label: meta.label
+      };
+    })
+    .filter((row) => row.remaining > 0 || row.label === "Expiring Soon" || row.label === "Overdue Payment")
+    .slice(0, 8);
+
+  root.innerHTML = `
+    <div class="p-4 sm:p-6 xl:p-8 w-full">
+      <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
+        <div class="min-w-0">
+          <h2 class="font-display text-2xl font-bold text-warmblack">Daily Operations</h2>
+          <p class="text-sm text-warmgray mt-1">One page for the exact next actions that matter most today.</p>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('todo')">Open To-Do</button>
+          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('schedule')">Open Schedule Intake</button>
+        </div>
+      </header>
+
+      <div class="page-stats-strip mb-4 fade-in">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--alert">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Urgent Today</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${urgentTasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Intake Review</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${intakeRows.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Follow-Up</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${packageFollowUps.length}</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream">
+            <h3 class="font-display text-lg font-semibold">Top Recommended</h3>
+          </div>
+          <div class="p-4 space-y-3">
+            ${urgentTasks.length ? urgentTasks.map((task) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
+                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "")}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Check Off</button>
+                </div>
+              </div>
+            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No urgent tasks right now</p></div>`}
+          </div>
+        </section>
+
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream">
+            <h3 class="font-display text-lg font-semibold">Needs Attention</h3>
+          </div>
+          <div class="p-4 space-y-3">
+            ${intakeRows.length ? intakeRows.map((row) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>
+                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.recommended_action_label)} · ${escapeHtml(row.review_reasons[0] || row.topic)}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${row.lesson_id}')">Open Lesson</button>
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="navigateTo('schedule')">Go to Intake</button>
+                </div>
+              </div>
+            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">Intake is under control</p></div>`}
+          </div>
+        </section>
+
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream">
+            <h3 class="font-display text-lg font-semibold">Package / Payment Follow-Up</h3>
+          </div>
+          <div class="p-4 space-y-3">
+            ${packageFollowUps.length ? packageFollowUps.map((row) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>
+                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.package_name)} · ${escapeHtml(row.label)}${row.remaining ? ` · ${formatCurrency(row.remaining)} due` : ""}</p>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="navigateTo('finance')">Open Finance</button>
+                </div>
+              </div>
+            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No package follow-up right now</p></div>`}
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+}
+
 function renderTodoPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
   const compact = isCompactView("todo");
-  const tasks = getDailyTodoItems();
+  const tasks = currentTodoView === "weekly" ? getWeeklyTodoItems() : getDailyTodoItems();
   const autoTasks = tasks.filter((task) => task.type === "auto");
   const manualTasks = tasks.filter((task) => task.type === "manual");
+  const urgentTasks = tasks.filter((task) => task.priority >= 5);
+  const todayPrepTasks = tasks.filter((task) => String(task.source || "").toLowerCase() === "prep");
+  const financeTasks = tasks.filter((task) => String(task.source || "").toLowerCase() === "finance");
 
   root.innerHTML = `
     <div class="todo-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">To-Do</h2>
-          <p class="text-sm text-warmgray mt-1">One checklist for daily follow-up, prep, notes, intake review, and your own manual reminders.</p>
+          <p class="text-sm text-warmgray mt-1">Your working checklist for follow-up, prep, intake, package pressure, and manual reminders.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
+          <div class="inline-flex rounded-xl border border-cream bg-white p-1">
+            <button type="button" class="px-3 py-2 rounded-lg text-sm font-medium ${currentTodoView === "daily" ? "bg-gold/15 text-warmblack" : "text-warmgray"}" onclick="setTodoView('daily')">Daily</button>
+            <button type="button" class="px-3 py-2 rounded-lg text-sm font-medium ${currentTodoView === "weekly" ? "bg-gold/15 text-warmblack" : "text-warmgray"}" onclick="setTodoView('weekly')">Weekly</button>
+          </div>
           <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('todo')">${getCompactToggleLabel("todo")}</button>
         </div>
       </header>
 
       <div class="page-stats-strip mb-4 fade-in">
         <div class="page-stat-chip page-stat-chip--compact page-stat-chip--alert">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Top Recommended</p>
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentTodoView === "weekly" ? "This Week" : "Top Recommended"}</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${tasks.length}</p>
         </div>
         <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Automatic</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${autoTasks.length}</p>
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Urgent</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${urgentTasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Prep</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${todayPrepTasks.length}</p>
+        </div>
+        <div class="page-stat-chip page-stat-chip--compact">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Finance Follow-Up</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${financeTasks.length}</p>
         </div>
         <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Manual</p>
@@ -10055,7 +10538,7 @@ function renderTodoPage() {
           <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
             <div class="dashboard-panel-header p-5 border-b border-cream flex items-center justify-between gap-3">
               <div>
-                <h3 class="font-display text-lg font-semibold">Recommended for Today</h3>
+                <h3 class="font-display text-lg font-semibold">${currentTodoView === "weekly" ? "Operational Checklist This Week" : "Recommended for Today"}</h3>
                 <p class="text-xs text-warmgray mt-1">These stay here until you check them off or delete them.</p>
               </div>
             </div>
@@ -10090,6 +10573,26 @@ function renderTodoPage() {
         <div class="space-y-4">
           <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
             <div class="dashboard-panel-header p-5 border-b border-cream">
+              <h3 class="font-display text-lg font-semibold">At a Glance</h3>
+            </div>
+            <div class="p-4 space-y-3 text-sm">
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-xs uppercase tracking-wider text-warmgray">Automatic Tasks</p>
+                <p class="text-sm text-warmblack mt-1">${autoTasks.length} system-generated reminders are active right now.</p>
+              </div>
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-xs uppercase tracking-wider text-warmgray">Lesson Prep</p>
+                <p class="text-sm text-warmblack mt-1">${todayPrepTasks.length} prep reminder${todayPrepTasks.length === 1 ? "" : "s"} linked to tomorrow’s lessons and unfinished work.</p>
+              </div>
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-xs uppercase tracking-wider text-warmgray">Package / Payment</p>
+                <p class="text-sm text-warmblack mt-1">${financeTasks.length} package or payment reminder${financeTasks.length === 1 ? "" : "s"} waiting for follow-up.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="dashboard-panel bg-white rounded-2xl border border-cream fade-in">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
               <h3 class="font-display text-lg font-semibold">Add Manual Task</h3>
             </div>
             <form id="manual-todo-form" class="p-4 space-y-3">
@@ -10104,6 +10607,84 @@ function renderTodoPage() {
 
   const form = document.getElementById("manual-todo-form");
   if (form) form.onsubmit = handleManualTodoSubmit;
+  lucide.createIcons();
+}
+
+function renderReportsPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  const students = getStudentRecords();
+  const sourceCounts = students.reduce((acc, student) => {
+    const label = getStudentLeadSourceLabel(student.lead_source || "");
+    acc[label] = (acc[label] || 0) + 1;
+    return acc;
+  }, {});
+  const packageRows = getFinancePackagesRows();
+  const renewalPressure = packageRows.filter((row) => ["Expiring Soon", "Overdue Payment", "Fully Scheduled"].includes(row.status_label));
+  const notesRows = getCompletedLessonsNeedingNotesRows();
+  const actionableNotes = notesRows.filter((row) => row.action_required);
+  const publicIssues = students.filter((student) => {
+    const count = getLateCancelCountForStudent(student.student_id, 6);
+    return count >= 3 || student.actor_page_eligible === false;
+  });
+  const lessonVolume = {};
+  getLessonRecords().forEach((lesson) => {
+    if (!lesson.scheduled_start) return;
+    const date = new Date(lesson.scheduled_start);
+    if (Number.isNaN(date.getTime())) return;
+    const key = `${date.getFullYear()}-${String(getWeekNumber(date)).padStart(2, "0")}`;
+    lessonVolume[key] = (lessonVolume[key] || 0) + 1;
+  });
+  const lessonVolumeRows = Object.entries(lessonVolume).sort((a, b) => a[0].localeCompare(b[0])).slice(-8);
+
+  root.innerHTML = `
+    <div class="p-4 sm:p-6 xl:p-8 w-full">
+      <header class="mb-6 fade-in">
+        <h2 class="font-display text-2xl font-bold text-warmblack">Reports</h2>
+        <p class="text-sm text-warmgray mt-1">Source mix, package renewal pressure, lesson volume, notes turnaround, and public-page issues at a glance.</p>
+      </header>
+
+      <div class="page-stats-strip mb-4 fade-in">
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Students</p><p class="text-lg font-semibold text-warmblack mt-1">${students.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Renewal Pressure</p><p class="text-lg font-semibold text-warmblack mt-1">${renewalPressure.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Notes Due</p><p class="text-lg font-semibold text-warmblack mt-1">${actionableNotes.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Public Issues</p><p class="text-lg font-semibold text-warmblack mt-1">${publicIssues.length}</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 2xl:grid-cols-2 gap-5">
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream"><h3 class="font-display text-lg font-semibold">Active Students by Source</h3></div>
+          <div class="p-4 space-y-3">
+            ${Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]).map(([label, count]) => `<div class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-center justify-between gap-3"><p class="text-sm font-medium text-warmblack">${escapeHtml(label)}</p><p class="text-sm text-warmgray">${count}</p></div>`).join("")}
+          </div>
+        </section>
+
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream"><h3 class="font-display text-lg font-semibold">Package Renewal Pressure</h3></div>
+          <div class="p-4 space-y-3">
+            ${renewalPressure.length ? renewalPressure.map((row) => `<div class="rounded-xl border border-cream bg-parchment px-4 py-3"><p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p><p class="text-xs text-warmgray mt-1">${escapeHtml(row.package_name)} · ${escapeHtml(row.status_label)} · ${row.effective_expires_label}</p></div>`).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No renewal pressure right now</p></div>`}
+          </div>
+        </section>
+
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream"><h3 class="font-display text-lg font-semibold">Lesson Volume by Week</h3></div>
+          <div class="p-4 space-y-3">
+            ${lessonVolumeRows.map(([label, count]) => `<div class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-center justify-between gap-3"><p class="text-sm font-medium text-warmblack">${escapeHtml(label)}</p><p class="text-sm text-warmgray">${count} lessons</p></div>`).join("")}
+          </div>
+        </section>
+
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+          <div class="dashboard-panel-header p-5 border-b border-cream"><h3 class="font-display text-lg font-semibold">Notes Turnaround / Public Eligibility</h3></div>
+          <div class="p-4 space-y-3">
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3"><p class="text-sm font-medium text-warmblack">Notes requiring action</p><p class="text-xs text-warmgray mt-1">${actionableNotes.length} completed lessons in the active 14-day note window still need follow-up.</p></div>
+            ${publicIssues.length ? publicIssues.map((student) => `<div class="rounded-xl border border-cream bg-parchment px-4 py-3"><p class="text-sm font-semibold text-warmblack">${escapeHtml(student.full_name)}</p><p class="text-xs text-warmgray mt-1">Late cancels in 6 months: ${getLateCancelCountForStudent(student.student_id, 6)} · Actor page eligible: ${student.actor_page_eligible ? "Yes" : "No"}</p></div>`).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No public-page policy issues right now</p></div>`}
+          </div>
+        </section>
+      </div>
+    </div>
+  `;
+
   lucide.createIcons();
 }
 
@@ -13076,9 +13657,17 @@ function openStudentModal(mode = "create", studentId = null) {
     if (form.elements.email) form.elements.email.value = schemaStudent.email || "";
     if (form.elements.additional_emails) form.elements.additional_emails.value = schemaStudent.additional_emails || "";
     if (form.elements.phone) form.elements.phone.value = schemaStudent.phone || "";
+    if (form.elements.additional_phones) form.elements.additional_phones.value = schemaStudent.additional_phones || "";
     if (form.elements.guardian_name) form.elements.guardian_name.value = schemaStudent.guardian_name || "";
     if (form.elements.guardian_email) form.elements.guardian_email.value = schemaStudent.guardian_email || "";
     if (form.elements.guardian_phone) form.elements.guardian_phone.value = schemaStudent.guardian_phone || "";
+    if (form.elements.preferred_contact_method) form.elements.preferred_contact_method.value = schemaStudent.preferred_contact_method || "";
+    if (form.elements.preferred_contact_name) form.elements.preferred_contact_name.value = schemaStudent.preferred_contact_name || "";
+    if (form.elements.preferred_contact_email) form.elements.preferred_contact_email.value = schemaStudent.preferred_contact_email || "";
+    if (form.elements.preferred_contact_phone) form.elements.preferred_contact_phone.value = schemaStudent.preferred_contact_phone || "";
+    if (form.elements.emergency_contact_name) form.elements.emergency_contact_name.value = schemaStudent.emergency_contact_name || "";
+    if (form.elements.emergency_contact_phone) form.elements.emergency_contact_phone.value = schemaStudent.emergency_contact_phone || "";
+    if (form.elements.business_notes) form.elements.business_notes.value = schemaStudent.business_notes || "";
     if (form.elements.timezone) form.elements.timezone.value = schemaStudent.timezone || "";
     if (form.elements.studio_status) form.elements.studio_status.value = schemaStudent.studio_status || "ACTIVE";
     if (form.elements.billing_model) form.elements.billing_model.value = schemaStudent.billing_model || "PAYG";
@@ -13209,9 +13798,17 @@ function handleStudentFormSubmit(event) {
     email: form.elements.email ? form.elements.email.value.trim() : "",
     additional_emails: form.elements.additional_emails ? form.elements.additional_emails.value.trim() : "",
     phone: form.elements.phone ? form.elements.phone.value.trim() : "",
+    additional_phones: form.elements.additional_phones ? form.elements.additional_phones.value.trim() : "",
     guardian_name: form.elements.guardian_name ? form.elements.guardian_name.value.trim() : "",
     guardian_email: form.elements.guardian_email ? form.elements.guardian_email.value.trim() : "",
     guardian_phone: form.elements.guardian_phone ? form.elements.guardian_phone.value.trim() : "",
+    preferred_contact_method: form.elements.preferred_contact_method ? form.elements.preferred_contact_method.value : "",
+    preferred_contact_name: form.elements.preferred_contact_name ? form.elements.preferred_contact_name.value.trim() : "",
+    preferred_contact_email: form.elements.preferred_contact_email ? form.elements.preferred_contact_email.value.trim() : "",
+    preferred_contact_phone: form.elements.preferred_contact_phone ? form.elements.preferred_contact_phone.value.trim() : "",
+    emergency_contact_name: form.elements.emergency_contact_name ? form.elements.emergency_contact_name.value.trim() : "",
+    emergency_contact_phone: form.elements.emergency_contact_phone ? form.elements.emergency_contact_phone.value.trim() : "",
+    business_notes: form.elements.business_notes ? form.elements.business_notes.value.trim() : "",
     timezone: form.elements.timezone ? form.elements.timezone.value.trim() : "",
     studio_status: form.elements.studio_status ? form.elements.studio_status.value : "ACTIVE",
     billing_model: form.elements.billing_model ? form.elements.billing_model.value : "PAYG",
