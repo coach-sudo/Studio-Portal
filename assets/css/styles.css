@@ -210,6 +210,56 @@ body {
   gap: 0.75rem !important;
 }
 
+.compact-view .page-stats-strip {
+  gap: 0.5rem;
+}
+
+.compact-view .page-stat-chip {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.8rem;
+}
+
+.compact-view .page-toolbar-sticky {
+  padding-top: 0.85rem !important;
+  padding-bottom: 0.85rem !important;
+}
+
+.students-shell.compact-view,
+.lessons-shell.compact-view,
+.schedule-shell.compact-view,
+.finance-shell.compact-view,
+.settings-shell.compact-view,
+.automation-shell.compact-view {
+  font-size: 0.96rem;
+}
+
+.students-shell.compact-view .page-stats-strip,
+.lessons-shell.compact-view .page-stats-strip,
+.schedule-shell.compact-view .page-stats-strip,
+.finance-shell.compact-view .page-stats-strip,
+.settings-shell.compact-view .page-stats-strip,
+.automation-shell.compact-view .page-stats-strip {
+  gap: 0.5rem;
+}
+
+.students-shell.compact-view .page-stat-chip,
+.lessons-shell.compact-view .page-stat-chip,
+.schedule-shell.compact-view .page-stat-chip,
+.finance-shell.compact-view .page-stat-chip,
+.settings-shell.compact-view .page-stat-chip,
+.automation-shell.compact-view .page-stat-chip {
+  padding: 0.6rem 0.75rem;
+  border-radius: 0.8rem;
+}
+
+.students-shell.compact-view .page-toolbar-sticky,
+.lessons-shell.compact-view .page-toolbar-sticky,
+.schedule-shell.compact-view .page-toolbar-sticky,
+.finance-shell.compact-view .page-toolbar-sticky {
+  padding-top: 0.85rem !important;
+  padding-bottom: 0.85rem !important;
+}
+
 .students-shell.compact-view #student-grid {
   gap: 0.75rem;
 }
@@ -218,8 +268,38 @@ body {
   padding: 1rem;
 }
 
+.students-shell.compact-view #student-grid p,
+.students-shell.compact-view #student-grid span,
+.students-shell.compact-view #student-grid button {
+  font-size: 0.92em;
+}
+
+.lessons-shell.compact-view table,
+.finance-shell.compact-view table,
+.schedule-shell.compact-view table {
+  font-size: 0.88rem;
+}
+
+.lessons-shell.compact-view .dashboard-panel-header,
+.finance-shell.compact-view .dashboard-panel-header,
+.schedule-shell.compact-view .dashboard-panel-header {
+  padding-top: 0.85rem;
+  padding-bottom: 0.85rem;
+}
+
 .schedule-shell.compact-view .schedule-day-cell {
   min-height: 112px;
+}
+
+.schedule-shell.compact-view .schedule-day-cell .text-[11px],
+.schedule-shell.compact-view .schedule-day-cell .text-xs {
+  font-size: 10px !important;
+}
+
+.schedule-shell.compact-view .rounded-2xl,
+.lessons-shell.compact-view .rounded-2xl,
+.finance-shell.compact-view .rounded-2xl {
+  border-radius: 1rem;
 }
 
 .notification-sheet {

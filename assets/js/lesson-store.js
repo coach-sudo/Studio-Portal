@@ -184,6 +184,7 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
   let intakeConflictNote = String(("intake_conflict_note" in payload ? payload.intake_conflict_note : currentLesson?.intake_conflict_note) || "").trim();
   let pendingExternalStart = String(("pending_external_start" in payload ? payload.pending_external_start : currentLesson?.pending_external_start) || "").trim();
   let pendingExternalEnd = String(("pending_external_end" in payload ? payload.pending_external_end : currentLesson?.pending_external_end) || "").trim();
+  let pendingExternalPatch = String(("pending_external_patch" in payload ? payload.pending_external_patch : currentLesson?.pending_external_patch) || "").trim();
 
   if (!isEdit || "student_id" in payload) {
     const allowsPendingMatch = source !== "manual" && Boolean(externalEventId);
@@ -257,6 +258,7 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
     intakeConflictNote = "";
     pendingExternalStart = "";
     pendingExternalEnd = "";
+    pendingExternalPatch = "";
   } else {
     if (!importedAt) {
       importedAt = new Date().toISOString();
@@ -308,7 +310,8 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
       external_updated_at: externalUpdatedAt,
       intake_conflict_note: intakeConflictNote,
       pending_external_start: pendingExternalStart,
-      pending_external_end: pendingExternalEnd
+      pending_external_end: pendingExternalEnd,
+      pending_external_patch: pendingExternalPatch
     }
   };
 }
@@ -417,6 +420,7 @@ function updateLesson(lessonId, payload) {
   if ("intake_conflict_note" in payload) updates.intake_conflict_note = result.cleaned.intake_conflict_note;
   if ("pending_external_start" in payload) updates.pending_external_start = result.cleaned.pending_external_start;
   if ("pending_external_end" in payload) updates.pending_external_end = result.cleaned.pending_external_end;
+  if ("pending_external_patch" in payload) updates.pending_external_patch = result.cleaned.pending_external_patch;
 
   if ("source" in payload && result.cleaned.source === "manual") {
     updates.source_calendar_id = "";
@@ -433,6 +437,7 @@ function updateLesson(lessonId, payload) {
     updates.intake_conflict_note = "";
     updates.pending_external_start = "";
     updates.pending_external_end = "";
+    updates.pending_external_patch = "";
   }
 
   const scheduledStartChanged = "scheduled_start" in payload && lesson.scheduled_start !== result.cleaned.scheduled_start;
@@ -554,6 +559,7 @@ function setLessonIntakeReviewState(lessonId, nextState, conflictNote = null) {
     payload.intake_conflict_note = "";
     payload.pending_external_start = "";
     payload.pending_external_end = "";
+    payload.pending_external_patch = "";
   } else if (normalizedReviewState === "NEEDS_ATTENTION") {
     payload.sync_state = "NEEDS_REVIEW";
     payload.intake_conflict_note = typeof conflictNote === "string" ? conflictNote : (lesson.intake_conflict_note || "");

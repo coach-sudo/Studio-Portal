@@ -60,6 +60,7 @@ const DATA_RECORD_SHAPES = {
     "intake_conflict_note",
     "pending_external_start",
     "pending_external_end",
+    "pending_external_patch",
     "created_at",
     "updated_at"
   ],
@@ -90,6 +91,8 @@ const DATA_RECORD_SHAPES = {
     "package_id",
     "student_id",
     "package_name",
+    "lesson_duration_minutes",
+    "lesson_rate_applied",
     "sessions_total",
     "sessions_used",
     "sessions_remaining",
@@ -167,6 +170,10 @@ const DEFAULT_BACKEND_SETTINGS = {
   google_gmail_last_sync_at: "",
   google_gmail_last_sync_status: "idle",
   google_gmail_last_sync_error: "",
+  lesson_rate_30: 0,
+  lesson_rate_60: 0,
+  lesson_rate_90: 0,
+  intro_session_rate: 0,
   last_sync_at: "",
   last_pull_at: "",
   last_sync_status: "idle",
@@ -192,6 +199,11 @@ function writeStorageJson(key, value) {
 }
 
 function sanitizeBackendSettings(settings = {}) {
+  const sanitizeMoney = (value) => {
+    const number = Number(value);
+    return Number.isFinite(number) && number >= 0 ? number : 0;
+  };
+
   return {
     ...DEFAULT_BACKEND_SETTINGS,
     ...settings,
@@ -215,6 +227,10 @@ function sanitizeBackendSettings(settings = {}) {
     google_gmail_last_sync_at: String(settings.google_gmail_last_sync_at || "").trim(),
     google_gmail_last_sync_status: String(settings.google_gmail_last_sync_status || "idle").trim(),
     google_gmail_last_sync_error: String(settings.google_gmail_last_sync_error || "").trim(),
+    lesson_rate_30: sanitizeMoney(settings.lesson_rate_30),
+    lesson_rate_60: sanitizeMoney(settings.lesson_rate_60),
+    lesson_rate_90: sanitizeMoney(settings.lesson_rate_90),
+    intro_session_rate: sanitizeMoney(settings.intro_session_rate),
     last_sync_at: String(settings.last_sync_at || "").trim(),
     last_pull_at: String(settings.last_pull_at || "").trim(),
     last_sync_status: String(settings.last_sync_status || DEFAULT_BACKEND_SETTINGS.last_sync_status).trim(),

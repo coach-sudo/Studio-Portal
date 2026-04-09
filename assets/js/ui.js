@@ -158,6 +158,92 @@ function getCompactToggleLabel(pageKey) {
   return isCompactView(pageKey) ? "Comfortable View" : "Compact View";
 }
 
+function getStudioLessonPricing() {
+  const backend = studioDataService.getBackendSettings();
+  return {
+    30: Number(backend.lesson_rate_30 || 0),
+    60: Number(backend.lesson_rate_60 || 0),
+    90: Number(backend.lesson_rate_90 || 0),
+    intro: Number(backend.intro_session_rate || 0)
+  };
+}
+
+function normalizeLessonDurationBucket(durationMinutes) {
+  const minutes = Number(durationMinutes || 0);
+  if (minutes <= 45) return 30;
+  if (minutes <= 75) return 60;
+  return 90;
+}
+
+function getLessonDurationBucketLabel(durationMinutes) {
+  const bucket = normalizeLessonDurationBucket(durationMinutes);
+  return `${bucket}-Minute`;
+}
+
+function getConfiguredLessonRateForDuration(durationMinutes, lessonType = "") {
+  const pricing = getStudioLessonPricing();
+  const normalizedType = String(lessonType || "").trim().toUpperCase();
+  if (normalizedType === "INTRO SESSION" || normalizedType === "FREE INTRO SESSION") {
+    return pricing.intro;
+  }
+  return pricing[normalizeLessonDurationBucket(durationMinutes)] || 0;
+}
+
+function getLessonPricingMeta(lesson, student = null) {
+  const durationMinutes = typeof getLessonDurationMinutes === "function"
+    ? getLessonDurationMinutes(lesson?.scheduled_start, lesson?.scheduled_end)
+    : 0;
+  const studentRate = Number(student?.default_lesson_rate || 0);
+  const configuredRate = getConfiguredLessonRateForDuration(durationMinutes, lesson?.lesson_type);
+  const appliedRate = studentRate > 0 ? studentRate : configuredRate;
+  return {
+    duration_minutes: durationMinutes,
+    duration_bucket: normalizeLessonDurationBucket(durationMinutes),
+    applied_rate: appliedRate,
+    source: studentRate > 0 ? "student_default" : "settings_default"
+  };
+}
+
+function buildPendingExternalPatch(previousLesson = {}, nextLesson = {}, changedFields = []) {
+  const patch = {
+    changed_fields: Array.isArray(changedFields) ? changedFields.slice() : [],
+    previous_values: {}
+  };
+
+  [
+    "scheduled_start",
+    "scheduled_end",
+    "join_link",
+    "topic",
+    "lesson_type",
+    "location_type",
+    "location_address",
+    "external_event_title",
+    "external_contact_name",
+    "external_contact_email",
+    "external_contact_phone",
+    "external_platform_hint",
+    "source_calendar_id"
+  ].forEach((fieldName) => {
+    if (Object.prototype.hasOwnProperty.call(nextLesson, fieldName) && String(previousLesson?.[fieldName] || "") !== String(nextLesson?.[fieldName] || "")) {
+      patch.previous_values[fieldName] = previousLesson?.[fieldName] || "";
+    }
+  });
+
+  return Object.keys(patch.previous_values).length ? JSON.stringify(patch) : "";
+}
+
+function parsePendingExternalPatch(lesson) {
+  const raw = String(lesson?.pending_external_patch || "").trim();
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch (error) {
+    return null;
+  }
+}
+
 function getToastToneClasses(tone = "warm") {
   if (tone === "success") return "border-sage/20 bg-sage/5 text-sage";
   if (tone === "error") return "border-burgundy/20 bg-burgundy/5 text-burgundy";
@@ -839,6 +925,13 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
         reasons.push("Name + phone");
       }
 
+      if (exactNameMatch && emailMatch && phoneMatch) {
+        score += 3;
+        reasons.push("Full contact match");
+      }
+
+      const duplicatePrompt = Boolean((emailMatch || phoneMatch) && (exactNameMatch || strongNameOverlap));
+
       return {
         student,
         score,
@@ -847,7 +940,8 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
         strong_name_overlap: strongNameOverlap,
         email_match: Boolean(emailMatch),
         phone_match: Boolean(phoneMatch),
-        merge_ready: Boolean((exactNameMatch || strongNameOverlap) && (emailMatch || phoneMatch))
+        merge_ready: duplicatePrompt,
+        duplicate_prompt: duplicatePrompt
       };
     })
     .filter((candidate) => candidate.score > 0)
@@ -2364,7 +2458,7 @@ function getImportedLessonReviewGuidance(lesson) {
   if (lesson?.pending_external_start || lesson?.pending_external_end) {
     blocking = true;
     priority = "high";
-    reasons.push("External source changed the lesson timing");
+    reasons.push("External update was applied and is waiting for confirm or reject");
     recommendedAction = "review_change";
   }
 
@@ -2414,6 +2508,7 @@ function getImportedLessonReviewGuidance(lesson) {
     match_student: "Match Student",
     review: "Review Details",
     review_change: "Review Change",
+    reject_change: "Reject Change",
     pull_contact: "Pull Contact",
     open: "Open Lesson"
   };
@@ -2462,14 +2557,23 @@ function processGoogleCalendarImportFeed(feed = []) {
 
       if (relatedLesson?.relation === "likely_duplicate") {
         const matchedLesson = relatedLesson.lesson;
+        const changedFields = getChangedCalendarFields(matchedLesson, candidate);
         const sameTiming = matchedLesson.scheduled_start === candidate.scheduled_start && matchedLesson.scheduled_end === candidate.scheduled_end;
         const preservedConfirmed = normalizeLessonIntakeReviewStateValue(matchedLesson.intake_review_state, matchedLesson.source) === "CONFIRMED" && sameTiming;
+        const pendingPatch = changedFields.length ? buildPendingExternalPatch(matchedLesson, candidate, changedFields) : "";
         const result = updateLesson(matchedLesson.lesson_id, {
           source: "google_calendar",
           external_event_id: candidate.external_event_id,
           source_calendar_id: candidate.source_calendar_id,
           external_platform_hint: candidate.external_platform_hint,
           external_event_title: candidate.external_event_title,
+          scheduled_start: candidate.scheduled_start,
+          scheduled_end: candidate.scheduled_end,
+          join_link: candidate.join_link || matchedLesson.join_link || "",
+          topic: candidate.topic || matchedLesson.topic || "",
+          lesson_type: candidate.lesson_type || matchedLesson.lesson_type || "",
+          location_type: candidate.location_type || matchedLesson.location_type || "",
+          location_address: candidate.location_address || matchedLesson.location_address || "",
           external_contact_name: candidate.external_contact_name || matchedLesson.external_contact_name || "",
           external_contact_email: candidate.external_contact_email || matchedLesson.external_contact_email || "",
           external_contact_phone: candidate.external_contact_phone || matchedLesson.external_contact_phone || "",
@@ -2479,9 +2583,10 @@ function processGoogleCalendarImportFeed(feed = []) {
           intake_review_state: preservedConfirmed ? "CONFIRMED" : sameTiming ? "UNREVIEWED" : "NEEDS_ATTENTION",
           intake_conflict_note: preservedConfirmed ? "" : sameTiming
             ? `Google Calendar matched this lesson with high confidence (${relatedLesson.reasons.join(", ")}). Confirm once before relying on it.`
-            : `Google Calendar likely matches this lesson (${relatedLesson.reasons.join(", ")}), but timing/details changed. Review before trusting it.`,
-          pending_external_start: sameTiming ? "" : candidate.scheduled_start,
-          pending_external_end: sameTiming ? "" : candidate.scheduled_end,
+            : `Google Calendar likely matches this lesson (${relatedLesson.reasons.join(", ")}), updated ${changedFields.join(", ")} automatically, and is waiting for your confirm or reject decision.`,
+          pending_external_start: sameTiming ? "" : matchedLesson.scheduled_start,
+          pending_external_end: sameTiming ? "" : matchedLesson.scheduled_end,
+          pending_external_patch: sameTiming ? "" : pendingPatch,
           student_id: matchedLesson.student_id || candidate.student_id || matchedLesson.student_id
         });
 
@@ -2514,14 +2619,23 @@ function processGoogleCalendarImportFeed(feed = []) {
 
     const changedFields = getChangedCalendarFields(existingLesson, candidate);
     if (changedFields.length > 0) {
+      const pendingPatch = buildPendingExternalPatch(existingLesson, candidate, changedFields);
       const result = updateLesson(existingLesson.lesson_id, {
+        scheduled_start: candidate.scheduled_start,
+        scheduled_end: candidate.scheduled_end,
+        join_link: candidate.join_link || existingLesson.join_link || "",
+        topic: candidate.topic || existingLesson.topic || "",
+        lesson_type: candidate.lesson_type || existingLesson.lesson_type || "",
+        location_type: candidate.location_type || existingLesson.location_type || "",
+        location_address: candidate.location_address || existingLesson.location_address || "",
         last_synced_at: nowIso,
         external_updated_at: event.updated_at || nowIso,
         sync_state: "UPDATED_EXTERNALLY",
         intake_review_state: "NEEDS_ATTENTION",
-        intake_conflict_note: `Google Calendar changed ${changedFields.join(", ")}. Review before trusting this lesson.`,
-        pending_external_start: candidate.scheduled_start,
-        pending_external_end: candidate.scheduled_end,
+        intake_conflict_note: `Google Calendar changed ${changedFields.join(", ")} and updated the lesson automatically. Confirm to keep the update or reject to restore the previous version.`,
+        pending_external_start: existingLesson.scheduled_start,
+        pending_external_end: existingLesson.scheduled_end,
+        pending_external_patch: pendingPatch,
         external_event_title: candidate.external_event_title,
         external_contact_name: candidate.external_contact_name,
         external_contact_email: candidate.external_contact_email,
@@ -2544,6 +2658,7 @@ function processGoogleCalendarImportFeed(feed = []) {
       sync_state: "SYNCED",
       pending_external_start: "",
       pending_external_end: "",
+      pending_external_patch: "",
       intake_conflict_note: existingLesson.intake_review_state === "CONFIRMED" ? "" : existingLesson.intake_conflict_note || "",
       external_event_title: candidate.external_event_title,
       external_contact_name: candidate.external_contact_name,
@@ -2929,10 +3044,43 @@ function saveGoogleConnectionSettings(event) {
   renderSettingsPage();
 }
 
+function savePricingSettings(event) {
+  if (event) event.preventDefault();
+  const form = document.getElementById("settings-pricing-form");
+  if (!form) return;
+
+  studioDataService.updateBackendSettings({
+    lesson_rate_30: form.elements.lesson_rate_30.value,
+    lesson_rate_60: form.elements.lesson_rate_60.value,
+    lesson_rate_90: form.elements.lesson_rate_90.value,
+    intro_session_rate: form.elements.intro_session_rate.value
+  });
+
+  setSettingsActionFeedback("Pricing defaults saved. Package totals and PAYG balances now use these lesson prices unless a student-specific rate overrides them.", "success");
+  renderSettingsPage();
+}
+
 function createStudentFromImportedLesson(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
   const contact = getImportedLessonContactInfo(lesson);
+  const possibleMatches = findPotentialStudentMatches({
+    full_name: contact.student_full_name || "",
+    email: contact.email || "",
+    phone: contact.phone || ""
+  });
+  const duplicatePromptMatches = possibleMatches.filter((candidate) => candidate.duplicate_prompt || candidate.score >= 8);
+
+  if (duplicatePromptMatches.length) {
+    notifyUser({
+      title: "Possible Duplicate Student",
+      message: `Before creating a new student, review ${duplicatePromptMatches.length} possible existing match${duplicatePromptMatches.length === 1 ? "" : "es"} and merge if appropriate.`,
+      tone: "warm",
+      source: "schedule"
+    });
+    openScheduleStudentMatchModal(lessonId);
+    return;
+  }
 
   const payload = {
     full_name: contact.student_full_name || "Imported Student",
@@ -5284,6 +5432,10 @@ function getCompletedPaygLessonsCount(studentId) {
   }).length;
 }
 
+function getCompletedPaygLessons(studentId) {
+  return getLessonRecords().filter((lesson) => lesson.student_id === studentId && isLessonPaygBillable(lesson));
+}
+
 function getResolvedPackageUsage(studentId, pkg) {
   if (!pkg) {
     return {
@@ -5426,19 +5578,23 @@ function buildFinanceSummary(studentId, schemaStudent) {
   }
 
   if (billingModel === "PAYG") {
-    const completedLessons = getCompletedPaygLessonsCount(studentId);
-    const rate = Number(schemaStudent?.default_lesson_rate || 0);
-    const owed = completedLessons * rate;
+    const completedLessons = getCompletedPaygLessons(studentId);
+    const lessonCharges = completedLessons.map((lesson) => getLessonPricingMeta(lesson, schemaStudent));
+    const owed = lessonCharges.reduce((sum, pricingMeta) => sum + Number(pricingMeta.applied_rate || 0), 0);
+    const fallbackRate = Number(schemaStudent?.default_lesson_rate || 0) || getConfiguredLessonRateForDuration(60);
     const paid = getUnlinkedPaidTotalByStudentId(studentId);
     const remainingAmount = Math.max(0, owed - paid);
     const overpaidAmount = Math.max(0, paid - owed);
+    const configuredCount = lessonCharges.filter((meta) => Number(meta.applied_rate || 0) > 0).length;
 
     return {
       mode: "PAYG",
       headline: "Pay As You Go",
-      subline: rate
-        ? `${completedLessons} completed lesson${completedLessons === 1 ? "" : "s"} at ${formatCurrency(rate)}`
-        : "Set a default lesson rate to track balances",
+      subline: configuredCount
+        ? `${completedLessons.length} completed lesson${completedLessons.length === 1 ? "" : "s"} priced from your lesson settings`
+        : fallbackRate
+          ? `${completedLessons.length} completed lesson${completedLessons.length === 1 ? "" : "s"} at ${formatCurrency(fallbackRate)}`
+          : "Set lesson prices in Settings or a student default rate to track balances",
       badgeLabel: "PAYG",
       badgeClass: "bg-blue-100 text-blue-700",
       packageInfo: null,
@@ -5448,7 +5604,7 @@ function buildFinanceSummary(studentId, schemaStudent) {
       paid,
       remainingAmount,
       overpaidAmount,
-      defaultLessonRate: rate
+      defaultLessonRate: fallbackRate
     };
   }
 
@@ -5690,10 +5846,12 @@ function getFinanceStudentOptionsMarkup(selectedStudentId = "") {
     .join("");
 }
 
-function getPackageOptionsMarkup(selectedPackageId = "") {
+function getPackageOptionsMarkup(selectedPackageId = "", studentId = "") {
+  const scopedStudentId = String(studentId || "").trim();
   return `
     <option value="">No linked package</option>
     ${getPackageRecords()
+      .filter((pkg) => !scopedStudentId || pkg.student_id === scopedStudentId)
       .slice()
       .sort((a, b) => a.package_name.localeCompare(b.package_name))
       .map((pkg) => `
@@ -5708,6 +5866,8 @@ function getPackageOptionsMarkup(selectedPackageId = "") {
 function upsertPackageRecord(payload) {
   const studentId = String(payload.student_id || "").trim();
   const packageName = String(payload.package_name || "").trim();
+  const lessonDurationMinutes = Number(payload.lesson_duration_minutes || 0);
+  const lessonRateApplied = Number(payload.lesson_rate_applied || 0);
   const sessionsTotal = Number(payload.sessions_total || 0);
   const sessionsUsed = Number(payload.sessions_used || 0);
   const packagePrice = Number(payload.package_price || 0);
@@ -5735,6 +5895,8 @@ function upsertPackageRecord(payload) {
     const updated = patchRecordById("packages", editingPackageId, {
       student_id: studentId,
       package_name: packageName,
+      lesson_duration_minutes: lessonDurationMinutes,
+      lesson_rate_applied: lessonRateApplied,
       sessions_total: sessionsTotal,
       sessions_used: sessionsUsed,
       sessions_remaining: remaining,
@@ -5750,6 +5912,8 @@ function upsertPackageRecord(payload) {
     package_id: getNextPackageId(),
     student_id: studentId,
     package_name: packageName,
+    lesson_duration_minutes: lessonDurationMinutes,
+    lesson_rate_applied: lessonRateApplied,
     sessions_total: sessionsTotal,
     sessions_used: sessionsUsed,
     sessions_remaining: remaining,
@@ -5843,6 +6007,39 @@ function closeFinanceModal() {
   editingPaymentId = null;
 }
 
+function syncPackagePricingFields(form) {
+  if (!form) return;
+  const durationField = form.elements.lesson_duration_minutes;
+  const sessionsField = form.elements.sessions_total;
+  const rateField = form.elements.lesson_rate_applied;
+  const priceField = form.elements.package_price;
+  const nameField = form.elements.package_name;
+  const autoNameField = form.elements.auto_package_name;
+  const previewField = document.getElementById("package-pricing-preview");
+  if (!durationField || !sessionsField || !rateField || !priceField) return;
+
+  const durationMinutes = Number(durationField.value || 0);
+  const sessionsTotal = Math.max(0, Number(sessionsField.value || 0));
+  const defaultRate = getConfiguredLessonRateForDuration(durationMinutes);
+  const currentRate = Number(rateField.value || 0);
+  const nextRate = currentRate > 0 ? currentRate : defaultRate;
+  rateField.value = nextRate ? String(nextRate) : "";
+
+  const total = nextRate * sessionsTotal;
+  priceField.value = total ? String(total) : "";
+
+  if (autoNameField && autoNameField.checked && nameField) {
+    const durationLabel = durationMinutes ? `${durationMinutes}-Minute` : "Lesson";
+    nameField.value = sessionsTotal ? `${durationLabel} Package · ${sessionsTotal} Session${sessionsTotal === 1 ? "" : "s"}` : `${durationLabel} Package`;
+  }
+
+  if (previewField) {
+    previewField.textContent = nextRate && sessionsTotal
+      ? `${formatCurrency(nextRate)} × ${sessionsTotal} session${sessionsTotal === 1 ? "" : "s"} = ${formatCurrency(total)}`
+      : "Set a lesson length and session count to calculate the package total automatically.";
+  }
+}
+
 function openPackageModal(packageId = null) {
   editingPackageId = packageId;
   editingPaymentId = null;
@@ -5874,6 +6071,19 @@ function openPackageModal(packageId = null) {
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Package Name</label>
             <input name="package_name" type="text" value="${escapeHtml(pkg?.package_name || "")}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            <label class="mt-2 inline-flex items-center gap-2 text-xs text-warmgray">
+              <input type="checkbox" name="auto_package_name" ${pkg?.package_name ? "" : "checked"}>
+              Auto-name from lesson length and session count
+            </label>
+          </div>
+
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Lesson Length</label>
+            <select name="lesson_duration_minutes" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="30" ${Number(pkg?.lesson_duration_minutes || 30) === 30 ? "selected" : ""}>30 Minutes</option>
+              <option value="60" ${Number(pkg?.lesson_duration_minutes || 0) === 60 ? "selected" : ""}>60 Minutes</option>
+              <option value="90" ${Number(pkg?.lesson_duration_minutes || 0) === 90 ? "selected" : ""}>90 Minutes</option>
+            </select>
           </div>
 
           <div>
@@ -5882,8 +6092,14 @@ function openPackageModal(packageId = null) {
           </div>
 
           <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Rate Per Lesson</label>
+            <input name="lesson_rate_applied" type="number" min="0" step="0.01" value="${escapeHtml(String(pkg?.lesson_rate_applied ?? ""))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Package Price</label>
             <input name="package_price" type="number" min="0" step="0.01" value="${escapeHtml(String(pkg?.package_price ?? ""))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            <p id="package-pricing-preview" class="text-xs text-warmgray mt-2"></p>
           </div>
 
           <div>
@@ -5911,7 +6127,16 @@ function openPackageModal(packageId = null) {
 
   document.getElementById("close-finance-modal").onclick = closeFinanceModal;
   document.getElementById("cancel-finance-modal").onclick = closeFinanceModal;
-  document.getElementById("package-form").onsubmit = handlePackageFormSubmit;
+  const form = document.getElementById("package-form");
+  form.onsubmit = handlePackageFormSubmit;
+  ["lesson_duration_minutes", "sessions_total", "lesson_rate_applied", "auto_package_name"].forEach((fieldName) => {
+    const field = form.elements[fieldName];
+    if (field) {
+      field.onchange = () => syncPackagePricingFields(form);
+      field.oninput = () => syncPackagePricingFields(form);
+    }
+  });
+  syncPackagePricingFields(form);
 
   lucide.createIcons();
 }
@@ -6290,8 +6515,9 @@ function openPaymentModal(paymentId = null) {
           <div class="col-span-2">
             <label class="block text-xs font-medium text-warmgray mb-1">Related Package</label>
             <select name="related_package_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
-              ${getPackageOptionsMarkup(payment?.related_package_id || "")}
+              ${getPackageOptionsMarkup(payment?.related_package_id || "", payment?.student_id || "")}
             </select>
+            <p id="payment-package-help" class="text-xs text-warmgray mt-2">Link package payments so balances and package totals stay accurate automatically.</p>
           </div>
         </div>
 
@@ -6309,7 +6535,49 @@ function openPaymentModal(paymentId = null) {
 
   document.getElementById("close-finance-modal").onclick = closeFinanceModal;
   document.getElementById("cancel-finance-modal").onclick = closeFinanceModal;
-  document.getElementById("payment-form").onsubmit = handlePaymentFormSubmit;
+  const form = document.getElementById("payment-form");
+  form.onsubmit = handlePaymentFormSubmit;
+
+  const syncPaymentPackageFields = () => {
+    const studentId = String(form.elements.student_id.value || "").trim();
+    const relatedPackageField = form.elements.related_package_id;
+    const amountField = form.elements.amount;
+    const helpField = document.getElementById("payment-package-help");
+    const student = getSchemaStudentById(studentId);
+    const activePackage = getCurrentPackageByStudentId(studentId);
+    const selectedPackage = relatedPackageField.value ? getPackageById(relatedPackageField.value) : null;
+
+    if (relatedPackageField) {
+      relatedPackageField.innerHTML = getPackageOptionsMarkup(relatedPackageField.value || activePackage?.package_id || "", studentId);
+      if (!relatedPackageField.value && activePackage && String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
+        relatedPackageField.value = activePackage.package_id;
+      }
+    }
+
+    const linkedPackage = relatedPackageField.value ? getPackageById(relatedPackageField.value) : null;
+    const suggestedPackage = linkedPackage || activePackage;
+    if (suggestedPackage && amountField && !String(amountField.value || "").trim()) {
+      const remainingBalance = Math.max(0, Number(suggestedPackage.package_price || 0) - getPackageLinkedPaidTotal(suggestedPackage.package_id, editingPaymentId));
+      if (remainingBalance > 0) {
+        amountField.value = String(remainingBalance);
+      }
+    }
+
+    if (helpField) {
+      if (suggestedPackage) {
+        const remainingBalance = Math.max(0, Number(suggestedPackage.package_price || 0) - getPackageLinkedPaidTotal(suggestedPackage.package_id, editingPaymentId));
+        helpField.textContent = `Suggested package link: ${suggestedPackage.package_name}. Remaining package balance: ${formatCurrency(remainingBalance)}.`;
+      } else if (String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
+        helpField.textContent = "This student is on package billing, but no active package is available to link yet.";
+      } else {
+        helpField.textContent = "Link package payments so balances and package totals stay accurate automatically.";
+      }
+    }
+  };
+
+  form.elements.student_id.onchange = syncPaymentPackageFields;
+  form.elements.related_package_id.onchange = syncPaymentPackageFields;
+  syncPaymentPackageFields();
 
   lucide.createIcons();
 }
@@ -6357,6 +6625,8 @@ function handlePackageFormSubmit(event) {
   const payload = {
     student_id: form.elements.student_id.value,
     package_name: form.elements.package_name.value,
+    lesson_duration_minutes: form.elements.lesson_duration_minutes.value,
+    lesson_rate_applied: form.elements.lesson_rate_applied.value,
     sessions_total: form.elements.sessions_total.value,
     sessions_used: form.elements.sessions_used.value,
     package_price: form.elements.package_price.value,
@@ -7979,6 +8249,7 @@ function confirmScheduleIntake(lessonId) {
   const lesson = getSchemaLessonById(lessonId);
   if (!lesson) return;
   const reviewGuidance = getImportedLessonReviewGuidance(lesson);
+  const hasPendingExternalUpdate = Boolean(lesson.pending_external_patch || lesson.pending_external_start || lesson.pending_external_end);
   if (!lesson.student_id) {
     notifyUser({
       title: "Schedule Intake",
@@ -7988,7 +8259,7 @@ function confirmScheduleIntake(lessonId) {
     });
     return;
   }
-  if (reviewGuidance.blocking) {
+  if (reviewGuidance.blocking && !hasPendingExternalUpdate) {
     notifyUser({
       title: "Schedule Intake",
       message: reviewGuidance.reasons[0] || "This imported lesson still needs review before it can be confirmed.",
@@ -8013,7 +8284,54 @@ function confirmScheduleIntake(lessonId) {
   renderAppFromSchema();
   notifyUser({
     title: "Lesson Confirmed",
-    message: "The imported lesson is confirmed and ready to drive workflow.",
+    message: hasPendingExternalUpdate
+      ? "The imported change was confirmed and the lesson will now keep the updated version."
+      : "The imported lesson is confirmed and ready to drive workflow.",
+    tone: "success",
+    source: "schedule"
+  });
+}
+
+function rejectScheduleIntakeChange(lessonId) {
+  const lesson = getSchemaLessonById(lessonId);
+  if (!lesson) return;
+
+  const pendingPatch = parsePendingExternalPatch(lesson);
+  if (!pendingPatch || !pendingPatch.previous_values || !Object.keys(pendingPatch.previous_values).length) {
+    notifyUser({
+      title: "Schedule Intake",
+      message: "There is no pending external change to reject on this lesson.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+
+  const result = updateLesson(lessonId, {
+    ...pendingPatch.previous_values,
+    sync_state: "SYNCED",
+    intake_review_state: "CONFIRMED",
+    intake_conflict_note: "",
+    pending_external_start: "",
+    pending_external_end: "",
+    pending_external_patch: "",
+    last_synced_at: new Date().toISOString()
+  });
+
+  if (!result || result.ok === false) {
+    notifyUser({
+      title: "Schedule Intake",
+      message: (result?.errors || ["Unable to reject the external change."]).join(" "),
+      tone: "error",
+      source: "schedule"
+    });
+    return;
+  }
+
+  renderAppFromSchema();
+  notifyUser({
+    title: "Change Rejected",
+    message: "The lesson was restored to its previous version and removed from the active attention queue.",
     tone: "success",
     source: "schedule"
   });
@@ -8141,7 +8459,7 @@ function renderScheduleResults() {
                         <div class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_type)}</div>
                         ${
                           row.pending_external_start
-                            ? `<div class="text-xs text-burgundy mt-2">Pending external change: ${escapeHtml(formatLessonTimeRange(row.pending_external_start, row.pending_external_end || row.pending_external_start))}</div>`
+                            ? `<div class="text-xs text-burgundy mt-2">Previous version: ${escapeHtml(formatLessonTimeRange(row.pending_external_start, row.pending_external_end || row.pending_external_start))}</div>`
                             : ""
                         }
                         ${
@@ -8226,8 +8544,19 @@ function renderScheduleResults() {
                             class="px-3 py-2 rounded-lg ${row.review_blocking ? "bg-white border border-cream text-warmgray" : "bg-white border border-cream text-warmblack"} text-xs font-medium card-hover"
                             onclick="confirmScheduleIntake('${row.lesson_id}')"
                           >
-                            ${row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
+                            ${row.pending_external_start || row.pending_external_end ? "Confirm Change" : row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
                           </button>
+                          ${
+                            row.pending_external_start || row.pending_external_end
+                              ? `<button
+                                  type="button"
+                                  class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+                                  onclick="rejectScheduleIntakeChange('${row.lesson_id}')"
+                                >
+                                  Reject Change
+                                </button>`
+                              : ""
+                          }
                           <button
                             type="button"
                             class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
@@ -9272,6 +9601,43 @@ function renderSettingsPage() {
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
             </div>
             ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
+          </form>
+
+          <form id="settings-pricing-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.047s" onsubmit="savePricingSettings(event)">
+            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+              <div class="min-w-0">
+                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Pricing Defaults</p>
+                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Lesson prices that drive packages and PAYG</h3>
+                <p class="text-sm text-warmgray mt-1">Set your standard lesson prices here. Packages use these prices to auto-calculate totals, and PAYG balance tracking uses them unless a student has a custom default lesson rate.</p>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">30-Minute Lesson</span>
+                <input name="lesson_rate_30" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_30 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">60-Minute Lesson</span>
+                <input name="lesson_rate_60" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_60 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">90-Minute Lesson</span>
+                <input name="lesson_rate_90" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_90 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Intro Session</span>
+                <input name="intro_session_rate" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.intro_session_rate || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+            </div>
+
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3 mt-4 text-sm text-warmgray">
+              A student-specific Default Lesson Rate still wins when it is set on that student profile. These values act as your studio-wide fallback.
+            </div>
+
+            <div class="flex flex-wrap items-center gap-2 mt-5">
+              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Pricing</button>
+            </div>
           </form>
 
           <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.05s" onsubmit="saveAdminSecuritySettings(event)">
