@@ -2227,6 +2227,7 @@ function focusScheduleOnNextImportedDate(summary = {}) {
   if (!target) return;
   const date = new Date(target);
   if (Number.isNaN(date.getTime())) return;
+  currentScheduleView = "calendar";
   currentScheduleSelectedDate = getCalendarDateKey(date);
   currentScheduleCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -2813,7 +2814,30 @@ function buildImportedSourceGroupKey({ name = "", email = "", phone = "", start 
 }
 
 function isLikelyLessonCalendarEvent(event) {
-  return looksLikeLessonSignalText(`${event.title || ""}\n${event.description || ""}\n${event.location || ""}`);
+  const title = String(event?.title || "");
+  const description = String(event?.description || "");
+  const location = String(event?.location || "");
+  const blob = `${title}\n${description}\n${location}`.toLowerCase();
+  const start = String(event?.start || "");
+  const end = String(event?.end || "");
+
+  if (!blob.trim()) return false;
+  if (!start.includes("T") || !end.includes("T")) return false;
+  if (LESSON_SIGNAL_EXCLUDE_PATTERNS.some((pattern) => pattern.test(blob))) return false;
+  if (/\baudition:\b|\bactors access\b|\bbackstage\b|\bself tape\b/.test(blob) && !/\baudition coaching\b|\bacting lesson\b|\blesson\b/.test(blob)) {
+    return false;
+  }
+  if (/\bfree new york city acting class\b|\bacting class\b/.test(blob) && !/\bintro session\b|\bprivate acting\b|\bprivate lesson\b/.test(blob)) {
+    return false;
+  }
+
+  return (
+    /\blessons\.com\b|\blessonface\b|\bacuity\b|\bacuityscheduling\b|\bcoach darius\b/.test(blob) ||
+    /\b(?:30|60|90)\s*(?:min|minute)\b/.test(blob) ||
+    /\bacting lesson\b|\bfree intro session\b|\bintro session\b|\bprepaid\b|\blessonface session\b/.test(blob) ||
+    /\bfor\s+\d+\s*min\b|\bwith\s+[a-z].*\(lessonface\)/.test(blob) ||
+    looksLikeLessonSignalText(blob)
+  );
 }
 
 function isLikelyLessonGmailMessage(message) {
@@ -3486,28 +3510,30 @@ function compareImportedCandidateToExistingLesson(candidate, lesson) {
   const sameLessonType = Boolean(candidateInfo.lesson_type && candidateInfo.lesson_type === lessonInfo.lesson_type);
   const sameTopic = Boolean(candidateInfo.topic && candidateInfo.topic === lessonInfo.topic);
   const sameDay = timeDistanceMinutes <= (24 * 60);
+  const withinDuplicateWindow = timeDistanceMinutes <= (36 * 60);
+  const withinReviewWindow = timeDistanceMinutes <= (72 * 60);
 
   if (sameExternalRecord) {
     score += 100;
     reasons.push("same external record");
   }
 
-  if (sameStudent) {
+  if (sameStudent && withinReviewWindow) {
     score += 6;
     reasons.push("same student");
   }
 
-  if (sameEmail) {
+  if (sameEmail && withinReviewWindow) {
     score += 5;
     reasons.push("same email");
   }
 
-  if (samePhone) {
+  if (samePhone && withinReviewWindow) {
     score += 4;
     reasons.push("same phone");
   }
 
-  if (sameName) {
+  if (sameName && withinReviewWindow) {
     score += 3;
     reasons.push("same name");
   }
@@ -3523,22 +3549,22 @@ function compareImportedCandidateToExistingLesson(candidate, lesson) {
     reasons.push("same session window");
   }
 
-  if (candidateDurationMinutes && lessonDurationMinutes && Math.abs(candidateDurationMinutes - lessonDurationMinutes) <= 5) {
+  if (candidateDurationMinutes && lessonDurationMinutes && Math.abs(candidateDurationMinutes - lessonDurationMinutes) <= 5 && withinReviewWindow) {
     score += 2;
     reasons.push("same duration");
   }
 
-  if (sameJoinLink) {
+  if (sameJoinLink && withinReviewWindow) {
     score += 2;
     reasons.push("same meeting link");
   }
 
-  if (sameLessonType) {
+  if (sameLessonType && withinReviewWindow) {
     score += 1;
     reasons.push("same lesson type");
   }
 
-  if (sameTopic) {
+  if (sameTopic && withinReviewWindow) {
     score += 1;
     reasons.push("same topic");
   }
@@ -3551,16 +3577,16 @@ function compareImportedCandidateToExistingLesson(candidate, lesson) {
   let relation = "unrelated";
   if (sameExternalRecord) {
     relation = "exact";
-  } else if (score >= 10) {
+  } else if (score >= 10 && withinDuplicateWindow) {
     relation = "likely_duplicate";
-  } else if (score >= 6) {
+  } else if (score >= 6 && withinReviewWindow) {
     relation = "possible_duplicate";
   }
 
   let confidence = "low";
-  if (relation === "exact" || score >= 12) {
+  if (relation === "exact" || (relation === "likely_duplicate" && score >= 12)) {
     confidence = "high";
-  } else if (score >= 7) {
+  } else if (relation !== "unrelated" && score >= 7) {
     confidence = "medium";
   }
 
@@ -3976,38 +4002,6 @@ function processGoogleCalendarImportFeed(feed = []) {
   };
 }
 
-function runDemoGoogleCalendarSync() {
-  if (!calendarSyncState.connected) {
-    notifyUser({
-      title: "Calendar Sync",
-      message: "Add your Google account in Settings before running sync.",
-      tone: "error",
-      source: "schedule"
-    });
-    return;
-  }
-
-  const summary = processGoogleCalendarImportFeed(sampleGoogleCalendarFeed);
-  setCalendarSyncState({
-    last_sync_at: summary.synced_at,
-    last_sync_summary: {
-      imported: summary.imported,
-      updated: summary.updated,
-      flagged: summary.flagged,
-      disconnected: summary.disconnected || 0,
-      skipped: summary.skipped
-    }
-  });
-
-  renderAppFromSchema();
-  notifyUser({
-    title: "Calendar Sync Complete",
-    message: `Imported ${summary.imported}, updated ${summary.updated}, removed from calendar ${summary.disconnected || 0}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
-    tone: "success",
-    source: "schedule"
-  });
-}
-
 async function runGoogleCalendarSync() {
   syncCalendarStateFromBackendSettings();
 
@@ -4055,6 +4049,11 @@ async function runGoogleCalendarSync() {
         }
       });
       focusScheduleOnNextImportedDate(proof);
+      try {
+        await studioDataService.syncToBackend({ silent: true });
+      } catch (syncError) {
+        console.warn("Calendar import saved locally but backend sync did not complete.", syncError);
+      }
       renderAppFromSchema();
       notifyUser({
         title: "Calendar Sync Complete",
@@ -4261,39 +4260,6 @@ function processGmailImportFeed(feed = []) {
   };
 }
 
-function runDemoGmailAssistSync() {
-  if (!calendarSyncState.gmail_connected) {
-    notifyUser({
-      title: "Gmail Assist",
-      message: "Add your Google account in Settings before running Gmail assist.",
-      tone: "error",
-      source: "schedule"
-    });
-    return;
-  }
-
-  const summary = processGmailImportFeed(sampleGmailLessonFeed);
-  setCalendarSyncState({
-    gmail_last_sync_at: summary.synced_at,
-    gmail_last_sync_summary: {
-      imported: summary.imported,
-      updated: summary.updated || 0,
-      flagged: summary.flagged,
-      payment_imported: summary.payment_imported || 0,
-      payment_flagged: summary.payment_flagged || 0,
-      skipped: summary.skipped
-    }
-  });
-
-  renderAppFromSchema();
-  notifyUser({
-    title: "Gmail Assist Complete",
-    message: `Lessons imported ${summary.imported}, metadata updated ${summary.updated || 0}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
-    tone: "success",
-    source: "schedule"
-  });
-}
-
 async function runGmailAssistSync() {
   syncCalendarStateFromBackendSettings();
 
@@ -4341,6 +4307,11 @@ async function runGmailAssistSync() {
           platform_summary: proof.platform_summary
         }
       });
+      try {
+        await studioDataService.syncToBackend({ silent: true });
+      } catch (syncError) {
+        console.warn("Gmail import saved locally but backend sync did not complete.", syncError);
+      }
       renderAppFromSchema();
       notifyUser({
         title: "Gmail Assist Complete",

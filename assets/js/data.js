@@ -685,7 +685,11 @@ async function pullStudioDataFromBackend() {
 }
 
 function requestAutoSync() {
-  if (backendSettings.persistence_mode !== "google_sheets" || !backendSettings.google_sheets_web_app_url) {
+  if (
+    backendSettings.persistence_mode !== "google_sheets" ||
+    !backendSettings.google_sheets_web_app_url ||
+    backendSettings.auto_sync !== true
+  ) {
     return;
   }
 
