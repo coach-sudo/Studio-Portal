@@ -685,7 +685,7 @@ async function pullStudioDataFromBackend() {
 }
 
 function requestAutoSync() {
-  if (!backendSettings.auto_sync || backendSettings.persistence_mode !== "google_sheets" || !backendSettings.google_sheets_web_app_url) {
+  if (backendSettings.persistence_mode !== "google_sheets" || !backendSettings.google_sheets_web_app_url) {
     return;
   }
 
@@ -697,6 +697,32 @@ function requestAutoSync() {
     syncStudioDataToBackend({ silent: true });
     backendAutoSyncTimer = null;
   }, 900);
+}
+
+function clearSelectedCollections(collectionKeys = []) {
+  const requestedKeys = Array.from(new Set(
+    (Array.isArray(collectionKeys) ? collectionKeys : [])
+      .map((key) => String(key || "").trim())
+      .filter((key) => Object.prototype.hasOwnProperty.call(appDataStore, key))
+  ));
+
+  if (!requestedKeys.length) {
+    return {
+      ok: false,
+      cleared: [],
+      errors: ["Choose at least one data group to clear."]
+    };
+  }
+
+  requestedKeys.forEach((collectionKey) => {
+    replaceDataCollection(collectionKey, []);
+    handleDataMutation("replace_collection", collectionKey, "");
+  });
+
+  return {
+    ok: true,
+    cleared: requestedKeys
+  };
 }
 
 function handleDataMutation(type, collectionKey, recordId = "") {
@@ -818,6 +844,7 @@ function createStudioDataService() {
     getSyncQueue: getDataSyncQueue,
     syncToBackend: syncStudioDataToBackend,
     pullFromBackend: pullStudioDataFromBackend,
+    clearCollections: clearSelectedCollections,
     testBackendConnection: testStudioBackendConnection,
     getGoogleStatus: getGoogleIntegrationStatusFromBackend,
     runGoogleCalendarSync: runGoogleCalendarBackendSync,

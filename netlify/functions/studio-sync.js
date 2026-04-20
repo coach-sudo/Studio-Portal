@@ -187,14 +187,14 @@ function getMessageBodyText(payload) {
 }
 
 function isLikelyLessonCalendarEventBackend(event) {
-  var blob = ((event.summary || "") + "\n" + (event.description || "")).toLowerCase();
+  var blob = ((event.summary || "") + "\n" + (event.description || "") + "\n" + (event.location || "")).toLowerCase();
   if (/^busy\b|\bto do\b|\bpop up\b|\bbackstage\b|\bpersonal\b/.test(blob)) return false;
-  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bintro session\b|\blessonface\b|\bacuity\b|\bpublic speaking\b|\bservice:\b/.test(blob);
+  return /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bintro session\b|\blessonface\b|\blessons\.com\b|\bacuity\b|\bacuityscheduling\b|\bpublic speaking\b|\bservice:\b/.test(blob);
 }
 
 function isLikelyLessonGmailMessageBackend(message) {
   var blob = ((message.subject || "") + "\n" + (message.body || "") + "\n" + (message.from || "")).toLowerCase();
-  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b|\bpayment\b|\bnew order\b|\bcancel(?:led|ed|lation)?\b|\breschedul(?:e|ed|ing)\b|\bappointment (?:updated|changed)\b|\bbooking (?:updated|changed|cancelled|canceled)\b/.test(blob);
+  return /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b|\bpayment\b|\bnew order\b|\bcancel(?:led|ed|lation)?\b|\breschedul(?:e|ed|ing)\b|\bappointment (?:updated|changed)\b|\bbooking (?:updated|changed|cancelled|canceled)\b/.test(blob);
 }
 
 function inferCalendarLocation(event) {

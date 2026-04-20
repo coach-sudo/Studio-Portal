@@ -252,6 +252,50 @@ function getLessonPricingMeta(lesson, student = null) {
   };
 }
 
+const LESSON_SIGNAL_INCLUDE_PATTERNS = [
+  /\b30\s*(?:min|minute)\b/i,
+  /\b60\s*(?:min|minute)\b/i,
+  /\b90\s*(?:min|minute)\b/i,
+  /\blesson\b/i,
+  /\bacting\b/i,
+  /\baudition\b/i,
+  /\bcoaching\b/i,
+  /\bintro session\b/i,
+  /\blessonface\b/i,
+  /\blessons\.com\b/i,
+  /\bacuity\b/i,
+  /\bacuityscheduling\b/i,
+  /\bpublic speaking\b/i,
+  /\bservice:\b/i
+];
+
+const LESSON_SIGNAL_EXCLUDE_PATTERNS = [
+  /^busy\b/i,
+  /\bto do\b/i,
+  /\bpop up\b/i,
+  /\bbackstage\b/i,
+  /\bpersonal\b/i
+];
+
+function looksLikeLessonSignalText(value) {
+  const blob = String(value || "").toLowerCase();
+  if (!blob.trim()) return false;
+  if (LESSON_SIGNAL_EXCLUDE_PATTERNS.some((pattern) => pattern.test(blob))) return false;
+  return LESSON_SIGNAL_INCLUDE_PATTERNS.some((pattern) => pattern.test(blob));
+}
+
+function getPackageCoverageDueWindowEnd() {
+  return endOfLocalDay(addDaysToDate(getReferenceNow(), 14));
+}
+
+function isLessonInsideBalanceWindow(lesson) {
+  const referenceDateRaw = lesson?.scheduled_start || lesson?.scheduled_end || lesson?.actual_completion_date || "";
+  if (!referenceDateRaw) return false;
+  const referenceDate = new Date(referenceDateRaw);
+  if (Number.isNaN(referenceDate.getTime())) return false;
+  return referenceDate <= getPackageCoverageDueWindowEnd();
+}
+
 function buildPendingExternalPatch(previousLesson = {}, nextLesson = {}, changedFields = []) {
   const patch = {
     changed_fields: Array.isArray(changedFields) ? changedFields.slice() : [],
@@ -2642,28 +2686,15 @@ function buildImportedSourceGroupKey({ name = "", email = "", phone = "", start 
 }
 
 function isLikelyLessonCalendarEvent(event) {
-  const blob = `${event.title || ""}\n${event.description || ""}`.toLowerCase();
-  const exclusionPatterns = [/^busy\b/i, /\bto do\b/i, /\bpop up\b/i, /\bbackstage\b/i, /\bpersonal\b/i];
-  if (exclusionPatterns.some((pattern) => pattern.test(blob))) return false;
-
-  const includePatterns = [
-    /\blesson\b/i,
-    /\bacting\b/i,
-    /\baudition\b/i,
-    /\bcoaching\b/i,
-    /\bintro session\b/i,
-    /\blessonface\b/i,
-    /\bacuity\b/i,
-    /\bpublic speaking\b/i,
-    /\bservice:\b/i
-  ];
-
-  return includePatterns.some((pattern) => pattern.test(blob));
+  return looksLikeLessonSignalText(`${event.title || ""}\n${event.description || ""}\n${event.location || ""}`);
 }
 
 function isLikelyLessonGmailMessage(message) {
   const blob = `${message.subject || ""}\n${message.body || ""}\n${message.from || ""}`.toLowerCase();
   const includePatterns = [
+    /\b30\s*(?:min|minute)\b/i,
+    /\b60\s*(?:min|minute)\b/i,
+    /\b90\s*(?:min|minute)\b/i,
     /\blesson\b/i,
     /\bacting\b/i,
     /\baudition\b/i,
@@ -6768,10 +6799,63 @@ function isPaymentCountedAsPaid(payment) {
   return normalizePaymentReviewStateValue(payment?.review_state, payment) === "CONFIRMED";
 }
 
+function getPackageLinkedPayments(packageId, options = {}) {
+  const includeArchived = options.includeArchived === true;
+  return getPaymentRecords()
+    .filter((payment) => payment.related_package_id === packageId)
+    .filter((payment) => includeArchived || !isPaymentArchived(payment))
+    .sort((a, b) => new Date(b.payment_date || 0).getTime() - new Date(a.payment_date || 0).getTime());
+}
+
+function getPrimaryPackagePayment(packageId, excludePaymentId = null) {
+  return getPackageLinkedPayments(packageId)
+    .filter((payment) => !excludePaymentId || payment.payment_id !== excludePaymentId)[0] || null;
+}
+
+function getPackageLinkConflictCount(packageId, excludePaymentId = null) {
+  return getPackageLinkedPayments(packageId)
+    .filter((payment) => !excludePaymentId || payment.payment_id !== excludePaymentId)
+    .length;
+}
+
+function getPackageUsageSentence(studentId, pkg) {
+  if (!pkg) return "No package on file";
+  const usage = getResolvedPackageUsage(studentId, pkg);
+  return `${usage.total}-lesson package • ${usage.used} used • ${usage.reserved} scheduled • ${usage.remaining} left`;
+}
+
+function getPackageNextDecisionLabel(studentId, pkg) {
+  if (!pkg) return "Create package";
+  const usage = getResolvedPackageUsage(studentId, pkg);
+  const financials = getPackageFinancials(pkg);
+  if (financials.remaining > 0) return `Collect ${formatCurrency(financials.remaining)}`;
+  if (usage.remaining <= 0) return "Renew package";
+  if (usage.remaining <= 1) return "Offer renewal soon";
+  return "Keep using current package";
+}
+
+function getPackageFinanceSummarySentence(studentId, pkg) {
+  if (!pkg) return "No package payment linked yet.";
+  const financials = getPackageFinancials(pkg);
+  if (financials.remaining <= 0) {
+    return financials.payment_label ? `${financials.payment_label} covers this package.` : "Package is fully paid.";
+  }
+  return financials.payment_label
+    ? `${financials.payment_label} • ${formatCurrency(financials.remaining)} still due`
+    : `${formatCurrency(financials.remaining)} still due`;
+}
+
 function getPackageDeclaredPaymentStatus(pkg) {
   const normalized = String(pkg?.payment_status || "").trim().toUpperCase();
+  const linkedPayment = pkg?.package_id ? getPrimaryPackagePayment(pkg.package_id) : null;
   const linkedPaid = Number(pkg?.package_id ? getPackageLinkedPaidTotal(pkg.package_id) : 0);
   const price = Number(pkg?.package_price || 0);
+  if (linkedPayment) {
+    const linkedStatus = String(linkedPayment.status || "").trim().toUpperCase();
+    if (linkedStatus === "PAID" && linkedPaid >= price) return "PAID";
+    if (linkedStatus === "PAID" && linkedPaid > 0) return "PARTIAL";
+    if (linkedStatus === "PENDING") return "DUE";
+  }
   if (price > 0 && linkedPaid >= price) return "PAID";
   if (price > 0 && linkedPaid > 0) return "PARTIAL";
   return ["PAID", "DUE", "PARTIAL", "OVERDUE"].includes(normalized) ? normalized : "DUE";
@@ -6779,6 +6863,7 @@ function getPackageDeclaredPaymentStatus(pkg) {
 
 function getPackageFinancials(pkg) {
   const price = Number(pkg?.package_price || 0);
+  const linkedPayment = pkg?.package_id ? getPrimaryPackagePayment(pkg.package_id) : null;
   const linkedPaid = pkg?.package_id ? getPackageLinkedPaidTotal(pkg.package_id) : 0;
   const declaredStatus = getPackageDeclaredPaymentStatus(pkg);
   const paid = declaredStatus === "PAID" ? Math.max(price, linkedPaid) : Math.min(price, linkedPaid);
@@ -6787,8 +6872,41 @@ function getPackageFinancials(pkg) {
     price,
     paid,
     remaining,
-    declared_status: declaredStatus
+    declared_status: declaredStatus,
+    linked_payment_id: linkedPayment?.payment_id || "",
+    linked_payment_amount: Number(linkedPayment?.amount || 0),
+    payment_label: linkedPayment
+      ? `${formatCurrency(linkedPayment.amount, linkedPayment.currency)} on ${formatLongDate(linkedPayment.payment_date || "")}`
+      : ""
   };
+}
+
+function getPackageReservationStartDate(pkg) {
+  if (!pkg) return "";
+  const linkedPayment = pkg.package_id ? getPrimaryPackagePayment(pkg.package_id) : null;
+  return String(linkedPayment?.payment_date || pkg.created_at || pkg.updated_at || "").trim();
+}
+
+function canLessonAutoApplyToPackage(lesson, pkg) {
+  if (!lesson || !pkg) return false;
+  if (String(lesson.student_id || "") !== String(pkg.student_id || "")) return false;
+  if (isPackageArchived(pkg)) return false;
+
+  const lessonDuration = getLessonDurationMinutes(lesson?.scheduled_start, lesson?.scheduled_end);
+  const packageDuration = Number(pkg.lesson_duration_minutes || 0);
+  if (packageDuration > 0 && lessonDuration > 0 && Math.abs(packageDuration - lessonDuration) > 5) {
+    return false;
+  }
+
+  const lessonDateRaw = lesson?.scheduled_start || getLessonReferenceDate(lesson) || "";
+  const reservationStartRaw = getPackageReservationStartDate(pkg);
+  if (!lessonDateRaw || !reservationStartRaw) return false;
+
+  const lessonDate = new Date(lessonDateRaw);
+  const reservationStart = startOfLocalDay(new Date(reservationStartRaw));
+  if (Number.isNaN(lessonDate.getTime()) || Number.isNaN(reservationStart.getTime())) return false;
+
+  return lessonDate >= reservationStart;
 }
 
 function getPackagesByStudentId(studentId, options = {}) {
@@ -6853,8 +6971,8 @@ function buildStudentPackageAllocation(studentId) {
     .filter((pkg) => !isPackageArchived(pkg))
     .slice()
     .sort((a, b) => {
-      const aTime = new Date(a.created_at || a.expires_on || 0).getTime();
-      const bTime = new Date(b.created_at || b.expires_on || 0).getTime();
+      const aTime = new Date(getPackageReservationStartDate(a) || a.expires_on || 0).getTime();
+      const bTime = new Date(getPackageReservationStartDate(b) || b.expires_on || 0).getTime();
       return aTime - bTime;
     });
 
@@ -6914,7 +7032,10 @@ function buildStudentPackageAllocation(studentId) {
   lessons
     .filter((lesson) => !lessonToPackage[lesson.lesson_id])
     .forEach((lesson) => {
-      const nextPackage = packages.find((pkg) => packageStats[pkg.package_id].assigned < packageStats[pkg.package_id].total);
+      const nextPackage = packages.find((pkg) => (
+        packageStats[pkg.package_id].assigned < packageStats[pkg.package_id].total &&
+        canLessonAutoApplyToPackage(lesson, pkg)
+      ));
       if (nextPackage) {
         assignLessonToPackage(lesson, nextPackage);
       }
@@ -6924,6 +7045,35 @@ function buildStudentPackageAllocation(studentId) {
     lesson_to_package: lessonToPackage,
     package_stats: packageStats
   };
+}
+
+function getResolvedLessonPackageId(lesson) {
+  if (!lesson?.student_id) return "";
+  if (lesson.linked_package_id) return lesson.linked_package_id;
+  const allocation = buildStudentPackageAllocation(lesson.student_id);
+  return allocation.lesson_to_package?.[lesson.lesson_id] || "";
+}
+
+function getLessonPackageCoverageLabel(lesson) {
+  if (!lesson || !lesson.student_id || lesson.counts_against_package !== true) return "Not using a package";
+  const packageId = getResolvedLessonPackageId(lesson);
+  if (!packageId) return "No package reserved";
+  const pkg = getPackageById(packageId);
+  if (!pkg) return "Package link missing";
+  const usage = getResolvedPackageUsage(lesson.student_id, pkg);
+  return `${pkg.package_name || "Package"} • ${usage.used} used • ${usage.reserved} scheduled • ${usage.remaining} left`;
+}
+
+function getImportedLessonTrustStateLabel(lesson) {
+  if (!lesson || !isImportedLesson(lesson)) return "Manual";
+  const reviewState = normalizeLessonIntakeReviewStateValue(lesson.intake_review_state, lesson.source);
+  const syncState = normalizeLessonSyncStateValue(lesson.sync_state, lesson.source);
+  if (!lesson.student_id) return "Unmatched";
+  if (lesson.pending_external_patch || lesson.pending_external_start || lesson.pending_external_end || ["UPDATED_EXTERNALLY", "DISCONNECTED"].includes(syncState)) {
+    return "Changed externally";
+  }
+  if (reviewState === "CONFIRMED") return "Confirmed";
+  return "Needs review";
 }
 
 function getCompletedPaygLessonsCount(studentId) {
@@ -6936,21 +7086,26 @@ function getCompletedPaygLessons(studentId) {
   return getLessonRecords().filter((lesson) => lesson.student_id === studentId && isLessonPaygBillable(lesson));
 }
 
+function getPaygLessonsInsideDueWindow(studentId) {
+  return getCompletedPaygLessons(studentId).filter((lesson) => isLessonInsideBalanceWindow(lesson));
+}
+
 function getResolvedPackageUsage(studentId, pkg) {
   if (!pkg) {
     return {
       total: 0,
       used: 0,
+      reserved: 0,
+      assigned: 0,
       remaining: 0
     };
   }
   const allocation = buildStudentPackageAllocation(studentId);
   const stats = allocation.package_stats[pkg.package_id];
   const total = Number(pkg.sessions_total || 0);
-  const schemaUsed = Number(pkg.sessions_used || 0);
-  const used = Math.max(Number(stats?.used || 0), schemaUsed);
+  const used = Number(stats?.used || 0);
   const reserved = Number(stats?.reserved || 0);
-  const assigned = Math.max(Number(stats?.assigned || 0), used + reserved);
+  const assigned = Number(stats?.assigned || 0);
   const remaining = Math.max(0, total - assigned);
 
   return {
@@ -7073,6 +7228,7 @@ function buildFinanceSummary(studentId, schemaStudent) {
   const packageUsage = getResolvedPackageUsage(studentId, pkg);
   const packageMeta = getPackageStatusMeta(studentId, pkg);
   const pendingReviewPayments = payments.filter((payment) => normalizePaymentReviewStateValue(payment.review_state, payment) === "NEEDS_REVIEW");
+  const latestPayment = payments[0] || null;
 
   if (billingModel === "PACKAGE") {
     const owed = activePackages.reduce((sum, packageRecord) => sum + getPackageFinancials(packageRecord).price, 0);
@@ -7095,16 +7251,19 @@ function buildFinanceSummary(studentId, schemaStudent) {
 
     return {
       mode: "PACKAGE",
-      headline: pkg ? (pkg.package_name || "Package") : "Package Student",
+      headline: pkg ? getPackageUsageSentence(studentId, pkg) : "No active package on file",
       subline: pkg
-        ? `${packageUsage.remaining} open · ${packageUsage.reserved || 0} scheduled · expires ${effectiveExpirationLabel}${packageCount > 1 ? ` · ${packageCount} active packages` : ""}`
+        ? `${getPackageFinanceSummarySentence(studentId, pkg)} • Expires ${effectiveExpirationLabel}${packageCount > 1 ? ` • ${packageCount} active packages` : ""}`
         : "No active package on file",
       badgeLabel: packageMeta.label,
       badgeClass: packageMeta.badge,
       packageInfo: pkg,
       packageCount,
       packageUsage,
+      packageUsageSentence: pkg ? getPackageUsageSentence(studentId, pkg) : "No active package on file",
+      nextDecisionLabel: getPackageNextDecisionLabel(studentId, pkg),
       payments,
+      latestPayment,
       owed,
       paid,
       remainingAmount,
@@ -7118,8 +7277,8 @@ function buildFinanceSummary(studentId, schemaStudent) {
   }
 
   if (billingModel === "PAYG") {
-    const completedLessons = getCompletedPaygLessons(studentId);
-    const lessonCharges = completedLessons.map((lesson) => {
+    const dueWindowLessons = getPaygLessonsInsideDueWindow(studentId);
+    const lessonCharges = dueWindowLessons.map((lesson) => {
       const pricingMeta = getLessonPricingMeta(lesson, schemaStudent);
       const appliedRate = Number(pricingMeta.applied_rate || 0);
       const linkedPaid = getLessonLinkedPaidTotal(lesson.lesson_id);
@@ -7148,15 +7307,18 @@ function buildFinanceSummary(studentId, schemaStudent) {
       mode: "PAYG",
       headline: "Pay As You Go",
       subline: configuredCount
-        ? `${completedLessons.length} completed lesson${completedLessons.length === 1 ? "" : "s"} priced from your lesson settings`
+        ? `${dueWindowLessons.length} lesson${dueWindowLessons.length === 1 ? "" : "s"} inside the next 14-day due window priced from your lesson settings`
         : fallbackRate
-          ? `${completedLessons.length} completed lesson${completedLessons.length === 1 ? "" : "s"} at ${formatCurrency(fallbackRate)}`
+          ? `${dueWindowLessons.length} lesson${dueWindowLessons.length === 1 ? "" : "s"} inside the next 14-day due window at ${formatCurrency(fallbackRate)}`
           : "Set lesson prices in Settings or a student default rate to track balances",
       badgeLabel: "PAYG",
       badgeClass: "bg-blue-100 text-blue-700",
       packageInfo: null,
       packageUsage: null,
+      packageUsageSentence: "",
+      nextDecisionLabel: unpaidCompletedLessons ? "Collect lesson payment" : "No action needed",
       payments,
+      latestPayment,
       owed,
       paid,
       remainingAmount,
@@ -7182,7 +7344,10 @@ function buildFinanceSummary(studentId, schemaStudent) {
     badgeClass: "bg-amber-100 text-amber-700",
     packageInfo: null,
     packageUsage: null,
+    packageUsageSentence: "",
+    nextDecisionLabel: remainingAmount > 0 ? "Collect balance" : "No action needed",
     payments,
+    latestPayment,
     owed,
     paid,
     remainingAmount,
@@ -7226,6 +7391,9 @@ function getFinancePackagesRows() {
         student_name: studentName,
         billing_model: billingModel,
         package_name: pkg.package_name || "Package",
+        usage_sentence: getPackageUsageSentence(pkg.student_id, pkg),
+        finance_sentence: getPackageFinanceSummarySentence(pkg.student_id, pkg),
+        next_decision: getPackageNextDecisionLabel(pkg.student_id, pkg),
         total: usage.total,
         used: usage.used,
         reserved: usage.reserved || 0,
@@ -7432,6 +7600,10 @@ function getPackageOptionsMarkup(selectedPackageId = "", studentId = "") {
     <option value="">No linked package</option>
     ${getPackageRecords()
       .filter((pkg) => !scopedStudentId || pkg.student_id === scopedStudentId)
+      .filter((pkg) => {
+        if (pkg.package_id === selectedPackageId) return true;
+        return getPackageLinkConflictCount(pkg.package_id) === 0;
+      })
       .slice()
       .sort((a, b) => a.package_name.localeCompare(b.package_name))
       .map((pkg) => `
@@ -7499,7 +7671,6 @@ function upsertPackageRecord(payload) {
   const lessonDurationMinutes = Number(payload.lesson_duration_minutes || 0);
   const lessonRateApplied = Number(payload.lesson_rate_applied || 0);
   const sessionsTotal = Number(payload.sessions_total || 0);
-  const sessionsUsed = Number(payload.sessions_used || 0);
   const packagePrice = Number(payload.package_price || 0);
   const expiresOn = String(payload.expires_on || "").trim();
   const discountAmount = Math.max(0, Number(payload.discount_amount || 0));
@@ -7511,33 +7682,57 @@ function upsertPackageRecord(payload) {
   if (!studentId) return { ok: false, errors: ["Student is required."] };
   if (!packageName) return { ok: false, errors: ["Package name is required."] };
   if (!sessionsTotal || sessionsTotal < 1) return { ok: false, errors: ["Total sessions must be at least 1."] };
-  if (sessionsUsed < 0) return { ok: false, errors: ["Used sessions cannot be negative."] };
-  if (sessionsUsed > sessionsTotal) return { ok: false, errors: ["Used sessions cannot exceed purchased sessions."] };
   if (packagePrice < 0) return { ok: false, errors: ["Package price cannot be negative."] };
   if (!["PAID", "DUE", "PARTIAL", "OVERDUE"].includes(paymentStatus)) return { ok: false, errors: ["Package payment status must be Paid, Due, Partial, or Overdue."] };
   if (!["FIXED", "LAST_RESERVED_LESSON", "MANUAL_EXTENSION"].includes(expiryPolicy)) return { ok: false, errors: ["Expiry policy must be Fixed, Last Reserved Lesson, or Manual Extension."] };
   if (expiryPolicy === "MANUAL_EXTENSION" && !manualExtensionUntil) return { ok: false, errors: ["Choose a manual extension date when using manual extension expiry."] };
 
-  const remaining = Math.max(0, sessionsTotal - sessionsUsed);
-  const status = remaining <= 0 ? "Depleted" : "Active";
-  const existingPaid = editingPackageId ? getPackageLinkedPaidTotal(editingPackageId) : 0;
+  if (editingPackageId && getPackageLinkConflictCount(editingPackageId) > 1) {
+    return { ok: false, errors: ["This package is linked to multiple payments. Clean that up in Finance before editing it."] };
+  }
 
+  const packageId = editingPackageId || getNextPackageId();
+  const existing = editingPackageId ? getPackageById(editingPackageId) : null;
+  if (editingPackageId && !existing) return { ok: false, errors: ["Package not found."] };
+
+  const draftPackage = {
+    ...(existing || {}),
+    package_id: packageId,
+    student_id: studentId,
+    package_name: packageName,
+    lesson_duration_minutes: lessonDurationMinutes,
+    lesson_rate_applied: lessonRateApplied,
+    sessions_total: sessionsTotal,
+    package_price: packagePrice,
+    discount_amount: discountAmount,
+    payment_status: paymentStatus,
+    payment_due_on: paymentDueOn,
+    expiry_policy: expiryPolicy,
+    manual_extension_until: manualExtensionUntil,
+    expires_on: expiresOn
+  };
+
+  const usage = getResolvedPackageUsage(studentId, draftPackage);
+  const status = usage.remaining <= 0 ? "Depleted" : "Active";
+
+  const existingPaid = editingPackageId ? getPackageLinkedPaidTotal(editingPackageId) : 0;
   if (packagePrice && existingPaid > packagePrice) {
-    return { ok: false, errors: ["Linked paid payments already exceed this package price. Increase the package price or archive/edit the linked payments first."] };
+    return { ok: false, errors: ["Linked payment already exceeds this package price. Increase the package price or edit the linked payment first."] };
+  }
+  const existingLinkedPayment = editingPackageId ? getPrimaryPackagePayment(editingPackageId) : null;
+  if (existingLinkedPayment && existingLinkedPayment.student_id !== studentId) {
+    return { ok: false, errors: ["This package already has a linked payment for another student. Reassign or archive that payment before moving the package."] };
   }
 
   if (editingPackageId) {
-    const existing = getPackageById(editingPackageId);
-    if (!existing) return { ok: false, errors: ["Package not found."] };
-
     const updated = patchRecordById("packages", editingPackageId, {
       student_id: studentId,
       package_name: packageName,
       lesson_duration_minutes: lessonDurationMinutes,
       lesson_rate_applied: lessonRateApplied,
       sessions_total: sessionsTotal,
-      sessions_used: sessionsUsed,
-      sessions_remaining: remaining,
+      sessions_used: usage.used,
+      sessions_remaining: usage.remaining,
       package_price: packagePrice,
       discount_amount: discountAmount,
       payment_status: paymentStatus,
@@ -7548,7 +7743,7 @@ function upsertPackageRecord(payload) {
         ...existing,
         package_id: editingPackageId,
         sessions_total: sessionsTotal,
-        sessions_used: sessionsUsed,
+        sessions_used: usage.used,
         package_price: packagePrice,
         payment_status: paymentStatus,
         expires_on: expiresOn,
@@ -7559,18 +7754,39 @@ function upsertPackageRecord(payload) {
       expires_on: expiresOn
     });
 
+    if (paymentStatus === "PAID" && packagePrice > 0 && !getPrimaryPackagePayment(editingPackageId)) {
+      insertRecord("payments", {
+        payment_id: getNextPaymentId(),
+        student_id: studentId,
+        amount: packagePrice,
+        currency: "USD",
+        payment_date: paymentDueOn || new Date().toISOString().slice(0, 10),
+        payment_type: "Package Payment",
+        status: "Paid",
+        related_package_id: editingPackageId,
+        related_lesson_id: "",
+        applies_to: "PACKAGE",
+        review_state: "CONFIRMED",
+        import_source: "",
+        external_reference: "",
+        match_confidence: "",
+        review_note: "Auto-created from package marked paid.",
+        archived_at: null
+      }, { prepend: true });
+    }
+
     return { ok: true, package: updated };
   }
 
   const newPackage = {
-    package_id: getNextPackageId(),
+    package_id: packageId,
     student_id: studentId,
     package_name: packageName,
     lesson_duration_minutes: lessonDurationMinutes,
     lesson_rate_applied: lessonRateApplied,
     sessions_total: sessionsTotal,
-    sessions_used: sessionsUsed,
-    sessions_remaining: remaining,
+    sessions_used: usage.used,
+    sessions_remaining: usage.remaining,
     package_price: packagePrice,
     discount_amount: discountAmount,
     payment_status: paymentStatus,
@@ -7584,6 +7800,27 @@ function upsertPackageRecord(payload) {
   };
 
   insertRecord("packages", newPackage, { prepend: true });
+
+  if (paymentStatus === "PAID" && packagePrice > 0 && !getPrimaryPackagePayment(packageId)) {
+    insertRecord("payments", {
+      payment_id: getNextPaymentId(),
+      student_id: studentId,
+      amount: packagePrice,
+      currency: "USD",
+      payment_date: paymentDueOn || new Date().toISOString().slice(0, 10),
+      payment_type: "Package Payment",
+      status: "Paid",
+      related_package_id: packageId,
+      related_lesson_id: "",
+      applies_to: "PACKAGE",
+      review_state: "CONFIRMED",
+      import_source: "",
+      external_reference: "",
+      match_confidence: "",
+      review_note: "Auto-created from package marked paid.",
+      archived_at: null
+    }, { prepend: true });
+  }
 
   return { ok: true, package: newPackage };
 }
@@ -7619,6 +7856,9 @@ function upsertPaymentRecord(payload) {
     if (linkedPackage.student_id !== studentId) {
       return { ok: false, errors: ["A payment can only link to a package that belongs to the same student."] };
     }
+    if (getPackageLinkConflictCount(relatedPackageId, editingPaymentId) > 0) {
+      return { ok: false, errors: ["That package already has a linked payment. Each package can only be tied to one payment record."] };
+    }
 
     if (normalizedStatus === "paid") {
       const alreadyPaid = getPackageLinkedPaidTotal(relatedPackageId, editingPaymentId);
@@ -7635,6 +7875,10 @@ function upsertPaymentRecord(payload) {
     if (linkedLesson.student_id !== studentId) {
       return { ok: false, errors: ["A payment can only link to a lesson that belongs to the same student."] };
     }
+  }
+
+  if (relatedPackageId && relatedLessonId) {
+    return { ok: false, errors: ["Use one payment link target at a time: either a package or a lesson."] };
   }
 
   if (String(schemaStudent.billing_model || "").toUpperCase() === "PACKAGE" && normalizedStatus === "paid" && !relatedPackageId) {
@@ -7800,8 +8044,9 @@ function openPackageModal(packageId = null, preselectedStudentId = "") {
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-warmgray mb-1">Sessions Used</label>
-            <input name="sessions_used" type="number" min="0" value="${escapeHtml(String(pkg?.sessions_used ?? 0))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            <label class="block text-xs font-medium text-warmgray mb-1">Usage Tracking</label>
+            <input name="sessions_used" type="number" min="0" value="${escapeHtml(String(getResolvedPackageUsage(pkg?.student_id || preselectedStudentId || selectedStudentId || "", pkg || { sessions_total: 0, package_id: "" }).used || 0))}" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm text-warmgray" readonly>
+            <p class="text-xs text-warmgray mt-2">Used and scheduled sessions update automatically from lessons linked to this student.</p>
           </div>
 
           <div>
@@ -7937,8 +8182,7 @@ function syncLessonPackageFields(form, selectedPackageId = "") {
 
   if (helpField) {
     if (String(student?.billing_model || "").toUpperCase() === "PACKAGE" && currentPackage) {
-      const usage = getResolvedPackageUsage(studentId, currentPackage);
-      helpField.textContent = `${currentPackage.package_name || "Active package"} · ${usage.remaining} session${usage.remaining === 1 ? "" : "s"} still open. Lessons default to this package unless you change it.`;
+      helpField.textContent = `${getPackageUsageSentence(studentId, currentPackage)}. Lessons reserve against this package automatically.`;
     } else if (String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
       helpField.textContent = "This student is on package billing, but no active package is available yet.";
     } else {
@@ -8305,7 +8549,7 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
             <select name="related_package_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
               ${getPackageOptionsMarkup(payment?.related_package_id || "", payment?.student_id || "")}
             </select>
-            <p id="payment-package-help" class="text-xs text-warmgray mt-2">Link package payments so balances and package totals stay accurate automatically.</p>
+            <p id="payment-package-help" class="text-xs text-warmgray mt-2">Link one payment to one package so package balances stay clean and repeat-proof.</p>
           </div>
 
           <div class="col-span-2">
@@ -8385,11 +8629,11 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
     if (helpField) {
       if (suggestedPackage) {
         const remainingBalance = Math.max(0, Number(suggestedPackage.package_price || 0) - getPackageLinkedPaidTotal(suggestedPackage.package_id, editingPaymentId));
-        helpField.textContent = `Suggested package link: ${suggestedPackage.package_name}. Remaining package balance: ${formatCurrency(remainingBalance)}.`;
+        helpField.textContent = `Suggested package link: ${suggestedPackage.package_name}. One payment can only belong to one package. Remaining package balance: ${formatCurrency(remainingBalance)}.`;
       } else if (String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
         helpField.textContent = "This student is on package billing, but no active package is available to link yet.";
       } else {
-        helpField.textContent = "Link package payments so balances and package totals stay accurate automatically.";
+        helpField.textContent = "Link one payment to one package so package balances stay clean and repeat-proof.";
       }
     }
 
@@ -9502,6 +9746,10 @@ function renderLessonsRows() {
     const statusClass = formatLessonStatusBadge(lesson.lesson_status);
     const paymentStatusLabel = getLessonManualPaymentStatusLabel(lesson.manual_payment_status);
     const paymentStatusClass = getLessonManualPaymentStatusBadge(lesson.manual_payment_status);
+    const schemaStudent = lesson.student_id ? getSchemaStudentById(lesson.student_id) : null;
+    const finance = lesson.student_id ? buildFinanceSummary(lesson.student_id, schemaStudent) : null;
+    const packageCoverageLabel = getLessonPackageCoverageLabel(lesson);
+    const trustStateLabel = getImportedLessonTrustStateLabel(lesson);
 
     return `
       <tr class="border-t border-cream/80 hover:bg-parchment/60 transition-colors">
@@ -9527,7 +9775,8 @@ function renderLessonsRows() {
                   onclick="viewStudentProfileFromLesson('${lesson.student_id}')"
                 >
                   ${escapeHtml(lesson.student_name)}
-                </button>`
+                </button>
+                <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(finance?.packageUsageSentence || finance?.subline || "No finance snapshot")}</div>`
               : `<div class="text-sm font-medium text-warmblack">${escapeHtml(lesson.student_name)}</div>`
           }
         </td>
@@ -9547,6 +9796,7 @@ function renderLessonsRows() {
               ${escapeHtml(paymentStatusLabel)}
             </span>
           </div>
+          <div class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml(packageCoverageLabel)}</div>
         </td>
         <td class="px-5 py-4 align-top">
           <div class="text-sm text-warmblack">${escapeHtml(getLessonSourceLabel(lesson.source))}</div>
@@ -9555,7 +9805,7 @@ function renderLessonsRows() {
             lesson.source !== "manual"
               ? `<div class="mt-2 flex flex-wrap gap-1">
                   <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getLessonIntakeReviewStateBadge(lesson.intake_review_state, lesson.source)}">
-                    ${escapeHtml(getLessonIntakeReviewStateLabel(lesson.intake_review_state, lesson.source))}
+                    ${escapeHtml(trustStateLabel)}
                   </span>
                 </div>`
               : ""
@@ -12096,6 +12346,107 @@ async function pullSettingsSnapshotFromBackend() {
   renderSettingsPage();
 }
 
+function closeDataResetModal() {
+  const overlay = document.getElementById("data-reset-modal-overlay");
+  if (overlay) overlay.remove();
+}
+
+function openDataResetModal() {
+  closeDataResetModal();
+  const overlay = document.createElement("div");
+  overlay.id = "data-reset-modal-overlay";
+  overlay.className = "fixed inset-0 z-[120] bg-black/40 flex items-center justify-center p-4";
+  overlay.innerHTML = `
+    <div class="app-modal-shell bg-white rounded-2xl border border-cream w-full max-w-2xl p-5">
+      <div class="app-modal-header flex items-start justify-between gap-4 mb-4">
+        <div class="min-w-0">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Reset Data</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Clear selected portal data and start fresh</h3>
+          <p class="text-sm text-warmgray mt-1">This clears the selected groups here and, if Google Sheets persistence is active, pushes the cleaned snapshot to the backend too.</p>
+        </div>
+        <button type="button" id="close-data-reset-modal" class="text-sm text-warmgray">Close</button>
+      </div>
+
+      <form id="data-reset-form" class="space-y-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          ${[
+            ["lessons", "Lessons"],
+            ["payments", "Payments"],
+            ["packages", "Packages"],
+            ["notes", "Notes"],
+            ["homework", "Homework"],
+            ["files", "Materials"],
+            ["actorProfiles", "Actor Profiles"],
+            ["students", "Students"]
+          ].map(([value, label]) => `
+            <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+              <input type="checkbox" name="collections" value="${value}" class="mt-1">
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-warmblack">${label}</span>
+                <span class="block text-xs text-warmgray mt-1">${value === "students" ? "Leave this unchecked if you only want to wipe workflow/testing data." : "Clear every record in this group."}</span>
+              </span>
+            </label>
+          `).join("")}
+        </div>
+
+        <div class="rounded-xl border border-burgundy/20 bg-burgundy/5 px-4 py-3">
+          <p class="text-sm font-medium text-burgundy">Use this when test data is muddying the portal.</p>
+          <p class="text-xs text-warmgray mt-1">If Students stays unchecked, the reset will preserve student records and only clear the selected operational data around them.</p>
+        </div>
+
+        <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
+          <button type="button" id="cancel-data-reset-modal" class="px-4 py-2.5 rounded-xl border border-cream bg-parchment text-sm font-medium text-warmblack">Cancel</button>
+          <button type="submit" class="px-4 py-2.5 rounded-xl bg-burgundy text-white text-sm font-semibold">Clear Selected Data</button>
+        </div>
+      </form>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  document.getElementById("close-data-reset-modal").onclick = closeDataResetModal;
+  document.getElementById("cancel-data-reset-modal").onclick = closeDataResetModal;
+  document.getElementById("data-reset-form").onsubmit = handleDataResetSubmit;
+}
+
+async function handleDataResetSubmit(event) {
+  event.preventDefault();
+  const form = event.target;
+  const selectedCollections = Array.from(form.querySelectorAll('input[name="collections"]:checked'))
+    .map((input) => String(input.value || "").trim())
+    .filter(Boolean);
+
+  if (!selectedCollections.length) {
+    setSettingsActionFeedback("Choose at least one data group to clear.", "error");
+    renderSettingsPage();
+    return;
+  }
+
+  if (!confirm(`Clear ${selectedCollections.length} selected data group${selectedCollections.length === 1 ? "" : "s"}? This will remove the selected records from the portal${studioDataService.getPersistenceStatus().mode === "google_sheets" ? " and sync that cleared snapshot to Google Sheets" : ""}.`)) {
+    return;
+  }
+
+  const clearResult = studioDataService.clearCollections(selectedCollections);
+  if (!clearResult?.ok) {
+    setSettingsActionFeedback((clearResult?.errors || ["Unable to clear the selected data."]).join(" "), "error");
+    renderSettingsPage();
+    return;
+  }
+
+  if (studioDataService.getPersistenceStatus().mode === "google_sheets") {
+    const syncResult = await studioDataService.syncToBackend();
+    if (!syncResult.ok) {
+      setSettingsActionFeedback(`Selected data was cleared locally, but backend sync failed: ${syncResult.error || "Unknown sync error."}`, "error");
+      renderSettingsPage();
+      closeDataResetModal();
+      return;
+    }
+  }
+
+  setSettingsActionFeedback(`Cleared ${clearResult.cleared.join(", ")} and saved the cleaned snapshot.`, "success");
+  closeDataResetModal();
+  renderAppFromSchema();
+}
+
 function renderSettingsPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
@@ -12114,6 +12465,7 @@ function renderSettingsPage() {
           <p class="text-sm text-warmgray mt-0.5">Persistence, hosted admin access, and manual Google connection controls now live together here. Google Calendar and Gmail still stay review-first until the live OAuth layer is added.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openDataResetModal()">Clear Data</button>
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="pullSettingsSnapshotFromBackend()">Pull Snapshot</button>
         </div>
@@ -12919,13 +13271,20 @@ function renderFinanceResults() {
                             <div class="text-xs text-warmgray mt-1">${escapeHtml(row.package_id)}</div>
                           </td>
                           <td class="px-5 py-4 align-top">${escapeHtml(getBillingModelLabel(row.billing_model))}</td>
-                          <td class="px-5 py-4 align-top">${escapeHtml(row.package_name)}</td>
+                          <td class="px-5 py-4 align-top">
+                            <div class="text-sm text-warmblack">${escapeHtml(row.package_name)}</div>
+                            <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.usage_sentence)}</div>
+                            <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.finance_sentence)}</div>
+                          </td>
                           <td class="px-5 py-4 align-top">${escapeHtml(formatCurrency(row.price || 0))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(formatCurrency(row.paid || 0))}</td>
                           <td class="px-5 py-4 align-top ${row.remaining_balance > 0 ? "text-burgundy font-medium" : "text-sage font-medium"}">${escapeHtml(formatCurrency(row.remaining_balance || 0))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(String(row.used))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(String(row.reserved || 0))}</td>
-                          <td class="px-5 py-4 align-top">${escapeHtml(String(row.remaining))}</td>
+                          <td class="px-5 py-4 align-top">
+                            <div>${escapeHtml(String(row.remaining))}</div>
+                            <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.next_decision)}</div>
+                          </td>
                           <td class="px-5 py-4 align-top">${escapeHtml(currentFinanceHistoryMode === "history" ? ((row.archived_at) ? formatLongDate(row.archived_at) : "—") : (row.effective_expires_label || "—"))}</td>
                           <td class="px-5 py-4 align-top">
                             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.badge}">
@@ -14450,9 +14809,9 @@ function renderProfilePage() {
                   </div>
                   <div id="profile-finance-package-block" class="rounded-xl bg-white border border-cream px-4 py-3 space-y-2">
                     <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Package</span><span id="profile-finance-package-name" class="font-medium text-right">—</span></div>
-                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Sessions Purchased</span><span id="profile-finance-package-total" class="font-medium text-right">—</span></div>
-                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Used</span><span id="profile-finance-package-used" class="font-medium text-right">—</span></div>
-                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Remaining</span><span id="profile-finance-package-remaining" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Usage</span><span id="profile-finance-package-total" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Paid</span><span id="profile-finance-package-used" class="font-medium text-right">—</span></div>
+                    <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Next Step</span><span id="profile-finance-package-remaining" class="font-medium text-right">—</span></div>
                     <div class="flex justify-between gap-4 text-sm"><span class="text-warmgray">Expires</span><span id="profile-finance-package-expires" class="font-medium text-right">—</span></div>
                   </div>
                   <div class="flex flex-wrap gap-2">
@@ -14855,22 +15214,22 @@ if (financePackageNameEl) {
 }
 
 if (financePackageTotalEl) {
-  financePackageTotalEl.textContent = finance.packageUsage ? String(finance.packageUsage.total) : "—";
+  financePackageTotalEl.textContent = finance.packageInfo ? getPackageUsageSentence(studentId, finance.packageInfo) : "—";
 }
 
 if (financePackageUsedEl) {
-  financePackageUsedEl.textContent = finance.packageUsage ? String(finance.packageUsage.used) : "—";
+  financePackageUsedEl.textContent = finance.packageInfo ? getPackageFinanceSummarySentence(studentId, finance.packageInfo) : "—";
 }
 
 if (financePackageRemainingEl) {
-  financePackageRemainingEl.textContent = finance.packageUsage ? String(finance.packageUsage.remaining) : "—";
+  financePackageRemainingEl.textContent = finance.nextDecisionLabel || "—";
   financePackageRemainingEl.classList.remove("text-gold", "text-burgundy", "text-warmblack");
 
   if (!finance.packageUsage) {
     financePackageRemainingEl.classList.add("text-warmblack");
-  } else if (finance.packageUsage.remaining <= 0) {
+  } else if ((finance.remainingAmount || 0) > 0) {
     financePackageRemainingEl.classList.add("text-burgundy");
-  } else if (finance.packageUsage.remaining <= 2) {
+  } else if (finance.packageUsage.remaining <= 1) {
     financePackageRemainingEl.classList.add("text-gold");
   } else {
     financePackageRemainingEl.classList.add("text-warmblack");
@@ -14898,7 +15257,7 @@ if (paymentsListEl) {
           </span>
         </div>
         <p class="text-xs text-warmgray mt-1">${escapeHtml(formatLongDate(payment.payment_date || ""))}</p>
-        <p class="text-xs text-warmgray mt-1">${escapeHtml(payment.payment_type || "Payment")}</p>
+        <p class="text-xs text-warmgray mt-1">${escapeHtml(payment.payment_type || "Payment")}${payment.related_package_id ? ` • ${escapeHtml(getPackageById(payment.related_package_id)?.package_name || "Package")}` : ""}</p>
       </div>
     `).join("");
   }
@@ -15559,6 +15918,8 @@ function openLessonDetailModal(lessonId) {
   const syncStateLabel = getLessonSyncStateLabel(lesson.sync_state, lesson.source);
   const syncStateClass = getLessonSyncStateBadge(lesson.sync_state, lesson.source);
   const importedLesson = isImportedLesson(lesson);
+  const trustStateLabel = getImportedLessonTrustStateLabel(lesson);
+  const packageCoverageLabel = getLessonPackageCoverageLabel(lesson);
 
   const statusLabel = getLessonStatusLabel(effectiveStatus);
   const statusClass = formatLessonStatusBadge(effectiveStatus);
@@ -15616,8 +15977,8 @@ function openLessonDetailModal(lessonId) {
                 importedLesson
                   ? `
                     <div class="lesson-detail-meta-row flex justify-between gap-4">
-                      <span class="text-warmgray">Intake Review</span>
-                      <span class="font-medium text-warmblack">${escapeHtml(intakeReviewLabel)}</span>
+                      <span class="text-warmgray">Trust State</span>
+                      <span class="font-medium text-warmblack">${escapeHtml(trustStateLabel)}</span>
                     </div>
                     <div class="lesson-detail-meta-row flex justify-between gap-4">
                       <span class="text-warmgray">Sync State</span>
@@ -15627,8 +15988,8 @@ function openLessonDetailModal(lessonId) {
                   : ""
               }
               <div class="lesson-detail-meta-row flex justify-between gap-4">
-                <span class="text-warmgray">Payment Mark</span>
-                <span class="font-medium text-warmblack">${escapeHtml(paymentStatusLabel)}</span>
+                <span class="text-warmgray">Package / Billing</span>
+                <span class="font-medium text-warmblack">${escapeHtml(packageCoverageLabel)}</span>
               </div>
               ${
                 rescheduleHistoryLabel
@@ -15644,8 +16005,9 @@ function openLessonDetailModal(lessonId) {
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
               <div class="rounded-xl border border-cream bg-white px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wider text-warmgray">Manual Billing Check</p>
-                <p class="text-sm font-semibold mt-1 ${paymentStatusClass.includes("burgundy") ? "text-burgundy" : "text-warmblack"}">${escapeHtml(paymentStatusLabel)}</p>
+                <p class="text-[11px] uppercase tracking-wider text-warmgray">Billing Snapshot</p>
+                <p class="text-sm font-semibold mt-1 ${paymentStatusClass.includes("burgundy") ? "text-burgundy" : "text-warmblack"}">${escapeHtml(packageCoverageLabel)}</p>
+                <p class="text-xs text-warmgray mt-1">Manual mark: ${escapeHtml(paymentStatusLabel)}</p>
               </div>
               <div class="rounded-xl border border-cream bg-white px-4 py-3">
                 <p class="text-[11px] uppercase tracking-wider text-warmgray">Public Page Policy</p>
@@ -15659,8 +16021,8 @@ function openLessonDetailModal(lessonId) {
                 ? `
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
                     <div class="rounded-xl border border-cream bg-white px-4 py-3">
-                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Intake Review</p>
-                      <p class="text-sm font-semibold mt-1 ${intakeReviewClass.includes("burgundy") ? "text-burgundy" : "text-warmblack"}">${escapeHtml(intakeReviewLabel)}</p>
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Trust State</p>
+                      <p class="text-sm font-semibold mt-1 ${intakeReviewClass.includes("burgundy") ? "text-burgundy" : "text-warmblack"}">${escapeHtml(trustStateLabel)}</p>
                       <p class="text-xs text-warmgray mt-1">${escapeHtml(formatLastSyncMeta(lesson.imported_at))} imported</p>
                     </div>
                     <div class="rounded-xl border border-cream bg-white px-4 py-3">
