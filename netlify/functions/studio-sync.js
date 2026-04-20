@@ -50,7 +50,7 @@ function getGmailMaxResults() {
 function getGmailSyncQuery() {
   return String(
     process.env.GMAIL_SYNC_QUERY ||
-    'newer_than:120d ((from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com) OR (subject:booking OR subject:appointment OR subject:"upcoming booking" OR subject:lesson OR subject:session OR subject:payment OR subject:"new order"))'
+    'newer_than:120d ((from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com) OR (subject:booking OR subject:appointment OR subject:"upcoming booking" OR subject:lesson OR subject:session OR subject:payment OR subject:"new order" OR subject:cancel OR subject:cancelled OR subject:canceled OR subject:rescheduled OR subject:reschedule OR subject:changed OR subject:updated))'
   ).trim();
 }
 
@@ -194,7 +194,7 @@ function isLikelyLessonCalendarEventBackend(event) {
 
 function isLikelyLessonGmailMessageBackend(message) {
   var blob = ((message.subject || "") + "\n" + (message.body || "") + "\n" + (message.from || "")).toLowerCase();
-  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b|\bpayment\b|\bnew order\b/.test(blob);
+  return /\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\blessonface\b|\bacuity\b|\bservice:\b|\bjoin zoom\b|\bpaid online\b|\bupcoming booking\b|\bview booking\b|\blessons\.com\b|\bpayment\b|\bnew order\b|\bcancel(?:led|ed|lation)?\b|\breschedul(?:e|ed|ing)\b|\bappointment (?:updated|changed)\b|\bbooking (?:updated|changed|cancelled|canceled)\b/.test(blob);
 }
 
 function inferCalendarLocation(event) {

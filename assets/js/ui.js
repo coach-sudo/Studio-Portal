@@ -260,6 +260,8 @@ function buildPendingExternalPatch(previousLesson = {}, nextLesson = {}, changed
   [
     "scheduled_start",
     "scheduled_end",
+    "lesson_status",
+    "cancellation_type",
     "join_link",
     "topic",
     "lesson_type",
@@ -1232,12 +1234,15 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
       const reasons = [];
       const studentNameVariants = [
         ...getNameMatchVariants(student.full_name || ""),
-        ...getNameMatchVariants(student.guardian_name || "")
+        ...getNameMatchVariants(student.guardian_name || ""),
+        ...getNameMatchVariants(student.preferred_contact_name || ""),
+        ...getNameMatchVariants(student.emergency_contact_name || "")
       ];
       const exactNameMatch = targetNameVariants.some((variant) => studentNameVariants.includes(variant));
       const strongNameOverlap = !exactNameMatch && (
         hasStrongNameTokenOverlap(full_name, student.full_name) ||
-        hasStrongNameTokenOverlap(full_name, student.guardian_name || "")
+        hasStrongNameTokenOverlap(full_name, student.guardian_name || "") ||
+        hasStrongNameTokenOverlap(full_name, student.preferred_contact_name || "")
       );
       const studentEmails = [
         String(student.email || "").trim().toLowerCase(),
@@ -1254,23 +1259,37 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
       ].filter(Boolean);
       const emailMatch = targetEmail && studentEmails.includes(targetEmail);
       const phoneMatch = targetPhone && studentPhones.includes(targetPhone);
+      const guardianEmailMatch = targetEmail && [
+        String(student.guardian_email || "").trim().toLowerCase(),
+        String(student.preferred_contact_email || "").trim().toLowerCase()
+      ].filter(Boolean).includes(targetEmail);
+      const guardianPhoneMatch = targetPhone && [
+        normalizePhoneForMatch(student.guardian_phone),
+        normalizePhoneForMatch(student.preferred_contact_phone),
+        normalizePhoneForMatch(student.emergency_contact_phone)
+      ].filter(Boolean).includes(targetPhone);
+      const studentNameSpecificMatch = Boolean(targetNameVariants.length && getNameMatchVariants(student.full_name || "").some((variant) => targetNameVariants.includes(variant)));
+      const guardianNameSpecificMatch = Boolean(targetNameVariants.length && (
+        getNameMatchVariants(student.guardian_name || "").some((variant) => targetNameVariants.includes(variant)) ||
+        getNameMatchVariants(student.preferred_contact_name || "").some((variant) => targetNameVariants.includes(variant))
+      ));
 
       if (emailMatch) {
         score += 6;
-        reasons.push(student.guardian_email && String(student.guardian_email).trim().toLowerCase() === targetEmail ? "Guardian email match" : "Email match");
+        reasons.push(guardianEmailMatch ? "Family email match" : "Email match");
       }
 
       if (phoneMatch) {
         score += 5;
-        reasons.push(student.guardian_phone && normalizePhoneForMatch(student.guardian_phone) === targetPhone ? "Guardian phone match" : "Phone match");
+        reasons.push(guardianPhoneMatch ? "Family phone match" : "Phone match");
       }
 
       if (exactNameMatch) {
         score += 4;
-        reasons.push("Name match");
+        reasons.push(studentNameSpecificMatch ? "Student name match" : guardianNameSpecificMatch ? "Family name match" : "Name match");
       } else if (strongNameOverlap) {
         score += 2;
-        reasons.push("Close name match");
+        reasons.push(studentNameSpecificMatch ? "Close student name match" : guardianNameSpecificMatch ? "Close family name match" : "Close name match");
       }
 
       if ((exactNameMatch || strongNameOverlap) && emailMatch) {
@@ -1298,6 +1317,10 @@ function findPotentialStudentMatches({ full_name, email, phone }) {
         strong_name_overlap: strongNameOverlap,
         email_match: Boolean(emailMatch),
         phone_match: Boolean(phoneMatch),
+        family_email_match: Boolean(guardianEmailMatch),
+        family_phone_match: Boolean(guardianPhoneMatch),
+        student_name_match: Boolean(studentNameSpecificMatch),
+        family_name_match: Boolean(guardianNameSpecificMatch),
         merge_ready: duplicatePrompt,
         duplicate_prompt: duplicatePrompt
       };
@@ -2364,6 +2387,117 @@ function getImportedLessonContactInfo(lesson) {
   };
 }
 
+function getStudentKnownContactBundle(student) {
+  if (!student) {
+    return {
+      names: [],
+      student_names: [],
+      family_names: [],
+      emails: [],
+      family_emails: [],
+      phones: [],
+      family_phones: []
+    };
+  }
+
+  const studentNames = getNameMatchVariants(student.full_name || "");
+  const familyNames = Array.from(new Set([
+    ...getNameMatchVariants(student.guardian_name || ""),
+    ...getNameMatchVariants(student.preferred_contact_name || ""),
+    ...getNameMatchVariants(student.emergency_contact_name || "")
+  ]));
+  const emails = Array.from(new Set([
+    String(student.email || "").trim().toLowerCase(),
+    ...parseStoredEmailList(student.additional_emails || ""),
+    String(student.guardian_email || "").trim().toLowerCase(),
+    String(student.preferred_contact_email || "").trim().toLowerCase()
+  ].filter(Boolean)));
+  const familyEmails = Array.from(new Set([
+    String(student.guardian_email || "").trim().toLowerCase(),
+    String(student.preferred_contact_email || "").trim().toLowerCase()
+  ].filter(Boolean)));
+  const phones = Array.from(new Set([
+    normalizePhoneForMatch(student.phone),
+    ...parseStoredPhoneList(student.additional_phones || "").map((entry) => normalizePhoneForMatch(entry)),
+    normalizePhoneForMatch(student.guardian_phone),
+    normalizePhoneForMatch(student.preferred_contact_phone),
+    normalizePhoneForMatch(student.emergency_contact_phone)
+  ].filter(Boolean)));
+  const familyPhones = Array.from(new Set([
+    normalizePhoneForMatch(student.guardian_phone),
+    normalizePhoneForMatch(student.preferred_contact_phone),
+    normalizePhoneForMatch(student.emergency_contact_phone)
+  ].filter(Boolean)));
+
+  return {
+    names: Array.from(new Set([...studentNames, ...familyNames])),
+    student_names: studentNames,
+    family_names: familyNames,
+    emails,
+    family_emails: familyEmails,
+    phones,
+    family_phones: familyPhones
+  };
+}
+
+function getNormalizedImportedContactSignals(contact) {
+  const rawNameVariants = getNameMatchVariants(contact?.raw_name || "");
+  const studentVariants = getNameMatchVariants(contact?.student_full_name || "");
+  const guardianVariants = getNameMatchVariants(contact?.guardian_name || "");
+
+  return {
+    raw_name_variants: rawNameVariants,
+    student_name_variants: studentVariants,
+    guardian_name_variants: guardianVariants,
+    all_name_variants: Array.from(new Set([
+      ...rawNameVariants,
+      ...studentVariants,
+      ...guardianVariants
+    ])),
+    email: String(contact?.email || "").trim().toLowerCase(),
+    phone: normalizePhoneForMatch(contact?.phone)
+  };
+}
+
+function doesImportedContactBelongToStudentNetwork(contact, student) {
+  if (!contact || !student) return false;
+  const known = getStudentKnownContactBundle(student);
+  const importedSignals = getNormalizedImportedContactSignals(contact);
+
+  const nameMatch = importedSignals.all_name_variants.some((variant) => known.names.includes(variant));
+  const guardianNameMatch = importedSignals.guardian_name_variants.some((variant) => known.family_names.includes(variant));
+  const emailMatch = importedSignals.email && known.emails.includes(importedSignals.email);
+  const phoneMatch = importedSignals.phone && known.phones.includes(importedSignals.phone);
+
+  return Boolean(nameMatch || guardianNameMatch || emailMatch || phoneMatch);
+}
+
+function getImportedContactRoleForStudent(contact, student) {
+  if (!contact || !student) return "unknown";
+  const known = getStudentKnownContactBundle(student);
+  const importedSignals = getNormalizedImportedContactSignals(contact);
+
+  if (
+    importedSignals.guardian_name_variants.some((variant) => known.family_names.includes(variant)) ||
+    importedSignals.raw_name_variants.some((variant) => known.family_names.includes(variant)) ||
+    (importedSignals.email && known.family_emails.includes(importedSignals.email)) ||
+    (importedSignals.phone && known.family_phones.includes(importedSignals.phone))
+  ) {
+    return "family";
+  }
+
+  if (
+    importedSignals.student_name_variants.some((variant) => known.student_names.includes(variant)) ||
+    importedSignals.raw_name_variants.some((variant) => known.student_names.includes(variant)) ||
+    (importedSignals.email && String(student.email || "").trim().toLowerCase() === importedSignals.email) ||
+    (importedSignals.phone && normalizePhoneForMatch(student.phone) === importedSignals.phone)
+  ) {
+    return "student";
+  }
+
+  return doesImportedContactBelongToStudentNetwork(contact, student) ? "family" : "unknown";
+}
+
 function extractNamedValue(text, label) {
   const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = sanitizeImportedContactText(text).match(new RegExp(`${escapedLabel}\\s*[:=]\\s*([^\\n\\r]+)`, "i"));
@@ -2539,11 +2673,30 @@ function isLikelyLessonGmailMessage(message) {
     /\bjoin zoom\b/i,
     /\bpaid online\b/i,
     /\bupcoming booking\b/i,
+    /\bcancel(?:led|ed|lation)?\b/i,
+    /\breschedul(?:e|ed|ing)\b/i,
+    /\bchanged appointment\b/i,
+    /\bappointment (?:updated|changed)\b/i,
+    /\bbooking (?:updated|changed|cancelled|canceled)\b/i,
     /\bview booking\b/i,
     /\blessons\.com\b/i
   ];
 
   return includePatterns.some((pattern) => pattern.test(blob));
+}
+
+function inferGmailLessonChangeIntent(message) {
+  const blob = `${message.subject || ""}\n${message.body || ""}\n${message.from || ""}`.toLowerCase();
+
+  if (/\bcancel(?:led|ed|lation)?\b|\bappointment canceled\b|\bbooking canceled\b|\bbooking cancelled\b/.test(blob)) {
+    return "cancelled";
+  }
+
+  if (/\breschedul(?:e|ed|ing)\b|\bchange appointment\b|\bappointment changed\b|\bappointment updated\b|\bbooking updated\b|\bbooking changed\b/.test(blob)) {
+    return "changed";
+  }
+
+  return "new";
 }
 
 function isLikelyPaymentGmailMessage(message) {
@@ -2939,6 +3092,21 @@ function parseDateTimeFromEmailText(rawText) {
     }
   }
 
+  match = normalized.match(new RegExp(`(?:rescheduled to|new time|updated to)\\s+${dateTimePattern}.*?${timePattern}(?:\\s*-\\s*${timePattern})?`, "i"));
+  if (match) {
+    const datePart = /,\s+\d{4}/.test(match[1]) ? match[1] : `${match[1]}, ${year}`;
+    const start = new Date(`${datePart} ${match[2]}`);
+    const explicitEnd = match[3] ? new Date(`${datePart} ${match[3]}`) : null;
+    if (!Number.isNaN(start.getTime())) {
+      return {
+        start: start.toISOString(),
+        end: explicitEnd && !Number.isNaN(explicitEnd.getTime())
+          ? explicitEnd.toISOString()
+          : (durationMinutes ? addMinutesToIso(start.toISOString(), durationMinutes) : "")
+      };
+    }
+  }
+
   return null;
 }
 
@@ -3004,6 +3172,7 @@ function buildImportedLessonFromCalendarEvent(event) {
 
 function buildImportedLessonFromGmailMessage(message) {
   const platformHint = inferGmailPlatformHint(message);
+  const changeIntent = inferGmailLessonChangeIntent(message);
   const externalContactName = inferExternalContactNameFromGmail(message);
   const externalContactEmail = inferExternalContactEmailFromGmail(message);
   const externalContactPhone = inferExternalContactPhoneFromGmail(message);
@@ -3028,12 +3197,29 @@ function buildImportedLessonFromGmailMessage(message) {
     start: timeRange?.start || ""
   });
   const importedPaymentStatus = inferImportedLessonPaymentStatus(`${message.subject || ""}\n${message.body || ""}`);
+  const lessonStatus = changeIntent === "cancelled" ? "CANCELLED" : "SCHEDULED";
+  const cancellationType = changeIntent === "cancelled" ? "SYSTEM" : "";
+  const conflictNote = changeIntent === "cancelled"
+    ? matchedStudent
+      ? "Gmail indicates this booking was cancelled. Review and confirm before the portal trusts the cancellation."
+      : "Gmail indicates this booking was cancelled, but the student still needs review."
+    : changeIntent === "changed"
+      ? matchedStudent
+        ? "Gmail indicates this booking was changed or rescheduled. Review and confirm before the portal trusts the update."
+        : "Gmail indicates this booking changed, but the student still needs review."
+      : !hasTimeRange
+        ? "Lesson-like email found, but the session time needs manual review."
+        : !hasResolvedEnd
+          ? "Lesson start time was extracted from email, but the duration needs review before relying on the end time."
+          : matchedStudent
+            ? "Imported from Gmail. Cross-check this booking against calendar intake before confirming it."
+            : "No student match found from this lesson email. Match an existing student or create a new student from intake.";
 
   return {
     student_id: matchedStudent?.student_id || "",
     scheduled_start: hasTimeRange ? timeRange.start : "",
     scheduled_end: hasResolvedEnd ? timeRange.end : "",
-    lesson_status: "SCHEDULED",
+    lesson_status: lessonStatus,
     lesson_type: inferLessonTypeFromGmailMessage(message),
     manual_payment_status: importedPaymentStatus,
     location_type: locationType,
@@ -3041,7 +3227,7 @@ function buildImportedLessonFromGmailMessage(message) {
     topic: inferLessonTopicFromGmailMessage(message),
     join_link: joinLink,
     actual_completion_date: "",
-    cancellation_type: "",
+    cancellation_type: cancellationType,
     source: "gmail",
     external_event_id: message.id,
     source_calendar_id: "",
@@ -3056,15 +3242,10 @@ function buildImportedLessonFromGmailMessage(message) {
     imported_at: "",
     last_synced_at: "",
     external_updated_at: message.received_at || "",
-    intake_conflict_note: !hasTimeRange
-      ? "Lesson-like email found, but the session time needs manual review."
-      : !hasResolvedEnd
-        ? "Lesson start time was extracted from email, but the duration needs review before relying on the end time."
-      : matchedStudent
-        ? "Imported from Gmail. Cross-check this booking against calendar intake before confirming it."
-        : "No student match found from this lesson email. Match an existing student or create a new student from intake.",
+    intake_conflict_note: conflictNote,
     pending_external_start: "",
     pending_external_end: "",
+    gmail_change_intent: changeIntent,
     match_candidates: matchCandidates
   };
 }
@@ -3109,20 +3290,25 @@ function getExistingLessonContactInfoForIntake(lesson) {
   const importedContact = getImportedLessonContactInfo(lesson);
   const student = lesson?.student_id ? getSchemaStudentById(lesson.student_id) : null;
   const studentEmails = parseStoredEmailList(student?.additional_emails || "");
+  const studentPhones = parseStoredPhoneList(student?.additional_phones || "");
 
   return {
     student_full_name: normalizeIntakeComparableValue(importedContact.student_full_name || student?.full_name || ""),
-    guardian_name: normalizeIntakeComparableValue(importedContact.guardian_name || student?.guardian_name || ""),
+    guardian_name: normalizeIntakeComparableValue(importedContact.guardian_name || student?.guardian_name || student?.preferred_contact_name || ""),
     email_values: Array.from(new Set([
       normalizeIntakeComparableValue(importedContact.email || ""),
       normalizeIntakeComparableValue(student?.email || ""),
       normalizeIntakeComparableValue(student?.guardian_email || ""),
+      normalizeIntakeComparableValue(student?.preferred_contact_email || ""),
       ...studentEmails.map((entry) => normalizeIntakeComparableValue(entry))
     ].filter(Boolean))),
     phone_values: Array.from(new Set([
       normalizeIntakeComparableValue(importedContact.phone || ""),
       normalizeIntakeComparableValue(student?.phone || ""),
-      normalizeIntakeComparableValue(student?.guardian_phone || "")
+      normalizeIntakeComparableValue(student?.guardian_phone || ""),
+      normalizeIntakeComparableValue(student?.preferred_contact_phone || ""),
+      normalizeIntakeComparableValue(student?.emergency_contact_phone || ""),
+      ...studentPhones.map((entry) => normalizeIntakeComparableValue(entry))
     ].filter(Boolean))),
     join_link: normalizeIntakeComparableValue(lesson?.join_link || ""),
     lesson_type: normalizeIntakeComparableValue(lesson?.lesson_type || ""),
@@ -3261,16 +3447,38 @@ function findPotentialExistingLessonFromImportedCandidate(candidate, options = {
 
 function getChangedCalendarFields(existingLesson, candidate) {
   const changedFields = [];
+  const linkedStudent = getSchemaStudentById(candidate?.student_id || existingLesson?.student_id || "");
+  const candidateContact = getImportedLessonContactInfo(candidate || {});
+  const existingContact = getImportedLessonContactInfo(existingLesson || {});
+  const importedContactBelongsToLinkedStudent = doesImportedContactBelongToStudentNetwork(candidateContact, linkedStudent);
+  const importedContactRole = getImportedContactRoleForStudent(candidateContact, linkedStudent);
+  const existingContactRole = getImportedContactRoleForStudent(existingContact, linkedStudent);
+  const suppressContactChangeNoise = Boolean(
+    linkedStudent &&
+    (
+      importedContactBelongsToLinkedStudent ||
+      importedContactRole !== "unknown" ||
+      existingContactRole !== "unknown"
+    )
+  );
   if (existingLesson.scheduled_start !== candidate.scheduled_start) changedFields.push("start time");
   if (existingLesson.scheduled_end !== candidate.scheduled_end) changedFields.push("end time");
+  if (String(existingLesson.lesson_status || "") !== String(candidate.lesson_status || "")) changedFields.push("status");
+  if (String(existingLesson.cancellation_type || "") !== String(candidate.cancellation_type || "")) changedFields.push("cancellation");
   if (String(existingLesson.join_link || "") !== String(candidate.join_link || "")) changedFields.push("meeting link");
   if (String(existingLesson.topic || "") !== String(candidate.topic || "")) changedFields.push("title");
   if (String(existingLesson.lesson_type || "") !== String(candidate.lesson_type || "")) changedFields.push("lesson type");
   if (String(existingLesson.location_type || "") !== String(candidate.location_type || "")) changedFields.push("location type");
   if (String(existingLesson.location_address || "") !== String(candidate.location_address || "")) changedFields.push("location details");
-  if (String(existingLesson.external_contact_name || "") !== String(candidate.external_contact_name || "")) changedFields.push("contact name");
-  if (String(existingLesson.external_contact_email || "") !== String(candidate.external_contact_email || "")) changedFields.push("contact email");
-  if (String(existingLesson.external_contact_phone || "") !== String(candidate.external_contact_phone || "")) changedFields.push("contact phone");
+  if (String(existingLesson.external_contact_name || "") !== String(candidate.external_contact_name || "") && !suppressContactChangeNoise) {
+    changedFields.push("contact name");
+  }
+  if (String(existingLesson.external_contact_email || "") !== String(candidate.external_contact_email || "") && !suppressContactChangeNoise) {
+    changedFields.push("contact email");
+  }
+  if (String(existingLesson.external_contact_phone || "") !== String(candidate.external_contact_phone || "") && !suppressContactChangeNoise) {
+    changedFields.push("contact phone");
+  }
   return changedFields;
 }
 
@@ -3323,10 +3531,12 @@ function getImportedLessonReviewGuidance(lesson) {
     recommendedAction = "review";
   }
 
-  if (lesson?.pending_external_start || lesson?.pending_external_end) {
+  if (lesson?.pending_external_patch || lesson?.pending_external_start || lesson?.pending_external_end) {
     blocking = true;
     priority = "high";
-    reasons.push("External update was applied and is waiting for confirm or reject");
+    reasons.push(syncState === "DISCONNECTED"
+      ? "Google Calendar removed this lesson and it is waiting for confirm or reject"
+      : "External update was applied and is waiting for confirm or reject");
     recommendedAction = "review_change";
   }
 
@@ -3334,6 +3544,12 @@ function getImportedLessonReviewGuidance(lesson) {
     priority = priority === "high" ? "high" : "medium";
     reasons.push("Sync needs manual verification");
     if (!blocking) recommendedAction = "review";
+  }
+
+  if (syncState === "DISCONNECTED") {
+    priority = "high";
+    reasons.push("No matching Google Calendar event was found in the current sync window");
+    recommendedAction = "review_change";
   }
 
   if (lesson?.source === "gmail" && crossSourceMatch?.lesson?.source && crossSourceMatch.lesson.source !== lesson.source) {
@@ -3411,7 +3627,9 @@ function processGoogleCalendarImportFeed(feed = []) {
   let importedCount = 0;
   let updatedCount = 0;
   let flaggedCount = 0;
+  let disconnectedCount = 0;
   let skippedCount = 0;
+  const seenEventIds = new Set();
 
   (Array.isArray(feed) ? feed : []).forEach((event) => {
     const eventStart = event.start ? new Date(event.start) : null;
@@ -3430,6 +3648,7 @@ function processGoogleCalendarImportFeed(feed = []) {
       return;
     }
 
+    seenEventIds.add(String(event.id || ""));
     const candidate = buildImportedLessonFromCalendarEvent(event);
     const existingLesson = findLessonByExternalEventId(event.id);
 
@@ -3450,6 +3669,8 @@ function processGoogleCalendarImportFeed(feed = []) {
           external_event_title: candidate.external_event_title,
           scheduled_start: candidate.scheduled_start,
           scheduled_end: candidate.scheduled_end,
+          lesson_status: candidate.lesson_status,
+          cancellation_type: candidate.cancellation_type || "",
           join_link: candidate.join_link || matchedLesson.join_link || "",
           topic: candidate.topic || matchedLesson.topic || "",
           lesson_type: candidate.lesson_type || matchedLesson.lesson_type || "",
@@ -3504,6 +3725,8 @@ function processGoogleCalendarImportFeed(feed = []) {
       const result = updateLesson(existingLesson.lesson_id, {
         scheduled_start: candidate.scheduled_start,
         scheduled_end: candidate.scheduled_end,
+        lesson_status: candidate.lesson_status,
+        cancellation_type: candidate.cancellation_type || "",
         join_link: candidate.join_link || existingLesson.join_link || "",
         topic: candidate.topic || existingLesson.topic || "",
         lesson_type: candidate.lesson_type || existingLesson.lesson_type || "",
@@ -3534,6 +3757,8 @@ function processGoogleCalendarImportFeed(feed = []) {
     }
 
     const result = updateLesson(existingLesson.lesson_id, {
+      lesson_status: candidate.lesson_status,
+      cancellation_type: candidate.cancellation_type || "",
       last_synced_at: nowIso,
       external_updated_at: event.updated_at || nowIso,
       sync_state: "SYNCED",
@@ -3557,10 +3782,55 @@ function processGoogleCalendarImportFeed(feed = []) {
     }
   });
 
+  getLessonRecords()
+    .filter((lesson) => String(lesson.source || "").toLowerCase() === "google_calendar")
+    .filter((lesson) => String(lesson.external_event_id || "").trim())
+    .filter((lesson) => String(lesson.source_calendar_id || "primary") === String(calendarSyncState.selected_calendar_id || "primary"))
+    .forEach((lesson) => {
+      const trackedStart = lesson.scheduled_start || lesson.pending_external_start || getLessonReferenceDate(lesson) || "";
+      const trackedDate = trackedStart ? new Date(trackedStart) : null;
+      if (!trackedDate || Number.isNaN(trackedDate.getTime())) return;
+      if (trackedDate < syncWindow.start || trackedDate > syncWindow.end) return;
+      if (seenEventIds.has(String(lesson.external_event_id || ""))) return;
+
+      const pendingPatch = parsePendingExternalPatch(lesson);
+      const alreadyDisconnected = normalizeLessonSyncStateValue(lesson.sync_state, lesson.source) === "DISCONNECTED";
+      const previousValues = pendingPatch?.previous_values && Object.keys(pendingPatch.previous_values).length
+        ? pendingPatch.previous_values
+        : {
+            lesson_status: lesson.lesson_status || "SCHEDULED",
+            cancellation_type: lesson.cancellation_type || "",
+            scheduled_start: lesson.pending_external_start || lesson.scheduled_start || "",
+            scheduled_end: lesson.pending_external_end || lesson.scheduled_end || ""
+          };
+      const disconnectPatch = JSON.stringify({
+        changed_fields: ["lesson_status", "cancellation_type"],
+        previous_values: previousValues
+      });
+
+      const result = updateLesson(lesson.lesson_id, {
+        lesson_status: "CANCELLED",
+        cancellation_type: "SYSTEM",
+        sync_state: "DISCONNECTED",
+        intake_review_state: "NEEDS_ATTENTION",
+        intake_conflict_note: "This lesson no longer appears on your Google Calendar. Confirm to keep it cancelled in the portal or reject to restore the previous version.",
+        pending_external_start: lesson.pending_external_start || lesson.scheduled_start || "",
+        pending_external_end: lesson.pending_external_end || lesson.scheduled_end || "",
+        pending_external_patch: disconnectPatch,
+        external_updated_at: nowIso,
+        last_synced_at: nowIso
+      });
+
+      if (result && result.ok && !alreadyDisconnected) {
+        disconnectedCount += 1;
+      }
+    });
+
   return {
     imported: importedCount,
     updated: updatedCount,
-    flagged: flaggedCount,
+    flagged: flaggedCount + disconnectedCount,
+    disconnected: disconnectedCount,
     skipped: skippedCount,
     synced_at: nowIso
   };
@@ -3584,6 +3854,7 @@ function runDemoGoogleCalendarSync() {
       imported: summary.imported,
       updated: summary.updated,
       flagged: summary.flagged,
+      disconnected: summary.disconnected || 0,
       skipped: summary.skipped
     }
   });
@@ -3591,7 +3862,7 @@ function runDemoGoogleCalendarSync() {
   renderAppFromSchema();
   notifyUser({
     title: "Calendar Sync Complete",
-    message: `Imported ${summary.imported}, updated ${summary.updated}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+    message: `Imported ${summary.imported}, updated ${summary.updated}, removed from calendar ${summary.disconnected || 0}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
     tone: "success",
     source: "schedule"
   });
@@ -3622,13 +3893,14 @@ async function runGoogleCalendarSync() {
             imported: summary.imported,
             updated: summary.updated,
             flagged: summary.flagged,
+            disconnected: summary.disconnected || 0,
             skipped: summary.skipped
           }
         });
         renderAppFromSchema();
         notifyUser({
           title: "Calendar Sync Complete",
-          message: `Imported ${summary.imported}, updated ${summary.updated}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+          message: `Imported ${summary.imported}, updated ${summary.updated}, removed from calendar ${summary.disconnected || 0}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
           tone: "success",
           source: "schedule"
         });
@@ -3671,6 +3943,7 @@ function processGmailImportFeed(feed = []) {
   const nowIso = new Date().toISOString();
   const syncWindow = getCalendarSyncWindow();
   let importedCount = 0;
+  let updatedCount = 0;
   let flaggedCount = 0;
   let skippedCount = 0;
   let paymentImportedCount = 0;
@@ -3735,7 +4008,17 @@ function processGmailImportFeed(feed = []) {
 
     const existingByMessageId = findLessonByExternalEventId(message.id);
     if (existingByMessageId) {
+      const changedFields = getChangedCalendarFields(existingByMessageId, candidate);
       const updateResult = updateLesson(existingByMessageId.lesson_id, {
+        scheduled_start: candidate.scheduled_start || existingByMessageId.scheduled_start || "",
+        scheduled_end: candidate.scheduled_end || existingByMessageId.scheduled_end || "",
+        lesson_status: candidate.lesson_status || existingByMessageId.lesson_status || "SCHEDULED",
+        cancellation_type: candidate.cancellation_type || existingByMessageId.cancellation_type || "",
+        join_link: candidate.join_link || existingByMessageId.join_link || "",
+        topic: candidate.topic || existingByMessageId.topic || "",
+        lesson_type: candidate.lesson_type || existingByMessageId.lesson_type || "",
+        location_type: candidate.location_type || existingByMessageId.location_type || "",
+        location_address: candidate.location_address || existingByMessageId.location_address || "",
         last_synced_at: nowIso,
         external_updated_at: message.received_at || nowIso,
         external_event_title: candidate.external_event_title,
@@ -3743,11 +4026,22 @@ function processGmailImportFeed(feed = []) {
         external_contact_email: candidate.external_contact_email,
         external_contact_phone: candidate.external_contact_phone,
         external_platform_hint: candidate.external_platform_hint,
-        sync_state: "SYNCED"
+        sync_state: changedFields.length ? "UPDATED_EXTERNALLY" : "SYNCED",
+        intake_review_state: changedFields.length ? "NEEDS_ATTENTION" : existingByMessageId.intake_review_state || "UNREVIEWED",
+        intake_conflict_note: changedFields.length
+          ? `Gmail changed ${changedFields.join(", ")} for this lesson. Confirm to keep the inbox update or reject to restore the previous version.`
+          : existingByMessageId.intake_conflict_note || "",
+        pending_external_start: changedFields.length ? (existingByMessageId.pending_external_start || existingByMessageId.scheduled_start || "") : "",
+        pending_external_end: changedFields.length ? (existingByMessageId.pending_external_end || existingByMessageId.scheduled_end || "") : "",
+        pending_external_patch: changedFields.length ? buildPendingExternalPatch(existingByMessageId, candidate, changedFields) : ""
       });
 
       if (updateResult && updateResult.ok) {
-        flaggedCount += 1;
+        if (changedFields.length) {
+          flaggedCount += 1;
+        } else {
+          updatedCount += 1;
+        }
       } else {
         skippedCount += 1;
       }
@@ -3758,25 +4052,40 @@ function processGmailImportFeed(feed = []) {
     if (overlappingLesson) {
       const matchedLesson = overlappingLesson.lesson;
       const isLikelyDuplicate = overlappingLesson.relation === "likely_duplicate";
+      const changedFields = getChangedCalendarFields(matchedLesson, candidate);
+      const hasMaterialChange = changedFields.length > 0;
       const preservedConfirmed = normalizeLessonIntakeReviewStateValue(matchedLesson.intake_review_state, matchedLesson.source) === "CONFIRMED" && isLikelyDuplicate;
       const updateResult = updateLesson(matchedLesson.lesson_id, {
+        scheduled_start: candidate.scheduled_start || matchedLesson.scheduled_start || "",
+        scheduled_end: candidate.scheduled_end || matchedLesson.scheduled_end || "",
+        lesson_status: candidate.lesson_status || matchedLesson.lesson_status || "SCHEDULED",
+        cancellation_type: candidate.cancellation_type || matchedLesson.cancellation_type || "",
         last_synced_at: nowIso,
         external_updated_at: message.received_at || nowIso,
-        sync_state: isLikelyDuplicate ? "SYNCED" : "NEEDS_REVIEW",
-        intake_review_state: preservedConfirmed ? "CONFIRMED" : isLikelyDuplicate ? "UNREVIEWED" : "NEEDS_ATTENTION",
+        sync_state: hasMaterialChange ? "UPDATED_EXTERNALLY" : isLikelyDuplicate ? "SYNCED" : "NEEDS_REVIEW",
+        intake_review_state: preservedConfirmed && !hasMaterialChange ? "CONFIRMED" : isLikelyDuplicate && !hasMaterialChange ? "UNREVIEWED" : "NEEDS_ATTENTION",
         intake_conflict_note: preservedConfirmed ? "" : isLikelyDuplicate
-          ? `Gmail confirmation likely matches this lesson (${overlappingLesson.reasons.join(", ")}). Confirm once before relying on it.`
+          ? hasMaterialChange
+            ? `Gmail likely matches this lesson and changed ${changedFields.join(", ")} (${overlappingLesson.reasons.join(", ")}). Confirm to keep the inbox update or reject to restore the previous version.`
+            : `Gmail confirmation likely matches this lesson (${overlappingLesson.reasons.join(", ")}). Confirm once before relying on it.`
           : `Gmail confirmation may match this lesson (${overlappingLesson.reasons.join(", ")}). Review before keeping both records.`,
         external_platform_hint: candidate.external_platform_hint,
         external_contact_name: candidate.external_contact_name || matchedLesson.external_contact_name || "",
         external_contact_email: candidate.external_contact_email || matchedLesson.external_contact_email || "",
         external_contact_phone: candidate.external_contact_phone || matchedLesson.external_contact_phone || "",
         join_link: matchedLesson.join_link || candidate.join_link || "",
-        student_id: matchedLesson.student_id || candidate.student_id || matchedLesson.student_id
+        student_id: matchedLesson.student_id || candidate.student_id || matchedLesson.student_id,
+        pending_external_start: hasMaterialChange ? (matchedLesson.pending_external_start || matchedLesson.scheduled_start || "") : "",
+        pending_external_end: hasMaterialChange ? (matchedLesson.pending_external_end || matchedLesson.scheduled_end || "") : "",
+        pending_external_patch: hasMaterialChange ? buildPendingExternalPatch(matchedLesson, candidate, changedFields) : ""
       });
 
       if (updateResult && updateResult.ok) {
-        flaggedCount += 1;
+        if (hasMaterialChange || !isLikelyDuplicate) {
+          flaggedCount += 1;
+        } else {
+          updatedCount += 1;
+        }
       } else {
         skippedCount += 1;
       }
@@ -3799,6 +4108,7 @@ function processGmailImportFeed(feed = []) {
 
   return {
     imported: importedCount,
+    updated: updatedCount,
     flagged: flaggedCount,
     payment_imported: paymentImportedCount,
     payment_flagged: paymentFlaggedCount,
@@ -3823,6 +4133,7 @@ function runDemoGmailAssistSync() {
     gmail_last_sync_at: summary.synced_at,
     gmail_last_sync_summary: {
       imported: summary.imported,
+      updated: summary.updated || 0,
       flagged: summary.flagged,
       payment_imported: summary.payment_imported || 0,
       payment_flagged: summary.payment_flagged || 0,
@@ -3833,7 +4144,7 @@ function runDemoGmailAssistSync() {
   renderAppFromSchema();
   notifyUser({
     title: "Gmail Assist Complete",
-    message: `Lessons imported ${summary.imported}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
+    message: `Lessons imported ${summary.imported}, metadata updated ${summary.updated || 0}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
     tone: "success",
     source: "schedule"
   });
@@ -3862,6 +4173,7 @@ async function runGmailAssistSync() {
           gmail_last_sync_at: summary.synced_at,
           gmail_last_sync_summary: {
             imported: summary.imported,
+            updated: summary.updated || 0,
             flagged: summary.flagged,
             payment_imported: summary.payment_imported || 0,
             payment_flagged: summary.payment_flagged || 0,
@@ -3871,7 +4183,7 @@ async function runGmailAssistSync() {
         renderAppFromSchema();
         notifyUser({
           title: "Gmail Assist Complete",
-          message: `Lessons imported ${summary.imported}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
+          message: `Lessons imported ${summary.imported}, metadata updated ${summary.updated || 0}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
           tone: "success",
           source: "schedule"
         });
@@ -4062,46 +4374,44 @@ function getImportedLessonStudentMergePatch(lesson, student) {
 
   const patch = {};
   const contact = getImportedLessonContactInfo(lesson);
+  const knownContacts = getStudentKnownContactBundle(student);
+  const normalizedContactEmail = String(contact.email || "").trim().toLowerCase();
+  const normalizedContactPhone = normalizePhoneForMatch(contact.phone);
+  const knownFamilyNameVariants = new Set(knownContacts.family_names);
   const importedLeadSource = getLeadSourceFromImportedLesson(lesson);
   const importedLeadDetail = lesson.source === "gmail_assist"
     ? "Matched from Gmail-assisted intake"
     : lesson.source === "google_calendar"
       ? "Matched from Google Calendar intake"
-      : lesson.external_platform_hint
+        : lesson.external_platform_hint
         ? `Matched from ${getImportedLessonPlatformLabel(lesson.external_platform_hint)} intake`
         : "";
 
   if (contact.guardian_name) {
-    if (!String(student.guardian_name || "").trim()) {
+    const importedGuardianKnown = getNameMatchVariants(contact.guardian_name).some((variant) => knownFamilyNameVariants.has(variant));
+    if (!String(student.guardian_name || "").trim() && !importedGuardianKnown) {
       patch.guardian_name = contact.guardian_name;
     }
-    if (contact.email) {
+    if (normalizedContactEmail && !knownContacts.emails.includes(normalizedContactEmail)) {
       if (!String(student.guardian_email || "").trim()) {
         patch.guardian_email = contact.email;
-      } else if (
-        String(student.guardian_email || "").trim().toLowerCase() !== contact.email.toLowerCase() &&
-        !parseStoredEmailList(student.additional_emails || "").includes(contact.email.toLowerCase()) &&
-        String(student.email || "").trim().toLowerCase() !== contact.email.toLowerCase()
-      ) {
+      } else {
         patch.additional_emails = appendEmailToList(student.additional_emails || "", contact.email);
       }
     }
-    if (contact.phone && !String(student.guardian_phone || "").trim()) {
+    if (normalizedContactPhone && !knownContacts.phones.includes(normalizedContactPhone) && !String(student.guardian_phone || "").trim()) {
       patch.guardian_phone = contact.phone;
     }
   } else {
-    if (contact.email) {
+    if (normalizedContactEmail && !knownContacts.emails.includes(normalizedContactEmail)) {
       if (!String(student.email || "").trim()) {
         patch.email = contact.email;
-      } else if (
-        String(student.email || "").trim().toLowerCase() !== contact.email.toLowerCase() &&
-        !parseStoredEmailList(student.additional_emails || "").includes(contact.email.toLowerCase())
-      ) {
+      } else {
         patch.additional_emails = appendEmailToList(student.additional_emails || "", contact.email);
       }
     }
 
-    if (contact.phone && !String(student.phone || "").trim()) {
+    if (normalizedContactPhone && !knownContacts.phones.includes(normalizedContactPhone) && !String(student.phone || "").trim()) {
       patch.phone = contact.phone;
     }
   }
@@ -4115,6 +4425,95 @@ function getImportedLessonStudentMergePatch(lesson, student) {
   }
 
   return patch;
+}
+
+function getBestScheduleIntakeMatchCandidate(lesson) {
+  if (!lesson) return null;
+  const contact = getImportedLessonContactInfo(lesson);
+  const candidates = findPotentialStudentMatches({
+    full_name: contact.student_full_name || "",
+    email: contact.email || "",
+    phone: contact.phone || ""
+  });
+  const topCandidate = candidates[0] || null;
+  const secondCandidate = candidates[1] || null;
+
+  if (!topCandidate) return null;
+  if (!topCandidate.merge_ready && topCandidate.score < 8) return null;
+  if (secondCandidate && (secondCandidate.score >= topCandidate.score - 1 || secondCandidate.merge_ready === topCandidate.merge_ready)) {
+    return null;
+  }
+
+  return topCandidate;
+}
+
+function getScheduleIntakeQuickActionMeta(lesson) {
+  const reviewGuidance = getImportedLessonReviewGuidance(lesson);
+  const hasPendingExternalUpdate = Boolean(lesson?.pending_external_patch || lesson?.pending_external_start || lesson?.pending_external_end);
+  const autoMatchCandidate = !lesson?.student_id ? getBestScheduleIntakeMatchCandidate(lesson) : null;
+  const linkedStudent = lesson?.student_id ? getSchemaStudentById(lesson.student_id) : null;
+  const mergePatch = linkedStudent ? getImportedLessonStudentMergePatch(lesson, linkedStudent) : {};
+
+  if (hasPendingExternalUpdate) {
+    return {
+      action: "review_change",
+      label: "Review Change",
+      helper: reviewGuidance.reasons[0] || "Confirm or reject the external update.",
+      can_run: false
+    };
+  }
+
+  if (!lesson?.scheduled_start || !lesson?.scheduled_end) {
+    return {
+      action: "review",
+      label: "Review Details",
+      helper: "Time details still need a manual check.",
+      can_run: false
+    };
+  }
+
+  if (!lesson?.student_id && autoMatchCandidate) {
+    return {
+      action: "auto_match",
+      label: `Quick Match ${autoMatchCandidate.student.full_name}`,
+      helper: `Best match via ${autoMatchCandidate.reasons[0] || "contact evidence"}.`,
+      can_run: true
+    };
+  }
+
+  if (!lesson?.student_id) {
+    return {
+      action: "create_student",
+      label: "Quick Create Student",
+      helper: "Create a new inactive student from this intake item.",
+      can_run: true
+    };
+  }
+
+  if (Object.keys(mergePatch).length) {
+    return {
+      action: "pull_and_confirm",
+      label: "Pull Info + Confirm",
+      helper: `Update ${getImportedLessonStudentMergeSummary(mergePatch).join(", ")} before confirming.`,
+      can_run: true
+    };
+  }
+
+  if (!reviewGuidance.blocking) {
+    return {
+      action: "confirm",
+      label: "Quick Confirm",
+      helper: "Ready to drive workflow.",
+      can_run: true
+    };
+  }
+
+  return {
+    action: reviewGuidance.recommended_action || "review",
+    label: reviewGuidance.recommended_action_label || "Review Intake",
+    helper: reviewGuidance.reasons[0] || "Needs manual review.",
+    can_run: false
+  };
 }
 
 function getImportedLessonStudentMergeSummary(patch) {
@@ -9353,6 +9752,7 @@ function getScheduleIntakeRows() {
       const reviewState = normalizeLessonIntakeReviewStateValue(lesson.intake_review_state, lesson.source);
       const syncState = normalizeLessonSyncStateValue(lesson.sync_state, lesson.source);
       const reviewGuidance = getImportedLessonReviewGuidance(lesson);
+      const quickAction = getScheduleIntakeQuickActionMeta(lesson);
 
       return {
         lesson_id: lesson.lesson_id,
@@ -9384,6 +9784,8 @@ function getScheduleIntakeRows() {
         external_updated_at: lesson.external_updated_at || "",
         pending_external_start: lesson.pending_external_start || "",
         pending_external_end: lesson.pending_external_end || "",
+        pending_external_patch: lesson.pending_external_patch || "",
+        has_pending_external_update: Boolean(lesson.pending_external_patch || lesson.pending_external_start || lesson.pending_external_end),
         operational_status: getEffectiveLessonStatus(lesson),
         operational_status_label: getLessonStatusLabel(getEffectiveLessonStatus(lesson)),
         operational_status_badge: formatLessonStatusBadge(getEffectiveLessonStatus(lesson)),
@@ -9396,6 +9798,10 @@ function getScheduleIntakeRows() {
         recommended_action: reviewGuidance.recommended_action,
         recommended_action_label: reviewGuidance.recommended_action_label,
         review_blocking: reviewGuidance.blocking,
+        quick_action: quickAction.action,
+        quick_action_label: quickAction.label,
+        quick_action_helper: quickAction.helper,
+        quick_action_enabled: quickAction.can_run,
         sort_time: lessonDate && !Number.isNaN(lessonDate.getTime()) ? lessonDate.getTime() : 0
       };
     })
@@ -9449,7 +9855,9 @@ function getFilteredScheduleIntakeRows() {
       row.lesson_id.toLowerCase().includes(query) ||
       row.external_event_id.toLowerCase().includes(query) ||
       row.review_reasons.some((reason) => reason.toLowerCase().includes(query)) ||
-      row.recommended_action_label.toLowerCase().includes(query)
+      row.recommended_action_label.toLowerCase().includes(query) ||
+      row.quick_action_label.toLowerCase().includes(query) ||
+      row.quick_action_helper.toLowerCase().includes(query)
     );
   }
 
@@ -9510,6 +9918,61 @@ function clearScheduleIntakeSelections() {
   renderScheduleResults();
 }
 
+function runScheduleIntakeQuickAction(lessonId) {
+  const lesson = getSchemaLessonById(lessonId);
+  if (!lesson) return false;
+
+  const quickAction = getScheduleIntakeQuickActionMeta(lesson);
+
+  if (!quickAction.can_run) {
+    if (quickAction.action === "review_change" || quickAction.action === "review") {
+      openLessonDetailModal(lessonId);
+    } else if (!lesson.student_id) {
+      openScheduleStudentMatchModal(lessonId);
+    }
+    return false;
+  }
+
+  if (quickAction.action === "auto_match") {
+    const bestCandidate = getBestScheduleIntakeMatchCandidate(lesson);
+    if (!bestCandidate) {
+      openScheduleStudentMatchModal(lessonId);
+      return false;
+    }
+
+    const result = mergeImportedLessonIntoStudentRecord(lessonId, bestCandidate.student.student_id);
+    if (!result || result.ok === false) {
+      notifyUser({
+        title: "Schedule Intake",
+        message: (result?.errors || ["Unable to auto-match this imported lesson."]).join(" "),
+        tone: "error",
+        source: "schedule"
+      });
+      return false;
+    }
+  }
+
+  if (quickAction.action === "create_student") {
+    const beforeStudentId = getSchemaLessonById(lessonId)?.student_id || "";
+    createStudentFromImportedLesson(lessonId);
+    const afterStudentId = getSchemaLessonById(lessonId)?.student_id || "";
+    if (!afterStudentId || afterStudentId === beforeStudentId) return false;
+  }
+
+  if (quickAction.action === "pull_and_confirm") {
+    pullStudentInfoFromLesson(lessonId);
+  }
+
+  const refreshedLesson = getSchemaLessonById(lessonId);
+  const refreshedAction = getScheduleIntakeQuickActionMeta(refreshedLesson);
+  if (refreshedAction.action === "confirm" && refreshedAction.can_run) {
+    confirmScheduleIntake(lessonId);
+    return true;
+  }
+
+  return quickAction.action !== "review" && quickAction.action !== "review_change";
+}
+
 function applyBulkScheduleIntakeAction(action) {
   const selectedIds = Array.from(selectedScheduleIntakeLessonIds);
   if (!selectedIds.length) {
@@ -9523,6 +9986,7 @@ function applyBulkScheduleIntakeAction(action) {
   }
 
   selectedIds.forEach((lessonId) => {
+    if (action === "smart") runScheduleIntakeQuickAction(lessonId);
     if (action === "confirm") confirmScheduleIntake(lessonId);
     if (action === "needs_attention") flagScheduleNeedsAttention(lessonId);
     if (action === "ignore") ignoreScheduleIntake(lessonId);
@@ -10043,6 +10507,7 @@ function renderScheduleResults() {
                 ${selectedCount ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="clearScheduleIntakeSelections()">Clear Selection</button>` : ""}
               </div>
               <div class="flex flex-wrap items-center gap-2">
+                <button type="button" class="px-3 py-2 rounded-lg bg-warmblack text-white text-xs font-medium" onclick="applyBulkScheduleIntakeAction('smart')">Run Smart Action</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('confirm')">Confirm Selected</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('needs_attention')">Mark Needs Attention</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="applyBulkScheduleIntakeAction('ignore')">Ignore Selected</button>
@@ -10110,7 +10575,7 @@ function renderScheduleResults() {
                         <div class="text-sm text-warmblack">${escapeHtml(row.topic)}</div>
                         <div class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_type)}</div>
                         ${
-                          row.pending_external_start
+                          row.has_pending_external_update
                             ? `<div class="text-xs text-burgundy mt-2">Previous version: ${escapeHtml(formatLessonTimeRange(row.pending_external_start, row.pending_external_end || row.pending_external_start))}</div>`
                             : ""
                         }
@@ -10124,7 +10589,8 @@ function renderScheduleResults() {
                         <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.review_priority_badge}">
                           ${escapeHtml(row.review_priority_label)}
                         </span>
-                        <div class="text-xs text-warmgray mt-2">${escapeHtml(row.recommended_action_label)}</div>
+                        <div class="text-xs font-medium text-warmblack mt-2">${escapeHtml(row.quick_action_label)}</div>
+                        <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.quick_action_helper)}</div>
                         <div class="space-y-1 mt-2">
                           ${row.review_reasons.slice(0, 3).map((reason) => `<div class="text-xs text-warmgray wrap-anywhere">${escapeHtml(reason)}</div>`).join("")}
                         </div>
@@ -10160,6 +10626,13 @@ function renderScheduleResults() {
                         <div class="flex flex-wrap gap-2 justify-end">
                           <button
                             type="button"
+                            class="px-3 py-2 rounded-lg ${row.quick_action_enabled ? "bg-warmblack text-white" : "bg-parchment border border-cream text-warmblack"} text-xs font-medium card-hover"
+                            onclick="${row.quick_action_enabled ? `runScheduleIntakeQuickAction('${row.lesson_id}')` : row.has_pending_external_update || row.quick_action === "review" ? `openLessonDetailModal('${row.lesson_id}')` : !row.student_id ? `openScheduleStudentMatchModal('${row.lesson_id}')` : `openLessonDetailModal('${row.lesson_id}')`}"
+                          >
+                            ${escapeHtml(row.quick_action_label)}
+                          </button>
+                          <button
+                            type="button"
                             class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack card-hover"
                             onclick="openLessonDetailModal('${row.lesson_id}')"
                           >
@@ -10181,7 +10654,7 @@ function renderScheduleResults() {
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
                                   onclick="openScheduleStudentMatchModal('${row.lesson_id}')"
                                 >
-                                  ${row.recommended_action === "match_student" ? "Review Match" : "Merge Student"}
+                                  Review Match
                                 </button>
                                 <button
                                   type="button"
@@ -10196,10 +10669,10 @@ function renderScheduleResults() {
                             class="px-3 py-2 rounded-lg ${row.review_blocking ? "bg-white border border-cream text-warmgray" : "bg-white border border-cream text-warmblack"} text-xs font-medium card-hover"
                             onclick="confirmScheduleIntake('${row.lesson_id}')"
                           >
-                            ${row.pending_external_start || row.pending_external_end ? "Confirm Change" : row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
+                            ${row.has_pending_external_update ? "Confirm Change" : row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
                           </button>
                           ${
-                            row.pending_external_start || row.pending_external_end
+                            row.has_pending_external_update
                               ? `<button
                                   type="button"
                                   class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
@@ -10229,7 +10702,7 @@ function renderScheduleResults() {
                   `).join("")
                 : `
                   <tr>
-                    <td colspan="9" class="px-5 py-12 text-center">
+                    <td colspan="10" class="px-5 py-12 text-center">
                       <div class="flex flex-col items-center justify-center text-warmgray">
                         <i data-lucide="calendar-days" class="w-8 h-8 mb-3 opacity-50"></i>
                         <p class="text-sm font-medium">No imported lessons found</p>
@@ -10264,8 +10737,8 @@ function renderSchedulePage() {
   const googleAccountEmail = backend.google_account_email || "coach@d-a-j.com";
   const calendarStatus = backend.google_calendar_status || "demo_ready";
   const gmailStatus = backend.google_gmail_status || "demo_ready";
-  const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0 };
-  const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, flagged: 0, skipped: 0 };
+  const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, disconnected: 0, skipped: 0 };
+  const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0 };
   const compact = isCompactView("schedule");
   const filterPills = getScheduleFilterPills();
 
@@ -10549,7 +11022,7 @@ function getAllStaleDraftNotes(minDays = 7) {
 
 function getExternalChangeScheduleRows() {
   return getScheduleIntakeRows()
-    .filter((row) => row.pending_external_start || row.pending_external_end || row.sync_state === "EXTERNALLY_UPDATED")
+    .filter((row) => row.has_pending_external_update || ["UPDATED_EXTERNALLY", "DISCONNECTED"].includes(row.sync_state))
     .sort((a, b) => {
       const aTime = new Date(a.external_updated_at || a.last_synced_at || 0).getTime();
       const bTime = new Date(b.external_updated_at || b.last_synced_at || 0).getTime();
