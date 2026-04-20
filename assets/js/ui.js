@@ -543,6 +543,22 @@ function getAutoTodoItems() {
       });
     });
 
+  getPaymentRecords()
+    .filter((payment) => !isPaymentArchived(payment))
+    .filter((payment) => normalizePaymentReviewStateValue(payment.review_state, payment) === "NEEDS_REVIEW")
+    .forEach((payment) => {
+      tasks.push({
+        id: `todo-payment-review-${payment.payment_id}`,
+        type: "auto",
+        title: `Review imported payment for ${getStudentNameById(payment.student_id)}`,
+        detail: payment.review_note || `${formatCurrency(payment.amount || 0)} still needs confirmation before it affects balances`,
+        due_at: payment.payment_date || payment.created_at || "",
+        priority: 4,
+        source: "finance",
+        action: buildTodoLinkAction("finance", payment.payment_id)
+      });
+    });
+
   getScheduleIntakeRows()
     .filter((row) => row.action_required)
     .forEach((row) => {
@@ -2535,9 +2551,74 @@ function isLikelyPaymentGmailMessage(message) {
   return /\bpayment\b|\bnew order\b|\bpaid online\b|\bpayment received\b|\border total\b/.test(blob);
 }
 
+function inferImportedLessonPaymentStatus(rawText = "") {
+  const blob = String(rawText || "").toLowerCase();
+  if (!blob) return "";
+  if (/\bunpaid\b|\boverdue\b/.test(blob)) return "UNPAID";
+  if (/\bpaid online\b|\bpayment received\b|\bpaid\b/.test(blob)) return "PAID";
+  return "";
+}
+
 function extractCurrencyAmountFromText(value) {
   const match = String(value || "").match(/\$([0-9]+(?:\.[0-9]{2})?)/);
   return match ? Number(match[1]) : 0;
+}
+
+function normalizePaymentReviewStateValue(value, payment = null) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (["CONFIRMED", "NEEDS_REVIEW", "IGNORED"].includes(normalized)) return normalized;
+  return isImportedPaymentRecord(payment) ? "NEEDS_REVIEW" : "CONFIRMED";
+}
+
+function isImportedPaymentRecord(payment) {
+  if (!payment) return false;
+  return Boolean(
+    String(payment.import_source || "").trim() ||
+    String(payment.external_reference || "").trim() ||
+    String(payment.applies_to || "").trim() ||
+    /email payment import/i.test(String(payment.payment_type || ""))
+  );
+}
+
+function getPaymentReviewStatusMeta(payment) {
+  const reviewState = normalizePaymentReviewStateValue(payment?.review_state, payment);
+  if (reviewState === "CONFIRMED") {
+    return {
+      label: "Confirmed",
+      badge: "bg-sage/10 text-sage"
+    };
+  }
+  if (reviewState === "IGNORED") {
+    return {
+      label: "Ignored",
+      badge: "bg-warmgray/10 text-warmgray"
+    };
+  }
+  return {
+    label: "Needs Review",
+    badge: "bg-gold/10 text-gold"
+  };
+}
+
+function getLessonLinkedPaidTotal(lessonId, excludePaymentId = null) {
+  return getPaymentRecords().reduce((sum, payment) => {
+    if (excludePaymentId && payment.payment_id === excludePaymentId) return sum;
+    if (String(payment.related_lesson_id || "") !== String(lessonId || "")) return sum;
+    if (isPaymentArchived(payment)) return sum;
+    if (!isPaymentCountedAsPaid(payment)) return sum;
+    return sum + Number(payment.amount || 0);
+  }, 0);
+}
+
+function getUnappliedPaidTotalByStudentId(studentId, excludePaymentId = null) {
+  return getPaymentRecords().reduce((sum, payment) => {
+    if (excludePaymentId && payment.payment_id === excludePaymentId) return sum;
+    if (payment.student_id !== studentId) return sum;
+    if (payment.related_package_id || payment.related_lesson_id) return sum;
+    if (isPaymentArchived(payment)) return sum;
+    if (!isPaymentCountedAsPaid(payment)) return sum;
+    return sum + Number(payment.amount || 0);
+  }, 0);
 }
 
 function findPotentialPaymentStudentMatches(message) {
@@ -2614,6 +2695,93 @@ function findExistingPaymentByImportSignal(studentId, amount, paymentDate, sourc
   }) || null;
 }
 
+function getLikelyPaymentLinkSuggestion(studentId, amount, paymentDate, excludePaymentId = null) {
+  const student = getSchemaStudentById(studentId);
+  if (!student) return null;
+
+  const billingModel = String(student.billing_model || "CUSTOM").toUpperCase();
+  const numericAmount = Number(amount || 0);
+  const normalizedDate = String(paymentDate || "").slice(0, 10);
+
+  if (billingModel === "PACKAGE") {
+    const candidatePackages = getPackagesByStudentId(studentId)
+      .filter((pkg) => !isPackageArchived(pkg))
+      .map((pkg) => {
+        const financials = getPackageFinancials(pkg);
+        const remaining = Math.max(0, financials.remaining);
+        const diff = Math.abs(remaining - numericAmount);
+        return {
+          pkg,
+          remaining,
+          diff
+        };
+      })
+      .filter((row) => row.remaining > 0)
+      .sort((a, b) => a.diff - b.diff);
+
+    const top = candidatePackages[0] || null;
+    if (!top) return null;
+
+    const exactLike = top.diff < 1;
+    const confidence = exactLike ? 0.95 : candidatePackages.length === 1 ? 0.8 : 0.62;
+    return {
+      related_package_id: top.pkg.package_id,
+      related_lesson_id: "",
+      confidence,
+      reason: exactLike
+        ? `Amount matches the open balance on ${top.pkg.package_name || "the active package"}.`
+        : `Closest package fit is ${top.pkg.package_name || "the active package"} with ${formatCurrency(top.remaining)} still due.`
+    };
+  }
+
+  const datedPayment = normalizedDate ? new Date(`${normalizedDate}T12:00:00`) : null;
+  const candidateLessons = getCompletedPaygLessons(studentId)
+    .map((lesson) => {
+      const pricing = getLessonPricingMeta(lesson, student);
+      const lessonCharge = Number(pricing.applied_rate || 0);
+      const linkedPaid = getLessonLinkedPaidTotal(lesson.lesson_id, excludePaymentId);
+      const alreadyCovered = normalizeLessonManualPaymentStatusValue(lesson.manual_payment_status) === "PAID";
+      const remaining = alreadyCovered ? 0 : Math.max(0, lessonCharge - linkedPaid);
+      const lessonDate = getLessonReferenceDate(lesson) || lesson.actual_completion_date || lesson.scheduled_start || "";
+      const lessonTime = lessonDate ? new Date(lessonDate) : null;
+      const dayDiff = datedPayment && lessonTime && !Number.isNaN(lessonTime.getTime())
+        ? Math.abs(Math.round((startOfLocalDay(datedPayment).getTime() - startOfLocalDay(lessonTime).getTime()) / (1000 * 60 * 60 * 24)))
+        : 999;
+
+      return {
+        lesson,
+        remaining,
+        exact_amount: Math.abs(remaining - numericAmount) < 1,
+        diff: Math.abs(remaining - numericAmount),
+        day_diff: dayDiff
+      };
+    })
+    .filter((row) => row.remaining > 0)
+    .sort((a, b) => {
+      if (a.exact_amount !== b.exact_amount) return a.exact_amount ? -1 : 1;
+      if (a.day_diff !== b.day_diff) return a.day_diff - b.day_diff;
+      return a.diff - b.diff;
+    });
+
+  const topLesson = candidateLessons[0] || null;
+  if (!topLesson) return null;
+
+  const confidence = topLesson.exact_amount
+    ? (topLesson.day_diff <= 14 ? 0.93 : 0.82)
+    : candidateLessons.length === 1
+      ? 0.7
+      : 0.5;
+
+  return {
+    related_package_id: "",
+    related_lesson_id: topLesson.lesson.lesson_id,
+    confidence,
+    reason: topLesson.exact_amount
+      ? `Amount matches ${getStudentNameById(studentId)}'s ${formatLongDate(topLesson.lesson.scheduled_start)} lesson charge.`
+      : `Closest lesson fit is ${formatLongDate(topLesson.lesson.scheduled_start)} with ${formatCurrency(topLesson.remaining)} still open.`
+  };
+}
+
 function buildImportedPaymentFromGmailMessage(message) {
   const matches = findPotentialPaymentStudentMatches(message);
   const matchedStudent = matches[0]?.student || null;
@@ -2624,7 +2792,30 @@ function buildImportedPaymentFromGmailMessage(message) {
     extractCurrencyAmountFromText(extractNamedValue(blob, "Price")) ||
     extractCurrencyAmountFromText(blob);
   const receivedDate = String(message.received_at || "").slice(0, 10);
-  const linkedPackage = matchedStudent ? getCurrentPackageByStudentId(matchedStudent.student_id) : null;
+  const suggestion = matchedStudent ? getLikelyPaymentLinkSuggestion(matchedStudent.student_id, amount, receivedDate) : null;
+  const hasSingleHighConfidenceStudentMatch = matches.length === 1 && matches[0].score >= 6;
+  const canAutoConfirm = Boolean(
+    matchedStudent &&
+    amount > 0 &&
+    receivedDate &&
+    hasSingleHighConfidenceStudentMatch &&
+    suggestion &&
+    Number(suggestion.confidence || 0) >= 0.9
+  );
+  const reviewNoteParts = [];
+  if (!matchedStudent) {
+    reviewNoteParts.push("No student match found from this payment email.");
+  } else if (!hasSingleHighConfidenceStudentMatch) {
+    reviewNoteParts.push("Student match should be confirmed before counting this payment.");
+  }
+  if (!amount) {
+    reviewNoteParts.push("Amount could not be confidently extracted.");
+  }
+  if (suggestion?.reason) {
+    reviewNoteParts.push(suggestion.reason);
+  } else if (matchedStudent) {
+    reviewNoteParts.push("No clear package or lesson link could be suggested automatically.");
+  }
 
   return {
     student_id: matchedStudent?.student_id || "",
@@ -2633,9 +2824,14 @@ function buildImportedPaymentFromGmailMessage(message) {
     payment_date: receivedDate,
     payment_type: "Email Payment Import",
     status: "Paid",
-    related_package_id: linkedPackage?.package_id || "",
+    related_package_id: suggestion?.related_package_id || "",
     applies_to: message.id,
-    related_lesson_id: "",
+    related_lesson_id: suggestion?.related_lesson_id || "",
+    review_state: canAutoConfirm ? "CONFIRMED" : "NEEDS_REVIEW",
+    import_source: "gmail",
+    external_reference: message.id,
+    match_confidence: suggestion ? String(Number(suggestion.confidence || 0).toFixed(2)) : "",
+    review_note: reviewNoteParts.join(" "),
     match_candidates: matches
   };
 }
@@ -2768,6 +2964,7 @@ function buildImportedLessonFromCalendarEvent(event) {
     phone: externalContactPhone,
     start: event.start
   });
+  const importedPaymentStatus = inferImportedLessonPaymentStatus(`${event.title || ""}\n${event.description || ""}`);
 
   return {
     student_id: matchedStudent?.student_id || "",
@@ -2775,7 +2972,7 @@ function buildImportedLessonFromCalendarEvent(event) {
     scheduled_end: event.end,
     lesson_status: "SCHEDULED",
     lesson_type: inferLessonTypeFromCalendarEvent(event),
-    manual_payment_status: "",
+    manual_payment_status: importedPaymentStatus,
     location_type: hasJoinLink ? "VIRTUAL" : "IN_PERSON",
     location_address: hasJoinLink ? "" : (event.location || "Imported location details pending"),
     topic: inferLessonTopicFromCalendarEvent(event),
@@ -2830,6 +3027,7 @@ function buildImportedLessonFromGmailMessage(message) {
     phone: externalContactPhone,
     start: timeRange?.start || ""
   });
+  const importedPaymentStatus = inferImportedLessonPaymentStatus(`${message.subject || ""}\n${message.body || ""}`);
 
   return {
     student_id: matchedStudent?.student_id || "",
@@ -2837,7 +3035,7 @@ function buildImportedLessonFromGmailMessage(message) {
     scheduled_end: hasResolvedEnd ? timeRange.end : "",
     lesson_status: "SCHEDULED",
     lesson_type: inferLessonTypeFromGmailMessage(message),
-    manual_payment_status: "",
+    manual_payment_status: importedPaymentStatus,
     location_type: locationType,
     location_address: locationType === "VIRTUAL" ? "" : "Email-derived location pending review",
     topic: inferLessonTopicFromGmailMessage(message),
@@ -3497,7 +3695,13 @@ function processGmailImportFeed(feed = []) {
             payment_date: paymentCandidate.payment_date,
             status: paymentCandidate.status,
             related_package_id: existingPayment.related_package_id || paymentCandidate.related_package_id || "",
-            applies_to: message.id
+            related_lesson_id: existingPayment.related_lesson_id || paymentCandidate.related_lesson_id || "",
+            applies_to: message.id,
+            import_source: "gmail",
+            external_reference: message.id,
+            match_confidence: paymentCandidate.match_confidence || existingPayment.match_confidence || "",
+            review_state: existingPayment.review_state || paymentCandidate.review_state || "NEEDS_REVIEW",
+            review_note: paymentCandidate.review_note || existingPayment.review_note || ""
           });
           paymentFlaggedCount += 1;
         } else {
@@ -6152,7 +6356,9 @@ function isPaymentArchived(payment) {
 }
 
 function isPaymentCountedAsPaid(payment) {
-  return String(payment?.status || "").toLowerCase() === "paid" && !isPaymentArchived(payment);
+  if (String(payment?.status || "").toLowerCase() !== "paid") return false;
+  if (isPaymentArchived(payment)) return false;
+  return normalizePaymentReviewStateValue(payment?.review_state, payment) === "CONFIRMED";
 }
 
 function getPackageDeclaredPaymentStatus(pkg) {
@@ -6387,14 +6593,7 @@ function getPackageLinkedPaidTotal(packageId, excludePaymentId = null) {
 }
 
 function getUnlinkedPaidTotalByStudentId(studentId, excludePaymentId = null) {
-  return getPaymentRecords().reduce((sum, payment) => {
-    if (excludePaymentId && payment.payment_id === excludePaymentId) return sum;
-    if (payment.student_id !== studentId) return sum;
-    if (payment.related_package_id) return sum;
-    if (isPaymentArchived(payment)) return sum;
-    if (!isPaymentCountedAsPaid(payment)) return sum;
-    return sum + Number(payment.amount || 0);
-  }, 0);
+  return getUnappliedPaidTotalByStudentId(studentId, excludePaymentId);
 }
 
 function getPackageStatusMeta(studentId, pkg) {
@@ -6466,6 +6665,7 @@ function buildFinanceSummary(studentId, schemaStudent) {
   const payments = getPaymentsByStudentId(studentId);
   const packageUsage = getResolvedPackageUsage(studentId, pkg);
   const packageMeta = getPackageStatusMeta(studentId, pkg);
+  const pendingReviewPayments = payments.filter((payment) => normalizePaymentReviewStateValue(payment.review_state, payment) === "NEEDS_REVIEW");
 
   if (billingModel === "PACKAGE") {
     const owed = activePackages.reduce((sum, packageRecord) => sum + getPackageFinancials(packageRecord).price, 0);
@@ -6505,19 +6705,37 @@ function buildFinanceSummary(studentId, schemaStudent) {
       effectiveExpirationLabel,
       defaultLessonRate: 0,
       unpaidCompletedLessons,
-      upcomingRenewals
+      upcomingRenewals,
+      pendingReviewPayments: pendingReviewPayments.length
     };
   }
 
   if (billingModel === "PAYG") {
     const completedLessons = getCompletedPaygLessons(studentId);
-    const lessonCharges = completedLessons.map((lesson) => getLessonPricingMeta(lesson, schemaStudent));
-    const owed = lessonCharges.reduce((sum, pricingMeta) => sum + Number(pricingMeta.applied_rate || 0), 0);
+    const lessonCharges = completedLessons.map((lesson) => {
+      const pricingMeta = getLessonPricingMeta(lesson, schemaStudent);
+      const appliedRate = Number(pricingMeta.applied_rate || 0);
+      const linkedPaid = getLessonLinkedPaidTotal(lesson.lesson_id);
+      const manuallySettled = normalizeLessonManualPaymentStatusValue(lesson.manual_payment_status) === "PAID" && linkedPaid <= 0;
+      return {
+        lesson,
+        pricingMeta,
+        appliedRate,
+        linkedPaid,
+        manuallySettled
+      };
+    });
+    const owed = lessonCharges.reduce((sum, row) => sum + row.appliedRate, 0);
     const fallbackRate = Number(schemaStudent?.default_lesson_rate || 0) || getConfiguredLessonRateForDuration(60);
-    const paid = getUnlinkedPaidTotalByStudentId(studentId);
+    const lessonLinkedPaid = lessonCharges.reduce((sum, row) => sum + Math.min(row.appliedRate, row.linkedPaid), 0);
+    const manualPaidCredit = lessonCharges.reduce((sum, row) => sum + (row.manuallySettled ? row.appliedRate : 0), 0);
+    const paid = lessonLinkedPaid + manualPaidCredit + getUnlinkedPaidTotalByStudentId(studentId);
     const remainingAmount = Math.max(0, owed - paid);
     const overpaidAmount = Math.max(0, paid - owed);
-    const configuredCount = lessonCharges.filter((meta) => Number(meta.applied_rate || 0) > 0).length;
+    const configuredCount = lessonCharges.filter((row) => row.appliedRate > 0).length;
+    const unpaidCompletedLessons = lessonCharges.filter((row) => {
+      return row.appliedRate > 0 && !row.manuallySettled && row.linkedPaid + 0.01 < row.appliedRate;
+    }).length;
 
     return {
       mode: "PAYG",
@@ -6536,7 +6754,9 @@ function buildFinanceSummary(studentId, schemaStudent) {
       paid,
       remainingAmount,
       overpaidAmount,
-      defaultLessonRate: fallbackRate
+      defaultLessonRate: fallbackRate,
+      unpaidCompletedLessons,
+      pendingReviewPayments: pendingReviewPayments.length
     };
   }
 
@@ -6560,7 +6780,8 @@ function buildFinanceSummary(studentId, schemaStudent) {
     paid,
     remainingAmount,
     overpaidAmount,
-    defaultLessonRate: 0
+    defaultLessonRate: 0,
+    pendingReviewPayments: pendingReviewPayments.length
   };
 }
 /*********************************
@@ -6624,6 +6845,9 @@ function getFinancePaymentsRows() {
       const studentName = getFinanceStudentName(payment.student_id);
       const billingModel = getFinanceStudentBillingModel(payment.student_id);
       const linkedPackage = payment.related_package_id ? getPackageById(payment.related_package_id) : null;
+      const linkedLesson = payment.related_lesson_id ? getSchemaLessonById(payment.related_lesson_id) : null;
+      const reviewMeta = getPaymentReviewStatusMeta(payment);
+      const suggestion = payment.student_id ? getLikelyPaymentLinkSuggestion(payment.student_id, payment.amount, payment.payment_date, payment.payment_id) : null;
 
       return {
         payment_id: payment.payment_id,
@@ -6638,8 +6862,18 @@ function getFinancePaymentsRows() {
         status_badge: currentFinanceHistoryMode === "history" ? "bg-warmgray/10 text-warmgray" : getPaymentStatusBadge(payment.status),
         related_package_id: payment.related_package_id || "",
         related_package_name: linkedPackage ? linkedPackage.package_name || linkedPackage.package_id : "",
+        related_lesson_id: payment.related_lesson_id || "",
+        related_lesson_name: linkedLesson ? `${formatLongDate(linkedLesson.scheduled_start)} · ${linkedLesson.topic || linkedLesson.lesson_type || "Lesson"}` : "",
+        review_state: reviewMeta.label,
+        review_badge: reviewMeta.badge,
+        review_required: normalizePaymentReviewStateValue(payment.review_state, payment) === "NEEDS_REVIEW",
+        import_source: payment.import_source || "",
+        review_note: payment.review_note || "",
+        suggestion_package_id: suggestion?.related_package_id || "",
+        suggestion_lesson_id: suggestion?.related_lesson_id || "",
+        suggestion_reason: suggestion?.reason || "",
         archived_at: payment.archived_at || "",
-        search_blob: `${studentName} ${billingModel} ${payment.payment_type || ""} ${payment.payment_id || ""}`.toLowerCase()
+        search_blob: `${studentName} ${billingModel} ${payment.payment_type || ""} ${payment.payment_id || ""} ${payment.review_note || ""} ${payment.import_source || ""}`.toLowerCase()
       };
     });
 }
@@ -6679,7 +6913,10 @@ function getFilteredFinancePaymentsRows() {
   }
 
   if (currentFinanceStatusFilter !== "all") {
-    rows = rows.filter((row) => String(row.status || "").toLowerCase() === currentFinanceStatusFilter.toLowerCase());
+    rows = rows.filter((row) => {
+      const filter = currentFinanceStatusFilter.toLowerCase();
+      return String(row.status || "").toLowerCase() === filter || String(row.review_state || "").toLowerCase() === filter;
+    });
   }
 
   if (currentFinanceSearchQuery) {
@@ -6799,6 +7036,56 @@ function getPackageOptionsMarkup(selectedPackageId = "", studentId = "") {
   `;
 }
 
+function getPaymentLessonOptionsMarkup(selectedLessonId = "", studentId = "") {
+  const scopedStudentId = String(studentId || "").trim();
+  return `
+    <option value="">No linked lesson</option>
+    ${getLessonRecords()
+      .filter((lesson) => !scopedStudentId || lesson.student_id === scopedStudentId)
+      .filter((lesson) => ["COMPLETED", "LATE_CANCEL", "NO_SHOW"].includes(getEffectiveLessonStatus(lesson)))
+      .slice()
+      .sort((a, b) => new Date(b.scheduled_start || 0).getTime() - new Date(a.scheduled_start || 0).getTime())
+      .map((lesson) => `
+        <option value="${lesson.lesson_id}" ${lesson.lesson_id === selectedLessonId ? "selected" : ""}>
+          ${formatLongDate(lesson.scheduled_start)} · ${lesson.topic || lesson.lesson_type || "Lesson"}
+        </option>
+      `)
+      .join("")}
+  `;
+}
+
+function getPaymentSuggestedLinks(payment) {
+  if (!payment?.student_id) return null;
+  return getLikelyPaymentLinkSuggestion(payment.student_id, payment.amount, payment.payment_date, payment.payment_id);
+}
+
+function confirmImportedPayment(paymentId) {
+  const payment = getPaymentById(paymentId);
+  if (!payment) return;
+
+  const suggestion = getPaymentSuggestedLinks(payment);
+  const updates = {
+    review_state: "CONFIRMED",
+    review_note: suggestion?.reason || payment.review_note || ""
+  };
+
+  if (!payment.related_package_id && suggestion?.related_package_id) {
+    updates.related_package_id = suggestion.related_package_id;
+  }
+  if (!payment.related_lesson_id && suggestion?.related_lesson_id) {
+    updates.related_lesson_id = suggestion.related_lesson_id;
+  }
+
+  patchRecordById("payments", paymentId, updates);
+  renderFinancePage();
+  notifyUser({
+    title: "Payment Confirmed",
+    message: "The imported payment is now trusted and included in finance totals.",
+    tone: "success",
+    source: "finance"
+  });
+}
+
 function upsertPackageRecord(payload) {
   const studentId = String(payload.student_id || "").trim();
   const packageName = String(payload.package_name || "").trim();
@@ -6904,6 +7191,11 @@ function upsertPaymentRecord(payload) {
   const relatedPackageId = String(payload.related_package_id || "").trim();
   const relatedLessonId = String(payload.related_lesson_id || "").trim();
   const appliesTo = String(payload.applies_to || "").trim();
+  const reviewState = normalizePaymentReviewStateValue(payload.review_state || "", payload);
+  const importSource = String(payload.import_source || "").trim();
+  const externalReference = String(payload.external_reference || "").trim();
+  const matchConfidence = String(payload.match_confidence || "").trim();
+  const reviewNote = String(payload.review_note || "").trim();
   const normalizedStatus = status.toLowerCase();
 
   if (!studentId) return { ok: false, errors: ["Student is required."] };
@@ -6930,6 +7222,14 @@ function upsertPaymentRecord(payload) {
     }
   }
 
+  if (relatedLessonId) {
+    const linkedLesson = getSchemaLessonById(relatedLessonId);
+    if (!linkedLesson) return { ok: false, errors: ["Linked lesson not found."] };
+    if (linkedLesson.student_id !== studentId) {
+      return { ok: false, errors: ["A payment can only link to a lesson that belongs to the same student."] };
+    }
+  }
+
   if (String(schemaStudent.billing_model || "").toUpperCase() === "PACKAGE" && normalizedStatus === "paid" && !relatedPackageId) {
     return { ok: false, errors: ["Package students need paid payments linked to a package so balances stay accurate."] };
   }
@@ -6947,7 +7247,12 @@ function upsertPaymentRecord(payload) {
       status,
       related_package_id: relatedPackageId,
       related_lesson_id: relatedLessonId,
-      applies_to: appliesTo
+      applies_to: appliesTo,
+      review_state: reviewState,
+      import_source: importSource,
+      external_reference: externalReference,
+      match_confidence: matchConfidence,
+      review_note: reviewNote
     });
 
     return { ok: true, payment: updated };
@@ -6964,6 +7269,11 @@ function upsertPaymentRecord(payload) {
     related_package_id: relatedPackageId,
     related_lesson_id: relatedLessonId,
     applies_to: appliesTo,
+    review_state: reviewState,
+    import_source: importSource,
+    external_reference: externalReference,
+    match_confidence: matchConfidence,
+    review_note: reviewNote,
     archived_at: null
   };
 
@@ -7529,6 +7839,7 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
   editingPackageId = null;
 
   const payment = paymentId ? getPaymentById(paymentId) : null;
+  const suggestion = payment ? getPaymentSuggestedLinks(payment) : null;
 
   closeFinanceModal();
 
@@ -7589,6 +7900,28 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
             </select>
             <p id="payment-package-help" class="text-xs text-warmgray mt-2">Link package payments so balances and package totals stay accurate automatically.</p>
           </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Related Lesson</label>
+            <select name="related_lesson_id" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              ${getPaymentLessonOptionsMarkup(payment?.related_lesson_id || "", payment?.student_id || "")}
+            </select>
+            <p id="payment-lesson-help" class="text-xs text-warmgray mt-2">Use lesson links for single-session payments so outstanding balances settle automatically.</p>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Review State</label>
+            <select name="review_state" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="CONFIRMED" ${normalizePaymentReviewStateValue(payment?.review_state, payment) === "CONFIRMED" ? "selected" : ""}>Confirmed</option>
+              <option value="NEEDS_REVIEW" ${normalizePaymentReviewStateValue(payment?.review_state, payment) === "NEEDS_REVIEW" ? "selected" : ""}>Needs Review</option>
+              <option value="IGNORED" ${normalizePaymentReviewStateValue(payment?.review_state, payment) === "IGNORED" ? "selected" : ""}>Ignored</option>
+            </select>
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Review Note</label>
+            <textarea name="review_note" rows="3" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(payment?.review_note || suggestion?.reason || "")}</textarea>
+          </div>
         </div>
 
         <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">
@@ -7611,16 +7944,25 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
   const syncPaymentPackageFields = () => {
     const studentId = String(form.elements.student_id.value || "").trim();
     const relatedPackageField = form.elements.related_package_id;
+    const relatedLessonField = form.elements.related_lesson_id;
     const amountField = form.elements.amount;
     const helpField = document.getElementById("payment-package-help");
+    const lessonHelpField = document.getElementById("payment-lesson-help");
     const student = getSchemaStudentById(studentId);
     const activePackage = getCurrentPackageByStudentId(studentId);
-    const selectedPackage = relatedPackageField.value ? getPackageById(relatedPackageField.value) : null;
+    const liveSuggestion = getLikelyPaymentLinkSuggestion(studentId, Number(amountField.value || payment?.amount || 0), form.elements.payment_date.value || payment?.payment_date || "", editingPaymentId);
 
     if (relatedPackageField) {
       relatedPackageField.innerHTML = getPackageOptionsMarkup(relatedPackageField.value || activePackage?.package_id || "", studentId);
       if (!relatedPackageField.value && activePackage && String(student?.billing_model || "").toUpperCase() === "PACKAGE") {
         relatedPackageField.value = activePackage.package_id;
+      }
+    }
+
+    if (relatedLessonField) {
+      relatedLessonField.innerHTML = getPaymentLessonOptionsMarkup(relatedLessonField.value || liveSuggestion?.related_lesson_id || "", studentId);
+      if (!relatedLessonField.value && liveSuggestion?.related_lesson_id) {
+        relatedLessonField.value = liveSuggestion.related_lesson_id;
       }
     }
 
@@ -7643,10 +7985,26 @@ function openPaymentModal(paymentId = null, preselectedStudentId = "") {
         helpField.textContent = "Link package payments so balances and package totals stay accurate automatically.";
       }
     }
+
+    if (lessonHelpField) {
+      if (liveSuggestion?.related_lesson_id) {
+        const lesson = getSchemaLessonById(liveSuggestion.related_lesson_id);
+        lessonHelpField.textContent = liveSuggestion.reason || (lesson ? `Suggested lesson link: ${formatLongDate(lesson.scheduled_start)}.` : "Suggested lesson link available.");
+      } else {
+        lessonHelpField.textContent = "Use lesson links for single-session payments so outstanding balances settle automatically.";
+      }
+    }
+
+    if (form.elements.review_note && !String(form.elements.review_note.value || "").trim() && liveSuggestion?.reason) {
+      form.elements.review_note.value = liveSuggestion.reason;
+    }
   };
 
   form.elements.student_id.onchange = syncPaymentPackageFields;
   form.elements.related_package_id.onchange = syncPaymentPackageFields;
+  form.elements.related_lesson_id.onchange = syncPaymentPackageFields;
+  form.elements.amount.oninput = syncPaymentPackageFields;
+  form.elements.payment_date.onchange = syncPaymentPackageFields;
   syncPaymentPackageFields();
 
   lucide.createIcons();
@@ -7768,7 +8126,14 @@ function handlePaymentFormSubmit(event) {
     payment_date: form.elements.payment_date.value,
     payment_type: form.elements.payment_type.value.trim(),
     status: form.elements.status.value,
-    related_package_id: form.elements.related_package_id.value
+    related_package_id: form.elements.related_package_id.value,
+    related_lesson_id: form.elements.related_lesson_id.value,
+    review_state: form.elements.review_state.value,
+    review_note: form.elements.review_note.value.trim(),
+    import_source: editingPaymentId ? (getPaymentById(editingPaymentId)?.import_source || "") : "",
+    external_reference: editingPaymentId ? (getPaymentById(editingPaymentId)?.external_reference || "") : "",
+    applies_to: editingPaymentId ? (getPaymentById(editingPaymentId)?.applies_to || "") : "",
+    match_confidence: editingPaymentId ? (getPaymentById(editingPaymentId)?.match_confidence || "") : ""
   };
 
   const result = upsertPaymentRecord(payload);
@@ -11957,8 +12322,9 @@ function renderFinanceResults() {
                     <th class="px-5 py-3 font-medium">Amount</th>
                     <th class="px-5 py-3 font-medium">Date</th>
                     <th class="px-5 py-3 font-medium">Type</th>
-                    <th class="px-5 py-3 font-medium">Linked Package</th>
+                    <th class="px-5 py-3 font-medium">Linked To</th>
                     <th class="px-5 py-3 font-medium">Status</th>
+                    <th class="px-5 py-3 font-medium">Review</th>
                     <th class="px-5 py-3 font-medium text-right">Actions</th>
                   </tr>
                 </thead>
@@ -11981,11 +12347,26 @@ function renderFinanceResults() {
                           <td class="px-5 py-4 align-top">${escapeHtml(formatCurrency(row.amount, row.currency))}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml((currentFinanceHistoryMode === "history" ? row.archived_at : row.payment_date) ? formatLongDate(currentFinanceHistoryMode === "history" ? row.archived_at : row.payment_date) : "—")}</td>
                           <td class="px-5 py-4 align-top">${escapeHtml(row.payment_type)}</td>
-                          <td class="px-5 py-4 align-top">${escapeHtml(row.related_package_name || "—")}</td>
+                          <td class="px-5 py-4 align-top">
+                            <div class="space-y-1">
+                              ${row.related_package_name ? `<div class="text-xs text-warmblack">Package · ${escapeHtml(row.related_package_name)}</div>` : ""}
+                              ${row.related_lesson_name ? `<div class="text-xs text-warmblack">Lesson · ${escapeHtml(row.related_lesson_name)}</div>` : ""}
+                              ${!row.related_package_name && !row.related_lesson_name ? `<span class="text-xs text-warmgray">—</span>` : ""}
+                            </div>
+                          </td>
                           <td class="px-5 py-4 align-top">
                             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.status_badge}">
                               ${escapeHtml(String(row.status || "Paid"))}
                             </span>
+                          </td>
+                          <td class="px-5 py-4 align-top">
+                            <div class="space-y-2">
+                              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.review_badge}">
+                                ${escapeHtml(row.review_state)}
+                              </span>
+                              ${row.review_note ? `<p class="text-xs text-warmgray max-w-[230px] wrap-anywhere">${escapeHtml(row.review_note)}</p>` : ""}
+                              ${row.review_required && row.suggestion_reason ? `<p class="text-xs text-warmblack max-w-[230px] wrap-anywhere">${escapeHtml(row.suggestion_reason)}</p>` : ""}
+                            </div>
                           </td>
                           <td class="px-5 py-4 align-top text-right">
                             <div class="flex flex-wrap justify-end gap-2">
@@ -12008,6 +12389,15 @@ function renderFinanceResults() {
                                     </button>
                                   `
                                   : `
+                                    ${row.review_required ? `
+                                      <button
+                                        type="button"
+                                        class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack card-hover"
+                                        onclick="confirmImportedPayment('${row.payment_id}')"
+                                      >
+                                        Confirm
+                                      </button>
+                                    ` : ""}
                                     <button
                                       type="button"
                                       class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
@@ -12030,7 +12420,7 @@ function renderFinanceResults() {
                       `).join("")
                       : `
                         <tr>
-                          <td colspan="8" class="px-5 py-12 text-center">
+                          <td colspan="9" class="px-5 py-12 text-center">
                             <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
                               <i data-lucide="receipt-text" class="w-8 h-8 mb-3 opacity-50"></i>
                               <p class="text-sm font-medium">No payments found in this view</p>
@@ -12057,7 +12447,8 @@ function getFinancePageSummaryRows() {
     outstandingTotal: formatCurrency(getOutstandingBalanceTotal()),
     outstandingStudents: outstandingRows.length,
     packagePressure: getExpiringPackagesList().length,
-    pendingPayments: getPaymentRecords().filter((payment) => !isPaymentArchived(payment) && String(payment.status || "").toLowerCase() === "pending").length
+    pendingPayments: getPaymentRecords().filter((payment) => !isPaymentArchived(payment) && String(payment.status || "").toLowerCase() === "pending").length,
+    paymentReview: getPaymentRecords().filter((payment) => !isPaymentArchived(payment) && normalizePaymentReviewStateValue(payment.review_state, payment) === "NEEDS_REVIEW").length
   };
 }
 
@@ -12095,13 +12486,17 @@ function renderFinancePage() {
           <option value="all" ${currentFinanceStatusFilter === "all" ? "selected" : ""}>All Statuses</option>
           <option value="active" ${currentFinanceStatusFilter === "active" ? "selected" : ""}>Active</option>
           <option value="expiring soon" ${currentFinanceStatusFilter === "expiring soon" ? "selected" : ""}>Expiring Soon</option>
-          <option value="exhausted" ${currentFinanceStatusFilter === "exhausted" ? "selected" : ""}>Exhausted</option>
-          <option value="no package" ${currentFinanceStatusFilter === "no package" ? "selected" : ""}>No Package</option>
+          <option value="purchased" ${currentFinanceStatusFilter === "purchased" ? "selected" : ""}>Purchased</option>
+          <option value="fully scheduled" ${currentFinanceStatusFilter === "fully scheduled" ? "selected" : ""}>Fully Scheduled</option>
+          <option value="completed" ${currentFinanceStatusFilter === "completed" ? "selected" : ""}>Completed</option>
+          <option value="overdue payment" ${currentFinanceStatusFilter === "overdue payment" ? "selected" : ""}>Overdue Payment</option>
+          <option value="expired" ${currentFinanceStatusFilter === "expired" ? "selected" : ""}>Expired</option>
         `
         : `
           <option value="all" ${currentFinanceStatusFilter === "all" ? "selected" : ""}>All Statuses</option>
           <option value="paid" ${currentFinanceStatusFilter === "paid" ? "selected" : ""}>Paid</option>
           <option value="pending" ${currentFinanceStatusFilter === "pending" ? "selected" : ""}>Pending</option>
+          <option value="needs review" ${currentFinanceStatusFilter === "needs review" ? "selected" : ""}>Needs Review</option>
           <option value="failed" ${currentFinanceStatusFilter === "failed" ? "selected" : ""}>Failed</option>
           <option value="refunded" ${currentFinanceStatusFilter === "refunded" ? "selected" : ""}>Refunded</option>
         `;
@@ -12158,9 +12553,10 @@ function renderFinancePage() {
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Pressure</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.packagePressure}</p>
         </div>
-        <div class="page-stat-chip page-stat-chip--compact ${summary.pendingPayments ? "page-stat-chip--warm" : ""}">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Payments</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${summary.pendingPayments}</p>
+        <div class="page-stat-chip page-stat-chip--compact ${(summary.paymentReview || summary.pendingPayments) ? "page-stat-chip--warm" : ""}">
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Payment Review</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${summary.paymentReview}</p>
+          <p class="text-xs text-warmgray mt-1">${summary.pendingPayments} pending payment${summary.pendingPayments === 1 ? "" : "s"} still not settled</p>
         </div>
       </div>
 
