@@ -15,6 +15,7 @@ let currentScheduleTimingFilter = "upcoming";
 let currentScheduleReviewFilter = "action-needed";
 let currentScheduleSourceFilter = "all";
 let currentScheduleSearchQuery = "";
+let currentScheduleShowCancelled = false;
 const initialScheduleDate = new Date();
 let currentScheduleCalendarMonth = new Date(initialScheduleDate.getFullYear(), initialScheduleDate.getMonth(), 1);
 let currentScheduleSelectedDate = `${initialScheduleDate.getFullYear()}-${String(initialScheduleDate.getMonth() + 1).padStart(2, "0")}-${String(initialScheduleDate.getDate()).padStart(2, "0")}`;
@@ -4492,9 +4493,9 @@ function getScheduleIntakeQuickActionMeta(lesson) {
 
   if (Object.keys(mergePatch).length) {
     return {
-      action: "pull_and_confirm",
-      label: "Pull Info + Confirm",
-      helper: `Update ${getImportedLessonStudentMergeSummary(mergePatch).join(", ")} before confirming.`,
+      action: "confirm_profile_review",
+      label: "Confirm Lesson",
+      helper: `Imported ${getImportedLessonStudentMergeSummary(mergePatch).join(", ")} can be reviewed separately. Student info will not change automatically.`,
       can_run: true
     };
   }
@@ -4529,7 +4530,7 @@ function getImportedLessonStudentMergeSummary(patch) {
   return updates;
 }
 
-function mergeImportedLessonIntoStudentRecord(lessonId, studentId) {
+function mergeImportedLessonIntoStudentRecord(lessonId, studentId, options = {}) {
   const lesson = getSchemaLessonById(lessonId);
   const student = getSchemaStudentById(studentId);
   if (!lesson || !student) {
@@ -4539,10 +4540,11 @@ function mergeImportedLessonIntoStudentRecord(lessonId, studentId) {
     };
   }
 
+  const applyStudentPatch = options.applyStudentPatch !== false;
   const patch = getImportedLessonStudentMergePatch(lesson, student);
   let studentResult = null;
 
-  if (Object.keys(patch).length) {
+  if (applyStudentPatch && Object.keys(patch).length) {
     studentResult = updateStudent(studentId, patch);
     if (!studentResult || studentResult.ok === false) {
       return {
@@ -4552,10 +4554,13 @@ function mergeImportedLessonIntoStudentRecord(lessonId, studentId) {
     }
   }
 
-  const mergedFields = getImportedLessonStudentMergeSummary(patch);
+  const mergedFields = applyStudentPatch ? getImportedLessonStudentMergeSummary(patch) : [];
+  const availableFields = !applyStudentPatch ? getImportedLessonStudentMergeSummary(patch) : [];
   const intakeNote = mergedFields.length
     ? `Matched to an existing student and merged ${mergedFields.join(", ")} from the imported lesson. Review and confirm this intake item.`
-    : "Matched to an existing student. Review and confirm this intake item.";
+    : availableFields.length
+      ? `Matched to an existing student. Additional imported contact info is available to review (${availableFields.join(", ")}), but the student profile was not changed automatically.`
+      : "Matched to an existing student. Review and confirm this intake item.";
 
   const lessonResult = updateLesson(lessonId, {
     student_id: studentId,
@@ -4573,6 +4578,7 @@ function mergeImportedLessonIntoStudentRecord(lessonId, studentId) {
   return {
     ok: true,
     merged_fields: mergedFields,
+    available_fields: availableFields,
     student_result: studentResult,
     lesson_result: lessonResult
   };
@@ -4630,7 +4636,7 @@ function saveScheduleStudentMatch(lessonId) {
     return;
   }
 
-  const result = mergeImportedLessonIntoStudentRecord(lessonId, studentId);
+  const result = mergeImportedLessonIntoStudentRecord(lessonId, studentId, { applyStudentPatch: false });
 
   if (!result || result.ok === false) {
     notifyUser({
@@ -4646,7 +4652,9 @@ function saveScheduleStudentMatch(lessonId) {
   renderAppFromSchema();
   notifyUser({
     title: "Lesson Matched",
-    message: result.merged_fields.length ? `Lesson merged with the selected student and updated ${result.merged_fields.join(", ")}.` : "Lesson matched to the selected student.",
+    message: result.available_fields?.length
+      ? `Lesson matched to the selected student. Imported ${result.available_fields.join(", ")} is available to review before changing the student profile.`
+      : "Lesson matched to the selected student.",
     tone: "success",
     source: "schedule"
   });
@@ -9949,7 +9957,7 @@ function runScheduleIntakeQuickAction(lessonId) {
       return false;
     }
 
-    const result = mergeImportedLessonIntoStudentRecord(lessonId, bestCandidate.student.student_id);
+    const result = mergeImportedLessonIntoStudentRecord(lessonId, bestCandidate.student.student_id, { applyStudentPatch: false });
     if (!result || result.ok === false) {
       notifyUser({
         title: "Schedule Intake",
@@ -9959,6 +9967,14 @@ function runScheduleIntakeQuickAction(lessonId) {
       });
       return false;
     }
+    if (result.available_fields?.length) {
+      notifyUser({
+        title: "Student Info Held For Review",
+        message: `Matched lesson to ${bestCandidate.student.full_name}. Imported ${result.available_fields.join(", ")} was not added automatically.`,
+        tone: "warm",
+        source: "schedule"
+      });
+    }
   }
 
   if (quickAction.action === "create_student") {
@@ -9966,10 +9982,6 @@ function runScheduleIntakeQuickAction(lessonId) {
     createStudentFromImportedLesson(lessonId);
     const afterStudentId = getSchemaLessonById(lessonId)?.student_id || "";
     if (!afterStudentId || afterStudentId === beforeStudentId) return false;
-  }
-
-  if (quickAction.action === "pull_and_confirm") {
-    pullStudentInfoFromLesson(lessonId);
   }
 
   const refreshedLesson = getSchemaLessonById(lessonId);
@@ -10007,6 +10019,9 @@ function applyBulkScheduleIntakeAction(action) {
 function getScheduleFilterPills() {
   const pills = [];
   pills.push(getStatusFilterPill("View", currentScheduleView === "calendar" ? `Calendar · ${currentScheduleCalendarMode}` : "Schedule Intake"));
+  if (currentScheduleShowCancelled) {
+    pills.push(getStatusFilterPill("Cancelled", "Shown"));
+  }
   if (currentScheduleView === "intake") {
     if (currentScheduleTimingFilter !== "all") {
       pills.push(getStatusFilterPill("Timing", currentScheduleTimingFilter));
@@ -10022,6 +10037,11 @@ function getScheduleFilterPills() {
     }
   }
   return pills;
+}
+
+function setScheduleShowCancelled(value) {
+  currentScheduleShowCancelled = Boolean(value);
+  renderSchedulePage();
 }
 
 function setScheduleView(view) {
@@ -10068,6 +10088,10 @@ function getCalendarDateKey(date) {
 
 function getScheduleCalendarRows() {
   return getLessonRecords()
+    .filter((lesson) => {
+      if (currentScheduleShowCancelled) return true;
+      return getEffectiveLessonStatus(lesson) !== "CANCELLED";
+    })
     .map((lesson) => {
       const student = getSchemaStudentById(lesson.student_id);
       const lessonDate = lesson.scheduled_start ? new Date(lesson.scheduled_start) : null;
@@ -10770,6 +10794,17 @@ function renderSchedulePage() {
             <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "calendar" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('calendar')">Calendar</button>
             <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "intake" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('intake')">Schedule Intake</button>
           </div>
+          ${
+            currentScheduleView === "calendar"
+              ? `<button
+                  type="button"
+                  class="self-start lg:self-auto px-4 py-2.5 rounded-xl ${currentScheduleShowCancelled ? "bg-parchment border border-cream text-warmblack" : "bg-white border border-cream text-warmgray"} text-sm font-medium card-hover"
+                  onclick="setScheduleShowCancelled(${currentScheduleShowCancelled ? "false" : "true"})"
+                >
+                  ${currentScheduleShowCancelled ? "Hide Cancelled" : "Show Cancelled"}
+                </button>`
+              : ""
+          }
           <button
             type="button"
             class="self-start lg:self-auto px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
@@ -11874,6 +11909,36 @@ function getGoogleSetupChecklist(backend) {
   ];
 }
 
+function getStudentPortalReadinessChecklist() {
+  return [
+    {
+      label: "Student and guardian contact modeling",
+      detail: "Student, parent/guardian, preferred contact, multiple emails, and multiple phones are already modeled.",
+      done: true
+    },
+    {
+      label: "Lesson, package, and payment foundations",
+      detail: "Lessons, reservations, package balances, manual payment states, and payment review all exist in the coach portal.",
+      done: true
+    },
+    {
+      label: "Materials and vault structure",
+      detail: "Student materials, actor materials, linked resources, and vault behavior exist for coach-side management.",
+      done: true
+    },
+    {
+      label: "Review-first imports and sync evidence",
+      detail: "Calendar and Gmail imports land in review before becoming trusted workflow records.",
+      done: true
+    },
+    {
+      label: "Student-facing auth and permissions",
+      detail: "This is the main Phase 6A build target: student login, guardian-aware access, and scoped visibility.",
+      done: false
+    }
+  ];
+}
+
 function setAutomationTab(tab) {
   currentAutomationTab = String(tab || "attention");
   renderAutomationsPage();
@@ -12400,6 +12465,7 @@ function renderSettingsPage() {
   const activeSection = sections.find((section) => section.key === currentSettingsSection) || sections[0];
   const compact = isCompactView("settings");
   const googleSetupChecklist = getGoogleSetupChecklist(backend);
+  const studentPortalReadiness = getStudentPortalReadinessChecklist();
   const googleSetupNextStep = !googleSetupChecklist[0].done
     ? "Add your Google account email."
     : !googleSetupChecklist[1].done
@@ -12662,6 +12728,24 @@ function renderSettingsPage() {
 
     return `
       <div class="space-y-4 fade-in">
+        <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Phase 6A Readiness</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Coach-side foundation is ready to start the student portal</h3>
+          <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-4">
+            ${studentPortalReadiness.map((item, index) => `
+              <div class="rounded-xl border ${item.done ? "border-sage/20 bg-sage/5" : "border-gold/20 bg-gold/5"} px-4 py-3">
+                <div class="flex items-start gap-3">
+                  <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold ${item.done ? "bg-sage text-white" : "bg-white border border-cream text-warmgray"}">${item.done ? "OK" : index + 1}</span>
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.label)}</p>
+                    <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(item.detail)}</p>
+                  </div>
+                </div>
+              </div>
+            `).join("")}
+          </div>
+        </div>
+
         <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
           <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sheets Blueprint</p>
           <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Expected Google Sheets tabs</h3>
@@ -13098,6 +13182,12 @@ function renderFinancePage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Finance</h2>
           <p class="text-sm text-warmgray mt-0.5">Packages and payments across the whole studio</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">Outstanding · ${summary.outstandingTotal}</span>
+            <span class="page-compact-summary-pill">Students owing · ${summary.outstandingStudents}</span>
+            <span class="page-compact-summary-pill">Package pressure · ${summary.packagePressure}</span>
+            <span class="page-compact-summary-pill">Payment review · ${summary.paymentReview}</span>
+          </div>
         </div>
 
         <div class="finance-header-actions flex flex-wrap items-center gap-2">
@@ -13133,6 +13223,20 @@ function renderFinancePage() {
           </button>
         </div>
       </header>
+
+      <div class="rounded-2xl border border-cream bg-white p-4 mb-5 fade-in" style="animation-delay:0.015s">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Quick Focus</p>
+            <p class="text-sm text-warmgray mt-1">Use Packages for allocation and expiry pressure, Payments for what came in, and History only when you’re cleaning up older records.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="setFinanceTab('packages'); setFinanceStatusFilter('expiring soon')">Expiring Packages</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="setFinanceTab('payments'); setFinanceStatusFilter('needs review')">Payment Review</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="setFinanceTab('packages'); setFinanceStatusFilter('overdue payment')">Overdue Payments</button>
+          </div>
+        </div>
+      </div>
 
       <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
         <div class="page-stat-chip page-stat-chip--compact ${summary.outstandingStudents ? "page-stat-chip--alert" : ""}">
@@ -14257,6 +14361,13 @@ function renderProfilePage() {
         </div>
       </header>
 
+      <div class="page-compact-summary mb-4">
+        <span class="page-compact-summary-pill">Billing · <span id="profile-billing-pill">—</span></span>
+        <span class="page-compact-summary-pill">Finance · <span id="profile-finance-pill">—</span></span>
+        <span class="page-compact-summary-pill">Last lesson · <span id="profile-last-lesson-pill">—</span></span>
+        <span class="page-compact-summary-pill">Public page · <span id="profile-public-pill">—</span></span>
+      </div>
+
       <div class="page-stats-strip mb-4">
         <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Billing Model</p>
@@ -14586,8 +14697,11 @@ function populateStudentProfile(studentId) {
   }
 
   const lastLessonEl = document.getElementById("profile-last-lesson");
+  const lastLessonPillEl = document.getElementById("profile-last-lesson-pill");
   const billingModelEl = document.getElementById("profile-billing-model");
+  const billingPillEl = document.getElementById("profile-billing-pill");
   const financeSummaryEl = document.getElementById("profile-finance-summary");
+  const financePillEl = document.getElementById("profile-finance-pill");
 
   const financeBadgeEl = document.getElementById("profile-finance-badge");
   const financeHeadlineEl = document.getElementById("profile-finance-headline");
@@ -14606,6 +14720,7 @@ function populateStudentProfile(studentId) {
   const paymentsCountEl = document.getElementById("profile-payments-count");
   const paymentsListEl = document.getElementById("profile-payments-list");
   if (lastLessonEl) lastLessonEl.textContent = student.lastSeen;
+  if (lastLessonPillEl) lastLessonPillEl.textContent = student.lastSeen || "—";
 
   const publicStatusEl = document.getElementById("profile-public-status");
   const publicStatusSecondaryEl = document.getElementById("profile-public-status-secondary");
@@ -14619,6 +14734,13 @@ function populateStudentProfile(studentId) {
 
     publicStatusEl.innerHTML = publicStatusMarkup;
     if (publicStatusSecondaryEl) publicStatusSecondaryEl.innerHTML = publicStatusMarkup;
+  }
+  const publicPillEl = document.getElementById("profile-public-pill");
+  if (publicPillEl) {
+    const lateCancelCount = getLateCancelCountForStudent(studentId, 6);
+    publicPillEl.textContent = isStudentPublicPageBlockedByLessonPolicy(studentId)
+      ? `Blocked (${lateCancelCount} late cancels)`
+      : (actorProfile ? actorProfile.status : "Not live");
   }
 
   const emailEl = document.getElementById("profile-email");
@@ -14679,9 +14801,15 @@ function populateStudentProfile(studentId) {
 if (billingModelEl) {
   billingModelEl.textContent = getBillingModelLabel(schemaStudent.billing_model);
 }
+if (billingPillEl) {
+  billingPillEl.textContent = getBillingModelLabel(schemaStudent.billing_model);
+}
 
 if (financeSummaryEl) {
   financeSummaryEl.textContent = finance.subline || "—";
+}
+if (financePillEl) {
+  financePillEl.textContent = finance.subline || "—";
 }
 
 if (financeBadgeEl) {
