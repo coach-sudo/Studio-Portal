@@ -12447,7 +12447,7 @@ async function handleDataResetSubmit(event) {
   renderAppFromSchema();
 }
 
-function renderSettingsPage() {
+function renderSettingsPageLegacy() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
@@ -13157,6 +13157,7 @@ function renderSettingsPage() {
             <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">Gmail ${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
           </div>
           <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openDataResetModal()">Clear Data</button>
             <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
             <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="pullSettingsSnapshotFromBackend()">Pull Snapshot</button>
           </div>
@@ -14392,7 +14393,7 @@ function renderProfileNotesTab(studentId) {
   `;
 }
 
-function renderProfilePage() {
+function renderProfilePageLegacy() {
   if (!selectedStudentId || !getStudentById(selectedStudentId)) {
     selectedStudentId = students.length > 0 ? students[0].id : null;
   }
