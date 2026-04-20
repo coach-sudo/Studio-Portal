@@ -2137,6 +2137,133 @@ function getGoogleServiceStatusLabel(status) {
   return "Not Checked";
 }
 
+function isTrustedBookingSender(message = {}) {
+  const fromBlob = `${message.from || ""}\n${message.reply_to || ""}`.toLowerCase();
+  return /lessons\.com|lessonface\.com|acuityscheduling\.com/.test(fromBlob) || (/\bgoogle\b/.test(fromBlob) && /\bcalendar\b/.test(fromBlob));
+}
+
+function isBookingChangeOrConfirmationMessage(message = {}) {
+  const blob = `${message.subject || ""}\n${message.body || ""}`.toLowerCase();
+  const hasActionKeyword = /\bupcoming booking\b|\bbooking confirmation\b|\bappointment scheduled\b|\bnew booking\b|\blesson reminder\b|\bappointment reminder\b|\breschedul(?:e|ed|ing)\b|\bcancel(?:led|ed|lation)?\b|\bappointment (?:updated|changed)\b|\bbooking (?:updated|changed|cancelled|canceled)\b|\bchange\/cancel appointment\b|\bchange appointment\b|\bview booking\b/i.test(blob);
+  const hasLessonSignal = /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bservice:\b|\bjoin zoom\b|\blessons\.com\b|\blessonface\b|\bacuity\b|\bacuityscheduling\b/i.test(blob);
+  return hasActionKeyword && hasLessonSignal;
+}
+
+function isTrustedPaymentConfirmationMessage(message = {}) {
+  const blob = `${message.subject || ""}\n${message.body || ""}\n${message.from || ""}`.toLowerCase();
+  if (!isTrustedBookingSender(message)) return false;
+  if (!/\bpayment\b|\bnew order\b|\border total\b|\bpaid online\b|\bpayment received\b/i.test(blob)) return false;
+  if (/\bpayment failure\b|\bfailed payment\b|\bworkspace\b|\bsubscription\b/i.test(blob)) return false;
+  return /\blesson\b|\bacting\b|\bbooking\b|\bappointment\b|\blessons\.com\b|\blessonface\b|\bacuity\b|\bacuityscheduling\b/i.test(blob);
+}
+
+function summarizeSyncPlatforms(items = [], inferPlatform) {
+  const counts = {};
+  (Array.isArray(items) ? items : []).forEach((item) => {
+    const key = String(typeof inferPlatform === "function" ? inferPlatform(item) : "" || "OTHER").trim().toUpperCase() || "OTHER";
+    counts[key] = (counts[key] || 0) + 1;
+  });
+  return Object.entries(counts)
+    .sort((left, right) => right[1] - left[1])
+    .slice(0, 3)
+    .map(([key, count]) => `${getStudentLeadSourceLabel(key)} ${count}`);
+}
+
+function summarizeLiveCalendarPayload(events = []) {
+  const normalizedEvents = (Array.isArray(events) ? events : []).filter((event) => event && event.start);
+  const sorted = normalizedEvents.slice().sort((left, right) => new Date(left.start).getTime() - new Date(right.start).getTime());
+  const futureDate = sorted.find((event) => new Date(event.start).getTime() >= getReferenceNow().getTime())?.start || "";
+  return {
+    source_mode: "live_backend",
+    fetched: normalizedEvents.length,
+    first_start: sorted[0]?.start || "",
+    last_start: sorted[sorted.length - 1]?.start || "",
+    next_start: futureDate,
+    sample_titles: sorted.slice(0, 3).map((event) => event.title || "Untitled event"),
+    platform_summary: summarizeSyncPlatforms(sorted, inferCalendarPlatformHint)
+  };
+}
+
+function summarizeLiveGmailPayload(messages = []) {
+  const normalizedMessages = (Array.isArray(messages) ? messages : []);
+  const lessonsWithDates = normalizedMessages
+    .map((message) => {
+      const candidate = buildImportedLessonFromGmailMessage(message);
+      return {
+        message,
+        scheduled_start: candidate?.scheduled_start || ""
+      };
+    })
+    .filter((entry) => entry.scheduled_start)
+    .sort((left, right) => new Date(left.scheduled_start).getTime() - new Date(right.scheduled_start).getTime());
+  const futureDate = lessonsWithDates.find((entry) => new Date(entry.scheduled_start).getTime() >= getReferenceNow().getTime())?.scheduled_start || "";
+  return {
+    source_mode: "live_backend",
+    fetched: normalizedMessages.length,
+    first_start: lessonsWithDates[0]?.scheduled_start || "",
+    last_start: lessonsWithDates[lessonsWithDates.length - 1]?.scheduled_start || "",
+    next_start: futureDate,
+    sample_titles: normalizedMessages.slice(0, 3).map((message) => message.subject || "Untitled message"),
+    platform_summary: summarizeSyncPlatforms(normalizedMessages, inferGmailPlatformHint)
+  };
+}
+
+function formatSyncWindowRange(summary = {}) {
+  if (!summary.first_start && !summary.last_start) return "No dated records in this sync.";
+  if (summary.first_start && summary.last_start) {
+    return `${formatShortDate(summary.first_start)} to ${formatShortDate(summary.last_start)}`;
+  }
+  return formatShortDate(summary.first_start || summary.last_start);
+}
+
+function formatShortDate(value) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+function focusScheduleOnNextImportedDate(summary = {}) {
+  const target = summary.next_start || summary.first_start || "";
+  if (!target) return;
+  const date = new Date(target);
+  if (Number.isNaN(date.getTime())) return;
+  currentScheduleSelectedDate = getCalendarDateKey(date);
+  currentScheduleCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getSyncSourceBadgeLabel(summary = {}) {
+  const mode = String(summary?.source_mode || "").trim().toLowerCase();
+  if (mode === "live_backend") return "Live Google";
+  if (mode === "demo_fallback") return "Demo";
+  return "Not Run";
+}
+
+function getSyncProofMarkup(kind, summary = {}, fallbackLabel = "Not synced yet") {
+  const sampleTitles = Array.isArray(summary.sample_titles) ? summary.sample_titles.filter(Boolean).slice(0, 3) : [];
+  const platformSummary = Array.isArray(summary.platform_summary) ? summary.platform_summary.filter(Boolean) : [];
+  const fetchedCount = Number(summary.fetched || 0);
+  const importedCount = Number(summary.imported || 0);
+  const flaggedCount = Number(summary.flagged || 0);
+  const skippedCount = Number(summary.skipped || 0);
+  const dateRangeLabel = fetchedCount ? formatSyncWindowRange(summary) : fallbackLabel;
+  return `
+    <div class="rounded-xl border border-cream bg-parchment/60 px-4 py-3">
+      <div class="flex flex-wrap items-center gap-2">
+        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${summary.source_mode === "live_backend" ? "bg-sage/10 text-sage" : "bg-parchment text-warmgray"}">${escapeHtml(getSyncSourceBadgeLabel(summary))}</span>
+        ${platformSummary.map((entry) => `<span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">${escapeHtml(entry)}</span>`).join("")}
+      </div>
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mt-3">
+        <div><p class="text-[11px] uppercase tracking-wider text-warmgray">Fetched</p><p class="text-base font-semibold text-warmblack mt-1">${fetchedCount}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-warmgray">Imported</p><p class="text-base font-semibold text-warmblack mt-1">${importedCount}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-warmgray">Flagged</p><p class="text-base font-semibold text-warmblack mt-1">${flaggedCount}</p></div>
+        <div><p class="text-[11px] uppercase tracking-wider text-warmgray">Skipped</p><p class="text-base font-semibold text-warmblack mt-1">${skippedCount}</p></div>
+      </div>
+      <p class="text-xs text-warmgray mt-3">${escapeHtml(kind)} range · ${escapeHtml(dateRangeLabel)}</p>
+      ${sampleTitles.length ? `<p class="text-xs text-warmgray mt-1 wrap-anywhere">Examples · ${escapeHtml(sampleTitles.join(" • "))}</p>` : ""}
+    </div>
+  `;
+}
+
 function getGoogleOAuthStartUrl() {
   const backend = studioDataService.getBackendSettings();
   if (backend.google_auth_start_url) return backend.google_auth_start_url;
@@ -2691,30 +2818,11 @@ function isLikelyLessonCalendarEvent(event) {
 
 function isLikelyLessonGmailMessage(message) {
   const blob = `${message.subject || ""}\n${message.body || ""}\n${message.from || ""}`.toLowerCase();
-  const includePatterns = [
-    /\b30\s*(?:min|minute)\b/i,
-    /\b60\s*(?:min|minute)\b/i,
-    /\b90\s*(?:min|minute)\b/i,
-    /\blesson\b/i,
-    /\bacting\b/i,
-    /\baudition\b/i,
-    /\bcoaching\b/i,
-    /\blessonface\b/i,
-    /\bacuity\b/i,
-    /\bservice:\b/i,
-    /\bjoin zoom\b/i,
-    /\bpaid online\b/i,
-    /\bupcoming booking\b/i,
-    /\bcancel(?:led|ed|lation)?\b/i,
-    /\breschedul(?:e|ed|ing)\b/i,
-    /\bchanged appointment\b/i,
-    /\bappointment (?:updated|changed)\b/i,
-    /\bbooking (?:updated|changed|cancelled|canceled)\b/i,
-    /\bview booking\b/i,
-    /\blessons\.com\b/i
-  ];
-
-  return includePatterns.some((pattern) => pattern.test(blob));
+  if (!isTrustedBookingSender(message)) return false;
+  if (/\bcreator digest\b|\bjob opportunity\b|\bneeds a\b|\bnew review\b|\bjoined your meeting\b|\bpayment failure\b|\bgoogle workspace\b|\bhasn't been acknowledged\b|\bone of your lessons hasn't been acknowledged\b/i.test(blob)) {
+    return false;
+  }
+  return isBookingChangeOrConfirmationMessage(message) || isTrustedPaymentConfirmationMessage(message);
 }
 
 function inferGmailLessonChangeIntent(message) {
@@ -3914,61 +4022,65 @@ async function runGoogleCalendarSync() {
     return;
   }
 
-  if (backend.google_sheets_web_app_url) {
-    try {
-      const payload = await studioDataService.runGoogleCalendarSync();
-      if (payload?.google?.calendar?.status === "live_ready" && Array.isArray(payload?.events)) {
-        const summary = processGoogleCalendarImportFeed(payload.events);
-        setCalendarSyncState({
-          last_sync_at: summary.synced_at,
-          last_sync_summary: {
-            imported: summary.imported,
-            updated: summary.updated,
-            flagged: summary.flagged,
-            disconnected: summary.disconnected || 0,
-            skipped: summary.skipped
-          }
-        });
-        renderAppFromSchema();
-        notifyUser({
-          title: "Calendar Sync Complete",
-          message: `Imported ${summary.imported}, updated ${summary.updated}, removed from calendar ${summary.disconnected || 0}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
-          tone: "success",
-          source: "schedule"
-        });
-        return;
-      }
-
-      if (payload?.google?.calendar?.status === "live_ready") {
-        notifyUser({
-          title: "Calendar Sync",
-          message: payload.message || "Google Calendar backend is connected, but no event payload came back yet.",
-          tone: "warm",
-          source: "schedule"
-        });
-        renderSchedulePage();
-        return;
-      }
-
-      if (payload?.message) {
-        notifyUser({
-          title: "Calendar Sync",
-          message: `${payload.message} The portal will use the current intake feed for now so your workflow keeps moving.`,
-          tone: "warm",
-          source: "schedule"
-        });
-      }
-    } catch (error) {
-      notifyUser({
-        title: "Calendar Sync",
-        message: `${error.message || "Unable to reach the Google Calendar backend."} The portal will use the current intake feed for now.`,
-        tone: "error",
-        source: "schedule"
-      });
-    }
+  if (!backend.google_sheets_web_app_url) {
+    notifyUser({
+      title: "Calendar Sync",
+      message: "Add your Netlify backend URL in Settings before running Calendar sync. Demo fallback is now disabled so sync only runs against the live backend.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
   }
 
-  runDemoGoogleCalendarSync();
+  try {
+    const payload = await studioDataService.runGoogleCalendarSync();
+    if (payload?.google?.calendar?.status === "live_ready" && Array.isArray(payload?.events)) {
+      const proof = summarizeLiveCalendarPayload(payload.events);
+      const summary = processGoogleCalendarImportFeed(payload.events);
+      setCalendarSyncState({
+        last_sync_at: summary.synced_at,
+        last_sync_summary: {
+          imported: summary.imported,
+          updated: summary.updated,
+          flagged: summary.flagged,
+          disconnected: summary.disconnected || 0,
+          skipped: summary.skipped,
+          fetched: proof.fetched,
+          source_mode: proof.source_mode,
+          first_start: proof.first_start,
+          last_start: proof.last_start,
+          next_start: proof.next_start,
+          sample_titles: proof.sample_titles,
+          platform_summary: proof.platform_summary
+        }
+      });
+      focusScheduleOnNextImportedDate(proof);
+      renderAppFromSchema();
+      notifyUser({
+        title: "Calendar Sync Complete",
+        message: `Fetched ${proof.fetched} live events. Imported ${summary.imported}, updated ${summary.updated}, removed from calendar ${summary.disconnected || 0}, flagged ${summary.flagged}, skipped ${summary.skipped}.`,
+        tone: "success",
+        source: "schedule"
+      });
+      return;
+    }
+
+    notifyUser({
+      title: "Calendar Sync",
+      message: payload?.message || "Live Calendar sync did not return an event payload. No demo fallback was used.",
+      tone: "error",
+      source: "schedule"
+    });
+    renderSchedulePage();
+  } catch (error) {
+    notifyUser({
+      title: "Calendar Sync",
+      message: `${error.message || "Unable to reach the Google Calendar backend."} No demo fallback was used.`,
+      tone: "error",
+      source: "schedule"
+    });
+    renderSchedulePage();
+  }
 }
 
 function processGmailImportFeed(feed = []) {
@@ -4196,62 +4308,65 @@ async function runGmailAssistSync() {
     return;
   }
 
-  if (backend.google_sheets_web_app_url) {
-    try {
-      const payload = await studioDataService.runGmailSync();
-      if (payload?.google?.gmail?.status === "live_ready" && Array.isArray(payload?.messages)) {
-        const summary = processGmailImportFeed(payload.messages);
-        setCalendarSyncState({
-          gmail_last_sync_at: summary.synced_at,
-          gmail_last_sync_summary: {
-            imported: summary.imported,
-            updated: summary.updated || 0,
-            flagged: summary.flagged,
-            payment_imported: summary.payment_imported || 0,
-            payment_flagged: summary.payment_flagged || 0,
-            skipped: summary.skipped
-          }
-        });
-        renderAppFromSchema();
-        notifyUser({
-          title: "Gmail Assist Complete",
-          message: `Lessons imported ${summary.imported}, metadata updated ${summary.updated || 0}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
-          tone: "success",
-          source: "schedule"
-        });
-        return;
-      }
-
-      if (payload?.google?.gmail?.status === "live_ready") {
-        notifyUser({
-          title: "Gmail Assist",
-          message: payload.message || "Gmail backend is connected, but no message payload came back yet.",
-          tone: "warm",
-          source: "schedule"
-        });
-        renderSchedulePage();
-        return;
-      }
-
-      if (payload?.message) {
-        notifyUser({
-          title: "Gmail Assist",
-          message: `${payload.message} The portal will use the current Gmail intake feed for now so review can keep working.`,
-          tone: "warm",
-          source: "schedule"
-        });
-      }
-    } catch (error) {
-      notifyUser({
-        title: "Gmail Assist",
-        message: `${error.message || "Unable to reach the Gmail backend."} The portal will use the current Gmail intake feed for now.`,
-        tone: "error",
-        source: "schedule"
-      });
-    }
+  if (!backend.google_sheets_web_app_url) {
+    notifyUser({
+      title: "Gmail Assist",
+      message: "Add your Netlify backend URL in Settings before running Gmail assist. Demo fallback is now disabled so sync only runs against the live backend.",
+      tone: "error",
+      source: "schedule"
+    });
+    return;
   }
 
-  runDemoGmailAssistSync();
+  try {
+    const payload = await studioDataService.runGmailSync();
+    if (payload?.google?.gmail?.status === "live_ready" && Array.isArray(payload?.messages)) {
+      const proof = summarizeLiveGmailPayload(payload.messages);
+      const summary = processGmailImportFeed(payload.messages);
+      setCalendarSyncState({
+        gmail_last_sync_at: summary.synced_at,
+        gmail_last_sync_summary: {
+          imported: summary.imported,
+          updated: summary.updated || 0,
+          flagged: summary.flagged,
+          payment_imported: summary.payment_imported || 0,
+          payment_flagged: summary.payment_flagged || 0,
+          skipped: summary.skipped,
+          fetched: proof.fetched,
+          source_mode: proof.source_mode,
+          first_start: proof.first_start,
+          last_start: proof.last_start,
+          next_start: proof.next_start,
+          sample_titles: proof.sample_titles,
+          platform_summary: proof.platform_summary
+        }
+      });
+      renderAppFromSchema();
+      notifyUser({
+        title: "Gmail Assist Complete",
+        message: `Fetched ${proof.fetched} live messages. Lessons imported ${summary.imported}, metadata updated ${summary.updated || 0}, lesson flags ${summary.flagged}, payments pulled ${summary.payment_imported || 0}, payment updates ${summary.payment_flagged || 0}, skipped ${summary.skipped}.`,
+        tone: "success",
+        source: "schedule"
+      });
+      return;
+    }
+
+    notifyUser({
+      title: "Gmail Assist",
+      message: payload?.message || "Live Gmail sync did not return a message payload. No demo fallback was used.",
+      tone: "error",
+      source: "schedule"
+    });
+    renderSchedulePage();
+  } catch (error) {
+    notifyUser({
+      title: "Gmail Assist",
+      message: `${error.message || "Unable to reach the Gmail backend."} No demo fallback was used.`,
+      tone: "error",
+      source: "schedule"
+    });
+    renderSchedulePage();
+  }
 }
 
 async function checkGoogleConnectionStatus() {
@@ -11020,8 +11135,8 @@ function renderSchedulePage() {
   const googleAccountEmail = backend.google_account_email || "coach@d-a-j.com";
   const calendarStatus = backend.google_calendar_status || "demo_ready";
   const gmailStatus = backend.google_gmail_status || "demo_ready";
-  const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, disconnected: 0, skipped: 0 };
-  const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0 };
+  const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, disconnected: 0, skipped: 0, fetched: 0, source_mode: "", first_start: "", last_start: "", next_start: "", sample_titles: [], platform_summary: [] };
+  const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0, fetched: 0, source_mode: "", first_start: "", last_start: "", next_start: "", sample_titles: [], platform_summary: [] };
   const compact = isCompactView("schedule");
   const filterPills = getScheduleFilterPills();
 
@@ -11036,6 +11151,8 @@ function renderSchedulePage() {
             <span class="page-compact-summary-pill">Action needed · ${actionRows.length}</span>
             <span class="page-compact-summary-pill">Unmatched students · ${unmatchedRows.length}</span>
             <span class="page-compact-summary-pill">Imported total · ${importedRows.length}</span>
+            <span class="page-compact-summary-pill">Calendar pulled · ${lastSyncSummary.fetched || 0}</span>
+            <span class="page-compact-summary-pill">Gmail pulled · ${gmailSyncSummary.fetched || 0}</span>
           </div>
         </div>
 
@@ -11091,15 +11208,17 @@ function renderSchedulePage() {
               <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div class="min-w-0">
                   <p class="text-xs font-medium uppercase tracking-wider text-warmgray">Google Calendar Sync</p>
-                  <p class="text-sm text-warmgray mt-1">Main calendar only under ${escapeHtml(googleAccountEmail)}. Manual sync first. Lesson-like events from the past 30 days and next 60 days stay review-first, and external changes are flagged instead of silently trusted.</p>
+                  <p class="text-sm text-warmgray mt-1">Main calendar only under ${escapeHtml(googleAccountEmail)}. Manual sync first. Live backend only. Lesson-like events from the past 30 days and next 60 days stay review-first, and external changes are flagged instead of silently trusted.</p>
                   <div class="flex flex-wrap gap-2 mt-3">
                     <span class="text-[11px] px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(calendarStatus)}">${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Account · ${escapeHtml(googleAccountEmail)}</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Manual Sync</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Window · Past ${calendarSyncState.sync_window_past_days} / Next ${calendarSyncState.sync_window_future_days}</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Filter · Lesson-Like Events Only</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full ${lastSyncSummary.source_mode === "live_backend" ? "bg-sage/10 text-sage" : "bg-parchment border border-cream text-warmgray"}">Source · ${escapeHtml(getSyncSourceBadgeLabel(lastSyncSummary))}</span>
                   </div>
                   <p class="text-xs text-warmgray mt-3">${backend.google_calendar_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_calendar_last_sync_at))}` : calendarSyncState.last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.last_sync_at))}` : "No sync has run yet."}</p>
+                  <p class="text-xs text-warmgray mt-1">Pulled range · ${escapeHtml(formatSyncWindowRange(lastSyncSummary))}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGoogleCalendarSync()">Run Sync</button>
@@ -11130,15 +11249,17 @@ function renderSchedulePage() {
               <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
                 <div class="min-w-0">
                   <p class="text-xs font-medium uppercase tracking-wider text-warmgray">Gmail Assist</p>
-                  <p class="text-sm text-warmgray mt-1">Supplemental booking-email intake under ${escapeHtml(googleAccountEmail)}. Manual sync only, booking-related messages only, and unmatched items always stay in review until you take action.</p>
+                  <p class="text-sm text-warmgray mt-1">Supplemental booking-email intake under ${escapeHtml(googleAccountEmail)}. Manual sync only, confirmations, payment confirmations, reschedules, and cancellations only from Acuity, Lessons.com, Lessonface, or Google Calendar.</p>
                   <div class="flex flex-wrap gap-2 mt-3">
                     <span class="text-[11px] px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(gmailStatus)}">${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Account · ${escapeHtml(googleAccountEmail)}</span>
-                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Booking Emails Only</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Bookings + Payments + Changes</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Supplemental Only</span>
                     <span class="text-[11px] px-2 py-1 rounded-full bg-parchment border border-cream text-warmgray">Review First</span>
+                    <span class="text-[11px] px-2 py-1 rounded-full ${gmailSyncSummary.source_mode === "live_backend" ? "bg-sage/10 text-sage" : "bg-parchment border border-cream text-warmgray"}">Source · ${escapeHtml(getSyncSourceBadgeLabel(gmailSyncSummary))}</span>
                   </div>
                   <p class="text-xs text-warmgray mt-3">${backend.google_gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_gmail_last_sync_at))}` : calendarSyncState.gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(calendarSyncState.gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
+                  <p class="text-xs text-warmgray mt-1">Pulled range · ${escapeHtml(formatSyncWindowRange(gmailSyncSummary))}</p>
                 </div>
                 <div class="flex flex-wrap gap-2">
                   <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="runGmailAssistSync()">Run Gmail Assist</button>
@@ -11187,6 +11308,11 @@ function renderSchedulePage() {
         </div>
       </div>
       ${filterPills.length ? `<div class="page-filter-summary mb-5 fade-in" style="animation-delay:0.035s">${filterPills.join("")}</div>` : ""}
+      </div>
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5 fade-in" style="animation-delay:0.04s">
+        ${getSyncProofMarkup("Calendar", lastSyncSummary, "No live Calendar sync has run yet.")}
+        ${getSyncProofMarkup("Gmail", gmailSyncSummary, "No live Gmail sync has run yet.")}
       </div>
 
       ${
