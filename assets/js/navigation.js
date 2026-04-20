@@ -1,4 +1,4 @@
-let currentPage = "dashboard";
+let currentPage = "operations";
 let isSidebarCollapsed = false;
 
 function applySidebarState() {

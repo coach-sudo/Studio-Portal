@@ -9364,6 +9364,10 @@ function renderStudentsPage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Students</h2>
           <p id="students-header-counts" class="text-sm text-warmgray mt-0.5"></p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">Imported to review · ${summary.importedInactive}</span>
+            <span class="page-compact-summary-pill">Possible duplicates · ${summary.duplicatePairs}</span>
+          </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -9605,6 +9609,11 @@ function renderLessonsPage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Lessons</h2>
           <p class="text-sm text-warmgray mt-0.5">All lesson records across students</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">Upcoming · ${summary.upcoming}</span>
+            <span class="page-compact-summary-pill">Completed this week · ${summary.completedThisWeek}</span>
+            <span class="page-compact-summary-pill">Needs intake review · ${summary.intakeReview}</span>
+          </div>
         </div>
 
         <button
@@ -10748,6 +10757,12 @@ function renderSchedulePage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Schedule</h2>
           <p class="text-sm text-warmgray mt-0.5">Calendar first for day-to-day studio flow, with intake review available when you need to reconcile imported bookings.</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">${currentScheduleView === "calendar" ? "Calendar view" : "Intake view"}</span>
+            <span class="page-compact-summary-pill">Action needed · ${actionRows.length}</span>
+            <span class="page-compact-summary-pill">Unmatched students · ${unmatchedRows.length}</span>
+            <span class="page-compact-summary-pill">Imported total · ${importedRows.length}</span>
+          </div>
         </div>
 
         <div class="flex flex-wrap gap-2">
@@ -11251,6 +11266,11 @@ function renderAutomationsPage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Automations</h2>
           <p class="text-sm text-warmgray mt-0.5">Workflows that keep notes, intake, payments, packages, and policy follow-up from slipping.</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">Enabled · ${enabledWorkflows.length}</span>
+            <span class="page-compact-summary-pill">Need follow-up · ${attentionRows.length}</span>
+            <span class="page-compact-summary-pill">Paused · ${pausedWorkflows.length}</span>
+          </div>
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openAutomationNotesQueue()">Notes Queue</button>
@@ -11410,9 +11430,12 @@ function renderOperationsPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
+  syncCalendarStateFromBackendSettings();
+  const backend = studioDataService.getBackendSettings();
   const dailyTasks = getDailyTodoItems();
   const urgentTasks = dailyTasks.filter((task) => task.priority >= 5).slice(0, 8);
-  const intakeRows = getFilteredScheduleIntakeRows().filter((row) => row.action_required).slice(0, 8);
+  const intakeRows = getScheduleIntakeRows().filter((row) => row.action_required).slice(0, 8);
+  const outstandingRows = getOutstandingBalanceRows().slice(0, 8);
   const packageFollowUps = getPackageRecords()
     .filter((pkg) => !isPackageArchived(pkg))
     .map((pkg) => {
@@ -11428,32 +11451,48 @@ function renderOperationsPage() {
     })
     .filter((row) => row.remaining > 0 || row.label === "Expiring Soon" || row.label === "Overdue Payment")
     .slice(0, 8);
+  const currentGoogleAccount = backend.google_account_email || "coach@d-a-j.com";
+  const calendarStatus = backend.google_calendar_status || "demo_ready";
+  const gmailStatus = backend.google_gmail_status || "demo_ready";
+  const unresolvedTasks = getOverdueTodoItems().length;
 
   root.innerHTML = `
-    <div class="p-4 sm:p-6 xl:p-8 w-full">
-      <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
+    <div class="p-4 sm:p-6 xl:p-8 w-full dashboard-shell">
+      <header class="mb-5 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Daily Operations</h2>
-          <p class="text-sm text-warmgray mt-1">One page for the exact next actions that matter most today.</p>
+          <p class="text-sm text-warmgray mt-1">Start here first. The portal should tell you what to do next, what needs review, and what can wait.</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">Urgent today · ${urgentTasks.length}</span>
+            <span class="page-compact-summary-pill">Intake review · ${intakeRows.length}</span>
+            <span class="page-compact-summary-pill">Outstanding balances · ${outstandingRows.length}</span>
+            <span class="page-compact-summary-pill">Still open · ${unresolvedTasks}</span>
+          </div>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('todo')">Open To-Do</button>
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('schedule')">Open Schedule Intake</button>
+          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('finance')">Open Finance</button>
         </div>
       </header>
 
-      <div class="page-stats-strip mb-4 fade-in">
-        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--alert">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Urgent Today</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${urgentTasks.length}</p>
+      <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 mb-5 fade-in">
+        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sync Hub</p>
+            <p class="text-sm text-warmgray mt-1">Manual review-first sync under ${escapeHtml(currentGoogleAccount)}. Run Calendar or Gmail from here instead of hunting through Settings.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('settings')">Open Settings</button>
+          </div>
         </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Intake Review</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${intakeRows.length}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Package Follow-Up</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${packageFollowUps.length}</p>
+        <div class="page-compact-summary mt-4">
+          <span class="page-compact-summary-pill">Calendar · ${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
+          <span class="page-compact-summary-pill">Gmail · ${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
+          <span class="page-compact-summary-pill">Review queue · ${intakeRows.length}</span>
+          <span class="page-compact-summary-pill">Package follow-up · ${packageFollowUps.length}</span>
         </div>
       </div>
 
@@ -11499,7 +11538,12 @@ function renderOperationsPage() {
             <h3 class="font-display text-lg font-semibold">Package / Payment Follow-Up</h3>
           </div>
           <div class="p-4 space-y-3">
-            ${packageFollowUps.length ? packageFollowUps.map((row) => `
+            ${(packageFollowUps.length || outstandingRows.length) ? [...packageFollowUps, ...outstandingRows.map((row) => ({
+              student_name: row.student_name,
+              package_name: getBillingModelLabel(row.billing_model),
+              label: "Outstanding Balance",
+              remaining: row.finance.remainingAmount
+            }))].slice(0, 8).map((row) => `
               <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
                 <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>
                 <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.package_name)} · ${escapeHtml(row.label)}${row.remaining ? ` · ${formatCurrency(row.remaining)} due` : ""}</p>
@@ -11507,7 +11551,7 @@ function renderOperationsPage() {
                   <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="navigateTo('finance')">Open Finance</button>
                 </div>
               </div>
-            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No package follow-up right now</p></div>`}
+            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No package or payment follow-up right now</p></div>`}
           </div>
         </section>
       </div>
@@ -11536,6 +11580,12 @@ function renderTodoPage() {
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">To-Do</h2>
           <p class="text-sm text-warmgray mt-1">Your working checklist for follow-up, prep, intake, package pressure, and manual reminders.</p>
+          <div class="page-compact-summary mt-3">
+            <span class="page-compact-summary-pill">${currentTodoView === "weekly" ? "This week" : "Today"} · ${tasks.length}</span>
+            <span class="page-compact-summary-pill">Urgent · ${urgentTasks.length}</span>
+            <span class="page-compact-summary-pill">Still open · ${overdueTasks.length}</span>
+            <span class="page-compact-summary-pill">Manual · ${manualTasks.length}</span>
+          </div>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <div class="inline-flex rounded-xl border border-cream bg-white p-1">
@@ -11790,6 +11840,36 @@ function getSettingsSections(status, backend, blueprintRows) {
       key: "backend",
       label: "Backend",
       summary: `${status.endpoint_configured ? "Configured" : "Not configured"} · ${blueprintRows.length} tabs`
+    }
+  ];
+}
+
+function getGoogleSetupChecklist(backend) {
+  const calendarStatus = String(backend?.google_calendar_status || "").trim();
+  const gmailStatus = String(backend?.google_gmail_status || "").trim();
+  const hasAccountEmail = Boolean(String(backend?.google_account_email || "").trim());
+  const oauthConnected = [calendarStatus, gmailStatus].some((status) => ["connected", "live_ready"].includes(status));
+
+  return [
+    {
+      label: "Save Google account email",
+      done: hasAccountEmail,
+      detail: hasAccountEmail ? backend.google_account_email : "Required before sync and review can work cleanly."
+    },
+    {
+      label: "Connect Google account",
+      done: oauthConnected,
+      detail: oauthConnected ? "OAuth is connected through Netlify." : "Use Connect Google Account once to authorize Calendar and Gmail."
+    },
+    {
+      label: "Calendar ready for manual sync",
+      done: ["connected", "live_ready"].includes(calendarStatus),
+      detail: getGoogleServiceStatusLabel(calendarStatus || "backend_incomplete")
+    },
+    {
+      label: "Gmail ready for manual sync",
+      done: ["connected", "live_ready"].includes(gmailStatus),
+      detail: getGoogleServiceStatusLabel(gmailStatus || "backend_incomplete")
     }
   ];
 }
@@ -12319,6 +12399,16 @@ function renderSettingsPage() {
   const sections = getSettingsSections(status, backend, blueprintRows);
   const activeSection = sections.find((section) => section.key === currentSettingsSection) || sections[0];
   const compact = isCompactView("settings");
+  const googleSetupChecklist = getGoogleSetupChecklist(backend);
+  const googleSetupNextStep = !googleSetupChecklist[0].done
+    ? "Add your Google account email."
+    : !googleSetupChecklist[1].done
+      ? "Connect Google Account."
+      : !googleSetupChecklist[2].done
+        ? "Refresh Google status or finish Calendar auth."
+        : !googleSetupChecklist[3].done
+          ? "Refresh Google status or finish Gmail auth."
+          : "Run Calendar and Gmail sync from here or from Daily Operations.";
   const sectionHeader = {
     integrations: {
       eyebrow: "Google Connections",
@@ -12349,7 +12439,37 @@ function renderSettingsPage() {
   const activePanel = (() => {
     if (activeSection.key === "integrations") {
       return `
-        <form id="settings-google-connections-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="saveGoogleConnectionSettings(event)">
+        <div class="space-y-4 fade-in">
+          <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+            <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
+              <div class="min-w-0">
+                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Quick Setup</p>
+                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Finish Google in the fewest steps possible</h3>
+                <p class="text-sm text-warmgray mt-1">Next step: ${escapeHtml(googleSetupNextStep)}</p>
+              </div>
+              <div class="flex flex-wrap gap-2">
+                <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover" onclick="startGoogleOAuthFlow()">Connect Google Account</button>
+                <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
+                <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
+                <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+              </div>
+            </div>
+            <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-4">
+              ${googleSetupChecklist.map((step, index) => `
+                <div class="rounded-xl border ${step.done ? "border-sage/20 bg-sage/5" : "border-cream bg-parchment"} px-4 py-3">
+                  <div class="flex items-start gap-3">
+                    <span class="inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-semibold ${step.done ? "bg-sage text-white" : "bg-white border border-cream text-warmgray"}">${step.done ? "OK" : index + 1}</span>
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-warmblack">${escapeHtml(step.label)}</p>
+                      <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(step.detail)}</p>
+                    </div>
+                  </div>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+
+          <form id="settings-google-connections-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5" onsubmit="saveGoogleConnectionSettings(event)">
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <label class="block xl:col-span-2">
               <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Account Email</span>
@@ -12384,13 +12504,11 @@ function renderSettingsPage() {
           </div>
           <div class="flex flex-wrap items-center gap-2 mt-5">
             <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Google Setup</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="startGoogleOAuthFlow()">Connect Google Account</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="navigateTo('operations')">Open Daily Operations</button>
           </div>
           ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
-        </form>
+          </form>
+        </div>
       `;
     }
 
@@ -12584,7 +12702,7 @@ function renderSettingsPage() {
       <header class="mb-4 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-3 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Settings</h2>
-          <p class="text-sm text-warmgray mt-0.5">A focused control room for persistence, connections, pricing, security, and backend setup.</p>
+          <p class="text-sm text-warmgray mt-0.5">Keep setup short, connections clear, and deeper reference material tucked out of the way.</p>
         </div>
         <div class="flex flex-wrap items-center gap-3">
           <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('settings')">${getCompactToggleLabel("settings")}</button>
