@@ -427,15 +427,20 @@ function upsertActorProfile(snapshot, identity, updates) {
     };
     snapshot.actorProfiles.push(profile);
   }
-  profile.display_name = String(updates.display_name || profile.display_name || "").trim();
-  profile.bio = String(updates.bio || profile.bio || "").trim();
-  profile.location = String(updates.location || profile.location || "").trim();
-  profile.height = String(updates.height || profile.height || "").trim();
-  profile.weight = String(updates.weight || profile.weight || "").trim();
-  profile.eye_color = String(updates.eye_color || profile.eye_color || "").trim();
-  profile.hair_color = String(updates.hair_color || profile.hair_color || "").trim();
-  profile.background_color = String(updates.background_color || profile.background_color || "").trim();
-  profile.headshot_file_id = String(updates.headshot_file_id || profile.headshot_file_id || "").trim();
+  const readEditableProfileField = (fieldName, fallback = "") => (
+    Object.prototype.hasOwnProperty.call(updates, fieldName)
+      ? String(updates[fieldName] || "").trim()
+      : String(fallback || "").trim()
+  );
+  profile.display_name = readEditableProfileField("display_name", profile.display_name);
+  profile.bio = readEditableProfileField("bio", profile.bio);
+  profile.location = readEditableProfileField("location", profile.location);
+  profile.height = readEditableProfileField("height", profile.height);
+  profile.weight = readEditableProfileField("weight", profile.weight);
+  profile.eye_color = readEditableProfileField("eye_color", profile.eye_color);
+  profile.hair_color = readEditableProfileField("hair_color", profile.hair_color);
+  profile.background_color = readEditableProfileField("background_color", profile.background_color);
+  profile.headshot_file_id = readEditableProfileField("headshot_file_id", profile.headshot_file_id);
   const wantsLive = String(updates.status || "").toLowerCase() === "active";
   profile.status = identity.student && identity.student.actor_page_eligible === true && wantsLive ? "Active" : "Draft";
   profile.updated_at = now;

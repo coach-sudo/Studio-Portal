@@ -6201,6 +6201,67 @@ function getMaterialSourceUrl(file) {
   return String(file?.external_url || file?.file_url || "").trim();
 }
 
+function getEmbeddableMaterialUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (/drive\.google\.com$/i.test(parsed.hostname)) {
+      const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/i);
+      const fileId = fileMatch ? fileMatch[1] : parsed.searchParams.get("id");
+      if (fileId) return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+    }
+  } catch (error) {
+    return raw;
+  }
+  return raw;
+}
+
+function isImageMaterial(file) {
+  const url = getMaterialSourceUrl(file);
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test(blob) || /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
+}
+
+function isPdfMaterial(file) {
+  const url = getMaterialSourceUrl(file);
+  return /pdf/i.test(`${file?.mime_type || ""} ${file?.file_name || ""} ${file?.title || ""}`) || /\.pdf(\?.*)?$/i.test(url);
+}
+
+function getMaterialPreviewMarkup(file, options = {}) {
+  const url = getMaterialSourceUrl(file);
+  const previewUrl = getEmbeddableMaterialUrl(url);
+  const title = getMaterialDisplayName(file);
+  const compact = options.compact === true;
+  const frameClass = compact
+    ? "w-full h-28 rounded-xl border border-cream bg-parchment overflow-hidden"
+    : "w-full min-h-[180px] rounded-xl border border-cream bg-parchment overflow-hidden";
+  const iconClass = compact ? "w-5 h-5" : "w-8 h-8";
+
+  if (!url) {
+    return `
+      <div class="${frameClass} flex items-center justify-center">
+        <i data-lucide="file-text" class="${iconClass} text-warmgray"></i>
+      </div>
+    `;
+  }
+
+  if (isImageMaterial(file) && !/drive\.google\.com/i.test(url)) {
+    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="${frameClass} object-cover" loading="lazy" />`;
+  }
+
+  if (/drive\.google\.com/i.test(url) || isPdfMaterial(file)) {
+    return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(previewUrl)}" class="${frameClass}" loading="lazy"></iframe>`;
+  }
+
+  const isVideo = normalizeMaterialKind(file?.material_kind, file?.source_type) === "VIDEO" || /reel|self tape|video/i.test(`${file?.category || ""} ${file?.title || ""}`);
+  return `
+    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="${frameClass} flex items-center justify-center ${isVideo ? "bg-warmblack" : "bg-parchment"}">
+      <i data-lucide="${isVideo ? "play" : "external-link"}" class="${iconClass} ${isVideo ? "text-gold" : "text-warmgray"}"></i>
+    </a>
+  `;
+}
+
 function getMaterialActionLabel(file) {
   const sourceType = normalizeMaterialSourceType(file?.source_type);
   const kind = normalizeMaterialKind(file?.material_kind, sourceType);
@@ -6462,6 +6523,54 @@ function getPublicMaterialReviewRows() {
     .sort((a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime());
 }
 
+function getNextActorProfileId() {
+  const year = String(new Date().getFullYear());
+  const maxId = getActorProfileRecords().reduce((max, profile) => {
+    const match = String(profile.actor_profile_id || "").match(/^ACT-(\d{4})-(\d{6})$/);
+    if (!match || match[1] !== year) return max;
+    return Math.max(max, Number(match[2]));
+  }, 0);
+  return `ACT-${year}-${String(maxId + 1).padStart(6, "0")}`;
+}
+
+function getActorProfileSlug(student) {
+  return String(student?.full_name || student?.student_id || "actor")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function ensureActorProfileForStudent(studentId) {
+  const existing = getActorProfileByStudentId(studentId);
+  if (existing) return existing;
+  const student = getSchemaStudentById(studentId);
+  if (!student) return null;
+  const now = new Date().toISOString();
+  const profile = {
+    actor_profile_id: getNextActorProfileId(),
+    student_id: studentId,
+    slug: getActorProfileSlug(student),
+    status: "Draft",
+    display_name: student.full_name || "",
+    bio: "",
+    location: "",
+    height: "",
+    weight: "",
+    eye_color: "",
+    hair_color: "",
+    background_color: "#f7f3ee",
+    headshot_file_id: "",
+    updated_at: now
+  };
+  insertRecord("actorProfiles", profile, { prepend: false });
+  patchRecordById("students", studentId, {
+    actor_profile_id: profile.actor_profile_id,
+    actor_page_status: profile.status,
+    updated_at: now
+  });
+  return profile;
+}
+
 function openStudentPublicMaterials(studentId) {
   selectedStudentId = studentId;
   navigateTo("profile");
@@ -6506,7 +6615,7 @@ function syncPortalReviewDecision() {
 function approvePublicMaterial(fileId) {
   const file = getFileById(fileId);
   if (!file) return;
-  const actorProfile = getActorProfileByStudentId(file.student_id);
+  const actorProfile = ensureActorProfileForStudent(file.student_id);
   const isHeadshot = /headshot/i.test(`${file.category || ""} ${file.title || ""} ${file.file_name || ""}`);
 
   patchRecordById("files", fileId, {
@@ -6555,6 +6664,33 @@ function rejectPublicMaterial(fileId) {
     tone: "warm",
     source: "materials"
   });
+}
+
+function deleteMaterialNow(fileId) {
+  const file = getFileById(fileId);
+  if (!file) return;
+  const label = getMaterialDisplayName(file);
+  if (!confirm(`Delete "${label}" permanently? This removes it from the student profile, public page, and portal material library.`)) {
+    return;
+  }
+
+  removeRecordById("files", fileId);
+  if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  if (currentPage === "operations") renderOperationsPage();
+  syncPortalReviewDecision();
+  notifyUser({
+    title: "Material Deleted",
+    message: `${label} was removed.`,
+    tone: "success",
+    source: "materials"
+  });
+}
+
+function previewPublicMaterial(fileId) {
+  const file = getFileById(fileId);
+  if (!file) return;
+  selectedStudentId = file.student_id || selectedStudentId;
+  navigateTo("public");
 }
 
 function deleteMaterialPermanently(fileId) {
@@ -14301,7 +14437,8 @@ function renderProfileMaterialsTab(studentId) {
 
     return rows.map((row) => `
       <div class="rounded-xl border border-cream bg-white p-4">
-        <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div class="grid grid-cols-1 lg:grid-cols-[160px_minmax(0,1fr)_auto] gap-4">
+          <div>${getMaterialPreviewMarkup(row, { compact: true })}</div>
           <div class="min-w-0">
             <div class="flex items-center gap-2 flex-wrap">
               <p class="text-sm font-semibold text-warmblack break-words">${escapeHtml(row.display_name)}</p>
@@ -14320,13 +14457,13 @@ function renderProfileMaterialsTab(studentId) {
             <p class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_label)}</p>
             ${row.notes ? `<p class="text-xs text-warmgray mt-1">${escapeHtml(row.notes)}</p>` : ""}
           </div>
-          <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <div class="flex flex-wrap lg:flex-col items-start lg:items-stretch gap-2 shrink-0">
             ${row.source_url ? `
               <a
                 href="${escapeHtml(row.source_url)}"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold card-hover"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold card-hover text-center"
               >
                 ${escapeHtml(row.action_label)}
               </a>
@@ -14338,6 +14475,15 @@ function renderProfileMaterialsTab(studentId) {
             >
               Edit
             </button>
+            ${normalizeMaterialScope(row.scope) === "ACTOR_MATERIAL" ? `
+              <button
+                type="button"
+                onclick="previewPublicMaterial('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+              >
+                Preview
+              </button>
+            ` : ""}
             ${
               row.public_page_status === "PENDING_REVIEW"
                 ? `
@@ -14346,7 +14492,7 @@ function renderProfileMaterialsTab(studentId) {
                     onclick="approvePublicMaterial('${row.file_id}')"
                     class="px-3 py-2 rounded-lg bg-sage/10 border border-sage/20 text-xs font-medium text-sage card-hover"
                   >
-                    Approve Public
+                    Approve
                   </button>
                   <button
                     type="button"
@@ -14371,6 +14517,13 @@ function renderProfileMaterialsTab(studentId) {
                 `
                 : ""
             }
+            <button
+              type="button"
+              onclick="deleteMaterialNow('${row.file_id}')"
+              class="px-3 py-2 rounded-lg bg-burgundy/5 border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
+            >
+              Delete
+            </button>
             ${
               secondaryActionLabel && secondaryActionHandler
                 ? `
@@ -14398,6 +14551,13 @@ function renderProfileMaterialsTab(studentId) {
           <p class="text-sm text-warmgray mt-1">Keep current actor assets, coaching files, and reusable resources easy to reach. Vault stays tucked away until you need history.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onclick="refreshPortalReviewQueue()"
+            class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
+          >
+            Refresh From Portal
+          </button>
           <button
             type="button"
             onclick="toggleProfileMaterialsVault()"
@@ -15275,6 +15435,10 @@ function renderPublicPage() {
 
   root.innerHTML = `
     <div id="public-page-shell">
+      <div class="max-w-4xl mx-auto px-8 py-4 flex flex-wrap items-center justify-between gap-3">
+        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="refreshPortalReviewQueue()">Refresh From Portal</button>
+        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${selectedStudentId}')">Manage Materials</button>
+      </div>
       <div id="public-hero" class="public-hero text-white">
         <div class="max-w-4xl mx-auto px-8 pt-16 pb-20">
           <div class="flex flex-col md:flex-row items-center gap-10 fade-in">
@@ -15656,8 +15820,13 @@ function populatePublicPage(studentId) {
   const headshotEl = document.getElementById("public-headshot");
   const headshotUrl = approvedHeadshot ? getMaterialSourceUrl(approvedHeadshot) : "";
   if (headshotEl && headshotUrl) {
-    headshotEl.style.backgroundImage = `url("${headshotUrl.replace(/"/g, "%22")}")`;
-    headshotEl.innerHTML = "";
+    if (isImageMaterial(approvedHeadshot) && !/drive\.google\.com/i.test(headshotUrl)) {
+      headshotEl.style.backgroundImage = `url("${headshotUrl.replace(/"/g, "%22")}")`;
+      headshotEl.innerHTML = "";
+    } else {
+      headshotEl.style.backgroundImage = "";
+      headshotEl.innerHTML = getMaterialPreviewMarkup(approvedHeadshot, { compact: true });
+    }
   }
 
   const specsEl = document.getElementById("public-specs");
@@ -15699,15 +15868,9 @@ function populatePublicPage(studentId) {
         const title = getMaterialDisplayName(file);
         const url = getMaterialSourceUrl(file);
         const category = file.category || getMaterialKindLabel(file.material_kind);
-        const isVideo = normalizeMaterialKind(file.material_kind, file.source_type) === "VIDEO" || /reel|self tape/i.test(category);
-        const isImage = /headshot|photo|image/i.test(category) || /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
         return `
           <article class="bg-white rounded-2xl border border-cream p-6 fade-in">
-            <div class="${isVideo ? "aspect-video bg-warmblack text-white" : "bg-parchment"} rounded-xl border border-cream flex items-center justify-center min-h-[180px] mb-4">
-              ${isImage && url
-                ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="w-full h-full max-h-[320px] object-cover rounded-xl" />`
-                : `<i data-lucide="${isVideo ? "play" : "file-text"}" class="w-8 h-8 ${isVideo ? "text-gold" : "text-warmgray"}"></i>`}
-            </div>
+            <div class="mb-4">${getMaterialPreviewMarkup(file)}</div>
             <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(category)}</p>
             <h3 class="font-display text-xl font-semibold text-warmblack mt-1">${escapeHtml(title)}</h3>
             ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-4 text-sm font-medium text-gold">Open <i data-lucide="external-link" class="w-4 h-4"></i></a>` : ""}

@@ -279,6 +279,28 @@ function getStudentPortalPreviewUrl(url) {
   return raw;
 }
 
+function isStudentPortalImageMaterial(file) {
+  const url = String(file?.external_url || file?.file_url || "").trim();
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test(blob) || /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
+}
+
+function renderStudentPortalMaterialPreview(file) {
+  const url = String(file?.external_url || file?.file_url || "").trim();
+  const previewUrl = getStudentPortalPreviewUrl(url);
+  const title = file?.title || file?.file_name || "Material";
+  if (!url) {
+    return `<div class="w-full h-28 rounded-xl border border-cream bg-white flex items-center justify-center"><i data-lucide="file-text" class="w-5 h-5 text-warmgray"></i></div>`;
+  }
+  if (isStudentPortalImageMaterial(file) && !/drive\.google\.com/i.test(url)) {
+    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="w-full h-28 rounded-xl border border-cream object-cover bg-white" loading="lazy" />`;
+  }
+  if (/drive\.google\.com|\.pdf(\?.*)?$/i.test(url) || /pdf/i.test(file?.mime_type || "")) {
+    return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(previewUrl)}" class="w-full h-28 rounded-xl border border-cream bg-white" loading="lazy"></iframe>`;
+  }
+  return `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="w-full h-28 rounded-xl border border-cream bg-white flex items-center justify-center"><i data-lucide="external-link" class="w-5 h-5 text-gold"></i></a>`;
+}
+
 function getStudentPortalTabs(permissions = {}) {
   return [
     { key: "overview", label: "Overview", icon: "layout-dashboard", enabled: true },
@@ -689,10 +711,15 @@ function renderStudentPortalMaterialsTab(scoped) {
           <div class="space-y-3 mt-4">
             ${scoped.materials.length ? scoped.materials.map((file) => `
               <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-sm font-semibold text-warmblack">${escapeHtml(file.title || file.file_name || "Material")}</p>
-                <p class="text-xs text-warmgray mt-1">${escapeHtml(file.category || file.material_kind || "Resource")}</p>
-                ${file.public_page_status ? `<p class="text-xs text-warmgray mt-1">Public page: ${escapeHtml(String(file.public_page_status).replace(/_/g, " ").toLowerCase())}</p>` : ""}
-                ${file.external_url || file.file_url ? `<a class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2" href="${escapeHtml(file.external_url || file.file_url)}" target="_blank" rel="noopener">Open <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ""}
+                <div class="grid grid-cols-1 sm:grid-cols-[120px_minmax(0,1fr)] gap-3">
+                  <div>${renderStudentPortalMaterialPreview(file)}</div>
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-warmblack">${escapeHtml(file.title || file.file_name || "Material")}</p>
+                    <p class="text-xs text-warmgray mt-1">${escapeHtml(file.category || file.material_kind || "Resource")}</p>
+                    ${file.public_page_status ? `<p class="text-xs text-warmgray mt-1">Public page: ${escapeHtml(String(file.public_page_status).replace(/_/g, " ").toLowerCase())}</p>` : ""}
+                    ${file.external_url || file.file_url ? `<a class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2" href="${escapeHtml(file.external_url || file.file_url)}" target="_blank" rel="noopener">Open <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ""}
+                  </div>
+                </div>
               </div>
             `).join("") : `<p class="text-sm text-warmgray">No student-visible materials yet.</p>`}
           </div>
