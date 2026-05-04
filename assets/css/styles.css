@@ -1,9 +1,27 @@
 
 body {
   font-family: 'DM Sans', sans-serif;
-  background: #f7f3ee;
-  color: #1f1a17;
+  background: #f5f6f2;
+  color: #17211d;
   overflow-wrap: break-word;
+}
+
+:root {
+  --app-bg: #f5f6f2;
+  --app-surface: #ffffff;
+  --app-surface-soft: #eef2ec;
+  --app-ink: #17211d;
+  --app-muted: #66736b;
+  --app-border: #dbe1d8;
+  --app-border-strong: #c6d0c5;
+  --app-accent: #b88a2f;
+  --app-accent-soft: rgba(184, 138, 47, 0.12);
+  --app-good: #4f7d60;
+  --app-danger: #9b3146;
+  --app-shadow: 0 1px 2px rgba(23, 33, 29, 0.04), 0 12px 28px rgba(23, 33, 29, 0.07);
+  --app-shadow-subtle: 0 1px 2px rgba(23, 33, 29, 0.04);
+  --app-radius: 8px;
+  --app-radius-lg: 10px;
 }
 
 #sidebar {
@@ -43,15 +61,16 @@ body {
 }
 
 .font-display {
-  font-family: 'Playfair Display', serif;
+  font-family: 'DM Sans', sans-serif;
+  letter-spacing: 0;
 }
 
 .theatrical-gradient {
-  background: linear-gradient(180deg, #2c2623 0%, #1f1a17 100%);
+  background: #17211d;
 }
 
 .gold-gradient {
-  background: linear-gradient(135deg, #d8bb63 0%, #c9a84c 100%);
+  background: linear-gradient(135deg, #f0d489 0%, #b88a2f 100%);
 }
 
 .headshot-placeholder {
@@ -61,19 +80,20 @@ body {
 }
 
 .nav-item {
-  transition: all 0.25s ease;
-  border-radius: 0.5rem;
+  transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  border-radius: var(--app-radius);
+  border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background: rgba(201, 168, 76, 0.12);
+  background: rgba(255, 255, 255, 0.07);
   color: #ffffff;
 }
 
 .nav-item.active {
-  background: rgba(201, 168, 76, 0.16);
+  background: rgba(255, 255, 255, 0.12);
   color: #ffffff;
-  border-left: 3px solid #c9a84c;
+  border-color: rgba(240, 212, 137, 0.28);
 }
 
 .card-hover {
@@ -81,8 +101,8 @@ body {
 }
 
 .card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 28px rgba(31, 26, 23, 0.08);
+  transform: translateY(-1px);
+  box-shadow: var(--app-shadow);
 }
 
 .dashboard-shell {
@@ -122,8 +142,8 @@ body {
 }
 
 .page-summary-card {
-  border: 1px solid #e7ddd0;
-  border-radius: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
   background: #ffffff;
   padding: 1rem 1.1rem;
   min-width: 0;
@@ -144,7 +164,7 @@ body {
   flex: 1 1 150px;
   padding: 0.8rem 0.95rem;
   border: 1px solid #e7ddd0;
-  border-radius: 1rem;
+  border-radius: var(--app-radius);
   background: rgba(255, 255, 255, 0.92);
 }
 
@@ -206,9 +226,9 @@ body {
 
 .page-empty-state {
   border: 1px dashed rgba(125, 116, 109, 0.35);
-  border-radius: 1rem;
-  background: rgba(247, 243, 238, 0.9);
-  padding: 2rem 1.25rem;
+  border-radius: var(--app-radius);
+  background: rgba(238, 242, 236, 0.9);
+  padding: 1.35rem 1rem;
   text-align: center;
 }
 
@@ -782,5 +802,230 @@ table th {
     position: sticky;
     top: 5.5rem;
     align-self: start;
+  }
+}
+
+/*********************************
+ * 2026 PRODUCT SYSTEM OVERRIDES
+ *********************************/
+body {
+  font-size: 14px;
+}
+
+#sidebar {
+  width: 232px;
+  min-width: 232px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#sidebar .p-6 {
+  padding: 1rem;
+}
+
+#sidebar nav {
+  padding: 0.85rem;
+}
+
+.sidebar-section-label {
+  color: rgba(219, 225, 216, 0.48) !important;
+  letter-spacing: 0.12em;
+}
+
+.sidebar-coach-card {
+  border-radius: var(--app-radius) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+#page-root {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(245, 246, 242, 0.96) 220px),
+    var(--app-bg);
+}
+
+#page-root > div {
+  padding: 1.25rem !important;
+}
+
+.dashboard-shell,
+.students-shell,
+.lessons-shell,
+.schedule-shell,
+.finance-shell,
+.settings-shell,
+.automation-shell,
+.todo-shell,
+.profile-shell {
+  max-width: 1480px;
+}
+
+.rounded-3xl,
+.rounded-2xl,
+.rounded-xl,
+.rounded-lg {
+  border-radius: var(--app-radius) !important;
+}
+
+.bg-white {
+  background-color: var(--app-surface) !important;
+}
+
+.bg-parchment {
+  background-color: var(--app-surface-soft) !important;
+}
+
+.border-cream {
+  border-color: var(--app-border) !important;
+}
+
+.text-warmblack {
+  color: var(--app-ink) !important;
+}
+
+.text-warmgray {
+  color: var(--app-muted) !important;
+}
+
+.text-gold {
+  color: var(--app-accent) !important;
+}
+
+.text-sage {
+  color: var(--app-good) !important;
+}
+
+.text-burgundy {
+  color: var(--app-danger) !important;
+}
+
+.dashboard-panel,
+.dashboard-stat-card,
+.profile-panel,
+.finance-results-panel,
+.finance-filter-panel,
+.lessons-results-panel,
+.lessons-filter-panel,
+.page-summary-card,
+.page-stat-chip,
+.app-modal-shell,
+.settings-shell section,
+.student-portal-panel {
+  box-shadow: var(--app-shadow-subtle);
+}
+
+.dashboard-panel-header,
+.profile-tab-bar {
+  border-color: var(--app-border) !important;
+}
+
+button,
+input,
+select,
+textarea {
+  font-family: 'DM Sans', sans-serif;
+}
+
+button {
+  letter-spacing: 0;
+}
+
+.gold-gradient {
+  color: #17211d !important;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.38) inset;
+}
+
+input,
+select,
+textarea {
+  background-color: #ffffff;
+  border-color: var(--app-border) !important;
+  border-radius: var(--app-radius) !important;
+}
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+table th {
+  color: var(--app-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: #f8faf7;
+}
+
+table td,
+table th {
+  border-color: var(--app-border) !important;
+}
+
+.page-toolbar-sticky::before {
+  border-radius: var(--app-radius);
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(219, 225, 216, 0.72);
+}
+
+.page-stats-strip {
+  gap: 0.5rem;
+}
+
+.page-stat-chip {
+  flex: 1 1 132px;
+  padding: 0.65rem 0.75rem;
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.page-compact-summary-pill,
+.page-filter-pill {
+  border-color: var(--app-border);
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.student-portal-tabbar {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 25;
+  backdrop-filter: blur(12px);
+  background: rgba(255, 255, 255, 0.86) !important;
+}
+
+.student-portal-script-frame {
+  min-height: min(72vh, 760px);
+}
+
+@media (max-width: 768px) {
+  #app-root {
+    flex-direction: column;
+  }
+
+  #sidebar,
+  #app-root.sidebar-collapsed #sidebar {
+    width: 100%;
+    min-width: 100%;
+    min-height: auto;
+  }
+
+  #sidebar nav {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    padding: 0.75rem;
+  }
+
+  #sidebar nav .nav-item {
+    flex: 0 0 auto;
+    width: auto;
+    white-space: nowrap;
+  }
+
+  #sidebar nav .sidebar-section-label,
+  #sidebar .sidebar-coach-card,
+  #sidebar-toggle,
+  #app-root.sidebar-collapsed .sidebar-label {
+    display: none !important;
+  }
+
+  #page-root > div {
+    padding: 0.85rem !important;
   }
 }

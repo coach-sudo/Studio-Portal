@@ -17,14 +17,14 @@
       theme: {
         extend: {
           colors: {
-            warmblack: "#1f1a17",
-            charcoal: "#2c2623",
-            parchment: "#f7f3ee",
-            cream: "#e7ddd0",
-            warmgray: "#7d746d",
-            gold: "#c9a84c",
-            burgundy: "#8c2f39",
-            sage: "#6f8f72"
+            warmblack: "#17211d",
+            charcoal: "#22302a",
+            parchment: "#f5f6f2",
+            cream: "#dbe1d8",
+            warmgray: "#66736b",
+            gold: "#b88a2f",
+            burgundy: "#9b3146",
+            sage: "#4f7d60"
           },
           fontFamily: {
             sans: ["DM Sans", "sans-serif"],
@@ -78,22 +78,16 @@
       </div>
 
       <nav class="flex-1 py-4 px-3 space-y-1 overflow-auto">
-        <button
-          onclick="navigateTo('dashboard')"
-          data-nav="dashboard"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="layout-dashboard" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Dashboard</span>
-        </button>
-
+        <div class="pb-2 px-3">
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Workspace</p>
+        </div>
         <button
           onclick="navigateTo('operations')"
           data-nav="operations"
           class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/90"
         >
           <i data-lucide="clipboard-list" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Operations</span>
+          <span class="sidebar-label">Command Center</span>
         </button>
 
         <button
@@ -102,7 +96,7 @@
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
           <i data-lucide="users" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Students</span>
+          <span class="sidebar-label">People</span>
         </button>
 
         <button
@@ -115,6 +109,28 @@
         </button>
 
         <button
+          onclick="navigateTo('schedule')"
+          data-nav="schedule"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Schedule</span>
+        </button>
+
+        <button
+          onclick="navigateTo('notes')"
+          data-nav="notes"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Follow-Up</span>
+        </button>
+
+        <div class="pt-4 pb-2 px-3">
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Back Office</p>
+        </div>
+
+        <button
           onclick="navigateTo('finance')"
           data-nav="finance"
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
@@ -124,31 +140,17 @@
         </button>
 
         <button
-          onclick="navigateTo('notes')"
-          data-nav="notes"
+          onclick="navigateTo('todo')"
+          data-nav="todo"
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
-          <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Notes Queue</span>
+          <i data-lucide="list-todo" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Tasks</span>
         </button>
 
-        <button
-          onclick="navigateTo('profile')"
-          data-nav="profile"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="user" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Student Profile</span>
-        </button>
-
-        <button
-          onclick="navigateTo('public')"
-          data-nav="public"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="globe" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Public Page</span>
-        </button>
+        <div class="pt-4 pb-2 px-3">
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Portal</p>
+        </div>
 
         <button
           onclick="navigateTo('student_portal')"
@@ -159,32 +161,18 @@
           <span class="sidebar-label">Student Portal</span>
         </button>
 
+        <button
+          onclick="navigateTo('public')"
+          data-nav="public"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="globe" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Public Preview</span>
+        </button>
+
         <div class="pt-4 pb-2 px-3">
-          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Quick Links</p>
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">System</p>
         </div>
-
-        <button
-          onclick="navigateTo('schedule')"
-          data-nav="schedule"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Schedule</span>
-        </button>
-
-        <button
-          onclick="navigateTo('todo')"
-          data-nav="todo"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="list-todo" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">To-Do</span>
-        </button>
-
-        <button onclick="openQuickLinkPackages()" class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70">
-          <i data-lucide="package" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Packages</span>
-        </button>
 
         <button
           onclick="navigateTo('automations')"
@@ -193,15 +181,6 @@
         >
           <i data-lucide="bot" class="w-[18px] h-[18px]"></i>
           <span class="sidebar-label">Automations</span>
-        </button>
-
-        <button
-          onclick="navigateTo('reports')"
-          data-nav="reports"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Reports</span>
         </button>
 
         <button

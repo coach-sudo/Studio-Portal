@@ -87,7 +87,7 @@ function renderCurrentPage() {
     settings: typeof renderSettingsPage === "function" ? renderSettingsPage : null
   };
 
-  const renderer = pageRenderers[currentPage] || pageRenderers.dashboard;
+  const renderer = pageRenderers[currentPage] || pageRenderers.operations || pageRenderers.dashboard;
 
   try {
     if (typeof renderer !== "function") {
@@ -104,7 +104,7 @@ function renderCurrentPage() {
             <p class="text-sm font-semibold text-warmblack">This page hit an unexpected error.</p>
             <p class="text-xs text-warmgray mt-2 wrap-anywhere">${String(error?.message || error || "Unknown page error.")}</p>
             <div class="mt-4 flex flex-wrap justify-center gap-2">
-              <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('dashboard')">Go to Dashboard</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('operations')">Go to Command Center</button>
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="renderCurrentPage()">Retry</button>
             </div>
           </div>

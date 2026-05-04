@@ -211,11 +211,9 @@ function getStudentPortalTabs(permissions = {}) {
     { key: "overview", label: "Overview", icon: "layout-dashboard", enabled: true },
     { key: "lessons", label: "Lessons", icon: "calendar-days", enabled: true },
     { key: "script", label: "Current Script", icon: "file-search", enabled: permissions.script !== false },
-    { key: "homework", label: "Homework", icon: "list-checks", enabled: permissions.homework !== false },
-    { key: "materials", label: "Materials", icon: "folder-open", enabled: permissions.materials !== false },
-    { key: "notes", label: "Notes", icon: "notebook-text", enabled: permissions.notes !== false },
-    { key: "finance", label: "Packages", icon: "wallet", enabled: permissions.finance === true },
-    { key: "public", label: "Public Page", icon: "globe", enabled: permissions.publicPage !== false }
+    { key: "assignments", label: "Assignments", icon: "list-checks", enabled: permissions.homework !== false || permissions.notes !== false },
+    { key: "materials", label: "Materials & Public", icon: "folder-open", enabled: permissions.materials !== false || permissions.publicPage !== false },
+    { key: "finance", label: "Packages", icon: "wallet", enabled: permissions.finance === true }
   ].filter((tab) => tab.enabled);
 }
 
@@ -381,7 +379,7 @@ function renderStudentPortalDashboard(identity, scoped) {
           ${studentPortalMessage ? `<div class="mt-4">${getStudentPortalMessageMarkup()}</div>` : ""}
         </section>
 
-        <nav class="rounded-2xl border border-cream bg-white p-2 flex flex-wrap gap-2">
+        <nav class="student-portal-tabbar rounded-2xl border border-cream bg-white p-2 flex flex-wrap gap-2">
           ${tabs.map((tab) => `
             <button type="button" onclick="setStudentPortalTab('${tab.key}')" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${studentPortalState.activeTab === tab.key ? "gold-gradient text-warmblack" : "bg-parchment text-warmgray"}">
               <i data-lucide="${tab.icon}" class="w-4 h-4"></i>
@@ -403,9 +401,7 @@ function renderStudentPortalActiveTab(scoped, meta) {
   if (tab === "lessons") return renderStudentPortalLessonsTab(scoped);
   if (tab === "finance") return renderStudentPortalFinanceTab(scoped, meta);
   if (tab === "materials") return renderStudentPortalMaterialsTab(scoped);
-  if (tab === "notes") return renderStudentPortalNotesTab(scoped);
-  if (tab === "homework") return renderStudentPortalHomeworkTab(scoped);
-  if (tab === "public") return renderStudentPortalPublicTab(scoped);
+  if (tab === "assignments") return renderStudentPortalAssignmentsTab(scoped);
   if (tab === "script") return renderStudentPortalScriptTab(scoped);
   return renderStudentPortalOverviewTab(scoped, meta);
 }
@@ -500,58 +496,79 @@ function renderStudentPortalFinanceTab(scoped, meta) {
   `;
 }
 
-function renderStudentPortalHomeworkTab(scoped) {
+function renderStudentPortalAssignmentsTab(scoped) {
   return `
-    <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
-      <h3 class="font-display text-xl font-semibold text-warmblack">Homework</h3>
-      <div class="space-y-3 mt-4">
-        ${scoped.homework.length ? scoped.homework.map((item) => `
-          <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-            <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.title || "Homework")}</p>
-            <p class="text-xs text-warmgray mt-1">${item.due_date ? `Due ${escapeHtml(formatLongDate(item.due_date))}` : "No due date"} - ${escapeHtml(item.status || "Assigned")}</p>
-            <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(item.details || "")}</p>
-          </div>
-        `).join("") : `<p class="text-sm text-warmgray">No homework is assigned.</p>`}
-      </div>
-    </section>
-  `;
-}
-
-function renderStudentPortalNotesTab(scoped) {
-  return `
-    <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
-      <h3 class="font-display text-xl font-semibold text-warmblack">Published Notes</h3>
-      <div class="space-y-3 mt-4">
-        ${scoped.notes.length ? scoped.notes.map((note) => `
-          <article class="rounded-xl border border-cream bg-parchment px-4 py-3">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
-              <h4 class="text-sm font-semibold text-warmblack">${escapeHtml(note.title || "Lesson Note")}</h4>
-              <span class="text-xs text-warmgray">${escapeHtml(formatLongDate(note.published_at || note.updated_at || note.created_at))}</span>
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
+      <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+        <h3 class="font-display text-xl font-semibold text-warmblack">Homework</h3>
+        <div class="space-y-3 mt-4">
+          ${scoped.homework.length ? scoped.homework.map((item) => `
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.title || "Homework")}</p>
+              <p class="text-xs text-warmgray mt-1">${item.due_date ? `Due ${escapeHtml(formatLongDate(item.due_date))}` : "No due date"} - ${escapeHtml(item.status || "Assigned")}</p>
+              <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(item.details || "")}</p>
             </div>
-            <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(note.body || "No note body.")}</p>
-          </article>
-        `).join("") : `<p class="text-sm text-warmgray">No published notes are visible yet.</p>`}
-      </div>
-    </section>
+          `).join("") : `<p class="text-sm text-warmgray">No homework is assigned.</p>`}
+        </div>
+      </section>
+      <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+        <h3 class="font-display text-xl font-semibold text-warmblack">Published Notes</h3>
+        <div class="space-y-3 mt-4">
+          ${scoped.notes.length ? scoped.notes.map((note) => `
+            <article class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                <h4 class="text-sm font-semibold text-warmblack">${escapeHtml(note.title || "Lesson Note")}</h4>
+                <span class="text-xs text-warmgray">${escapeHtml(formatLongDate(note.published_at || note.updated_at || note.created_at))}</span>
+              </div>
+              <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(note.body || "No note body.")}</p>
+            </article>
+          `).join("") : `<p class="text-sm text-warmgray">No published notes are visible yet.</p>`}
+        </div>
+      </section>
+    </div>
   `;
 }
 
 function renderStudentPortalMaterialsTab(scoped) {
+  const profile = scoped.publicProfile || {};
+  const canEditPublicPage = scoped.permissions?.publicPage !== false;
+  const canSeeMaterials = scoped.permissions?.materials !== false;
+
   return `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <section class="xl:col-span-2 rounded-2xl border border-cream bg-white p-4 sm:p-5">
-        <h3 class="font-display text-xl font-semibold text-warmblack">Materials</h3>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
-          ${scoped.materials.length ? scoped.materials.map((file) => `
-            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-              <p class="text-sm font-semibold text-warmblack">${escapeHtml(file.title || file.file_name || "Material")}</p>
-              <p class="text-xs text-warmgray mt-1">${escapeHtml(file.category || file.material_kind || "Resource")}</p>
-              ${file.external_url || file.file_url ? `<a class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2" href="${escapeHtml(file.external_url || file.file_url)}" target="_blank" rel="noopener">Open <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ""}
-            </div>
-          `).join("") : `<p class="text-sm text-warmgray">No student-visible materials yet.</p>`}
-        </div>
+      ${canEditPublicPage ? `
+        <form class="student-portal-panel rounded-2xl border border-cream bg-white p-4 sm:p-5" onsubmit="submitStudentPortalPublicProfile(event)">
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Public Page</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Profile Draft</h3>
+          <div class="space-y-3 mt-4">
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Display Name</span>
+              <input name="display_name" type="text" value="${escapeHtml(profile.display_name || scoped.student?.full_name || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Bio</span>
+              <textarea name="bio" rows="9" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(profile.bio || "")}</textarea>
+            </label>
+            <button type="submit" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Save Profile Draft</button>
+          </div>
+        </form>
+      ` : ""}
+      <section class="${canEditPublicPage ? "xl:col-span-1" : "xl:col-span-2"} student-portal-panel rounded-2xl border border-cream bg-white p-4 sm:p-5">
+        <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Materials</p>
+        <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Visible Library</h3>
+        ${canSeeMaterials ? `
+          <div class="space-y-3 mt-4">
+            ${scoped.materials.length ? scoped.materials.map((file) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">${escapeHtml(file.title || file.file_name || "Material")}</p>
+                <p class="text-xs text-warmgray mt-1">${escapeHtml(file.category || file.material_kind || "Resource")}</p>
+                ${file.external_url || file.file_url ? `<a class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2" href="${escapeHtml(file.external_url || file.file_url)}" target="_blank" rel="noopener">Open <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ""}
+              </div>
+            `).join("") : `<p class="text-sm text-warmgray">No student-visible materials yet.</p>`}
+          </div>
+        ` : `<p class="text-sm text-warmgray mt-4">Material visibility is currently disabled for this portal.</p>`}
       </section>
-      ${renderStudentPortalMaterialForm()}
+      ${canEditPublicPage ? renderStudentPortalMaterialForm() : ""}
     </div>
   `;
 }
@@ -596,29 +613,6 @@ function submitStudentPortalMaterial(event) {
   }, "Material submitted for public page review.");
 }
 
-function renderStudentPortalPublicTab(scoped) {
-  const profile = scoped.publicProfile || {};
-  return `
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-5">
-      <form class="rounded-2xl border border-cream bg-white p-4 sm:p-5" onsubmit="submitStudentPortalPublicProfile(event)">
-        <h3 class="font-display text-xl font-semibold text-warmblack">Public Profile</h3>
-        <div class="space-y-3 mt-4">
-          <label class="block">
-            <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Display Name</span>
-            <input name="display_name" type="text" value="${escapeHtml(profile.display_name || scoped.student?.full_name || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
-          </label>
-          <label class="block">
-            <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Bio</span>
-            <textarea name="bio" rows="8" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(profile.bio || "")}</textarea>
-          </label>
-          <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Save Public Profile</button>
-        </div>
-      </form>
-      ${renderStudentPortalMaterialForm()}
-    </div>
-  `;
-}
-
 function submitStudentPortalPublicProfile(event) {
   event.preventDefault();
   const form = event.currentTarget;
@@ -654,9 +648,9 @@ function renderStudentPortalScriptTab(scoped) {
         </div>
         <div class="mt-4">
           ${script?.external_url ? `
-            <iframe title="Current script" src="${escapeHtml(script.external_url)}" class="w-full h-[72vh] rounded-xl border border-cream bg-parchment"></iframe>
+            <iframe title="Current script" src="${escapeHtml(script.external_url)}" class="student-portal-script-frame w-full rounded-xl border border-cream bg-parchment"></iframe>
           ` : `
-            <pre class="w-full min-h-[50vh] whitespace-pre-wrap rounded-xl border border-cream bg-parchment px-4 py-3 text-sm text-warmblack overflow-auto">${escapeHtml(meta.script_text || "No script text has been added yet.")}</pre>
+            <pre class="student-portal-script-frame w-full whitespace-pre-wrap rounded-xl border border-cream bg-parchment px-4 py-3 text-sm text-warmblack overflow-auto">${escapeHtml(meta.script_text || "No script text has been added yet.")}</pre>
           `}
         </div>
       </section>
