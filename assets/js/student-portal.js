@@ -533,6 +533,8 @@ function renderStudentPortalMaterialsTab(scoped) {
   const profile = scoped.publicProfile || {};
   const canEditPublicPage = scoped.permissions?.publicPage !== false;
   const canSeeMaterials = scoped.permissions?.materials !== false;
+  const isPublicEligible = scoped.student?.actor_page_eligible === true;
+  const isPublicLive = isPublicEligible && String(profile.status || "").toLowerCase() === "active";
 
   return `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
@@ -549,6 +551,13 @@ function renderStudentPortalMaterialsTab(scoped) {
               <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Bio</span>
               <textarea name="bio" rows="9" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(profile.bio || "")}</textarea>
             </label>
+            <label class="rounded-xl border border-cream bg-parchment px-3 py-3 flex items-start gap-3">
+              <input name="go_live" type="checkbox" class="mt-1" ${isPublicLive ? "checked" : ""} ${isPublicEligible ? "" : "disabled"} />
+              <span class="min-w-0">
+                <span class="block text-sm font-medium text-warmblack">Public page live</span>
+                <span class="block text-xs text-warmgray mt-1">${isPublicEligible ? "When this is on, approved public materials can appear on your live actor page." : "Your coach needs to mark you public page eligible before this can go live."}</span>
+              </span>
+            </label>
             <button type="submit" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Save Profile Draft</button>
           </div>
         </form>
@@ -562,6 +571,7 @@ function renderStudentPortalMaterialsTab(scoped) {
               <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
                 <p class="text-sm font-semibold text-warmblack">${escapeHtml(file.title || file.file_name || "Material")}</p>
                 <p class="text-xs text-warmgray mt-1">${escapeHtml(file.category || file.material_kind || "Resource")}</p>
+                ${file.public_page_status ? `<p class="text-xs text-warmgray mt-1">Public page: ${escapeHtml(String(file.public_page_status).replace(/_/g, " ").toLowerCase())}</p>` : ""}
                 ${file.external_url || file.file_url ? `<a class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2" href="${escapeHtml(file.external_url || file.file_url)}" target="_blank" rel="noopener">Open <i data-lucide="external-link" class="w-3 h-3"></i></a>` : ""}
               </div>
             `).join("") : `<p class="text-sm text-warmgray">No student-visible materials yet.</p>`}
@@ -618,7 +628,8 @@ function submitStudentPortalPublicProfile(event) {
   const form = event.currentTarget;
   submitStudentPortalMutation("update_public_profile", {
     display_name: form.elements.display_name.value,
-    bio: form.elements.bio.value
+    bio: form.elements.bio.value,
+    status: form.elements.go_live && form.elements.go_live.checked ? "Active" : "Draft"
   }, "Public profile draft saved.");
 }
 
@@ -791,7 +802,12 @@ function buildCoachStudentPortalPreviewData(studentId, role = "STUDENT") {
   if (!student) return null;
   const permissions = getCoachPreviewPortalPermissions(student, role);
   const materials = permissions.materials
-    ? getFileRecords().filter((file) => file.student_id === studentId && normalizeMaterialVisibility(file.visibility) === "STUDENT_VISIBLE")
+    ? getFileRecords().filter((file) => {
+      if (file.student_id !== studentId) return false;
+      if (normalizeMaterialVisibility(file.visibility) === "STUDENT_VISIBLE") return true;
+      return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" &&
+        ["PENDING_REVIEW", "REJECTED"].includes(String(file.public_page_status || "").toUpperCase());
+    })
     : [];
   const currentScript = materials
     .filter((file) => String(file.category || "").toUpperCase() === "CURRENT_SCRIPT")

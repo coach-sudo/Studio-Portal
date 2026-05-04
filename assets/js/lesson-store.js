@@ -236,7 +236,7 @@ function validateLessonPayload(payload, { isEdit = false, currentLesson = null }
     }
   }
 
-  if (locationType === "VIRTUAL" && !joinLink) {
+  if (locationType === "VIRTUAL" && !joinLink && source === "manual") {
     errors.push("Virtual lessons need a join link.");
   }
 

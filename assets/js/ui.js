@@ -265,6 +265,8 @@ const LESSON_SIGNAL_INCLUDE_PATTERNS = [
   /\blessons\.com\b/i,
   /\bacuity\b/i,
   /\bacuityscheduling\b/i,
+  /\bdrive\.google\.com\b/i,
+  /\bdocs\.google\.com\b/i,
   /\bpublic speaking\b/i,
   /\bservice:\b/i
 ];
@@ -2427,8 +2429,33 @@ function getCalendarSyncWindow() {
 }
 
 function extractFirstUrl(text) {
-  const match = String(text || "").match(/https?:\/\/[^\s)]+/i);
-  return match ? match[0] : "";
+  return extractUrlsFromText(text)[0] || "";
+}
+
+function extractUrlsFromText(text) {
+  return Array.from(new Set(
+    (String(text || "").match(/https?:\/\/[^\s)<>"']+/gi) || [])
+      .map((url) => url.replace(/[.,;:]+$/, ""))
+      .filter(Boolean)
+  ));
+}
+
+function isGoogleDriveLikeUrl(url) {
+  return /(^https?:\/\/)?(?:drive|docs)\.google\.com\//i.test(String(url || ""));
+}
+
+function isVirtualMeetingUrl(url) {
+  return /zoom\.us|meet\.google\.com|teams\.microsoft\.com|webex\.com|whereby\.com|lessonface\.com|acuityscheduling\.com/i.test(String(url || ""));
+}
+
+function extractBestLessonJoinLink(text) {
+  const urls = extractUrlsFromText(text);
+  return urls.find(isVirtualMeetingUrl) || urls.find(isGoogleDriveLikeUrl) || urls[0] || "";
+}
+
+function hasExplicitInPersonSignal(text) {
+  const blob = String(text || "").toLowerCase();
+  return /\bin[-\s]?person\b|\bin person lesson\b|\bin-person lesson\b|\bat the studio\b|\bstudio address\b|\baddress\s*:/i.test(blob);
 }
 
 function sanitizeImportedContactText(value) {
@@ -3173,13 +3200,19 @@ function inferLessonTypeFromGmailMessage(message) {
 }
 
 function inferLocationTypeFromGmailMessage(message, joinLink) {
-  if (joinLink) return "VIRTUAL";
-
   const blob = `${message.subject || ""}\n${message.body || ""}`;
-  if (/\bonline\b|\bzoom\b|\bvirtual\b|\bjoin meeting\b/i.test(blob)) return "VIRTUAL";
-  if (/\bin[- ]person\b|\bstudio\b|\baddress\b|\bin person\b/i.test(blob)) return "IN_PERSON";
+  if (hasExplicitInPersonSignal(blob)) return "IN_PERSON";
+  if (joinLink) return "VIRTUAL";
+  if (/\bonline\b|\bzoom\b|\bvirtual\b|\bjoin meeting\b|\bgoogle drive\b|\bdrive\.google\.com\b|\bdocs\.google\.com\b/i.test(blob)) return "VIRTUAL";
 
-  return "IN_PERSON";
+  return "VIRTUAL";
+}
+
+function inferLocationTypeFromCalendarEvent(event, joinLink) {
+  const blob = `${event.title || ""}\n${event.description || ""}\n${event.location || ""}`;
+  if (hasExplicitInPersonSignal(blob)) return "IN_PERSON";
+  if (joinLink) return "VIRTUAL";
+  return "VIRTUAL";
 }
 
 function parseDurationMinutesFromEmailText(rawText) {
@@ -3288,8 +3321,8 @@ function buildImportedLessonFromCalendarEvent(event) {
 
   const highConfidenceMatch = matchCandidates.find((candidate) => candidate.score >= 3) || null;
   const matchedStudent = highConfidenceMatch ? highConfidenceMatch.student : null;
-  const joinLink = extractFirstUrl(event.description || "");
-  const hasJoinLink = Boolean(joinLink);
+  const joinLink = extractBestLessonJoinLink(`${event.description || ""}\n${event.location || ""}`);
+  const locationType = inferLocationTypeFromCalendarEvent(event, joinLink);
   const sourceGroupKey = buildImportedSourceGroupKey({
     name: externalContactName,
     email: externalContactEmail,
@@ -3305,8 +3338,8 @@ function buildImportedLessonFromCalendarEvent(event) {
     lesson_status: "SCHEDULED",
     lesson_type: inferLessonTypeFromCalendarEvent(event),
     manual_payment_status: importedPaymentStatus,
-    location_type: hasJoinLink ? "VIRTUAL" : "IN_PERSON",
-    location_address: hasJoinLink ? "" : (event.location || "Imported location details pending"),
+    location_type: locationType,
+    location_address: locationType === "IN_PERSON" ? (event.location || "Imported in-person location details pending") : "",
     topic: inferLessonTopicFromCalendarEvent(event),
     join_link: joinLink,
     actual_completion_date: "",
@@ -3349,8 +3382,7 @@ function buildImportedLessonFromGmailMessage(message) {
   const highConfidenceMatch = matchCandidates.find((candidate) => candidate.score >= 3) || null;
   const matchedStudent = highConfidenceMatch ? highConfidenceMatch.student : null;
   const timeRange = parseDateTimeFromEmailText(message.body || "");
-  const joinLink = extractFirstUrl(message.body || "");
-  const hasJoinLink = Boolean(joinLink);
+  const joinLink = extractBestLessonJoinLink(message.body || "");
   const hasTimeRange = Boolean(timeRange?.start);
   const hasResolvedEnd = Boolean(timeRange?.end);
   const locationType = inferLocationTypeFromGmailMessage(message, joinLink);
@@ -3387,7 +3419,7 @@ function buildImportedLessonFromGmailMessage(message) {
     lesson_type: inferLessonTypeFromGmailMessage(message),
     manual_payment_status: importedPaymentStatus,
     location_type: locationType,
-    location_address: locationType === "VIRTUAL" ? "" : "Email-derived location pending review",
+    location_address: locationType === "VIRTUAL" ? "" : "Email-derived in-person location pending review",
     topic: inferLessonTopicFromGmailMessage(message),
     join_link: joinLink,
     actual_completion_date: "",
@@ -5940,6 +5972,41 @@ function getMaterialStatusLabel(status) {
   return String(status || "").toLowerCase() === "vaulted" ? "Vaulted" : "Active";
 }
 
+function normalizePublicPageMaterialStatus(value, file = null) {
+  const normalized = String(value || "").trim().toUpperCase();
+  if (["PENDING_REVIEW", "APPROVED", "REJECTED", "NOT_PUBLIC"].includes(normalized)) return normalized;
+  const isActorMaterial = normalizeMaterialScope(file?.scope) === "ACTOR_MATERIAL";
+  const isStudentVisible = normalizeMaterialVisibility(file?.visibility) === "STUDENT_VISIBLE";
+  const isActive = String(file?.status || "Active").toLowerCase() !== "vaulted";
+  return isActorMaterial && isStudentVisible && isActive ? "APPROVED" : "NOT_PUBLIC";
+}
+
+function getPublicPageMaterialStatusLabel(value, file = null) {
+  const normalized = normalizePublicPageMaterialStatus(value, file);
+  const labels = {
+    PENDING_REVIEW: "Pending Public Review",
+    APPROVED: "Approved For Public Page",
+    REJECTED: "Rejected",
+    NOT_PUBLIC: "Not Public"
+  };
+  return labels[normalized] || "Not Public";
+}
+
+function getPublicPageMaterialStatusBadge(value, file = null) {
+  const normalized = normalizePublicPageMaterialStatus(value, file);
+  if (normalized === "APPROVED") return "bg-sage/10 text-sage";
+  if (normalized === "PENDING_REVIEW") return "bg-gold/10 text-gold";
+  if (normalized === "REJECTED") return "bg-burgundy/10 text-burgundy";
+  return "bg-warmgray/10 text-warmgray";
+}
+
+function isPublicPageApprovedMaterial(file) {
+  return normalizeMaterialScope(file?.scope) === "ACTOR_MATERIAL" &&
+    normalizePublicPageMaterialStatus(file?.public_page_status, file) === "APPROVED" &&
+    normalizeMaterialVisibility(file?.visibility) === "STUDENT_VISIBLE" &&
+    String(file?.status || "Active").toLowerCase() !== "vaulted";
+}
+
 function normalizeMaterialSourceType(value) {
   return String(value || "").trim().toUpperCase() === "LINK" ? "LINK" : "FILE";
 }
@@ -6191,6 +6258,9 @@ function getMaterialRowsByStudentId(studentId) {
         visibility_badge: getMaterialVisibilityBadge(file.visibility),
         status_label: getMaterialStatusLabel(file.status),
         status_badge: getMaterialStatusBadge(file.status),
+        public_page_status: normalizePublicPageMaterialStatus(file.public_page_status, file),
+        public_page_status_label: getPublicPageMaterialStatusLabel(file.public_page_status, file),
+        public_page_status_badge: getPublicPageMaterialStatusBadge(file.public_page_status, file),
         group_key: getMaterialCategoryGroup(file),
         group_label: getMaterialCategoryGroupLabel(getMaterialCategoryGroup(file)),
         lesson_label: lessonLabel || homeworkLabel || "General studio material",
@@ -6215,6 +6285,11 @@ function upsertMaterialRecord({
   category,
   scope,
   visibility,
+  public_page_status,
+  submitted_by,
+  submitted_at,
+  reviewed_at,
+  reviewed_by,
   notes,
   status,
   uploaded_at
@@ -6232,6 +6307,11 @@ function upsertMaterialRecord({
   const cleanCategory = String(category || "").trim();
   const normalizedScope = normalizeMaterialScope(scope);
   const normalizedVisibility = normalizeMaterialVisibility(visibility);
+  const normalizedPublicPageStatus = normalizePublicPageMaterialStatus(public_page_status, {
+    scope: normalizedScope,
+    visibility: normalizedVisibility,
+    status
+  });
   const cleanNotes = String(notes || "").trim();
   const normalizedStatus = String(status || "Active").toLowerCase() === "vaulted" ? "Vaulted" : "Active";
   const cleanUploadedAt = String(uploaded_at || "").trim() || new Date().toISOString().slice(0, 10);
@@ -6290,6 +6370,11 @@ function upsertMaterialRecord({
       category: cleanCategory,
       scope: normalizedScope,
       visibility: normalizedVisibility,
+      public_page_status: normalizedPublicPageStatus,
+      submitted_by: String(submitted_by || existing.submitted_by || "COACH").trim(),
+      submitted_at: String(submitted_at || existing.submitted_at || cleanUploadedAt || "").trim(),
+      reviewed_at: String(reviewed_at || existing.reviewed_at || "").trim(),
+      reviewed_by: String(reviewed_by || existing.reviewed_by || "").trim(),
       notes: cleanNotes,
       status: normalizedStatus,
       uploaded_at: cleanUploadedAt
@@ -6313,6 +6398,11 @@ function upsertMaterialRecord({
     category: cleanCategory,
     scope: normalizedScope,
     visibility: normalizedVisibility,
+    public_page_status: normalizedPublicPageStatus,
+    submitted_by: String(submitted_by || "COACH").trim(),
+    submitted_at: String(submitted_at || cleanUploadedAt || new Date().toISOString()).trim(),
+    reviewed_at: String(reviewed_at || "").trim(),
+    reviewed_by: String(reviewed_by || "").trim(),
     notes: cleanNotes,
     status: normalizedStatus,
     uploaded_at: cleanUploadedAt
@@ -6347,6 +6437,47 @@ function restoreMaterial(fileId) {
   if (selectedStudentId) {
     populateStudentProfile(selectedStudentId);
   }
+}
+
+function approvePublicMaterial(fileId) {
+  const file = getFileById(fileId);
+  if (!file) return;
+
+  patchRecordById("files", fileId, {
+    scope: "ACTOR_MATERIAL",
+    visibility: "STUDENT_VISIBLE",
+    public_page_status: "APPROVED",
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: "coach"
+  });
+
+  if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  notifyUser({
+    title: "Public Material Approved",
+    message: "This material is now eligible to appear on the live public page.",
+    tone: "success",
+    source: "materials"
+  });
+}
+
+function rejectPublicMaterial(fileId) {
+  const file = getFileById(fileId);
+  if (!file) return;
+
+  patchRecordById("files", fileId, {
+    visibility: "ADMIN_ONLY",
+    public_page_status: "REJECTED",
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: "coach"
+  });
+
+  if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  notifyUser({
+    title: "Public Material Rejected",
+    message: "This material stays out of the public page.",
+    tone: "warm",
+    source: "materials"
+  });
 }
 
 function deleteMaterialPermanently(fileId) {
@@ -8469,6 +8600,16 @@ function openMaterialModal(studentId, fileId = null, defaults = {}) {
             </select>
           </div>
 
+          <div>
+            <label class="block text-xs font-medium text-warmgray mb-1">Public Page Review</label>
+            <select name="public_page_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+              <option value="NOT_PUBLIC" ${normalizePublicPageMaterialStatus(file?.public_page_status, file) === "NOT_PUBLIC" ? "selected" : ""}>Not Public</option>
+              <option value="PENDING_REVIEW" ${normalizePublicPageMaterialStatus(file?.public_page_status, file) === "PENDING_REVIEW" ? "selected" : ""}>Pending Review</option>
+              <option value="APPROVED" ${normalizePublicPageMaterialStatus(file?.public_page_status, file) === "APPROVED" ? "selected" : ""}>Approved Live</option>
+              <option value="REJECTED" ${normalizePublicPageMaterialStatus(file?.public_page_status, file) === "REJECTED" ? "selected" : ""}>Rejected</option>
+            </select>
+          </div>
+
           <div class="col-span-2 ${normalizeMaterialSourceType(file?.source_type) === "LINK" ? "hidden" : ""}" data-material-source="file">
             <label class="block text-xs font-medium text-warmgray mb-1">Upload File</label>
             <input name="material_file" type="file" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
@@ -8928,6 +9069,11 @@ function handleMaterialFormSubmit(event) {
     category: form.elements.category.value,
     scope: form.elements.scope.value,
     visibility: form.elements.visibility.value,
+    public_page_status: form.elements.public_page_status ? form.elements.public_page_status.value : "",
+    submitted_by: existingFile?.submitted_by || "COACH",
+    submitted_at: existingFile?.submitted_at || new Date().toISOString(),
+    reviewed_at: existingFile?.reviewed_at || "",
+    reviewed_by: existingFile?.reviewed_by || "",
     notes: form.elements.notes.value,
     status: form.elements.status.value,
     uploaded_at: form.elements.uploaded_at.value
@@ -10864,11 +11010,11 @@ function renderScheduleResults() {
   }
 
   resultsEl.innerHTML = `
-    <div class="bg-white rounded-2xl border border-cream overflow-hidden">
+    <div class="space-y-3">
       ${
         rows.length
           ? `
-            <div class="px-4 sm:px-5 py-3 border-b border-cream bg-parchment/45 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div class="rounded-2xl border border-cream bg-white px-4 sm:px-5 py-3 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
               <div class="flex flex-wrap items-center gap-2">
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="toggleAllVisibleScheduleIntakeSelections()">
                   ${rows.every((row) => selectedScheduleIntakeLessonIds.has(row.lesson_id)) ? "Clear Visible" : "Select Visible"}
@@ -10878,212 +11024,85 @@ function renderScheduleResults() {
               <div class="flex flex-wrap items-center gap-2">
                 <button type="button" class="px-3 py-2 rounded-lg bg-warmblack text-white text-xs font-medium" onclick="applyBulkScheduleIntakeAction('smart')">Run Smart Action</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('confirm')">Confirm Selected</button>
-                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('needs_attention')">Mark Needs Attention</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="applyBulkScheduleIntakeAction('ignore')">Ignore Selected</button>
               </div>
             </div>
           `
           : ""
       }
-      <div class="overflow-x-auto">
-        <table class="w-full min-w-[1380px] text-sm">
-          <thead class="bg-parchment/70">
-            <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
-              <th class="px-5 py-3 font-medium">Pick</th>
-              <th class="px-5 py-3 font-medium">When</th>
-              <th class="px-5 py-3 font-medium">Student</th>
-              <th class="px-5 py-3 font-medium">Lesson</th>
-              <th class="px-5 py-3 font-medium">Review Guidance</th>
-              <th class="px-5 py-3 font-medium">Operational Status</th>
-              <th class="px-5 py-3 font-medium">Intake Review</th>
-              <th class="px-5 py-3 font-medium">Sync</th>
-              <th class="px-5 py-3 font-medium">Source</th>
-              <th class="px-5 py-3 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${
-              rows.length
-                ? rows.map((row) => `
-                    <tr class="border-t border-cream/80 hover:bg-parchment/60 transition-colors ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "bg-gold/5" : ""}">
-                      <td class="px-5 py-4 align-top">
-                        <input type="checkbox" ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "checked" : ""} onclick="toggleScheduleIntakeSelection('${row.lesson_id}')" />
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <button
-                          type="button"
-                          class="text-sm font-medium text-warmblack hover:text-gold transition-colors text-left"
-                          onclick="openLessonDetailModal('${row.lesson_id}')"
-                        >
-                          ${escapeHtml(formatLessonDate(row.scheduled_start))}
-                        </button>
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(formatLessonTimeRange(row.scheduled_start, row.scheduled_end))}</div>
-                        <div class="text-xs text-warmgray mt-1">${row.timing_key === "upcoming" ? "Upcoming" : "Past Import"}</div>
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        ${
-                          row.student_id
-                            ? `<button
-                                type="button"
-                                class="text-sm font-medium text-warmblack hover:text-gold transition-colors text-left"
-                                onclick="openStudentProfileFromNotesQueue('${row.student_id}')"
-                              >
-                                ${escapeHtml(row.student_name)}
-                              </button>`
-                            : `<div class="text-sm font-medium text-warmblack">${escapeHtml(row.student_name)}</div>`
-                        }
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_id)}</div>
-                        ${row.external_contact_name ? `<div class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml(row.external_contact_name)}</div>` : ""}
-                        ${
-                          row.external_contact_email || row.external_contact_phone
-                            ? `<div class="text-xs text-warmgray mt-2">${escapeHtml(row.external_contact_email || row.external_contact_phone)}</div>`
-                            : ""
-                        }
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <div class="text-sm text-warmblack">${escapeHtml(row.topic)}</div>
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_type)}</div>
-                        ${
-                          row.has_pending_external_update
-                            ? `<div class="text-xs text-burgundy mt-2">Previous version: ${escapeHtml(formatLessonTimeRange(row.pending_external_start, row.pending_external_end || row.pending_external_start))}</div>`
-                            : ""
-                        }
-                        ${
-                          row.intake_conflict_note
-                            ? `<div class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(row.intake_conflict_note)}</div>`
-                            : ""
-                        }
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.review_priority_badge}">
-                          ${escapeHtml(row.review_priority_label)}
-                        </span>
-                        <div class="text-xs font-medium text-warmblack mt-2">${escapeHtml(row.quick_action_label)}</div>
-                        <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.quick_action_helper)}</div>
-                        <div class="space-y-1 mt-2">
-                          ${row.review_reasons.slice(0, 3).map((reason) => `<div class="text-xs text-warmgray wrap-anywhere">${escapeHtml(reason)}</div>`).join("")}
-                        </div>
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.operational_status_badge}">
-                          ${escapeHtml(row.operational_status_label)}
-                        </span>
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.intake_review_badge}">
-                          ${escapeHtml(row.intake_review_label)}
-                        </span>
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(formatLastSyncMeta(row.imported_at))} imported</div>
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.sync_state_badge}">
-                          ${escapeHtml(row.sync_state_label)}
-                        </span>
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(formatLastSyncMeta(row.last_synced_at))}</div>
-                      </td>
-                      <td class="px-5 py-4 align-top">
-                        <div class="text-sm text-warmblack">${escapeHtml(row.source_label)}</div>
-                        <div class="text-xs text-warmgray mt-1">${escapeHtml(row.platform_hint_label)}</div>
-                        <div class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.external_event_id || "No external ID")}</div>
-                        ${
-                          row.source_calendar_id
-                            ? `<div class="text-xs text-warmgray mt-1">Calendar: ${escapeHtml(row.source_calendar_id)}</div>`
-                            : ""
-                        }
-                      </td>
-                      <td class="px-5 py-4 align-top text-right">
-                        <div class="flex flex-wrap gap-2 justify-end">
-                          <button
-                            type="button"
-                            class="px-3 py-2 rounded-lg ${row.quick_action_enabled ? "bg-warmblack text-white" : "bg-parchment border border-cream text-warmblack"} text-xs font-medium card-hover"
-                            onclick="${row.quick_action_enabled ? `runScheduleIntakeQuickAction('${row.lesson_id}')` : row.has_pending_external_update || row.quick_action === "review" ? `openLessonDetailModal('${row.lesson_id}')` : !row.student_id ? `openScheduleStudentMatchModal('${row.lesson_id}')` : `openLessonDetailModal('${row.lesson_id}')`}"
-                          >
-                            ${escapeHtml(row.quick_action_label)}
-                          </button>
-                          <button
-                            type="button"
-                            class="px-3 py-2 rounded-lg bg-parchment border border-cream text-xs font-medium text-warmblack card-hover"
-                            onclick="openLessonDetailModal('${row.lesson_id}')"
-                          >
-                            ${row.review_blocking ? "Review Intake" : "Open Lesson"}
-                          </button>
-                          ${
-                            row.student_id
-                              ? row.recommended_action === "pull_contact"
-                                ? `<button
-                                    type="button"
-                                    class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-                                    onclick="pullStudentInfoFromLesson('${row.lesson_id}')"
-                                  >
-                                    Pull Contact
-                                  </button>`
-                                : ""
-                              : `<button
-                                  type="button"
-                                  class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-                                  onclick="openScheduleStudentMatchModal('${row.lesson_id}')"
-                                >
-                                  Review Match
-                                </button>
-                                <button
-                                  type="button"
-                                  class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-                                  onclick="createStudentFromImportedLesson('${row.lesson_id}')"
-                                >
-                                  Create Student
-                                </button>`
-                          }
-                          <button
-                            type="button"
-                            class="px-3 py-2 rounded-lg ${row.review_blocking ? "bg-white border border-cream text-warmgray" : "bg-white border border-cream text-warmblack"} text-xs font-medium card-hover"
-                            onclick="confirmScheduleIntake('${row.lesson_id}')"
-                          >
-                            ${row.has_pending_external_update ? "Confirm Change" : row.recommended_action === "confirm" ? "Confirm Intake" : "Confirm"}
-                          </button>
-                          ${
-                            row.has_pending_external_update
-                              ? `<button
-                                  type="button"
-                                  class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-                                  onclick="rejectScheduleIntakeChange('${row.lesson_id}')"
-                                >
-                                  Reject Change
-                                </button>`
-                              : ""
-                          }
-                          <button
-                            type="button"
-                            class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-                            onclick="${row.intake_review_state === "NEEDS_ATTENTION" ? `confirmScheduleIntake('${row.lesson_id}')` : `flagScheduleNeedsAttention('${row.lesson_id}')`}"
-                          >
-                            ${row.intake_review_state === "NEEDS_ATTENTION" ? "Clear Attention" : "Needs Attention"}
-                          </button>
-                          <button
-                            type="button"
-                            class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover"
-                            onclick="ignoreScheduleIntake('${row.lesson_id}')"
-                          >
-                            Ignore
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  `).join("")
-                : `
-                  <tr>
-                    <td colspan="10" class="px-5 py-12 text-center">
-                      <div class="flex flex-col items-center justify-center text-warmgray">
-                        <i data-lucide="calendar-days" class="w-8 h-8 mb-3 opacity-50"></i>
-                        <p class="text-sm font-medium">No imported lessons found</p>
-                        <p class="text-xs mt-1">Once outside bookings are ingested, they will land here for review.</p>
-                      </div>
-                    </td>
-                  </tr>
-                `
-            }
-          </tbody>
-        </table>
-      </div>
+      ${
+        rows.length
+          ? rows.map((row) => `
+            <article class="rounded-2xl border ${row.action_required ? "border-burgundy/20" : "border-cream"} bg-white p-4 sm:p-5 ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "ring-2 ring-gold/25" : ""}">
+              <div class="grid grid-cols-1 xl:grid-cols-[24px_minmax(220px,0.8fr)_minmax(0,1.15fr)_minmax(280px,0.9fr)] gap-4">
+                <div>
+                  <input type="checkbox" ${selectedScheduleIntakeLessonIds.has(row.lesson_id) ? "checked" : ""} onclick="toggleScheduleIntakeSelection('${row.lesson_id}')" />
+                </div>
+                <div class="min-w-0">
+                  <div class="flex flex-wrap items-center gap-2">
+                    <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.review_priority_badge}">${escapeHtml(row.review_priority_label)}</span>
+                    <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.intake_review_badge}">${escapeHtml(row.intake_review_label)}</span>
+                  </div>
+                  <button type="button" class="text-base font-semibold text-warmblack hover:text-gold text-left mt-3" onclick="openLessonDetailModal('${row.lesson_id}')">
+                    ${escapeHtml(formatLessonDate(row.scheduled_start))}
+                  </button>
+                  <p class="text-sm text-warmgray mt-1">${escapeHtml(formatLessonTimeRange(row.scheduled_start, row.scheduled_end))}</p>
+                  <p class="text-xs text-warmgray mt-2">${escapeHtml(row.source_label)} · ${escapeHtml(row.platform_hint_label)}</p>
+                  <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.external_event_id || row.lesson_id)}</p>
+                </div>
+                <div class="min-w-0">
+                  ${
+                    row.student_id
+                      ? `<button type="button" class="text-base font-semibold text-warmblack hover:text-gold text-left" onclick="openStudentProfileFromNotesQueue('${row.student_id}')">${escapeHtml(row.student_name)}</button>`
+                      : `<p class="text-base font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>`
+                  }
+                  <p class="text-sm text-warmblack mt-2 wrap-anywhere">${escapeHtml(row.topic)}</p>
+                  <p class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_type)} · ${escapeHtml(row.operational_status_label)}</p>
+                  ${
+                    row.external_contact_name || row.external_contact_email || row.external_contact_phone
+                      ? `<p class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml([row.external_contact_name, row.external_contact_email || row.external_contact_phone].filter(Boolean).join(" · "))}</p>`
+                      : ""
+                  }
+                  ${
+                    row.has_pending_external_update
+                      ? `<p class="text-xs text-burgundy mt-2">Previous: ${escapeHtml(formatLessonTimeRange(row.pending_external_start, row.pending_external_end || row.pending_external_start))}</p>`
+                      : ""
+                  }
+                </div>
+                <div class="min-w-0 rounded-xl border border-cream bg-parchment px-4 py-3">
+                  <p class="text-xs uppercase tracking-wider text-warmgray">Recommended</p>
+                  <p class="text-sm font-semibold text-warmblack mt-1">${escapeHtml(row.quick_action_label)}</p>
+                  <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.quick_action_helper)}</p>
+                  <div class="space-y-1 mt-3">
+                    ${row.review_reasons.slice(0, 3).map((reason) => `<p class="text-xs text-warmgray wrap-anywhere">- ${escapeHtml(reason)}</p>`).join("")}
+                    ${row.intake_conflict_note ? `<p class="text-xs text-burgundy wrap-anywhere">- ${escapeHtml(row.intake_conflict_note)}</p>` : ""}
+                  </div>
+                  <div class="flex flex-wrap gap-2 mt-4">
+                    <button type="button" class="px-3 py-2 rounded-lg ${row.quick_action_enabled ? "bg-warmblack text-white" : "bg-white border border-cream text-warmblack"} text-xs font-medium card-hover" onclick="${row.quick_action_enabled ? `runScheduleIntakeQuickAction('${row.lesson_id}')` : !row.student_id ? `openScheduleStudentMatchModal('${row.lesson_id}')` : `openLessonDetailModal('${row.lesson_id}')`}">${escapeHtml(row.quick_action_label)}</button>
+                    ${
+                      row.student_id
+                        ? row.recommended_action === "pull_contact"
+                          ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="pullStudentInfoFromLesson('${row.lesson_id}')">Pull Contact</button>`
+                          : ""
+                        : `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openScheduleStudentMatchModal('${row.lesson_id}')">Match</button>
+                           <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="createStudentFromImportedLesson('${row.lesson_id}')">Create Student</button>`
+                    }
+                    <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="confirmScheduleIntake('${row.lesson_id}')">${row.has_pending_external_update ? "Confirm Change" : "Confirm"}</button>
+                    ${row.has_pending_external_update ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="rejectScheduleIntakeChange('${row.lesson_id}')">Reject Change</button>` : ""}
+                    <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover" onclick="ignoreScheduleIntake('${row.lesson_id}')">Ignore</button>
+                  </div>
+                </div>
+              </div>
+            </article>
+          `).join("")
+          : `
+            <div class="page-empty-state py-12">
+              <i data-lucide="calendar-days" class="w-8 h-8 mx-auto mb-3 opacity-50"></i>
+              <p class="text-sm font-medium text-warmblack">No imported lessons found</p>
+              <p class="text-xs text-warmgray mt-1">Once Calendar or Gmail finds booking signals, they will land here as a review queue.</p>
+            </div>
+          `
+      }
     </div>
   `;
 
@@ -14106,6 +14125,9 @@ function renderProfileMaterialsTab(studentId) {
               <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.visibility_badge}">
                 ${escapeHtml(row.visibility_label)}
               </span>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.public_page_status_badge}">
+                ${escapeHtml(row.public_page_status_label)}
+              </span>
             </div>
             <p class="text-xs text-warmgray mt-1">${escapeHtml(row.kind_label)} · ${escapeHtml(row.category)} · ${escapeHtml(row.scope_label)}</p>
             <p class="text-xs text-warmgray mt-1">${escapeHtml(row.source_label)} · ${escapeHtml(formatLongDate(row.uploaded_at))}</p>
@@ -14130,6 +14152,26 @@ function renderProfileMaterialsTab(studentId) {
             >
               Edit
             </button>
+            ${
+              row.public_page_status === "PENDING_REVIEW"
+                ? `
+                  <button
+                    type="button"
+                    onclick="approvePublicMaterial('${row.file_id}')"
+                    class="px-3 py-2 rounded-lg bg-sage/10 border border-sage/20 text-xs font-medium text-sage card-hover"
+                  >
+                    Approve Public
+                  </button>
+                  <button
+                    type="button"
+                    onclick="rejectPublicMaterial('${row.file_id}')"
+                    class="px-3 py-2 rounded-lg bg-white border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
+                  >
+                    Reject
+                  </button>
+                `
+                : ""
+            }
             ${
               primaryActionLabel && primaryActionHandler
                 ? `
@@ -14980,23 +15022,26 @@ function renderProfilePage() {
             </div>
           </section>
 
-          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
-            <h4 class="font-display font-semibold mb-3">Extended Contact</h4>
-            <div class="space-y-3 text-sm">
+          <details class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+              <span class="font-display font-semibold">Extended Contact</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-warmgray"></i>
+            </summary>
+            <div class="space-y-3 text-sm mt-4">
               <div class="flex justify-between gap-4"><span class="text-warmgray">Additional Emails</span><span id="profile-additional-emails" class="font-medium text-right wrap-anywhere">—</span></div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian / Parent</span><span id="profile-guardian-name-secondary" class="font-medium text-right">—</span></div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian Email</span><span id="profile-guardian-email-secondary" class="font-medium text-right wrap-anywhere">—</span></div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian Phone</span><span id="profile-guardian-phone-secondary" class="font-medium text-right">—</span></div>
             </div>
-          </section>
+          </details>
 
-          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.12s">
-            <div class="flex items-center justify-between gap-3 mb-3">
-              <h4 class="font-display font-semibold">Bio & Public Page</h4>
+          <details class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.12s">
+            <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
+              <span class="font-display font-semibold">Bio & Public Page</span>
               <span id="profile-public-status-secondary" class="text-xs text-warmgray">—</span>
-            </div>
-            <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere"></p>
-          </section>
+            </summary>
+            <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere mt-4"></p>
+          </details>
         </aside>
       </div>
     </div>
@@ -15067,46 +15112,15 @@ function renderPublicPage() {
       </div>
 
       <div class="max-w-4xl mx-auto px-8 -mt-8">
-        <div class="bg-white rounded-2xl border border-cream p-6 mb-6 fade-in" style="animation-delay:0.1s">
-          <h3 class="font-display text-xl font-semibold mb-4">Demo Reel</h3>
-          <div class="aspect-video bg-warmblack rounded-xl flex items-center justify-center relative overflow-hidden">
-            <div class="absolute inset-0 bg-gradient-to-br from-charcoal to-warmblack"></div>
-            <div class="relative z-10 text-center">
-              <div class="w-16 h-16 rounded-full bg-gold/20 flex items-center justify-center mx-auto mb-3 cursor-pointer hover:bg-gold/30 transition-colors">
-                <i data-lucide="play" class="w-7 h-7 text-gold ml-1"></i>
-              </div>
-              <p class="text-sm text-warmgray">Demo Reel Placeholder</p>
-              <p class="text-xs text-warmgray/60 mt-1">2:34</p>
-            </div>
-          </div>
-        </div>
+        <div id="public-page-status-banner" class="mb-6"></div>
 
-        <div class="grid grid-cols-2 gap-6 mb-12">
-          <div class="bg-white rounded-2xl border border-cream p-6 fade-in" style="animation-delay:0.15s">
-            <h3 class="font-display text-xl font-semibold mb-4">Resume</h3>
-            <div class="space-y-3">
-              <div>
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-2">Selected Film &amp; TV</p>
-                <div class="space-y-1.5 text-sm">
-                  <div class="flex justify-between"><span class="font-medium">Role Sample</span><span class="text-warmgray">Lead · Studio</span></div>
-                </div>
-              </div>
+        <div id="public-materials" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"></div>
 
-              <button class="w-full mt-3 py-2.5 rounded-xl bg-parchment border border-cream text-sm font-medium text-charcoal hover:bg-cream transition-colors flex items-center justify-center gap-2">
-                <i data-lucide="download" class="w-4 h-4"></i>
-                Download Full Resume
-              </button>
-            </div>
-          </div>
-
-          <div class="bg-white rounded-2xl border border-cream p-6 fade-in" style="animation-delay:0.2s">
-            <h3 class="font-display text-xl font-semibold mb-4">Contact &amp; Representation</h3>
-            <div class="space-y-4">
-              <div class="p-4 bg-parchment rounded-xl">
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-2">Direct Contact</p>
-                <p id="public-contact-email" class="text-sm text-gold">actor@example.com</p>
-              </div>
-            </div>
+        <div class="bg-white rounded-2xl border border-cream p-6 mb-12 fade-in" style="animation-delay:0.2s">
+          <h3 class="font-display text-xl font-semibold mb-4">Contact &amp; Representation</h3>
+          <div class="p-4 bg-parchment rounded-xl">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-2">Direct Contact</p>
+            <p id="public-contact-email" class="text-sm text-gold">actor@example.com</p>
           </div>
         </div>
 
@@ -15429,8 +15443,14 @@ if (paymentsListEl) {
 
 function populatePublicPage(studentId) {
   const student = getStudentById(studentId);
+  const schemaStudent = getSchemaStudentById(studentId);
   const actorProfile = getActorProfileByStudentId(studentId);
   if (!student) return;
+  const isEligible = schemaStudent?.actor_page_eligible === true;
+  const isLive = isEligible && actorProfile && String(actorProfile.status || "").toLowerCase() === "active";
+  const approvedMaterials = getFilesByStudentId(studentId)
+    .filter(isPublicPageApprovedMaterial)
+    .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
 
   const nameEl = document.getElementById("public-name");
   if (nameEl) nameEl.textContent = actorProfile?.display_name || student.name;
@@ -15440,6 +15460,43 @@ function populatePublicPage(studentId) {
 
   const emailEl = document.getElementById("public-contact-email");
   if (emailEl) emailEl.textContent = student.email || "actor@example.com";
+
+  const bannerEl = document.getElementById("public-page-status-banner");
+  if (bannerEl) {
+    bannerEl.innerHTML = isLive
+      ? ""
+      : `
+        <div class="rounded-2xl border border-gold/20 bg-gold/5 px-5 py-4 text-sm text-warmblack">
+          ${isEligible ? "Coach preview: this public page is still a draft until the student toggles it live." : "Coach preview: this student is not marked public page eligible yet."}
+        </div>
+      `;
+  }
+
+  const materialsEl = document.getElementById("public-materials");
+  if (materialsEl) {
+    materialsEl.innerHTML = approvedMaterials.length
+      ? approvedMaterials.map((file) => {
+        const title = getMaterialDisplayName(file);
+        const url = getMaterialSourceUrl(file);
+        const category = file.category || getMaterialKindLabel(file.material_kind);
+        const isVideo = normalizeMaterialKind(file.material_kind, file.source_type) === "VIDEO" || /reel|self tape/i.test(category);
+        return `
+          <article class="bg-white rounded-2xl border border-cream p-6 fade-in">
+            <div class="${isVideo ? "aspect-video bg-warmblack text-white" : "bg-parchment"} rounded-xl border border-cream flex items-center justify-center min-h-[180px] mb-4">
+              <i data-lucide="${isVideo ? "play" : "file-text"}" class="w-8 h-8 ${isVideo ? "text-gold" : "text-warmgray"}"></i>
+            </div>
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(category)}</p>
+            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">${escapeHtml(title)}</h3>
+            ${url ? `<a href="${escapeHtml(url)}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 mt-4 text-sm font-medium text-gold">Open <i data-lucide="external-link" class="w-4 h-4"></i></a>` : ""}
+          </article>
+        `;
+      }).join("")
+      : `
+        <div class="md:col-span-2 bg-white rounded-2xl border border-cream p-6 text-sm text-warmgray">
+          No approved public materials are live yet.
+        </div>
+      `;
+  }
 }
 
 /*********************************

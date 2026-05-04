@@ -50,7 +50,7 @@ function getGmailMaxResults() {
 function getGmailSyncQuery() {
   return String(
     process.env.GMAIL_SYNC_QUERY ||
-    'newer_than:120d (from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com OR from:calendar-notification@google.com OR from:calendar-notification@googlemail.com) (booking OR appointment OR scheduled OR rescheduled OR reschedule OR cancelled OR canceled OR changed OR updated OR payment OR "new order")'
+    'newer_than:120d (from:lessons.com OR from:lessonface.com OR from:acuityscheduling.com OR from:calendar-notification@google.com OR from:calendar-notification@googlemail.com) (booking OR appointment OR scheduled OR rescheduled OR reschedule OR cancelled OR canceled OR changed OR updated OR payment OR "new order" OR "google drive" OR drive.google.com OR docs.google.com)'
   ).trim();
 }
 
@@ -189,7 +189,7 @@ function getMessageBodyText(payload) {
 function isLikelyLessonCalendarEventBackend(event) {
   var blob = ((event.summary || "") + "\n" + (event.description || "") + "\n" + (event.location || "")).toLowerCase();
   if (/^busy\b|\bto do\b|\bpop up\b|\bbackstage\b|\bpersonal\b/.test(blob)) return false;
-  return /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bintro session\b|\blessonface\b|\blessons\.com\b|\bacuity\b|\bacuityscheduling\b|\bpublic speaking\b|\bservice:\b/.test(blob);
+  return /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bintro session\b|\blessonface\b|\blessons\.com\b|\bacuity\b|\bacuityscheduling\b|\bdrive\.google\.com\b|\bdocs\.google\.com\b|\bpublic speaking\b|\bservice:\b/.test(blob);
 }
 
 function isTrustedBookingSenderBackend(message) {
@@ -200,7 +200,7 @@ function isTrustedBookingSenderBackend(message) {
 function isBookingChangeOrConfirmationBackend(message) {
   var blob = ((message.subject || "") + "\n" + (message.body || "")).toLowerCase();
   var hasActionKeyword = /\bupcoming booking\b|\bbooking confirmation\b|\bappointment scheduled\b|\bnew booking\b|\blesson reminder\b|\bappointment reminder\b|\breschedul(?:e|ed|ing)\b|\bcancel(?:led|ed|lation)?\b|\bappointment (?:updated|changed)\b|\bbooking (?:updated|changed|cancelled|canceled)\b|\bchange\/cancel appointment\b|\bchange appointment\b|\bview booking\b/.test(blob);
-  var hasLessonSignal = /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bservice:\b|\bjoin zoom\b|\blessons\.com\b|\blessonface\b|\bacuity\b|\bacuityscheduling\b/.test(blob);
+  var hasLessonSignal = /\b30\s*(?:min|minute)\b|\b60\s*(?:min|minute)\b|\b90\s*(?:min|minute)\b|\blesson\b|\bacting\b|\baudition\b|\bcoaching\b|\bservice:\b|\bjoin zoom\b|\bgoogle drive\b|\bdrive\.google\.com\b|\bdocs\.google\.com\b|\blessons\.com\b|\blessonface\b|\bacuity\b|\bacuityscheduling\b/.test(blob);
   return hasActionKeyword && hasLessonSignal;
 }
 

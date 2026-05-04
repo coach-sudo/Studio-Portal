@@ -176,6 +176,11 @@ const DATA_RECORD_SHAPES = {
     "category",
     "scope",
     "visibility",
+    "public_page_status",
+    "submitted_by",
+    "submitted_at",
+    "reviewed_at",
+    "reviewed_by",
     "notes",
     "status",
     "uploaded_at"

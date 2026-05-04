@@ -300,7 +300,12 @@ function canViewRecord(identity, record, kind) {
 
   if (kind === "note") return student.portal_notes_access !== false && normalizeNoteStatus(record.status) === "PUBLISHED";
   if (kind === "homework") return student.portal_homework_access !== false;
-  if (kind === "material") return student.portal_materials_access !== false && normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE";
+  if (kind === "material") {
+    const isApprovedVisible = normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE";
+    const isOwnPublicSubmission = String(record.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" &&
+      ["PENDING_REVIEW", "REJECTED"].includes(String(record.public_page_status || "").toUpperCase());
+    return student.portal_materials_access !== false && (isApprovedVisible || isOwnPublicSubmission);
+  }
   if (kind === "script") {
     return student.portal_script_access !== false &&
       normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE" &&
@@ -417,8 +422,11 @@ function upsertActorProfile(snapshot, identity, updates) {
   }
   profile.display_name = String(updates.display_name || profile.display_name || "").trim();
   profile.bio = String(updates.bio || profile.bio || "").trim();
-  profile.status = "Draft";
+  const wantsLive = String(updates.status || "").toLowerCase() === "active";
+  profile.status = identity.student && identity.student.actor_page_eligible === true && wantsLive ? "Active" : "Draft";
   profile.updated_at = now;
+  const student = (snapshot.students || []).find((row) => row.student_id === identity.student_id);
+  if (student) student.actor_page_status = profile.status;
   return profile;
 }
 
@@ -460,9 +468,14 @@ function createPortalMaterial(snapshot, identity, body) {
     material_kind: String(body.material_kind || "DOCUMENT").trim().toUpperCase(),
     category: String(body.category || "Public Page").trim(),
     scope: "ACTOR_MATERIAL",
-    visibility: "STUDENT_VISIBLE",
+    visibility: "ADMIN_ONLY",
+    public_page_status: "PENDING_REVIEW",
+    submitted_by: "STUDENT_PORTAL",
+    submitted_at: now,
+    reviewed_at: "",
+    reviewed_by: "",
     notes: String(body.notes || "Submitted from student portal.").trim(),
-    status: "Pending Review",
+    status: "Active",
     uploaded_at: now
   };
   snapshot.files.push(material);
