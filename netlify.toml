@@ -2,6 +2,9 @@
   publish = "."
   functions = "netlify/functions"
 
+[functions]
+  included_files = ["assets/js/schema.js"]
+
 [[redirects]]
   from = "/api/studio-sync"
   to = "/.netlify/functions/studio-sync"
@@ -15,4 +18,9 @@
 [[redirects]]
   from = "/api/google-oauth-callback"
   to = "/.netlify/functions/google-oauth-callback"
+  status = 200
+
+[[redirects]]
+  from = "/api/student-auth"
+  to = "/.netlify/functions/student-auth"
   status = 200

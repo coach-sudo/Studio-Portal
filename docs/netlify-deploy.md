@@ -6,6 +6,7 @@ Yes, you can host the full portal on Netlify, including the static frontend and 
 
 - static site hosting for the portal UI
 - serverless proxy function at `/api/studio-sync`
+- serverless student portal auth at `/api/student-auth`
 - environment variables for the Apps Script URL and token
 
 ## Files already added
@@ -27,6 +28,14 @@ Optional later, when live Google OAuth/server-side sync is ready:
   - set to `true` when the backend can pull real Calendar events
 - `GOOGLE_GMAIL_LIVE_READY`
   - set to `true` when the backend can pull real Gmail booking emails
+
+Student portal auth:
+- `STUDENT_PORTAL_SESSION_SECRET`
+  - required; use a long random secret for signing student / guardian session cookies
+- `STUDENT_PORTAL_ACCESS_CODE`
+  - required for student / guardian sign-in
+- `STUDENT_PORTAL_SESSION_MINUTES`
+  - optional; defaults to `120`
 
 ## What to put in the portal Settings page after deployment
 

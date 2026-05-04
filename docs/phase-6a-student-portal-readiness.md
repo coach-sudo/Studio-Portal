@@ -39,14 +39,16 @@ The coach portal foundation is now in place to begin the student portal.
 
 ## Phase 6A started
 
-Added a front-end student portal preview route with:
+Added a server-backed student portal route with:
 
-- local student / guardian sign-in using matched contact email plus a shared preview access code
-- centralized scoped-data helpers for student-owned records
+- Netlify Function auth at `/api/student-auth`
+- signed HttpOnly student / guardian session cookies
+- matched contact email plus server-side access code verification
+- server-scoped data for student-owned records
 - student-visible filtering for published notes, homework, materials, lessons, packages, and reviewed payments
 - a first student-facing dashboard mounted at `Student Portal`
 
-This is a preview/auth scaffold. Before production use, replace the local shared-code session with server-side authentication and signed student/guardian claims.
+Before production use, set `STUDENT_PORTAL_SESSION_SECRET` and `STUDENT_PORTAL_ACCESS_CODE` in Netlify. The current implementation uses a shared access code plus matched contact email; a later upgrade can replace that with per-user passwords, magic links, or Netlify Identity.
 
 ## Important guardrails
 
