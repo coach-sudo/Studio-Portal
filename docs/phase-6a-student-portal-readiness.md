@@ -47,6 +47,11 @@ Added a server-backed student portal route with:
 - server-scoped data for student-owned records
 - student-visible filtering for published notes, homework, materials, lessons, packages, and reviewed payments
 - a first student-facing dashboard mounted at `Student Portal`
+- per-student portal enable/disable fields
+- separate student and guardian finance visibility, including minor finance hiding
+- lesson detail modal for student-visible lesson records
+- student-side public profile draft and public material submission actions
+- current script workspace using student-visible script materials with PDF URL / pasted text, archive state, and dated comments
 
 Before production use, set `STUDENT_PORTAL_SESSION_SECRET` and `STUDENT_PORTAL_ACCESS_CODE` in Netlify. The current implementation uses a shared access code plus matched contact email; a later upgrade can replace that with per-user passwords, magic links, or Netlify Identity.
 

@@ -240,7 +240,18 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
       lead_source: leadSource,
       lead_source_detail: leadSourceDetail,
       focus_area: focusArea,
-      actor_page_eligible: actorPageEligible
+      actor_page_eligible: actorPageEligible,
+      portal_access_enabled: payload.portal_access_enabled !== false,
+      guardian_portal_access_enabled: payload.guardian_portal_access_enabled !== false,
+      student_is_minor: payload.student_is_minor === true,
+      portal_student_finance_access: payload.portal_student_finance_access !== false,
+      portal_guardian_finance_access: payload.portal_guardian_finance_access === true,
+      portal_minor_finance_access: payload.portal_minor_finance_access === true,
+      portal_notes_access: payload.portal_notes_access !== false,
+      portal_homework_access: payload.portal_homework_access !== false,
+      portal_materials_access: payload.portal_materials_access !== false,
+      portal_public_page_access: payload.portal_public_page_access !== false,
+      portal_script_access: payload.portal_script_access !== false
     }
   };
 }
@@ -287,6 +298,17 @@ function createStudent(payload) {
     actor_page_eligible: result.cleaned.actor_page_eligible,
     actor_profile_id: null,
     actor_page_status: null,
+    portal_access_enabled: result.cleaned.portal_access_enabled,
+    guardian_portal_access_enabled: result.cleaned.guardian_portal_access_enabled,
+    student_is_minor: result.cleaned.student_is_minor,
+    portal_student_finance_access: result.cleaned.portal_student_finance_access,
+    portal_guardian_finance_access: result.cleaned.portal_guardian_finance_access,
+    portal_minor_finance_access: result.cleaned.portal_minor_finance_access,
+    portal_notes_access: result.cleaned.portal_notes_access,
+    portal_homework_access: result.cleaned.portal_homework_access,
+    portal_materials_access: result.cleaned.portal_materials_access,
+    portal_public_page_access: result.cleaned.portal_public_page_access,
+    portal_script_access: result.cleaned.portal_script_access,
     created_at: now,
     updated_at: now
   };
@@ -347,6 +369,17 @@ function updateStudent(studentId, payload) {
   if ("lead_source_detail" in payload) updates.lead_source_detail = result.cleaned.lead_source_detail;
   if ("focus_area" in payload) updates.focus_area = result.cleaned.focus_area;
   if ("actor_page_eligible" in payload) updates.actor_page_eligible = result.cleaned.actor_page_eligible;
+  if ("portal_access_enabled" in payload) updates.portal_access_enabled = result.cleaned.portal_access_enabled;
+  if ("guardian_portal_access_enabled" in payload) updates.guardian_portal_access_enabled = result.cleaned.guardian_portal_access_enabled;
+  if ("student_is_minor" in payload) updates.student_is_minor = result.cleaned.student_is_minor;
+  if ("portal_student_finance_access" in payload) updates.portal_student_finance_access = result.cleaned.portal_student_finance_access;
+  if ("portal_guardian_finance_access" in payload) updates.portal_guardian_finance_access = result.cleaned.portal_guardian_finance_access;
+  if ("portal_minor_finance_access" in payload) updates.portal_minor_finance_access = result.cleaned.portal_minor_finance_access;
+  if ("portal_notes_access" in payload) updates.portal_notes_access = result.cleaned.portal_notes_access;
+  if ("portal_homework_access" in payload) updates.portal_homework_access = result.cleaned.portal_homework_access;
+  if ("portal_materials_access" in payload) updates.portal_materials_access = result.cleaned.portal_materials_access;
+  if ("portal_public_page_access" in payload) updates.portal_public_page_access = result.cleaned.portal_public_page_access;
+  if ("portal_script_access" in payload) updates.portal_script_access = result.cleaned.portal_script_access;
 
   patchRecordById("students", studentId, updates);
 

@@ -401,6 +401,56 @@
               <span>Actor Page Eligible</span>
             </label>
           </div>
+
+          <div class="col-span-2 rounded-xl border border-cream bg-parchment p-4">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-3">Student Portal Permissions</p>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_access_enabled" type="checkbox" checked>
+                <span>Student portal enabled</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="guardian_portal_access_enabled" type="checkbox" checked>
+                <span>Guardian portal enabled</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="student_is_minor" type="checkbox">
+                <span>Student is a minor</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_student_finance_access" type="checkbox" checked>
+                <span>Student can view finance</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_guardian_finance_access" type="checkbox">
+                <span>Guardian can view finance</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_minor_finance_access" type="checkbox">
+                <span>Minor can view finance</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_notes_access" type="checkbox" checked>
+                <span>Published notes visible</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_homework_access" type="checkbox" checked>
+                <span>Homework visible</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_materials_access" type="checkbox" checked>
+                <span>Materials visible</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_public_page_access" type="checkbox" checked>
+                <span>Public page controls visible</span>
+              </label>
+              <label class="flex items-center gap-2 text-sm">
+                <input name="portal_script_access" type="checkbox" checked>
+                <span>Current script visible</span>
+              </label>
+            </div>
+          </div>
         </div>
 
         <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">

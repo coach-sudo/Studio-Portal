@@ -14820,6 +14820,7 @@ function renderProfilePage() {
           <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Lesson</button>
           <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Package</button>
           <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Payment</button>
+          <button id="profile-preview-student-portal-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Preview as Student</button>
           <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Edit Student</button>
           <button id="change-status-btn" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-warmblack text-sm font-medium card-hover">Change Status</button>
         </div>
@@ -15017,6 +15018,11 @@ function renderProfilePage() {
 
   const profileAddPaymentBtn = document.getElementById("profile-add-payment-btn");
   if (profileAddPaymentBtn) profileAddPaymentBtn.onclick = () => openPaymentModal(null, selectedStudentId);
+
+  const previewStudentPortalBtn = document.getElementById("profile-preview-student-portal-btn");
+  if (previewStudentPortalBtn && typeof previewStudentPortalAsCoach === "function") {
+    previewStudentPortalBtn.onclick = () => previewStudentPortalAsCoach(selectedStudentId, "STUDENT");
+  }
 
   const addLessonBtn = document.getElementById("add-lesson-btn");
   if (addLessonBtn) addLessonBtn.onclick = () => openLessonModal("create", null, selectedStudentId);
@@ -15482,8 +15488,46 @@ function openStudentModal(mode = "create", studentId = null) {
     if (form.elements.actor_page_eligible) {
       form.elements.actor_page_eligible.checked = Boolean(schemaStudent.actor_page_eligible);
     }
+    [
+      "portal_access_enabled",
+      "guardian_portal_access_enabled",
+      "portal_student_finance_access",
+      "portal_notes_access",
+      "portal_homework_access",
+      "portal_materials_access",
+      "portal_public_page_access",
+      "portal_script_access"
+    ].forEach((fieldName) => {
+      if (form.elements[fieldName]) form.elements[fieldName].checked = schemaStudent[fieldName] !== false;
+    });
+    [
+      "student_is_minor",
+      "portal_guardian_finance_access",
+      "portal_minor_finance_access"
+    ].forEach((fieldName) => {
+      if (form.elements[fieldName]) form.elements[fieldName].checked = schemaStudent[fieldName] === true;
+    });
     } else {
       title.textContent = "Add Student";
+      [
+        "portal_access_enabled",
+        "guardian_portal_access_enabled",
+        "portal_student_finance_access",
+        "portal_notes_access",
+        "portal_homework_access",
+        "portal_materials_access",
+        "portal_public_page_access",
+        "portal_script_access"
+      ].forEach((fieldName) => {
+        if (form.elements[fieldName]) form.elements[fieldName].checked = true;
+      });
+      [
+        "student_is_minor",
+        "portal_guardian_finance_access",
+        "portal_minor_finance_access"
+      ].forEach((fieldName) => {
+        if (form.elements[fieldName]) form.elements[fieldName].checked = false;
+      });
     }
 
   modal.classList.remove("hidden");
@@ -15620,7 +15664,18 @@ function handleStudentFormSubmit(event) {
     lead_source: form.elements.lead_source ? form.elements.lead_source.value : "",
     lead_source_detail: form.elements.lead_source_detail ? form.elements.lead_source_detail.value.trim() : "",
     focus_area: form.elements.focus_area ? form.elements.focus_area.value.trim() : "",
-    actor_page_eligible: form.elements.actor_page_eligible ? form.elements.actor_page_eligible.checked : false
+    actor_page_eligible: form.elements.actor_page_eligible ? form.elements.actor_page_eligible.checked : false,
+    portal_access_enabled: form.elements.portal_access_enabled ? form.elements.portal_access_enabled.checked : true,
+    guardian_portal_access_enabled: form.elements.guardian_portal_access_enabled ? form.elements.guardian_portal_access_enabled.checked : true,
+    student_is_minor: form.elements.student_is_minor ? form.elements.student_is_minor.checked : false,
+    portal_student_finance_access: form.elements.portal_student_finance_access ? form.elements.portal_student_finance_access.checked : true,
+    portal_guardian_finance_access: form.elements.portal_guardian_finance_access ? form.elements.portal_guardian_finance_access.checked : false,
+    portal_minor_finance_access: form.elements.portal_minor_finance_access ? form.elements.portal_minor_finance_access.checked : false,
+    portal_notes_access: form.elements.portal_notes_access ? form.elements.portal_notes_access.checked : true,
+    portal_homework_access: form.elements.portal_homework_access ? form.elements.portal_homework_access.checked : true,
+    portal_materials_access: form.elements.portal_materials_access ? form.elements.portal_materials_access.checked : true,
+    portal_public_page_access: form.elements.portal_public_page_access ? form.elements.portal_public_page_access.checked : true,
+    portal_script_access: form.elements.portal_script_access ? form.elements.portal_script_access.checked : true
   };
 
   const result = editingStudentId

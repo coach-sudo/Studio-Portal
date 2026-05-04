@@ -37,6 +37,11 @@ Student portal auth:
 - `STUDENT_PORTAL_SESSION_MINUTES`
   - optional; defaults to `120`
 
+Student portal write actions:
+- public profile draft saves, public material submissions, and current-script updates use the existing snapshot backend
+- set `GOOGLE_APPS_SCRIPT_URL` before relying on those writes in production
+- without the Apps Script backend, the portal can authenticate and read sample/scoped data but cannot persist student submissions
+
 ## What to put in the portal Settings page after deployment
 
 Use:

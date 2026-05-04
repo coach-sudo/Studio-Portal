@@ -153,13 +153,18 @@ function getIdentityForEmail(snapshot, email) {
     student.preferred_contact_email
   ].map(normalizeEmail);
 
+  const role = directEmails.includes(normalizedEmail)
+    ? "STUDENT"
+    : guardianEmails.includes(normalizedEmail)
+      ? "GUARDIAN"
+      : "CONTACT";
+
+  if (student.portal_access_enabled === false) return null;
+  if (role !== "STUDENT" && student.guardian_portal_access_enabled === false) return null;
+
   return {
     email: normalizedEmail,
-    role: directEmails.includes(normalizedEmail)
-      ? "STUDENT"
-      : guardianEmails.includes(normalizedEmail)
-        ? "GUARDIAN"
-        : "CONTACT",
+    role,
     student_id: student.student_id,
     student_name: student.full_name || [student.first_name, student.last_name].filter(Boolean).join(" "),
     issued_at: new Date().toISOString()
@@ -186,6 +191,35 @@ async function fetchAppsScriptSnapshot() {
   }
 
   return payload.snapshot || payload.data || null;
+}
+
+async function pushAppsScriptSnapshot(snapshot) {
+  const baseUrl = getAppsScriptUrl();
+  if (!baseUrl) {
+    throw new Error("Portal data updates require GOOGLE_APPS_SCRIPT_URL.");
+  }
+
+  const url = new URL(baseUrl);
+  url.searchParams.set("action", "push_snapshot");
+  const response = await fetch(url.toString(), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      action: "push_snapshot",
+      token: getAppsScriptToken(),
+      snapshot
+    })
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || !payload || payload.ok === false) {
+    throw new Error(payload.error || "Unable to save portal update.");
+  }
+
+  return payload;
 }
 
 function loadLocalSampleSnapshot() {
@@ -238,35 +272,77 @@ function normalizePaymentReviewState(payment) {
   return String(payment && payment.import_source || "").trim() ? "NEEDS_REVIEW" : "CONFIRMED";
 }
 
+function canViewFinance(identity) {
+  const student = identity && identity.student ? identity.student : {};
+  if (identity.role === "STUDENT" && student.portal_student_finance_access === false) return false;
+  if (identity.role !== "STUDENT" && student.portal_guardian_finance_access !== true) return false;
+  if (student.student_is_minor === true && student.portal_minor_finance_access !== true) return false;
+  return true;
+}
+
+function getPortalPermissions(identity) {
+  const student = identity && identity.student ? identity.student : {};
+  return {
+    role: identity.role,
+    finance: canViewFinance(identity),
+    notes: student.portal_notes_access !== false,
+    homework: student.portal_homework_access !== false,
+    materials: student.portal_materials_access !== false,
+    publicPage: student.portal_public_page_access !== false,
+    script: student.portal_script_access !== false
+  };
+}
+
 function canViewRecord(identity, record, kind) {
   if (!identity || !record) return false;
   if (record.student_id && record.student_id !== identity.student_id) return false;
+  const student = identity.student || {};
 
-  if (kind === "note") return normalizeNoteStatus(record.status) === "PUBLISHED";
-  if (kind === "material") return normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE";
-  if (kind === "payment") return !isArchived(record) && normalizePaymentReviewState(record) !== "NEEDS_REVIEW";
-  if (kind === "package") return !isArchived(record);
+  if (kind === "note") return student.portal_notes_access !== false && normalizeNoteStatus(record.status) === "PUBLISHED";
+  if (kind === "homework") return student.portal_homework_access !== false;
+  if (kind === "material") return student.portal_materials_access !== false && normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE";
+  if (kind === "script") {
+    return student.portal_script_access !== false &&
+      normalizeMaterialVisibility(record.visibility) === "STUDENT_VISIBLE" &&
+      String(record.category || "").toUpperCase() === "CURRENT_SCRIPT";
+  }
+  if (kind === "public") return student.portal_public_page_access !== false;
+  if (kind === "payment") return canViewFinance(identity) && !isArchived(record) && normalizePaymentReviewState(record) !== "NEEDS_REVIEW";
+  if (kind === "package") return canViewFinance(identity) && !isArchived(record);
 
   return true;
 }
 
 function getScopedPortalData(snapshot, identity) {
+  const student = (snapshot.students || []).find((row) => row.student_id === identity.student_id) || null;
+  const scopedIdentity = { ...identity, student };
+  const materials = (snapshot.files || []).filter((file) => canViewRecord(scopedIdentity, file, "material"));
+  const currentScript = materials
+    .filter((file) => canViewRecord(scopedIdentity, file, "script"))
+    .filter((file) => !isArchived(file) && String(file.status || "").toUpperCase() !== "ARCHIVED")
+    .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime())[0] || null;
+
   return {
-    student: (snapshot.students || []).find((student) => student.student_id === identity.student_id) || null,
+    permissions: getPortalPermissions(scopedIdentity),
+    student,
+    publicProfile: canViewRecord(scopedIdentity, student, "public")
+      ? (snapshot.actorProfiles || []).find((profile) => profile.student_id === identity.student_id) || null
+      : null,
+    currentScript,
     lessons: (snapshot.lessons || [])
-      .filter((lesson) => canViewRecord(identity, lesson, "lesson"))
+      .filter((lesson) => canViewRecord(scopedIdentity, lesson, "lesson"))
       .sort((a, b) => new Date(a.scheduled_start || 0).getTime() - new Date(b.scheduled_start || 0).getTime()),
     notes: (snapshot.notes || [])
-      .filter((note) => canViewRecord(identity, note, "note"))
+      .filter((note) => canViewRecord(scopedIdentity, note, "note"))
       .sort((a, b) => new Date(b.published_at || b.updated_at || 0).getTime() - new Date(a.published_at || a.updated_at || 0).getTime()),
     homework: (snapshot.homework || [])
-      .filter((item) => canViewRecord(identity, item, "homework"))
+      .filter((item) => canViewRecord(scopedIdentity, item, "homework"))
       .sort((a, b) => new Date(a.due_date || a.assigned_at || 0).getTime() - new Date(b.due_date || b.assigned_at || 0).getTime()),
-    packages: (snapshot.packages || []).filter((pkg) => canViewRecord(identity, pkg, "package")),
+    packages: (snapshot.packages || []).filter((pkg) => canViewRecord(scopedIdentity, pkg, "package")),
     payments: (snapshot.payments || [])
-      .filter((payment) => canViewRecord(identity, payment, "payment"))
+      .filter((payment) => canViewRecord(scopedIdentity, payment, "payment"))
       .sort((a, b) => new Date(b.payment_date || b.created_at || 0).getTime() - new Date(a.payment_date || a.created_at || 0).getTime()),
-    materials: (snapshot.files || []).filter((file) => canViewRecord(identity, file, "material"))
+    materials
   };
 }
 
@@ -286,6 +362,185 @@ async function getSessionIdentity(event) {
     },
     snapshot
   };
+}
+
+function nextId(records, prefix, fieldName) {
+  const year = new Date().getFullYear();
+  const max = (records || []).reduce((value, record) => {
+    const match = String(record[fieldName] || "").match(new RegExp(`^${prefix}-${year}-(\\d{6})$`));
+    return match ? Math.max(value, Number(match[1])) : value;
+  }, 0);
+  return `${prefix}-${year}-${String(max + 1).padStart(6, "0")}`;
+}
+
+function parseJsonObject(value, fallback = {}) {
+  try {
+    const parsed = JSON.parse(String(value || ""));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : fallback;
+  } catch (error) {
+    return fallback;
+  }
+}
+
+function getCurrentScriptRecord(snapshot, studentId) {
+  return (snapshot.files || [])
+    .filter((file) => file.student_id === studentId)
+    .filter((file) => String(file.category || "").toUpperCase() === "CURRENT_SCRIPT")
+    .filter((file) => String(file.status || "").toUpperCase() !== "ARCHIVED" && !file.archived_at)
+    .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime())[0] || null;
+}
+
+function encodeScriptNotes(data) {
+  return JSON.stringify({
+    kind: "CURRENT_SCRIPT",
+    script_text: String(data.script_text || ""),
+    comments: Array.isArray(data.comments) ? data.comments : [],
+    archived_at: data.archived_at || ""
+  });
+}
+
+function upsertActorProfile(snapshot, identity, updates) {
+  snapshot.actorProfiles = Array.isArray(snapshot.actorProfiles) ? snapshot.actorProfiles : [];
+  let profile = snapshot.actorProfiles.find((row) => row.student_id === identity.student_id);
+  const now = new Date().toISOString();
+  if (!profile) {
+    profile = {
+      actor_profile_id: nextId(snapshot.actorProfiles, "ACT", "actor_profile_id"),
+      student_id: identity.student_id,
+      slug: String(identity.student_name || identity.student_id).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      status: "Draft",
+      display_name: identity.student_name || "",
+      bio: "",
+      updated_at: now
+    };
+    snapshot.actorProfiles.push(profile);
+  }
+  profile.display_name = String(updates.display_name || profile.display_name || "").trim();
+  profile.bio = String(updates.bio || profile.bio || "").trim();
+  profile.status = "Draft";
+  profile.updated_at = now;
+  return profile;
+}
+
+async function handlePortalMutation(event, action, mutator) {
+  const result = await getSessionIdentity(event);
+  if (!result) return json(401, { ok: false, error: "Not signed in." }, { "Set-Cookie": clearCookie() });
+  const scopedIdentity = {
+    ...result.identity,
+    student: (result.snapshot.students || []).find((row) => row.student_id === result.identity.student_id) || null
+  };
+  const body = JSON.parse(event.body || "{}");
+  const mutationResult = mutator(result.snapshot, scopedIdentity, body);
+  await pushAppsScriptSnapshot(result.snapshot);
+  return json(200, {
+    ok: true,
+    action,
+    result: mutationResult,
+    data: getScopedPortalData(result.snapshot, result.identity)
+  });
+}
+
+function createPortalMaterial(snapshot, identity, body) {
+  if (!canViewRecord(identity, identity.student, "public")) {
+    throw new Error("Public page controls are not enabled for this portal account.");
+  }
+  snapshot.files = Array.isArray(snapshot.files) ? snapshot.files : [];
+  const now = new Date().toISOString();
+  const material = {
+    file_id: nextId(snapshot.files, "FILE", "file_id"),
+    student_id: identity.student_id,
+    lesson_id: null,
+    homework_id: null,
+    file_name: String(body.file_name || body.title || "Student Material").trim(),
+    title: String(body.title || body.file_name || "Student Material").trim(),
+    source_type: String(body.source_type || "LINK").trim().toUpperCase(),
+    external_url: String(body.external_url || "").trim(),
+    file_url: String(body.file_url || "").trim(),
+    mime_type: String(body.mime_type || "").trim(),
+    material_kind: String(body.material_kind || "DOCUMENT").trim().toUpperCase(),
+    category: String(body.category || "Public Page").trim(),
+    scope: "ACTOR_MATERIAL",
+    visibility: "STUDENT_VISIBLE",
+    notes: String(body.notes || "Submitted from student portal.").trim(),
+    status: "Pending Review",
+    uploaded_at: now
+  };
+  snapshot.files.push(material);
+  return material;
+}
+
+function saveCurrentScript(snapshot, identity, body) {
+  if (identity.student && identity.student.portal_script_access === false) {
+    throw new Error("Current script access is not enabled for this portal account.");
+  }
+  snapshot.files = Array.isArray(snapshot.files) ? snapshot.files : [];
+  const now = new Date().toISOString();
+  let script = getCurrentScriptRecord(snapshot, identity.student_id);
+  if (!script) {
+    script = {
+      file_id: nextId(snapshot.files, "FILE", "file_id"),
+      student_id: identity.student_id,
+      lesson_id: null,
+      homework_id: null,
+      file_name: String(body.title || "Current Script").trim(),
+      title: String(body.title || "Current Script").trim(),
+      source_type: body.script_url ? "LINK" : "TEXT",
+      external_url: String(body.script_url || "").trim(),
+      file_url: "",
+      mime_type: body.script_url ? "application/pdf" : "text/plain",
+      material_kind: "SCRIPT",
+      category: "CURRENT_SCRIPT",
+      scope: "COACHING_MATERIAL",
+      visibility: "STUDENT_VISIBLE",
+      notes: "",
+      status: "Active",
+      uploaded_at: now
+    };
+    snapshot.files.push(script);
+  }
+  const notes = parseJsonObject(script.notes, { comments: [] });
+  script.title = String(body.title || script.title || "Current Script").trim();
+  script.file_name = script.title;
+  script.external_url = String(body.script_url || script.external_url || "").trim();
+  script.source_type = script.external_url ? "LINK" : "TEXT";
+  script.mime_type = script.external_url ? "application/pdf" : "text/plain";
+  script.notes = encodeScriptNotes({
+    ...notes,
+    script_text: String(body.script_text || notes.script_text || "")
+  });
+  script.status = "Active";
+  script.uploaded_at = script.uploaded_at || now;
+  return script;
+}
+
+function addScriptComment(snapshot, identity, body) {
+  const script = getCurrentScriptRecord(snapshot, identity.student_id);
+  if (!script) throw new Error("No current script is active.");
+  const notes = parseJsonObject(script.notes, { script_text: "", comments: [] });
+  const comment = {
+    id: `SCOM-${Date.now()}`,
+    author_role: identity.role,
+    author_email: identity.email,
+    body: String(body.comment || "").trim(),
+    created_at: new Date().toISOString()
+  };
+  if (!comment.body) throw new Error("Comment text is required.");
+  notes.comments = Array.isArray(notes.comments) ? notes.comments : [];
+  notes.comments.unshift(comment);
+  script.notes = encodeScriptNotes(notes);
+  return comment;
+}
+
+function archiveCurrentScript(snapshot, identity) {
+  const script = getCurrentScriptRecord(snapshot, identity.student_id);
+  if (!script) throw new Error("No current script is active.");
+  const now = new Date().toISOString();
+  const notes = parseJsonObject(script.notes, { comments: [] });
+  notes.archived_at = now;
+  script.notes = encodeScriptNotes(notes);
+  script.status = "Archived";
+  script.archived_at = now;
+  return script;
 }
 
 async function handleLogin(event) {
@@ -379,6 +634,21 @@ exports.handler = async function (event) {
     if (method === "POST") {
       if (action === "login") return handleLogin(event);
       if (action === "logout") return handleLogout();
+      if (action === "update_public_profile") {
+        return handlePortalMutation(event, action, (snapshot, identity, body) => upsertActorProfile(snapshot, identity, body));
+      }
+      if (action === "submit_public_material") {
+        return handlePortalMutation(event, action, createPortalMaterial);
+      }
+      if (action === "save_current_script") {
+        return handlePortalMutation(event, action, saveCurrentScript);
+      }
+      if (action === "add_script_comment") {
+        return handlePortalMutation(event, action, addScriptComment);
+      }
+      if (action === "archive_current_script") {
+        return handlePortalMutation(event, action, archiveCurrentScript);
+      }
       return json(404, { ok: false, error: "Unsupported student auth action." });
     }
 

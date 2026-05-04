@@ -24,6 +24,9 @@ const sampleStudents = [
     last_name: "Kim",
     full_name: "Maya Kim",
     email: "maya@example.com",
+    guardian_name: "Jin Kim",
+    guardian_email: "jin.guardian@example.com",
+    guardian_phone: "",
     phone: "",
     studio_status: "ACTIVE",
     billing_model: "PACKAGE",
@@ -33,6 +36,17 @@ const sampleStudents = [
     focus_area: "Meisner · Scene Study",
     actor_page_eligible: true,
     actor_profile_id: createYearlyId("ACT", 2026, 1),
+    portal_access_enabled: true,
+    guardian_portal_access_enabled: true,
+    student_is_minor: false,
+    portal_student_finance_access: true,
+    portal_guardian_finance_access: false,
+    portal_minor_finance_access: false,
+    portal_notes_access: true,
+    portal_homework_access: true,
+    portal_materials_access: true,
+    portal_public_page_access: true,
+    portal_script_access: true,
     created_at: "2026-03-19"
   },
   {
@@ -823,6 +837,24 @@ const sampleFiles = [
     notes: "Legacy reel kept in vault while the new cut is prepared.",
     status: "Vaulted",
     uploaded_at: "2026-02-25"
+  },
+  {
+    file_id: createYearlyId("FILE", 2026, 4),
+    student_id: "STU-000001",
+    lesson_id: null,
+    file_name: "MayaKim_CurrentScript.txt",
+    title: "The Seagull - Nina Monologue",
+    source_type: "TEXT",
+    external_url: "",
+    file_url: "",
+    mime_type: "text/plain",
+    material_kind: "SCRIPT",
+    category: "CURRENT_SCRIPT",
+    scope: "COACHING_MATERIAL",
+    visibility: "STUDENT_VISIBLE",
+    notes: "{\"kind\":\"CURRENT_SCRIPT\",\"script_text\":\"NINA:\\nPeople and lions, eagles and partridges, antlered deer, geese, spiders, silent fish dwelling in the water, starfish and creatures invisible to the eye - in short, all life, all life, all life, completing its sad cycle, has died out...\",\"comments\":[{\"id\":\"SCOM-202604010001\",\"author_role\":\"COACH\",\"author_email\":\"coach@d-a-j.com\",\"body\":\"Track where the thought turns from image to confession.\",\"created_at\":\"2026-04-01T15:30:00.000Z\"}],\"archived_at\":\"\"}",
+    status: "Active",
+    uploaded_at: "2026-04-01"
   }
 ];
 
