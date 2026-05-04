@@ -4,6 +4,7 @@
 let studentPortalMessage = "";
 let studentPortalMessageTone = "warm";
 let studentPortalRequestId = 0;
+const STUDENT_PORTAL_SESSION_HINT_KEY = "studioPortal.studentPortalSessionHint";
 let studentPortalState = {
   identity: null,
   data: null,
@@ -56,9 +57,21 @@ async function requestStudentPortalAuth(action, options = {}) {
 
 async function loadStudentPortalServerData() {
   try {
+    if (localStorage.getItem(STUDENT_PORTAL_SESSION_HINT_KEY) !== "active") return null;
+  } catch (error) {
+    // Keep the portal usable if browser storage is unavailable.
+  }
+  try {
     return await requestStudentPortalAuth("portal_data");
   } catch (error) {
-    if (Number(error.status) === 401) return null;
+    if (Number(error.status) === 401) {
+      try {
+        localStorage.removeItem(STUDENT_PORTAL_SESSION_HINT_KEY);
+      } catch (storageError) {
+        // Ignore storage cleanup failures.
+      }
+      return null;
+    }
     throw error;
   }
 }
@@ -78,6 +91,40 @@ function getStudentPortalMessageMarkup() {
         : "border-gold/20 bg-gold/5 text-warmblack";
 
   return `<div class="rounded-xl border ${toneClass} px-4 py-3"><p class="text-sm">${escapeHtml(studentPortalMessage)}</p></div>`;
+}
+
+function renderStudentPortalFormattedBody(value) {
+  const raw = String(value || "").trim();
+  if (!raw) return "No note body.";
+  if (!/<[a-z][\s\S]*>/i.test(raw) || typeof document === "undefined") {
+    return escapeHtml(raw);
+  }
+
+  const allowedTags = new Set(["B", "STRONG", "I", "EM", "U", "BR", "P", "DIV", "UL", "OL", "LI", "BLOCKQUOTE", "A", "SPAN"]);
+  const template = document.createElement("template");
+  template.innerHTML = raw;
+  template.content.querySelectorAll("script, style, iframe, object, embed").forEach((node) => node.remove());
+  template.content.querySelectorAll("*").forEach((node) => {
+    if (!allowedTags.has(node.tagName)) {
+      node.replaceWith(...Array.from(node.childNodes));
+      return;
+    }
+    Array.from(node.attributes).forEach((attr) => {
+      const name = attr.name.toLowerCase();
+      const value = String(attr.value || "");
+      if (name.startsWith("on") || (["href", "src"].includes(name) && /^\s*javascript:/i.test(value))) {
+        node.removeAttribute(attr.name);
+      }
+      if (!["href", "target", "rel"].includes(name)) {
+        node.removeAttribute(attr.name);
+      }
+    });
+    if (node.tagName === "A") {
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener");
+    }
+  });
+  return template.innerHTML;
 }
 
 async function submitStudentPortalLogin(event) {
@@ -106,6 +153,11 @@ async function submitStudentPortalLogin(event) {
         access_code: accessCode
       }
     });
+    try {
+      localStorage.setItem(STUDENT_PORTAL_SESSION_HINT_KEY, "active");
+    } catch (error) {
+      // Session cookies still carry the real auth state.
+    }
     setStudentPortalMessage(`Signed in for ${payload.identity?.student_name || email}.`, "success");
     renderStudentPortalPage();
   } catch (error) {
@@ -122,6 +174,11 @@ async function signOutStudentPortal() {
   }
 
   studentPortalState = { identity: null, data: null, activeTab: "overview" };
+  try {
+    localStorage.removeItem(STUDENT_PORTAL_SESSION_HINT_KEY);
+  } catch (error) {
+    // Ignore storage cleanup failures.
+  }
   setStudentPortalMessage("Signed out of the student portal.", "warm");
   renderStudentPortalPage();
 }
@@ -204,6 +261,22 @@ function parseStudentPortalJson(value, fallback = {}) {
 
 function getStudentPortalScriptMeta(script) {
   return parseStudentPortalJson(script?.notes, { script_text: "", comments: [] });
+}
+
+function getStudentPortalPreviewUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (/drive\.google\.com$/i.test(parsed.hostname)) {
+      const fileMatch = parsed.pathname.match(/\/file\/d\/([^/]+)/i);
+      const fileId = fileMatch ? fileMatch[1] : parsed.searchParams.get("id");
+      if (fileId) return `https://drive.google.com/file/d/${encodeURIComponent(fileId)}/preview`;
+    }
+  } catch (error) {
+    return raw;
+  }
+  return raw;
 }
 
 function getStudentPortalTabs(permissions = {}) {
@@ -504,9 +577,16 @@ function renderStudentPortalAssignmentsTab(scoped) {
         <div class="space-y-3 mt-4">
           ${scoped.homework.length ? scoped.homework.map((item) => `
             <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-              <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.title || "Homework")}</p>
-              <p class="text-xs text-warmgray mt-1">${item.due_date ? `Due ${escapeHtml(formatLongDate(item.due_date))}` : "No due date"} - ${escapeHtml(item.status || "Assigned")}</p>
+              <div class="flex items-start gap-3">
+                <input type="checkbox" class="mt-1" ${String(item.status || "").toUpperCase() === "COMPLETED" ? "checked" : ""} onchange="toggleStudentPortalHomework('${escapeHtml(item.homework_id)}', this.checked)" />
+                <div class="min-w-0 flex-1">
+                  <p class="text-sm font-semibold text-warmblack">${escapeHtml(item.title || "Homework")}</p>
+                  <p class="text-xs text-warmgray mt-1">${item.due_date ? `Due ${escapeHtml(formatLongDate(item.due_date))}` : "No due date"} - ${escapeHtml(item.status || "Assigned")}</p>
+                  ${item.student_reminder_requested_at ? `<p class="text-xs text-gold mt-1">Reminder requested ${escapeHtml(formatLongDate(item.student_reminder_requested_at))}</p>` : ""}
+                </div>
+              </div>
               <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(item.details || "")}</p>
+              <button type="button" class="mt-3 px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="requestStudentPortalHomeworkReminder('${escapeHtml(item.homework_id)}')">Request Reminder</button>
             </div>
           `).join("") : `<p class="text-sm text-warmgray">No homework is assigned.</p>`}
         </div>
@@ -520,13 +600,27 @@ function renderStudentPortalAssignmentsTab(scoped) {
                 <h4 class="text-sm font-semibold text-warmblack">${escapeHtml(note.title || "Lesson Note")}</h4>
                 <span class="text-xs text-warmgray">${escapeHtml(formatLongDate(note.published_at || note.updated_at || note.created_at))}</span>
               </div>
-              <p class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${escapeHtml(note.body || "No note body.")}</p>
+              <div class="text-sm text-warmgray mt-2 whitespace-pre-wrap">${renderStudentPortalFormattedBody(note.body)}</div>
             </article>
           `).join("") : `<p class="text-sm text-warmgray">No published notes are visible yet.</p>`}
         </div>
       </section>
     </div>
   `;
+}
+
+function toggleStudentPortalHomework(homeworkId, completed) {
+  submitStudentPortalMutation("update_homework", {
+    homework_id: homeworkId,
+    completed: Boolean(completed)
+  }, completed ? "Homework marked complete." : "Homework moved back to assigned.");
+}
+
+function requestStudentPortalHomeworkReminder(homeworkId) {
+  submitStudentPortalMutation("update_homework", {
+    homework_id: homeworkId,
+    reminder_requested: true
+  }, "Reminder request saved.");
 }
 
 function renderStudentPortalMaterialsTab(scoped) {
@@ -549,8 +643,34 @@ function renderStudentPortalMaterialsTab(scoped) {
             </label>
             <label class="block">
               <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Bio</span>
-              <textarea name="bio" rows="9" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(profile.bio || "")}</textarea>
+              <textarea name="bio" rows="6" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">${escapeHtml(profile.bio || "")}</textarea>
             </label>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Location</span>
+                <input name="location" type="text" value="${escapeHtml(profile.location || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Height</span>
+                <input name="height" type="text" value="${escapeHtml(profile.height || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Weight</span>
+                <input name="weight" type="text" value="${escapeHtml(profile.weight || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Eye Color</span>
+                <input name="eye_color" type="text" value="${escapeHtml(profile.eye_color || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Hair Color</span>
+                <input name="hair_color" type="text" value="${escapeHtml(profile.hair_color || "")}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+              </label>
+              <label class="block">
+                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Page Color</span>
+                <input name="background_color" type="color" value="${escapeHtml(profile.background_color || "#f7f3ee")}" class="mt-2 w-full h-11 rounded-xl border border-cream bg-parchment px-2 py-1 text-sm" />
+              </label>
+            </div>
             <label class="rounded-xl border border-cream bg-parchment px-3 py-3 flex items-start gap-3">
               <input name="go_live" type="checkbox" class="mt-1" ${isPublicLive ? "checked" : ""} ${isPublicEligible ? "" : "disabled"} />
               <span class="min-w-0">
@@ -604,7 +724,11 @@ function renderStudentPortalMaterialForm() {
         </label>
         <label class="block">
           <span class="text-xs uppercase tracking-wider text-warmgray font-medium">URL</span>
-          <input name="external_url" type="url" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+          <input name="external_url" type="url" placeholder="Headshot, resume, reel, or Google Drive link" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" required />
+        </label>
+        <label class="block">
+          <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Notes for coach</span>
+          <textarea name="notes" rows="3" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"></textarea>
         </label>
         <button type="submit" class="w-full px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold">Submit Material</button>
       </div>
@@ -619,6 +743,7 @@ function submitStudentPortalMaterial(event) {
     title: form.elements.title.value,
     category: form.elements.category.value,
     external_url: form.elements.external_url.value,
+    notes: form.elements.notes.value,
     source_type: "LINK"
   }, "Material submitted for public page review.");
 }
@@ -629,6 +754,12 @@ function submitStudentPortalPublicProfile(event) {
   submitStudentPortalMutation("update_public_profile", {
     display_name: form.elements.display_name.value,
     bio: form.elements.bio.value,
+    location: form.elements.location.value,
+    height: form.elements.height.value,
+    weight: form.elements.weight.value,
+    eye_color: form.elements.eye_color.value,
+    hair_color: form.elements.hair_color.value,
+    background_color: form.elements.background_color.value,
     status: form.elements.go_live && form.elements.go_live.checked ? "Active" : "Draft"
   }, "Public profile draft saved.");
 }
@@ -647,6 +778,7 @@ function renderStudentPortalScriptSummary(script) {
 function renderStudentPortalScriptTab(scoped) {
   const script = scoped.currentScript || null;
   const meta = getStudentPortalScriptMeta(script);
+  const previewUrl = getStudentPortalPreviewUrl(script?.external_url);
   return `
     <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
       <section class="xl:col-span-2 rounded-2xl border border-cream bg-white p-4 sm:p-5">
@@ -658,8 +790,8 @@ function renderStudentPortalScriptTab(scoped) {
           ${script ? `<button type="button" onclick="archiveStudentPortalScript()" class="px-3 py-2 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover">Archive</button>` : ""}
         </div>
         <div class="mt-4">
-          ${script?.external_url ? `
-            <iframe title="Current script" src="${escapeHtml(script.external_url)}" class="student-portal-script-frame w-full rounded-xl border border-cream bg-parchment"></iframe>
+          ${previewUrl ? `
+            <iframe title="Current script" src="${escapeHtml(previewUrl)}" class="student-portal-script-frame w-full rounded-xl border border-cream bg-parchment"></iframe>
           ` : `
             <pre class="student-portal-script-frame w-full whitespace-pre-wrap rounded-xl border border-cream bg-parchment px-4 py-3 text-sm text-warmblack overflow-auto">${escapeHtml(meta.script_text || "No script text has been added yet.")}</pre>
           `}

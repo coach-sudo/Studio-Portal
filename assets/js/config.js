@@ -12,6 +12,30 @@ const defaultConfig = {
   font_size: 14,
 };
 
+const STUDIO_BRANDING_STORAGE_KEY = "studioPortal.branding";
+
+function loadStudioBranding() {
+  try {
+    const raw = localStorage.getItem(STUDIO_BRANDING_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function saveStudioBranding(branding = {}) {
+  try {
+    localStorage.setItem(STUDIO_BRANDING_STORAGE_KEY, JSON.stringify(branding));
+    return true;
+  } catch (error) {
+    return false;
+  }
+}
+
+function getStudioBranding() {
+  return loadStudioBranding();
+}
+
 function applyConfig(config = defaultConfig) {
   const studioName = config.studio_name || defaultConfig.studio_name;
   const coachName = config.coach_name || defaultConfig.coach_name;
@@ -31,6 +55,10 @@ function applyConfig(config = defaultConfig) {
   const coachTitleEl = document.getElementById("sidebar-coach-title");
   const dashCoachNameEl = document.getElementById("dash-coach-name");
   const publicStudioNameEl = document.getElementById("public-studio-name");
+  const sidebarLogoImageEl = document.getElementById("sidebar-logo-image");
+  const sidebarLogoMarkEl = document.getElementById("sidebar-logo-mark");
+  const sidebarLogoIconEl = sidebarLogoMarkEl ? sidebarLogoMarkEl.querySelector("[data-lucide='drama']") : null;
+  const branding = loadStudioBranding();
 
   if (studioNameEl) studioNameEl.textContent = studioName;
   if (taglineEl) taglineEl.textContent = tagline;
@@ -38,6 +66,22 @@ function applyConfig(config = defaultConfig) {
   if (coachTitleEl) coachTitleEl.textContent = coachTitle;
   if (dashCoachNameEl) dashCoachNameEl.textContent = coachName.split(" ")[0];
   if (publicStudioNameEl) publicStudioNameEl.textContent = `${studioName} Studio`;
+  if (sidebarLogoImageEl && sidebarLogoMarkEl) {
+    const logoUrl = String(branding.logo_url || "").trim();
+    if (logoUrl) {
+      sidebarLogoImageEl.src = logoUrl;
+      sidebarLogoImageEl.classList.remove("hidden");
+      if (sidebarLogoIconEl) sidebarLogoIconEl.classList.add("hidden");
+      sidebarLogoMarkEl.classList.remove("gold-gradient");
+      sidebarLogoMarkEl.classList.add("bg-white");
+    } else {
+      sidebarLogoImageEl.removeAttribute("src");
+      sidebarLogoImageEl.classList.add("hidden");
+      if (sidebarLogoIconEl) sidebarLogoIconEl.classList.remove("hidden");
+      sidebarLogoMarkEl.classList.add("gold-gradient");
+      sidebarLogoMarkEl.classList.remove("bg-white");
+    }
+  }
 
   document.body.style.fontFamily = `${font}, DM Sans, sans-serif`;
   document.body.style.fontSize = `${fontSize}px`;

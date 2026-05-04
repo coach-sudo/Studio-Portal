@@ -295,7 +295,14 @@ function getPortalPermissions(identity) {
 
 function canViewRecord(identity, record, kind) {
   if (!identity || !record) return false;
-  if (record.student_id && record.student_id !== identity.student_id) return false;
+  const ownedKinds = ["lesson", "note", "homework", "material", "script", "payment", "package"];
+  const recordStudentId = String(record.student_id || "").trim();
+  const identityStudentId = String(identity.student_id || "").trim();
+  if (ownedKinds.includes(kind)) {
+    if (!recordStudentId || recordStudentId !== identityStudentId) return false;
+  } else if (recordStudentId && recordStudentId !== identityStudentId) {
+    return false;
+  }
   const student = identity.student || {};
 
   if (kind === "note") return student.portal_notes_access !== false && normalizeNoteStatus(record.status) === "PUBLISHED";
@@ -422,6 +429,13 @@ function upsertActorProfile(snapshot, identity, updates) {
   }
   profile.display_name = String(updates.display_name || profile.display_name || "").trim();
   profile.bio = String(updates.bio || profile.bio || "").trim();
+  profile.location = String(updates.location || profile.location || "").trim();
+  profile.height = String(updates.height || profile.height || "").trim();
+  profile.weight = String(updates.weight || profile.weight || "").trim();
+  profile.eye_color = String(updates.eye_color || profile.eye_color || "").trim();
+  profile.hair_color = String(updates.hair_color || profile.hair_color || "").trim();
+  profile.background_color = String(updates.background_color || profile.background_color || "").trim();
+  profile.headshot_file_id = String(updates.headshot_file_id || profile.headshot_file_id || "").trim();
   const wantsLive = String(updates.status || "").toLowerCase() === "active";
   profile.status = identity.student && identity.student.actor_page_eligible === true && wantsLive ? "Active" : "Draft";
   profile.updated_at = now;
@@ -467,6 +481,7 @@ function createPortalMaterial(snapshot, identity, body) {
     mime_type: String(body.mime_type || "").trim(),
     material_kind: String(body.material_kind || "DOCUMENT").trim().toUpperCase(),
     category: String(body.category || "Public Page").trim(),
+    public_page_featured: String(body.category || "").trim().toLowerCase() === "headshot" ? "HEADSHOT" : "",
     scope: "ACTOR_MATERIAL",
     visibility: "ADMIN_ONLY",
     public_page_status: "PENDING_REVIEW",
@@ -554,6 +569,30 @@ function archiveCurrentScript(snapshot, identity) {
   script.status = "Archived";
   script.archived_at = now;
   return script;
+}
+
+function updateHomeworkFromPortal(snapshot, identity, body) {
+  if (identity.student && identity.student.portal_homework_access === false) {
+    throw new Error("Homework access is not enabled for this portal account.");
+  }
+  const homeworkId = String(body.homework_id || "").trim();
+  const item = (snapshot.homework || []).find((row) => row.homework_id === homeworkId && row.student_id === identity.student_id);
+  if (!item) throw new Error("Homework item not found.");
+
+  const now = new Date().toISOString();
+  if (body.completed === true) {
+    item.status = "COMPLETED";
+    item.completed_at = item.completed_at || now;
+    item.student_completed_at = now;
+  } else if (body.completed === false) {
+    item.status = "ASSIGNED";
+    item.completed_at = "";
+    item.student_completed_at = "";
+  }
+  if (body.reminder_requested === true) {
+    item.student_reminder_requested_at = now;
+  }
+  return item;
 }
 
 async function handleLogin(event) {
@@ -661,6 +700,9 @@ exports.handler = async function (event) {
       }
       if (action === "archive_current_script") {
         return handlePortalMutation(event, action, archiveCurrentScript);
+      }
+      if (action === "update_homework") {
+        return handlePortalMutation(event, action, updateHomeworkFromPortal);
       }
       return json(404, { ok: false, error: "Unsupported student auth action." });
     }

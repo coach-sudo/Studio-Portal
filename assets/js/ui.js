@@ -2115,6 +2115,11 @@ function syncCalendarStateFromBackendSettings() {
   return calendarSyncState;
 }
 
+function hasStudioBackendEndpoint() {
+  const status = studioDataService?.getPersistenceStatus ? studioDataService.getPersistenceStatus() : {};
+  return status.endpoint_configured === true;
+}
+
 function getGoogleServiceStatusBadgeClass(status) {
   const normalized = String(status || "").trim().toLowerCase();
   if (["live_ready", "connected", "success"].includes(normalized)) return "bg-sage/10 text-sage";
@@ -4048,10 +4053,10 @@ async function runGoogleCalendarSync() {
     return;
   }
 
-  if (!backend.google_sheets_web_app_url) {
+  if (!hasStudioBackendEndpoint()) {
     notifyUser({
       title: "Calendar Sync",
-      message: "Add your Netlify backend URL in Settings before running Calendar sync. Demo fallback is now disabled so sync only runs against the live backend.",
+      message: "Open the hosted Netlify app or add your backend URL in Settings before running Calendar sync.",
       tone: "error",
       source: "schedule"
     });
@@ -4306,10 +4311,10 @@ async function runGmailAssistSync() {
     return;
   }
 
-  if (!backend.google_sheets_web_app_url) {
+  if (!hasStudioBackendEndpoint()) {
     notifyUser({
       title: "Gmail Assist",
-      message: "Add your Netlify backend URL in Settings before running Gmail assist. Demo fallback is now disabled so sync only runs against the live backend.",
+      message: "Open the hosted Netlify app or add your backend URL in Settings before running Gmail assist.",
       tone: "error",
       source: "schedule"
     });
@@ -4374,10 +4379,10 @@ async function runGmailAssistSync() {
 
 async function checkGoogleConnectionStatus() {
   const backend = studioDataService.getBackendSettings();
-  if (!backend.google_sheets_web_app_url) {
+  if (!hasStudioBackendEndpoint()) {
     notifyUser({
       title: "Google Connections",
-      message: "Add your backend / proxy URL in Settings before checking Google connection status.",
+      message: "Open the hosted Netlify app or add your backend / proxy URL in Settings before checking Google connection status.",
       tone: "error",
       source: "settings"
     });
@@ -6371,6 +6376,7 @@ function upsertMaterialRecord({
       scope: normalizedScope,
       visibility: normalizedVisibility,
       public_page_status: normalizedPublicPageStatus,
+      public_page_featured: existing.public_page_featured || "",
       submitted_by: String(submitted_by || existing.submitted_by || "COACH").trim(),
       submitted_at: String(submitted_at || existing.submitted_at || cleanUploadedAt || "").trim(),
       reviewed_at: String(reviewed_at || existing.reviewed_at || "").trim(),
@@ -6399,6 +6405,7 @@ function upsertMaterialRecord({
     scope: normalizedScope,
     visibility: normalizedVisibility,
     public_page_status: normalizedPublicPageStatus,
+    public_page_featured: /headshot/i.test(cleanCategory) ? "HEADSHOT" : "",
     submitted_by: String(submitted_by || "COACH").trim(),
     submitted_at: String(submitted_at || cleanUploadedAt || new Date().toISOString()).trim(),
     reviewed_at: String(reviewed_at || "").trim(),
@@ -6439,22 +6446,90 @@ function restoreMaterial(fileId) {
   }
 }
 
+function getPublicMaterialReviewRows() {
+  return getFileRecords()
+    .filter((file) => String(file.status || "Active").toLowerCase() !== "vaulted")
+    .filter((file) => String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW")
+    .map((file) => {
+      const student = getSchemaStudentById(file.student_id);
+      return {
+        file,
+        student,
+        student_name: student?.full_name || "Unknown Student",
+        submitted_at: file.submitted_at || file.uploaded_at || ""
+      };
+    })
+    .sort((a, b) => new Date(b.submitted_at || 0).getTime() - new Date(a.submitted_at || 0).getTime());
+}
+
+function openStudentPublicMaterials(studentId) {
+  selectedStudentId = studentId;
+  navigateTo("profile");
+  setTimeout(() => {
+    const tabButton = document.querySelector("[data-profile-tab='materials']");
+    if (tabButton) tabButton.click();
+  }, 0);
+}
+
+async function refreshPortalReviewQueue() {
+  try {
+    await studioDataService.pullFromBackend();
+    rebuildStudentViewModels();
+    renderCurrentPage();
+    notifyUser({
+      title: "Portal Submissions Refreshed",
+      message: "Latest student portal uploads and public-page changes are now loaded.",
+      tone: "success",
+      source: "materials"
+    });
+  } catch (error) {
+    notifyUser({
+      title: "Portal Refresh Failed",
+      message: error.message || "Unable to pull portal submissions from the backend.",
+      tone: "error",
+      source: "materials"
+    });
+  }
+}
+
+function syncPortalReviewDecision() {
+  if (!studioDataService?.syncToBackend) return;
+  studioDataService.syncToBackend({ silent: true }).then((result) => {
+    if (result && result.ok === false) {
+      console.warn("Public material review saved locally but backend sync did not complete.", result.error);
+    }
+  }).catch((error) => {
+    console.warn("Public material review saved locally but backend sync did not complete.", error);
+  });
+}
+
 function approvePublicMaterial(fileId) {
   const file = getFileById(fileId);
   if (!file) return;
+  const actorProfile = getActorProfileByStudentId(file.student_id);
+  const isHeadshot = /headshot/i.test(`${file.category || ""} ${file.title || ""} ${file.file_name || ""}`);
 
   patchRecordById("files", fileId, {
     scope: "ACTOR_MATERIAL",
     visibility: "STUDENT_VISIBLE",
     public_page_status: "APPROVED",
+    public_page_featured: isHeadshot ? "HEADSHOT" : file.public_page_featured || "",
     reviewed_at: new Date().toISOString(),
     reviewed_by: "coach"
   });
+  if (actorProfile && isHeadshot) {
+    patchRecordById("actorProfiles", actorProfile.actor_profile_id, {
+      headshot_file_id: fileId,
+      updated_at: new Date().toISOString()
+    });
+  }
 
   if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  if (currentPage === "operations") renderOperationsPage();
+  syncPortalReviewDecision();
   notifyUser({
     title: "Public Material Approved",
-    message: "This material is now eligible to appear on the live public page.",
+    message: isHeadshot ? "This headshot is now the main public-page photo." : "This material is now eligible to appear on the live public page.",
     tone: "success",
     source: "materials"
   });
@@ -6472,6 +6547,8 @@ function rejectPublicMaterial(fileId) {
   });
 
   if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  if (currentPage === "operations") renderOperationsPage();
+  syncPortalReviewDecision();
   notifyUser({
     title: "Public Material Rejected",
     message: "This material stays out of the public page.",
@@ -9893,7 +9970,7 @@ function renderStudentsPage() {
         </div>
       </div>
 
-      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 flex flex-col lg:flex-row lg:items-center gap-4 fade-in" style="animation-delay:0.05s">
+      <div class="page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 grid grid-cols-1 lg:grid-cols-[auto_minmax(420px,1fr)_auto] lg:items-center gap-4 fade-in" style="animation-delay:0.05s">
         <div class="flex flex-wrap gap-2 shrink-0">
           <button onclick="setFilter('all')" class="filter-btn active-filter px-3 py-2 rounded-lg text-xs font-medium bg-charcoal text-white transition-all" data-filter="all">All</button>
           <button onclick="setFilter('active')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="active">Active</button>
@@ -9901,7 +9978,7 @@ function renderStudentsPage() {
           <button onclick="setFilter('inactive')" class="filter-btn px-3 py-2 rounded-lg text-xs font-medium bg-parchment text-warmgray transition-all" data-filter="inactive">Inactive</button>
         </div>
 
-        <div class="flex-1 relative min-w-0 order-last lg:order-none">
+        <div class="relative min-w-0">
           <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
           <input
             id="student-search"
@@ -9911,10 +9988,10 @@ function renderStudentsPage() {
             oninput="filterStudents()"
           />
         </div>
-        <div class="flex flex-wrap items-center gap-3">
+        <div class="flex flex-wrap items-center justify-start lg:justify-end gap-3">
           <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="toggleCompactView('students')">${getCompactToggleLabel("students")}</button>
         </div>
-        <div id="students-filter-summary" class="page-filter-summary w-full lg:order-last"></div>
+        <div id="students-filter-summary" class="page-filter-summary w-full lg:col-span-3"></div>
       </div>
 
       <div id="student-grid" class="grid grid-cols-1 xl:grid-cols-3 gap-4"></div>
@@ -11836,6 +11913,7 @@ function renderOperationsPage() {
   const dailyTasks = getDailyTodoItems();
   const urgentTasks = dailyTasks.filter((task) => task.priority >= 5).slice(0, 8);
   const intakeRows = getScheduleIntakeRows().filter((row) => row.action_required).slice(0, 8);
+  const publicMaterialRows = getPublicMaterialReviewRows().slice(0, 8);
   const outstandingRows = getOutstandingBalanceRows().slice(0, 8);
   const packageFollowUps = getPackageRecords()
     .filter((pkg) => !isPackageArchived(pkg))
@@ -11866,6 +11944,7 @@ function renderOperationsPage() {
           <div class="page-compact-summary mt-3">
             <span class="page-compact-summary-pill">Urgent today · ${urgentTasks.length}</span>
             <span class="page-compact-summary-pill">Intake review · ${intakeRows.length}</span>
+            <span class="page-compact-summary-pill">Public review · ${publicMaterialRows.length}</span>
             <span class="page-compact-summary-pill">Outstanding balances · ${outstandingRows.length}</span>
             <span class="page-compact-summary-pill">Still open · ${unresolvedTasks}</span>
           </div>
@@ -11886,6 +11965,7 @@ function renderOperationsPage() {
           <div class="flex flex-wrap gap-2">
             <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
             <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGmailAssistSync()">Run Gmail Assist</button>
+            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="refreshPortalReviewQueue()">Refresh Portal Queue</button>
             <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('settings')">Open Settings</button>
           </div>
         </div>
@@ -11893,9 +11973,43 @@ function renderOperationsPage() {
           <span class="page-compact-summary-pill">Calendar · ${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
           <span class="page-compact-summary-pill">Gmail · ${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
           <span class="page-compact-summary-pill">Review queue · ${intakeRows.length}</span>
+          <span class="page-compact-summary-pill">Public materials · ${publicMaterialRows.length}</span>
           <span class="page-compact-summary-pill">Package follow-up · ${packageFollowUps.length}</span>
         </div>
       </div>
+
+      <section class="dashboard-panel bg-white rounded-2xl border border-cream mb-5 fade-in">
+        <div class="dashboard-panel-header p-5 border-b border-cream flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+          <div>
+            <h3 class="font-display text-lg font-semibold">Public Page Review Queue</h3>
+            <p class="text-xs text-warmgray mt-1">Student portal uploads land here first. Approving a headshot also makes it the main public-page photo.</p>
+          </div>
+          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="refreshPortalReviewQueue()">Refresh From Portal</button>
+        </div>
+        <div class="p-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
+          ${publicMaterialRows.length ? publicMaterialRows.map((row) => {
+            const url = getMaterialSourceUrl(row.file);
+            return `
+              <article class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-warmblack">${escapeHtml(getMaterialDisplayName(row.file))}</p>
+                    <p class="text-xs text-warmgray mt-1">${escapeHtml(row.student_name)} · ${escapeHtml(row.file.category || row.file.material_kind || "Public material")}</p>
+                    <p class="text-xs text-warmgray mt-1">${row.submitted_at ? `Submitted ${escapeHtml(formatLastSyncMeta(row.submitted_at))}` : "Submitted from student portal"}</p>
+                  </div>
+                  <span class="inline-flex self-start px-2 py-1 rounded-full bg-gold/10 text-gold text-[11px] font-medium">Pending</span>
+                </div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="approvePublicMaterial('${row.file.file_id}')">Approve</button>
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="rejectPublicMaterial('${row.file.file_id}')">Reject</button>
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openStudentPublicMaterials('${row.file.student_id}')">Open Student</button>
+                  ${url ? `<a class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" href="${escapeHtml(url)}" target="_blank" rel="noopener">View File</a>` : ""}
+                </div>
+              </article>
+            `;
+          }).join("") : `<div class="xl:col-span-2 page-empty-state"><p class="text-sm font-medium text-warmblack">No public materials waiting for approval</p><p class="text-xs text-warmgray mt-1">Use Refresh From Portal after a student submits from their portal.</p></div>`}
+        </div>
+      </section>
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
         <section class="dashboard-panel bg-white rounded-2xl border border-cream">
@@ -12223,6 +12337,11 @@ function getSettingsSections(status, backend, blueprintRows) {
       summary: `${getGoogleServiceStatusLabel(backend.google_calendar_status)} / ${getGoogleServiceStatusLabel(backend.google_gmail_status)}`
     },
     {
+      key: "branding",
+      label: "Branding",
+      summary: typeof getStudioBranding === "function" && getStudioBranding().logo_url ? "Logo uploaded" : "Default mark"
+    },
+    {
       key: "persistence",
       label: "Persistence",
       summary: `${getPersistenceModeLabel(status.mode)}`
@@ -12334,6 +12453,42 @@ function getSettingsActionFeedbackMarkup() {
 function getPersistenceModeLabel(mode) {
   if (mode === "google_sheets") return "Google Sheets via Backend";
   return "Local Cache";
+}
+
+function saveStudioLogoUpload(event) {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  if (!/^image\//i.test(file.type || "")) {
+    setSettingsActionFeedback("Choose an image file for the sidebar logo.", "error");
+    renderSettingsPage();
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = () => {
+    const ok = saveStudioBranding({
+      ...getStudioBranding(),
+      logo_url: String(reader.result || ""),
+      logo_file_name: file.name,
+      updated_at: new Date().toISOString()
+    });
+    applyConfig();
+    setSettingsActionFeedback(ok ? "Logo uploaded. It now appears beside the app name in the sidebar." : "The logo was too large for browser storage.", ok ? "success" : "error");
+    renderSettingsPage();
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearStudioLogo() {
+  saveStudioBranding({
+    ...getStudioBranding(),
+    logo_url: "",
+    logo_file_name: "",
+    updated_at: new Date().toISOString()
+  });
+  applyConfig();
+  setSettingsActionFeedback("Sidebar logo cleared.", "success");
+  renderSettingsPage();
 }
 
 function getSettingsStatusBadgeClass(status) {
@@ -12953,6 +13108,11 @@ function renderSettingsPage() {
       title: "Connect once, review everything",
       description: "Calendar and Gmail stay manual-sync and review-first, but the controls now live in one focused workspace."
     },
+    branding: {
+      eyebrow: "Branding",
+      title: "Your studio mark in the app shell",
+      description: "Upload a logo once and the sidebar uses it beside the app name instead of the default mark."
+    },
     persistence: {
       eyebrow: "Persistence",
       title: "Where the portal saves and syncs",
@@ -13047,6 +13207,32 @@ function renderSettingsPage() {
           ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
           </form>
         </div>
+      `;
+    }
+
+    if (activeSection.key === "branding") {
+      const branding = typeof getStudioBranding === "function" ? getStudioBranding() : {};
+      return `
+        <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in">
+          <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
+            <div class="min-w-0">
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sidebar Logo</p>
+              <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Upload the studio logo</h3>
+              <p class="text-sm text-warmgray mt-1">The uploaded image is stored in this browser and appears next to the app name in the sidebar.</p>
+              ${branding.logo_file_name ? `<p class="text-xs text-warmgray mt-2">Current file: ${escapeHtml(branding.logo_file_name)}</p>` : ""}
+            </div>
+            <div class="w-24 h-24 rounded-2xl border border-cream bg-parchment flex items-center justify-center overflow-hidden shrink-0">
+              ${branding.logo_url ? `<img src="${escapeHtml(branding.logo_url)}" alt="Studio logo preview" class="w-full h-full object-contain bg-white" />` : `<i data-lucide="drama" class="w-8 h-8 text-warmgray"></i>`}
+            </div>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 mt-5">
+            <label class="inline-flex items-center px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover cursor-pointer">
+              Upload Logo
+              <input type="file" accept="image/*" class="hidden" onchange="saveStudioLogoUpload(event)" />
+            </label>
+            ${branding.logo_url ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="clearStudioLogo()">Clear Logo</button>` : ""}
+          </div>
+        </section>
       `;
     }
 
@@ -15088,24 +15274,20 @@ function renderPublicPage() {
   if (!root) return;
 
   root.innerHTML = `
-    <div>
-      <div class="public-hero text-white">
+    <div id="public-page-shell">
+      <div id="public-hero" class="public-hero text-white">
         <div class="max-w-4xl mx-auto px-8 pt-16 pb-20">
           <div class="flex flex-col md:flex-row items-center gap-10 fade-in">
-            <div class="w-56 h-56 rounded-2xl headshot-placeholder flex items-center justify-center shrink-0 border-2 border-white/10 shadow-2xl">
+            <div id="public-headshot" class="w-56 h-56 rounded-2xl headshot-placeholder flex items-center justify-center shrink-0 border-2 border-white/10 shadow-2xl bg-cover bg-center">
               <i data-lucide="user" class="w-20 h-20 text-warmgray/40"></i>
             </div>
 
             <div class="text-center md:text-left">
               <p class="text-xs uppercase tracking-[0.25em] text-gold mb-3 font-medium">Actor</p>
               <h1 id="public-name" class="font-display text-5xl font-bold mb-3">Actor Name</h1>
-              <p id="public-bio" class="text-warmgray text-base leading-relaxed max-w-lg"></p>
+              <p id="public-bio" class="text-white/90 text-base leading-relaxed max-w-lg"></p>
 
-              <div class="flex flex-wrap gap-3 mt-6 justify-center md:justify-start">
-                <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Film &amp; Television</span>
-                <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Theater</span>
-                <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Voice Over</span>
-              </div>
+              <div id="public-specs" class="flex flex-wrap gap-3 mt-6 justify-center md:justify-start"></div>
             </div>
           </div>
         </div>
@@ -15451,12 +15633,50 @@ function populatePublicPage(studentId) {
   const approvedMaterials = getFilesByStudentId(studentId)
     .filter(isPublicPageApprovedMaterial)
     .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime());
+  const approvedHeadshot = approvedMaterials.find((file) => file.file_id && file.file_id === actorProfile?.headshot_file_id) ||
+    approvedMaterials.find((file) => String(file.public_page_featured || "").toUpperCase() === "HEADSHOT") ||
+    approvedMaterials.find((file) => /headshot/i.test(`${file.category || ""} ${file.title || ""} ${file.file_name || ""}`));
+
+  const shellEl = document.getElementById("public-page-shell");
+  if (shellEl && actorProfile?.background_color) {
+    shellEl.style.backgroundColor = actorProfile.background_color;
+  }
+
+  const heroEl = document.getElementById("public-hero");
+  if (heroEl && actorProfile?.background_color) {
+    heroEl.style.background = `linear-gradient(135deg, rgba(45,41,38,0.96), rgba(45,41,38,0.82)), ${actorProfile.background_color}`;
+  }
 
   const nameEl = document.getElementById("public-name");
   if (nameEl) nameEl.textContent = actorProfile?.display_name || student.name;
 
   const bioEl = document.getElementById("public-bio");
   if (bioEl) bioEl.textContent = actorProfile?.bio || `${student.name} is an actor working in ${student.focus}.`;
+
+  const headshotEl = document.getElementById("public-headshot");
+  const headshotUrl = approvedHeadshot ? getMaterialSourceUrl(approvedHeadshot) : "";
+  if (headshotEl && headshotUrl) {
+    headshotEl.style.backgroundImage = `url("${headshotUrl.replace(/"/g, "%22")}")`;
+    headshotEl.innerHTML = "";
+  }
+
+  const specsEl = document.getElementById("public-specs");
+  if (specsEl) {
+    const specs = [
+      actorProfile?.location ? `Location: ${actorProfile.location}` : "",
+      actorProfile?.height ? `Height: ${actorProfile.height}` : "",
+      actorProfile?.weight ? `Weight: ${actorProfile.weight}` : "",
+      actorProfile?.eye_color ? `Eyes: ${actorProfile.eye_color}` : "",
+      actorProfile?.hair_color ? `Hair: ${actorProfile.hair_color}` : ""
+    ].filter(Boolean);
+    specsEl.innerHTML = specs.length
+      ? specs.map((spec) => `<span class="text-xs border border-white/20 text-white/90 px-3 py-1.5 rounded-full">${escapeHtml(spec)}</span>`).join("")
+      : `
+        <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Film &amp; Television</span>
+        <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Theater</span>
+        <span class="text-xs border border-white/20 text-white/80 px-3 py-1.5 rounded-full">Voice Over</span>
+      `;
+  }
 
   const emailEl = document.getElementById("public-contact-email");
   if (emailEl) emailEl.textContent = student.email || "actor@example.com";
@@ -15480,10 +15700,13 @@ function populatePublicPage(studentId) {
         const url = getMaterialSourceUrl(file);
         const category = file.category || getMaterialKindLabel(file.material_kind);
         const isVideo = normalizeMaterialKind(file.material_kind, file.source_type) === "VIDEO" || /reel|self tape/i.test(category);
+        const isImage = /headshot|photo|image/i.test(category) || /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
         return `
           <article class="bg-white rounded-2xl border border-cream p-6 fade-in">
             <div class="${isVideo ? "aspect-video bg-warmblack text-white" : "bg-parchment"} rounded-xl border border-cream flex items-center justify-center min-h-[180px] mb-4">
-              <i data-lucide="${isVideo ? "play" : "file-text"}" class="w-8 h-8 ${isVideo ? "text-gold" : "text-warmgray"}"></i>
+              ${isImage && url
+                ? `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="w-full h-full max-h-[320px] object-cover rounded-xl" />`
+                : `<i data-lucide="${isVideo ? "play" : "file-text"}" class="w-8 h-8 ${isVideo ? "text-gold" : "text-warmgray"}"></i>`}
             </div>
             <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(category)}</p>
             <h3 class="font-display text-xl font-semibold text-warmblack mt-1">${escapeHtml(title)}</h3>
@@ -15756,6 +15979,7 @@ function handleStudentFormSubmit(event) {
 
   renderAppFromSchema();
   closeStudentModal();
+  syncPortalReviewDecision();
   notifyUser({
     title: editingStudentId ? "Student Updated" : "Student Added",
     message: `${payload.full_name} is saved and ready to work with.`,

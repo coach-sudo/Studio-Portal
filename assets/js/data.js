@@ -108,7 +108,9 @@ const DATA_RECORD_SHAPES = {
     "status",
     "due_date",
     "assigned_at",
-    "completed_at"
+    "completed_at",
+    "student_completed_at",
+    "student_reminder_requested_at"
   ],
   packages: [
     "package_id",
@@ -159,6 +161,13 @@ const DATA_RECORD_SHAPES = {
     "status",
     "display_name",
     "bio",
+    "location",
+    "height",
+    "weight",
+    "eye_color",
+    "hair_color",
+    "background_color",
+    "headshot_file_id",
     "updated_at"
   ],
   files: [
@@ -177,6 +186,7 @@ const DATA_RECORD_SHAPES = {
     "scope",
     "visibility",
     "public_page_status",
+    "public_page_featured",
     "submitted_by",
     "submitted_at",
     "reviewed_at",
@@ -239,19 +249,34 @@ function writeStorageJson(key, value) {
   }
 }
 
+function hasStoredBackendSettings() {
+  try {
+    return typeof localStorage !== "undefined" && localStorage.getItem(BACKEND_SETTINGS_STORAGE_KEY) !== null;
+  } catch (error) {
+    return false;
+  }
+}
+
 function sanitizeBackendSettings(settings = {}) {
   const sanitizeMoney = (value) => {
     const number = Number(value);
     return Number.isFinite(number) && number >= 0 ? number : 0;
   };
+  const defaultBackendUrl = getDefaultStudioBackendUrl();
+  const configuredBackendUrl = String(settings.google_sheets_web_app_url || "").trim();
+  const shouldUseHostedBackend = Boolean(defaultBackendUrl) && !configuredBackendUrl && !hasStoredBackendSettings();
 
   return {
     ...DEFAULT_BACKEND_SETTINGS,
     ...settings,
-    persistence_mode: ["local_cache", "google_sheets"].includes(settings.persistence_mode) ? settings.persistence_mode : DEFAULT_BACKEND_SETTINGS.persistence_mode,
+    persistence_mode: shouldUseHostedBackend
+      ? "google_sheets"
+      : ["local_cache", "google_sheets"].includes(settings.persistence_mode)
+        ? settings.persistence_mode
+        : DEFAULT_BACKEND_SETTINGS.persistence_mode,
     cache_enabled: settings.cache_enabled !== false,
-    auto_sync: settings.auto_sync === true,
-    google_sheets_web_app_url: String(settings.google_sheets_web_app_url || "").trim(),
+    auto_sync: shouldUseHostedBackend ? true : settings.auto_sync === true,
+    google_sheets_web_app_url: configuredBackendUrl,
     api_token: String(settings.api_token || "").trim(),
     google_account_email: String(settings.google_account_email || DEFAULT_BACKEND_SETTINGS.google_account_email).trim(),
     google_sync_mode: String(settings.google_sync_mode || DEFAULT_BACKEND_SETTINGS.google_sync_mode).trim() === "automatic" ? "automatic" : "manual",
@@ -430,7 +455,7 @@ function getPersistenceStatus() {
     mode: backendSettings.persistence_mode,
     cache_enabled: backendSettings.cache_enabled,
     auto_sync: backendSettings.auto_sync,
-    endpoint_configured: Boolean(backendSettings.google_sheets_web_app_url),
+    endpoint_configured: Boolean(backendSettings.google_sheets_web_app_url || getDefaultStudioBackendUrl()),
     queue_count: getDataSyncQueue().length,
     last_sync_at: backendSettings.last_sync_at,
     last_pull_at: backendSettings.last_pull_at,
@@ -465,8 +490,18 @@ function getBackendRequestHeaders() {
   return headers;
 }
 
+function getDefaultStudioBackendUrl() {
+  if (typeof window === "undefined" || !window.location) return "";
+  const protocol = String(window.location.protocol || "").toLowerCase();
+  if (!protocol || protocol === "file:") return "";
+  const hostname = String(window.location.hostname || "").toLowerCase();
+  if (["localhost", "127.0.0.1", "::1"].includes(hostname)) return "";
+  const origin = String(window.location.origin || "").replace(/\/$/, "");
+  return origin ? `${origin}/api/studio-sync` : "";
+}
+
 function resolveBackendUrl(action) {
-  const baseUrl = String(backendSettings.google_sheets_web_app_url || "").trim();
+  const baseUrl = String(backendSettings.google_sheets_web_app_url || getDefaultStudioBackendUrl()).trim();
   if (!baseUrl) {
     throw new Error("Add your backend or proxy URL in Settings before syncing.");
   }
@@ -703,7 +738,7 @@ async function pullStudioDataFromBackend() {
 function requestAutoSync() {
   if (
     backendSettings.persistence_mode !== "google_sheets" ||
-    !backendSettings.google_sheets_web_app_url ||
+    !(backendSettings.google_sheets_web_app_url || getDefaultStudioBackendUrl()) ||
     backendSettings.auto_sync !== true
   ) {
     return;

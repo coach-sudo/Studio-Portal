@@ -799,6 +799,7 @@ const sampleFiles = [
     scope: "ACTOR_MATERIAL",
     visibility: "STUDENT_VISIBLE",
     public_page_status: "APPROVED",
+    public_page_featured: "HEADSHOT",
     submitted_by: "COACH",
     submitted_at: "2026-03-10T12:00:00.000Z",
     reviewed_at: "2026-03-10T12:00:00.000Z",
@@ -822,6 +823,7 @@ const sampleFiles = [
     scope: "ACTOR_MATERIAL",
     visibility: "STUDENT_VISIBLE",
     public_page_status: "APPROVED",
+    public_page_featured: "",
     submitted_by: "COACH",
     submitted_at: "2026-03-09T12:00:00.000Z",
     reviewed_at: "2026-03-09T12:00:00.000Z",
@@ -845,6 +847,7 @@ const sampleFiles = [
     scope: "ACTOR_MATERIAL",
     visibility: "ADMIN_ONLY",
     public_page_status: "NOT_PUBLIC",
+    public_page_featured: "",
     submitted_by: "COACH",
     submitted_at: "2026-02-25T12:00:00.000Z",
     reviewed_at: "",
@@ -868,6 +871,7 @@ const sampleFiles = [
     scope: "COACHING_MATERIAL",
     visibility: "STUDENT_VISIBLE",
     public_page_status: "NOT_PUBLIC",
+    public_page_featured: "",
     submitted_by: "COACH",
     submitted_at: "2026-04-01T15:00:00.000Z",
     reviewed_at: "",
@@ -885,7 +889,15 @@ const sampleActorProfiles = [
     slug: "maya-kim",
     status: "Active",
     display_name: "Maya Kim",
-    bio: "NYC-based actor specializing in contemporary drama and Meisner technique."
+    bio: "NYC-based actor specializing in contemporary drama and Meisner technique.",
+    location: "New York, NY",
+    height: "5'6\"",
+    weight: "",
+    eye_color: "Brown",
+    hair_color: "Black",
+    background_color: "#f7f3ee",
+    headshot_file_id: "FILE-2026-000001",
+    updated_at: "2026-03-10T12:00:00.000Z"
   },
   {
     actor_profile_id: createYearlyId("ACT", 2026, 2),
@@ -893,7 +905,15 @@ const sampleActorProfiles = [
     slug: "aiden-liu",
     status: "Draft",
     display_name: "Aiden Liu",
-    bio: "Emerging actor focused on on-camera audition work."
+    bio: "Emerging actor focused on on-camera audition work.",
+    location: "",
+    height: "",
+    weight: "",
+    eye_color: "",
+    hair_color: "",
+    background_color: "#f7f3ee",
+    headshot_file_id: "",
+    updated_at: "2026-03-12T12:00:00.000Z"
   },
   {
     actor_profile_id: createYearlyId("ACT", 2026, 3),
@@ -901,6 +921,14 @@ const sampleActorProfiles = [
     slug: "sophia-reyes",
     status: "Active",
     display_name: "Sophia Reyes",
-    bio: "Musical theater performer with a strong vocal storytelling style."
+    bio: "Musical theater performer with a strong vocal storytelling style.",
+    location: "",
+    height: "",
+    weight: "",
+    eye_color: "",
+    hair_color: "",
+    background_color: "#f7f3ee",
+    headshot_file_id: "",
+    updated_at: "2026-03-15T12:00:00.000Z"
   }
 ];
