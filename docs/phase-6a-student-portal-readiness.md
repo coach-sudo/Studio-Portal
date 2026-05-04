@@ -37,6 +37,17 @@ The coach portal foundation is now in place to begin the student portal.
 - Student materials / homework / notes access rules
 - Secure messaging / contact actions if needed
 
+## Phase 6A started
+
+Added a front-end student portal preview route with:
+
+- local student / guardian sign-in using matched contact email plus a shared preview access code
+- centralized scoped-data helpers for student-owned records
+- student-visible filtering for published notes, homework, materials, lessons, packages, and reviewed payments
+- a first student-facing dashboard mounted at `Student Portal`
+
+This is a preview/auth scaffold. Before production use, replace the local shared-code session with server-side authentication and signed student/guardian claims.
+
 ## Important guardrails
 
 - The student portal should only expose scoped records for the signed-in student or approved guardian.

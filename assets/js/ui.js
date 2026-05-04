@@ -12216,7 +12216,9 @@ function getSettingsSections(status, backend, blueprintRows) {
     {
       key: "security",
       label: "Security",
-      summary: getAdminSecurityStatusLabel()
+      summary: typeof getStudentPortalSecurityStatusLabel === "function"
+        ? `${getAdminSecurityStatusLabel()} / ${getStudentPortalSecurityStatusLabel()}`
+        : getAdminSecurityStatusLabel()
     },
     {
       key: "backend",
@@ -12280,8 +12282,10 @@ function getStudentPortalReadinessChecklist() {
     },
     {
       label: "Student-facing auth and permissions",
-      detail: "This is the main Phase 6A build target: student login, guardian-aware access, and scoped visibility.",
-      done: false
+      detail: typeof getStudentPortalPermissionSummary === "function"
+        ? "Local preview sign-in, guardian-aware identity matching, and scoped visibility helpers are now wired for the student portal."
+        : "This is the main Phase 6A build target: student login, guardian-aware access, and scoped visibility.",
+      done: typeof getStudentPortalPermissionSummary === "function"
     }
   ];
 }
@@ -13128,6 +13132,7 @@ function renderSettingsPage() {
 
     if (activeSection.key === "security") {
       return `
+        <div class="space-y-4">
         <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" onsubmit="saveAdminSecuritySettings(event)">
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
             <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3 xl:col-span-2">
@@ -13172,6 +13177,8 @@ function renderSettingsPage() {
             ${requiresAdminUnlock() ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="lockPortalSession('Portal locked manually from Settings.')">Lock Now</button>` : ""}
           </div>
         </form>
+        ${typeof getStudentPortalSettingsPanelMarkup === "function" ? getStudentPortalSettingsPanelMarkup() : ""}
+        </div>
       `;
     }
 

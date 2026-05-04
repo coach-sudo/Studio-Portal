@@ -82,6 +82,7 @@ function renderCurrentPage() {
     finance: typeof renderFinancePage === "function" ? renderFinancePage : null,
     notes: typeof renderNotesQueuePage === "function" ? renderNotesQueuePage : null,
     profile: typeof renderProfilePage === "function" ? renderProfilePage : null,
+    student_portal: typeof renderStudentPortalPage === "function" ? renderStudentPortalPage : null,
     public: typeof renderPublicPage === "function" ? renderPublicPage : null,
     settings: typeof renderSettingsPage === "function" ? renderSettingsPage : null
   };
