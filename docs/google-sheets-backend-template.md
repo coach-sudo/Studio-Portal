@@ -48,7 +48,8 @@ Response:
     "packages": [],
     "payments": [],
     "actorProfiles": [],
-    "files": []
+    "files": [],
+    "studentAccounts": []
   }
 }
 ```
@@ -82,6 +83,7 @@ Response:
 - `Payments`
 - `ActorProfiles`
 - `Materials`
+- `StudentAccounts`
 
 The exact column order should match the blueprint shown on the portal `Settings` page.
 

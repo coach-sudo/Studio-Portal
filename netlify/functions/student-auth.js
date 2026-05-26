@@ -5,6 +5,8 @@ const vm = require("vm");
 
 const SESSION_COOKIE_NAME = "studio_student_session";
 const DEFAULT_SESSION_MINUTES = 120;
+const DEFAULT_INVITE_HOURS = 72;
+const PASSWORD_HASH_ITERATIONS = 210000;
 
 function json(statusCode, body, headers = {}) {
   return {
@@ -35,9 +37,18 @@ function getAccessCode() {
   return getEnv("STUDENT_PORTAL_ACCESS_CODE");
 }
 
+function getAdminToken() {
+  return getEnv("STUDENT_PORTAL_ADMIN_TOKEN");
+}
+
 function getSessionMinutes() {
   const value = Number(getEnv("STUDENT_PORTAL_SESSION_MINUTES", String(DEFAULT_SESSION_MINUTES)));
   return Number.isFinite(value) && value >= 15 ? value : DEFAULT_SESSION_MINUTES;
+}
+
+function getInviteHours() {
+  const value = Number(getEnv("STUDENT_PORTAL_INVITE_HOURS", String(DEFAULT_INVITE_HOURS)));
+  return Number.isFinite(value) && value >= 1 ? value : DEFAULT_INVITE_HOURS;
 }
 
 function getAppsScriptUrl() {
@@ -66,6 +77,32 @@ function encodeBase64Url(value) {
 
 function decodeBase64Url(value) {
   return Buffer.from(value, "base64url").toString("utf8");
+}
+
+function randomToken(bytes = 32) {
+  return crypto.randomBytes(bytes).toString("base64url");
+}
+
+function hashToken(token) {
+  return crypto.createHash("sha256").update(String(token || ""), "utf8").digest("hex");
+}
+
+function hashPassword(password, salt = randomToken(18)) {
+  const hash = crypto.pbkdf2Sync(String(password || ""), salt, PASSWORD_HASH_ITERATIONS, 32, "sha256").toString("base64url");
+  return `pbkdf2_sha256$${PASSWORD_HASH_ITERATIONS}$${salt}$${hash}`;
+}
+
+function verifyPassword(password, storedHash) {
+  const parts = String(storedHash || "").split("$");
+  if (parts.length !== 4 || parts[0] !== "pbkdf2_sha256") return false;
+  const iterations = Number(parts[1]);
+  const salt = parts[2];
+  const expected = parts[3];
+  if (!Number.isFinite(iterations) || !salt || !expected) return false;
+  const actual = crypto.pbkdf2Sync(String(password || ""), salt, iterations, 32, "sha256").toString("base64url");
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  return actualBuffer.length === expectedBuffer.length && crypto.timingSafeEqual(actualBuffer, expectedBuffer);
 }
 
 function signPayload(encodedPayload) {
@@ -171,6 +208,36 @@ function getIdentityForEmail(snapshot, email) {
   };
 }
 
+function normalizeAccountRole(role) {
+  const normalized = String(role || "").trim().toUpperCase();
+  return ["STUDENT", "GUARDIAN"].includes(normalized) ? normalized : "STUDENT";
+}
+
+function getStudentForAccount(snapshot, account) {
+  return (snapshot.students || []).find((student) => student.student_id === account.student_id) || null;
+}
+
+function getAccountByEmail(snapshot, email) {
+  const normalizedEmail = normalizeEmail(email);
+  return (snapshot.studentAccounts || []).find((account) => normalizeEmail(account.email) === normalizedEmail) || null;
+}
+
+function getIdentityForAccount(snapshot, account) {
+  if (!account || String(account.status || "").toUpperCase() !== "ACTIVE") return null;
+  const student = getStudentForAccount(snapshot, account);
+  if (!student || student.portal_access_enabled === false) return null;
+  const role = normalizeAccountRole(account.role);
+  if (role !== "STUDENT" && student.guardian_portal_access_enabled === false) return null;
+  return {
+    email: normalizeEmail(account.email),
+    role,
+    student_id: student.student_id,
+    account_id: account.account_id,
+    student_name: student.full_name || [student.first_name, student.last_name].filter(Boolean).join(" "),
+    issued_at: new Date().toISOString()
+  };
+}
+
 async function fetchAppsScriptSnapshot() {
   const baseUrl = getAppsScriptUrl();
   if (!baseUrl) return null;
@@ -240,7 +307,8 @@ function loadLocalSampleSnapshot() {
       packages: samplePackages,
       payments: samplePayments,
       actorProfiles: sampleActorProfiles,
-      files: sampleFiles
+      files: sampleFiles,
+      studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : []
     });`);
   return script.runInNewContext(sandbox);
 }
@@ -385,6 +453,157 @@ function nextId(records, prefix, fieldName) {
   return `${prefix}-${year}-${String(max + 1).padStart(6, "0")}`;
 }
 
+function getSiteBaseUrl(event) {
+  const envUrl = getEnv("URL") || getEnv("DEPLOY_PRIME_URL");
+  if (envUrl) return envUrl.replace(/\/$/, "");
+  const headers = event && event.headers ? event.headers : {};
+  const protocol = getHeader(event, "x-forwarded-proto") || "https";
+  const host = headers.host || headers.Host || "";
+  return host ? `${protocol}://${host}` : "";
+}
+
+function buildPortalSetupUrl(event, token) {
+  const siteUrl = getSiteBaseUrl(event);
+  const path = `/portal?setup=${encodeURIComponent(token)}`;
+  return siteUrl ? `${siteUrl}${path}` : path;
+}
+
+function assertAdminToken(body) {
+  const expected = getAdminToken();
+  if (!expected) {
+    throw new Error("Student account admin actions require STUDENT_PORTAL_ADMIN_TOKEN.");
+  }
+  const provided = String(body.admin_token || body.adminToken || "").trim();
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  if (!provided || providedBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(providedBuffer, expectedBuffer)) {
+    throw new Error("Invalid student account admin token.");
+  }
+}
+
+function getDefaultAccountEmail(student, role) {
+  if (!student) return "";
+  if (role === "GUARDIAN") return normalizeEmail(student.guardian_email || student.preferred_contact_email);
+  return normalizeEmail(student.email || splitList(student.additional_emails)[0]);
+}
+
+function sanitizeAccountForCoach(account, setupToken = "", setupUrl = "") {
+  if (!account) return null;
+  return {
+    account_id: account.account_id,
+    student_id: account.student_id,
+    role: normalizeAccountRole(account.role),
+    email: normalizeEmail(account.email),
+    status: String(account.status || "INVITED").toUpperCase(),
+    invited_at: account.invited_at || "",
+    invite_expires_at: account.invite_expires_at || "",
+    last_login_at: account.last_login_at || "",
+    setup_token: setupToken,
+    setup_url: setupUrl
+  };
+}
+
+function createOrRefreshInvite(snapshot, body, event) {
+  assertAdminToken(body);
+  snapshot.studentAccounts = Array.isArray(snapshot.studentAccounts) ? snapshot.studentAccounts : [];
+  const role = normalizeAccountRole(body.role);
+  const studentId = String(body.student_id || "").trim();
+  const student = (snapshot.students || []).find((row) => row.student_id === studentId);
+  if (!student) throw new Error("Student not found for account invite.");
+  const email = normalizeEmail(body.email || getDefaultAccountEmail(student, role));
+  if (!email) throw new Error("An email is required to create a student account invite.");
+
+  const now = new Date();
+  const token = randomToken(32);
+  const inviteExpiresAt = new Date(now.getTime() + getInviteHours() * 60 * 60 * 1000).toISOString();
+  let account = snapshot.studentAccounts.find((row) => normalizeEmail(row.email) === email && row.student_id === studentId) || null;
+  if (!account) {
+    account = {
+      account_id: nextId(snapshot.studentAccounts, "ACCT", "account_id"),
+      student_id: studentId,
+      role,
+      email,
+      status: "INVITED",
+      created_at: now.toISOString()
+    };
+    snapshot.studentAccounts.push(account);
+  }
+
+  account.role = role;
+  account.email = email;
+  account.status = String(account.status || "").toUpperCase() === "ACTIVE" ? "ACTIVE" : "INVITED";
+  account.invite_token_hash = hashToken(token);
+  account.invite_expires_at = inviteExpiresAt;
+  account.invited_at = now.toISOString();
+  account.updated_at = now.toISOString();
+
+  const setupUrl = buildPortalSetupUrl(event, token);
+  return sanitizeAccountForCoach(account, token, setupUrl);
+}
+
+function findAccountByToken(snapshot, token, fieldName) {
+  const tokenHash = hashToken(token);
+  return (snapshot.studentAccounts || []).find((account) => account[fieldName] === tokenHash) || null;
+}
+
+function completeAccountInvite(snapshot, body) {
+  const token = String(body.token || body.setup_token || "").trim();
+  const password = String(body.password || "").trim();
+  if (!token) throw new Error("Invite token is required.");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+  const account = findAccountByToken(snapshot, token, "invite_token_hash");
+  if (!account) throw new Error("Invite link is invalid or has already been used.");
+  const expiresAt = new Date(account.invite_expires_at || 0);
+  if (!account.invite_expires_at || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    throw new Error("Invite link has expired.");
+  }
+  account.password_hash = hashPassword(password);
+  account.status = "ACTIVE";
+  account.invite_token_hash = "";
+  account.invite_expires_at = "";
+  account.activated_at = account.activated_at || new Date().toISOString();
+  account.updated_at = new Date().toISOString();
+  return sanitizeAccountForCoach(account);
+}
+
+function requestAccountReset(snapshot, body, event) {
+  const email = normalizeEmail(body.email);
+  if (!email) throw new Error("Email is required.");
+  const canReturnResetLink = Boolean(String(body.admin_token || body.adminToken || "").trim());
+  if (canReturnResetLink) assertAdminToken(body);
+  const account = getAccountByEmail(snapshot, email);
+  if (!account || String(account.status || "").toUpperCase() === "DISABLED") {
+    return { sent: true };
+  }
+  const token = randomToken(32);
+  const expiresAt = new Date(Date.now() + getInviteHours() * 60 * 60 * 1000).toISOString();
+  account.reset_token_hash = hashToken(token);
+  account.reset_expires_at = expiresAt;
+  account.updated_at = new Date().toISOString();
+  return canReturnResetLink
+    ? { sent: true, reset_token: token, reset_url: buildPortalSetupUrl(event, token) }
+    : { sent: true };
+}
+
+function completeAccountReset(snapshot, body) {
+  const token = String(body.token || body.reset_token || "").trim();
+  const password = String(body.password || "").trim();
+  if (!token) throw new Error("Reset token is required.");
+  if (password.length < 8) throw new Error("Password must be at least 8 characters.");
+  const account = findAccountByToken(snapshot, token, "reset_token_hash");
+  if (!account) throw new Error("Reset link is invalid or has already been used.");
+  const expiresAt = new Date(account.reset_expires_at || 0);
+  if (!account.reset_expires_at || Number.isNaN(expiresAt.getTime()) || expiresAt.getTime() < Date.now()) {
+    throw new Error("Reset link has expired.");
+  }
+  account.password_hash = hashPassword(password);
+  account.status = "ACTIVE";
+  account.reset_token_hash = "";
+  account.reset_expires_at = "";
+  account.updated_at = new Date().toISOString();
+  return sanitizeAccountForCoach(account);
+}
+
 function parseJsonObject(value, fallback = {}) {
   try {
     const parsed = JSON.parse(String(value || ""));
@@ -464,6 +683,18 @@ async function handlePortalMutation(event, action, mutator) {
     action,
     result: mutationResult,
     data: getScopedPortalData(result.snapshot, result.identity)
+  });
+}
+
+async function handleSnapshotMutation(event, action, mutator) {
+  const snapshot = await loadTrustedSnapshot();
+  const body = JSON.parse(event.body || "{}");
+  const mutationResult = mutator(snapshot, body, event);
+  await pushAppsScriptSnapshot(snapshot);
+  return json(200, {
+    ok: true,
+    action,
+    result: mutationResult
   });
 }
 
@@ -547,6 +778,9 @@ function saveCurrentScript(snapshot, identity, body) {
 }
 
 function addScriptComment(snapshot, identity, body) {
+  if (identity.student && identity.student.portal_script_access === false) {
+    throw new Error("Current script access is not enabled for this portal account.");
+  }
   const script = getCurrentScriptRecord(snapshot, identity.student_id);
   if (!script) throw new Error("No current script is active.");
   const notes = parseJsonObject(script.notes, { script_text: "", comments: [] });
@@ -565,6 +799,9 @@ function addScriptComment(snapshot, identity, body) {
 }
 
 function archiveCurrentScript(snapshot, identity) {
+  if (identity.student && identity.student.portal_script_access === false) {
+    throw new Error("Current script access is not enabled for this portal account.");
+  }
   const script = getCurrentScriptRecord(snapshot, identity.student_id);
   if (!script) throw new Error("No current script is active.");
   const now = new Date().toISOString();
@@ -618,16 +855,55 @@ async function handleLogin(event) {
   const body = JSON.parse(event.body || "{}");
   const email = normalizeEmail(body.email);
   const accessCode = String(body.access_code || "").trim();
+  const password = String(body.password || "");
 
   if (!email) {
     return json(400, { ok: false, error: "Email is required." });
+  }
+
+  const snapshot = await loadTrustedSnapshot();
+
+  if (password) {
+    const account = getAccountByEmail(snapshot, email);
+    if (!account || String(account.status || "").toUpperCase() !== "ACTIVE" || !verifyPassword(password, account.password_hash)) {
+      return json(401, { ok: false, error: "Invalid email or password." });
+    }
+    const identity = getIdentityForAccount(snapshot, account);
+    if (!identity) {
+      return json(401, { ok: false, error: "This account is not enabled for student portal access." });
+    }
+    account.last_login_at = new Date().toISOString();
+    account.updated_at = account.last_login_at;
+    try {
+      await pushAppsScriptSnapshot(snapshot);
+    } catch (error) {
+      // Login should not fail only because last-login bookkeeping could not persist.
+    }
+    const expiresAt = Date.now() + getSessionMinutes() * 60 * 1000;
+    const token = createSignedSession({
+      email: identity.email,
+      role: identity.role,
+      student_id: identity.student_id,
+      account_id: identity.account_id,
+      iat: Date.now(),
+      exp: expiresAt
+    });
+
+    return json(200, {
+      ok: true,
+      identity: {
+        ...identity,
+        expires_at: new Date(expiresAt).toISOString()
+      }
+    }, {
+      "Set-Cookie": buildCookie(token)
+    });
   }
 
   if (accessCode !== getAccessCode()) {
     return json(401, { ok: false, error: "Invalid access code." });
   }
 
-  const snapshot = await loadTrustedSnapshot();
   const identity = getIdentityForEmail(snapshot, email);
   if (!identity) {
     return json(401, { ok: false, error: "No student or guardian contact matched that email." });
@@ -683,31 +959,43 @@ exports.handler = async function (event) {
       : String((JSON.parse(event.body || "{}").action || "")).trim();
 
     if (method === "GET") {
-      if (action === "session") return handleSession(event, false);
-      if (action === "portal_data") return handleSession(event, true);
+      if (action === "session") return await handleSession(event, false);
+      if (action === "portal_data") return await handleSession(event, true);
       return json(404, { ok: false, error: "Unsupported student auth action." });
     }
 
     if (method === "POST") {
-      if (action === "login") return handleLogin(event);
+      if (action === "login") return await handleLogin(event);
       if (action === "logout") return handleLogout();
+      if (action === "create_invite") {
+        return await handleSnapshotMutation(event, action, createOrRefreshInvite);
+      }
+      if (action === "complete_invite") {
+        return await handleSnapshotMutation(event, action, completeAccountInvite);
+      }
+      if (action === "request_reset") {
+        return await handleSnapshotMutation(event, action, requestAccountReset);
+      }
+      if (action === "complete_reset") {
+        return await handleSnapshotMutation(event, action, completeAccountReset);
+      }
       if (action === "update_public_profile") {
-        return handlePortalMutation(event, action, (snapshot, identity, body) => upsertActorProfile(snapshot, identity, body));
+        return await handlePortalMutation(event, action, (snapshot, identity, body) => upsertActorProfile(snapshot, identity, body));
       }
       if (action === "submit_public_material") {
-        return handlePortalMutation(event, action, createPortalMaterial);
+        return await handlePortalMutation(event, action, createPortalMaterial);
       }
       if (action === "save_current_script") {
-        return handlePortalMutation(event, action, saveCurrentScript);
+        return await handlePortalMutation(event, action, saveCurrentScript);
       }
       if (action === "add_script_comment") {
-        return handlePortalMutation(event, action, addScriptComment);
+        return await handlePortalMutation(event, action, addScriptComment);
       }
       if (action === "archive_current_script") {
-        return handlePortalMutation(event, action, archiveCurrentScript);
+        return await handlePortalMutation(event, action, archiveCurrentScript);
       }
       if (action === "update_homework") {
-        return handlePortalMutation(event, action, updateHomeworkFromPortal);
+        return await handlePortalMutation(event, action, updateHomeworkFromPortal);
       }
       return json(404, { ok: false, error: "Unsupported student auth action." });
     }

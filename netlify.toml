@@ -24,3 +24,18 @@
   from = "/api/student-auth"
   to = "/.netlify/functions/student-auth"
   status = 200
+
+[[redirects]]
+  from = "/api/public-profile"
+  to = "/.netlify/functions/public-profile"
+  status = 200
+
+[[redirects]]
+  from = "/portal"
+  to = "/pages/portal.html"
+  status = 200
+
+[[redirects]]
+  from = "/actors/:slug"
+  to = "/pages/public-profile.html?slug=:slug"
+  status = 200

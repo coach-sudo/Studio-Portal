@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Actor Profile</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #111111;
+      --muted: #6a6a64;
+      --line: #e7e4dd;
+      --paper: #ffffff;
+      --soft: #f6f4ef;
+      --brass: #a5792a;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+    }
+
+    a { color: inherit; }
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255,255,255,0.92);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(16px);
+    }
+    .nav {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 18px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .brand {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 24px;
+      line-height: 1;
+      text-decoration: none;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 22px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .nav-links a { text-decoration: none; }
+    .nav-links a:hover { color: var(--ink); }
+
+    .hero {
+      max-width: 1180px;
+      min-height: calc(100vh - 66px);
+      margin: 0 auto;
+      padding: 54px 24px 72px;
+      display: grid;
+      grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+      gap: 56px;
+      align-items: center;
+    }
+    .hero-copy h1 {
+      margin: 0;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(58px, 8vw, 124px);
+      line-height: 0.92;
+      letter-spacing: -0.02em;
+    }
+    .role {
+      margin: 0 0 18px;
+      font-size: 14px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--brass);
+    }
+    .bio {
+      max-width: 560px;
+      margin: 28px 0 0;
+      color: #3a3a36;
+      font-size: clamp(17px, 2vw, 22px);
+      line-height: 1.55;
+    }
+    .specs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 18px;
+      margin-top: 26px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 34px;
+    }
+    .button {
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--ink);
+      padding: 0 18px;
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 700;
+      background: var(--ink);
+      color: white;
+    }
+    .button.secondary {
+      background: white;
+      color: var(--ink);
+    }
+    .photo-frame {
+      min-height: 640px;
+      background: var(--soft);
+      border: 1px solid var(--line);
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .photo-frame img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .photo-placeholder {
+      width: 100%;
+      height: 100%;
+      min-height: 640px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 76px;
+      color: #c7c1b5;
+    }
+
+    .section {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 74px 24px;
+      border-top: 1px solid var(--line);
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .section h2 {
+      margin: 0;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(36px, 4vw, 58px);
+      line-height: 1;
+    }
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+    .material {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      min-height: 220px;
+      overflow: hidden;
+    }
+    .material img {
+      width: 100%;
+      height: 100%;
+      min-height: 360px;
+      object-fit: cover;
+      display: block;
+    }
+    .media-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
+      gap: 28px;
+    }
+    .media-panel {
+      border: 1px solid var(--line);
+      background: var(--soft);
+      padding: 26px;
+      min-height: 240px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 24px;
+    }
+    .media-panel h3 {
+      margin: 0;
+      font-size: 22px;
+    }
+    .media-panel p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .contact {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(300px, 0.7fr);
+      gap: 40px;
+      align-items: start;
+    }
+    .contact-link {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: clamp(34px, 5vw, 72px);
+      word-break: break-word;
+      color: var(--ink);
+    }
+    footer {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 36px 24px 54px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .empty {
+      border: 1px dashed var(--line);
+      background: var(--soft);
+      padding: 24px;
+      color: var(--muted);
+    }
+
+    @media (max-width: 860px) {
+      .nav { align-items: flex-start; }
+      .nav-links { gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+      .hero, .media-grid, .contact {
+        grid-template-columns: 1fr;
+      }
+      .photo-frame, .photo-placeholder { min-height: 430px; }
+      .gallery { grid-template-columns: 1fr; }
+      .section { padding-block: 52px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <nav class="nav">
+      <a id="nav-name" href="#" class="brand">Actor Profile</a>
+      <div class="nav-links">
+        <a href="#headshots">Headshots</a>
+        <a href="#reel">Reel</a>
+        <a href="#resume">Resume</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </nav>
+  </header>
+
+  <main id="page">
+    <section class="hero">
+      <div class="hero-copy">
+        <p class="role">Actor</p>
+        <h1 id="actor-name">Actor Profile</h1>
+        <p id="actor-bio" class="bio">Loading public profile...</p>
+        <div id="actor-specs" class="specs"></div>
+        <div class="actions">
+          <a id="reel-action" class="button" href="#reel">Watch Reel</a>
+          <a id="resume-action" class="button secondary" href="#resume">Download Resume</a>
+          <a class="button secondary" href="#contact">Contact</a>
+        </div>
+      </div>
+      <div id="hero-photo" class="photo-frame">
+        <div class="photo-placeholder">Actor</div>
+      </div>
+    </section>
+
+    <section id="headshots" class="section">
+      <div class="section-header">
+        <h2>Headshots</h2>
+      </div>
+      <div id="headshot-gallery" class="gallery"></div>
+    </section>
+
+    <section id="reel" class="section">
+      <div class="media-grid">
+        <div class="media-panel">
+          <div>
+            <h2>Reel</h2>
+            <p>Selected screen and stage materials.</p>
+          </div>
+          <a id="reel-link" class="button" href="#" target="_blank" rel="noopener">Watch Reel</a>
+        </div>
+        <div id="reel-list" class="media-panel"></div>
+      </div>
+    </section>
+
+    <section id="resume" class="section">
+      <div class="media-grid">
+        <div class="media-panel">
+          <div>
+            <h2>Resume</h2>
+            <p>Download current resume and supporting casting materials.</p>
+          </div>
+          <a id="resume-link" class="button" href="#" target="_blank" rel="noopener">Download Resume</a>
+        </div>
+        <div id="resume-list" class="media-panel"></div>
+      </div>
+    </section>
+
+    <section id="contact" class="section contact">
+      <div>
+        <h2>Contact &amp; Representation</h2>
+        <p class="bio">For inquiries, representation, and availability.</p>
+      </div>
+      <a id="contact-email" class="contact-link" href="#">Contact</a>
+    </section>
+  </main>
+
+  <footer>
+    Actor profile managed by studio.
+  </footer>
+
+  <script>
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, function (char) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" })[char];
+      });
+    }
+
+    function getSlug() {
+      var params = new URLSearchParams(window.location.search);
+      var querySlug = params.get("slug");
+      if (querySlug) return querySlug;
+      var parts = window.location.pathname.split("/").filter(Boolean);
+      return parts[0] === "actors" ? parts[1] : "";
+    }
+
+    function isImageMaterial(material) {
+      return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+    }
+
+    function findMaterial(materials, pattern) {
+      return materials.find(function (material) {
+        return pattern.test([material.category, material.material_kind, material.mime_type, material.title].join(" "));
+      }) || null;
+    }
+
+    function materialLink(material, label) {
+      if (!material || !material.url) return "";
+      return '<a class="button secondary" target="_blank" rel="noopener" href="' + escapeHtml(material.url) + '">' + escapeHtml(label || material.title) + '</a>';
+    }
+
+    function renderList(materials, emptyText) {
+      if (!materials.length) return '<div class="empty">' + escapeHtml(emptyText) + '</div>';
+      return materials.map(function (material) {
+        return '<div><h3>' + escapeHtml(material.title) + '</h3><p>' + escapeHtml(material.category || "Material") + '</p>' + materialLink(material, "Open") + '</div>';
+      }).join("");
+    }
+
+    async function loadProfile() {
+      var slug = getSlug();
+      if (!slug) throw new Error("Missing public profile slug.");
+      var response = await fetch("/api/public-profile?slug=" + encodeURIComponent(slug), { headers: { Accept: "application/json" } });
+      var payload = await response.json().catch(function () { return {}; });
+      if (!response.ok || !payload.ok) throw new Error(payload.error || "Public profile not found.");
+      return payload.profile;
+    }
+
+    function renderProfile(profile) {
+      document.title = profile.display_name + " - Actor";
+      document.getElementById("nav-name").textContent = profile.display_name;
+      document.getElementById("actor-name").textContent = profile.display_name;
+      document.getElementById("actor-bio").textContent = profile.bio || profile.display_name + " is an actor.";
+      var specs = [profile.location, profile.height && "Height " + profile.height, profile.eye_color && "Eyes " + profile.eye_color, profile.hair_color && "Hair " + profile.hair_color].filter(Boolean);
+      document.getElementById("actor-specs").innerHTML = specs.map(function (spec) { return "<span>" + escapeHtml(spec) + "</span>"; }).join("");
+
+      var materials = profile.materials || [];
+      var headshots = materials.filter(isImageMaterial);
+      var preferredHeadshot = headshots.find(function (material) { return material.file_id === profile.headshot_file_id; }) || headshots[0];
+      var reel = findMaterial(materials, /reel|self tape|video/i);
+      var resume = findMaterial(materials, /resume|pdf|document/i);
+
+      if (preferredHeadshot && preferredHeadshot.url) {
+        document.getElementById("hero-photo").innerHTML = '<img alt="' + escapeHtml(profile.display_name) + ' headshot" src="' + escapeHtml(preferredHeadshot.url) + '" />';
+      }
+      document.getElementById("headshot-gallery").innerHTML = headshots.length
+        ? headshots.map(function (material) { return '<a class="material" href="' + escapeHtml(material.url) + '" target="_blank" rel="noopener"><img alt="' + escapeHtml(material.title) + '" src="' + escapeHtml(material.url) + '" /></a>'; }).join("")
+        : '<div class="empty">No public headshots are approved yet.</div>';
+
+      if (reel && reel.url) {
+        document.getElementById("reel-action").href = reel.url;
+        document.getElementById("reel-action").target = "_blank";
+        document.getElementById("reel-action").rel = "noopener";
+        document.getElementById("reel-link").href = reel.url;
+      } else {
+        document.getElementById("reel-link").style.display = "none";
+      }
+      document.getElementById("reel-list").innerHTML = renderList(materials.filter(function (material) { return /reel|self tape|video/i.test([material.category, material.material_kind, material.title].join(" ")); }), "No public reel is approved yet.");
+
+      if (resume && resume.url) {
+        document.getElementById("resume-action").href = resume.url;
+        document.getElementById("resume-action").target = "_blank";
+        document.getElementById("resume-action").rel = "noopener";
+        document.getElementById("resume-link").href = resume.url;
+      } else {
+        document.getElementById("resume-link").style.display = "none";
+      }
+      document.getElementById("resume-list").innerHTML = renderList(materials.filter(function (material) { return /resume|pdf|document/i.test([material.category, material.material_kind, material.title].join(" ")); }), "No public resume is approved yet.");
+
+      var email = profile.contact_email || "";
+      var contact = document.getElementById("contact-email");
+      contact.textContent = email || "Contact";
+      contact.href = email ? "mailto:" + email : "#";
+    }
+
+    loadProfile().then(renderProfile).catch(function (error) {
+      document.getElementById("page").innerHTML = '<section class="section"><h2>Profile unavailable</h2><p class="bio">' + escapeHtml(error.message) + '</p></section>';
+    });
+  </script>
+</body>
+</html>

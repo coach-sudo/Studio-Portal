@@ -33,12 +33,17 @@ Student portal auth:
 - `STUDENT_PORTAL_SESSION_SECRET`
   - required; use a long random secret for signing student / guardian session cookies
 - `STUDENT_PORTAL_ACCESS_CODE`
-  - required for student / guardian sign-in
+  - legacy fallback for student / guardian sign-in while full accounts roll out
+- `STUDENT_PORTAL_ADMIN_TOKEN`
+  - required for coach-side student account invite/reset actions
 - `STUDENT_PORTAL_SESSION_MINUTES`
   - optional; defaults to `120`
+- `STUDENT_PORTAL_INVITE_HOURS`
+  - optional; defaults to `72`
 
 Student portal write actions:
 - public profile draft saves, public material submissions, and current-script updates use the existing snapshot backend
+- student account invites and password setup use the existing snapshot backend and require a `StudentAccounts` sheet/tab in Apps Script persistence
 - set `GOOGLE_APPS_SCRIPT_URL` before relying on those writes in production
 - without the Apps Script backend, the portal can authenticate and read sample/scoped data but cannot persist student submissions
 

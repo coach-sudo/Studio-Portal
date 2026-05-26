@@ -12788,6 +12788,7 @@ function openDataResetModal() {
             ["homework", "Homework"],
             ["files", "Materials"],
             ["actorProfiles", "Actor Profiles"],
+            ["studentAccounts", "Student Accounts"],
             ["students", "Students"]
           ].map(([value, label]) => `
             <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
@@ -15208,6 +15209,9 @@ function renderProfilePage() {
           <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Lesson</button>
           <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Package</button>
           <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Payment</button>
+          <button id="profile-invite-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Invite Student</button>
+          <button id="profile-open-public-page-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Open Public Page</button>
+          <button id="profile-copy-public-link-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Copy Public Link</button>
           <button id="profile-preview-student-portal-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Preview as Student</button>
           <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Edit Student</button>
           <button id="change-status-btn" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-warmblack text-sm font-medium card-hover">Change Status</button>
@@ -15345,6 +15349,18 @@ function renderProfilePage() {
         </div>
 
         <aside class="profile-rail space-y-4 min-w-0">
+          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in">
+            <div class="flex items-center justify-between gap-3 mb-3">
+              <h4 class="font-display font-semibold">Student Flow</h4>
+              <span id="profile-student-flow-status" class="text-xs text-warmgray">—</span>
+            </div>
+            <div id="profile-student-flow-next-steps" class="space-y-3"></div>
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button id="profile-invite-guardian-btn" type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Invite Guardian</button>
+              <button id="profile-review-public-materials-btn" type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Review Submissions</button>
+            </div>
+          </section>
+
           <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.03s">
             <div class="flex items-center justify-between gap-3 mb-3">
               <h4 class="font-display font-semibold">Payments</h4>
@@ -15409,6 +15425,21 @@ function renderProfilePage() {
 
   const profileAddPaymentBtn = document.getElementById("profile-add-payment-btn");
   if (profileAddPaymentBtn) profileAddPaymentBtn.onclick = () => openPaymentModal(null, selectedStudentId);
+
+  const inviteStudentBtn = document.getElementById("profile-invite-student-btn");
+  if (inviteStudentBtn) inviteStudentBtn.onclick = () => createStudentAccountInviteFromProfile("STUDENT");
+
+  const inviteGuardianBtn = document.getElementById("profile-invite-guardian-btn");
+  if (inviteGuardianBtn) inviteGuardianBtn.onclick = () => createStudentAccountInviteFromProfile("GUARDIAN");
+
+  const openPublicPageBtn = document.getElementById("profile-open-public-page-btn");
+  if (openPublicPageBtn) openPublicPageBtn.onclick = () => openSelectedStudentPublicPage();
+
+  const copyPublicLinkBtn = document.getElementById("profile-copy-public-link-btn");
+  if (copyPublicLinkBtn) copyPublicLinkBtn.onclick = () => copySelectedStudentPublicLink();
+
+  const reviewPublicMaterialsBtn = document.getElementById("profile-review-public-materials-btn");
+  if (reviewPublicMaterialsBtn) reviewPublicMaterialsBtn.onclick = () => openStudentPublicMaterials(selectedStudentId);
 
   const previewStudentPortalBtn = document.getElementById("profile-preview-student-portal-btn");
   if (previewStudentPortalBtn && typeof previewStudentPortalAsCoach === "function") {
@@ -15480,6 +15511,185 @@ function renderPublicPage() {
 
   populatePublicPage(selectedStudentId);
   lucide.createIcons();
+}
+
+const STUDENT_ACCOUNT_ADMIN_TOKEN_KEY = "studioPortal.studentAccountAdminToken";
+
+function getPublicActorUrlForStudent(studentId) {
+  const profile = getActorProfileByStudentId(studentId);
+  if (!profile || !profile.slug) return "";
+  return `${window.location.origin}/actors/${encodeURIComponent(profile.slug)}`;
+}
+
+function getStudentAccountAdminToken() {
+  try {
+    return localStorage.getItem(STUDENT_ACCOUNT_ADMIN_TOKEN_KEY) || "";
+  } catch (error) {
+    return "";
+  }
+}
+
+function setStudentAccountAdminToken(token) {
+  try {
+    localStorage.setItem(STUDENT_ACCOUNT_ADMIN_TOKEN_KEY, token);
+  } catch (error) {
+    // Ignore storage failures; the token can be entered again later.
+  }
+}
+
+function promptStudentAccountAdminToken() {
+  const existing = getStudentAccountAdminToken();
+  const token = window.prompt("Enter the student account admin token configured in Netlify.", existing);
+  if (!token) return "";
+  setStudentAccountAdminToken(token.trim());
+  return token.trim();
+}
+
+async function requestStudentAccountAction(action, body = {}) {
+  const response = await fetch("/api/student-auth", {
+    method: "POST",
+    credentials: "include",
+    headers: {
+      "Content-Type": "application/json",
+      Accept: "application/json"
+    },
+    body: JSON.stringify({
+      action,
+      admin_token: getStudentAccountAdminToken(),
+      ...body
+    })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || payload.ok === false) {
+    throw new Error(payload.error || "Student account request failed.");
+  }
+  return payload;
+}
+
+async function copyTextToClipboard(text) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  return copied;
+}
+
+async function createStudentAccountInviteFromProfile(role = "STUDENT") {
+  if (!selectedStudentId) return;
+  const student = getSchemaStudentById(selectedStudentId);
+  if (!student) return;
+  const resolvedRole = String(role || "STUDENT").toUpperCase() === "GUARDIAN" ? "GUARDIAN" : "STUDENT";
+  const email = resolvedRole === "GUARDIAN"
+    ? (student.guardian_email || student.preferred_contact_email || "")
+    : (student.email || "");
+  if (!email) {
+    notifyUser({
+      title: "Invite needs an email",
+      message: resolvedRole === "GUARDIAN" ? "Add a guardian email before inviting guardian access." : "Add a student email before inviting student access.",
+      tone: "error",
+      source: "student_accounts"
+    });
+    return;
+  }
+
+  if (!getStudentAccountAdminToken() && !promptStudentAccountAdminToken()) return;
+
+  try {
+    const payload = await requestStudentAccountAction("create_invite", {
+      student_id: selectedStudentId,
+      role: resolvedRole,
+      email
+    });
+    const setupUrl = payload.result?.setup_url || "";
+    if (setupUrl) await copyTextToClipboard(setupUrl);
+    notifyUser({
+      title: `${resolvedRole === "GUARDIAN" ? "Guardian" : "Student"} invite ready`,
+      message: setupUrl ? "Setup link copied to clipboard." : "Invite created.",
+      tone: "success",
+      source: "student_accounts"
+    });
+    renderStudentFlowNextSteps(selectedStudentId);
+  } catch (error) {
+    setStudentAccountAdminToken("");
+    notifyUser({
+      title: "Invite failed",
+      message: String(error && error.message ? error.message : error || "Unable to create invite."),
+      tone: "error",
+      source: "student_accounts"
+    });
+  }
+}
+
+function openSelectedStudentPublicPage() {
+  const url = getPublicActorUrlForStudent(selectedStudentId);
+  if (!url) {
+    notifyUser({
+      title: "No public page URL",
+      message: "Create an actor profile with a slug before opening the public page.",
+      tone: "error",
+      source: "public_page"
+    });
+    return;
+  }
+  window.open(url, "_blank", "noopener");
+}
+
+async function copySelectedStudentPublicLink() {
+  const url = getPublicActorUrlForStudent(selectedStudentId);
+  if (!url) {
+    notifyUser({
+      title: "No public page URL",
+      message: "Create an actor profile with a slug before copying the public link.",
+      tone: "error",
+      source: "public_page"
+    });
+    return;
+  }
+  await copyTextToClipboard(url);
+  notifyUser({
+    title: "Public link copied",
+    message: url,
+    tone: "success",
+    source: "public_page"
+  });
+}
+
+function renderStudentFlowNextSteps(studentId) {
+  const statusEl = document.getElementById("profile-student-flow-status");
+  const listEl = document.getElementById("profile-student-flow-next-steps");
+  if (!statusEl || !listEl) return;
+  const student = getSchemaStudentById(studentId);
+  const profile = getActorProfileByStudentId(studentId);
+  const files = getFilesByStudentId(studentId);
+  const pendingPublic = files.filter((file) => String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW");
+  const approvedPublic = files.filter(isPublicPageApprovedMaterial);
+  const homeworkReminder = getHomeworkByStudentId(studentId).filter((item) => item.student_reminder_requested_at && String(item.status || "").toUpperCase() !== "COMPLETED");
+  const steps = [];
+  if (!student?.email) steps.push({ title: "Add student email", detail: "Student accounts need a direct email on file." });
+  if (student?.guardian_email && student.guardian_portal_access_enabled !== false) steps.push({ title: "Guardian invite available", detail: "Guardian access can be invited separately from the student." });
+  if (!profile) steps.push({ title: "Create actor profile", detail: "Public page link appears after a profile slug exists." });
+  if (profile && String(profile.status || "").toLowerCase() !== "active") steps.push({ title: "Public page is draft", detail: "Student can edit; coach keeps approval authority for materials." });
+  if (pendingPublic.length) steps.push({ title: `${pendingPublic.length} public submission${pendingPublic.length === 1 ? "" : "s"} pending`, detail: "Review headshots, resumes, reels, or self tapes." });
+  if (!approvedPublic.length) steps.push({ title: "No approved public materials", detail: "Approve at least a headshot or resume before sharing the actor page." });
+  if (homeworkReminder.length) steps.push({ title: `${homeworkReminder.length} reminder request${homeworkReminder.length === 1 ? "" : "s"}`, detail: "Student asked for homework follow-up." });
+  statusEl.textContent = profile && String(profile.status || "").toLowerCase() === "active" ? "Live" : "Needs setup";
+  listEl.innerHTML = steps.length
+    ? steps.slice(0, 5).map((step) => `
+      <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+        <p class="text-sm font-semibold text-warmblack">${escapeHtml(step.title)}</p>
+        <p class="text-xs text-warmgray mt-1">${escapeHtml(step.detail)}</p>
+      </div>
+    `).join("")
+    : `<div class="rounded-xl border border-cream bg-parchment px-4 py-3 text-sm text-sage">Student workspace and public page look ready.</div>`;
 }
 
 function populateStudentProfile(studentId) {
@@ -15572,6 +15782,8 @@ function populateStudentProfile(studentId) {
       ? `Blocked (${lateCancelCount} late cancels)`
       : (actorProfile ? actorProfile.status : "Not live");
   }
+
+  renderStudentFlowNextSteps(studentId);
 
   const emailEl = document.getElementById("profile-email");
   if (emailEl) emailEl.textContent = schemaStudent.email || "—";

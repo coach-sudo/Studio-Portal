@@ -194,6 +194,22 @@ const DATA_RECORD_SHAPES = {
     "notes",
     "status",
     "uploaded_at"
+  ],
+  studentAccounts: [
+    "account_id",
+    "student_id",
+    "role",
+    "email",
+    "status",
+    "password_hash",
+    "invite_token_hash",
+    "invite_expires_at",
+    "invited_at",
+    "reset_token_hash",
+    "reset_expires_at",
+    "last_login_at",
+    "created_at",
+    "updated_at"
   ]
 };
 
@@ -312,7 +328,8 @@ const appDataStore = {
   packages: samplePackages,
   payments: samplePayments,
   actorProfiles: sampleActorProfiles,
-  files: sampleFiles
+  files: sampleFiles,
+  studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : []
 };
 
 const DATA_COLLECTION_ID_FIELDS = {
@@ -323,7 +340,8 @@ const DATA_COLLECTION_ID_FIELDS = {
   packages: "package_id",
   payments: "payment_id",
   actorProfiles: "actor_profile_id",
-  files: "file_id"
+  files: "file_id",
+  studentAccounts: "account_id"
 };
 
 let backendSettings = sanitizeBackendSettings(readStorageJson(BACKEND_SETTINGS_STORAGE_KEY, DEFAULT_BACKEND_SETTINGS));
@@ -446,7 +464,8 @@ function getGoogleSheetsCollectionBlueprint() {
     Packages: DATA_RECORD_SHAPES.packages,
     Payments: DATA_RECORD_SHAPES.payments,
     ActorProfiles: DATA_RECORD_SHAPES.actorProfiles,
-    Materials: DATA_RECORD_SHAPES.files
+    Materials: DATA_RECORD_SHAPES.files,
+    StudentAccounts: DATA_RECORD_SHAPES.studentAccounts
   };
 }
 

@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Workspace</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --ink: #17211d;
+      --muted: #66736b;
+      --line: #dbe1d8;
+      --paper: #ffffff;
+      --soft: #f5f6f2;
+      --gold: #b88a2f;
+      --danger: #9b3146;
+      --good: #4f7d60;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "DM Sans", system-ui, sans-serif;
+      color: var(--ink);
+      background: var(--soft);
+    }
+    button, input, textarea, select {
+      font: inherit;
+    }
+    .shell {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 28px 20px 64px;
+    }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .brand {
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 30px;
+      line-height: 1;
+    }
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 22px;
+    }
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 320px;
+      gap: 18px;
+      align-items: stretch;
+    }
+    h1, h2, h3 {
+      margin: 0;
+      font-family: "Playfair Display", Georgia, serif;
+    }
+    h1 { font-size: clamp(34px, 5vw, 62px); line-height: 1; }
+    h2 { font-size: 28px; }
+    h3 { font-size: 21px; }
+    p { line-height: 1.5; }
+    .muted { color: var(--muted); }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 18px;
+    }
+    .two {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, 0.9fr);
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .action-card {
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 18px;
+    }
+    .button {
+      border: 1px solid var(--ink);
+      border-radius: 8px;
+      min-height: 42px;
+      padding: 0 14px;
+      background: var(--ink);
+      color: white;
+      font-weight: 700;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .button.secondary {
+      background: white;
+      color: var(--ink);
+    }
+    .button.gold {
+      background: linear-gradient(135deg, #f0d489, var(--gold));
+      color: var(--ink);
+      border-color: transparent;
+    }
+    .form {
+      display: grid;
+      gap: 12px;
+      margin-top: 18px;
+    }
+    label {
+      display: grid;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--soft);
+      padding: 12px;
+      color: var(--ink);
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 400;
+    }
+    .tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 18px 0 14px;
+    }
+    .tabs button {
+      border: 1px solid var(--line);
+      background: white;
+      border-radius: 999px;
+      padding: 10px 14px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+    .tabs button.active {
+      color: var(--ink);
+      border-color: var(--gold);
+      background: #fbf5e4;
+    }
+    .list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .row {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      padding: 14px;
+    }
+    .status {
+      display: inline-flex;
+      border-radius: 999px;
+      padding: 4px 8px;
+      font-size: 12px;
+      background: #ebe8df;
+      color: var(--muted);
+    }
+    .status.good { background: rgba(79,125,96,.12); color: var(--good); }
+    .status.warn { background: rgba(184,138,47,.14); color: var(--gold); }
+    .message {
+      margin: 14px 0;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: white;
+    }
+    .message.error {
+      color: var(--danger);
+      border-color: rgba(155,49,70,.25);
+      background: rgba(155,49,70,.05);
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 860px) {
+      .hero, .two, .grid { grid-template-columns: 1fr; }
+      .topbar { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <div class="brand">Student Workspace</div>
+      <button id="sign-out" class="button secondary hidden">Sign Out</button>
+    </div>
+    <div id="message"></div>
+    <section id="auth-panel" class="panel"></section>
+    <section id="workspace" class="hidden"></section>
+  </main>
+
+  <script>
+    var state = { identity: null, data: null, tab: "overview" };
+
+    function escapeHtml(value) {
+      return String(value || "").replace(/[&<>"']/g, function (char) {
+        return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" })[char];
+      });
+    }
+    function setMessage(message, error) {
+      document.getElementById("message").innerHTML = message ? '<div class="message ' + (error ? "error" : "") + '">' + escapeHtml(message) + '</div>' : "";
+    }
+    async function api(action, options) {
+      options = options || {};
+      var method = options.method || "GET";
+      var response = await fetch(method === "GET" ? "/api/student-auth?action=" + encodeURIComponent(action) : "/api/student-auth", {
+        method: method,
+        credentials: "include",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: method === "GET" ? undefined : JSON.stringify(Object.assign({ action: action }, options.body || {}))
+      });
+      var payload = await response.json().catch(function () { return {}; });
+      if (!response.ok || payload.ok === false) throw new Error(payload.error || "Request failed.");
+      return payload;
+    }
+    function getSetupToken() {
+      return new URLSearchParams(window.location.search).get("setup") || "";
+    }
+    function renderAuth() {
+      var token = getSetupToken();
+      document.getElementById("workspace").classList.add("hidden");
+      document.getElementById("sign-out").classList.add("hidden");
+      document.getElementById("auth-panel").classList.remove("hidden");
+      document.getElementById("auth-panel").innerHTML = token ? `
+        <h1>Create Your Account</h1>
+        <p class="muted">Set a password for your private student workspace.</p>
+        <form class="form" id="setup-form">
+          <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
+          <button class="button gold" type="submit">Create Account</button>
+        </form>
+      ` : `
+        <h1>Sign In</h1>
+        <p class="muted">Use the email on file and your student account password.</p>
+        <form class="form" id="login-form">
+          <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+          <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
+          <button class="button gold" type="submit">Sign In</button>
+        </form>
+      `;
+      var setupForm = document.getElementById("setup-form");
+      if (setupForm) setupForm.onsubmit = submitSetup;
+      var loginForm = document.getElementById("login-form");
+      if (loginForm) loginForm.onsubmit = submitLogin;
+    }
+    async function submitSetup(event) {
+      event.preventDefault();
+      try {
+        await api("complete_invite", { method: "POST", body: { token: getSetupToken(), password: event.currentTarget.elements.password.value } });
+        setMessage("Account created. Sign in with your email and new password.");
+        history.replaceState(null, "", "/portal");
+        renderAuth();
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    }
+    async function submitLogin(event) {
+      event.preventDefault();
+      try {
+        await api("login", { method: "POST", body: { email: event.currentTarget.elements.email.value, password: event.currentTarget.elements.password.value } });
+        await loadSession();
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    }
+    async function signOut() {
+      await api("logout", { method: "POST", body: {} }).catch(function () {});
+      state = { identity: null, data: null, tab: "overview" };
+      renderAuth();
+    }
+    function formatDate(value) {
+      var date = value ? new Date(value) : null;
+      return date && !Number.isNaN(date.getTime()) ? date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" }) : "";
+    }
+    function publicSlug(data) {
+      return data.publicProfile && data.publicProfile.slug ? data.publicProfile.slug : "";
+    }
+    function publicUrl(data) {
+      var slug = publicSlug(data);
+      return slug ? "/actors/" + encodeURIComponent(slug) : "";
+    }
+    function reviewStatusLabel(file) {
+      return String(file.public_page_status || "NOT_PUBLIC").replace(/_/g, " ").toLowerCase();
+    }
+    function renderWorkspace() {
+      var data = state.data || {};
+      var homeworkOpen = (data.homework || []).filter(function (item) { return String(item.status || "").toUpperCase() !== "COMPLETED"; });
+      var nextLesson = (data.lessons || []).find(function (lesson) { return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED"; });
+      var publicLive = data.student && data.student.actor_page_eligible === true && data.publicProfile && String(data.publicProfile.status || "").toLowerCase() === "active";
+      var pending = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL"; });
+      document.getElementById("auth-panel").classList.add("hidden");
+      document.getElementById("workspace").classList.remove("hidden");
+      document.getElementById("sign-out").classList.remove("hidden");
+      document.getElementById("workspace").innerHTML = `
+        <section class="hero">
+          <div class="panel">
+            <h1>${escapeHtml(data.student && data.student.full_name || state.identity.student_name || "Student")}</h1>
+            <p class="muted">Your lessons, assignments, current script, and actor profile in one place.</p>
+            <div class="tabs">
+              ${["overview", "profile", "submissions", "materials", "lessons"].map(function (tab) {
+                return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + tab.charAt(0).toUpperCase() + tab.slice(1) + "</button>";
+              }).join("")}
+            </div>
+          </div>
+          <aside class="panel">
+            <h3>Next Actions</h3>
+            <div class="list">
+              <div class="row"><strong>${nextLesson ? "Next lesson: " + escapeHtml(formatDate(nextLesson.scheduled_start)) : "No upcoming lesson"}</strong></div>
+              <div class="row"><strong>${homeworkOpen.length}</strong> open assignment${homeworkOpen.length === 1 ? "" : "s"}</div>
+              <div class="row">Public page <span class="status ${publicLive ? "good" : "warn"}">${publicLive ? "live" : "draft"}</span></div>
+              <div class="row">${pending.length} submitted public material${pending.length === 1 ? "" : "s"}</div>
+            </div>
+          </aside>
+        </section>
+        ${renderActiveTab(data)}
+      `;
+    }
+    function renderActiveTab(data) {
+      if (state.tab === "profile") return renderProfileTab(data);
+      if (state.tab === "submissions") return renderSubmissionsTab(data);
+      if (state.tab === "materials") return renderMaterialsTab(data);
+      if (state.tab === "lessons") return renderLessonsTab(data);
+      return renderOverviewTab(data);
+    }
+    function renderOverviewTab(data) {
+      return `<div class="grid">
+        <div class="action-card"><h3>Actor Page</h3><p class="muted">Keep your bio, specs, headshot, resume, and reel current.</p><button class="button secondary" onclick="setTab('profile')">Edit Profile</button></div>
+        <div class="action-card"><h3>Submissions</h3><p class="muted">Send new public materials to your coach for review.</p><button class="button secondary" onclick="setTab('submissions')">Submit Material</button></div>
+        <div class="action-card"><h3>Current Script</h3><p class="muted">${escapeHtml(data.currentScript && data.currentScript.title || "No current script is active.")}</p></div>
+      </div>`;
+    }
+    function renderProfileTab(data) {
+      var profile = data.publicProfile || {};
+      var url = publicUrl(data);
+      return `<section class="two">
+        <form class="panel form" id="profile-form">
+          <h2>Public Profile</h2>
+          <label>Display Name<input name="display_name" value="${escapeHtml(profile.display_name || data.student.full_name || "")}" /></label>
+          <label>Bio<textarea name="bio" rows="6">${escapeHtml(profile.bio || "")}</textarea></label>
+          <label>Location<input name="location" value="${escapeHtml(profile.location || "")}" /></label>
+          <label>Height<input name="height" value="${escapeHtml(profile.height || "")}" /></label>
+          <label>Eye Color<input name="eye_color" value="${escapeHtml(profile.eye_color || "")}" /></label>
+          <label>Hair Color<input name="hair_color" value="${escapeHtml(profile.hair_color || "")}" /></label>
+          <label><span>Public page live</span><input name="go_live" type="checkbox" ${String(profile.status || "").toLowerCase() === "active" ? "checked" : ""} ${data.student.actor_page_eligible === true ? "" : "disabled"} /></label>
+          <button class="button gold" type="submit">Save Profile</button>
+        </form>
+        <aside class="panel">
+          <h2>Preview</h2>
+          <p class="muted">${url ? "Your public page URL is ready when your page is live." : "Your public page URL will appear after your profile is created."}</p>
+          ${url ? '<a class="button secondary" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open Public Page</a>' : ""}
+        </aside>
+      </section>`;
+    }
+    function renderSubmissionsTab(data) {
+      var submitted = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL"; });
+      return `<section class="two">
+        <form class="panel form" id="submission-form">
+          <h2>Submit Public Material</h2>
+          <label>Type<select name="category"><option>Headshot</option><option>Resume</option><option>Reel</option><option>Self Tape</option></select></label>
+          <label>Title<input name="title" required /></label>
+          <label>URL<input name="external_url" type="url" required /></label>
+          <label>Notes for coach<textarea name="notes" rows="4"></textarea></label>
+          <button class="button gold" type="submit">Submit For Review</button>
+        </form>
+        <aside class="panel"><h2>Review Status</h2><div class="list">${submitted.length ? submitted.map(function (file) {
+          return '<div class="row"><strong>' + escapeHtml(file.title || file.file_name) + '</strong><p class="muted">' + escapeHtml(file.category || "Material") + ' - ' + escapeHtml(reviewStatusLabel(file)) + '</p></div>';
+        }).join("") : '<div class="row">No public submissions yet.</div>'}</div></aside>
+      </section>`;
+    }
+    function renderMaterialsTab(data) {
+      var lessonMaterials = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() !== "STUDENT_PORTAL"; });
+      return `<section class="panel"><h2>Lesson Materials</h2><div class="list">${lessonMaterials.length ? lessonMaterials.map(function (file) {
+        var url = file.external_url || file.file_url || "";
+        return '<div class="row"><strong>' + escapeHtml(file.title || file.file_name || "Material") + '</strong><p class="muted">' + escapeHtml(file.category || file.material_kind || "Resource") + '</p>' + (url ? '<a class="button secondary" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open</a>' : '') + '</div>';
+      }).join("") : '<div class="row">No shared lesson materials yet.</div>'}</div></section>`;
+    }
+    function renderLessonsTab(data) {
+      return `<section class="panel"><h2>Lessons</h2><div class="list">${(data.lessons || []).length ? data.lessons.map(function (lesson) {
+        return '<div class="row"><strong>' + escapeHtml(lesson.topic || lesson.lesson_type || "Lesson") + '</strong><p class="muted">' + escapeHtml(formatDate(lesson.scheduled_start)) + ' - ' + escapeHtml(lesson.lesson_status || "Scheduled") + '</p></div>';
+      }).join("") : '<div class="row">No lessons are visible yet.</div>'}</div></section>`;
+    }
+    function setTab(tab) {
+      state.tab = tab;
+      renderWorkspace();
+      bindForms();
+    }
+    function bindForms() {
+      var profileForm = document.getElementById("profile-form");
+      if (profileForm) profileForm.onsubmit = async function (event) {
+        event.preventDefault();
+        var form = event.currentTarget;
+        await api("update_public_profile", { method: "POST", body: {
+          display_name: form.elements.display_name.value,
+          bio: form.elements.bio.value,
+          location: form.elements.location.value,
+          height: form.elements.height.value,
+          eye_color: form.elements.eye_color.value,
+          hair_color: form.elements.hair_color.value,
+          status: form.elements.go_live && form.elements.go_live.checked ? "Active" : "Draft"
+        }}).then(function (payload) { state.data = payload.data; setMessage("Profile saved."); renderWorkspace(); bindForms(); }).catch(function (error) { setMessage(error.message, true); });
+      };
+      var submissionForm = document.getElementById("submission-form");
+      if (submissionForm) submissionForm.onsubmit = async function (event) {
+        event.preventDefault();
+        var form = event.currentTarget;
+        await api("submit_public_material", { method: "POST", body: {
+          title: form.elements.title.value,
+          category: form.elements.category.value,
+          external_url: form.elements.external_url.value,
+          notes: form.elements.notes.value,
+          source_type: "LINK"
+        }}).then(function (payload) { state.data = payload.data; setMessage("Material submitted for review."); state.tab = "submissions"; renderWorkspace(); bindForms(); }).catch(function (error) { setMessage(error.message, true); });
+      };
+    }
+    async function loadSession() {
+      try {
+        var payload = await api("portal_data");
+        state.identity = payload.identity;
+        state.data = payload.data;
+        setMessage("");
+        renderWorkspace();
+        bindForms();
+      } catch (error) {
+        renderAuth();
+      }
+    }
+    document.getElementById("sign-out").onclick = signOut;
+    loadSession();
+  </script>
+</body>
+</html>

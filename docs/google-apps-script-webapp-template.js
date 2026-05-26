@@ -6,7 +6,8 @@ var SHEET_CONFIG = {
   Packages: 'packages',
   Payments: 'payments',
   ActorProfiles: 'actorProfiles',
-  Materials: 'files'
+  Materials: 'files',
+  StudentAccounts: 'studentAccounts'
 };
 
 function doGet(e) {

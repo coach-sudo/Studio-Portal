@@ -932,3 +932,5 @@ const sampleActorProfiles = [
     updated_at: "2026-03-15T12:00:00.000Z"
   }
 ];
+
+const sampleStudentAccounts = [];
