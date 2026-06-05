@@ -7,12 +7,13 @@
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --ink: #111111;
-      --muted: #6a6a64;
-      --line: #e7e4dd;
+      --ink: #161b18;
+      --muted: #697268;
+      --line: #ded8cc;
       --paper: #ffffff;
-      --soft: #f6f4ef;
-      --brass: #a5792a;
+      --soft: #f5f2ec;
+      --brass: #b88a2f;
+      --burgundy: #7a1d2f;
     }
 
     * { box-sizing: border-box; }
@@ -21,7 +22,7 @@
       margin: 0;
       font-family: "DM Sans", system-ui, sans-serif;
       color: var(--ink);
-      background: var(--paper);
+      background: linear-gradient(180deg, #fbfaf6 0%, var(--soft) 100%);
     }
 
     a { color: inherit; }
@@ -29,7 +30,7 @@
       position: sticky;
       top: 0;
       z-index: 20;
-      background: rgba(255,255,255,0.92);
+      background: rgba(251,250,246,0.92);
       border-bottom: 1px solid var(--line);
       backdrop-filter: blur(16px);
     }
@@ -59,12 +60,12 @@
     .nav-links a:hover { color: var(--ink); }
 
     .hero {
-      max-width: 1180px;
+      max-width: 1220px;
       min-height: calc(100vh - 66px);
       margin: 0 auto;
       padding: 54px 24px 72px;
       display: grid;
-      grid-template-columns: minmax(0, 0.92fr) minmax(360px, 1.08fr);
+      grid-template-columns: minmax(320px, 0.86fr) minmax(0, 1.14fr);
       gap: 56px;
       align-items: center;
     }
@@ -109,6 +110,7 @@
       align-items: center;
       justify-content: center;
       border: 1px solid var(--ink);
+      border-radius: 999px;
       padding: 0 18px;
       text-decoration: none;
       font-size: 14px;
@@ -124,10 +126,12 @@
       min-height: 640px;
       background: var(--soft);
       border: 1px solid var(--line);
+      border-radius: 28px;
       overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 28px 80px rgba(22,27,24,.12);
     }
     .photo-frame img {
       width: 100%;
@@ -174,6 +178,7 @@
     .material {
       border: 1px solid var(--line);
       background: var(--soft);
+      border-radius: 18px;
       min-height: 220px;
       overflow: hidden;
     }
@@ -198,7 +203,8 @@
     }
     .media-panel {
       border: 1px solid var(--line);
-      background: var(--soft);
+      background: rgba(255,255,255,.76);
+      border-radius: 18px;
       padding: 26px;
       min-height: 240px;
       display: flex;
@@ -237,7 +243,8 @@
     }
     .empty {
       border: 1px dashed var(--line);
-      background: var(--soft);
+      border-radius: 18px;
+      background: rgba(255,255,255,.58);
       padding: 24px;
       color: var(--muted);
     }
@@ -278,7 +285,7 @@
   <main id="page">
     <section class="hero">
       <div class="hero-copy">
-        <p class="role">Actor</p>
+        <p class="role">Actor Showcase</p>
         <h1 id="actor-name">Actor Profile</h1>
         <p id="actor-bio" class="bio">Loading public profile...</p>
         <div id="actor-specs" class="specs"></div>
@@ -305,7 +312,7 @@
         <div class="media-panel">
           <div>
             <h2>Reel</h2>
-            <p>Selected screen and stage materials.</p>
+            <p>Selected screen, stage, and casting materials approved for public viewing.</p>
           </div>
           <a id="reel-link" class="button" href="#" target="_blank" rel="noopener">Watch Reel</a>
         </div>
@@ -318,7 +325,7 @@
         <div class="media-panel">
           <div>
             <h2>Resume</h2>
-            <p>Download current resume and supporting casting materials.</p>
+            <p>Download the current resume and approved supporting materials.</p>
           </div>
           <a id="resume-link" class="button" href="#" target="_blank" rel="noopener">Download Resume</a>
         </div>

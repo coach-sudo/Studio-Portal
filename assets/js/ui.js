@@ -16399,36 +16399,44 @@ function renderPublicPage() {
 
   root.innerHTML = `
     <div id="public-page-shell">
-      <div class="max-w-4xl mx-auto px-8 py-4 flex flex-wrap items-center justify-between gap-3">
-        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="refreshPortalReviewQueue()">Refresh From Portal</button>
-        <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${selectedStudentId}')">Manage Materials</button>
+      <div class="max-w-6xl mx-auto px-5 sm:px-8 py-5 flex flex-wrap items-center justify-between gap-3">
+        <p class="text-xs uppercase tracking-[0.22em] text-warmgray font-medium">Public Actor Page Preview</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="refreshPortalReviewQueue()">Refresh Portal</button>
+          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${selectedStudentId}')">Materials</button>
+        </div>
       </div>
       <div id="public-hero" class="public-hero text-white">
-        <div class="max-w-4xl mx-auto px-8 pt-16 pb-20">
-          <div class="flex flex-col md:flex-row items-center gap-10 fade-in">
-            <div id="public-headshot" class="w-56 h-56 rounded-2xl headshot-placeholder flex items-center justify-center shrink-0 border-2 border-white/10 shadow-2xl bg-cover bg-center">
+        <div class="max-w-6xl mx-auto px-5 sm:px-8 pt-12 pb-16">
+          <div class="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-10 items-end fade-in">
+            <div id="public-headshot" class="aspect-[4/5] rounded-2xl headshot-placeholder flex items-center justify-center shrink-0 border border-white/15 shadow-2xl bg-cover bg-center overflow-hidden">
               <i data-lucide="user" class="w-20 h-20 text-warmgray/40"></i>
             </div>
 
-            <div class="text-center md:text-left">
-              <p class="text-xs uppercase tracking-[0.25em] text-gold mb-3 font-medium">Actor</p>
-              <h1 id="public-name" class="font-display text-5xl font-bold mb-3">Actor Name</h1>
-              <p id="public-bio" class="text-white/90 text-base leading-relaxed max-w-lg"></p>
+            <div class="text-left">
+              <p class="text-xs uppercase tracking-[0.25em] text-gold mb-3 font-medium">Actor Showcase</p>
+              <h1 id="public-name" class="font-display text-5xl sm:text-6xl font-bold mb-4">Actor Name</h1>
+              <p id="public-bio" class="text-white/90 text-base sm:text-lg leading-relaxed max-w-2xl"></p>
 
-              <div id="public-specs" class="flex flex-wrap gap-3 mt-6 justify-center md:justify-start"></div>
+              <div id="public-specs" class="flex flex-wrap gap-3 mt-6"></div>
             </div>
           </div>
         </div>
       </div>
 
-      <div class="max-w-4xl mx-auto px-8 -mt-8">
+      <div class="max-w-6xl mx-auto px-5 sm:px-8 -mt-8">
         <div id="public-page-status-banner" class="mb-6"></div>
 
-        <div id="public-materials" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"></div>
+        <div id="public-materials" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 mb-12"></div>
 
         <div class="bg-white rounded-2xl border border-cream p-6 mb-12 fade-in" style="animation-delay:0.2s">
-          <h3 class="font-display text-xl font-semibold mb-4">Contact &amp; Representation</h3>
-          <div class="p-4 bg-parchment rounded-xl">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <p class="text-xs uppercase tracking-[0.2em] text-warmgray font-medium mb-2">Contact</p>
+              <h3 class="font-display text-xl font-semibold">Representation &amp; Booking</h3>
+            </div>
+          </div>
+          <div class="p-4 bg-parchment rounded-xl mt-4">
             <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-2">Direct Contact</p>
             <p id="public-contact-email" class="text-sm text-gold">actor@example.com</p>
           </div>

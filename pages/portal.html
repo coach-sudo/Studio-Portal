@@ -86,6 +86,137 @@
       border-color: rgba(184,138,47,.45);
       background: #fffaf0;
     }
+    .workspace-hero {
+      background:
+        radial-gradient(circle at 18% 0%, rgba(184,138,47,.16), transparent 32%),
+        linear-gradient(135deg, #ffffff 0%, #f9f3e6 100%);
+    }
+    .portal-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+    .portal-nav button {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.82);
+      border-radius: 999px;
+      min-height: 40px;
+      padding: 0 14px;
+      color: var(--muted);
+      cursor: pointer;
+      font-weight: 700;
+    }
+    .portal-nav button.active {
+      color: var(--ink);
+      border-color: var(--gold);
+      background: #fbf5e4;
+    }
+    .desk-grid {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .desk-card {
+      grid-column: span 4;
+      min-width: 0;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+    }
+    .desk-card.wide { grid-column: span 8; }
+    .desk-card.full { grid-column: 1 / -1; }
+    .desk-card.soft { background: #fbfaf5; }
+    .desk-card.gold {
+      border-color: rgba(184,138,47,.35);
+      background: #fff8e8;
+    }
+    .card-label {
+      margin: 0 0 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-weight: 700;
+    }
+    .card-title {
+      margin: 0;
+      font-family: "Playfair Display", Georgia, serif;
+      font-size: 24px;
+      line-height: 1.1;
+    }
+    .card-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .mini-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .mini-item {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.72);
+      padding: 11px 12px;
+    }
+    .empty-state {
+      border: 1px dashed var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.55);
+      padding: 16px;
+      color: var(--muted);
+    }
+    .lesson-timeline {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .lesson-card {
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr) auto;
+      gap: 14px;
+      align-items: center;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+    }
+    .date-tile {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: white;
+      padding: 10px;
+      text-align: center;
+      font-weight: 700;
+    }
+    .date-tile span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+    .material-section {
+      display: grid;
+      gap: 12px;
+    }
+    .contact-card {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
     .kpi {
       display: flex;
       justify-content: space-between;
@@ -333,7 +464,11 @@
     }
     .hidden { display: none !important; }
     @media (max-width: 860px) {
-      .hero, .two, .grid, .quick-actions { grid-template-columns: 1fr; }
+      .hero, .two, .grid, .quick-actions, .desk-grid, .contact-card { grid-template-columns: 1fr; }
+      .desk-card,
+      .desk-card.wide,
+      .desk-card.full { grid-column: 1; }
+      .lesson-card { grid-template-columns: 1fr; }
       .media-card { grid-template-columns: 1fr; }
       .join-now { position: static; flex-direction: column; align-items: stretch; }
       .tabs {
@@ -588,12 +723,100 @@
       if (!lesson) return "";
       return '<section class="panel join-now"><div><h2>Lesson is ready</h2><p class="muted">' + escapeHtml(lesson.topic || lesson.lesson_type || "Your lesson") + ' · ' + escapeHtml(formatDate(lesson.scheduled_start)) + '</p></div><a class="button gold" href="' + escapeHtml(lesson.join_link) + '" target="_blank" rel="noopener">Join Now</a></section>';
     }
+    function formatDateTime(value) {
+      var date = value ? new Date(value) : null;
+      return date && !Number.isNaN(date.getTime()) ? date.toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+    }
+    function formatTime(value) {
+      var date = value ? new Date(value) : null;
+      return date && !Number.isNaN(date.getTime()) ? date.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" }) : "";
+    }
+    function isOpenHomework(item) {
+      return String(item && item.status || "").toUpperCase() !== "COMPLETED";
+    }
+    function openReaderRequests(data) {
+      return (data.readerRequests || []).filter(function (request) {
+        return !["RESOLVED", "EXPIRED", "DECLINED"].includes(String(request.status || "").toUpperCase());
+      });
+    }
+    function upcomingLessons(data) {
+      var now = Date.now();
+      return (data.lessons || []).filter(function (lesson) {
+        var start = lesson.scheduled_start ? new Date(lesson.scheduled_start).getTime() : 0;
+        var status = String(lesson.lesson_status || "").toUpperCase();
+        return start >= now && !["COMPLETED", "CANCELLED"].includes(status);
+      }).sort(function (a, b) {
+        return new Date(a.scheduled_start || 0).getTime() - new Date(b.scheduled_start || 0).getTime();
+      });
+    }
+    function pastLessons(data) {
+      var now = Date.now();
+      return (data.lessons || []).filter(function (lesson) {
+        var start = lesson.scheduled_start ? new Date(lesson.scheduled_start).getTime() : 0;
+        var status = String(lesson.lesson_status || "").toUpperCase();
+        return start < now || ["COMPLETED", "CANCELLED"].includes(status);
+      });
+    }
+    function nextLesson(data) {
+      return upcomingLessons(data)[0] || (data.lessons || []).find(function (lesson) {
+        return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED";
+      }) || null;
+    }
+    function studentVisibleMaterials(data) {
+      return (data.materials || []).filter(function (file) {
+        return String(file.submitted_by || "").toUpperCase() !== "STUDENT_PORTAL";
+      });
+    }
+    function currentMaterials(data) {
+      return studentVisibleMaterials(data).filter(function (file) {
+        return String(file.status || "").toLowerCase() !== "vaulted";
+      });
+    }
+    function vaultMaterials(data) {
+      return studentVisibleMaterials(data).filter(function (file) {
+        return String(file.status || "").toLowerCase() === "vaulted";
+      });
+    }
+    function publicSubmissions(data) {
+      return (data.materials || []).filter(function (file) {
+        return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL";
+      });
+    }
+    function publishedLatestNote(data) {
+      return (data.notes || [])[0] || null;
+    }
+    function joinAvailabilityMarkup(data, lesson) {
+      if (!lesson) return shouldShowStudentAction("booking")
+        ? '<p class="muted">No lesson is scheduled yet. Book a time or contact Darius when you are ready.</p><div class="card-actions"><a class="button gold" href="' + escapeHtml(bookingUrl(data)) + '" target="_blank" rel="noopener">Book Lesson</a></div>'
+        : '<p class="muted">No lesson is scheduled yet. Contact Darius when you are ready.</p>';
+      var active = activeJoinLesson(data);
+      if (active && active.lesson_id === lesson.lesson_id) {
+        return '<p class="muted">Your room is open now.</p><div class="card-actions"><a class="button gold" href="' + escapeHtml(lesson.join_link) + '" target="_blank" rel="noopener">Join Now</a></div>';
+      }
+      if (lesson.join_link) {
+        return '<p class="muted">Join link is on file. It becomes the main action 15 minutes before lesson time.</p>';
+      }
+      return '<p class="muted">Darius will share the join link before the lesson, or use your usual booking/contact thread.</p>';
+    }
+    function publicStatusText(data) {
+      var profile = data.publicProfile || {};
+      var raw = String(profile.status || "Draft");
+      return raw.toLowerCase() === "active" ? "Live" : raw || "Draft";
+    }
+    function materialCountLabel(count) {
+      return count + " item" + (count === 1 ? "" : "s");
+    }
+    function actorToolsRelevant(data) {
+      return Boolean(data.publicProfile || (data.student && data.student.actor_page_eligible) || publicSubmissions(data).length);
+    }
     function renderWorkspace() {
       var data = state.data || {};
-      var homeworkOpen = (data.homework || []).filter(function (item) { return String(item.status || "").toUpperCase() !== "COMPLETED"; });
-      var nextLesson = (data.lessons || []).find(function (lesson) { return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED"; });
-      var publicLive = data.student && data.student.actor_page_eligible === true && data.publicProfile && String(data.publicProfile.status || "").toLowerCase() === "active";
-      var pending = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL"; });
+      var homeworkOpen = (data.homework || []).filter(isOpenHomework);
+      var lesson = nextLesson(data);
+      var readerOpen = openReaderRequests(data);
+      var currentCount = currentMaterials(data).length + (data.currentScript ? 1 : 0);
+      var tabs = ["overview", "script", "materials", "lessons", "homework", "payments", "contact"];
+      if (actorToolsRelevant(data)) tabs.push("profile");
       document.getElementById("portal-brand").textContent = studentPortalLabel();
       document.getElementById("auth-panel").classList.add("hidden");
       document.getElementById("workspace").classList.remove("hidden");
@@ -601,23 +824,23 @@
       document.getElementById("workspace").innerHTML = `
         ${joinNowBanner(data)}
         <section class="hero">
-          <div class="panel">
+          <div class="panel workspace-hero">
             <h1>${escapeHtml(data.student && data.student.full_name || state.identity.student_name || "Student")}</h1>
             <p class="muted">${escapeHtml(studentWelcomeMessage())}</p>
-            <div class="tabs">
-              ${["overview", "script", "materials", "lessons", "homework", "payments"].map(function (tab) {
-                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
+            <div class="portal-nav" aria-label="Student workspace sections">
+              ${tabs.map(function (tab) {
+                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package", profile: "Actor Page", contact: "Contact" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
                 return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + label + "</button>";
               }).join("")}
             </div>
           </div>
           <aside class="panel">
-            <h3>Next</h3>
+            <p class="card-label">At a glance</p>
+            <h3>${lesson ? escapeHtml(formatDateTime(lesson.scheduled_start)) : "No lesson booked"}</h3>
             <div class="list">
-              <div class="row"><strong>${nextLesson ? "Next lesson: " + escapeHtml(formatDate(nextLesson.scheduled_start)) : "No upcoming lesson"}</strong></div>
-              <div class="row"><strong>${homeworkOpen.length}</strong> open assignment${homeworkOpen.length === 1 ? "" : "s"}</div>
-              <div class="row">Public page <span class="status ${publicLive ? "good" : "warn"}">${publicLive ? "live" : "draft"}</span></div>
-              <div class="row">${pending.length} public submission${pending.length === 1 ? "" : "s"}</div>
+              <div class="row"><strong>${currentCount}</strong> current work item${currentCount === 1 ? "" : "s"}</div>
+              <div class="row"><strong>${homeworkOpen.length}</strong> open practice item${homeworkOpen.length === 1 ? "" : "s"}</div>
+              <div class="row"><strong>${readerOpen.length}</strong> reader request${readerOpen.length === 1 ? "" : "s"}</div>
             </div>
           </aside>
         </section>
@@ -633,40 +856,72 @@
       if (state.tab === "script") return renderScriptTab(data);
       if (state.tab === "payments") return renderPaymentsTab(data);
       if (state.tab === "reader") return renderReaderTab(data);
+      if (state.tab === "contact") return renderContactTab(data);
       return renderOverviewTab(data);
     }
     function renderOverviewTab(data) {
-      var nextLesson = (data.lessons || []).find(function (lesson) { return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED"; });
-      var openHomework = (data.homework || []).filter(function (item) { return String(item.status || "").toUpperCase() !== "COMPLETED"; });
+      var lesson = nextLesson(data);
+      var openHomework = (data.homework || []).filter(isOpenHomework);
       var pkg = activePackage(data);
       var progress = packageProgress(pkg);
-      var publicLive = data.student && data.student.actor_page_eligible === true && data.publicProfile && String(data.publicProfile.status || "").toLowerCase() === "active";
-      var pending = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW"; });
-      var readerOpen = (data.readerRequests || []).filter(function (request) { return !["RESOLVED", "EXPIRED", "DECLINED"].includes(String(request.status || "").toUpperCase()); });
-      return `<section class="panel">
-        <div class="quick-actions">
-          ${nextLesson && nextLesson.join_link ? `<a class="button gold" href="${escapeHtml(nextLesson.join_link)}" target="_blank" rel="noopener">Join Lesson</a>` : shouldShowStudentAction("booking") ? `<a class="button gold" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book Lesson</a>` : ""}
-          <button class="button secondary" onclick="setTab('script')">Current Work</button>
-          <button class="button secondary" onclick="setTab('materials')">Materials</button>
-          ${shouldShowStudentAction("contact") ? `<a class="button secondary" href="sms:${coachPhone()}">Text Coach</a><a class="button secondary" href="mailto:${coachEmail()}">Email Coach</a>` : ""}
-        </div>
-        <div class="grid">
-          <div class="action-card primary"><h3>${nextLesson ? "Next Lesson" : "Book Lesson"}</h3><p class="muted">${nextLesson ? escapeHtml(formatDate(nextLesson.scheduled_start)) : "Choose your next time."}</p>${shouldShowStudentAction("booking") ? `<a class="button secondary" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book</a>` : ""}</div>
-          <div class="action-card"><h3>Current Work</h3><p class="muted">${escapeHtml(data.currentScript && data.currentScript.title || "No active script")}</p><button class="button secondary" onclick="setTab('script')">Open</button></div>
-          <div class="action-card"><h3>Latest Notes</h3><p class="muted">${(data.notes || []).length ? escapeHtml((data.notes || [])[0].title || "Lesson notes") : "No new notes yet"}</p><button class="button secondary" onclick="setTab('lessons')">Review</button></div>
-          <div class="action-card"><h3>Materials</h3><p class="muted">Current resources and vault</p><button class="button secondary" onclick="setTab('materials')">Open</button></div>
-          <div class="action-card"><h3>Practice</h3><p class="muted">${openHomework.length} active item${openHomework.length === 1 ? "" : "s"}</p><button class="button secondary" onclick="setTab('homework')">Open</button></div>
-          <div class="action-card"><h3>Contact Darius</h3><p class="muted">Questions, prep, or scheduling notes</p>${shouldShowStudentAction("contact") ? `<a class="button secondary" href="mailto:${coachEmail()}">Email</a>` : ""}</div>
-        </div>
-        ${pkg ? '<div class="action-card" style="margin-top:14px"><h3>' + escapeHtml(pkg.package_name || "Package") + '</h3><p class="muted">' + escapeHtml(pkg.sessions_remaining || "0") + ' of ' + escapeHtml(pkg.sessions_total || "0") + ' sessions remaining</p><div class="progress"><span style="width:' + progress + '%"></span></div><button class="button secondary" onclick="startPackageRenewal()" style="margin-top:12px">Renew Package</button></div>' : ""}
+      var pending = publicSubmissions(data).filter(function (file) { return String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW"; });
+      var readerOpen = openReaderRequests(data);
+      var note = publishedLatestNote(data);
+      var current = currentMaterials(data);
+      var vault = vaultMaterials(data);
+      return `<section class="desk-grid">
+        <article class="desk-card wide gold">
+          <p class="card-label">Next Lesson</p>
+          <h2>${lesson ? escapeHtml(lesson.topic || lesson.lesson_type || "Your lesson") : "Ready when you are"}</h2>
+          <p class="muted">${lesson ? escapeHtml(formatDateTime(lesson.scheduled_start)) : "No lesson is on the calendar yet."}</p>
+          ${joinAvailabilityMarkup(data, lesson)}
+        </article>
+        <article class="desk-card soft">
+          <p class="card-label">Contact Darius</p>
+          <h3>Questions or prep?</h3>
+          <p class="muted">Reach out without hunting through the portal.</p>
+          <div class="card-actions">
+            ${shouldShowStudentAction("contact") ? `<a class="button secondary" href="mailto:${coachEmail()}">Email</a><a class="button secondary" href="sms:${coachPhone()}">Text</a>` : ""}
+          </div>
+        </article>
+        <article class="desk-card wide">
+          <p class="card-label">Current Work</p>
+          <h3>${escapeHtml(data.currentScript && data.currentScript.title || current[0]?.title || current[0]?.file_name || "Your active studio desk")}</h3>
+          <p class="muted">${data.currentScript || current.length ? "Scripts, sides, scenes, links, and focus items you are working with now." : "No active script or material is posted yet."}</p>
+          <div class="chip-row"><span class="status">${materialCountLabel(current.length)} current</span><span class="status ${openHomework.length ? "warn" : ""}">${openHomework.length} practice</span><span class="status ${readerOpen.length ? "warn" : ""}">${readerOpen.length} reader</span></div>
+          <div class="card-actions"><button class="button secondary" onclick="setTab('script')">Open Current Work</button></div>
+        </article>
+        <article class="desk-card">
+          <p class="card-label">Latest Note</p>
+          <h3>${note ? escapeHtml(note.title || "Lesson note") : "No published note yet"}</h3>
+          <p class="muted">${note ? escapeHtml(formatDate(note.published_at || note.updated_at)) : "When Darius publishes a note, it will appear here."}</p>
+          <div class="card-actions"><button class="button secondary" onclick="setTab('lessons')">Review Lessons</button></div>
+        </article>
+        <article class="desk-card">
+          <p class="card-label">Materials</p>
+          <h3>${current.length} Current / ${vault.length} Vault</h3>
+          <p class="muted">Current stays up front. Vault keeps older work available without clutter.</p>
+          <div class="card-actions"><button class="button secondary" onclick="setTab('materials')">Open Materials</button></div>
+        </article>
+        <article class="desk-card">
+          <p class="card-label">Practice</p>
+          <h3>${openHomework.length ? openHomework.length + " open item" + (openHomework.length === 1 ? "" : "s") : "No open practice"}</h3>
+          <p class="muted">${readerOpen.length ? readerOpen.length + " reader request also active." : "Homework, reminders, and reader requests live here."}</p>
+          <div class="card-actions"><button class="button secondary" onclick="setTab('homework')">Open Practice</button></div>
+        </article>
+        ${pkg ? '<article class="desk-card"><p class="card-label">Package</p><h3>' + escapeHtml(pkg.package_name || "Package") + '</h3><p class="muted">' + escapeHtml(pkg.sessions_remaining || "0") + ' of ' + escapeHtml(pkg.sessions_total || "0") + ' sessions remaining</p><div class="progress"><span style="width:' + progress + '%"></span></div><div class="card-actions"><button class="button secondary" onclick="setTab(\'payments\')">View Package</button></div></article>' : ""}
+        ${actorToolsRelevant(data) ? '<article class="desk-card"><p class="card-label">Actor Page</p><h3>' + escapeHtml(publicStatusText(data)) + '</h3><p class="muted">' + (pending.length ? pending.length + ' material pending Darius review.' : 'Public materials and profile edits stay in a secondary workspace.') + '</p><div class="card-actions"><button class="button secondary" onclick="setTab(\'profile\')">Open Actor Tools</button></div></article>' : ""}
       </section>`;
     }
     function renderProfileTab(data) {
       var profile = data.publicProfile || {};
       var url = publicUrl(data);
+      var submitted = publicSubmissions(data);
       return `<section class="two">
         <form class="panel form" id="profile-form">
+          <p class="card-label">Actor Page</p>
           <h2>Public Profile</h2>
+          <p class="muted">You can update your profile details. Darius reviews public materials before anything appears live.</p>
           <label>Display Name<input name="display_name" value="${escapeHtml(profile.display_name || data.student.full_name || "")}" /></label>
           <label>Bio<textarea name="bio" rows="6">${escapeHtml(profile.bio || "")}</textarea></label>
           <label>Location<input name="location" value="${escapeHtml(profile.location || "")}" /></label>
@@ -677,10 +932,13 @@
           <button class="button gold" type="submit">Save Profile</button>
         </form>
         <aside class="panel">
-          <h2>Preview</h2>
-          <p><span class="status ${String(profile.status || "").toLowerCase() === "active" ? "good" : "warn"}">${escapeHtml(profile.status || "Draft")}</span></p>
+          <p class="card-label">Public Status</p>
+          <h2>${escapeHtml(publicStatusText(data))}</h2>
+          <p><span class="status ${String(profile.status || "").toLowerCase() === "active" ? "good" : "warn"}">${escapeHtml(publicStatusText(data))}</span></p>
+          <p class="muted">${submitted.length ? submitted.length + " public material submission" + (submitted.length === 1 ? "" : "s") + " connected." : "No public material submissions yet."}</p>
           ${url ? '<a class="button secondary" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open Public Page</a>' : ""}
           ${url ? '<button class="button secondary" onclick="copyPublicUrl()" style="margin-left:8px">Copy Link</button>' : ""}
+          <div class="card-actions"><button class="button gold" onclick="setTab('submissions')">Submit Public Material</button></div>
         </aside>
       </section>`;
     }
@@ -705,49 +963,67 @@
       </section>`;
     }
     function renderMaterialsTab(data) {
-      var lessonMaterials = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() !== "STUDENT_PORTAL"; });
-      var currentMaterials = lessonMaterials.filter(function (file) { return String(file.status || "").toLowerCase() !== "vaulted"; });
-      var vaultMaterials = lessonMaterials.filter(function (file) { return String(file.status || "").toLowerCase() === "vaulted"; });
+      var active = currentMaterials(data);
+      var vault = vaultMaterials(data);
+      var submitted = publicSubmissions(data);
       return `<section class="two">
-        <div class="panel"><div class="section-head"><div><h2>Current</h2><p class="muted">Scripts, sides, links, and resources you are working with now.</p></div>${shouldShowStudentAction("drive") && data.student && data.student.drive_folder_url ? '<a class="button gold" href="' + escapeHtml(data.student.drive_folder_url) + '" target="_blank" rel="noopener">Open Drive Folder</a>' : ""}</div><div class="list">${currentMaterials.length ? currentMaterials.map(materialCard).join("") : '<div class="row">No current materials yet.</div>'}</div></div>
-        <aside class="panel"><h2>Vault</h2><p class="muted">Older materials stay here when you need to look back.</p><div class="list">${vaultMaterials.length ? vaultMaterials.map(materialCard).join("") : '<div class="row">Nothing is vaulted yet.</div>'}</div></aside>
+        <div class="panel material-section"><div class="section-head"><div><p class="card-label">Materials</p><h2>Current</h2><p class="muted">Scripts, sides, links, and resources you are working with now.</p></div>${shouldShowStudentAction("drive") && data.student && data.student.drive_folder_url ? '<a class="button gold" href="' + escapeHtml(data.student.drive_folder_url) + '" target="_blank" rel="noopener">Open Drive Folder</a>' : ""}</div><div class="list">${active.length ? active.map(materialCard).join("") : '<div class="empty-state">No current materials yet.</div>'}</div></div>
+        <aside class="panel material-section"><p class="card-label">Archive</p><h2>Vault</h2><p class="muted">Older materials stay here when you need to look back.</p><div class="list">${vault.length ? vault.map(materialCard).join("") : '<div class="empty-state">Nothing is vaulted yet.</div>'}</div>${submitted.length ? '<div style="margin-top:16px"><p class="card-label">Public Materials</p><div class="list">' + submitted.map(materialCard).join("") + '</div><div class="card-actions"><button class="button secondary" onclick="setTab(\'submissions\')">Manage Public Submissions</button></div></div>' : actorToolsRelevant(data) ? '<div class="card-actions"><button class="button secondary" onclick="setTab(\'submissions\')">Submit Public Material</button></div>' : ""}</aside>
       </section>`;
     }
     function renderLessonsTab(data) {
-      return `<section class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Lessons</h2><a class="button gold" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book Lesson</a></div><div class="list">${(data.lessons || []).length ? data.lessons.map(function (lesson) {
-        return '<button type="button" class="row" style="text-align:left;cursor:pointer" data-lesson-open="' + escapeHtml(lesson.lesson_id) + '"><strong>' + escapeHtml(lesson.topic || lesson.lesson_type || "Lesson") + '</strong><p class="muted">' + escapeHtml(formatDate(lesson.scheduled_start)) + ' - ' + escapeHtml(lesson.lesson_status || "Scheduled") + '</p></button>';
-      }).join("") : '<div class="row">No lessons are visible yet.</div>'}</div></section>`;
+      var upcoming = upcomingLessons(data);
+      var past = pastLessons(data);
+      function lessonCard(lesson) {
+        var note = lessonNote(data, lesson.lesson_id);
+        return '<button type="button" class="row lesson-card" data-lesson-open="' + escapeHtml(lesson.lesson_id) + '"><div class="date-tile"><span>' + escapeHtml(formatDate(lesson.scheduled_start).split(" ")[0] || "Lesson") + '</span>' + escapeHtml(formatTime(lesson.scheduled_start) || formatDate(lesson.scheduled_start)) + '</div><div><strong>' + escapeHtml(lesson.topic || lesson.lesson_type || "Lesson") + '</strong><p class="muted">' + escapeHtml(formatDateTime(lesson.scheduled_start)) + ' - ' + escapeHtml(lesson.lesson_status || "Scheduled") + '</p></div><span class="status ' + (note ? "good" : "") + '">' + (note ? "note ready" : "details") + '</span></button>';
+      }
+      return `<section class="panel"><div class="section-head"><div><p class="card-label">Lessons</p><h2>Upcoming and Past Lessons</h2><p class="muted">Open any lesson to review published notes, homework, materials, and comments.</p></div>${shouldShowStudentAction("booking") ? `<a class="button gold" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book Lesson</a>` : ""}</div><h3>Upcoming</h3><div class="lesson-timeline">${upcoming.length ? upcoming.map(lessonCard).join("") : '<div class="empty-state">No upcoming lessons are visible yet.</div>'}</div><h3 style="margin-top:22px">History</h3><div class="lesson-timeline">${past.length ? past.map(lessonCard).join("") : '<div class="empty-state">No past lessons are visible yet.</div>'}</div></section>`;
     }
     function renderHomeworkTab(data) {
-      return `<section class="panel"><h2>Homework</h2><div class="list">${(data.homework || []).length ? data.homework.map(function (item) {
+      var requests = openReaderRequests(data);
+      return `<section class="two"><div class="panel"><p class="card-label">Practice</p><h2>Homework and Exercises</h2><p class="muted">Mark work complete or ask for help when you get stuck.</p><div class="list">${(data.homework || []).length ? data.homework.map(function (item) {
         var done = String(item.status || "").toUpperCase() === "COMPLETED";
         return '<div class="row"><strong>' + escapeHtml(item.title || "Homework") + '</strong><p class="muted">' + escapeHtml(item.details || "") + '</p><p><span class="status ' + (done ? "good" : "warn") + '">' + (done ? "complete" : "open") + '</span></p><button class="button secondary" data-homework-id="' + escapeHtml(item.homework_id) + '" data-homework-complete="' + (!done) + '">Mark ' + (done ? "Open" : "Complete") + '</button><button class="button secondary" style="margin-left:8px" data-homework-help="' + escapeHtml(item.homework_id) + '">Request Help</button></div>';
-      }).join("") : '<div class="row">No homework is visible right now.</div>'}</div></section>`;
+      }).join("") : '<div class="empty-state">No homework is visible right now.</div>'}</div></div><aside class="panel"><p class="card-label">Reader Requests</p><h2>Audition Support</h2><p class="muted">Request a reader, track status, and keep sides or instructions attached.</p><div class="list">${requests.length ? requests.map(function (request) { return '<div class="row"><strong>' + escapeHtml(formatDate(request.filming_date) || request.filming_date) + ' ' + escapeHtml(request.filming_time || "") + '</strong><p><span class="status warn">' + escapeHtml(String(request.status || "SUBMITTED").toLowerCase()) + '</span></p><p class="muted">' + escapeHtml(request.meeting_method || "Reader request") + '</p></div>'; }).join("") : '<div class="empty-state">No open reader requests.</div>'}</div><div class="card-actions"><button class="button gold" onclick="setTab('reader')">Request Reader</button></div></aside></section>`;
     }
     function renderScriptTab(data) {
       var script = data.currentScript || {};
+      var active = currentMaterials(data).slice(0, 6);
+      var homework = (data.homework || []).filter(isOpenHomework).slice(0, 4);
+      var requests = openReaderRequests(data);
       return `<section class="two">
         <form class="panel form" id="script-form">
-          <h2>Current Script</h2>
+          <p class="card-label">Current Work</p>
+          <h2>What you are working on now</h2>
+          <p class="muted">Keep the active script, scene, monologue, or focus text here.</p>
           <label>Title<input name="title" value="${escapeHtml(script.title || "")}" /></label>
           <label>Script Link<input name="script_url" type="url" value="${escapeHtml(script.external_url || "")}" /></label>
           <label>Text<textarea name="script_text" rows="10">${escapeHtml((function () { try { return JSON.parse(script.notes || "{}").script_text || ""; } catch (error) { return ""; } })())}</textarea></label>
           <button class="button gold" type="submit">Save Script</button>
         </form>
-        <aside class="panel"><h2>Status</h2><p class="muted">${script.title ? "Active script is ready." : "Add a script when you want notes in one place."}</p></aside>
+        <aside class="panel"><p class="card-label">Active Desk</p><h2>Status</h2><p class="muted">${script.title ? "Active script is ready." : "Add a script when you want notes in one place."}</p><div class="mini-list">${active.length ? active.map(function (file) { return '<div class="mini-item"><strong>' + escapeHtml(file.title || file.file_name || "Material") + '</strong><p class="muted">' + escapeHtml(file.category || "Material") + '</p></div>'; }).join("") : '<div class="empty-state">No active material cards yet.</div>'}</div><h3 style="margin-top:18px">Practice</h3><div class="mini-list">${homework.length ? homework.map(function (item) { return '<div class="mini-item"><strong>' + escapeHtml(item.title || "Homework") + '</strong><p class="muted">' + escapeHtml(item.details || "") + '</p></div>'; }).join("") : '<div class="empty-state">No open practice items.</div>'}</div>${requests.length ? '<div class="card-actions"><button class="button secondary" onclick="setTab(\'reader\')">' + requests.length + ' Reader Request' + (requests.length === 1 ? '' : 's') + '</button></div>' : ""}</aside>
       </section>`;
     }
     function renderPaymentsTab(data) {
       var pkg = activePackage(data);
       var progress = packageProgress(pkg);
+      var billing = String(data.student && data.student.billing_model || "").toUpperCase();
+      var statusText = billing === "PACKAGE"
+        ? "Package sessions and recent visible payments."
+        : billing === "CUSTOM"
+          ? "You have a custom arrangement with Darius."
+          : "Pay-as-you-go students do not need package session math here.";
       return `<section class="two">
         <div class="panel">
+          <p class="card-label">Package</p>
           <h2>Package</h2>
-          ${pkg ? '<div class="kpi"><strong>' + escapeHtml(pkg.package_name || "Package") + '</strong><span class="status ' + (Number(pkg.sessions_remaining || 0) <= 1 ? "warn" : "good") + '">' + escapeHtml(pkg.sessions_remaining || "0") + ' left</span></div><div class="progress"><span style="width:' + progress + '%"></span></div><p class="muted">' + money(pkg.package_price) + ' package price</p><button class="button gold" onclick="startPackageRenewal()">Renew Package</button>' : '<div class="row">No package is visible right now.</div>'}
+          <p class="muted">${escapeHtml(statusText)}</p>
+          ${pkg ? '<div class="kpi"><strong>' + escapeHtml(pkg.package_name || "Package") + '</strong><span class="status ' + (Number(pkg.sessions_remaining || 0) <= 1 ? "warn" : "good") + '">' + escapeHtml(pkg.sessions_remaining || "0") + ' left</span></div><div class="progress"><span style="width:' + progress + '%"></span></div><p class="muted">' + escapeHtml(pkg.expires_at ? "Expires " + formatDate(pkg.expires_at) : money(pkg.package_price) + " package price") + '</p><button class="button gold" onclick="startPackageRenewal()">Renew Package</button>' : '<div class="empty-state">No package is visible right now.</div>'}
         </div>
-        <aside class="panel"><h2>Payments</h2><div class="list">${(data.payments || []).length ? data.payments.map(function (payment) {
+        <aside class="panel"><p class="card-label">Visible History</p><h2>Payments</h2><div class="list">${(data.payments || []).length ? data.payments.map(function (payment) {
           return '<div class="row"><strong>' + money(payment.amount) + '</strong><p class="muted">' + escapeHtml(payment.payment_type || "Payment") + ' - ' + escapeHtml(formatDate(payment.payment_date || payment.created_at)) + '</p></div>';
-        }).join("") : '<div class="row">No visible payment history yet.</div>'}</div></aside>
+        }).join("") : '<div class="empty-state">No visible payment history yet.</div>'}</div></aside>
       </section>`;
     }
     function renderReaderTab(data) {
@@ -769,6 +1045,19 @@
         <aside class="panel"><h2>Requests</h2><div class="list">${requests.length ? requests.map(function (request) {
           return '<div class="row"><strong>' + escapeHtml(formatDate(request.filming_date) || request.filming_date) + ' ' + escapeHtml(request.filming_time || "") + '</strong><p><span class="status warn">' + escapeHtml(String(request.status || "SUBMITTED").toLowerCase()) + '</span></p><p class="muted">' + escapeHtml(request.meeting_method || "") + '</p></div>';
         }).join("") : '<div class="row">No reader requests yet.</div>'}</div></aside>
+      </section>`;
+    }
+    function renderContactTab(data) {
+      return `<section class="panel">
+        <p class="card-label">Contact / Support</p>
+        <h2>Contact Darius</h2>
+        <p class="muted">Questions, prep notes, scheduling, or something you want Darius to see before the next lesson.</p>
+        <div class="contact-card">
+          ${shouldShowStudentAction("contact") ? '<a class="action-card" href="mailto:' + escapeHtml(coachEmail()) + '"><h3>Email</h3><p class="muted">' + escapeHtml(coachEmail()) + '</p></a>' : ""}
+          ${shouldShowStudentAction("contact") ? '<a class="action-card" href="sms:' + escapeHtml(coachPhone()) + '"><h3>Text</h3><p class="muted">' + escapeHtml(coachPhone()) + '</p></a>' : ""}
+          ${shouldShowStudentAction("booking") ? '<a class="action-card" href="' + escapeHtml(bookingUrl(data)) + '" target="_blank" rel="noopener"><h3>Book</h3><p class="muted">Open the booking page.</p></a>' : ""}
+        </div>
+        ${shouldShowStudentAction("drive") && data.student && data.student.drive_folder_url ? '<div class="card-actions"><a class="button secondary" href="' + escapeHtml(data.student.drive_folder_url) + '" target="_blank" rel="noopener">Open Studio Drive Folder</a></div>' : ""}
       </section>`;
     }
     function setTab(tab) {
