@@ -13625,7 +13625,10 @@ function renderMaterialsPage() {
           <h2 class="font-display text-2xl font-bold text-warmblack">Materials</h2>
           <p class="text-sm text-warmgray mt-1">Current work stays easy to reach. Vault keeps older files accessible without crowding the studio flow.</p>
         </div>
-        <button type="button" onclick="openMaterialModal()" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Material</button>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="refreshPortalReviewQueue()" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Check Submissions</button>
+          <button type="button" onclick="openMaterialModal()" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Material</button>
+        </div>
       </header>
 
       <div class="page-stats-strip mb-5 fade-in">
@@ -15287,6 +15290,246 @@ function renderProfileNotesTab(studentId) {
       </div>
     </div>
   `;
+}
+
+function renderProfileMaterialsTab(studentId) {
+  const materialsContainer = document.getElementById("profile-tab-materials");
+  if (!materialsContainer) return;
+
+  const materialRows = getMaterialRowsByStudentId(studentId);
+  const activeRows = materialRows.filter((row) => String(row.status || "").toLowerCase() !== "vaulted");
+  const vaultedRows = materialRows.filter((row) => String(row.status || "").toLowerCase() === "vaulted");
+  const pendingRows = activeRows.filter((row) => row.public_page_status === "PENDING_REVIEW");
+  const actorRows = activeRows.filter((row) => row.group_key === "actor");
+  const coachingRows = activeRows.filter((row) => row.group_key === "coaching");
+  const resourceRows = activeRows.filter((row) => row.group_key === "resource");
+
+  const renderMaterialCards = (rows, options = {}) => {
+    const {
+      emptyMessage = "No materials yet.",
+      primaryActionLabel = "",
+      primaryActionHandler = "",
+      secondaryActionLabel = "",
+      secondaryActionHandler = ""
+    } = options;
+
+    if (!rows.length) {
+      return `
+        <div class="rounded-xl border border-dashed border-cream bg-white/70 p-4 text-sm text-warmgray">
+          ${escapeHtml(emptyMessage)}
+        </div>
+      `;
+    }
+
+    return rows.map((row) => `
+      <div class="rounded-xl border ${row.public_page_status === "PENDING_REVIEW" ? "border-gold/30 bg-gold/5" : "border-cream bg-white"} p-4">
+        <div class="grid grid-cols-1 lg:grid-cols-[160px_minmax(0,1fr)_auto] gap-4">
+          <div>${getMaterialPreviewMarkup(row, { compact: true })}</div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <p class="text-sm font-semibold text-warmblack break-words">${escapeHtml(row.display_name)}</p>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.status_badge}">
+                ${escapeHtml(row.status_label)}
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.visibility_badge}">
+                ${escapeHtml(row.visibility_label)}
+              </span>
+              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.public_page_status_badge}">
+                ${escapeHtml(row.public_page_status_label)}
+              </span>
+            </div>
+            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.kind_label)} / ${escapeHtml(row.category)} / ${escapeHtml(row.scope_label)}</p>
+            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.source_label)} / ${escapeHtml(formatLongDate(row.uploaded_at))}</p>
+            ${row.submitted_by ? `<p class="text-xs text-warmgray mt-1">Submitted by ${escapeHtml(String(row.submitted_by).replace(/_/g, " ").toLowerCase())}${row.submitted_at ? ` / ${escapeHtml(formatLongDate(row.submitted_at))}` : ""}</p>` : ""}
+            ${row.coach_notification_label ? `<p class="text-xs ${row.coach_notification_status === "SENT" ? "text-sage" : "text-burgundy"} mt-1">${escapeHtml(row.coach_notification_label)}</p>` : ""}
+            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_label)}</p>
+            ${row.notes ? `<p class="text-xs text-warmgray mt-1 whitespace-pre-wrap">${escapeHtml(row.notes)}</p>` : ""}
+          </div>
+          <div class="flex flex-wrap lg:flex-col items-start lg:items-stretch gap-2 shrink-0">
+            ${row.source_url ? `
+              <a
+                href="${escapeHtml(row.source_url)}"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold card-hover text-center"
+              >
+                ${escapeHtml(row.action_label)}
+              </a>
+              <button
+                type="button"
+                onclick="copyMaterialLink('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+              >
+                Copy Link
+              </button>
+            ` : ""}
+            <button
+              type="button"
+              onclick="openMaterialModal('${studentId}', '${row.file_id}')"
+              class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+            >
+              Edit
+            </button>
+            ${normalizeMaterialScope(row.scope) === "ACTOR_MATERIAL" ? `
+              <button
+                type="button"
+                onclick="previewPublicMaterial('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
+              >
+                Preview
+              </button>
+            ` : ""}
+            ${row.public_page_status === "PENDING_REVIEW" ? `
+              <button
+                type="button"
+                onclick="approvePublicMaterial('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-sage/10 border border-sage/20 text-xs font-medium text-sage card-hover"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                onclick="rejectPublicMaterial('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
+              >
+                Reject
+              </button>
+            ` : ""}
+            ${row.public_page_status === "APPROVED" ? `
+              <button
+                type="button"
+                onclick="removePublicMaterial('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-gold/30 text-xs font-medium text-gold card-hover"
+              >
+                Remove Public
+              </button>
+            ` : ""}
+            ${primaryActionLabel && primaryActionHandler ? `
+              <button
+                type="button"
+                onclick="${primaryActionHandler}('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover"
+              >
+                ${escapeHtml(primaryActionLabel)}
+              </button>
+            ` : ""}
+            <button
+              type="button"
+              onclick="deleteMaterialNow('${row.file_id}')"
+              class="px-3 py-2 rounded-lg bg-burgundy/5 border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
+            >
+              Delete
+            </button>
+            ${secondaryActionLabel && secondaryActionHandler ? `
+              <button
+                type="button"
+                onclick="${secondaryActionHandler}('${row.file_id}')"
+                class="px-3 py-2 rounded-lg bg-white border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
+              >
+                ${escapeHtml(secondaryActionLabel)}
+              </button>
+            ` : ""}
+          </div>
+        </div>
+      </div>
+    `).join("");
+  };
+
+  materialsContainer.innerHTML = `
+    <div class="space-y-5">
+      <div class="rounded-2xl border border-cream bg-parchment/70 p-4">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Materials</p>
+            <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Current, Vault, and actor submissions</h4>
+            <p class="text-sm text-warmgray mt-1">Student-submitted actor materials stay private and pending here until Darius approves them for the public page.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="refreshPortalReviewQueue()">Check Submissions</button>
+            <button type="button" class="px-3 py-2 rounded-lg gold-gradient text-warmblack text-xs font-semibold card-hover" onclick="openMaterialModal('${studentId}')">Add Material</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mt-4">
+          <div class="rounded-xl border border-cream bg-white px-3 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Current</p>
+            <p class="text-lg font-semibold text-warmblack mt-1">${activeRows.length}</p>
+          </div>
+          <div class="rounded-xl border ${pendingRows.length ? "border-gold/30 bg-gold/10" : "border-cream bg-white"} px-3 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Review</p>
+            <p class="text-lg font-semibold text-warmblack mt-1">${pendingRows.length}</p>
+          </div>
+          <div class="rounded-xl border border-cream bg-white px-3 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Actor Assets</p>
+            <p class="text-lg font-semibold text-warmblack mt-1">${actorRows.length}</p>
+          </div>
+          <div class="rounded-xl border border-cream bg-white px-3 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Vault</p>
+            <p class="text-lg font-semibold text-warmblack mt-1">${vaultedRows.length}</p>
+          </div>
+        </div>
+      </div>
+
+      ${pendingRows.length ? `
+        <section class="space-y-3">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-gold font-medium">Review First</p>
+            <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Pending actor submissions</h4>
+          </div>
+          ${renderMaterialCards(pendingRows, { emptyMessage: "No pending actor submissions." })}
+        </section>
+      ` : ""}
+
+      <section class="space-y-3">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Current</p>
+          <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Lesson and coaching materials</h4>
+        </div>
+        ${renderMaterialCards(coachingRows, {
+          emptyMessage: "No current coaching materials yet.",
+          primaryActionLabel: "Vault",
+          primaryActionHandler: "archiveMaterial"
+        })}
+      </section>
+
+      <section class="space-y-3">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Actor Page</p>
+          <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Actor materials and public review state</h4>
+        </div>
+        ${renderMaterialCards(actorRows, {
+          emptyMessage: "No actor materials yet. Add resumes, headshots, reels, and audition assets here.",
+          primaryActionLabel: "Vault",
+          primaryActionHandler: "archiveMaterial"
+        })}
+      </section>
+
+      <section class="space-y-3">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Resources</p>
+          <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Studio resources and references</h4>
+        </div>
+        ${renderMaterialCards(resourceRows, {
+          emptyMessage: "No extra resources yet.",
+          primaryActionLabel: "Vault",
+          primaryActionHandler: "archiveMaterial"
+        })}
+      </section>
+
+      <section class="space-y-3">
+        <div>
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Vault</p>
+          <h4 class="font-display text-lg font-semibold text-warmblack mt-1">Archived but still accessible</h4>
+        </div>
+        ${renderMaterialCards(vaultedRows, {
+          emptyMessage: "Nothing is vaulted yet.",
+          primaryActionLabel: "Restore",
+          primaryActionHandler: "restoreMaterial"
+        })}
+      </section>
+    </div>
+  `;
+
+  lucide.createIcons();
 }
 
 

@@ -81,8 +81,12 @@ function isApprovedPublicMaterial(file) {
   if (!file) return false;
   const status = String(file.status || "").toLowerCase();
   const review = String(file.public_page_status || "").toUpperCase();
+  const scope = String(file.scope || "").toUpperCase();
+  const visibility = String(file.visibility || "").toUpperCase();
   return status !== "vaulted" &&
     status !== "archived" &&
+    scope === "ACTOR_MATERIAL" &&
+    visibility === "STUDENT_VISIBLE" &&
     review === "APPROVED" &&
     Boolean(getMaterialSourceUrl(file) || String(file.title || file.file_name || "").trim());
 }
