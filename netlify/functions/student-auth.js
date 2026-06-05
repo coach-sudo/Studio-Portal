@@ -175,6 +175,19 @@ async function storePortalUpload(identity, body, fallbackPrefix = "material") {
   };
 }
 
+function inferPortalMaterialKind(body, upload) {
+  const category = String(body.category || "").toLowerCase();
+  const explicit = String(body.material_kind || "").trim().toUpperCase();
+  if (["DOCUMENT", "VIDEO", "IMAGE", "LINK", "AUDIO", "OTHER", "SCRIPT"].includes(explicit)) return explicit;
+  const source = String(body.external_url || body.file_url || "").toLowerCase();
+  const blob = `${category} ${upload?.mimeType || body.mime_type || ""} ${upload?.fileName || body.file_name || ""} ${source}`.toLowerCase();
+  if (/headshot|photo|image\/|\.(png|jpe?g|webp|gif)$/i.test(blob)) return "IMAGE";
+  if (/reel|self tape|video\/|youtube|youtu\.be|vimeo|\.(mp4|mov|webm|m4v)$/i.test(blob)) return "VIDEO";
+  if (/audio\/|voice|\.(mp3|wav|m4a|aac|ogg)$/i.test(blob)) return "AUDIO";
+  if (source && !/pdf|resume|document/.test(blob)) return "LINK";
+  return "DOCUMENT";
+}
+
 function parseCookies(event) {
   const raw = getHeader(event, "cookie");
   return raw.split(";").reduce((cookies, part) => {
@@ -1104,12 +1117,14 @@ async function createPortalMaterial(snapshot, identity, body) {
     external_url: externalUrl,
     file_url: fileUrl,
     mime_type: upload ? upload.mimeType : String(body.mime_type || "").trim(),
-    material_kind: String(body.material_kind || "DOCUMENT").trim().toUpperCase(),
+    material_kind: inferPortalMaterialKind(body, upload),
     category,
     public_page_featured: category.toLowerCase() === "headshot" ? "HEADSHOT" : "",
     scope: "ACTOR_MATERIAL",
     visibility: "ADMIN_ONLY",
     public_page_status: "PENDING_REVIEW",
+    coach_notification_status: "PENDING",
+    coach_notified_at: "",
     submitted_by: "STUDENT_PORTAL",
     submitted_at: now,
     reviewed_at: "",
@@ -1122,7 +1137,13 @@ async function createPortalMaterial(snapshot, identity, body) {
   try {
     await notifyCoachOfActorMaterial(identity, material);
     material.coach_notified_at = new Date().toISOString();
+    material.coach_notification_status = "SENT";
   } catch (error) {
+    material.coach_notification_status = "FAILED";
+    material.notes = [
+      material.notes,
+      `Coach Gmail notification pending: ${String(error && error.message ? error.message : error || "Gmail unavailable.")}`
+    ].filter(Boolean).join("\n\n");
     console.warn("Actor material saved, but coach notification failed.", error);
   }
   return material;

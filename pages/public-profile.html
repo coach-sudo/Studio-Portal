@@ -136,8 +136,9 @@
     .photo-frame img {
       width: 100%;
       height: 100%;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      background: var(--paper);
     }
     .photo-placeholder {
       width: 100%;
@@ -186,8 +187,9 @@
       width: 100%;
       height: 100%;
       min-height: 360px;
-      object-fit: cover;
+      object-fit: contain;
       display: block;
+      background: var(--paper);
     }
     .material video, .material iframe {
       width: 100%;
@@ -196,6 +198,13 @@
       display: block;
       background: #111;
     }
+    .material.audio {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .material audio { width: 100%; }
     .media-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
@@ -373,10 +382,55 @@
       return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
     }
     function isVideoMaterial(material) {
-      return /video|reel|self tape|mp4|mov|webm/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+      return /video|reel|self tape|mp4|mov|webm|youtube|youtu\.be|vimeo/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+    }
+    function isAudioMaterial(material) {
+      return /audio|voice|mp3|wav|m4a|aac|ogg/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
     }
     function isPdfMaterial(material) {
       return /pdf|resume|document/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+    }
+    function previewUrl(url) {
+      var raw = String(url || "").trim();
+      if (!raw) return "";
+      try {
+        var parsed = new URL(raw);
+        if (/drive\.google\.com$/i.test(parsed.hostname)) {
+          var match = parsed.pathname.match(/\/file\/d\/([^/]+)/i);
+          var fileId = match ? match[1] : parsed.searchParams.get("id");
+          if (fileId) return "https://drive.google.com/file/d/" + encodeURIComponent(fileId) + "/preview";
+        }
+      } catch (error) {
+        return raw;
+      }
+      return raw;
+    }
+    function videoEmbedUrl(url) {
+      var raw = String(url || "").trim();
+      if (!raw) return "";
+      try {
+        var parsed = new URL(raw);
+        var host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+        if (host === "youtu.be") {
+          var shortId = parsed.pathname.split("/").filter(Boolean)[0];
+          return shortId ? "https://www.youtube.com/embed/" + encodeURIComponent(shortId) : "";
+        }
+        if (host === "youtube.com" || host === "m.youtube.com") {
+          var id = parsed.searchParams.get("v");
+          if (!id) {
+            var match = parsed.pathname.match(/\/(?:shorts|embed)\/([^/]+)/i);
+            id = match && match[1];
+          }
+          return id ? "https://www.youtube.com/embed/" + encodeURIComponent(id) : "";
+        }
+        if (host === "vimeo.com" || host === "player.vimeo.com") {
+          var vimeoId = parsed.pathname.split("/").filter(Boolean).find(function (part) { return /^\d+$/.test(part); });
+          return vimeoId ? "https://player.vimeo.com/video/" + encodeURIComponent(vimeoId) : "";
+        }
+      } catch (error) {
+        return "";
+      }
+      return "";
     }
 
     function findMaterial(materials, pattern) {
@@ -390,16 +444,32 @@
       return '<a class="button secondary" target="_blank" rel="noopener" href="' + escapeHtml(material.url) + '">' + escapeHtml(label || material.title) + '</a>';
     }
 
+    function renderMaterialPreview(material) {
+      if (!material || !material.url) return "";
+      if (isImageMaterial(material)) {
+        return '<a class="material" href="' + escapeHtml(material.url) + '" target="_blank" rel="noopener"><img alt="' + escapeHtml(material.title) + '" src="' + escapeHtml(material.url) + '" loading="lazy" /></a>';
+      }
+      if (isVideoMaterial(material) && /\/api\/material-file|\.mp4|\.mov|\.webm|\.m4v/i.test(material.url)) {
+        return '<div class="material"><video src="' + escapeHtml(material.url) + '" controls preload="metadata"></video></div>';
+      }
+      if (isVideoMaterial(material) && videoEmbedUrl(material.url)) {
+        return '<div class="material"><iframe title="' + escapeHtml(material.title) + '" src="' + escapeHtml(videoEmbedUrl(material.url)) + '" loading="lazy" allow="fullscreen; picture-in-picture"></iframe></div>';
+      }
+      if (isAudioMaterial(material) && /\/api\/material-file|\.(mp3|wav|m4a|aac|ogg)/i.test(material.url)) {
+        return '<div class="material audio"><audio src="' + escapeHtml(material.url) + '" controls preload="metadata"></audio></div>';
+      }
+      if ((isPdfMaterial(material) || /drive\.google\.com/i.test(material.url)) && /\/api\/material-file|\.pdf|drive\.google\.com/i.test(material.url)) {
+        return '<div class="material"><iframe title="' + escapeHtml(material.title) + '" src="' + escapeHtml(previewUrl(material.url)) + '" loading="lazy"></iframe></div>';
+      }
+      return "";
+    }
+
     function renderList(materials, emptyText) {
       if (!materials.length) return '<div class="empty">' + escapeHtml(emptyText) + '</div>';
       return materials.map(function (material) {
-        var preview = "";
-        if (material.url && isVideoMaterial(material) && /\/api\/material-file|\.mp4|\.mov|\.webm/i.test(material.url)) {
-          preview = '<div class="material"><video src="' + escapeHtml(material.url) + '" controls preload="metadata"></video></div>';
-        } else if (material.url && isPdfMaterial(material) && /\/api\/material-file|\.pdf/i.test(material.url)) {
-          preview = '<div class="material"><iframe title="' + escapeHtml(material.title) + '" src="' + escapeHtml(material.url) + '"></iframe></div>';
-        }
-        return '<div>' + preview + '<h3>' + escapeHtml(material.title) + '</h3><p>' + escapeHtml(material.category || "Material") + '</p>' + materialLink(material, "Open") + '</div>';
+        var preview = renderMaterialPreview(material);
+        var label = isPdfMaterial(material) ? "Open / Download" : isVideoMaterial(material) ? "Watch" : isAudioMaterial(material) ? "Listen" : "Open";
+        return '<div>' + preview + '<h3>' + escapeHtml(material.title) + '</h3><p>' + escapeHtml(material.category || "Material") + '</p>' + materialLink(material, label) + '</div>';
       }).join("");
     }
 

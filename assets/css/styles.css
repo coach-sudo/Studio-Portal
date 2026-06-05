@@ -1089,6 +1089,7 @@ body {
 .lessons-shell,
 .schedule-shell,
 .finance-shell,
+.materials-shell,
 .settings-shell,
 .automation-shell,
 .todo-shell,
@@ -1142,6 +1143,7 @@ body {
 .finance-filter-panel,
 .lessons-results-panel,
 .lessons-filter-panel,
+.materials-shell .dashboard-panel,
 .page-summary-card,
 .page-stat-chip,
 .app-modal-shell,
@@ -1256,6 +1258,7 @@ table th {
 .finance-filter-panel,
 .lessons-results-panel,
 .lessons-filter-panel,
+.materials-shell .dashboard-panel,
 .page-summary-card,
 .app-modal-shell,
 .settings-shell section,
@@ -1270,6 +1273,7 @@ table th {
 .finance-filter-panel,
 .lessons-results-panel,
 .lessons-filter-panel,
+.materials-shell .dashboard-panel,
 .app-modal-shell,
 .settings-shell section {
   position: relative;
@@ -1281,6 +1285,7 @@ table th {
 .finance-filter-panel::before,
 .lessons-results-panel::before,
 .lessons-filter-panel::before,
+.materials-shell .dashboard-panel::before,
 .app-modal-shell::before,
 .settings-shell section::before {
   content: "";
@@ -1339,20 +1344,6 @@ button {
   isolation: isolate;
 }
 
-.dashboard-stat-card::after,
-.page-summary-card::after {
-  content: "";
-  position: absolute;
-  right: -34px;
-  top: -34px;
-  width: 96px;
-  height: 96px;
-  border-radius: 999px;
-  background: rgba(184, 138, 47, 0.08);
-  pointer-events: none;
-  z-index: -1;
-}
-
 .dashboard-stat-card {
   position: relative;
 }
@@ -1397,13 +1388,46 @@ button {
 
 .dashboard-panel button,
 .profile-panel button,
+.materials-shell button,
 .finance-shell button,
 .lessons-shell button,
 .schedule-shell button,
 .settings-shell button,
 .todo-shell button,
 .app-modal-shell button {
-  min-height: 38px;
+  min-height: 40px;
+}
+
+.materials-shell a,
+.finance-shell a,
+.lessons-shell a,
+.settings-shell a,
+.profile-shell a,
+.student-portal-panel a,
+.dashboard-panel a {
+  overflow-wrap: anywhere;
+}
+
+.materials-shell article,
+.finance-results-panel article,
+.lessons-results-panel article,
+.profile-panel,
+.student-portal-panel {
+  scroll-margin-top: 5rem;
+}
+
+.materials-shell img,
+.materials-shell iframe,
+.materials-shell video,
+.student-portal-panel img,
+.student-portal-panel iframe,
+.student-portal-panel video {
+  max-width: 100%;
+}
+
+.materials-shell audio,
+.student-portal-panel audio {
+  max-width: 100%;
 }
 
 .app-modal-shell {
@@ -2024,6 +2048,7 @@ button {
   .lessons-shell,
   .schedule-shell,
   .finance-shell,
+  .materials-shell,
   .settings-shell,
   .automation-shell,
   .todo-shell,
@@ -2056,15 +2081,22 @@ button {
 
   .profile-header-actions,
   .finance-header-actions,
-  .dashboard-header-meta {
+  .dashboard-header-meta,
+  .settings-shell header > div:last-child {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
 
+  .materials-shell header > button {
+    width: 100%;
+    justify-content: center;
+  }
+
   .profile-header-actions > *,
   .finance-header-actions > *,
-  .dashboard-header-meta > * {
+  .dashboard-header-meta > *,
+  .settings-shell header > div:last-child > * {
     width: 100%;
     justify-content: center;
   }
@@ -2092,6 +2124,24 @@ button {
   .profile-tab-bar .tab-btn,
   .student-portal-tabbar button {
     flex: 0 0 auto;
+  }
+
+  .materials-shell article .grid,
+  .profile-panel .grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .materials-shell article .flex,
+  .profile-panel .flex {
+    min-width: 0;
+  }
+
+  .materials-shell article a,
+  .materials-shell article button,
+  #profile-tab-materials a,
+  #profile-tab-materials button {
+    width: 100%;
+    justify-content: center;
   }
 
   .ops-hero,
@@ -2145,8 +2195,14 @@ button {
 
   .profile-header-actions,
   .finance-header-actions,
-  .dashboard-header-meta {
+  .dashboard-header-meta,
+  .settings-shell header > div:last-child {
     grid-template-columns: 1fr;
+  }
+
+  .materials-shell header > button {
+    width: 100%;
+    justify-content: center;
   }
 
   .page-stats-strip {

@@ -5867,6 +5867,8 @@ function renderActorLifecyclePanel(studentId) {
     actionsEl.innerHTML = `
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openActorProfileSetupForStudent('${studentId}')">Create / Edit</button>
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${studentId}')">Review Materials</button>
+      ${status === "Live" ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="setActorPageLifecycleStatus('${studentId}', 'Draft')">Return to Draft</button>` : `<button type="button" class="px-3 py-2 rounded-lg gold-gradient text-warmblack text-xs font-semibold card-hover" onclick="setActorPageLifecycleStatus('${studentId}', 'Active')">Make Live</button>`}
+      ${status !== "Archived" ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover" onclick="setActorPageLifecycleStatus('${studentId}', 'Archived')">Archive</button>` : `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="setActorPageLifecycleStatus('${studentId}', 'Draft')">Restore Draft</button>`}
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openSelectedStudentPublicPage()">Preview</button>
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="copySelectedStudentPublicLink()">Copy Link</button>
       ${publicUrl ? `<p class="w-full text-[11px] text-warmgray wrap-anywhere">${escapeHtml(publicUrl)}</p>` : `<p class="w-full text-[11px] text-warmgray">Create an actor profile slug to generate the public URL.</p>`}
@@ -6651,6 +6653,16 @@ function getMaterialSourceLabel(sourceType) {
   return normalizeMaterialSourceType(sourceType) === "LINK" ? "Link" : "Upload";
 }
 
+function inferMaterialKindFromMime(mimeType, fileName = "", category = "", sourceType = "FILE") {
+  const blob = `${mimeType || ""} ${fileName || ""} ${category || ""}`.toLowerCase();
+  if (/image\/|headshot|photo|\.(png|jpe?g|webp|gif)$/i.test(blob)) return "IMAGE";
+  if (/video\/|reel|self tape|\.(mp4|mov|webm|m4v)$/i.test(blob)) return "VIDEO";
+  if (/audio\/|voice|\.(mp3|wav|m4a|aac|ogg)$/i.test(blob)) return "AUDIO";
+  if (normalizeMaterialSourceType(sourceType) === "LINK" && /youtube|youtu\.be|vimeo/.test(blob)) return "VIDEO";
+  if (normalizeMaterialSourceType(sourceType) === "LINK" && !/pdf|resume|document/.test(blob)) return "LINK";
+  return "DOCUMENT";
+}
+
 function getMaterialCategoryOptionsMarkup(selectedCategory = "") {
   const groups = [
     {
@@ -6786,6 +6798,30 @@ function getEmbeddableMaterialUrl(url) {
   return raw;
 }
 
+function getExternalVideoEmbedUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host === "youtu.be") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+    }
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = parsed.searchParams.get("v") || parsed.pathname.match(/\/shorts\/([^/]+)/i)?.[1] || parsed.pathname.match(/\/embed\/([^/]+)/i)?.[1];
+      return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+    }
+    if (host === "vimeo.com" || host === "player.vimeo.com") {
+      const id = parsed.pathname.split("/").filter(Boolean).find((part) => /^\d+$/.test(part));
+      return id ? `https://player.vimeo.com/video/${encodeURIComponent(id)}` : "";
+    }
+  } catch (error) {
+    return "";
+  }
+  return "";
+}
+
 function isImageMaterial(file) {
   const url = getMaterialSourceUrl(file);
   const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
@@ -6797,14 +6833,36 @@ function isPdfMaterial(file) {
   return /pdf/i.test(`${file?.mime_type || ""} ${file?.file_name || ""} ${file?.title || ""}`) || /\.pdf(\?.*)?$/i.test(url);
 }
 
+function isVideoMaterial(file) {
+  const url = getMaterialSourceUrl(file);
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /video|reel|self tape|mp4|mov|webm|quicktime/i.test(blob) || /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || Boolean(getExternalVideoEmbedUrl(url));
+}
+
+function isAudioMaterial(file) {
+  const url = getMaterialSourceUrl(file);
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /audio|voice|mp3|wav|m4a|aac|ogg/i.test(blob) || /\.(mp3|wav|m4a|aac|ogg)(\?.*)?$/i.test(url);
+}
+
+function getMaterialPreviewIcon(file) {
+  if (isVideoMaterial(file)) return "play";
+  if (isAudioMaterial(file)) return "audio-lines";
+  if (isImageMaterial(file)) return "image";
+  if (isPdfMaterial(file)) return "file-text";
+  if (/drive\.google\.com|docs\.google\.com/i.test(getMaterialSourceUrl(file))) return "folder-open";
+  return "external-link";
+}
+
 function getMaterialPreviewMarkup(file, options = {}) {
   const url = getMaterialSourceUrl(file);
   const previewUrl = getEmbeddableMaterialUrl(url);
+  const videoEmbedUrl = getExternalVideoEmbedUrl(url);
   const title = getMaterialDisplayName(file);
   const compact = options.compact === true;
   const frameClass = compact
-    ? "w-full h-28 rounded-xl border border-cream bg-parchment overflow-hidden"
-    : "w-full min-h-[180px] rounded-xl border border-cream bg-parchment overflow-hidden";
+    ? "w-full h-28 rounded-xl border border-cream bg-white overflow-hidden"
+    : "w-full min-h-[180px] rounded-xl border border-cream bg-white overflow-hidden";
   const iconClass = compact ? "w-5 h-5" : "w-8 h-8";
 
   if (!url) {
@@ -6816,31 +6874,43 @@ function getMaterialPreviewMarkup(file, options = {}) {
   }
 
   if (isImageMaterial(file) && !/drive\.google\.com/i.test(url)) {
-    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="${frameClass} object-cover" loading="lazy" />`;
+    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="${frameClass} object-contain" loading="lazy" />`;
+  }
+
+  if (isVideoMaterial(file) && /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url)) {
+    return `<video src="${escapeHtml(url)}" class="${frameClass} bg-warmblack" controls preload="metadata"></video>`;
+  }
+
+  if (isVideoMaterial(file) && videoEmbedUrl && !compact) {
+    return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(videoEmbedUrl)}" class="${frameClass}" loading="lazy" allow="fullscreen; picture-in-picture"></iframe>`;
+  }
+
+  if (isAudioMaterial(file) && /\.(mp3|wav|m4a|aac|ogg)(\?.*)?$/i.test(url)) {
+    return `
+      <div class="${frameClass} flex items-center justify-center p-4">
+        <audio src="${escapeHtml(url)}" controls preload="metadata" class="w-full"></audio>
+      </div>
+    `;
   }
 
   if (/drive\.google\.com/i.test(url) || isPdfMaterial(file)) {
     return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(previewUrl)}" class="${frameClass}" loading="lazy"></iframe>`;
   }
 
-  const isVideo = normalizeMaterialKind(file?.material_kind, file?.source_type) === "VIDEO" || /reel|self tape|video/i.test(`${file?.category || ""} ${file?.title || ""}`);
   return `
-    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="${frameClass} flex items-center justify-center ${isVideo ? "bg-warmblack" : "bg-parchment"}">
-      <i data-lucide="${isVideo ? "play" : "external-link"}" class="${iconClass} ${isVideo ? "text-gold" : "text-warmgray"}"></i>
+    <a href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer" class="${frameClass} flex items-center justify-center bg-parchment">
+      <i data-lucide="${getMaterialPreviewIcon(file)}" class="${iconClass} text-gold"></i>
     </a>
   `;
 }
 
 function getMaterialActionLabel(file) {
-  const sourceType = normalizeMaterialSourceType(file?.source_type);
-  const kind = normalizeMaterialKind(file?.material_kind, sourceType);
-
-  if (sourceType === "LINK") {
-    if (kind === "VIDEO") return "Open Video";
-    return "Open Link";
-  }
-
-  return "Open File";
+  if (isVideoMaterial(file)) return "Open Video";
+  if (isAudioMaterial(file)) return "Open Audio";
+  if (isImageMaterial(file)) return "Open Image";
+  if (isPdfMaterial(file)) return "Open PDF";
+  if (/drive\.google\.com|docs\.google\.com/i.test(getMaterialSourceUrl(file))) return "Open Drive";
+  return normalizeMaterialSourceType(file?.source_type) === "LINK" ? "Open Link" : "Open File";
 }
 
 function getMaterialInputHint(file) {
@@ -6896,6 +6966,10 @@ function getMaterialRowsByStudentId(studentId) {
         public_page_status: normalizePublicPageMaterialStatus(file.public_page_status, file),
         public_page_status_label: getPublicPageMaterialStatusLabel(file.public_page_status, file),
         public_page_status_badge: getPublicPageMaterialStatusBadge(file.public_page_status, file),
+        coach_notification_status: String(file.coach_notification_status || "").trim().toUpperCase(),
+        coach_notification_label: file.coach_notification_status
+          ? `Coach notification: ${String(file.coach_notification_status).replace(/_/g, " ").toLowerCase()}`
+          : "",
         group_key: getMaterialCategoryGroup(file),
         group_label: getMaterialCategoryGroupLabel(getMaterialCategoryGroup(file)),
         lesson_label: lessonLabel || homeworkLabel || "General studio material",
@@ -7157,6 +7231,49 @@ function openActorProfileSetupForStudent(studentId) {
   return profile;
 }
 
+function setActorPageLifecycleStatus(studentId, status) {
+  const profile = ensureActorProfileForStudent(studentId);
+  const student = getSchemaStudentById(studentId);
+  if (!profile || !student) {
+    notifyUser({
+      title: "Actor Page",
+      message: "Unable to find the actor profile for this student.",
+      tone: "error",
+      source: "public"
+    });
+    return;
+  }
+
+  const normalized = String(status || "Draft").trim();
+  const nextStatus = ["Active", "Draft", "Archived"].includes(normalized) ? normalized : "Draft";
+  const now = new Date().toISOString();
+  patchRecordById("actorProfiles", profile.actor_profile_id, {
+    status: nextStatus,
+    updated_at: now
+  });
+  patchRecordById("students", studentId, {
+    actor_page_eligible: nextStatus === "Active" ? true : student.actor_page_eligible,
+    actor_page_status: nextStatus,
+    updated_at: now
+  });
+
+  if (selectedStudentId === studentId) populateStudentProfile(studentId);
+  if (currentPage === "public") renderPublicPage();
+  if (currentPage === "operations") renderOperationsPage();
+  syncPortalReviewDecision();
+
+  notifyUser({
+    title: nextStatus === "Active" ? "Actor Page Live" : nextStatus === "Archived" ? "Actor Page Archived" : "Actor Page Draft",
+    message: nextStatus === "Active"
+      ? "The public actor page is live. Only approved materials will appear."
+      : nextStatus === "Archived"
+        ? "The public actor page is archived and hidden from the public route."
+        : "The actor page is back in draft mode.",
+    tone: nextStatus === "Active" ? "success" : "warm",
+    source: "public"
+  });
+}
+
 function openStudentPublicMaterials(studentId) {
   selectedStudentId = studentId;
   navigateTo("profile");
@@ -7250,6 +7367,51 @@ function rejectPublicMaterial(fileId) {
     title: "Public Material Rejected",
     message: "This material stays out of the public page.",
     tone: "warm",
+    source: "materials"
+  });
+}
+
+async function copyMaterialLink(fileId) {
+  const file = getFileById(fileId);
+  const url = getMaterialSourceUrl(file);
+  if (!url) return;
+  try {
+    await copyTextToClipboard(url);
+    notifyUser({
+      title: "Material Link Copied",
+      message: "The material link is ready to paste.",
+      tone: "success",
+      source: "materials"
+    });
+  } catch (error) {
+    notifyUser({
+      title: "Material Link",
+      message: url,
+      tone: "warm",
+      source: "materials"
+    });
+  }
+}
+
+function removePublicMaterial(fileId) {
+  const file = getFileById(fileId);
+  if (!file) return;
+
+  patchRecordById("files", fileId, {
+    visibility: "STUDENT_VISIBLE",
+    public_page_status: "NOT_PUBLIC",
+    public_page_featured: "",
+    reviewed_at: new Date().toISOString(),
+    reviewed_by: "coach"
+  });
+
+  if (selectedStudentId) populateStudentProfile(selectedStudentId);
+  if (currentPage === "operations") renderOperationsPage();
+  syncPortalReviewDecision();
+  notifyUser({
+    title: "Removed From Public Page",
+    message: "The material remains in the student record but no longer appears publicly.",
+    tone: "success",
     source: "materials"
   });
 }
@@ -9413,7 +9575,7 @@ function openMaterialModal(studentId, fileId = null, defaults = {}) {
 
           <div class="col-span-2 ${normalizeMaterialSourceType(file?.source_type) === "LINK" ? "hidden" : ""}" data-material-source="file">
             <label class="block text-xs font-medium text-warmgray mb-1">Upload File</label>
-            <input name="material_file" type="file" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+            <input name="material_file" type="file" accept="application/pdf,image/*,video/*,audio/*,.doc,.docx,.txt,.rtf" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
             <p class="text-xs text-warmgray mt-1">${escapeHtml(getMaterialInputHint(file))}</p>
           </div>
 
@@ -9854,6 +10016,10 @@ function handleMaterialFormSubmit(event) {
   const mimeType = sourceType === "FILE"
     ? (selectedFile ? selectedFile.type : String(existingFile?.mime_type || "").trim())
     : "";
+  const selectedKind = form.elements.material_kind.value;
+  const inferredKind = selectedFile
+    ? inferMaterialKindFromMime(selectedFile.type, selectedFile.name, form.elements.category.value, sourceType)
+    : selectedKind;
 
   const payload = {
     file_id: editingMaterialId,
@@ -9866,7 +10032,7 @@ function handleMaterialFormSubmit(event) {
     external_url: sourceType === "LINK" ? form.elements.external_url.value : "",
     file_url: fileUrl,
     mime_type: mimeType,
-    material_kind: form.elements.material_kind.value,
+    material_kind: inferredKind,
     category: form.elements.category.value,
     scope: form.elements.scope.value,
     visibility: form.elements.visibility.value,
@@ -10923,7 +11089,25 @@ function renderLessonsPage() {
           : renderScheduleCalendarView()
     )
     : `
-      ${lessonResultsMarkup}
+      <div class="lessons-results-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in" style="animation-delay:0.1s">
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[980px] text-sm ${compact ? "compact-table" : ""}">
+            <thead class="bg-parchment/70">
+              <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
+                <th class="px-5 py-3 font-medium">Date</th>
+                <th class="px-5 py-3 font-medium">Time</th>
+                <th class="px-5 py-3 font-medium">Student</th>
+                <th class="px-5 py-3 font-medium">Type</th>
+                <th class="px-5 py-3 font-medium">Topic</th>
+                <th class="px-5 py-3 font-medium">Status</th>
+                <th class="px-5 py-3 font-medium">Source</th>
+                <th class="px-5 py-3 font-medium text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="lessons-table-body"></tbody>
+          </table>
+        </div>
+      </div>
     `;
 
   root.innerHTML = `
@@ -11072,25 +11256,7 @@ function renderLessonsPage() {
         ${filterPills.length ? `<div class="page-filter-summary mt-3">${filterPills.join("")}</div>` : ""}
       </div>
 
-      <div class="lessons-results-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in" style="animation-delay:0.1s">
-        <div class="overflow-x-auto">
-          <table class="w-full min-w-[980px] text-sm ${compact ? "compact-table" : ""}">
-            <thead class="bg-parchment/70">
-              <tr class="text-left text-xs text-warmgray uppercase tracking-wider">
-                <th class="px-5 py-3 font-medium">Date</th>
-                <th class="px-5 py-3 font-medium">Time</th>
-                <th class="px-5 py-3 font-medium">Student</th>
-                <th class="px-5 py-3 font-medium">Type</th>
-                <th class="px-5 py-3 font-medium">Topic</th>
-                <th class="px-5 py-3 font-medium">Status</th>
-                <th class="px-5 py-3 font-medium">Source</th>
-                <th class="px-5 py-3 font-medium text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody id="lessons-table-body"></tbody>
-          </table>
-        </div>
-      </div>
+      ${lessonResultsMarkup}
     </div>
   `;
 
@@ -12783,7 +12949,7 @@ function renderOperationsPage() {
     })),
     ...publicMaterialRows.map((row) => ({
       title: getMaterialDisplayName(row.file),
-      detail: `${row.student_name} / ${row.file.category || row.file.material_kind || "Public material"}`,
+      detail: `${row.student_name} / ${row.file.category || row.file.material_kind || "Public material"}${row.file.coach_notification_status ? ` / notification ${String(row.file.coach_notification_status).toLowerCase()}` : ""}`,
       action: "Review",
       onclick: `openStudentPublicMaterials('${row.file.student_id}')`,
       tone: "warn",
@@ -13444,7 +13610,9 @@ function renderMaterialsPage() {
         </div>
         <div class="flex flex-wrap lg:flex-col gap-2">
           ${row.source_url ? `<a href="${escapeHtml(row.source_url)}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold text-center card-hover">${escapeHtml(row.action_label || "Open")}</a>` : ""}
+          ${row.source_url ? `<button type="button" onclick="copyMaterialLink('${escapeHtml(row.file_id)}')" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Copy Link</button>` : ""}
           <button type="button" onclick="selectedStudentId='${escapeHtml(row.student_id)}'; openMaterialModal('${escapeHtml(row.student_id)}', '${escapeHtml(row.file_id)}')" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Edit</button>
+          ${row.public_page_status === "APPROVED" ? `<button type="button" onclick="removePublicMaterial('${escapeHtml(row.file_id)}')" class="px-3 py-2 rounded-lg bg-white border border-gold/30 text-xs font-medium text-gold card-hover">Remove Public</button>` : ""}
         </div>
       </div>
     </article>
@@ -13735,362 +13903,7 @@ async function handleDataResetSubmit(event) {
   renderAppFromSchema();
 }
 
-function renderSettingsPageLegacy() {
-  const root = document.getElementById("page-root");
-  if (!root) return;
 
-  syncCalendarStateFromBackendSettings();
-  const backend = studioDataService.getBackendSettings();
-  const status = studioDataService.getPersistenceStatus();
-  const blueprint = studioDataService.getGoogleSheetsBlueprint();
-  const blueprintRows = Object.entries(blueprint);
-
-  root.innerHTML = `
-    <div class="p-4 sm:p-6 xl:p-8 w-full settings-shell">
-      <header class="mb-6 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 fade-in">
-        <div class="min-w-0">
-          <h2 class="font-display text-2xl font-bold text-warmblack">Settings</h2>
-          <p class="text-sm text-warmgray mt-0.5">Persistence, hosted admin access, and manual Google connection controls now live together here. Google Calendar and Gmail still stay review-first until the live OAuth layer is added.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openDataResetModal()">Clear Data</button>
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="syncSettingsSnapshotToBackend()">Push Snapshot</button>
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="pullSettingsSnapshotFromBackend()">Pull Snapshot</button>
-        </div>
-      </header>
-
-      ${getSettingsActionFeedbackMarkup()}
-
-      <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.02s">
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Mode</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${escapeHtml(getPersistenceModeLabel(status.mode))}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact ${status.queue_count ? "page-stat-chip--warm" : "page-stat-chip--good"}">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Changes</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${status.queue_count}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Last Sync</p>
-          <p class="text-sm font-semibold text-warmblack mt-1">${escapeHtml(formatLastSyncMeta(status.last_sync_at))}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Status</p>
-          <p class="mt-1">
-            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getSettingsStatusBadgeClass(status.last_sync_status)}">
-              ${escapeHtml(status.last_sync_status || "idle")}
-            </span>
-          </p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Admin Access</p>
-          <p class="mt-1">
-            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getAdminSecurityStatusBadgeClass()}">
-              ${escapeHtml(getAdminSecurityStatusLabel())}
-            </span>
-          </p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Account</p>
-          <p class="text-sm font-semibold text-warmblack mt-1 wrap-anywhere">${escapeHtml(backend.google_account_email || "Not set")}</p>
-        </div>
-        <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Google Intake</p>
-          <p class="mt-1 flex flex-wrap gap-1.5">
-            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
-            <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
-          </p>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.85fr)] gap-5">
-        <div class="space-y-5">
-          <form id="settings-persistence-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.04s" onsubmit="savePersistenceSettings(event)">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-              <div class="min-w-0">
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Persistence</p>
-                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Data storage and backend bridge</h3>
-                <p class="text-sm text-warmgray mt-1">Everything already saves to this browser. Switch to Google Sheets mode when your backend/proxy endpoint is ready.</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Persistence Mode</span>
-                <select name="persistence_mode" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
-                  <option value="local_cache" ${backend.persistence_mode === "local_cache" ? "selected" : ""}>Local Cache</option>
-                  <option value="google_sheets" ${backend.persistence_mode === "google_sheets" ? "selected" : ""}>Google Sheets via Backend</option>
-                </select>
-              </label>
-
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Backend / Proxy URL</span>
-                <input
-                  name="google_sheets_web_app_url"
-                  type="url"
-                  value="${escapeHtml(backend.google_sheets_web_app_url)}"
-                  placeholder="https://your-backend.example.com/api/studio-sync"
-                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
-                />
-              </label>
-
-              <label class="block xl:col-span-2">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Shared Token</span>
-                <input
-                  name="api_token"
-                  type="text"
-                  value="${escapeHtml(backend.api_token)}"
-                  placeholder="Optional shared secret for the backend"
-                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
-                />
-              </label>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
-                <input type="checkbox" name="cache_enabled" class="mt-1" ${backend.cache_enabled ? "checked" : ""}>
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium text-warmblack">Keep local cache on this browser</span>
-                  <span class="block text-xs text-warmgray mt-1">This makes refresh persistence work even before the Google Sheets backend is live.</span>
-                </span>
-              </label>
-              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
-                <input type="checkbox" name="auto_sync" class="mt-1" ${backend.auto_sync ? "checked" : ""}>
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium text-warmblack">Auto-sync after changes</span>
-                  <span class="block text-xs text-warmgray mt-1">Only runs when Google Sheets mode is active and a backend/proxy URL is configured.</span>
-                </span>
-              </label>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 mt-5">
-              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Settings</button>
-              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runBackendConnectionTest()">Test Connection</button>
-            </div>
-          </form>
-
-          <form id="settings-google-connections-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.045s" onsubmit="saveGoogleConnectionSettings(event)">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-              <div class="min-w-0">
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Connections</p>
-                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">One account, manual sync, review-first intake</h3>
-                <p class="text-sm text-warmgray mt-1">Calendar and Gmail both live under one Google account. Gmail stays booking-related only, and unmatched imports still wait for your review.</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <label class="block xl:col-span-2">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Account Email</span>
-                <input
-                  name="google_account_email"
-                  type="email"
-                  value="${escapeHtml(backend.google_account_email)}"
-                  placeholder="coach@d-a-j.com"
-                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
-                />
-              </label>
-
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wider text-warmgray">Calendar</p>
-                <div class="flex flex-wrap items-center gap-2 mt-2">
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_calendar_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_calendar_status))}</span>
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Manual Sync</span>
-                </div>
-                <p class="text-xs text-warmgray mt-2">${backend.google_calendar_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_calendar_last_sync_at))}` : "No calendar sync has run yet."}</p>
-                ${backend.google_calendar_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_calendar_last_sync_error)}</p>` : ""}
-              </div>
-
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-[11px] uppercase tracking-wider text-warmgray">Gmail Assist</p>
-                <div class="flex flex-wrap items-center gap-2 mt-2">
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${getGoogleServiceStatusBadgeClass(backend.google_gmail_status)}">${escapeHtml(getGoogleServiceStatusLabel(backend.google_gmail_status))}</span>
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Booking Emails Only</span>
-                  <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full bg-white border border-cream text-warmgray">Review First</span>
-                </div>
-                <p class="text-xs text-warmgray mt-2">${backend.google_gmail_last_sync_at ? `Last synced ${escapeHtml(formatLastSyncMeta(backend.google_gmail_last_sync_at))}` : "No Gmail assist sync has run yet."}</p>
-                ${backend.google_gmail_last_sync_error ? `<p class="text-xs text-burgundy mt-2 wrap-anywhere">${escapeHtml(backend.google_gmail_last_sync_error)}</p>` : ""}
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 mt-5">
-              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Google Setup</button>
-              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="startGoogleOAuthFlow()">Connect Google Account</button>
-              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="checkGoogleConnectionStatus()">Refresh Google Status</button>
-              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
-              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="runGmailAssistSync()">Run Gmail Assist</button>
-            </div>
-            ${backend.google_status_error ? `<p class="text-xs text-burgundy mt-3 wrap-anywhere">${escapeHtml(backend.google_status_error)}</p>` : ""}
-          </form>
-
-          <form id="settings-pricing-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.047s" onsubmit="savePricingSettings(event)">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-              <div class="min-w-0">
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Pricing Defaults</p>
-                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Lesson prices that drive packages and PAYG</h3>
-                <p class="text-sm text-warmgray mt-1">Set your standard lesson prices here. Packages use these prices to auto-calculate totals, and PAYG balance tracking uses them unless a student has a custom default lesson rate.</p>
-              </div>
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-4 gap-4">
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">30-Minute Lesson</span>
-                <input name="lesson_rate_30" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_30 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
-              </label>
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">60-Minute Lesson</span>
-                <input name="lesson_rate_60" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_60 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
-              </label>
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">90-Minute Lesson</span>
-                <input name="lesson_rate_90" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.lesson_rate_90 || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
-              </label>
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Intro Session</span>
-                <input name="intro_session_rate" type="number" min="0" step="0.01" value="${escapeHtml(String(backend.intro_session_rate || ""))}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
-              </label>
-            </div>
-
-            <div class="rounded-xl border border-cream bg-parchment px-4 py-3 mt-4 text-sm text-warmgray">
-              A student-specific Default Lesson Rate still wins when it is set on that student profile. These values act as your studio-wide fallback.
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 mt-5">
-              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Pricing</button>
-            </div>
-          </form>
-
-          <form id="settings-admin-security-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.05s" onsubmit="saveAdminSecuritySettings(event)">
-            <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
-              <div class="min-w-0">
-                <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Admin Security</p>
-                <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Session lock for the hosted portal</h3>
-                <p class="text-sm text-warmgray mt-1">This is a practical admin gate for the live portal right now. Deeper production auth can still layer on later.</p>
-              </div>
-              ${
-                requiresAdminUnlock()
-                  ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover self-start" onclick="lockPortalSession('Portal locked manually from Settings.')">Lock Now</button>`
-                  : ""
-              }
-            </div>
-
-            <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
-              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3 xl:col-span-2">
-                <input type="checkbox" name="require_unlock" class="mt-1" ${adminAuthSettings.require_unlock ? "checked" : ""}>
-                <span class="min-w-0">
-                  <span class="block text-sm font-medium text-warmblack">Require passcode to unlock the portal</span>
-                  <span class="block text-xs text-warmgray mt-1">Turn this on after you set a passcode. It will lock the hosted portal after refresh and after inactivity.</span>
-                </span>
-              </label>
-
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Passcode</span>
-                <input
-                  name="local_passcode"
-                  type="password"
-                  value="${escapeHtml(adminAuthSettings.local_passcode)}"
-                  placeholder="Set admin passcode"
-                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
-                />
-              </label>
-
-              <label class="block">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Confirm Passcode</span>
-                <input
-                  name="confirm_passcode"
-                  type="password"
-                  value="${escapeHtml(adminAuthSettings.local_passcode)}"
-                  placeholder="Re-enter passcode"
-                  class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
-                />
-              </label>
-
-              <label class="block xl:max-w-xs">
-                <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Session Timeout</span>
-                <select name="session_timeout_minutes" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
-                  <option value="15" ${Number(adminAuthSettings.session_timeout_minutes) === 15 ? "selected" : ""}>15 minutes</option>
-                  <option value="30" ${Number(adminAuthSettings.session_timeout_minutes) === 30 ? "selected" : ""}>30 minutes</option>
-                  <option value="60" ${Number(adminAuthSettings.session_timeout_minutes) === 60 ? "selected" : ""}>60 minutes</option>
-                  <option value="120" ${Number(adminAuthSettings.session_timeout_minutes) === 120 ? "selected" : ""}>2 hours</option>
-                </select>
-              </label>
-            </div>
-
-            <div class="flex flex-wrap items-center gap-2 mt-5">
-              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Security</button>
-            </div>
-          </form>
-
-          <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.06s">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sync Notes</p>
-            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">How this phase works</h3>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4 text-sm">
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="font-semibold text-warmblack">1. Local persistence is live</p>
-                <p class="text-warmgray mt-1">Student, lesson, note, finance, and materials changes now persist in this browser instead of disappearing on refresh.</p>
-              </div>
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="font-semibold text-warmblack">2. Google Sheets is endpoint-based</p>
-                <p class="text-warmgray mt-1">The portal should talk to a backend/proxy, and that backend can talk to Google Sheets without browser CORS issues.</p>
-              </div>
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="font-semibold text-warmblack">3. Live Calendar/Gmail come next</p>
-                <p class="text-warmgray mt-1">Once backend and auth are live, the existing intake UI can start using real Google services instead of demo-fed sync.</p>
-              </div>
-            </div>
-            ${
-              status.last_sync_error
-                ? `<div class="rounded-xl border border-burgundy/20 bg-burgundy/5 px-4 py-3 mt-4">
-                    <p class="text-xs uppercase tracking-wider text-burgundy font-medium">Most Recent Sync Error</p>
-                    <p class="text-sm text-warmblack mt-1 wrap-anywhere">${escapeHtml(status.last_sync_error)}</p>
-                  </div>`
-                : ""
-            }
-          </div>
-        </div>
-
-        <div class="space-y-5">
-          <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.08s">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Google Sheets Blueprint</p>
-            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Recommended tabs and columns</h3>
-            <p class="text-sm text-warmgray mt-1">This is the shape the backend should read and write into Google Sheets. It matches the current frontend data contracts.</p>
-            <div class="space-y-3 mt-4 max-h-[620px] overflow-y-auto pr-1">
-              ${blueprintRows.map(([sheetName, columns]) => `
-                <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                  <div class="flex items-center justify-between gap-3">
-                    <p class="font-semibold text-warmblack">${escapeHtml(sheetName)}</p>
-                    <span class="text-xs text-warmgray">${columns.length} columns</span>
-                  </div>
-                  <p class="text-xs text-warmgray mt-2 wrap-anywhere">${escapeHtml(columns.join(", "))}</p>
-                </div>
-              `).join("")}
-            </div>
-          </div>
-
-          <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in" style="animation-delay:0.1s">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Current Backend State</p>
-            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">At a glance</h3>
-            <div class="space-y-3 mt-4 text-sm">
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-warmgray">Endpoint configured</p>
-                <p class="font-semibold text-warmblack mt-1">${status.endpoint_configured ? "Yes" : "Not yet"}</p>
-              </div>
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-warmgray">Auto-sync</p>
-                <p class="font-semibold text-warmblack mt-1">${status.auto_sync ? "Enabled" : "Off"}</p>
-              </div>
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-warmgray">Last pull</p>
-                <p class="font-semibold text-warmblack mt-1">${escapeHtml(formatLastSyncMeta(status.last_pull_at))}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  lucide.createIcons();
-}
 
 function renderSettingsPage() {
   const root = document.getElementById("page-root");
@@ -15260,387 +15073,7 @@ function renderProfileLessons(studentId) {
   `;
 }
 
-function renderProfileNotesTabLegacy(studentId) {
-  const notesContainer = document.getElementById("profile-tab-notes");
-  if (!notesContainer) return;
 
-  const publishedNotes = getNotesByStudentId(studentId)
-    .filter((note) => note.status === "Published")
-    .sort((a, b) => {
-      const aTime = new Date(a.published_at || a.created_at || 0).getTime();
-      const bTime = new Date(b.published_at || b.created_at || 0).getTime();
-      return bTime - aTime;
-    });
-
-  if (!publishedNotes.length) {
-    notesContainer.innerHTML = `
-      <div class="p-6 bg-parchment rounded-xl border border-cream text-sm text-warmgray">
-        No published lesson notes yet.
-      </div>
-    `;
-    return;
-  }
-
-  const visibleNotes = publishedNotes.slice(0, profileNotesVisibleCount);
-
-  notesContainer.innerHTML = `
-    <div class="space-y-4">
-      ${visibleNotes.map((note, index) => {
-        const lesson = getSchemaLessonById(note.lesson_id);
-        const lessonDate = lesson?.scheduled_start ? formatLongDate(lesson.scheduled_start) : "No lesson date";
-
-        if (index === 0) {
-          const plainText = stripHtmlForPreview(note.body);
-          const firstTenLines = getFirstLines(plainText, 10);
-          const wasTrimmed = plainText.trim() !== firstTenLines.trim();
-
-          return `
-            <div class="p-4 bg-parchment rounded-xl border border-cream">
-              <div class="flex items-center justify-between mb-2 gap-4">
-                <div>
-                  <h5 class="text-sm font-semibold text-warmblack">${escapeHtml(note.title)}</h5>
-                  <p class="text-xs text-warmgray mt-1">${escapeHtml(lesson?.topic || "Lesson")} · ${escapeHtml(lessonDate)}</p>
-                </div>
-                <span class="text-xs text-warmgray">${escapeHtml(formatLongDate(note.published_at))}</span>
-              </div>
-
-              <div class="text-sm text-warmgray leading-relaxed">
-                ${formatPreviewTextAsHtml(firstTenLines)}
-                ${wasTrimmed ? `<span class="text-warmgray">...</span>` : ""}
-              </div>
-
-              <div class="mt-3 flex items-center justify-between gap-3">
-                <span class="text-[11px] bg-sage/10 text-sage px-2 py-0.5 rounded-full">${escapeHtml(note.status)}</span>
-                <button
-                  type="button"
-                  class="text-xs font-medium text-gold hover:underline"
-                  onclick="openLessonDetailModal('${note.lesson_id}')"
-                >
-                  See More
-                </button>
-              </div>
-            </div>
-          `;
-        }
-
-        return `
-          <div class="p-4 bg-parchment rounded-xl border border-cream">
-            <div class="flex items-center justify-between gap-4">
-              <div>
-                <h5 class="text-sm font-semibold text-warmblack">${escapeHtml(note.title)}</h5>
-                <p class="text-xs text-warmgray mt-1">${escapeHtml(lesson?.topic || "Lesson")} · ${escapeHtml(lessonDate)}</p>
-              </div>
-              <div class="flex items-center gap-3 shrink-0">
-                <span class="text-xs text-warmgray">${escapeHtml(formatLongDate(note.published_at))}</span>
-                <button
-                  type="button"
-                  class="text-xs font-medium text-gold hover:underline"
-                  onclick="openLessonDetailModal('${note.lesson_id}')"
-                >
-                  See More
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("")}
-
-      <div class="flex items-center gap-3 pt-1">
-        ${
-          publishedNotes.length > profileNotesVisibleCount
-            ? `
-              <button
-                type="button"
-                class="px-4 py-2 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
-                onclick="showMoreProfileNotes()"
-              >
-                See More
-              </button>
-            `
-            : ""
-        }
-
-        ${
-          profileNotesVisibleCount > 3
-            ? `
-              <button
-                type="button"
-                class="px-4 py-2 rounded-xl bg-parchment border border-cream text-sm font-medium text-warmgray card-hover"
-                onclick="hideProfileNotes()"
-              >
-                Hide
-              </button>
-            `
-            : ""
-        }
-      </div>
-    </div>
-  `;
-}
-
-function renderProfileMaterialsTab(studentId) {
-  const materialsContainer = document.getElementById("profile-tab-materials");
-  if (!materialsContainer) return;
-
-  const materialRows = getMaterialRowsByStudentId(studentId);
-  const activeRows = materialRows.filter((row) => String(row.status || "").toLowerCase() !== "vaulted");
-  const vaultedRows = materialRows.filter((row) => String(row.status || "").toLowerCase() === "vaulted");
-  const actorRows = activeRows.filter((row) => row.group_key === "actor");
-  const coachingRows = activeRows.filter((row) => row.group_key === "coaching");
-  const resourceRows = activeRows.filter((row) => row.group_key === "resource");
-
-  function renderMaterialCards(rows, options = {}) {
-    const {
-      emptyMessage = "No materials yet.",
-      primaryActionLabel = "",
-      primaryActionHandler = "",
-      secondaryActionLabel = "",
-      secondaryActionHandler = ""
-    } = options;
-
-    if (!rows.length) {
-      return `
-        <div class="rounded-xl border border-dashed border-cream bg-white/70 p-4 text-sm text-warmgray">
-          ${escapeHtml(emptyMessage)}
-        </div>
-      `;
-    }
-
-    return rows.map((row) => `
-      <div class="rounded-xl border border-cream bg-white p-4">
-        <div class="grid grid-cols-1 lg:grid-cols-[160px_minmax(0,1fr)_auto] gap-4">
-          <div>${getMaterialPreviewMarkup(row, { compact: true })}</div>
-          <div class="min-w-0">
-            <div class="flex items-center gap-2 flex-wrap">
-              <p class="text-sm font-semibold text-warmblack break-words">${escapeHtml(row.display_name)}</p>
-              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.status_badge}">
-                ${escapeHtml(row.status_label)}
-              </span>
-              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.visibility_badge}">
-                ${escapeHtml(row.visibility_label)}
-              </span>
-              <span class="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-1 rounded-full ${row.public_page_status_badge}">
-                ${escapeHtml(row.public_page_status_label)}
-              </span>
-            </div>
-            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.kind_label)} · ${escapeHtml(row.category)} · ${escapeHtml(row.scope_label)}</p>
-            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.source_label)} · ${escapeHtml(formatLongDate(row.uploaded_at))}</p>
-            <p class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_label)}</p>
-            ${row.notes ? `<p class="text-xs text-warmgray mt-1">${escapeHtml(row.notes)}</p>` : ""}
-          </div>
-          <div class="flex flex-wrap lg:flex-col items-start lg:items-stretch gap-2 shrink-0">
-            ${row.source_url ? `
-              <a
-                href="${escapeHtml(row.source_url)}"
-                target="_blank"
-                rel="noopener noreferrer"
-                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold card-hover text-center"
-              >
-                ${escapeHtml(row.action_label)}
-              </a>
-            ` : ""}
-            <button
-              type="button"
-              onclick="openMaterialModal('${studentId}', '${row.file_id}')"
-              class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-            >
-              Edit
-            </button>
-            ${normalizeMaterialScope(row.scope) === "ACTOR_MATERIAL" ? `
-              <button
-                type="button"
-                onclick="previewPublicMaterial('${row.file_id}')"
-                class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover"
-              >
-                Preview
-              </button>
-            ` : ""}
-            ${
-              row.public_page_status === "PENDING_REVIEW"
-                ? `
-                  <button
-                    type="button"
-                    onclick="approvePublicMaterial('${row.file_id}')"
-                    class="px-3 py-2 rounded-lg bg-sage/10 border border-sage/20 text-xs font-medium text-sage card-hover"
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    onclick="rejectPublicMaterial('${row.file_id}')"
-                    class="px-3 py-2 rounded-lg bg-white border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
-                  >
-                    Reject
-                  </button>
-                `
-                : ""
-            }
-            ${
-              primaryActionLabel && primaryActionHandler
-                ? `
-                  <button
-                    type="button"
-                    onclick="${primaryActionHandler}('${row.file_id}')"
-                    class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover"
-                  >
-                    ${escapeHtml(primaryActionLabel)}
-                  </button>
-                `
-                : ""
-            }
-            <button
-              type="button"
-              onclick="deleteMaterialNow('${row.file_id}')"
-              class="px-3 py-2 rounded-lg bg-burgundy/5 border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
-            >
-              Delete
-            </button>
-            ${
-              secondaryActionLabel && secondaryActionHandler
-                ? `
-                  <button
-                    type="button"
-                    onclick="${secondaryActionHandler}('${row.file_id}')"
-                    class="px-3 py-2 rounded-lg bg-white border border-burgundy/20 text-xs font-medium text-burgundy card-hover"
-                  >
-                    ${escapeHtml(secondaryActionLabel)}
-                  </button>
-                `
-                : ""
-            }
-          </div>
-        </div>
-      </div>
-    `).join("");
-  }
-
-  materialsContainer.innerHTML = `
-    <div class="space-y-5">
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div>
-          <h4 class="font-display text-lg font-semibold text-warmblack">Materials</h4>
-          <p class="text-sm text-warmgray mt-1">Keep current actor assets, coaching files, and reusable resources easy to reach. Vault stays tucked away until you need history.</p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onclick="refreshPortalReviewQueue()"
-            class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
-          >
-            Refresh From Portal
-          </button>
-          <button
-            type="button"
-            onclick="toggleProfileMaterialsVault()"
-            class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover"
-          >
-            ${showProfileMaterialsVault ? "Hide Vault" : `View Vault (${vaultedRows.length})`}
-          </button>
-          <button
-            type="button"
-            onclick="openMaterialModal('${studentId}')"
-            class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover"
-          >
-            Add Material
-          </button>
-        </div>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div class="rounded-xl border border-sage/20 bg-sage/5 px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Current</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${activeRows.length}</p>
-        </div>
-        <div class="rounded-xl border border-gold/20 bg-gold/5 px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Actor Assets</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${actorRows.length}</p>
-        </div>
-        <div class="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Coaching</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${coachingRows.length}</p>
-        </div>
-      </div>
-
-      <div class="space-y-4">
-        <div class="rounded-2xl border border-gold/15 bg-gold/5 p-4">
-          <div class="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p class="text-xs uppercase tracking-wider text-gold font-medium">Actor Materials</p>
-              <h5 class="font-semibold text-warmblack mt-1">Headshots, resumes, reels, and self tapes</h5>
-            </div>
-            <span class="text-xs text-warmgray">${actorRows.filter((row) => normalizeMaterialVisibility(row.visibility) === "STUDENT_VISIBLE").length} student-visible</span>
-          </div>
-          <div class="space-y-3">
-            ${renderMaterialCards(actorRows, {
-              emptyMessage: "No actor materials yet. Add resumes, headshots, reels, and audition assets here.",
-              primaryActionLabel: "Vault",
-              primaryActionHandler: "archiveMaterial"
-            })}
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-blue-200 bg-blue-50 p-4">
-          <div class="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p class="text-xs uppercase tracking-wider text-blue-700 font-medium">Lesson & Homework Materials</p>
-              <h5 class="font-semibold text-warmblack mt-1">Current coaching files linked to active work</h5>
-            </div>
-            <span class="text-xs text-warmgray">${coachingRows.length} active item${coachingRows.length === 1 ? "" : "s"}</span>
-          </div>
-          <div class="space-y-3">
-            ${renderMaterialCards(coachingRows, {
-              emptyMessage: "No active lesson or homework materials yet. Add scripts, sides, homework files, and self-tape references here.",
-              primaryActionLabel: "Vault",
-              primaryActionHandler: "archiveMaterial"
-            })}
-          </div>
-        </div>
-
-        <div class="rounded-2xl border border-sage/15 bg-sage/5 p-4">
-          <div class="flex items-center justify-between gap-3 mb-4">
-            <div>
-              <p class="text-xs uppercase tracking-wider text-sage font-medium">Resources & References</p>
-              <h5 class="font-semibold text-warmblack mt-1">Reusable links, docs, and coach resources</h5>
-            </div>
-            <span class="text-xs text-warmgray">${resourceRows.length} resource${resourceRows.length === 1 ? "" : "s"}</span>
-          </div>
-          <div class="space-y-3">
-            ${renderMaterialCards(resourceRows, {
-              emptyMessage: "No shared resources yet. Add studio references, prep links, and reusable coaching materials here.",
-              primaryActionLabel: "Vault",
-              primaryActionHandler: "archiveMaterial"
-            })}
-          </div>
-        </div>
-
-        ${
-          showProfileMaterialsVault
-            ? `
-              <div class="rounded-2xl border border-warmgray/15 bg-parchment p-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-                  <div>
-                    <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Vault</p>
-                    <h5 class="font-semibold text-warmblack mt-1">Preserved history kept out of the main workspace</h5>
-                  </div>
-                  <span class="text-xs text-warmgray">Restore or permanently delete vaulted items here only</span>
-                </div>
-                <div class="space-y-3">
-                  ${renderMaterialCards(vaultedRows, {
-                    emptyMessage: "Nothing is vaulted right now.",
-                    primaryActionLabel: "Restore",
-                    primaryActionHandler: "restoreMaterial",
-                    secondaryActionLabel: "Delete Permanently",
-                    secondaryActionHandler: "deleteMaterialPermanently"
-                  })}
-                </div>
-              </div>
-            `
-            : ""
-        }
-      </div>
-    </div>
-  `;
-}
 
 function renderProfileNotesTab(studentId) {
   const notesContainer = document.getElementById("profile-tab-notes");
@@ -15856,291 +15289,7 @@ function renderProfileNotesTab(studentId) {
   `;
 }
 
-function renderProfilePageLegacy() {
-  if (!selectedStudentId || !getStudentById(selectedStudentId)) {
-    selectedStudentId = students.length > 0 ? students[0].id : null;
-  }
 
-  currentProfileNotesFilter = "all";
-
-  const root = document.getElementById("page-root");
-  if (!root) return;
-
-  if (!selectedStudentId) {
-    root.innerHTML = `
-      <div class="p-8 w-full">
-        <h2 class="font-display text-2xl font-bold text-warmblack">Student Profile</h2>
-        <p class="text-warmgray mt-2">No student selected yet.</p>
-      </div>
-    `;
-    return;
-  }
-
-  root.innerHTML = `
-    <div class="profile-shell p-4 sm:p-6 xl:p-8 w-full">
-      <header class="profile-header mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div class="min-w-0 flex items-center gap-3">
-          <button onclick="navigateTo('students')" class="w-9 h-9 rounded-full bg-white border border-cream flex items-center justify-center card-hover">
-            <i data-lucide="arrow-left" class="w-4 h-4 text-charcoal"></i>
-          </button>
-          <div class="min-w-0">
-            <h2 id="profile-page-title" class="font-display text-2xl font-bold text-warmblack">Student Profile</h2>
-            <p id="profile-page-subtitle" class="text-sm text-warmgray">Detailed view and lesson management</p>
-          </div>
-        </div>
-
-        <div class="profile-header-actions flex flex-wrap items-center gap-2">
-          <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">
-            Add Lesson
-          </button>
-          <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
-            Add Package
-          </button>
-          <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
-            Add Payment
-          </button>
-          <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
-            Edit Student
-          </button>
-          <button id="change-status-btn" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-warmblack text-sm font-medium card-hover">
-            Change Status
-          </button>
-        </div>
-      </header>
-
-      <div class="profile-layout grid grid-cols-1 xl:grid-cols-[340px_minmax(0,1fr)] gap-6">
-        <div class="profile-sidebar space-y-4">
-          <div class="profile-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in">
-            <div class="h-28 headshot-placeholder relative">
-              <div class="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-1/2">
-                <div class="w-24 h-24 rounded-full border-4 border-white headshot-placeholder flex items-center justify-center">
-                  <i data-lucide="user" class="w-10 h-10 text-warmgray/60"></i>
-                </div>
-              </div>
-            </div>
-
-            <div class="pt-14 pb-5 px-5 text-center">
-              <h3 id="profile-student-name" class="font-display text-xl font-bold">Student Name</h3>
-              <p id="profile-student-focus" class="text-sm text-warmgray mt-0.5">Focus Area</p>
-              <div id="profile-badges" class="flex items-center justify-center gap-2 mt-3"></div>
-            </div>
-
-            <div class="profile-meta-list px-5 pb-5 space-y-3 border-t border-cream pt-4">
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Billing Model</span>
-                <span id="profile-billing-model" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Finance Summary</span>
-                <span id="profile-finance-summary" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Last Lesson</span>
-                <span id="profile-last-lesson" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Public Page</span>
-                <span id="profile-public-status" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Email</span>
-                <span id="profile-email" class="font-medium text-right break-all">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Phone</span>
-                <span id="profile-phone" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Additional Emails</span>
-                <span id="profile-additional-emails" class="font-medium text-right break-all">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Guardian / Parent</span>
-                <span id="profile-guardian-name" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Guardian Email</span>
-                <span id="profile-guardian-email" class="font-medium text-right break-all">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Guardian Phone</span>
-                <span id="profile-guardian-phone" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Timezone</span>
-                <span id="profile-timezone" class="font-medium text-right">—</span>
-              </div>
-              <div class="profile-meta-row flex justify-between text-sm gap-4">
-                <span class="text-warmgray">Lead Source</span>
-                <span id="profile-lead-source" class="font-medium text-right">—</span>
-              </div>
-              <div class="pt-2">
-                <a id="profile-email-btn" href="#" class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">
-                  <i data-lucide="mail" class="w-4 h-4"></i>
-                  Email Student
-                </a>
-              </div>
-            </div>
-          </div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream p-5 fade-in" style="animation-delay:0.1s">
-            <h4 class="font-display font-semibold mb-2">Bio</h4>
-            <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere"></p>
-          </div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream p-5 fade-in" style="animation-delay:0.14s">
-  <div class="flex items-center justify-between mb-3">
-    <h4 class="font-display font-semibold">Finance</h4>
-    <span id="profile-finance-badge" class="text-[11px] px-2 py-1 rounded-full bg-warmgray/10 text-warmgray">—</span>
-  </div>
-
-  <div class="space-y-3">
-    <div>
-      <p id="profile-finance-headline" class="text-sm font-semibold text-warmblack">—</p>
-      <p id="profile-finance-subline" class="text-xs text-warmgray mt-1">—</p>
-    </div>
-
-    <div id="profile-finance-package-block" class="space-y-3">
-      <div class="flex justify-between text-sm">
-        <span class="text-warmgray">Package</span>
-        <span id="profile-finance-package-name" class="font-medium text-right">—</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-warmgray">Sessions Purchased</span>
-        <span id="profile-finance-package-total" class="font-medium">—</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-warmgray">Used</span>
-        <span id="profile-finance-package-used" class="font-medium">—</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-warmgray">Remaining</span>
-        <span id="profile-finance-package-remaining" class="font-medium">—</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-warmgray">Expires</span>
-        <span id="profile-finance-package-expires" class="font-medium text-right">—</span>
-      </div>
-    </div>
-  </div>
-</div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream p-5 fade-in" style="animation-delay:0.15s">
-            <h4 class="font-display font-semibold mb-3">Resume</h4>
-            <div class="flex items-center gap-3 p-3 bg-parchment rounded-xl">
-              <div class="w-10 h-10 rounded-lg bg-burgundy/10 flex items-center justify-center">
-                <i data-lucide="file-text" class="w-5 h-5 text-burgundy"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <p id="profile-resume-name" class="text-sm font-medium truncate">No resume uploaded</p>
-                <p id="profile-resume-meta" class="text-xs text-warmgray">No file available</p>
-              </div>
-              <button class="text-xs text-gold font-medium hover:underline">View</button>
-            </div>
-          </div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream p-5 fade-in" style="animation-delay:0.18s">
-  <div class="flex items-center justify-between mb-3">
-    <h4 class="font-display font-semibold">Payments</h4>
-    <span id="profile-payments-count" class="text-xs text-warmgray">—</span>
-  </div>
-
-  <div id="profile-payments-list" class="space-y-3 max-h-[260px] overflow-y-auto pr-1">
-    <div class="text-sm text-warmgray">No payments yet.</div>
-  </div>
-</div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream p-5 fade-in" style="animation-delay:0.2s">
-            <h4 class="font-display font-semibold mb-3">Working Snapshot</h4>
-            <div class="space-y-2">
-              <div id="profile-material-1" class="p-3 bg-gold/5 border border-gold/15 rounded-xl"></div>
-              <div id="profile-material-2" class="p-3 bg-sage/5 border border-sage/15 rounded-xl"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="profile-main min-w-0 space-y-5">
-          <div class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.1s">
-            <div class="profile-tab-bar flex flex-wrap border-b border-cream">
-              <button
-                onclick="switchProfileTab('notes', this)"
-                class="tab-btn active-tab px-5 py-3.5 text-sm font-medium text-gold border-b-2 border-gold"
-              >
-                Lesson Notes
-              </button>
-              <button
-                onclick="switchProfileTab('homework', this)"
-                class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent"
-              >
-                Homework
-              </button>
-              <button
-                onclick="switchProfileTab('materials', this)"
-                class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent"
-              >
-                Materials
-              </button>
-            </div>
-
-            <div id="profile-tab-notes" class="p-5 space-y-4"></div>
-            <div id="profile-tab-homework" class="p-5" style="display:none;"></div>
-            <div id="profile-tab-materials" class="p-5" style="display:none;"></div>
-          </div>
-
-          <div class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.15s">
-            <div class="dashboard-panel-header p-5 border-b border-cream flex items-center justify-between gap-3">
-              <div class="min-w-0">
-                <h3 class="font-display text-lg font-semibold">Lessons</h3>
-                <p class="text-xs text-warmgray mt-1">Upcoming and recent lesson history for this student</p>
-              </div>
-              <button id="add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">
-                Add Lesson
-              </button>
-            </div>
-
-            <div id="profile-lessons-list" class="p-5 space-y-3">
-              <div class="text-sm text-warmgray">No lessons yet.</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  `;
-
-  populateStudentProfile(selectedStudentId);
-
-  const editBtn = document.getElementById("edit-student-btn");
-  if (editBtn) {
-    editBtn.onclick = () => openStudentModal("edit", selectedStudentId);
-  }
-
-  const statusBtn = document.getElementById("change-status-btn");
-  if (statusBtn) {
-    statusBtn.onclick = () => changeSelectedStudentStatus();
-  }
-
-  const profileAddLessonBtn = document.getElementById("profile-add-lesson-btn");
-  if (profileAddLessonBtn) {
-    profileAddLessonBtn.onclick = () => openLessonModal("create");
-  }
-
-  const profileAddPackageBtn = document.getElementById("profile-add-package-btn");
-  if (profileAddPackageBtn) {
-    profileAddPackageBtn.onclick = () => openPackageModal(null, selectedStudentId);
-  }
-
-  const profileAddPaymentBtn = document.getElementById("profile-add-payment-btn");
-  if (profileAddPaymentBtn) {
-    profileAddPaymentBtn.onclick = () => openPaymentModal(null, selectedStudentId);
-  }
-
-  const addLessonBtn = document.getElementById("add-lesson-btn");
-  if (addLessonBtn) {
-    addLessonBtn.onclick = () => openLessonModal("create");
-  }
-
-  lucide.createIcons();
-}
 
 function renderProfilePage() {
   if (!selectedStudentId || !getStudentById(selectedStudentId)) {
@@ -16486,6 +15635,7 @@ function renderPublicPage() {
 
   const root = document.getElementById("page-root");
   if (!root) return;
+  const actorStatus = selectedStudentId ? getActorLifecycleStatus(selectedStudentId) : "Draft";
 
   root.innerHTML = `
     <div id="public-page-shell">
@@ -16494,6 +15644,8 @@ function renderPublicPage() {
         <div class="flex flex-wrap gap-2">
           <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="refreshPortalReviewQueue()">Refresh Portal</button>
           <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${selectedStudentId}')">Materials</button>
+          ${actorStatus === "Live" ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="setActorPageLifecycleStatus('${selectedStudentId}', 'Draft')">Return to Draft</button>` : `<button type="button" class="px-3 py-2 rounded-lg gold-gradient text-warmblack text-xs font-semibold card-hover" onclick="setActorPageLifecycleStatus('${selectedStudentId}', 'Active')">Make Live</button>`}
+          ${actorStatus !== "Archived" ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray card-hover" onclick="setActorPageLifecycleStatus('${selectedStudentId}', 'Archived')">Archive</button>` : `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="setActorPageLifecycleStatus('${selectedStudentId}', 'Draft')">Restore Draft</button>`}
         </div>
       </div>
       <div id="public-hero" class="public-hero text-white">
@@ -17322,7 +16474,7 @@ function populatePublicPage(studentId) {
       ? ""
       : `
         <div class="rounded-2xl border border-gold/20 bg-gold/5 px-5 py-4 text-sm text-warmblack">
-          ${isEligible ? "Coach preview: this public page is still a draft until the student toggles it live." : "Coach preview: this student is not marked public page eligible yet."}
+          ${isEligible ? "Coach preview: this public page is still a draft until you make it live." : "Coach preview: this student is not marked public page eligible yet. Use Make Live when the showcase is ready."}
         </div>
       `;
   }

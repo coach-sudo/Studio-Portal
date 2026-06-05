@@ -652,10 +652,53 @@
     function materialUrl(file) {
       return String(file && (file.file_url || file.external_url) || "").trim();
     }
+    function embedUrl(url) {
+      var raw = String(url || "").trim();
+      if (!raw) return "";
+      try {
+        var parsed = new URL(raw);
+        if (/drive\.google\.com$/i.test(parsed.hostname)) {
+          var match = parsed.pathname.match(/\/file\/d\/([^/]+)/i);
+          var fileId = match ? match[1] : parsed.searchParams.get("id");
+          if (fileId) return "https://drive.google.com/file/d/" + encodeURIComponent(fileId) + "/preview";
+        }
+      } catch (error) {
+        return raw;
+      }
+      return raw;
+    }
+    function videoEmbedUrl(url) {
+      var raw = String(url || "").trim();
+      if (!raw) return "";
+      try {
+        var parsed = new URL(raw);
+        var host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+        if (host === "youtu.be") {
+          var shortId = parsed.pathname.split("/").filter(Boolean)[0];
+          return shortId ? "https://www.youtube.com/embed/" + encodeURIComponent(shortId) : "";
+        }
+        if (host === "youtube.com" || host === "m.youtube.com") {
+          var id = parsed.searchParams.get("v");
+          if (!id) {
+            var match = parsed.pathname.match(/\/(?:shorts|embed)\/([^/]+)/i);
+            id = match && match[1];
+          }
+          return id ? "https://www.youtube.com/embed/" + encodeURIComponent(id) : "";
+        }
+        if (host === "vimeo.com" || host === "player.vimeo.com") {
+          var vimeoId = parsed.pathname.split("/").filter(Boolean).find(function (part) { return /^\d+$/.test(part); });
+          return vimeoId ? "https://player.vimeo.com/video/" + encodeURIComponent(vimeoId) : "";
+        }
+      } catch (error) {
+        return "";
+      }
+      return "";
+    }
     function materialType(file) {
       var blob = [file && file.category, file && file.material_kind, file && file.mime_type, file && file.title, materialUrl(file)].join(" ");
       if (/image|headshot|photo|jpeg|jpg|png|webp|gif/i.test(blob)) return "image";
-      if (/video|reel|self tape|mp4|mov|webm/i.test(blob)) return "video";
+      if (/video|reel|self tape|mp4|mov|webm|youtube|youtu\.be|vimeo/i.test(blob)) return "video";
+      if (/audio|voice|mp3|wav|m4a|aac|ogg/i.test(blob)) return "audio";
       if (/pdf|resume|document/i.test(blob)) return "pdf";
       return "file";
     }
@@ -665,9 +708,11 @@
       var type = materialType(file);
       if (!url) return '<div class="preview">No file</div>';
       if (type === "image") return '<a class="preview" href="' + escapeHtml(url) + '" target="_blank" rel="noopener"><img alt="' + title + '" src="' + escapeHtml(url) + '" loading="lazy" /></a>';
-      if (type === "video") return '<video class="preview" src="' + escapeHtml(url) + '" controls preload="metadata"></video>';
-      if (type === "pdf") return '<iframe class="preview" title="' + title + '" src="' + escapeHtml(url) + '"></iframe>';
-      return '<a class="preview" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open File</a>';
+      if (type === "video" && /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url)) return '<video class="preview" src="' + escapeHtml(url) + '" controls preload="metadata"></video>';
+      if (type === "video" && videoEmbedUrl(url)) return '<iframe class="preview" title="' + title + '" src="' + escapeHtml(videoEmbedUrl(url)) + '" loading="lazy" allow="fullscreen; picture-in-picture"></iframe>';
+      if (type === "audio" && /\.(mp3|wav|m4a|aac|ogg)(\?.*)?$/i.test(url)) return '<div class="preview audio-preview"><audio src="' + escapeHtml(url) + '" controls preload="metadata"></audio></div>';
+      if (type === "pdf" || /drive\.google\.com/i.test(url)) return '<iframe class="preview" title="' + title + '" src="' + escapeHtml(embedUrl(url)) + '"></iframe>';
+      return '<a class="preview" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open Material</a>';
     }
     function materialCard(file) {
       var url = materialUrl(file);
@@ -954,7 +999,7 @@
           </div>
           <label>Type<select name="category"><option>Headshot</option><option>Resume</option><option>Reel</option><option>Self Tape</option></select></label>
           <label>Title<input name="title" required /></label>
-          <label class="upload-drop">Upload PDF, image, or video<input name="material_upload" type="file" accept="application/pdf,image/*,video/*" /><span class="help-text">Direct uploads support PDFs, images, and smaller videos up to 4.5 MB. Paste a Drive, Vimeo, YouTube, Dropbox, or iCloud link for larger files.</span></label>
+          <label class="upload-drop">Upload file<input name="material_upload" type="file" accept="application/pdf,image/*,video/*,audio/*,.doc,.docx,.txt,.rtf" /><span class="help-text">Direct uploads support PDFs, images, audio, docs, and smaller videos up to 4.5 MB. Paste a Drive, Vimeo, YouTube, Dropbox, or iCloud link for larger files.</span></label>
           <label>Share Link<input name="external_url" type="url" placeholder="https://..." /></label>
           <label>Notes for coach<textarea name="notes" rows="4"></textarea></label>
           <button class="button gold" type="submit">Submit For Review</button>

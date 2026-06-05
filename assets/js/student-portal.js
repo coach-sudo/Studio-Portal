@@ -279,21 +279,67 @@ function getStudentPortalPreviewUrl(url) {
   return raw;
 }
 
+function getStudentPortalVideoEmbedUrl(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    const host = parsed.hostname.replace(/^www\./i, "").toLowerCase();
+    if (host === "youtu.be") {
+      const id = parsed.pathname.split("/").filter(Boolean)[0];
+      return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+    }
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = parsed.searchParams.get("v") || parsed.pathname.match(/\/shorts\/([^/]+)/i)?.[1] || parsed.pathname.match(/\/embed\/([^/]+)/i)?.[1];
+      return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+    }
+    if (host === "vimeo.com" || host === "player.vimeo.com") {
+      const id = parsed.pathname.split("/").filter(Boolean).find((part) => /^\d+$/.test(part));
+      return id ? `https://player.vimeo.com/video/${encodeURIComponent(id)}` : "";
+    }
+  } catch (error) {
+    return "";
+  }
+  return "";
+}
+
 function isStudentPortalImageMaterial(file) {
   const url = String(file?.external_url || file?.file_url || "").trim();
   const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
   return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test(blob) || /\.(png|jpe?g|webp|gif)(\?.*)?$/i.test(url);
 }
 
+function isStudentPortalVideoMaterial(file) {
+  const url = String(file?.external_url || file?.file_url || "").trim();
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /video|reel|self tape|mp4|mov|webm|quicktime/i.test(blob) || /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url) || Boolean(getStudentPortalVideoEmbedUrl(url));
+}
+
+function isStudentPortalAudioMaterial(file) {
+  const url = String(file?.external_url || file?.file_url || "").trim();
+  const blob = `${file?.category || ""} ${file?.material_kind || ""} ${file?.mime_type || ""} ${file?.title || ""} ${file?.file_name || ""}`;
+  return /audio|voice|mp3|wav|m4a|aac|ogg/i.test(blob) || /\.(mp3|wav|m4a|aac|ogg)(\?.*)?$/i.test(url);
+}
+
 function renderStudentPortalMaterialPreview(file) {
   const url = String(file?.external_url || file?.file_url || "").trim();
   const previewUrl = getStudentPortalPreviewUrl(url);
+  const videoEmbedUrl = getStudentPortalVideoEmbedUrl(url);
   const title = file?.title || file?.file_name || "Material";
   if (!url) {
     return `<div class="w-full h-28 rounded-xl border border-cream bg-white flex items-center justify-center"><i data-lucide="file-text" class="w-5 h-5 text-warmgray"></i></div>`;
   }
   if (isStudentPortalImageMaterial(file) && !/drive\.google\.com/i.test(url)) {
-    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="w-full h-28 rounded-xl border border-cream object-cover bg-white" loading="lazy" />`;
+    return `<img src="${escapeHtml(url)}" alt="${escapeHtml(title)}" class="w-full h-28 rounded-xl border border-cream object-contain bg-white" loading="lazy" />`;
+  }
+  if (isStudentPortalVideoMaterial(file) && /\.(mp4|mov|webm|m4v)(\?.*)?$/i.test(url)) {
+    return `<video src="${escapeHtml(url)}" class="w-full h-28 rounded-xl border border-cream bg-warmblack" controls preload="metadata"></video>`;
+  }
+  if (isStudentPortalVideoMaterial(file) && videoEmbedUrl) {
+    return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(videoEmbedUrl)}" class="w-full h-28 rounded-xl border border-cream bg-white" loading="lazy" allow="fullscreen; picture-in-picture"></iframe>`;
+  }
+  if (isStudentPortalAudioMaterial(file) && /\.(mp3|wav|m4a|aac|ogg)(\?.*)?$/i.test(url)) {
+    return `<div class="w-full h-28 rounded-xl border border-cream bg-white flex items-center justify-center p-3"><audio src="${escapeHtml(url)}" controls preload="metadata" class="w-full"></audio></div>`;
   }
   if (/drive\.google\.com|\.pdf(\?.*)?$/i.test(url) || /pdf/i.test(file?.mime_type || "")) {
     return `<iframe title="${escapeHtml(title)} preview" src="${escapeHtml(previewUrl)}" class="w-full h-28 rounded-xl border border-cream bg-white" loading="lazy"></iframe>`;
@@ -840,7 +886,12 @@ function renderStudentPortalMaterialForm() {
         </label>
         <label class="block">
           <span class="text-xs uppercase tracking-wider text-warmgray font-medium">URL</span>
-          <input name="external_url" type="url" placeholder="Headshot, resume, reel, or Google Drive link" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" required />
+          <input name="external_url" type="url" placeholder="Headshot, resume, reel, or Google Drive link" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+        </label>
+        <label class="block">
+          <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Upload</span>
+          <input name="material_upload" type="file" accept="application/pdf,image/*,video/*,audio/*,.doc,.docx,.txt,.rtf" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+          <span class="block text-xs text-warmgray mt-1">Upload directly for smaller files up to 4.5 MB, or paste a Drive, Vimeo, YouTube, Dropbox, or iCloud link.</span>
         </label>
         <label class="block">
           <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Notes for coach</span>
@@ -852,16 +903,49 @@ function renderStudentPortalMaterialForm() {
   `;
 }
 
-function submitStudentPortalMaterial(event) {
+function readStudentPortalUploadFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file) {
+      resolve(null);
+      return;
+    }
+    if (file.size > 4.5 * 1024 * 1024) {
+      reject(new Error("Direct uploads must be 4.5 MB or smaller. Use a share link for larger files."));
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => resolve({
+      name: file.name,
+      mime_type: file.type,
+      data_url: String(reader.result || "")
+    });
+    reader.onerror = () => reject(new Error("Unable to read upload."));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function submitStudentPortalMaterial(event) {
   event.preventDefault();
   const form = event.currentTarget;
-  submitStudentPortalMutation("submit_public_material", {
-    title: form.elements.title.value,
-    category: form.elements.category.value,
-    external_url: form.elements.external_url.value,
-    notes: form.elements.notes.value,
-    source_type: "LINK"
-  }, "Material submitted for public page review.");
+  try {
+    const upload = await readStudentPortalUploadFile(form.elements.material_upload?.files?.[0] || null);
+    if (!upload && !String(form.elements.external_url.value || "").trim()) {
+      throw new Error("Upload a file or paste a share link.");
+    }
+    submitStudentPortalMutation("submit_public_material", {
+      title: form.elements.title.value,
+      category: form.elements.category.value,
+      external_url: form.elements.external_url.value,
+      file_name: upload ? upload.name : "",
+      file_data_url: upload ? upload.data_url : "",
+      mime_type: upload ? upload.mime_type : "",
+      notes: form.elements.notes.value,
+      source_type: upload ? "UPLOAD" : "LINK"
+    }, "Material submitted for public page review.");
+  } catch (error) {
+    setStudentPortalMessage(error.message || "Unable to submit material.", "error");
+    renderStudentPortalDashboard(studentPortalState.identity, studentPortalState.data);
+  }
 }
 
 function submitStudentPortalPublicProfile(event) {
