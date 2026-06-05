@@ -1119,6 +1119,12 @@ async function createPortalMaterial(snapshot, identity, body) {
     uploaded_at: now
   };
   snapshot.files.push(material);
+  try {
+    await notifyCoachOfActorMaterial(identity, material);
+    material.coach_notified_at = new Date().toISOString();
+  } catch (error) {
+    console.warn("Actor material saved, but coach notification failed.", error);
+  }
   return material;
 }
 
@@ -1299,6 +1305,24 @@ function buildReaderRequestEmail(identity, request) {
   ].filter(Boolean).join("\n");
 }
 
+function buildActorMaterialEmail(identity, material) {
+  const materialUrl = material.external_url || material.file_url || "";
+  return [
+    `Actor page material submitted by ${identity.student_name || material.student_id}`,
+    "",
+    `Student: ${identity.student_name || material.student_id}`,
+    `Email: ${identity.email || ""}`,
+    `Title: ${material.title || material.file_name || "Student Material"}`,
+    `Category: ${material.category || "Public Page"}`,
+    `Kind: ${material.material_kind || "DOCUMENT"}`,
+    `Status: ${material.public_page_status || "PENDING_REVIEW"}`,
+    material.file_name ? `File: ${material.file_name}` : "",
+    materialUrl ? `Link: ${materialUrl}` : "",
+    "",
+    material.notes ? `Notes:\n${material.notes}` : "No notes."
+  ].filter(Boolean).join("\n");
+}
+
 async function notifyCoachOfReaderRequest(identity, request) {
   const accessToken = await refreshGoogleAccessToken();
   const to = getGoogleAccountEmail();
@@ -1307,6 +1331,30 @@ async function notifyCoachOfReaderRequest(identity, request) {
     to,
     subject,
     text: buildReaderRequestEmail(identity, request)
+  });
+  const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ raw })
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(payload.error && payload.error.message ? payload.error.message : "Gmail notification failed.");
+  }
+  return payload;
+}
+
+async function notifyCoachOfActorMaterial(identity, material) {
+  const accessToken = await refreshGoogleAccessToken();
+  const to = getGoogleAccountEmail();
+  const subject = `Actor material pending review: ${identity.student_name || material.student_id}`;
+  const raw = encodeGmailMessage({
+    to,
+    subject,
+    text: buildActorMaterialEmail(identity, material)
   });
   const response = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
     method: "POST",
@@ -1561,7 +1609,7 @@ exports.handler = async function (event) {
       }
       if (action === "request_reader") {
         return await handlePortalMutation(event, action, async (snapshot, identity, body) => {
-          const request = createReaderRequest(snapshot, identity, body);
+          const request = await createReaderRequest(snapshot, identity, body);
           try {
             await notifyCoachOfReaderRequest(identity, request);
             request.coach_notified_at = new Date().toISOString();

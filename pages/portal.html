@@ -816,7 +816,7 @@
       var readerOpen = openReaderRequests(data);
       var currentCount = currentMaterials(data).length + (data.currentScript ? 1 : 0);
       var tabs = ["overview", "script", "materials", "lessons", "homework", "payments", "contact"];
-      if (actorToolsRelevant(data)) tabs.push("profile");
+      if (actorToolsRelevant(data)) tabs.push("profile", "submissions");
       document.getElementById("portal-brand").textContent = studentPortalLabel();
       document.getElementById("auth-panel").classList.add("hidden");
       document.getElementById("workspace").classList.remove("hidden");
@@ -829,7 +829,7 @@
             <p class="muted">${escapeHtml(studentWelcomeMessage())}</p>
             <div class="portal-nav" aria-label="Student workspace sections">
               ${tabs.map(function (tab) {
-                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package", profile: "Actor Page", contact: "Contact" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
+                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package", profile: "Actor Page", submissions: "Public Materials", contact: "Contact" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
                 return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + label + "</button>";
               }).join("")}
             </div>

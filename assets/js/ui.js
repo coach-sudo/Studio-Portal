@@ -9,6 +9,7 @@ let currentLessonsStatusFilter = "all";
 let currentLessonsStudentFilter = "all";
 let currentLessonsSearchQuery = "";
 let currentLessonsDateRangeFilter = "all";
+let currentLessonsView = "calendar";
 let currentScheduleView = "calendar";
 let currentScheduleCalendarMode = "month";
 let currentScheduleTimingFilter = "upcoming";
@@ -5864,7 +5865,7 @@ function renderActorLifecyclePanel(studentId) {
 
   if (actionsEl) {
     actionsEl.innerHTML = `
-      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="ensureActorProfileForStudent('${studentId}')">Create / Edit</button>
+      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openActorProfileSetupForStudent('${studentId}')">Create / Edit</button>
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${studentId}')">Review Materials</button>
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openSelectedStudentPublicPage()">Preview</button>
       <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="copySelectedStudentPublicLink()">Copy Link</button>
@@ -7139,10 +7140,29 @@ function ensureActorProfileForStudent(studentId) {
   return profile;
 }
 
+function openActorProfileSetupForStudent(studentId) {
+  const profile = ensureActorProfileForStudent(studentId);
+  selectedStudentId = studentId;
+  navigateTo("profile");
+  setTimeout(() => {
+    document.getElementById("profile-actor-page-section")?.setAttribute("open", "open");
+    document.getElementById("profile-actor-page-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, 0);
+  notifyUser({
+    title: profile ? "Actor Page Ready" : "Actor Page",
+    message: profile ? "The actor page workspace is open. Use Edit Student for eligibility and review public materials before sharing." : "Unable to create an actor profile for this student.",
+    tone: profile ? "success" : "error",
+    source: "public"
+  });
+  return profile;
+}
+
 function openStudentPublicMaterials(studentId) {
   selectedStudentId = studentId;
   navigateTo("profile");
   setTimeout(() => {
+    document.getElementById("profile-actor-page-section")?.setAttribute("open", "open");
+    document.getElementById("profile-actor-page-section")?.scrollIntoView({ behavior: "smooth", block: "start" });
     const tabButton = document.querySelector("[data-profile-tab='materials']");
     if (tabButton) tabButton.click();
   }, 0);
@@ -10049,22 +10069,37 @@ function getLessonsFilterPills() {
 
 function setLessonsStatusFilter(value) {
   currentLessonsStatusFilter = value || "all";
-  renderLessonsRows();
+  if (currentLessonsView === "table") renderLessonsRows();
+  else renderLessonsPage();
 }
 
 function setLessonsStudentFilter(value) {
   currentLessonsStudentFilter = value || "all";
-  renderLessonsRows();
+  if (currentLessonsView === "table") renderLessonsRows();
+  else renderLessonsPage();
 }
 
 function setLessonsSearchQuery(value) {
   currentLessonsSearchQuery = String(value || "").trimStart();
-  renderLessonsRows();
+  if (currentLessonsView === "table") renderLessonsRows();
+  else renderLessonsPage();
 }
 
 function setLessonsDateRangeFilter(value) {
   currentLessonsDateRangeFilter = value || "all";
-  renderLessonsRows();
+  if (currentLessonsView === "table") renderLessonsRows();
+  else renderLessonsPage();
+}
+
+function setLessonsView(view) {
+  currentLessonsView = view === "table" ? "table" : "calendar";
+  renderLessonsPage();
+}
+
+function setLessonsCalendarMode(mode) {
+  currentScheduleCalendarMode = ["day", "week", "month"].includes(mode) ? mode : "month";
+  currentLessonsView = "calendar";
+  renderLessonsPage();
 }
 
 function viewStudentProfileFromLesson(studentId) {
@@ -10170,7 +10205,7 @@ function renderNotesQueueResults() {
                   <tr>
                     <td colspan="8" class="px-5 py-12 text-center">
                       <div class="page-empty-state flex flex-col items-center justify-center text-warmgray">
-                        <i data-lucide="notebook-tabs" class="w-8 h-8 mb-3 opacity-50"></i>
+                        <i data-lucide="file-text" class="w-8 h-8 mb-3 opacity-50"></i>
                         <p class="text-sm font-medium">No note follow-up in this view</p>
                         <p class="text-xs mt-1">Try changing your filters, or use No Notes when a written note is not needed.</p>
                       </div>
@@ -10873,33 +10908,57 @@ function renderLessonsPage() {
   const summary = getLessonsPageSummaryRows();
   const compact = isCompactView("lessons");
   const filterPills = getLessonsFilterPills();
+  const importedRows = getScheduleIntakeRows();
+  const confirmedRows = importedRows.filter((row) => row.intake_review_state === "CONFIRMED");
+  const actionRows = importedRows.filter((row) => row.action_required);
+  const calendarRows = getScheduleCalendarRows();
+  const lastSyncSummary = calendarSyncState.last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0, fetched: 0, source_mode: "", first_start: "", last_start: "", next_start: "", sample_titles: [], platform_summary: [] };
+  const gmailSyncSummary = calendarSyncState.gmail_last_sync_summary || { imported: 0, updated: 0, flagged: 0, skipped: 0, fetched: 0, source_mode: "", first_start: "", last_start: "", next_start: "", sample_titles: [], platform_summary: [] };
+  const lessonResultsMarkup = currentLessonsView === "calendar"
+    ? (
+      currentScheduleCalendarMode === "day"
+        ? renderScheduleDayView()
+        : currentScheduleCalendarMode === "week"
+          ? renderScheduleWeekView()
+          : renderScheduleCalendarView()
+    )
+    : `
+      ${lessonResultsMarkup}
+    `;
 
   root.innerHTML = `
     <div class="lessons-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
           <h2 class="font-display text-2xl font-bold text-warmblack">Lessons</h2>
-          <p class="text-sm text-warmgray mt-0.5">All lesson records across students</p>
+          <p class="text-sm text-warmgray mt-0.5">The studio lesson board: calendar, table, and imported booking review in one place.</p>
           <div class="page-compact-summary mt-3">
             <span class="page-compact-summary-pill">Upcoming · ${summary.upcoming}</span>
             <span class="page-compact-summary-pill">Completed this week · ${summary.completedThisWeek}</span>
             <span class="page-compact-summary-pill">Needs intake review · ${summary.intakeReview}</span>
+            <span class="page-compact-summary-pill">Confirmed imports · ${confirmedRows.length}</span>
           </div>
         </div>
 
-        <button
-          id="add-lesson-page-btn"
-          class="self-start lg:self-auto px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold flex items-center gap-2 card-hover"
-        >
-          <i data-lucide="plus" class="w-4 h-4"></i>
-          Add Lesson
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <div class="inline-flex rounded-xl border border-cream bg-white overflow-hidden">
+            <button type="button" onclick="setLessonsView('calendar')" class="px-4 py-2.5 text-sm font-medium ${currentLessonsView === "calendar" ? "bg-parchment text-warmblack" : "text-warmgray"}">Calendar</button>
+            <button type="button" onclick="setLessonsView('table')" class="px-4 py-2.5 text-sm font-medium ${currentLessonsView === "table" ? "bg-parchment text-warmblack" : "text-warmgray"}">Table</button>
+          </div>
+          <button
+            id="add-lesson-page-btn"
+            class="self-start lg:self-auto px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold flex items-center gap-2 card-hover"
+          >
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Lesson
+          </button>
+        </div>
       </header>
 
       <div class="page-stats-strip mb-4 fade-in" style="animation-delay:0.03s">
         <div class="page-stat-chip page-stat-chip--compact">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Upcoming</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">${summary.upcoming}</p>
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">${currentLessonsView === "calendar" ? "Calendar Lessons" : "Upcoming"}</p>
+          <p class="text-lg font-semibold text-warmblack mt-1">${currentLessonsView === "calendar" ? calendarRows.length : summary.upcoming}</p>
         </div>
         <div class="page-stat-chip page-stat-chip--compact page-stat-chip--good">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Completed This Week</p>
@@ -10912,10 +10971,35 @@ function renderLessonsPage() {
         <div class="page-stat-chip page-stat-chip--compact">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Imported Lessons</p>
           <p class="text-lg font-semibold text-warmblack mt-1">${summary.imported}</p>
+          <p class="text-xs text-warmgray mt-1">${confirmedRows.length} confirmed / ${actionRows.length} need review</p>
         </div>
       </div>
 
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4 mb-5 fade-in" style="animation-delay:0.04s">
+        ${getSyncProofMarkup("Calendar", lastSyncSummary, "No live Calendar sync has run yet. Run sync from Settings or Today, then confirm imported lessons here.")}
+        ${getSyncProofMarkup("Gmail", gmailSyncSummary, "No live Gmail assist sync has run yet. Gmail creates supplemental review items and never silently doubles trusted lessons.")}
+      </div>
+
       <div class="lessons-filter-panel page-toolbar-sticky bg-white rounded-2xl border border-cream p-4 mb-5 fade-in" style="animation-delay:0.05s">
+        ${
+          currentLessonsView === "calendar"
+            ? `
+              <div class="mb-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Calendar View</p>
+                  <p class="text-sm text-warmgray mt-1">This is the all-lessons calendar. Imported Calendar/Gmail items stay review-first until confirmed.</p>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  <button type="button" class="px-3 py-2 rounded-xl ${currentScheduleCalendarMode === "day" ? "bg-parchment border border-cream text-warmblack" : "bg-white border border-cream text-warmgray"} text-sm font-medium" onclick="setLessonsCalendarMode('day')">Day</button>
+                  <button type="button" class="px-3 py-2 rounded-xl ${currentScheduleCalendarMode === "week" ? "bg-parchment border border-cream text-warmblack" : "bg-white border border-cream text-warmgray"} text-sm font-medium" onclick="setLessonsCalendarMode('week')">Week</button>
+                  <button type="button" class="px-3 py-2 rounded-xl ${currentScheduleCalendarMode === "month" ? "bg-parchment border border-cream text-warmblack" : "bg-white border border-cream text-warmgray"} text-sm font-medium" onclick="setLessonsCalendarMode('month')">Month</button>
+                  <button type="button" class="px-3 py-2 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="goToScheduleToday(); currentLessonsView='calendar'; renderLessonsPage();">Today</button>
+                  <button type="button" class="px-3 py-2 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="currentScheduleView='intake'; navigateTo('schedule')">Review Intake</button>
+                </div>
+              </div>
+            `
+            : ""
+        }
         <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-12 gap-4">
           <div class="xl:col-span-4 relative">
             <i data-lucide="search" class="w-4 h-4 text-warmgray absolute left-3 top-1/2 -translate-y-1/2"></i>
@@ -11015,7 +11099,9 @@ function renderLessonsPage() {
     addLessonPageBtn.onclick = () => openLessonModal("create");
   }
 
-  renderLessonsRows();
+  if (currentLessonsView === "table") {
+    renderLessonsRows();
+  }
   lucide.createIcons();
 }
 
@@ -14091,6 +14177,10 @@ function renderSettingsPage() {
                   </div>
                 </div>
               `).join("")}
+            </div>
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3 mt-4">
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">How to verify imports</p>
+              <p class="text-sm text-warmblack mt-1">Open Lessons, use Calendar to see every lesson, then use Review Intake to confirm Calendar/Gmail pulls. Fetched, imported, flagged, skipped, confirmed, and external-change counts stay visible before imported data becomes trusted workflow data.</p>
             </div>
           </section>
 
