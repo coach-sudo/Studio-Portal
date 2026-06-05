@@ -5727,7 +5727,7 @@ function getProfileCommandModel(studentId) {
     nextAction = {
       label: "Send Reader Blast",
       detail: `${work.readerRequests.length} reader request${work.readerRequests.length === 1 ? "" : "s"} open.`,
-      onclick: `sendReaderBlast('${work.readerRequests[0].request_id}')`
+      onclick: `sendReaderBlast('${work.readerRequests[0].reader_request_id}')`
     };
   } else if (!accounts.length) {
     nextAction = {
@@ -6099,7 +6099,7 @@ function renderProfileCurrentWorkTab(studentId) {
                   <p class="text-sm font-semibold text-warmblack">${escapeHtml(getReaderRequestLabel(request))}</p>
                   <p class="text-xs text-warmgray mt-1">${escapeHtml(request.notes || request.instructions_url || "Ready for reader coordination.")}</p>
                 </div>
-                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover shrink-0" onclick="sendReaderBlast('${request.request_id}')">Send Blast</button>
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover shrink-0" onclick="sendReaderBlast('${request.reader_request_id}')">Send Blast</button>
               </div>
             </div>
           `).join("") : `<div class="rounded-xl border border-dashed border-cream bg-parchment px-4 py-3 text-sm text-warmgray">No open reader requests.</div>`}
@@ -12883,8 +12883,13 @@ function completeTodoTask(taskId) {
   completeTodoItem(taskId);
   if (currentPage === "todo") {
     renderTodoPage();
+  } else if (typeof renderCurrentPage === "function") {
+    renderCurrentPage();
+  } else if (typeof renderOperationsPage === "function") {
+    renderOperationsPage();
   } else {
-    renderDashboard();
+    const root = document.getElementById("page-root");
+    if (root) root.innerHTML = "";
   }
 }
 
@@ -12892,8 +12897,13 @@ function deleteTodoTask(taskId) {
   deleteTodoItem(taskId);
   if (currentPage === "todo") {
     renderTodoPage();
+  } else if (typeof renderCurrentPage === "function") {
+    renderCurrentPage();
+  } else if (typeof renderOperationsPage === "function") {
+    renderOperationsPage();
   } else {
-    renderDashboard();
+    const root = document.getElementById("page-root");
+    if (root) root.innerHTML = "";
   }
 }
 
@@ -13572,7 +13582,155 @@ function clearStudioLogo() {
 }
 
 function renderTodayPage() {
-  renderTodoPage();
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  const now = getReferenceNow();
+  const todayStart = startOfLocalDay(now);
+  const todayEnd = endOfLocalDay(now);
+  const lessonsToday = getLessonRecords()
+    .filter((lesson) => {
+      const start = new Date(lesson.scheduled_start || 0);
+      return !Number.isNaN(start.getTime()) && start >= todayStart && start <= todayEnd;
+    })
+    .sort((a, b) => new Date(a.scheduled_start || 0).getTime() - new Date(b.scheduled_start || 0).getTime());
+  const nextLesson = lessonsToday.find((lesson) => {
+    const status = getEffectiveLessonStatus(lesson);
+    const start = new Date(lesson.scheduled_start || 0);
+    return start >= now && !["CANCELLED", "COMPLETED"].includes(status);
+  }) || null;
+  const dailyTasks = getDailyTodoItems();
+  const prepTasks = dailyTasks.filter((task) => ["prep", "lessons", "homework"].includes(String(task.source || "").toLowerCase()));
+  const followUpTasks = dailyTasks.filter((task) => !["prep", "lessons", "homework"].includes(String(task.source || "").toLowerCase()));
+  const intakeRows = getScheduleIntakeRows().filter((row) => row.action_required).slice(0, 4);
+  const publicMaterialRows = getPublicMaterialReviewRows().slice(0, 4);
+  const readerRows = getActiveReaderRequests().slice(0, 4);
+  const openComments = getOpenLessonComments().slice(0, 4);
+
+  const miniTaskCard = (task) => `
+    <article class="rounded-xl border border-cream bg-parchment/70 p-4">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2 mb-2">
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${task.priority >= 5 ? "bg-burgundy/10 text-burgundy" : task.priority >= 4 ? "bg-gold/10 text-gold" : "bg-white border border-cream text-warmgray"}">${task.priority >= 5 ? "Urgent" : task.priority >= 4 ? "Priority" : "Queued"}</span>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-white border border-cream text-warmgray">${escapeHtml(getTodoSourceLabel(task.source))}</span>
+          </div>
+          <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
+          <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "Follow up when you are ready.")}</p>
+        </div>
+        <div class="flex flex-wrap gap-2 shrink-0">
+          ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
+          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Done</button>
+        </div>
+      </div>
+    </article>
+  `;
+
+  const lessonCard = (lesson) => {
+    const student = getSchemaStudentById(lesson.student_id);
+    const studentName = student?.full_name || lesson.external_contact_name || "Unmatched Student";
+    const status = getEffectiveLessonStatus(lesson);
+    const files = getLessonFiles(lesson.lesson_id).slice(0, 2);
+    const note = getLessonNoteByLessonId(lesson.lesson_id);
+    return `
+      <article class="rounded-2xl border border-cream bg-white p-5">
+        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          <div class="min-w-0">
+            <p class="text-xs uppercase tracking-wider text-warmgray">${escapeHtml(formatLessonTimeRange(lesson.scheduled_start, lesson.scheduled_end))}</p>
+            <h3 class="font-display text-xl font-semibold text-warmblack mt-1">${escapeHtml(studentName)}</h3>
+            <p class="text-sm text-warmgray mt-1">${escapeHtml(lesson.topic || lesson.lesson_type || "Lesson")}</p>
+            <div class="flex flex-wrap gap-2 mt-3">
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${formatLessonStatusBadge(status)}">${escapeHtml(getLessonStatusLabel(status))}</span>
+              <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-parchment border border-cream text-warmgray">${escapeHtml(getLessonSourceLabel(lesson.source || "manual"))}</span>
+              ${lesson.source !== "manual" && isLessonIntakeActionRequired(lesson) ? `<span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-burgundy/10 text-burgundy">Review import</span>` : ""}
+            </div>
+          </div>
+          <div class="flex flex-wrap gap-2 shrink-0">
+            <button type="button" class="px-3 py-2 rounded-lg gold-gradient text-warmblack text-xs font-semibold" onclick="openLessonDetailModal('${lesson.lesson_id}')">Open Lesson</button>
+            ${lesson.student_id ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="viewStudentProfileFromLesson('${lesson.student_id}')">Student Hub</button>` : `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openScheduleStudentMatchModal('${lesson.lesson_id}')">Match Student</button>`}
+          </div>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+          <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+            <p class="text-xs uppercase tracking-wider text-warmgray">Materials</p>
+            <p class="text-sm text-warmblack mt-1">${files.length ? files.map((file) => escapeHtml(file.title || file.file_name || "Material")).join(" / ") : "No lesson files attached yet."}</p>
+          </div>
+          <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+            <p class="text-xs uppercase tracking-wider text-warmgray">Notes</p>
+            <p class="text-sm text-warmblack mt-1">${note ? escapeHtml(`${normalizeNoteStatus(note.status)} / ${note.title || "Untitled note"}`) : "No note drafted yet."}</p>
+          </div>
+        </div>
+      </article>
+    `;
+  };
+
+  root.innerHTML = `
+    <div class="p-4 sm:p-6 xl:p-8 w-full dashboard-shell ops-shell">
+      <header class="ops-hero fade-in">
+        <div class="min-w-0">
+          <p class="ops-eyebrow">Today</p>
+          <h2 class="font-display text-3xl font-bold text-warmblack">Today's studio flow</h2>
+          <div class="ops-hero-actions">
+            <button type="button" class="button-like is-primary" onclick="goToScheduleToday(); currentLessonsView='calendar'; navigateTo('lessons')"><i data-lucide="calendar-days" class="w-4 h-4"></i>All Lessons Calendar</button>
+            <button type="button" class="button-like" onclick="navigateTo('notes')"><i data-lucide="file-text" class="w-4 h-4"></i>Notes Queue</button>
+            <button type="button" class="button-like" onclick="refreshPortalReviewQueue()"><i data-lucide="refresh-cw" class="w-4 h-4"></i>Check Submissions</button>
+          </div>
+        </div>
+        <div class="ops-score is-neutral">
+          <svg viewBox="0 0 120 120" role="img" aria-label="${lessonsToday.length} lessons today">
+            <circle cx="60" cy="60" r="50" class="ops-score-track"></circle>
+            <circle cx="60" cy="60" r="50" class="ops-score-fill" style="stroke-dasharray:${Math.max(18, Math.min(100, lessonsToday.length * 18)) * 3.14} 314"></circle>
+          </svg>
+          <div class="ops-score-label"><strong>${lessonsToday.length}</strong><span>lessons</span></div>
+        </div>
+      </header>
+
+      <div class="page-stats-strip mb-5 fade-in">
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Next Lesson</p><p class="text-lg font-semibold text-warmblack mt-1">${escapeHtml(nextLesson ? formatLessonTime(nextLesson.scheduled_start) : "Clear")}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Prep</p><p class="text-lg font-semibold text-warmblack mt-1">${prepTasks.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Follow Up</p><p class="text-lg font-semibold text-warmblack mt-1">${followUpTasks.length + openComments.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Actor Review</p><p class="text-lg font-semibold text-warmblack mt-1">${publicMaterialRows.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Reader</p><p class="text-lg font-semibold text-warmblack mt-1">${readerRows.length}</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_390px] gap-5">
+        <section class="space-y-4 fade-in">
+          <div class="ops-board-head px-1">
+            <div><p class="ops-eyebrow">Teach</p><h3>Lesson Flow</h3></div>
+            <span class="ops-count is-neutral">${lessonsToday.length}</span>
+          </div>
+          ${lessonsToday.length ? lessonsToday.map(lessonCard).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No lessons on the calendar today</p><p class="text-xs text-warmgray mt-1">Use the full Lessons calendar to review the week or add a lesson.</p><button type="button" class="mt-4 px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('lessons')">Open Lessons</button></div>`}
+        </section>
+
+        <aside class="space-y-4 fade-in">
+          <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
+              <h3 class="font-display text-lg font-semibold">Prep</h3>
+              <p class="text-xs text-warmgray mt-1">Current work, homework, and lesson reminders.</p>
+            </div>
+            <div class="p-4 space-y-3">${prepTasks.length ? prepTasks.slice(0, 5).map(miniTaskCard).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">Prep is clear</p></div>`}</div>
+          </section>
+
+          <section class="dashboard-panel bg-white rounded-2xl border border-cream">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
+              <h3 class="font-display text-lg font-semibold">Follow Up</h3>
+              <p class="text-xs text-warmgray mt-1">Submissions, import review, reader requests, and notes signals.</p>
+            </div>
+            <div class="p-4 space-y-3">
+              ${intakeRows.map((row) => `<article class="rounded-xl border border-cream bg-parchment p-4"><p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name || row.external_contact_name || "Imported lesson")}</p><p class="text-xs text-warmgray mt-1">${escapeHtml(row.recommended_action_label || row.topic || "Needs intake review")}</p><button type="button" class="mt-3 px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${row.lesson_id}')">Review Import</button></article>`).join("")}
+              ${publicMaterialRows.map((row) => `<article class="rounded-xl border border-cream bg-parchment p-4"><p class="text-sm font-semibold text-warmblack">${escapeHtml(getMaterialDisplayName(row.file))}</p><p class="text-xs text-warmgray mt-1">${escapeHtml(row.student_name || "Actor")} / pending public review</p><button type="button" class="mt-3 px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openStudentPublicMaterials('${row.file.student_id}')">Review Material</button></article>`).join("")}
+              ${readerRows.map((request) => `<article class="rounded-xl border border-cream bg-parchment p-4"><p class="text-sm font-semibold text-warmblack">${escapeHtml(request.student_name || getStudentNameById(request.student_id))}</p><p class="text-xs text-warmgray mt-1">${escapeHtml(getReaderRequestLabel(request))}</p><button type="button" class="mt-3 px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="sendReaderBlast('${request.reader_request_id}')">Send Blast</button></article>`).join("")}
+              ${openComments.map((comment) => `<article class="rounded-xl border border-cream bg-parchment p-4"><p class="text-sm font-semibold text-warmblack">${escapeHtml(getStudentNameById(comment.student_id))}</p><p class="text-xs text-warmgray mt-1">${escapeHtml(getLessonCommentLabel(comment))}</p><button type="button" class="mt-3 px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${comment.lesson_id}')">Open Comment</button></article>`).join("")}
+              ${followUpTasks.slice(0, 4).map(miniTaskCard).join("")}
+              ${!(intakeRows.length || publicMaterialRows.length || readerRows.length || openComments.length || followUpTasks.length) ? `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">Follow-up is clear</p></div>` : ""}
+            </div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
 }
 
 function renderMaterialsPage() {
