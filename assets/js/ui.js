@@ -5622,6 +5622,268 @@ function getVisibleHomeworkForProfile(studentId) {
   return [...active, ...recentlyDone];
 }
 
+function getProfileUpcomingLesson(studentId) {
+  const nowTime = APP_NOW.getTime();
+  return getLessonsByStudentId(studentId)
+    .filter((lesson) => {
+      const status = String(getEffectiveLessonStatus(lesson) || lesson.lesson_status || "").toUpperCase();
+      const startTime = new Date(lesson.scheduled_start || 0).getTime();
+      return Number.isFinite(startTime) && startTime >= nowTime && !["CANCELLED", "COMPLETED"].includes(status);
+    })
+    .sort((a, b) => new Date(a.scheduled_start || 0).getTime() - new Date(b.scheduled_start || 0).getTime())[0] || null;
+}
+
+function getProfileLastCompletedLesson(studentId) {
+  return getLessonsByStudentId(studentId)
+    .filter((lesson) => {
+      const status = String(getEffectiveLessonStatus(lesson) || lesson.lesson_status || "").toUpperCase();
+      return status === "COMPLETED" || Boolean(lesson.actual_completion_date);
+    })[0] || null;
+}
+
+function getProfileCurrentWorkModel(studentId) {
+  const homework = getVisibleHomeworkForProfile(studentId);
+  const activeHomework = homework.filter((item) => String(item.status || "").toUpperCase() !== "DONE");
+  const activeRows = getMaterialRowsByStudentId(studentId)
+    .filter((row) => String(row.status || "").toLowerCase() !== "vaulted");
+  const currentMaterials = activeRows.filter((row) => {
+    const blob = `${row.category || ""} ${row.scope || ""} ${row.display_name || ""} ${row.notes || ""}`.toLowerCase();
+    return normalizeMaterialScope(row.scope) !== "ACTOR_MATERIAL" &&
+      (blob.includes("current") || blob.includes("script") || blob.includes("sides") || blob.includes("homework") || normalizeMaterialScope(row.scope) === "HOMEWORK_MATERIAL");
+  });
+  const readerRequests = getActiveReaderRequests().filter((request) => request.student_id === studentId);
+  return {
+    nextLesson: getProfileUpcomingLesson(studentId),
+    lastCompletedLesson: getProfileLastCompletedLesson(studentId),
+    homework,
+    activeHomework,
+    currentMaterials,
+    readerRequests
+  };
+}
+
+function getActorLifecycleStatus(studentId) {
+  const profile = getActorProfileByStudentId(studentId);
+  const blocked = isStudentPublicPageBlockedByLessonPolicy(studentId);
+  if (blocked) return "Warning";
+  if (!profile) return "Draft";
+  const rawStatus = String(profile.status || "Draft").trim();
+  if (rawStatus.toLowerCase() === "active") return "Live";
+  if (rawStatus.toLowerCase() === "archived") return "Archived";
+  return rawStatus || "Draft";
+}
+
+function getActorReadinessModel(studentId) {
+  const student = getSchemaStudentById(studentId);
+  const profile = getActorProfileByStudentId(studentId);
+  const rows = getMaterialRowsByStudentId(studentId)
+    .filter((row) => normalizeMaterialScope(row.scope) === "ACTOR_MATERIAL" && String(row.status || "").toLowerCase() !== "vaulted");
+  const approvedRows = rows.filter((row) => row.public_page_status === "APPROVED");
+  const pendingRows = rows.filter((row) => row.public_page_status === "PENDING_REVIEW");
+  const hasByText = (pattern) => rows.some((row) => pattern.test(`${row.category || ""} ${row.display_name || ""} ${row.file_name || ""} ${row.title || ""}`));
+  const checks = [
+    { key: "bio", label: "Bio", done: Boolean(String(profile?.bio || "").trim()) },
+    { key: "contact", label: "Contact", done: Boolean(String(student?.email || student?.preferred_contact_email || student?.guardian_email || "").trim()) },
+    { key: "headshot", label: "Headshot", done: hasByText(/headshot|photo|image/i) || Boolean(profile?.headshot_file_id) },
+    { key: "resume", label: "Resume", done: hasByText(/resume/i) },
+    { key: "reel", label: "Reel", done: hasByText(/reel|video/i) }
+  ];
+  return {
+    checks,
+    missing: checks.filter((check) => !check.done).map((check) => check.label),
+    approvedRows,
+    pendingRows,
+    rows
+  };
+}
+
+function getProfileCommandModel(studentId) {
+  const student = getSchemaStudentById(studentId);
+  const notes = getNotesByStudentId(studentId);
+  const work = getProfileCurrentWorkModel(studentId);
+  const accounts = getStudentAccountsForStudent(studentId);
+  const activeAccounts = accounts.filter((account) => String(account.status || "").toUpperCase() === "ACTIVE");
+  const invitedAccounts = accounts.filter((account) => String(account.status || "").toUpperCase() === "INVITED");
+  const files = getFilesByStudentId(studentId);
+  const pendingPublic = files.filter((file) => String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW");
+  const finance = buildFinanceSummary(studentId, student);
+  const latestNote = notes[0] || null;
+  const actorStatus = getActorLifecycleStatus(studentId);
+  const readiness = getActorReadinessModel(studentId);
+  let nextAction = {
+    label: "Add Lesson",
+    detail: "Start by scheduling or logging the next studio touchpoint.",
+    onclick: `openLessonModal('create', null, '${studentId}')`
+  };
+
+  if (pendingPublic.length) {
+    nextAction = {
+      label: "Review Submissions",
+      detail: `${pendingPublic.length} public material${pendingPublic.length === 1 ? "" : "s"} waiting for approval.`,
+      onclick: `openStudentPublicMaterials('${studentId}')`
+    };
+  } else if (work.readerRequests.length) {
+    nextAction = {
+      label: "Send Reader Blast",
+      detail: `${work.readerRequests.length} reader request${work.readerRequests.length === 1 ? "" : "s"} open.`,
+      onclick: `sendReaderBlast('${work.readerRequests[0].request_id}')`
+    };
+  } else if (!accounts.length) {
+    nextAction = {
+      label: "Invite Student",
+      detail: "Create the student workspace before sharing portal links.",
+      onclick: "createStudentAccountInviteFromProfile('STUDENT')"
+    };
+  } else if (invitedAccounts.length && !activeAccounts.length) {
+    nextAction = {
+      label: "Copy Login Link",
+      detail: "The invite exists; send the workspace link again if needed.",
+      onclick: "copyStudentPortalLoginLink()"
+    };
+  } else if (!work.currentMaterials.length && !work.activeHomework.length) {
+    nextAction = {
+      label: "Add Current Material",
+      detail: "Put the active script, sides, or prep in Current Work.",
+      onclick: `openMaterialModal('${studentId}')`
+    };
+  } else if (actorStatus === "Draft" || readiness.missing.length) {
+    nextAction = {
+      label: "Prepare Actor Page",
+      detail: readiness.missing.length ? `Missing ${readiness.missing.slice(0, 3).join(", ")}.` : "Actor profile is still in draft.",
+      onclick: `document.getElementById('profile-actor-page-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })`
+    };
+  }
+
+  return {
+    student,
+    work,
+    latestNote,
+    finance,
+    accounts,
+    activeAccounts,
+    invitedAccounts,
+    pendingPublic,
+    actorStatus,
+    readiness,
+    nextAction
+  };
+}
+
+function renderProfileCommandCenter(studentId) {
+  const container = document.getElementById("profile-command-center");
+  if (!container) return;
+  const model = getProfileCommandModel(studentId);
+  const nextLessonLabel = model.work.nextLesson
+    ? formatLessonTimeRange(model.work.nextLesson.scheduled_start, model.work.nextLesson.scheduled_end || model.work.nextLesson.scheduled_start)
+    : "No upcoming lesson";
+  const latestNoteStatus = model.latestNote
+    ? `${normalizeNoteStatus(model.latestNote.status).toLowerCase()} / ${model.latestNote.title || "Untitled note"}`
+    : "No notes yet";
+  const accountLabel = model.activeAccounts.length
+    ? "Portal active"
+    : model.invitedAccounts.length
+      ? "Invite pending"
+      : "Needs invite";
+
+  container.innerHTML = `
+    <div class="profile-command-card profile-command-card--action">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Next Action</p>
+      <h4 class="font-display text-xl font-semibold text-warmblack mt-2">${escapeHtml(model.nextAction.label)}</h4>
+      <p class="text-sm text-warmgray mt-1">${escapeHtml(model.nextAction.detail)}</p>
+      <button type="button" class="mt-4 px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover" onclick="${model.nextAction.onclick}">
+        ${escapeHtml(model.nextAction.label)}
+      </button>
+    </div>
+    <div class="profile-command-card">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Teach</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${escapeHtml(nextLessonLabel)}</p>
+      <p class="text-xs text-warmgray mt-1">${escapeHtml(model.work.nextLesson?.topic || "Prepare the next room.")}</p>
+    </div>
+    <div class="profile-command-card">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Current Work</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${model.work.activeHomework.length} homework / ${model.work.currentMaterials.length} material${model.work.currentMaterials.length === 1 ? "" : "s"}</p>
+      <p class="text-xs text-warmgray mt-1">${model.work.readerRequests.length ? `${model.work.readerRequests.length} reader request open` : "No open reader requests"}</p>
+    </div>
+    <div class="profile-command-card">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Latest Note</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${escapeHtml(latestNoteStatus)}</p>
+      <p class="text-xs text-warmgray mt-1">Drafts remain private until published.</p>
+    </div>
+    <div class="profile-command-card">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Package / Account</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${escapeHtml(model.finance.subline || "No finance summary")}</p>
+      <p class="text-xs text-warmgray mt-1">${escapeHtml(accountLabel)}</p>
+    </div>
+    <div class="profile-command-card">
+      <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Actor Page</p>
+      <p class="text-sm font-semibold text-warmblack mt-2">${escapeHtml(model.actorStatus)}</p>
+      <p class="text-xs text-warmgray mt-1">${model.pendingPublic.length ? `${model.pendingPublic.length} pending submission${model.pendingPublic.length === 1 ? "" : "s"}` : `${model.readiness.approvedRows.length} approved public material${model.readiness.approvedRows.length === 1 ? "" : "s"}`}</p>
+    </div>
+  `;
+}
+
+function renderActorLifecyclePanel(studentId) {
+  const lifecycleEl = document.getElementById("profile-actor-lifecycle");
+  const readinessEl = document.getElementById("profile-actor-readiness");
+  const actionsEl = document.getElementById("profile-actor-actions");
+  const materialsEl = document.getElementById("profile-actor-materials");
+  if (!lifecycleEl && !readinessEl && !actionsEl && !materialsEl) return;
+
+  const status = getActorLifecycleStatus(studentId);
+  const readiness = getActorReadinessModel(studentId);
+  const statusOrder = ["Draft", "Live", "Warning", "Archived"];
+  const publicUrl = getPublicActorUrlForStudent(studentId);
+  const actorRows = readiness.rows.slice(0, 5);
+
+  if (lifecycleEl) {
+    lifecycleEl.innerHTML = `
+      <div class="actor-lifecycle" aria-label="Actor page lifecycle">
+        ${statusOrder.map((step) => `
+          <div class="actor-lifecycle-step ${step === status ? "is-current" : ""} ${step === "Warning" && status === "Warning" ? "is-warning" : ""}">
+            <span></span>
+            <p>${escapeHtml(step)}</p>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  }
+
+  if (readinessEl) {
+    readinessEl.innerHTML = `
+      <div class="grid grid-cols-2 gap-2">
+        ${readiness.checks.map((check) => `
+          <div class="rounded-xl border ${check.done ? "border-sage/20 bg-sage/5" : "border-gold/20 bg-gold/5"} px-3 py-2">
+            <p class="text-xs font-medium ${check.done ? "text-sage" : "text-gold"}">${check.done ? "Ready" : "Missing"}</p>
+            <p class="text-sm text-warmblack mt-0.5">${escapeHtml(check.label)}</p>
+          </div>
+        `).join("")}
+      </div>
+      <p class="text-xs text-warmgray mt-3">${readiness.pendingRows.length ? `${readiness.pendingRows.length} student submission${readiness.pendingRows.length === 1 ? "" : "s"} pending review.` : "No pending student submissions."}</p>
+    `;
+  }
+
+  if (actionsEl) {
+    actionsEl.innerHTML = `
+      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="ensureActorProfileForStudent('${studentId}')">Create / Edit</button>
+      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openStudentPublicMaterials('${studentId}')">Review Materials</button>
+      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openSelectedStudentPublicPage()">Preview</button>
+      <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="copySelectedStudentPublicLink()">Copy Link</button>
+      ${publicUrl ? `<p class="w-full text-[11px] text-warmgray wrap-anywhere">${escapeHtml(publicUrl)}</p>` : `<p class="w-full text-[11px] text-warmgray">Create an actor profile slug to generate the public URL.</p>`}
+    `;
+  }
+
+  if (materialsEl) {
+    materialsEl.innerHTML = actorRows.length
+      ? actorRows.map((row) => `
+        <div class="rounded-xl border border-cream bg-parchment px-3 py-2">
+          <p class="text-sm font-medium text-warmblack">${escapeHtml(row.display_name)}</p>
+          <p class="text-xs text-warmgray mt-0.5">${escapeHtml(row.category)} / ${escapeHtml(row.public_page_status_label)}</p>
+        </div>
+      `).join("")
+      : `<div class="rounded-xl border border-dashed border-cream bg-parchment px-3 py-3 text-sm text-warmgray">No actor materials connected yet.</div>`;
+  }
+}
+
 function upsertHomeworkItem({ homework_id, lesson_id, student_id, title, details, due_date, status }) {
   const cleanTitle = String(title || "").trim();
   const cleanDetails = String(details || "").trim();
@@ -5727,6 +5989,123 @@ function renderProfileHomeworkTab(studentId) {
   `;
 }
 
+function renderProfileCurrentWorkTab(studentId) {
+  const homeworkContainer = document.getElementById("profile-tab-homework");
+  if (!homeworkContainer) return;
+
+  const work = getProfileCurrentWorkModel(studentId);
+  const homeworkItems = work.homework;
+  const materialRows = work.currentMaterials.slice(0, 8);
+  const readerRequests = work.readerRequests;
+  const nextLesson = work.nextLesson;
+
+  homeworkContainer.innerHTML = `
+    <div class="space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+        <div>
+          <h4 class="font-display text-lg font-semibold text-warmblack">Current Work</h4>
+          <p class="text-sm text-warmgray mt-1">Active lesson prep, scripts, homework, and reader requests in one place.</p>
+        </div>
+        <button type="button" onclick="openMaterialModal('${studentId}')" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Material</button>
+      </div>
+
+      ${nextLesson ? `
+        <div class="rounded-2xl border border-gold/20 bg-gold/5 p-4">
+          <p class="text-xs uppercase tracking-wider text-gold font-medium">Next Lesson</p>
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mt-2">
+            <div>
+              <p class="text-sm font-semibold text-warmblack">${escapeHtml(nextLesson.topic || "Lesson")}</p>
+              <p class="text-xs text-warmgray mt-1">${escapeHtml(formatLessonTimeRange(nextLesson.scheduled_start, nextLesson.scheduled_end || nextLesson.scheduled_start))}</p>
+            </div>
+            <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="openLessonDetailModal('${nextLesson.lesson_id}')">Open Lesson</button>
+          </div>
+        </div>
+      ` : ""}
+
+      <div class="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <section class="rounded-2xl border border-cream bg-parchment p-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Homework / Practice</p>
+              <h5 class="font-semibold text-warmblack mt-1">Assigned focus</h5>
+            </div>
+            <span class="text-xs text-warmgray">${work.activeHomework.length} active</span>
+          </div>
+          <div class="space-y-3 max-h-[420px] overflow-y-auto pr-1">
+            ${homeworkItems.length ? homeworkItems.map((hw) => {
+              const lesson = getSchemaLessonById(hw.lesson_id);
+              const hwMeta = getHomeworkStatusClasses(hw);
+              return `
+                <div class="flex items-start gap-3 p-4 rounded-xl border border-cream bg-white">
+                  <input type="checkbox" class="checkbox-custom mt-0.5" ${hw.status === "DONE" ? "checked" : ""} onchange="toggleHomeworkStatusFromProfile('${hw.homework_id}', this.checked)" />
+                  <div class="flex-1 min-w-0">
+                    <div class="flex items-center justify-between gap-4">
+                      <p class="text-sm font-medium ${hw.status === "DONE" ? "line-through text-warmgray" : isHomeworkOverdue(hw) ? "text-burgundy" : "text-warmblack"}">${escapeHtml(hw.title)}</p>
+                      <span class="text-[11px] px-2 py-0.5 rounded-full ${hwMeta.badge}">${hwMeta.label}</span>
+                    </div>
+                    ${hw.details ? `<p class="text-xs text-warmgray mt-1">${escapeHtml(hw.details)}</p>` : ""}
+                    <div class="flex items-center justify-between mt-2 gap-3">
+                      <p class="text-xs text-warmgray">${escapeHtml(lesson?.topic || "Lesson")} / Due ${escapeHtml(formatDueDate(hw.due_date))}</p>
+                      <button type="button" class="text-xs font-medium text-gold hover:underline shrink-0" onclick="openLessonDetailModal('${hw.lesson_id}')">Open Lesson</button>
+                    </div>
+                  </div>
+                </div>
+              `;
+            }).join("") : `<div class="rounded-xl border border-dashed border-cream bg-white px-4 py-3 text-sm text-warmgray">No active homework right now.</div>`}
+          </div>
+        </section>
+
+        <section class="rounded-2xl border border-cream bg-white p-4">
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Scripts / Materials</p>
+              <h5 class="font-semibold text-warmblack mt-1">Active files in Current</h5>
+            </div>
+            <button type="button" class="text-xs font-medium text-gold hover:underline" onclick="switchProfileTab('materials', document.querySelector('[data-profile-tab=materials]'))">Open Materials</button>
+          </div>
+          <div class="space-y-3">
+            ${materialRows.length ? materialRows.map((row) => `
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <p class="text-sm font-semibold text-warmblack break-words">${escapeHtml(row.display_name)}</p>
+                    <p class="text-xs text-warmgray mt-1">${escapeHtml(row.category)} / ${escapeHtml(row.visibility_label)} / ${escapeHtml(row.public_page_status_label)}</p>
+                  </div>
+                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover shrink-0" onclick="openMaterialModal('${studentId}', '${row.file_id}')">Edit</button>
+                </div>
+                ${row.source_url ? `<a href="${escapeHtml(row.source_url)}" target="_blank" rel="noopener noreferrer" class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2">${escapeHtml(row.action_label)}</a>` : ""}
+              </div>
+            `).join("") : `<div class="rounded-xl border border-dashed border-cream bg-parchment px-4 py-3 text-sm text-warmgray">No active scripts or lesson materials yet.</div>`}
+          </div>
+        </section>
+      </div>
+
+      <section class="rounded-2xl border border-cream bg-white p-4">
+        <div class="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Reader Requests</p>
+            <h5 class="font-semibold text-warmblack mt-1">Audition support connected to this student</h5>
+          </div>
+          <span class="text-xs text-warmgray">${readerRequests.length} open</span>
+        </div>
+        <div class="space-y-3">
+          ${readerRequests.length ? readerRequests.map((request) => `
+            <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="text-sm font-semibold text-warmblack">${escapeHtml(getReaderRequestLabel(request))}</p>
+                  <p class="text-xs text-warmgray mt-1">${escapeHtml(request.notes || request.instructions_url || "Ready for reader coordination.")}</p>
+                </div>
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover shrink-0" onclick="sendReaderBlast('${request.request_id}')">Send Blast</button>
+              </div>
+            </div>
+          `).join("") : `<div class="rounded-xl border border-dashed border-cream bg-parchment px-4 py-3 text-sm text-warmgray">No open reader requests.</div>`}
+        </div>
+      </section>
+    </div>
+  `;
+}
+
 function toggleHomeworkStatusFromProfile(homeworkId, isDone) {
   const result = toggleHomeworkStatus(homeworkId, isDone);
   if (!result || result.ok === false) {
@@ -5741,7 +6120,7 @@ function toggleHomeworkStatusFromProfile(homeworkId, isDone) {
   }
 
   if (selectedStudentId) {
-    renderProfileHomeworkTab(selectedStudentId);
+    renderProfileCurrentWorkTab(selectedStudentId);
   }
 
   notifyUser({
@@ -5791,7 +6170,7 @@ function toggleHomeworkStatusFromDetail(homeworkId, isDone, lessonId) {
   }
 
   if (selectedStudentId) {
-    renderProfileHomeworkTab(selectedStudentId);
+    renderProfileCurrentWorkTab(selectedStudentId);
   }
 
   activeLessonDetailTab = "homework";
@@ -5871,7 +6250,7 @@ function removeHomeworkFromLessonDetail(homeworkId, lessonId) {
   }
 
   if (selectedStudentId) {
-    renderProfileHomeworkTab(selectedStudentId);
+    renderProfileCurrentWorkTab(selectedStudentId);
   }
 
   activeLessonDetailTab = "homework";
@@ -5913,7 +6292,7 @@ function saveHomeworkFromLessonDetail(lessonId, studentId) {
   }
 
   if (selectedStudentId) {
-    renderProfileHomeworkTab(selectedStudentId);
+    renderProfileCurrentWorkTab(selectedStudentId);
   }
 
   editingHomeworkId = null;
@@ -15708,17 +16087,22 @@ function renderProfilePage() {
 
         <div class="profile-header-actions flex flex-wrap items-center gap-2">
           <button id="profile-add-lesson-btn" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Lesson</button>
-          <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Package</button>
-          <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Payment</button>
-          <button id="profile-invite-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Invite Student</button>
-          <button id="profile-copy-login-link-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Copy Login Link</button>
-          <button id="profile-reset-access-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Reset Access</button>
-          <button id="profile-seed-aiden-demo-btn" class="hidden px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Seed Aiden Demo</button>
-          <button id="profile-open-public-page-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Open Public Page</button>
-          <button id="profile-copy-public-link-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Copy Public Link</button>
-          <button id="profile-preview-student-portal-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Preview as Student</button>
           <button id="edit-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Edit Student</button>
-          <button id="change-status-btn" class="px-4 py-2.5 rounded-xl bg-parchment border border-cream text-warmblack text-sm font-medium card-hover">Change Status</button>
+          <details class="profile-action-menu">
+            <summary class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover cursor-pointer">More</summary>
+            <div class="profile-action-menu-panel">
+              <button id="profile-add-package-btn" type="button">Add Package</button>
+              <button id="profile-add-payment-btn" type="button">Add Payment</button>
+              <button id="profile-invite-student-btn" type="button">Invite Student</button>
+              <button id="profile-copy-login-link-btn" type="button">Copy Login Link</button>
+              <button id="profile-reset-access-btn" type="button">Reset Access</button>
+              <button id="profile-seed-aiden-demo-btn" type="button" class="hidden">Seed Aiden Demo</button>
+              <button id="profile-open-public-page-btn" type="button">Open Public Page</button>
+              <button id="profile-copy-public-link-btn" type="button">Copy Public Link</button>
+              <button id="profile-preview-student-portal-btn" type="button">Preview as Student</button>
+              <button id="change-status-btn" type="button">Change Status</button>
+            </div>
+          </details>
         </div>
       </header>
 
@@ -15802,6 +16186,8 @@ function renderProfilePage() {
                     </div>
                   </div>
                 </div>
+
+                <div id="profile-command-center" class="profile-command-grid mt-5"></div>
               </div>
 
               <div class="rounded-2xl border border-cream bg-parchment/70 p-4">
@@ -15910,10 +16296,14 @@ function renderProfilePage() {
 
           <details id="profile-admin-notes-section" open class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
             <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
-              <span class="font-display font-semibold">Family & Contacts</span>
+              <span class="font-display font-semibold">Admin Notes</span>
               <i data-lucide="chevron-down" class="w-4 h-4 text-warmgray"></i>
             </summary>
             <div class="space-y-3 text-sm mt-4">
+              <div class="profile-private-note rounded-xl border border-burgundy/15 bg-burgundy/5 px-4 py-3">
+                <p class="text-xs uppercase tracking-wider text-burgundy font-medium">Private to Darius</p>
+                <p id="profile-business-notes" class="text-sm text-warmblack mt-1">No internal notes yet.</p>
+              </div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Additional Emails</span><span id="profile-additional-emails" class="font-medium text-right wrap-anywhere">—</span></div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian / Parent</span><span id="profile-guardian-name-secondary" class="font-medium text-right">—</span></div>
               <div class="flex justify-between gap-4"><span class="text-warmgray">Guardian Email</span><span id="profile-guardian-email-secondary" class="font-medium text-right wrap-anywhere">—</span></div>
@@ -15926,7 +16316,13 @@ function renderProfilePage() {
               <span class="font-display font-semibold">Actor Page</span>
               <span id="profile-public-status-secondary" class="text-xs text-warmgray">—</span>
             </summary>
-            <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere mt-4"></p>
+            <div class="space-y-4 mt-4">
+              <div id="profile-actor-lifecycle"></div>
+              <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere"></p>
+              <div id="profile-actor-readiness"></div>
+              <div id="profile-actor-materials" class="space-y-2"></div>
+              <div id="profile-actor-actions" class="flex flex-wrap gap-2"></div>
+            </div>
           </details>
         </aside>
       </div>
@@ -16098,7 +16494,18 @@ function setStudentAccountAdminToken(token) {
 
 function promptStudentAccountAdminToken() {
   const existing = getStudentAccountAdminToken();
-  const token = window.prompt("Enter the student account admin token configured in Netlify.", existing);
+  let token = "";
+  try {
+    token = window.prompt("Enter the student account admin token configured in Netlify.", existing);
+  } catch (error) {
+    notifyUser({
+      title: "Admin token needed",
+      message: "This browser cannot open password prompts. Set the admin token in this browser or use a full browser window for this action.",
+      tone: "error",
+      source: "student_accounts"
+    });
+    return "";
+  }
   if (!token) return "";
   setStudentAccountAdminToken(token.trim());
   return token.trim();
@@ -16254,7 +16661,18 @@ async function seedAidenDemoAccountFromProfile() {
   }
 
   if (!getStudentAccountAdminToken() && !promptStudentAccountAdminToken()) return;
-  const password = window.prompt("Enter the temporary demo password for Aiden Liu.");
+  let password = "";
+  try {
+    password = window.prompt("Enter the temporary demo password for Aiden Liu.");
+  } catch (error) {
+    notifyUser({
+      title: "Demo password needed",
+      message: "This browser cannot open password prompts. Use a full browser window for the demo seed action.",
+      tone: "error",
+      source: "student_accounts"
+    });
+    return;
+  }
   if (!password) return;
 
   try {
@@ -16500,6 +16918,7 @@ function populateStudentProfile(studentId) {
       : (actorProfile && actorProfile.status === "Active" ? "Live" : actorProfile ? actorProfile.status : "Not live");
   }
 
+  renderProfileCommandCenter(studentId);
   renderStudentFlowNextSteps(studentId);
 
   const emailEl = document.getElementById("profile-email");
@@ -16525,6 +16944,9 @@ function populateStudentProfile(studentId) {
   if (guardianPhoneEl) guardianPhoneEl.textContent = schemaStudent.guardian_phone || "—";
   const guardianPhoneSecondaryEl = document.getElementById("profile-guardian-phone-secondary");
   if (guardianPhoneSecondaryEl) guardianPhoneSecondaryEl.textContent = schemaStudent.guardian_phone || "—";
+
+  const businessNotesEl = document.getElementById("profile-business-notes");
+  if (businessNotesEl) businessNotesEl.textContent = schemaStudent.business_notes || "No internal notes yet.";
 
   const timezoneEl = document.getElementById("profile-timezone");
   if (timezoneEl) timezoneEl.textContent = schemaStudent.timezone || "—";
@@ -16683,6 +17105,7 @@ if (paymentsListEl) {
   if (bioEl) {
     bioEl.textContent = actorProfile?.bio || `${student.name} is currently focused on ${student.focus}. Billing model: ${schemaStudent.billing_model}. Booking style: ${schemaStudent.booking_behavior}.`;
   }
+  renderActorLifecyclePanel(studentId);
 
   const resumeNameEl = document.getElementById("profile-resume-name");
   if (resumeNameEl) resumeNameEl.textContent = resumeFile ? getMaterialDisplayName(resumeFile) : "No resume uploaded";
@@ -16725,7 +17148,7 @@ if (paymentsListEl) {
 
   renderProfileNotesTab(studentId);
 
-  renderProfileHomeworkTab(studentId);
+  renderProfileCurrentWorkTab(studentId);
   renderProfileMaterialsTab(studentId);
 
   renderProfileLessons(studentId);
@@ -18006,7 +18429,7 @@ function openLessonDetailModal(lessonId) {
       refreshProfileNotesIfNeeded(lesson.student_id);
 
       if (selectedStudentId) {
-        renderProfileHomeworkTab(selectedStudentId);
+        renderProfileCurrentWorkTab(selectedStudentId);
       }
 
       openLessonDetailModal(lessonId);

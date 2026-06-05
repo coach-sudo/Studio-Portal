@@ -180,6 +180,143 @@ body {
   outline: none;
 }
 
+.profile-action-menu {
+  position: relative;
+}
+
+.profile-action-menu > summary {
+  list-style: none;
+}
+
+.profile-action-menu > summary::-webkit-details-marker {
+  display: none;
+}
+
+.profile-action-menu-panel {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.45rem);
+  z-index: 30;
+  min-width: 13rem;
+  padding: 0.45rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: #fff;
+  box-shadow: 0 18px 48px rgba(45, 41, 38, 0.14);
+}
+
+.profile-action-menu-panel button {
+  display: block;
+  width: 100%;
+  min-height: 2.35rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: calc(var(--app-radius) - 2px);
+  color: var(--app-ink);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.profile-action-menu-panel button.hidden {
+  display: none;
+}
+
+.profile-action-menu-panel button:hover,
+.profile-action-menu-panel button:focus-visible {
+  background: rgba(184, 138, 47, 0.1);
+  outline: none;
+}
+
+.profile-command-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.profile-command-card {
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-lg);
+  background: rgba(247, 243, 238, 0.72);
+}
+
+.profile-command-card--action {
+  grid-column: span 2;
+  background: linear-gradient(135deg, rgba(184, 138, 47, 0.14), rgba(122, 29, 47, 0.07));
+  border-color: rgba(184, 138, 47, 0.22);
+}
+
+.actor-lifecycle {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.actor-lifecycle-step {
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius);
+  background: rgba(247, 243, 238, 0.78);
+}
+
+.actor-lifecycle-step span {
+  display: block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-bottom: 0.45rem;
+  border-radius: 999px;
+  background: rgba(117, 111, 104, 0.38);
+}
+
+.actor-lifecycle-step p {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--app-muted);
+}
+
+.actor-lifecycle-step.is-current {
+  border-color: rgba(184, 138, 47, 0.42);
+  background: rgba(184, 138, 47, 0.1);
+}
+
+.actor-lifecycle-step.is-current span {
+  background: var(--app-gold);
+}
+
+.actor-lifecycle-step.is-current p {
+  color: var(--app-ink);
+}
+
+.actor-lifecycle-step.is-warning {
+  border-color: rgba(122, 29, 47, 0.28);
+  background: rgba(122, 29, 47, 0.08);
+}
+
+.actor-lifecycle-step.is-warning span {
+  background: var(--app-burgundy);
+}
+
+.profile-private-note {
+  min-width: 0;
+}
+
+@media (max-width: 640px) {
+  .profile-command-card--action {
+    grid-column: span 1;
+  }
+
+  .profile-action-menu-panel {
+    left: auto;
+    right: 0;
+  }
+
+  .actor-lifecycle {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 .dashboard-stat-card {
   min-height: 152px;
 }
