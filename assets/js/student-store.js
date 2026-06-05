@@ -147,6 +147,7 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
   const preferredContactName = String(payload.preferred_contact_name || "").trim();
   const preferredContactEmail = String(payload.preferred_contact_email || "").trim();
   const preferredContactPhone = String(payload.preferred_contact_phone || "").trim();
+  const driveFolderUrl = String(payload.drive_folder_url || "").trim();
   const emergencyContactName = String(payload.emergency_contact_name || "").trim();
   const emergencyContactPhone = String(payload.emergency_contact_phone || "").trim();
   const businessNotes = String(payload.business_notes || "").trim();
@@ -184,6 +185,10 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
 
   if (preferredContactEmail && !isValidEmailAddress(preferredContactEmail)) {
     errors.push("Enter a valid preferred contact email address.");
+  }
+
+  if (driveFolderUrl && !/^https?:\/\//i.test(driveFolderUrl)) {
+    errors.push("Student Drive folder must be a full URL.");
   }
 
   if (preferredContactMethod && !["STUDENT", "GUARDIAN", "EMAIL", "PHONE", "TEXT", "OTHER"].includes(preferredContactMethod)) {
@@ -230,6 +235,7 @@ function validateStudentPayload(payload, { isEdit = false } = {}) {
       preferred_contact_name: preferredContactName,
       preferred_contact_email: preferredContactEmail,
       preferred_contact_phone: preferredContactPhone,
+      drive_folder_url: driveFolderUrl,
       emergency_contact_name: emergencyContactName,
       emergency_contact_phone: emergencyContactPhone,
       business_notes: businessNotes,
@@ -285,6 +291,7 @@ function createStudent(payload) {
     preferred_contact_name: result.cleaned.preferred_contact_name,
     preferred_contact_email: result.cleaned.preferred_contact_email,
     preferred_contact_phone: result.cleaned.preferred_contact_phone,
+    drive_folder_url: result.cleaned.drive_folder_url,
     emergency_contact_name: result.cleaned.emergency_contact_name,
     emergency_contact_phone: result.cleaned.emergency_contact_phone,
     business_notes: result.cleaned.business_notes,
@@ -358,6 +365,7 @@ function updateStudent(studentId, payload) {
   if ("preferred_contact_name" in payload) updates.preferred_contact_name = result.cleaned.preferred_contact_name;
   if ("preferred_contact_email" in payload) updates.preferred_contact_email = result.cleaned.preferred_contact_email;
   if ("preferred_contact_phone" in payload) updates.preferred_contact_phone = result.cleaned.preferred_contact_phone;
+  if ("drive_folder_url" in payload) updates.drive_folder_url = result.cleaned.drive_folder_url;
   if ("emergency_contact_name" in payload) updates.emergency_contact_name = result.cleaned.emergency_contact_name;
   if ("emergency_contact_phone" in payload) updates.emergency_contact_phone = result.cleaned.emergency_contact_phone;
   if ("business_notes" in payload) updates.business_notes = result.cleaned.business_notes;

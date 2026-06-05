@@ -184,6 +184,13 @@
       object-fit: cover;
       display: block;
     }
+    .material video, .material iframe {
+      width: 100%;
+      min-height: 360px;
+      border: 0;
+      display: block;
+      background: #111;
+    }
     .media-grid {
       display: grid;
       grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
@@ -236,8 +243,16 @@
     }
 
     @media (max-width: 860px) {
-      .nav { align-items: flex-start; }
-      .nav-links { gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+      .nav { align-items: center; gap: 12px; }
+      .brand { max-width: 132px; font-size: 22px; }
+      .nav-links {
+        gap: 14px;
+        flex-wrap: nowrap;
+        justify-content: flex-end;
+        overflow-x: auto;
+        white-space: nowrap;
+        font-size: 12px;
+      }
       .hero, .media-grid, .contact {
         grid-template-columns: 1fr;
       }
@@ -339,8 +354,22 @@
       return parts[0] === "actors" ? parts[1] : "";
     }
 
+    function titleFromSlug(slug) {
+      return String(slug || "Actor Profile")
+        .split("-")
+        .filter(Boolean)
+        .map(function (part) { return part.charAt(0).toUpperCase() + part.slice(1); })
+        .join(" ");
+    }
+
     function isImageMaterial(material) {
       return /headshot|photo|image|jpeg|jpg|png|webp|gif/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+    }
+    function isVideoMaterial(material) {
+      return /video|reel|self tape|mp4|mov|webm/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
+    }
+    function isPdfMaterial(material) {
+      return /pdf|resume|document/i.test([material.category, material.material_kind, material.mime_type, material.title, material.url].join(" "));
     }
 
     function findMaterial(materials, pattern) {
@@ -357,17 +386,36 @@
     function renderList(materials, emptyText) {
       if (!materials.length) return '<div class="empty">' + escapeHtml(emptyText) + '</div>';
       return materials.map(function (material) {
-        return '<div><h3>' + escapeHtml(material.title) + '</h3><p>' + escapeHtml(material.category || "Material") + '</p>' + materialLink(material, "Open") + '</div>';
+        var preview = "";
+        if (material.url && isVideoMaterial(material) && /\/api\/material-file|\.mp4|\.mov|\.webm/i.test(material.url)) {
+          preview = '<div class="material"><video src="' + escapeHtml(material.url) + '" controls preload="metadata"></video></div>';
+        } else if (material.url && isPdfMaterial(material) && /\/api\/material-file|\.pdf/i.test(material.url)) {
+          preview = '<div class="material"><iframe title="' + escapeHtml(material.title) + '" src="' + escapeHtml(material.url) + '"></iframe></div>';
+        }
+        return '<div>' + preview + '<h3>' + escapeHtml(material.title) + '</h3><p>' + escapeHtml(material.category || "Material") + '</p>' + materialLink(material, "Open") + '</div>';
       }).join("");
     }
 
     async function loadProfile() {
       var slug = getSlug();
       if (!slug) throw new Error("Missing public profile slug.");
-      var response = await fetch("/api/public-profile?slug=" + encodeURIComponent(slug), { headers: { Accept: "application/json" } });
-      var payload = await response.json().catch(function () { return {}; });
-      if (!response.ok || !payload.ok) throw new Error(payload.error || "Public profile not found.");
-      return payload.profile;
+      var inferredName = titleFromSlug(slug);
+      document.title = inferredName + " - Actor";
+      document.getElementById("nav-name").textContent = inferredName;
+      document.getElementById("actor-name").textContent = inferredName;
+      var lastError = null;
+      for (var attempt = 0; attempt < 3; attempt += 1) {
+        if (attempt > 0) {
+          document.getElementById("actor-bio").textContent = "Still loading public profile...";
+          await new Promise(function (resolve) { setTimeout(resolve, 900 * attempt); });
+        }
+        var response = await fetch("/api/public-profile?slug=" + encodeURIComponent(slug), { headers: { Accept: "application/json" } });
+        var payload = await response.json().catch(function () { return {}; });
+        if (response.ok && payload.ok) return payload.profile;
+        lastError = new Error(payload.error || "Public profile not found.");
+        if (![404, 500, 502, 503, 504].includes(response.status)) break;
+      }
+      throw lastError || new Error("Public profile not found.");
     }
 
     function renderProfile(profile) {
@@ -397,6 +445,7 @@
         document.getElementById("reel-action").rel = "noopener";
         document.getElementById("reel-link").href = reel.url;
       } else {
+        document.getElementById("reel-action").style.display = "none";
         document.getElementById("reel-link").style.display = "none";
       }
       document.getElementById("reel-list").innerHTML = renderList(materials.filter(function (material) { return /reel|self tape|video/i.test([material.category, material.material_kind, material.title].join(" ")); }), "No public reel is approved yet.");
@@ -407,6 +456,7 @@
         document.getElementById("resume-action").rel = "noopener";
         document.getElementById("resume-link").href = resume.url;
       } else {
+        document.getElementById("resume-action").style.display = "none";
         document.getElementById("resume-link").style.display = "none";
       }
       document.getElementById("resume-list").innerHTML = renderList(materials.filter(function (material) { return /resume|pdf|document/i.test([material.category, material.material_kind, material.title].join(" ")); }), "No public resume is approved yet.");

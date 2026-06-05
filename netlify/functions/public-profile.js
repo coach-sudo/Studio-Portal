@@ -25,6 +25,11 @@ function getAppsScriptToken() {
   return getEnv("GOOGLE_APPS_SCRIPT_TOKEN") || getEnv("STUDIO_PORTAL_TOKEN");
 }
 
+function getPublicProfileFetchTimeoutMs() {
+  const value = Number(getEnv("PUBLIC_PROFILE_FETCH_TIMEOUT_MS", "8000"));
+  return Number.isFinite(value) && value >= 1000 ? value : 8000;
+}
+
 function normalizeSlug(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/^-|-$/g, "");
 }
@@ -49,10 +54,13 @@ async function fetchAppsScriptSnapshot() {
   const token = getAppsScriptToken();
   if (token) url.searchParams.set("token", token);
 
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), getPublicProfileFetchTimeoutMs());
   const response = await fetch(url.toString(), {
     method: "GET",
-    headers: { Accept: "application/json" }
-  });
+    headers: { Accept: "application/json" },
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
   const payload = await response.json().catch(() => ({}));
   if (!response.ok || !payload || payload.ok === false) {
     throw new Error(payload.error || "Unable to load public profile snapshot.");
@@ -61,7 +69,7 @@ async function fetchAppsScriptSnapshot() {
 }
 
 async function loadTrustedSnapshot() {
-  const remote = await fetchAppsScriptSnapshot();
+  const remote = await fetchAppsScriptSnapshot().catch(() => null);
   return remote || loadLocalSampleSnapshot();
 }
 

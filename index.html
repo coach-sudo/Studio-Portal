@@ -54,7 +54,7 @@
           <div class="flex items-center gap-3 min-w-0">
           <div id="sidebar-logo-mark" class="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center overflow-hidden">
             <img id="sidebar-logo-image" alt="" class="hidden w-full h-full object-contain bg-white" />
-            <i data-lucide="drama" class="w-5 h-5 text-warmblack"></i>
+            <i data-lucide="clapperboard" class="w-5 h-5 text-warmblack"></i>
           </div>
           <div class="sidebar-brand-copy min-w-0">
             <h1 id="sidebar-studio-name" class="font-display text-lg font-bold text-white leading-tight">
@@ -80,7 +80,7 @@
 
       <nav class="flex-1 py-4 px-3 space-y-1 overflow-auto">
         <div class="pb-2 px-3">
-          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Workspace</p>
+          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Coach Mode</p>
         </div>
         <button
           onclick="navigateTo('operations')"
@@ -88,7 +88,16 @@
           class="nav-item active w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/90"
         >
           <i data-lucide="clipboard-list" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Command Center</span>
+          <span class="sidebar-label">Home</span>
+        </button>
+
+        <button
+          onclick="navigateTo('today')"
+          data-nav="today"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="sun" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Today</span>
         </button>
 
         <button
@@ -97,7 +106,7 @@
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
           <i data-lucide="users" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">People</span>
+          <span class="sidebar-label">Students</span>
         </button>
 
         <button
@@ -110,26 +119,22 @@
         </button>
 
         <button
-          onclick="navigateTo('schedule')"
-          data-nav="schedule"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Schedule</span>
-        </button>
-
-        <button
           onclick="navigateTo('notes')"
           data-nav="notes"
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
           <i data-lucide="file-text" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Follow-Up</span>
+          <span class="sidebar-label">Notes</span>
         </button>
 
-        <div class="pt-4 pb-2 px-3">
-          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Back Office</p>
-        </div>
+        <button
+          onclick="navigateTo('materials')"
+          data-nav="materials"
+          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
+        >
+          <i data-lucide="folder-open" class="w-[18px] h-[18px]"></i>
+          <span class="sidebar-label">Materials</span>
+        </button>
 
         <button
           onclick="navigateTo('finance')"
@@ -137,29 +142,7 @@
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
           <i data-lucide="wallet" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Finance</span>
-        </button>
-
-        <button
-          onclick="navigateTo('todo')"
-          data-nav="todo"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="list-todo" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Tasks</span>
-        </button>
-
-        <div class="pt-4 pb-2 px-3">
-          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">Portal</p>
-        </div>
-
-        <button
-          onclick="navigateTo('student_portal')"
-          data-nav="student_portal"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="shield-check" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Student Portal</span>
+          <span class="sidebar-label">Payments</span>
         </button>
 
         <button
@@ -168,20 +151,7 @@
           class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
         >
           <i data-lucide="globe" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Public Preview</span>
-        </button>
-
-        <div class="pt-4 pb-2 px-3">
-          <p class="sidebar-section-label text-[10px] uppercase tracking-widest text-warmgray/60 font-semibold">System</p>
-        </div>
-
-        <button
-          onclick="navigateTo('automations')"
-          data-nav="automations"
-          class="nav-item w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-cream/70"
-        >
-          <i data-lucide="bot" class="w-[18px] h-[18px]"></i>
-          <span class="sidebar-label">Automations</span>
+          <span class="sidebar-label">Actor Pages</span>
         </button>
 
         <button
@@ -220,6 +190,24 @@
   </div>
   <div id="admin-auth-root"></div>
   <div id="notification-center-root"></div>
+  <div id="global-loading-indicator" aria-hidden="true"><span></span></div>
+  <div id="command-palette-root"></div>
+  <details id="quick-switcher-button">
+    <summary aria-label="Open quick switcher">
+      <span>Quick</span>
+      <kbd>Ctrl K</kbd>
+    </summary>
+    <div class="quick-switcher-menu">
+      <button type="button" onclick="navigateTo('operations'); document.getElementById('quick-switcher-button').removeAttribute('open')">Home</button>
+      <button type="button" onclick="navigateTo('today'); document.getElementById('quick-switcher-button').removeAttribute('open')">Today</button>
+      <button type="button" onclick="navigateTo('students'); document.getElementById('quick-switcher-button').removeAttribute('open')">Students</button>
+      <button type="button" onclick="navigateTo('lessons'); document.getElementById('quick-switcher-button').removeAttribute('open')">Lessons</button>
+      <button type="button" onclick="navigateTo('notes'); document.getElementById('quick-switcher-button').removeAttribute('open')">Notes</button>
+      <button type="button" onclick="navigateTo('materials'); document.getElementById('quick-switcher-button').removeAttribute('open')">Materials</button>
+      <button type="button" onclick="navigateTo('finance'); document.getElementById('quick-switcher-button').removeAttribute('open')">Payments</button>
+      <button type="button" onclick="navigateTo('public'); document.getElementById('quick-switcher-button').removeAttribute('open')">Actor Pages</button>
+    </div>
+  </details>
   <div id="toast-root" class="fixed top-4 right-4 z-[120] space-y-3 pointer-events-none"></div>
 
   <!-- Student Modal -->
@@ -298,6 +286,11 @@
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Preferred Contact Phone</label>
             <input name="preferred_contact_phone" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
+          </div>
+
+          <div class="col-span-2">
+            <label class="block text-xs font-medium text-warmgray mb-1">Student Drive Folder</label>
+            <input name="drive_folder_url" type="url" placeholder="https://drive.google.com/drive/folders/..." class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
 
           <div>
@@ -382,9 +375,9 @@
             </label>
           </div>
 
-          <div class="col-span-2 rounded-xl border border-cream bg-parchment p-4">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium mb-3">Student Portal Permissions</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <details class="col-span-2 rounded-xl border border-cream bg-parchment p-4">
+            <summary class="cursor-pointer text-xs uppercase tracking-wider text-warmgray font-medium">Workspace Access Rules</summary>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               <label class="flex items-center gap-2 text-sm">
                 <input name="portal_access_enabled" type="checkbox" checked>
                 <span>Student portal enabled</span>
@@ -430,7 +423,7 @@
                 <span>Current script visible</span>
               </label>
             </div>
-          </div>
+          </details>
         </div>
 
         <div class="app-modal-footer flex flex-col-reverse sm:flex-row justify-end gap-3 pt-2">

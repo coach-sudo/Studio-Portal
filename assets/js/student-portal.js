@@ -224,8 +224,8 @@ function getStudentPortalSettingsPanelMarkup() {
       <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
         <div class="min-w-0">
           <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Student Portal Access</p>
-          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Server-backed auth is active</h3>
-          <p class="text-sm text-warmgray mt-1">Student and guardian sessions are issued by Netlify Functions as signed HttpOnly cookies. Configure secrets in Netlify environment variables.</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Full student accounts are active</h3>
+          <p class="text-sm text-warmgray mt-1">Students and guardians use invite links, passwords, and signed HttpOnly sessions. Shared access-code login is only a temporary fallback.</p>
         </div>
         <span class="inline-flex self-start px-2 py-1 rounded-full bg-gold/10 text-gold text-[11px] font-medium">${escapeHtml(getStudentPortalSecurityStatusLabel())}</span>
       </div>
@@ -235,8 +235,8 @@ function getStudentPortalSettingsPanelMarkup() {
           <p class="text-sm font-semibold text-warmblack mt-1">STUDENT_PORTAL_SESSION_SECRET</p>
         </div>
         <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Access Code</p>
-          <p class="text-sm font-semibold text-warmblack mt-1">STUDENT_PORTAL_ACCESS_CODE</p>
+          <p class="text-[11px] uppercase tracking-wider text-warmgray">Account Admin</p>
+          <p class="text-sm font-semibold text-warmblack mt-1">STUDENT_PORTAL_ADMIN_TOKEN</p>
         </div>
         <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
           <p class="text-[11px] uppercase tracking-wider text-warmgray">Timeout</p>
@@ -244,7 +244,7 @@ function getStudentPortalSettingsPanelMarkup() {
         </div>
       </div>
       <div class="flex flex-wrap items-center gap-2 mt-5">
-        <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="navigateTo('student_portal')">Open Student Portal</button>
+        <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="window.open('/portal', '_blank', 'noopener')">Open Student Workspace</button>
       </div>
     </section>
   `;
@@ -380,44 +380,133 @@ function renderStudentPortalPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
-  const requestId = ++studentPortalRequestId;
+  const studentRecords = typeof getStudentRecords === "function" ? getStudentRecords() : [];
+  const accounts = [];
+  studentRecords.forEach((student) => {
+    try {
+      const parsed = JSON.parse(String(student.portal_account_data || "[]"));
+      if (Array.isArray(parsed)) parsed.forEach((account) => accounts.push(account));
+    } catch (error) {
+      // Ignore malformed embedded account fallback data.
+    }
+  });
+  if (typeof getDataCollection === "function") {
+    getDataCollection("studentAccounts").forEach((account) => accounts.push(account));
+  }
+  const accountIds = new Set();
+  const uniqueAccounts = accounts.filter((account) => {
+    if (!account || !account.account_id || accountIds.has(account.account_id)) return false;
+    accountIds.add(account.account_id);
+    return true;
+  });
+  const activeAccounts = uniqueAccounts.filter((account) => String(account.status || "").toUpperCase() === "ACTIVE");
+  const invitedAccounts = uniqueAccounts.filter((account) => String(account.status || "").toUpperCase() === "INVITED");
+  const eligibleProfiles = studentRecords.filter((student) => student.actor_page_eligible === true);
+  const pendingMaterials = typeof getFileRecords === "function"
+    ? getFileRecords().filter((file) => String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW")
+    : [];
+  const loginUrl = `${window.location.origin}/portal`;
+  const sampleStudent = studentRecords.find((student) => student.email) || null;
+  const selectedId = typeof selectedStudentId !== "undefined" && selectedStudentId ? selectedStudentId : sampleStudent?.student_id;
+
   root.innerHTML = `
     <div class="p-4 sm:p-6 xl:p-8 w-full">
-      <div class="max-w-xl mx-auto rounded-2xl border border-cream bg-white p-5 sm:p-6">
-        <div class="flex items-center gap-3">
-          <div class="w-9 h-9 rounded-lg gold-gradient flex items-center justify-center">
-            <i data-lucide="loader-circle" class="w-5 h-5 text-warmblack"></i>
+      <div class="max-w-6xl mx-auto space-y-5">
+        <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+          <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+            <div class="min-w-0">
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Workspace Accounts</p>
+              <h2 class="font-display text-3xl font-bold text-warmblack mt-1">Invite, reset, review</h2>
+              <p class="text-sm text-warmgray mt-2 max-w-2xl">Students use the private workspace at <span class="font-medium text-warmblack">${escapeHtml(loginUrl)}</span>. Public actor pages stay separate at <span class="font-medium text-warmblack">/actors/slug</span>.</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover" onclick="window.open('/portal', '_blank', 'noopener')">Open Workspace</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="copyTextToClipboard('${escapeHtml(loginUrl)}').then(() => notifyUser({ title: 'Login link copied', message: '${escapeHtml(loginUrl)}', tone: 'success', source: 'student_accounts' }))">Copy Login Link</button>
+              ${selectedId ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="selectedStudentId='${escapeHtml(selectedId)}'; navigateTo('profile')">Open Student Hub</button>` : ""}
+            </div>
           </div>
-          <div>
-            <p class="text-sm font-semibold text-warmblack">Checking student portal session</p>
-            <p class="text-xs text-warmgray mt-1">Asking the server for the signed identity and scoped records.</p>
+        </section>
+
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div class="rounded-xl border border-cream bg-white px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Active Accounts</p>
+            <p class="text-2xl font-semibold text-warmblack mt-1">${activeAccounts.length}</p>
           </div>
-        </div>
+          <div class="rounded-xl border border-cream bg-white px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Invites Sent</p>
+            <p class="text-2xl font-semibold text-warmblack mt-1">${invitedAccounts.length}</p>
+          </div>
+          <div class="rounded-xl border border-cream bg-white px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Actor Eligible</p>
+            <p class="text-2xl font-semibold text-warmblack mt-1">${eligibleProfiles.length}</p>
+          </div>
+          <div class="rounded-xl border border-cream bg-white px-4 py-3">
+            <p class="text-[11px] uppercase tracking-wider text-warmgray">Pending Review</p>
+            <p class="text-2xl font-semibold text-warmblack mt-1">${pendingMaterials.length}</p>
+          </div>
+        </section>
+
+        <section class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+          <div class="xl:col-span-2 rounded-2xl border border-cream bg-white p-4 sm:p-5">
+            <div class="flex items-center justify-between gap-3">
+              <h3 class="font-display text-xl font-semibold text-warmblack">Student Flow</h3>
+              <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="navigateTo('students')">People</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">1. Invite</p>
+                <p class="text-xs text-warmgray mt-1">Open a student profile and send Student or Guardian access.</p>
+              </div>
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">2. Workspace</p>
+                <p class="text-xs text-warmgray mt-1">They manage homework, materials, scripts, and profile drafts at /portal.</p>
+              </div>
+              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                <p class="text-sm font-semibold text-warmblack">3. Review</p>
+                <p class="text-xs text-warmgray mt-1">You approve public materials before anything appears live.</p>
+              </div>
+            </div>
+          </div>
+
+          <aside class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+            <h3 class="font-display text-xl font-semibold text-warmblack">Next Best Action</h3>
+            <div class="space-y-3 mt-4">
+              ${pendingMaterials.length ? `<button type="button" class="w-full text-left rounded-xl border border-gold/25 bg-gold/10 px-4 py-3 card-hover" onclick="navigateTo('operations')"><p class="text-sm font-semibold text-warmblack">Review ${pendingMaterials.length} public submission${pendingMaterials.length === 1 ? "" : "s"}</p><p class="text-xs text-warmgray mt-1">Approve, reject, or keep pending.</p></button>` : ""}
+              ${!uniqueAccounts.length ? `<button type="button" class="w-full text-left rounded-xl border border-cream bg-parchment px-4 py-3 card-hover" onclick="navigateTo('students')"><p class="text-sm font-semibold text-warmblack">Invite first student account</p><p class="text-xs text-warmgray mt-1">Use the Student Profile Hub.</p></button>` : ""}
+              ${uniqueAccounts.length && !pendingMaterials.length ? `<div class="rounded-xl border border-cream bg-parchment px-4 py-3"><p class="text-sm font-semibold text-sage">Access flow is ready</p><p class="text-xs text-warmgray mt-1">Use People for account actions and Actor Pages for public review.</p></div>` : ""}
+            </div>
+          </aside>
+        </section>
+
+        <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+            <div>
+              <h3 class="font-display text-xl font-semibold text-warmblack">Recent Accounts</h3>
+              <p class="text-sm text-warmgray mt-1">Private account metadata stays server-side; this shows only operational status already mirrored for the coach.</p>
+            </div>
+            <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="navigateTo('settings')">Settings</button>
+          </div>
+          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-4">
+            ${uniqueAccounts.slice(0, 6).map((account) => {
+              const student = studentRecords.find((row) => row.student_id === account.student_id);
+              return `
+                <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <p class="text-sm font-semibold text-warmblack">${escapeHtml(student?.full_name || account.email || "Student account")}</p>
+                      <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(account.email || "")}</p>
+                    </div>
+                    <span class="shrink-0 rounded-full bg-white border border-cream px-2 py-1 text-[11px] text-warmgray">${escapeHtml(String(account.status || "INVITED").toUpperCase())}</span>
+                  </div>
+                </div>
+              `;
+            }).join("") || `<div class="rounded-xl border border-cream bg-parchment px-4 py-3 text-sm text-warmgray">No account invites have been created yet.</div>`}
+          </div>
+        </section>
       </div>
     </div>
   `;
   lucide.createIcons();
-
-  loadStudentPortalServerData()
-    .then((payload) => {
-      if (requestId !== studentPortalRequestId) return;
-      if (!payload || !payload.identity) {
-        studentPortalState = { identity: null, data: null, activeTab: "overview" };
-        root.innerHTML = renderStudentPortalLogin();
-        lucide.createIcons();
-        return;
-      }
-
-      studentPortalState.identity = payload.identity;
-      studentPortalState.data = payload.data || {};
-      renderStudentPortalDashboard(payload.identity, payload.data || {});
-    })
-    .catch((error) => {
-      if (requestId !== studentPortalRequestId) return;
-      setStudentPortalMessage(String(error && error.message ? error.message : error || "Unable to load the student portal."), "error");
-      root.innerHTML = renderStudentPortalLogin();
-      lucide.createIcons();
-    });
 }
 
 function renderStudentPortalDashboard(identity, scoped) {
@@ -463,7 +552,7 @@ function renderStudentPortalDashboard(identity, scoped) {
         <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
           <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
             <div class="min-w-0">
-              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(identity.role === "GUARDIAN" ? "Guardian Access" : "Student Access")}</p>
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(identity.role === "GUARDIAN" ? "Guardian Workspace" : "Student Workspace")}</p>
               <h2 class="font-display text-3xl font-bold text-warmblack mt-1">${escapeHtml(scoped.student?.full_name || identity.student_name || "Student Portal")}</h2>
               <p class="text-sm text-warmgray mt-2">Signed in as ${escapeHtml(identity.email)}.</p>
             </div>

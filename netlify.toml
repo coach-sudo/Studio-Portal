@@ -5,6 +5,36 @@
 [functions]
   included_files = ["assets/js/schema.js"]
 
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/portal"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/actors/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/pages/*"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
 [[redirects]]
   from = "/api/studio-sync"
   to = "/.netlify/functions/studio-sync"
@@ -28,6 +58,26 @@
 [[redirects]]
   from = "/api/public-profile"
   to = "/.netlify/functions/public-profile"
+  status = 200
+
+[[redirects]]
+  from = "/api/material-file"
+  to = "/.netlify/functions/material-file"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe-checkout"
+  to = "/.netlify/functions/stripe-checkout"
+  status = 200
+
+[[redirects]]
+  from = "/api/stripe-webhook"
+  to = "/.netlify/functions/stripe-webhook"
+  status = 200
+
+[[redirects]]
+  from = "/api/reader-blast"
+  to = "/.netlify/functions/reader-blast"
   status = 200
 
 [[redirects]]

@@ -1,6 +1,7 @@
 const DATA_RECORD_SHAPES = {
   students: [
     "student_id",
+    "stripe_customer_id",
     "first_name",
     "last_name",
     "full_name",
@@ -39,6 +40,8 @@ const DATA_RECORD_SHAPES = {
     "portal_materials_access",
     "portal_public_page_access",
     "portal_script_access",
+    "portal_account_data",
+    "drive_folder_url",
     "default_lesson_rate",
     "custom_balance_due",
     "created_at",
@@ -210,6 +213,44 @@ const DATA_RECORD_SHAPES = {
     "last_login_at",
     "created_at",
     "updated_at"
+  ],
+  readerRequests: [
+    "reader_request_id",
+    "student_id",
+    "student_name",
+    "student_email",
+    "filming_date",
+    "filming_time",
+    "timezone",
+    "duration_minutes",
+    "meeting_method",
+    "meeting_details",
+    "sides_url",
+    "instructions_url",
+    "upload_name",
+    "upload_url",
+    "upload_mime_type",
+    "notes",
+    "status",
+    "coach_notified_at",
+    "blast_status",
+    "blast_sent_at",
+    "reader_name",
+    "resolved_at",
+    "created_at",
+    "updated_at"
+  ],
+  lessonComments: [
+    "lesson_comment_id",
+    "lesson_id",
+    "student_id",
+    "author_role",
+    "author_email",
+    "body",
+    "coach_read_at",
+    "resolved_at",
+    "created_at",
+    "updated_at"
   ]
 };
 
@@ -231,6 +272,21 @@ const DEFAULT_BACKEND_SETTINGS = {
   google_status_checked_at: "",
   google_status_error: "",
   google_auth_start_url: "",
+  studio_name: "Stage & Story",
+  studio_tagline: "Studio Management",
+  coach_name: "Darius A. Journigan",
+  coach_title: "Acting Coach",
+  coach_contact_email: "coach@d-a-j.com",
+  coach_contact_phone: "9292160175",
+  student_portal_label: "Student Workspace",
+  student_welcome_message: "Your lessons, homework, materials, and actor page drafts live here.",
+  student_show_contact_buttons: true,
+  student_show_booking_button: true,
+  student_show_drive_folder: true,
+  booking_url: "https://coach.as.me",
+  stripe_price_map_json: "",
+  reader_contacts_group: "",
+  reader_blast_mode: "gmail_contacts",
   google_calendar_last_sync_at: "",
   google_calendar_last_sync_status: "idle",
   google_calendar_last_sync_error: "",
@@ -303,6 +359,21 @@ function sanitizeBackendSettings(settings = {}) {
     google_status_checked_at: String(settings.google_status_checked_at || "").trim(),
     google_status_error: String(settings.google_status_error || "").trim(),
     google_auth_start_url: String(settings.google_auth_start_url || "").trim(),
+    studio_name: String(settings.studio_name || DEFAULT_BACKEND_SETTINGS.studio_name).trim() || DEFAULT_BACKEND_SETTINGS.studio_name,
+    studio_tagline: String(settings.studio_tagline || DEFAULT_BACKEND_SETTINGS.studio_tagline).trim() || DEFAULT_BACKEND_SETTINGS.studio_tagline,
+    coach_name: String(settings.coach_name || DEFAULT_BACKEND_SETTINGS.coach_name).trim() || DEFAULT_BACKEND_SETTINGS.coach_name,
+    coach_title: String(settings.coach_title || DEFAULT_BACKEND_SETTINGS.coach_title).trim() || DEFAULT_BACKEND_SETTINGS.coach_title,
+    coach_contact_email: String(settings.coach_contact_email || DEFAULT_BACKEND_SETTINGS.coach_contact_email).trim() || DEFAULT_BACKEND_SETTINGS.coach_contact_email,
+    coach_contact_phone: String(settings.coach_contact_phone || DEFAULT_BACKEND_SETTINGS.coach_contact_phone).replace(/[^\d+]/g, "") || DEFAULT_BACKEND_SETTINGS.coach_contact_phone,
+    student_portal_label: String(settings.student_portal_label || DEFAULT_BACKEND_SETTINGS.student_portal_label).trim() || DEFAULT_BACKEND_SETTINGS.student_portal_label,
+    student_welcome_message: String(settings.student_welcome_message || DEFAULT_BACKEND_SETTINGS.student_welcome_message).trim() || DEFAULT_BACKEND_SETTINGS.student_welcome_message,
+    student_show_contact_buttons: settings.student_show_contact_buttons !== false,
+    student_show_booking_button: settings.student_show_booking_button !== false,
+    student_show_drive_folder: settings.student_show_drive_folder !== false,
+    booking_url: String(settings.booking_url || DEFAULT_BACKEND_SETTINGS.booking_url).trim() || DEFAULT_BACKEND_SETTINGS.booking_url,
+    stripe_price_map_json: String(settings.stripe_price_map_json || "").trim(),
+    reader_contacts_group: String(settings.reader_contacts_group || "").trim(),
+    reader_blast_mode: String(settings.reader_blast_mode || DEFAULT_BACKEND_SETTINGS.reader_blast_mode).trim() || DEFAULT_BACKEND_SETTINGS.reader_blast_mode,
     google_calendar_last_sync_at: String(settings.google_calendar_last_sync_at || "").trim(),
     google_calendar_last_sync_status: String(settings.google_calendar_last_sync_status || "idle").trim(),
     google_calendar_last_sync_error: String(settings.google_calendar_last_sync_error || "").trim(),
@@ -329,7 +400,9 @@ const appDataStore = {
   payments: samplePayments,
   actorProfiles: sampleActorProfiles,
   files: sampleFiles,
-  studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : []
+  studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : [],
+  readerRequests: typeof sampleReaderRequests !== "undefined" ? sampleReaderRequests : [],
+  lessonComments: typeof sampleLessonComments !== "undefined" ? sampleLessonComments : []
 };
 
 const DATA_COLLECTION_ID_FIELDS = {
@@ -341,7 +414,9 @@ const DATA_COLLECTION_ID_FIELDS = {
   payments: "payment_id",
   actorProfiles: "actor_profile_id",
   files: "file_id",
-  studentAccounts: "account_id"
+  studentAccounts: "account_id",
+  readerRequests: "reader_request_id",
+  lessonComments: "lesson_comment_id"
 };
 
 let backendSettings = sanitizeBackendSettings(readStorageJson(BACKEND_SETTINGS_STORAGE_KEY, DEFAULT_BACKEND_SETTINGS));
@@ -465,7 +540,9 @@ function getGoogleSheetsCollectionBlueprint() {
     Payments: DATA_RECORD_SHAPES.payments,
     ActorProfiles: DATA_RECORD_SHAPES.actorProfiles,
     Materials: DATA_RECORD_SHAPES.files,
-    StudentAccounts: DATA_RECORD_SHAPES.studentAccounts
+    StudentAccounts: DATA_RECORD_SHAPES.studentAccounts,
+    ReaderRequests: DATA_RECORD_SHAPES.readerRequests,
+    LessonComments: DATA_RECORD_SHAPES.lessonComments
   };
 }
 

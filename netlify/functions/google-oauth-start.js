@@ -41,7 +41,7 @@ function getRedirectUri(event) {
 function getScopes() {
   return String(
     process.env.GOOGLE_OAUTH_SCOPES ||
-    "https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/gmail.readonly"
+    "https://www.googleapis.com/auth/calendar.events.readonly https://www.googleapis.com/auth/gmail.readonly https://www.googleapis.com/auth/gmail.send https://www.googleapis.com/auth/gmail.compose https://www.googleapis.com/auth/contacts.readonly"
   ).trim();
 }
 

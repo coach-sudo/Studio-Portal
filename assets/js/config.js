@@ -3,6 +3,10 @@ const defaultConfig = {
   coach_name: "Darius A. Journigan",
   coach_title: "Acting Coach",
   tagline: "Studio Management",
+  contact_email: "coach@d-a-j.com",
+  contact_phone: "9292160175",
+  student_portal_label: "Student Workspace",
+  student_welcome_message: "Your lessons, homework, materials, and actor page drafts live here.",
   background_color: "#f7f3ee",
   surface_color: "#ffffff",
   text_color: "#2d2926",
@@ -33,14 +37,28 @@ function saveStudioBranding(branding = {}) {
 }
 
 function getStudioBranding() {
-  return loadStudioBranding();
+  return {
+    studio_name: defaultConfig.studio_name,
+    coach_name: defaultConfig.coach_name,
+    coach_title: defaultConfig.coach_title,
+    tagline: defaultConfig.tagline,
+    contact_email: defaultConfig.contact_email,
+    contact_phone: defaultConfig.contact_phone,
+    student_portal_label: defaultConfig.student_portal_label,
+    student_welcome_message: defaultConfig.student_welcome_message,
+    ...loadStudioBranding()
+  };
 }
 
 function applyConfig(config = defaultConfig) {
-  const studioName = config.studio_name || defaultConfig.studio_name;
-  const coachName = config.coach_name || defaultConfig.coach_name;
-  const coachTitle = config.coach_title || defaultConfig.coach_title;
-  const tagline = config.tagline || defaultConfig.tagline;
+  const branding = loadStudioBranding();
+  const backend = typeof studioDataService !== "undefined" && studioDataService?.getBackendSettings
+    ? studioDataService.getBackendSettings()
+    : {};
+  const studioName = branding.studio_name || backend.studio_name || config.studio_name || defaultConfig.studio_name;
+  const coachName = branding.coach_name || backend.coach_name || config.coach_name || defaultConfig.coach_name;
+  const coachTitle = branding.coach_title || backend.coach_title || config.coach_title || defaultConfig.coach_title;
+  const tagline = branding.tagline || backend.studio_tagline || config.tagline || defaultConfig.tagline;
   const bg = config.background_color || defaultConfig.background_color;
   const surface = config.surface_color || defaultConfig.surface_color;
   const txt = config.text_color || defaultConfig.text_color;
@@ -57,8 +75,7 @@ function applyConfig(config = defaultConfig) {
   const publicStudioNameEl = document.getElementById("public-studio-name");
   const sidebarLogoImageEl = document.getElementById("sidebar-logo-image");
   const sidebarLogoMarkEl = document.getElementById("sidebar-logo-mark");
-  const sidebarLogoIconEl = sidebarLogoMarkEl ? sidebarLogoMarkEl.querySelector("[data-lucide='drama']") : null;
-  const branding = loadStudioBranding();
+  const sidebarLogoIconEl = sidebarLogoMarkEl ? sidebarLogoMarkEl.querySelector("[data-lucide='clapperboard']") : null;
 
   if (studioNameEl) studioNameEl.textContent = studioName;
   if (taglineEl) taglineEl.textContent = tagline;

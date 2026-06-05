@@ -82,6 +82,38 @@
       border-radius: 12px;
       padding: 18px;
     }
+    .action-card.primary {
+      border-color: rgba(184,138,47,.45);
+      background: #fffaf0;
+    }
+    .kpi {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--soft);
+      padding: 12px 14px;
+    }
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 10px;
+      margin-top: 18px;
+    }
+    .progress {
+      height: 9px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #e9ede6;
+      margin-top: 10px;
+    }
+    .progress span {
+      display: block;
+      height: 100%;
+      background: linear-gradient(135deg, #f0d489, var(--gold));
+    }
     .button {
       border: 1px solid var(--ink);
       border-radius: 8px;
@@ -161,6 +193,58 @@
       background: var(--soft);
       padding: 14px;
     }
+    .section-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .media-card {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr);
+      gap: 14px;
+      align-items: stretch;
+    }
+    .preview {
+      min-height: 110px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: white;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-weight: 700;
+      text-align: center;
+      padding: 10px;
+    }
+    .preview img, .preview video, .preview iframe {
+      width: 100%;
+      height: 100%;
+      min-height: 110px;
+      object-fit: cover;
+      border: 0;
+      display: block;
+    }
+    .upload-drop {
+      border: 1px dashed var(--gold);
+      background: #fffaf0;
+      border-radius: 12px;
+      padding: 16px;
+    }
+    .upload-drop input { background: white; }
+    .help-text {
+      margin: 6px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+      text-transform: none;
+      letter-spacing: 0;
+      font-weight: 500;
+    }
     .status {
       display: inline-flex;
       border-radius: 999px;
@@ -171,6 +255,7 @@
     }
     .status.good { background: rgba(79,125,96,.12); color: var(--good); }
     .status.warn { background: rgba(184,138,47,.14); color: var(--gold); }
+    .status.danger { background: rgba(155,49,70,.10); color: var(--danger); }
     .message {
       margin: 14px 0;
       padding: 12px 14px;
@@ -183,9 +268,81 @@
       border-color: rgba(155,49,70,.25);
       background: rgba(155,49,70,.05);
     }
+    .message.loading {
+      border-color: rgba(79,125,96,.25);
+      background: rgba(79,125,96,.07);
+    }
+    .message.loading::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      display: inline-block;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: var(--good);
+      animation: pulse 0.8s ease-in-out infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 0.35; transform: scale(0.85); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    .join-now {
+      position: sticky;
+      top: 0;
+      z-index: 30;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(184,138,47,.35);
+      background: #fff7df;
+      box-shadow: 0 10px 28px rgba(23,33,29,.08);
+    }
+    .rich-text {
+      color: var(--ink);
+      line-height: 1.6;
+    }
+    .rich-text p,
+    .rich-text div { margin: 0 0 0.8rem; }
+    .rich-text ul,
+    .rich-text ol { margin: 0.5rem 0 0.8rem 1.25rem; padding-left: 1rem; }
+    .rich-text strong,
+    .rich-text b { font-weight: 700; }
+    .rich-text em,
+    .rich-text i { font-style: italic; }
+    .rich-text u { text-decoration: underline; }
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(23,33,29,.54);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+    }
+    .modal {
+      width: min(920px, 100%);
+      max-height: 90vh;
+      overflow: auto;
+      background: var(--paper);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 22px;
+    }
     .hidden { display: none !important; }
     @media (max-width: 860px) {
-      .hero, .two, .grid { grid-template-columns: 1fr; }
+      .hero, .two, .grid, .quick-actions { grid-template-columns: 1fr; }
+      .media-card { grid-template-columns: 1fr; }
+      .join-now { position: static; flex-direction: column; align-items: stretch; }
+      .tabs {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: rgba(245,246,242,.96);
+        padding: 8px 0;
+      }
       .topbar { align-items: flex-start; flex-direction: column; }
     }
   </style>
@@ -193,7 +350,7 @@
 <body>
   <main class="shell">
     <div class="topbar">
-      <div class="brand">Student Workspace</div>
+      <div class="brand" id="portal-brand">Student Workspace</div>
       <button id="sign-out" class="button secondary hidden">Sign Out</button>
     </div>
     <div id="message"></div>
@@ -209,8 +366,8 @@
         return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#039;" })[char];
       });
     }
-    function setMessage(message, error) {
-      document.getElementById("message").innerHTML = message ? '<div class="message ' + (error ? "error" : "") + '">' + escapeHtml(message) + '</div>' : "";
+    function setMessage(message, error, loading) {
+      document.getElementById("message").innerHTML = message ? '<div class="message ' + (loading ? "loading" : error ? "error" : "") + '">' + escapeHtml(message) + '</div>' : "";
     }
     async function api(action, options) {
       options = options || {};
@@ -225,20 +382,39 @@
       if (!response.ok || payload.ok === false) throw new Error(payload.error || "Request failed.");
       return payload;
     }
+    function portalSettings() {
+      return state.data && state.data.settings ? state.data.settings : {};
+    }
+    function coachPhone() { return portalSettings().coach_contact_phone || "9292160175"; }
+    function coachEmail() { return portalSettings().coach_contact_email || "coach@d-a-j.com"; }
+    function studentPortalLabel() { return portalSettings().student_portal_label || "Student Workspace"; }
+    function studentWelcomeMessage() { return portalSettings().student_welcome_message || "Lessons, homework, package renewal, reader requests, and actor page updates."; }
+    function shouldShowStudentAction(key) {
+      var settings = portalSettings();
+      if (key === "contact") return settings.student_show_contact_buttons !== false;
+      if (key === "booking") return settings.student_show_booking_button !== false;
+      if (key === "drive") return settings.student_show_drive_folder !== false;
+      return true;
+    }
     function getSetupToken() {
       return new URLSearchParams(window.location.search).get("setup") || "";
     }
+    function getResetToken() {
+      return new URLSearchParams(window.location.search).get("reset") || "";
+    }
     function renderAuth() {
       var token = getSetupToken();
+      var resetToken = getResetToken();
+      document.getElementById("portal-brand").textContent = "Student Workspace";
       document.getElementById("workspace").classList.add("hidden");
       document.getElementById("sign-out").classList.add("hidden");
       document.getElementById("auth-panel").classList.remove("hidden");
-      document.getElementById("auth-panel").innerHTML = token ? `
-        <h1>Create Your Account</h1>
-        <p class="muted">Set a password for your private student workspace.</p>
+      document.getElementById("auth-panel").innerHTML = token || resetToken ? `
+        <h1>${resetToken ? "Reset Password" : "Create Your Account"}</h1>
+        <p class="muted">${resetToken ? "Choose a new password for your private student workspace." : "Set a password for your private student workspace."}</p>
         <form class="form" id="setup-form">
           <label>Password<input name="password" type="password" autocomplete="new-password" minlength="8" required /></label>
-          <button class="button gold" type="submit">Create Account</button>
+          <button class="button gold" type="submit">${resetToken ? "Save New Password" : "Create Account"}</button>
         </form>
       ` : `
         <h1>Sign In</h1>
@@ -248,17 +424,34 @@
           <label>Password<input name="password" type="password" autocomplete="current-password" required /></label>
           <button class="button gold" type="submit">Sign In</button>
         </form>
+        <form class="form" id="reset-request-form">
+          <h3>Reset Password</h3>
+          <p class="muted">Enter your email and your coach will send a reset link.</p>
+          <label>Email<input name="email" type="email" autocomplete="email" required /></label>
+          <button class="button secondary" type="submit">Request Reset Link</button>
+        </form>
+        <p class="muted">Need first-time access? Ask your coach to invite your student account.</p>
       `;
       var setupForm = document.getElementById("setup-form");
       if (setupForm) setupForm.onsubmit = submitSetup;
       var loginForm = document.getElementById("login-form");
       if (loginForm) loginForm.onsubmit = submitLogin;
+      var resetRequestForm = document.getElementById("reset-request-form");
+      if (resetRequestForm) resetRequestForm.onsubmit = submitResetRequest;
     }
     async function submitSetup(event) {
       event.preventDefault();
       try {
-        await api("complete_invite", { method: "POST", body: { token: getSetupToken(), password: event.currentTarget.elements.password.value } });
-        setMessage("Account created. Sign in with your email and new password.");
+        var resetToken = getResetToken();
+        setMessage(resetToken ? "Saving your new password..." : "Creating your account...", false, true);
+        await api(resetToken ? "complete_reset" : "complete_invite", {
+          method: "POST",
+          body: {
+            token: resetToken || getSetupToken(),
+            password: event.currentTarget.elements.password.value
+          }
+        });
+        setMessage(resetToken ? "Password reset. Sign in with your email and new password." : "Account created. Sign in with your email and new password.");
         history.replaceState(null, "", "/portal");
         renderAuth();
       } catch (error) {
@@ -268,8 +461,19 @@
     async function submitLogin(event) {
       event.preventDefault();
       try {
+        setMessage("Signing you in...", false, true);
         await api("login", { method: "POST", body: { email: event.currentTarget.elements.email.value, password: event.currentTarget.elements.password.value } });
         await loadSession();
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    }
+    async function submitResetRequest(event) {
+      event.preventDefault();
+      try {
+        setMessage("Requesting reset link...", false, true);
+        await api("request_reset", { method: "POST", body: { email: event.currentTarget.elements.email.value } });
+        setMessage("If that email has an active account, your coach can now send a reset link.");
       } catch (error) {
         setMessage(error.message, true);
       }
@@ -290,8 +494,99 @@
       var slug = publicSlug(data);
       return slug ? "/actors/" + encodeURIComponent(slug) : "";
     }
+    function bookingUrl(data) {
+      return data.settings && data.settings.booking_url ? data.settings.booking_url : "https://coach.as.me";
+    }
+    function activePackage(data) {
+      return (data.packages || []).find(function (pkg) { return String(pkg.status || "").toLowerCase() !== "archived"; }) || null;
+    }
+    function packageProgress(pkg) {
+      if (!pkg) return 0;
+      var total = Number(pkg.sessions_total || 0);
+      var remaining = Number(pkg.sessions_remaining || 0);
+      if (!total) return 0;
+      return Math.max(0, Math.min(100, Math.round((remaining / total) * 100)));
+    }
+    function money(value) {
+      var number = Number(value || 0);
+      return Number.isFinite(number) ? number.toLocaleString(undefined, { style: "currency", currency: "USD" }) : "$0.00";
+    }
     function reviewStatusLabel(file) {
       return String(file.public_page_status || "NOT_PUBLIC").replace(/_/g, " ").toLowerCase();
+    }
+    function materialUrl(file) {
+      return String(file && (file.file_url || file.external_url) || "").trim();
+    }
+    function materialType(file) {
+      var blob = [file && file.category, file && file.material_kind, file && file.mime_type, file && file.title, materialUrl(file)].join(" ");
+      if (/image|headshot|photo|jpeg|jpg|png|webp|gif/i.test(blob)) return "image";
+      if (/video|reel|self tape|mp4|mov|webm/i.test(blob)) return "video";
+      if (/pdf|resume|document/i.test(blob)) return "pdf";
+      return "file";
+    }
+    function materialPreview(file) {
+      var url = materialUrl(file);
+      var title = escapeHtml(file && (file.title || file.file_name) || "Material");
+      var type = materialType(file);
+      if (!url) return '<div class="preview">No file</div>';
+      if (type === "image") return '<a class="preview" href="' + escapeHtml(url) + '" target="_blank" rel="noopener"><img alt="' + title + '" src="' + escapeHtml(url) + '" loading="lazy" /></a>';
+      if (type === "video") return '<video class="preview" src="' + escapeHtml(url) + '" controls preload="metadata"></video>';
+      if (type === "pdf") return '<iframe class="preview" title="' + title + '" src="' + escapeHtml(url) + '"></iframe>';
+      return '<a class="preview" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open File</a>';
+    }
+    function materialCard(file) {
+      var url = materialUrl(file);
+      return '<div class="row media-card">' +
+        materialPreview(file) +
+        '<div><strong>' + escapeHtml(file.title || file.file_name || "Material") + '</strong>' +
+        '<p class="muted">' + escapeHtml(file.category || file.material_kind || "Resource") + ' · ' + escapeHtml(reviewStatusLabel(file)) + '</p>' +
+        (file.notes ? '<p class="muted">' + escapeHtml(file.notes) + '</p>' : '') +
+        (url ? '<a class="button secondary" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open</a>' : '') +
+        '</div></div>';
+    }
+    function sanitizeRichText(value) {
+      var template = document.createElement("template");
+      template.innerHTML = String(value || "");
+      var allowedTags = ["B", "STRONG", "I", "EM", "U", "P", "DIV", "BR", "UL", "OL", "LI", "A", "SPAN"];
+      Array.prototype.forEach.call(template.content.querySelectorAll("*"), function (node) {
+        if (!allowedTags.includes(node.tagName)) {
+          node.replaceWith(document.createTextNode(node.textContent || ""));
+          return;
+        }
+        Array.prototype.slice.call(node.attributes).forEach(function (attribute) {
+          var name = attribute.name.toLowerCase();
+          var value = attribute.value || "";
+          if (name.startsWith("on") || name === "style") node.removeAttribute(attribute.name);
+          if ((name === "href" || name === "src") && /^javascript:/i.test(value)) node.removeAttribute(attribute.name);
+          if (node.tagName === "A" && name === "href") {
+            node.setAttribute("target", "_blank");
+            node.setAttribute("rel", "noopener");
+          }
+        });
+      });
+      return template.innerHTML || escapeHtml(value);
+    }
+    function lessonEndTime(lesson) {
+      var start = lesson && lesson.scheduled_start ? new Date(lesson.scheduled_start) : null;
+      var explicitEnd = lesson && lesson.scheduled_end ? new Date(lesson.scheduled_end) : null;
+      if (explicitEnd && !Number.isNaN(explicitEnd.getTime())) return explicitEnd;
+      return start && !Number.isNaN(start.getTime()) ? new Date(start.getTime() + 75 * 60000) : null;
+    }
+    function activeJoinLesson(data) {
+      var now = new Date();
+      return (data.lessons || []).find(function (lesson) {
+        if (!lesson.join_link) return false;
+        if (String(lesson.lesson_status || "").toUpperCase() !== "SCHEDULED") return false;
+        var start = lesson.scheduled_start ? new Date(lesson.scheduled_start) : null;
+        var end = lessonEndTime(lesson);
+        if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return false;
+        return now >= new Date(start.getTime() - 15 * 60000) && now <= end;
+      }) || null;
+    }
+    function joinNowBanner(data) {
+      var lesson = activeJoinLesson(data);
+      if (!lesson) return "";
+      return '<section class="panel join-now"><div><h2>Lesson is ready</h2><p class="muted">' + escapeHtml(lesson.topic || lesson.lesson_type || "Your lesson") + ' · ' + escapeHtml(formatDate(lesson.scheduled_start)) + '</p></div><a class="button gold" href="' + escapeHtml(lesson.join_link) + '" target="_blank" rel="noopener">Join Now</a></section>';
     }
     function renderWorkspace() {
       var data = state.data || {};
@@ -299,27 +594,30 @@
       var nextLesson = (data.lessons || []).find(function (lesson) { return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED"; });
       var publicLive = data.student && data.student.actor_page_eligible === true && data.publicProfile && String(data.publicProfile.status || "").toLowerCase() === "active";
       var pending = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL"; });
+      document.getElementById("portal-brand").textContent = studentPortalLabel();
       document.getElementById("auth-panel").classList.add("hidden");
       document.getElementById("workspace").classList.remove("hidden");
       document.getElementById("sign-out").classList.remove("hidden");
       document.getElementById("workspace").innerHTML = `
+        ${joinNowBanner(data)}
         <section class="hero">
           <div class="panel">
             <h1>${escapeHtml(data.student && data.student.full_name || state.identity.student_name || "Student")}</h1>
-            <p class="muted">Your lessons, assignments, current script, and actor profile in one place.</p>
+            <p class="muted">${escapeHtml(studentWelcomeMessage())}</p>
             <div class="tabs">
-              ${["overview", "profile", "submissions", "materials", "lessons"].map(function (tab) {
-                return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + tab.charAt(0).toUpperCase() + tab.slice(1) + "</button>";
+              ${["overview", "script", "materials", "lessons", "homework", "payments"].map(function (tab) {
+                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
+                return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + label + "</button>";
               }).join("")}
             </div>
           </div>
           <aside class="panel">
-            <h3>Next Actions</h3>
+            <h3>Next</h3>
             <div class="list">
               <div class="row"><strong>${nextLesson ? "Next lesson: " + escapeHtml(formatDate(nextLesson.scheduled_start)) : "No upcoming lesson"}</strong></div>
               <div class="row"><strong>${homeworkOpen.length}</strong> open assignment${homeworkOpen.length === 1 ? "" : "s"}</div>
               <div class="row">Public page <span class="status ${publicLive ? "good" : "warn"}">${publicLive ? "live" : "draft"}</span></div>
-              <div class="row">${pending.length} submitted public material${pending.length === 1 ? "" : "s"}</div>
+              <div class="row">${pending.length} public submission${pending.length === 1 ? "" : "s"}</div>
             </div>
           </aside>
         </section>
@@ -331,14 +629,37 @@
       if (state.tab === "submissions") return renderSubmissionsTab(data);
       if (state.tab === "materials") return renderMaterialsTab(data);
       if (state.tab === "lessons") return renderLessonsTab(data);
+      if (state.tab === "homework") return renderHomeworkTab(data);
+      if (state.tab === "script") return renderScriptTab(data);
+      if (state.tab === "payments") return renderPaymentsTab(data);
+      if (state.tab === "reader") return renderReaderTab(data);
       return renderOverviewTab(data);
     }
     function renderOverviewTab(data) {
-      return `<div class="grid">
-        <div class="action-card"><h3>Actor Page</h3><p class="muted">Keep your bio, specs, headshot, resume, and reel current.</p><button class="button secondary" onclick="setTab('profile')">Edit Profile</button></div>
-        <div class="action-card"><h3>Submissions</h3><p class="muted">Send new public materials to your coach for review.</p><button class="button secondary" onclick="setTab('submissions')">Submit Material</button></div>
-        <div class="action-card"><h3>Current Script</h3><p class="muted">${escapeHtml(data.currentScript && data.currentScript.title || "No current script is active.")}</p></div>
-      </div>`;
+      var nextLesson = (data.lessons || []).find(function (lesson) { return String(lesson.lesson_status || "").toUpperCase() === "SCHEDULED"; });
+      var openHomework = (data.homework || []).filter(function (item) { return String(item.status || "").toUpperCase() !== "COMPLETED"; });
+      var pkg = activePackage(data);
+      var progress = packageProgress(pkg);
+      var publicLive = data.student && data.student.actor_page_eligible === true && data.publicProfile && String(data.publicProfile.status || "").toLowerCase() === "active";
+      var pending = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW"; });
+      var readerOpen = (data.readerRequests || []).filter(function (request) { return !["RESOLVED", "EXPIRED", "DECLINED"].includes(String(request.status || "").toUpperCase()); });
+      return `<section class="panel">
+        <div class="quick-actions">
+          ${nextLesson && nextLesson.join_link ? `<a class="button gold" href="${escapeHtml(nextLesson.join_link)}" target="_blank" rel="noopener">Join Lesson</a>` : shouldShowStudentAction("booking") ? `<a class="button gold" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book Lesson</a>` : ""}
+          <button class="button secondary" onclick="setTab('script')">Current Work</button>
+          <button class="button secondary" onclick="setTab('materials')">Materials</button>
+          ${shouldShowStudentAction("contact") ? `<a class="button secondary" href="sms:${coachPhone()}">Text Coach</a><a class="button secondary" href="mailto:${coachEmail()}">Email Coach</a>` : ""}
+        </div>
+        <div class="grid">
+          <div class="action-card primary"><h3>${nextLesson ? "Next Lesson" : "Book Lesson"}</h3><p class="muted">${nextLesson ? escapeHtml(formatDate(nextLesson.scheduled_start)) : "Choose your next time."}</p>${shouldShowStudentAction("booking") ? `<a class="button secondary" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book</a>` : ""}</div>
+          <div class="action-card"><h3>Current Work</h3><p class="muted">${escapeHtml(data.currentScript && data.currentScript.title || "No active script")}</p><button class="button secondary" onclick="setTab('script')">Open</button></div>
+          <div class="action-card"><h3>Latest Notes</h3><p class="muted">${(data.notes || []).length ? escapeHtml((data.notes || [])[0].title || "Lesson notes") : "No new notes yet"}</p><button class="button secondary" onclick="setTab('lessons')">Review</button></div>
+          <div class="action-card"><h3>Materials</h3><p class="muted">Current resources and vault</p><button class="button secondary" onclick="setTab('materials')">Open</button></div>
+          <div class="action-card"><h3>Practice</h3><p class="muted">${openHomework.length} active item${openHomework.length === 1 ? "" : "s"}</p><button class="button secondary" onclick="setTab('homework')">Open</button></div>
+          <div class="action-card"><h3>Contact Darius</h3><p class="muted">Questions, prep, or scheduling notes</p>${shouldShowStudentAction("contact") ? `<a class="button secondary" href="mailto:${coachEmail()}">Email</a>` : ""}</div>
+        </div>
+        ${pkg ? '<div class="action-card" style="margin-top:14px"><h3>' + escapeHtml(pkg.package_name || "Package") + '</h3><p class="muted">' + escapeHtml(pkg.sessions_remaining || "0") + ' of ' + escapeHtml(pkg.sessions_total || "0") + ' sessions remaining</p><div class="progress"><span style="width:' + progress + '%"></span></div><button class="button secondary" onclick="startPackageRenewal()" style="margin-top:12px">Renew Package</button></div>' : ""}
+      </section>`;
     }
     function renderProfileTab(data) {
       var profile = data.publicProfile || {};
@@ -352,13 +673,14 @@
           <label>Height<input name="height" value="${escapeHtml(profile.height || "")}" /></label>
           <label>Eye Color<input name="eye_color" value="${escapeHtml(profile.eye_color || "")}" /></label>
           <label>Hair Color<input name="hair_color" value="${escapeHtml(profile.hair_color || "")}" /></label>
-          <label><span>Public page live</span><input name="go_live" type="checkbox" ${String(profile.status || "").toLowerCase() === "active" ? "checked" : ""} ${data.student.actor_page_eligible === true ? "" : "disabled"} /></label>
+          <label><span>Request live page</span><input name="go_live" type="checkbox" ${String(profile.status || "").toLowerCase() === "active" ? "checked" : ""} ${data.student.actor_page_eligible === true ? "" : "disabled"} /></label>
           <button class="button gold" type="submit">Save Profile</button>
         </form>
         <aside class="panel">
           <h2>Preview</h2>
-          <p class="muted">${url ? "Your public page URL is ready when your page is live." : "Your public page URL will appear after your profile is created."}</p>
+          <p><span class="status ${String(profile.status || "").toLowerCase() === "active" ? "good" : "warn"}">${escapeHtml(profile.status || "Draft")}</span></p>
           ${url ? '<a class="button secondary" href="' + escapeHtml(url) + '" target="_blank" rel="noopener">Open Public Page</a>' : ""}
+          ${url ? '<button class="button secondary" onclick="copyPublicUrl()" style="margin-left:8px">Copy Link</button>' : ""}
         </aside>
       </section>`;
     }
@@ -366,34 +688,220 @@
       var submitted = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL"; });
       return `<section class="two">
         <form class="panel form" id="submission-form">
-          <h2>Submit Public Material</h2>
+          <div class="section-head">
+            <div>
+              <h2>Submit Public Material</h2>
+              <p class="muted">Upload a file or paste a share link. Your coach reviews it before it appears on your actor page.</p>
+            </div>
+          </div>
           <label>Type<select name="category"><option>Headshot</option><option>Resume</option><option>Reel</option><option>Self Tape</option></select></label>
           <label>Title<input name="title" required /></label>
-          <label>URL<input name="external_url" type="url" required /></label>
+          <label class="upload-drop">Upload PDF, image, or video<input name="material_upload" type="file" accept="application/pdf,image/*,video/*" /><span class="help-text">Direct uploads support PDFs, images, and smaller videos up to 4.5 MB. Paste a Drive, Vimeo, YouTube, Dropbox, or iCloud link for larger files.</span></label>
+          <label>Share Link<input name="external_url" type="url" placeholder="https://..." /></label>
           <label>Notes for coach<textarea name="notes" rows="4"></textarea></label>
           <button class="button gold" type="submit">Submit For Review</button>
         </form>
-        <aside class="panel"><h2>Review Status</h2><div class="list">${submitted.length ? submitted.map(function (file) {
-          return '<div class="row"><strong>' + escapeHtml(file.title || file.file_name) + '</strong><p class="muted">' + escapeHtml(file.category || "Material") + ' - ' + escapeHtml(reviewStatusLabel(file)) + '</p></div>';
-        }).join("") : '<div class="row">No public submissions yet.</div>'}</div></aside>
+        <aside class="panel"><h2>Review Status</h2><div class="list">${submitted.length ? submitted.map(materialCard).join("") : '<div class="row">No public submissions yet.</div>'}</div></aside>
       </section>`;
     }
     function renderMaterialsTab(data) {
       var lessonMaterials = (data.materials || []).filter(function (file) { return String(file.submitted_by || "").toUpperCase() !== "STUDENT_PORTAL"; });
-      return `<section class="panel"><h2>Lesson Materials</h2><div class="list">${lessonMaterials.length ? lessonMaterials.map(function (file) {
-        var url = file.external_url || file.file_url || "";
-        return '<div class="row"><strong>' + escapeHtml(file.title || file.file_name || "Material") + '</strong><p class="muted">' + escapeHtml(file.category || file.material_kind || "Resource") + '</p>' + (url ? '<a class="button secondary" target="_blank" rel="noopener" href="' + escapeHtml(url) + '">Open</a>' : '') + '</div>';
-      }).join("") : '<div class="row">No shared lesson materials yet.</div>'}</div></section>`;
+      var currentMaterials = lessonMaterials.filter(function (file) { return String(file.status || "").toLowerCase() !== "vaulted"; });
+      var vaultMaterials = lessonMaterials.filter(function (file) { return String(file.status || "").toLowerCase() === "vaulted"; });
+      return `<section class="two">
+        <div class="panel"><div class="section-head"><div><h2>Current</h2><p class="muted">Scripts, sides, links, and resources you are working with now.</p></div>${shouldShowStudentAction("drive") && data.student && data.student.drive_folder_url ? '<a class="button gold" href="' + escapeHtml(data.student.drive_folder_url) + '" target="_blank" rel="noopener">Open Drive Folder</a>' : ""}</div><div class="list">${currentMaterials.length ? currentMaterials.map(materialCard).join("") : '<div class="row">No current materials yet.</div>'}</div></div>
+        <aside class="panel"><h2>Vault</h2><p class="muted">Older materials stay here when you need to look back.</p><div class="list">${vaultMaterials.length ? vaultMaterials.map(materialCard).join("") : '<div class="row">Nothing is vaulted yet.</div>'}</div></aside>
+      </section>`;
     }
     function renderLessonsTab(data) {
-      return `<section class="panel"><h2>Lessons</h2><div class="list">${(data.lessons || []).length ? data.lessons.map(function (lesson) {
-        return '<div class="row"><strong>' + escapeHtml(lesson.topic || lesson.lesson_type || "Lesson") + '</strong><p class="muted">' + escapeHtml(formatDate(lesson.scheduled_start)) + ' - ' + escapeHtml(lesson.lesson_status || "Scheduled") + '</p></div>';
+      return `<section class="panel"><div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap"><h2>Lessons</h2><a class="button gold" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book Lesson</a></div><div class="list">${(data.lessons || []).length ? data.lessons.map(function (lesson) {
+        return '<button type="button" class="row" style="text-align:left;cursor:pointer" data-lesson-open="' + escapeHtml(lesson.lesson_id) + '"><strong>' + escapeHtml(lesson.topic || lesson.lesson_type || "Lesson") + '</strong><p class="muted">' + escapeHtml(formatDate(lesson.scheduled_start)) + ' - ' + escapeHtml(lesson.lesson_status || "Scheduled") + '</p></button>';
       }).join("") : '<div class="row">No lessons are visible yet.</div>'}</div></section>`;
+    }
+    function renderHomeworkTab(data) {
+      return `<section class="panel"><h2>Homework</h2><div class="list">${(data.homework || []).length ? data.homework.map(function (item) {
+        var done = String(item.status || "").toUpperCase() === "COMPLETED";
+        return '<div class="row"><strong>' + escapeHtml(item.title || "Homework") + '</strong><p class="muted">' + escapeHtml(item.details || "") + '</p><p><span class="status ' + (done ? "good" : "warn") + '">' + (done ? "complete" : "open") + '</span></p><button class="button secondary" data-homework-id="' + escapeHtml(item.homework_id) + '" data-homework-complete="' + (!done) + '">Mark ' + (done ? "Open" : "Complete") + '</button><button class="button secondary" style="margin-left:8px" data-homework-help="' + escapeHtml(item.homework_id) + '">Request Help</button></div>';
+      }).join("") : '<div class="row">No homework is visible right now.</div>'}</div></section>`;
+    }
+    function renderScriptTab(data) {
+      var script = data.currentScript || {};
+      return `<section class="two">
+        <form class="panel form" id="script-form">
+          <h2>Current Script</h2>
+          <label>Title<input name="title" value="${escapeHtml(script.title || "")}" /></label>
+          <label>Script Link<input name="script_url" type="url" value="${escapeHtml(script.external_url || "")}" /></label>
+          <label>Text<textarea name="script_text" rows="10">${escapeHtml((function () { try { return JSON.parse(script.notes || "{}").script_text || ""; } catch (error) { return ""; } })())}</textarea></label>
+          <button class="button gold" type="submit">Save Script</button>
+        </form>
+        <aside class="panel"><h2>Status</h2><p class="muted">${script.title ? "Active script is ready." : "Add a script when you want notes in one place."}</p></aside>
+      </section>`;
+    }
+    function renderPaymentsTab(data) {
+      var pkg = activePackage(data);
+      var progress = packageProgress(pkg);
+      return `<section class="two">
+        <div class="panel">
+          <h2>Package</h2>
+          ${pkg ? '<div class="kpi"><strong>' + escapeHtml(pkg.package_name || "Package") + '</strong><span class="status ' + (Number(pkg.sessions_remaining || 0) <= 1 ? "warn" : "good") + '">' + escapeHtml(pkg.sessions_remaining || "0") + ' left</span></div><div class="progress"><span style="width:' + progress + '%"></span></div><p class="muted">' + money(pkg.package_price) + ' package price</p><button class="button gold" onclick="startPackageRenewal()">Renew Package</button>' : '<div class="row">No package is visible right now.</div>'}
+        </div>
+        <aside class="panel"><h2>Payments</h2><div class="list">${(data.payments || []).length ? data.payments.map(function (payment) {
+          return '<div class="row"><strong>' + money(payment.amount) + '</strong><p class="muted">' + escapeHtml(payment.payment_type || "Payment") + ' - ' + escapeHtml(formatDate(payment.payment_date || payment.created_at)) + '</p></div>';
+        }).join("") : '<div class="row">No visible payment history yet.</div>'}</div></aside>
+      </section>`;
+    }
+    function renderReaderTab(data) {
+      var requests = data.readerRequests || [];
+      return `<section class="two">
+        <form class="panel form" id="reader-form">
+          <h2>Request Reader</h2>
+          <label>Filming Date<input name="filming_date" type="date" required /></label>
+          <label>Filming Time<input name="filming_time" type="time" required /></label>
+          <label>Expected Duration<select name="duration_minutes"><option value="30">30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option><option value="120">2 hours</option></select></label>
+          <label>Meet By<select name="meeting_method"><option value="ZOOM">Zoom</option><option value="GOOGLE_MEET">Google Meet</option><option value="TEAMS">Microsoft Teams</option><option value="PHONE">Phone Call</option><option value="WHATSAPP">WhatsApp</option><option value="SOCIAL_MEDIA">Social Media</option><option value="IN_PERSON">In Person</option></select></label>
+          <label>Meeting Details<input name="meeting_details" placeholder="Link, phone, handle, address, or instructions" /></label>
+          <label>Sides Link<input name="sides_url" type="url" /></label>
+          <label>Instructions Link<input name="instructions_url" type="url" /></label>
+          <label class="upload-drop">Upload Sides/Instructions<input name="reader_upload" type="file" accept="application/pdf,image/*,video/*,.doc,.docx,.txt" /><span class="help-text">PDFs, images, and short videos can be uploaded directly. Use links for larger files.</span></label>
+          <label>Notes<textarea name="notes" rows="4"></textarea></label>
+          <button class="button gold" type="submit">Send Request</button>
+        </form>
+        <aside class="panel"><h2>Requests</h2><div class="list">${requests.length ? requests.map(function (request) {
+          return '<div class="row"><strong>' + escapeHtml(formatDate(request.filming_date) || request.filming_date) + ' ' + escapeHtml(request.filming_time || "") + '</strong><p><span class="status warn">' + escapeHtml(String(request.status || "SUBMITTED").toLowerCase()) + '</span></p><p class="muted">' + escapeHtml(request.meeting_method || "") + '</p></div>';
+        }).join("") : '<div class="row">No reader requests yet.</div>'}</div></aside>
+      </section>`;
     }
     function setTab(tab) {
       state.tab = tab;
       renderWorkspace();
       bindForms();
+    }
+    async function copyPublicUrl() {
+      var url = window.location.origin + publicUrl(state.data || {});
+      if (navigator.clipboard && navigator.clipboard.writeText) await navigator.clipboard.writeText(url);
+      setMessage("Public page link copied.");
+    }
+    function updateHomework(homeworkId, completed) {
+      submitStudentAction("update_homework", { homework_id: homeworkId, completed: completed }, "Homework updated.", "homework");
+    }
+    function requestHomeworkHelp(homeworkId) {
+      submitStudentAction("update_homework", { homework_id: homeworkId, reminder_requested: true }, "Help request sent.", "homework");
+    }
+    function lessonNote(data, lessonId) {
+      return (data.notes || []).find(function (note) { return note.lesson_id === lessonId; }) || null;
+    }
+    function lessonHomework(data, lessonId) {
+      return (data.homework || []).filter(function (item) { return item.lesson_id === lessonId; });
+    }
+    function lessonMaterials(data, lessonId) {
+      return (data.materials || []).filter(function (file) { return file.lesson_id === lessonId; });
+    }
+    function lessonComments(data, lessonId) {
+      return (data.lessonComments || []).filter(function (comment) { return comment.lesson_id === lessonId; });
+    }
+    function openLessonModal(lessonId) {
+      var data = state.data || {};
+      var lesson = (data.lessons || []).find(function (row) { return row.lesson_id === lessonId; });
+      if (!lesson) return;
+      var note = lessonNote(data, lessonId);
+      var homework = lessonHomework(data, lessonId);
+      var materials = lessonMaterials(data, lessonId);
+      var comments = lessonComments(data, lessonId);
+      var overlay = document.createElement("div");
+      overlay.className = "modal-backdrop";
+      overlay.id = "lesson-modal";
+      overlay.innerHTML = `
+        <div class="modal">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:14px">
+            <div>
+              <h2>${escapeHtml(lesson.topic || lesson.lesson_type || "Lesson")}</h2>
+              <p class="muted">${escapeHtml(formatDate(lesson.scheduled_start))} · ${escapeHtml(lesson.lesson_status || "Scheduled")}</p>
+            </div>
+            <button type="button" class="button secondary" onclick="closeLessonModal()">Close</button>
+          </div>
+          <div class="quick-actions" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+            ${lesson.join_link ? '<a class="button gold" href="' + escapeHtml(lesson.join_link) + '" target="_blank" rel="noopener">Join</a>' : ""}
+            ${shouldShowStudentAction("contact") ? `<a class="button secondary" href="sms:${coachPhone()}">Text Coach</a><a class="button secondary" href="mailto:${coachEmail()}">Email Coach</a>` : ""}
+            ${shouldShowStudentAction("booking") ? `<a class="button secondary" href="${escapeHtml(bookingUrl(data))}" target="_blank" rel="noopener">Book</a>` : ""}
+          </div>
+          <section class="two">
+            <div class="panel">
+              <h3>Notes</h3>
+              ${note ? '<div class="row"><strong>' + escapeHtml(note.title || "Lesson Notes") + '</strong><div class="rich-text">' + sanitizeRichText(note.body || "") + '</div></div>' : '<div class="row">No published note for this lesson yet.</div>'}
+              <h3 style="margin-top:18px">Homework</h3>
+              <div class="list">${homework.length ? homework.map(function (item) {
+                return '<div class="row"><strong>' + escapeHtml(item.title || "Homework") + '</strong><p class="muted">' + escapeHtml(item.details || "") + '</p></div>';
+              }).join("") : '<div class="row">No homework attached.</div>'}</div>
+              <h3 style="margin-top:18px">Materials</h3>
+              <div class="list">${materials.length ? materials.map(function (file) {
+                return materialCard(file);
+              }).join("") : '<div class="row">No materials attached.</div>'}</div>
+            </div>
+            <aside class="panel">
+              <h3>Comments for Coach</h3>
+              <div class="list">${comments.length ? comments.map(function (comment) {
+                return '<div class="row"><strong>' + escapeHtml(comment.author_role || "Student") + '</strong><p class="muted">' + escapeHtml(comment.body || "") + '</p><p class="muted">' + escapeHtml(formatDate(comment.created_at)) + '</p></div>';
+              }).join("") : '<div class="row">No comments yet.</div>'}</div>
+              <form class="form" id="lesson-comment-form" style="margin-top:14px">
+                <label>Comment<textarea name="comment" rows="4" required></textarea></label>
+                <button class="button gold" type="submit">Send Comment</button>
+              </form>
+            </aside>
+          </section>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      overlay.onclick = function (event) { if (event.target === overlay) closeLessonModal(); };
+      var form = document.getElementById("lesson-comment-form");
+      if (form) form.onsubmit = function (event) {
+        event.preventDefault();
+        submitStudentAction("add_lesson_comment", { lesson_id: lessonId, comment: form.elements.comment.value }, "Comment sent.", "lessons")
+          .then(function () { closeLessonModal(); });
+      };
+    }
+    function closeLessonModal() {
+      var modal = document.getElementById("lesson-modal");
+      if (modal) modal.remove();
+    }
+    async function submitStudentAction(action, body, message, tab) {
+      return api(action, { method: "POST", body: body })
+        .then(function (payload) {
+          state.data = payload.data;
+          setMessage(message || "Saved.");
+          if (tab) state.tab = tab;
+          renderWorkspace();
+          bindForms();
+        })
+        .catch(function (error) { setMessage(error.message, true); });
+    }
+    async function startPackageRenewal() {
+      try {
+        var pkg = activePackage(state.data || {});
+        if (!pkg) throw new Error("No renewable package is visible right now.");
+        var response = await fetch("/api/stripe-checkout", {
+          method: "POST",
+          credentials: "include",
+          headers: { "Content-Type": "application/json", Accept: "application/json" },
+          body: JSON.stringify({ package_id: pkg.package_id })
+        });
+        var payload = await response.json().catch(function () { return {}; });
+        if (!response.ok || payload.ok === false) throw new Error(payload.error || "Unable to start checkout.");
+        window.location.href = payload.checkout.url;
+      } catch (error) {
+        setMessage(error.message, true);
+      }
+    }
+    function readUploadFile(file) {
+      return new Promise(function (resolve, reject) {
+        if (!file) return resolve(null);
+        if (file.size > 4.5 * 1024 * 1024) return reject(new Error("Direct uploads must be 4.5 MB or smaller. Use a share link for larger videos or PDFs."));
+        var reader = new FileReader();
+        reader.onload = function () {
+          resolve({ name: file.name, mime_type: file.type, data_url: String(reader.result || "") });
+        };
+        reader.onerror = function () { reject(new Error("Unable to read upload.")); };
+        reader.readAsDataURL(file);
+      });
     }
     function bindForms() {
       var profileForm = document.getElementById("profile-form");
@@ -414,17 +922,78 @@
       if (submissionForm) submissionForm.onsubmit = async function (event) {
         event.preventDefault();
         var form = event.currentTarget;
+        try {
+          var upload = await readUploadFile(form.elements.material_upload.files[0]);
+          if (!upload && !form.elements.external_url.value.trim()) throw new Error("Upload a file or paste a share link.");
         await api("submit_public_material", { method: "POST", body: {
           title: form.elements.title.value,
           category: form.elements.category.value,
           external_url: form.elements.external_url.value,
+          file_name: upload ? upload.name : "",
+          file_data_url: upload ? upload.data_url : "",
+          mime_type: upload ? upload.mime_type : "",
           notes: form.elements.notes.value,
-          source_type: "LINK"
+          source_type: upload ? "UPLOAD" : "LINK"
         }}).then(function (payload) { state.data = payload.data; setMessage("Material submitted for review."); state.tab = "submissions"; renderWorkspace(); bindForms(); }).catch(function (error) { setMessage(error.message, true); });
+        } catch (error) {
+          setMessage(error.message, true);
+        }
       };
+      var scriptForm = document.getElementById("script-form");
+      if (scriptForm) scriptForm.onsubmit = async function (event) {
+        event.preventDefault();
+        var form = event.currentTarget;
+        await submitStudentAction("save_current_script", {
+          title: form.elements.title.value,
+          script_url: form.elements.script_url.value,
+          script_text: form.elements.script_text.value
+        }, "Script saved.", "script");
+      };
+      var readerForm = document.getElementById("reader-form");
+      if (readerForm) readerForm.onsubmit = async function (event) {
+        event.preventDefault();
+        var form = event.currentTarget;
+        try {
+          var upload = await readUploadFile(form.elements.reader_upload.files[0]);
+          await submitStudentAction("request_reader", {
+            filming_date: form.elements.filming_date.value,
+            filming_time: form.elements.filming_time.value,
+            duration_minutes: form.elements.duration_minutes.value,
+            meeting_method: form.elements.meeting_method.value,
+            meeting_details: form.elements.meeting_details.value,
+            sides_url: form.elements.sides_url.value,
+            instructions_url: form.elements.instructions_url.value,
+            upload_name: upload ? upload.name : "",
+            upload_data_url: upload ? upload.data_url : "",
+            upload_mime_type: upload ? upload.mime_type : "",
+            notes: form.elements.notes.value
+          }, "Reader request sent.", "reader");
+        } catch (error) {
+          setMessage(error.message, true);
+        }
+      };
+      Array.prototype.forEach.call(document.querySelectorAll("[data-homework-id]"), function (button) {
+        button.onclick = function () {
+          updateHomework(button.getAttribute("data-homework-id"), button.getAttribute("data-homework-complete") === "true");
+        };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll("[data-homework-help]"), function (button) {
+        button.onclick = function () {
+          requestHomeworkHelp(button.getAttribute("data-homework-help"));
+        };
+      });
+      Array.prototype.forEach.call(document.querySelectorAll("[data-lesson-open]"), function (button) {
+        button.onclick = function () {
+          openLessonModal(button.getAttribute("data-lesson-open"));
+        };
+      });
     }
     async function loadSession() {
       try {
+        setMessage("Loading your workspace...", false, true);
+        var checkout = new URLSearchParams(window.location.search).get("checkout");
+        if (checkout === "success") setMessage("Payment received. Your package renewal is being confirmed.");
+        if (checkout === "cancelled") setMessage("Checkout cancelled. You can renew whenever you're ready.");
         var payload = await api("portal_data");
         state.identity = payload.identity;
         state.data = payload.data;
@@ -432,6 +1001,7 @@
         renderWorkspace();
         bindForms();
       } catch (error) {
+        setMessage("");
         renderAuth();
       }
     }

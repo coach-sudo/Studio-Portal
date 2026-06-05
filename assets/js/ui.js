@@ -1,4 +1,4 @@
-﻿/*********************************
+/*********************************
  * UI STATE
  *********************************/
 let selectedStudentId = null;
@@ -73,13 +73,15 @@ const DEFAULT_AUTOMATION_SETTINGS = {
   public_page_policy: true
 };
 const DEFAULT_UI_PREFERENCES = {
+  compactVersion: 2,
   compact: {
-    students: false,
-    lessons: false,
-    notes: false,
-    finance: false,
-    schedule: false,
-    todo: false
+    students: true,
+    lessons: true,
+    notes: true,
+    finance: true,
+    schedule: true,
+    settings: true,
+    todo: true
   }
 };
 
@@ -87,12 +89,16 @@ function loadUiPreferences() {
   try {
     const raw = localStorage.getItem(UI_PREFERENCES_STORAGE_KEY);
     if (!raw) return JSON.parse(JSON.stringify(DEFAULT_UI_PREFERENCES));
+    const parsed = JSON.parse(raw);
+    if (Number(parsed.compactVersion || 0) < DEFAULT_UI_PREFERENCES.compactVersion) {
+      return JSON.parse(JSON.stringify(DEFAULT_UI_PREFERENCES));
+    }
     return {
       ...DEFAULT_UI_PREFERENCES,
-      ...JSON.parse(raw),
+      ...parsed,
       compact: {
         ...DEFAULT_UI_PREFERENCES.compact,
-        ...(JSON.parse(raw).compact || {})
+        ...(parsed.compact || {})
       }
     };
   } catch (error) {
@@ -401,7 +407,7 @@ function getNotificationAttentionRows() {
   const intakeRows = typeof getScheduleIntakeRows === "function" ? getScheduleIntakeRows().filter((row) => row.action_required) : [];
   if (intakeRows.length) {
     rows.push({
-      title: "Schedule Intake",
+      title: "Intake",
       message: `${intakeRows.length} imported lessons still need review.`,
       tone: "warm",
       action: "openAutomationIntakeReview()"
@@ -491,6 +497,43 @@ function getManualTodoId() {
 
 function buildTodoLinkAction(page, entityId = "") {
   return { page, entityId: entityId || "" };
+}
+
+function getReaderRequestRecords() {
+  return typeof getDataCollection === "function" ? getDataCollection("readerRequests") : [];
+}
+
+function getLessonCommentRecords() {
+  return typeof getDataCollection === "function" ? getDataCollection("lessonComments") : [];
+}
+
+function getOpenLessonComments() {
+  return getLessonCommentRecords()
+    .filter((comment) => !comment.resolved_at)
+    .sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime());
+}
+
+function getActiveReaderRequests() {
+  return getReaderRequestRecords()
+    .filter((request) => !["RESOLVED", "EXPIRED", "DECLINED"].includes(String(request.status || "").toUpperCase()))
+    .sort((a, b) => new Date(a.filming_date || a.created_at || 0).getTime() - new Date(b.filming_date || b.created_at || 0).getTime());
+}
+
+function getReaderRequestLabel(request) {
+  const date = request.filming_date ? formatLongDate(request.filming_date) : "Date TBD";
+  const time = request.filming_time || "";
+  return `${date}${time ? ` · ${time}` : ""}`;
+}
+
+function getLessonCommentLabel(comment) {
+  const lesson = typeof getSchemaLessonById === "function" ? getSchemaLessonById(comment.lesson_id) : null;
+  const date = lesson?.scheduled_start ? formatLessonDateTime(lesson.scheduled_start) : formatLastSyncMeta(comment.created_at);
+  return `${date} · ${comment.body || "Student comment"}`;
+}
+
+function getBookingUrlSetting() {
+  const backend = typeof studioDataService !== "undefined" ? studioDataService.getBackendSettings() : {};
+  return String(backend.booking_url || "https://coach.as.me").trim() || "https://coach.as.me";
 }
 
 function getActiveManualTodoItems() {
@@ -623,6 +666,34 @@ function getAutoTodoItems() {
       });
     });
 
+  getActiveReaderRequests().forEach((request) => {
+    tasks.push({
+      id: `todo-reader-${request.reader_request_id}`,
+      type: "auto",
+      title: `Find reader for ${request.student_name || getStudentNameById(request.student_id)}`,
+      detail: `${getReaderRequestLabel(request)} · ${String(request.meeting_method || "").replace(/_/g, " ").toLowerCase()}`,
+      due_at: request.filming_date || request.created_at || "",
+      priority: 5,
+      source: "reader",
+      cadence: "daily",
+      action: buildTodoLinkAction("reader", request.reader_request_id)
+    });
+  });
+
+  getOpenLessonComments().forEach((comment) => {
+    tasks.push({
+      id: `todo-lesson-comment-${comment.lesson_comment_id}`,
+      type: "auto",
+      title: `Reply to ${getStudentNameById(comment.student_id)}`,
+      detail: getLessonCommentLabel(comment),
+      due_at: comment.created_at || "",
+      priority: 4,
+      source: "student request",
+      cadence: "daily",
+      action: buildTodoLinkAction("lesson_comment", comment.lesson_comment_id)
+    });
+  });
+
   return [
     ...tasks,
     ...getTomorrowLessonPrepTasks()
@@ -654,14 +725,41 @@ function getDailyTodoItems() {
 function getWeeklyTodoItems() {
   const start = startOfLocalDay(getReferenceNow());
   const end = endOfLocalDay(addDaysToDate(start, 6));
+  const weeklyTasks = [
+    {
+      id: "todo-weekly-public-audit",
+      type: "auto",
+      title: "Audit actor pages",
+      detail: "Check draft, pending, blocked, and material-light public profiles.",
+      due_at: end.toISOString(),
+      priority: 3,
+      source: "public page",
+      cadence: "weekly",
+      action: buildTodoLinkAction("profile", "")
+    },
+    {
+      id: "todo-weekly-data-sync",
+      type: "auto",
+      title: "Review sync and data health",
+      detail: "Run Calendar/Gmail sync and clear unresolved intake items.",
+      due_at: end.toISOString(),
+      priority: 3,
+      source: "admin",
+      cadence: "weekly",
+      action: buildTodoLinkAction("operations", "")
+    }
+  ];
 
-  return getDailyTodoItems()
+  return [
+    ...getDailyTodoItems()
     .filter((task) => {
       if (!task.due_at) return task.type === "manual";
       const due = new Date(task.due_at);
       if (Number.isNaN(due.getTime())) return false;
       return due >= start && due <= end;
-    })
+    }),
+    ...weeklyTasks.filter((task) => !dismissedTodoIds.includes(task.id))
+  ]
     .sort((a, b) => {
       if (b.priority !== a.priority) return b.priority - a.priority;
       const aTime = new Date(a.due_at || a.created_at || 0).getTime();
@@ -773,11 +871,52 @@ function openTodoTask(taskId) {
     return;
   }
 
-  navigateTo(task.action.page || "dashboard");
+  if (task.action.page === "reader") {
+    const request = getReaderRequestRecords().find((row) => row.reader_request_id === task.action.entityId);
+    if (request && request.student_id) {
+      selectedStudentId = request.student_id;
+      navigateTo("profile");
+      return;
+    }
+    navigateTo("operations");
+    return;
+  }
+
+  if (task.action.page === "lesson_comment") {
+    const comment = getLessonCommentRecords().find((row) => row.lesson_comment_id === task.action.entityId);
+    if (comment?.lesson_id) {
+      openLessonDetailModal(comment.lesson_id);
+      return;
+    }
+    if (comment?.student_id) {
+      selectedStudentId = comment.student_id;
+      navigateTo("profile");
+      return;
+    }
+  }
+
+  navigateTo(task.action.page || "operations");
 }
 
 function getStatusFilterPill(label, value) {
   return `<span class="page-filter-pill">${escapeHtml(label)} · ${escapeHtml(value)}</span>`;
+}
+
+function getTodoSourceLabel(source) {
+  const labels = {
+    finance: "Money",
+    schedule: "Intake",
+    lessons: "Lesson",
+    notes: "Notes",
+    homework: "Homework",
+    reader: "Reader",
+    "student request": "Student Request",
+    "public page": "Public Page",
+    admin: "Admin",
+    prep: "Prep",
+    manual: "Manual"
+  };
+  return labels[String(source || "").toLowerCase()] || String(source || "Task");
 }
 
 function saveAdminAuthSettings() {
@@ -4429,12 +4568,62 @@ function saveGoogleConnectionSettings(event) {
 
   studioDataService.updateBackendSettings({
     google_account_email: accountEmail,
+    booking_url: form.elements.booking_url ? form.elements.booking_url.value : getBookingUrlSetting(),
+    stripe_price_map_json: form.elements.stripe_price_map_json ? form.elements.stripe_price_map_json.value : "",
+    reader_contacts_group: form.elements.reader_contacts_group ? form.elements.reader_contacts_group.value : "",
     google_sync_mode: "manual",
     gmail_filter_scope: "booking_and_payments",
     import_review_mode: "review_first"
   });
   syncCalendarStateFromBackendSettings();
   setSettingsActionFeedback("Google connection preferences saved. Calendar and Gmail are set to one shared account, manual sync first, booking/payment Gmail review, and review-first intake.", "success");
+  renderSettingsPage();
+}
+
+function saveStudioIdentitySettings(event) {
+  if (event) event.preventDefault();
+  const form = document.getElementById("settings-studio-identity-form");
+  if (!form) return;
+
+  const studioName = String(form.elements.studio_name?.value || "").trim() || "Stage & Story";
+  const studioTagline = String(form.elements.studio_tagline?.value || "").trim() || "Studio Management";
+  const coachName = String(form.elements.coach_name?.value || "").trim() || "Darius A. Journigan";
+  const coachTitle = String(form.elements.coach_title?.value || "").trim() || "Acting Coach";
+  const contactEmail = String(form.elements.coach_contact_email?.value || "").trim() || "coach@d-a-j.com";
+  const contactPhone = String(form.elements.coach_contact_phone?.value || "").replace(/[^\d+]/g, "") || "9292160175";
+  const studentPortalLabel = String(form.elements.student_portal_label?.value || "").trim() || "Student Workspace";
+  const studentWelcomeMessage = String(form.elements.student_welcome_message?.value || "").trim();
+
+  const currentBranding = typeof getStudioBranding === "function" ? getStudioBranding() : {};
+  saveStudioBranding({
+    ...currentBranding,
+    studio_name: studioName,
+    tagline: studioTagline,
+    coach_name: coachName,
+    coach_title: coachTitle,
+    contact_email: contactEmail,
+    contact_phone: contactPhone,
+    student_portal_label: studentPortalLabel,
+    student_welcome_message: studentWelcomeMessage,
+    updated_at: new Date().toISOString()
+  });
+
+  studioDataService.updateBackendSettings({
+    studio_name: studioName,
+    studio_tagline: studioTagline,
+    coach_name: coachName,
+    coach_title: coachTitle,
+    coach_contact_email: contactEmail,
+    coach_contact_phone: contactPhone,
+    student_portal_label: studentPortalLabel,
+    student_welcome_message: studentWelcomeMessage,
+    student_show_contact_buttons: form.elements.student_show_contact_buttons ? form.elements.student_show_contact_buttons.checked : true,
+    student_show_booking_button: form.elements.student_show_booking_button ? form.elements.student_show_booking_button.checked : true,
+    student_show_drive_folder: form.elements.student_show_drive_folder ? form.elements.student_show_drive_folder.checked : true
+  });
+
+  if (typeof applyConfig === "function") applyConfig();
+  setSettingsActionFeedback("Studio identity saved. The coach app updates now, and student-facing settings are ready for the portal payload.", "success");
   renderSettingsPage();
 }
 
@@ -4501,7 +4690,7 @@ function createStudentFromImportedLesson(lessonId) {
   const result = createStudent(payload);
   if (!result || result.ok === false) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: (result?.errors || ["Unable to create student from imported lesson."]).join(" "),
       tone: "error",
       source: "schedule"
@@ -4782,7 +4971,7 @@ function saveScheduleStudentMatch(lessonId) {
   const studentId = select.value;
   if (!studentId) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: "Choose a student to merge this lesson with.",
       tone: "error",
       source: "schedule"
@@ -4794,7 +4983,7 @@ function saveScheduleStudentMatch(lessonId) {
 
   if (!result || result.ok === false) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: (result?.errors || ["Unable to merge this imported lesson with the selected student."]).join(" "),
       tone: "error",
       source: "schedule"
@@ -10655,7 +10844,7 @@ function runScheduleIntakeQuickAction(lessonId) {
     const result = mergeImportedLessonIntoStudentRecord(lessonId, bestCandidate.student.student_id, { applyStudentPatch: false });
     if (!result || result.ok === false) {
       notifyUser({
-        title: "Schedule Intake",
+        title: "Intake",
         message: (result?.errors || ["Unable to auto-match this imported lesson."]).join(" "),
         tone: "error",
         source: "schedule"
@@ -10693,7 +10882,7 @@ function applyBulkScheduleIntakeAction(action) {
   const selectedIds = Array.from(selectedScheduleIntakeLessonIds);
   if (!selectedIds.length) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: "Select one or more intake rows first.",
       tone: "error",
       source: "schedule"
@@ -10711,9 +10900,44 @@ function applyBulkScheduleIntakeAction(action) {
   renderScheduleResults();
 }
 
+function clearReviewedScheduleIntake() {
+  currentScheduleReviewFilter = "action-needed";
+  selectedScheduleIntakeLessonIds = new Set();
+  renderSchedulePage();
+  notifyUser({
+    title: "Intake View Cleaned",
+    message: "Reviewed imports are hidden. The queue is now showing only items that still need action.",
+    tone: "success",
+    source: "schedule"
+  });
+}
+
+function ignoreAllVisibleActionRequiredIntake() {
+  const rows = getFilteredScheduleIntakeRows().filter((row) => row.action_required);
+  if (!rows.length) {
+    notifyUser({
+      title: "Intake",
+      message: "No active intake items are visible right now.",
+      tone: "info",
+      source: "schedule"
+    });
+    return;
+  }
+  if (!confirm(`Ignore ${rows.length} visible intake item${rows.length === 1 ? "" : "s"} and remove them from the active queue?`)) return;
+  rows.forEach((row) => setLessonIntakeReviewState(row.lesson_id, "IGNORED"));
+  selectedScheduleIntakeLessonIds = new Set();
+  renderAppFromSchema();
+  notifyUser({
+    title: "Intake Cleared",
+    message: "Visible active intake items were ignored and removed from the action queue.",
+    tone: "success",
+    source: "schedule"
+  });
+}
+
 function getScheduleFilterPills() {
   const pills = [];
-  pills.push(getStatusFilterPill("View", currentScheduleView === "calendar" ? `Calendar · ${currentScheduleCalendarMode}` : "Schedule Intake"));
+  pills.push(getStatusFilterPill("View", currentScheduleView === "calendar" ? `Calendar · ${currentScheduleCalendarMode}` : "Intake"));
   if (currentScheduleShowCancelled) {
     pills.push(getStatusFilterPill("Cancelled", "Shown"));
   }
@@ -11069,7 +11293,7 @@ function confirmScheduleIntake(lessonId) {
   const hasPendingExternalUpdate = Boolean(lesson.pending_external_patch || lesson.pending_external_start || lesson.pending_external_end);
   if (!lesson.student_id) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: "Match this imported event to a student before confirming it.",
       tone: "error",
       source: "schedule"
@@ -11078,7 +11302,7 @@ function confirmScheduleIntake(lessonId) {
   }
   if (reviewGuidance.blocking && !hasPendingExternalUpdate) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: reviewGuidance.reasons[0] || "This imported lesson still needs review before it can be confirmed.",
       tone: "error",
       source: "schedule"
@@ -11090,7 +11314,7 @@ function confirmScheduleIntake(lessonId) {
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to confirm imported lesson."];
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: errors.join(" "),
       tone: "error",
       source: "schedule"
@@ -11116,7 +11340,7 @@ function rejectScheduleIntakeChange(lessonId) {
   const pendingPatch = parsePendingExternalPatch(lesson);
   if (!pendingPatch || !pendingPatch.previous_values || !Object.keys(pendingPatch.previous_values).length) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: "There is no pending external change to reject on this lesson.",
       tone: "error",
       source: "schedule"
@@ -11137,7 +11361,7 @@ function rejectScheduleIntakeChange(lessonId) {
 
   if (!result || result.ok === false) {
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: (result?.errors || ["Unable to reject the external change."]).join(" "),
       tone: "error",
       source: "schedule"
@@ -11167,7 +11391,7 @@ function flagScheduleNeedsAttention(lessonId) {
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to flag imported lesson."];
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: errors.join(" "),
       tone: "error",
       source: "schedule"
@@ -11189,7 +11413,7 @@ function ignoreScheduleIntake(lessonId) {
   if (!result || result.ok === false) {
     const errors = result?.errors || ["Unable to ignore imported lesson."];
     notifyUser({
-      title: "Schedule Intake",
+      title: "Intake",
       message: errors.join(" "),
       tone: "error",
       source: "schedule"
@@ -11238,6 +11462,8 @@ function renderScheduleResults() {
                 <button type="button" class="px-3 py-2 rounded-lg bg-warmblack text-white text-xs font-medium" onclick="applyBulkScheduleIntakeAction('smart')">Run Smart Action</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="applyBulkScheduleIntakeAction('confirm')">Confirm Selected</button>
                 <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="applyBulkScheduleIntakeAction('ignore')">Ignore Selected</button>
+                <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmgray" onclick="clearReviewedScheduleIntake()">Hide Reviewed</button>
+                <button type="button" class="px-3 py-2 rounded-lg bg-burgundy/10 text-burgundy text-xs font-medium" onclick="ignoreAllVisibleActionRequiredIntake()">Clear Active</button>
               </div>
             </div>
           `
@@ -11362,7 +11588,7 @@ function renderSchedulePage() {
         <div class="flex flex-wrap gap-2">
           <div class="inline-flex rounded-xl border border-cream overflow-hidden bg-white">
             <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "calendar" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('calendar')">Calendar</button>
-            <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "intake" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('intake')">Schedule Intake</button>
+            <button type="button" class="px-4 py-2.5 text-sm font-medium ${currentScheduleView === "intake" ? "bg-parchment text-warmblack" : "bg-white text-warmgray"}" onclick="setScheduleView('intake')">Intake</button>
           </div>
           ${
             currentScheduleView === "calendar"
@@ -11888,7 +12114,7 @@ function renderAutomationsPage() {
         </div>
         <div class="flex flex-wrap items-center gap-2">
           <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openAutomationNotesQueue()">Notes Queue</button>
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openAutomationIntakeReview()">Schedule Intake</button>
+          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="openAutomationIntakeReview()">Intake</button>
         </div>
       </header>
 
@@ -12047,10 +12273,12 @@ function renderOperationsPage() {
   syncCalendarStateFromBackendSettings();
   const backend = studioDataService.getBackendSettings();
   const dailyTasks = getDailyTodoItems();
-  const urgentTasks = dailyTasks.filter((task) => task.priority >= 5).slice(0, 8);
-  const intakeRows = getScheduleIntakeRows().filter((row) => row.action_required).slice(0, 8);
-  const publicMaterialRows = getPublicMaterialReviewRows().slice(0, 8);
-  const outstandingRows = getOutstandingBalanceRows().slice(0, 8);
+  const urgentTasks = dailyTasks.filter((task) => task.priority >= 5);
+  const intakeRows = getScheduleIntakeRows().filter((row) => row.action_required);
+  const publicMaterialRows = getPublicMaterialReviewRows();
+  const readerRows = getActiveReaderRequests();
+  const lessonCommentRows = getOpenLessonComments();
+  const outstandingRows = getOutstandingBalanceRows();
   const packageFollowUps = getPackageRecords()
     .filter((pkg) => !isPackageArchived(pkg))
     .map((pkg) => {
@@ -12058,152 +12286,233 @@ function renderOperationsPage() {
       const meta = getPackageStatusMeta(pkg.student_id, pkg);
       return {
         package_id: pkg.package_id,
+        student_id: pkg.student_id,
         student_name: getFinanceStudentName(pkg.student_id),
         package_name: pkg.package_name || "Package",
         remaining: financials.remaining,
         label: meta.label
       };
     })
-    .filter((row) => row.remaining > 0 || row.label === "Expiring Soon" || row.label === "Overdue Payment")
-    .slice(0, 8);
+    .filter((row) => row.remaining > 0 || row.label === "Expiring Soon" || row.label === "Overdue Payment");
   const currentGoogleAccount = backend.google_account_email || "coach@d-a-j.com";
   const calendarStatus = backend.google_calendar_status || "demo_ready";
   const gmailStatus = backend.google_gmail_status || "demo_ready";
   const unresolvedTasks = getOverdueTodoItems().length;
+  const weeklyTasks = getWeeklyTodoItems();
+  const lessonsToday = getLessonRecords()
+    .filter((lesson) => {
+      const start = new Date(lesson.scheduled_start || 0);
+      return !Number.isNaN(start.getTime()) && start >= startOfLocalDay(APP_NOW) && start <= endOfLocalDay(APP_NOW);
+    })
+    .sort((a, b) => new Date(a.scheduled_start || 0).getTime() - new Date(b.scheduled_start || 0).getTime());
+
+  const inboxCards = [
+    ...intakeRows.map((row) => ({
+      title: row.student_name || row.external_contact_name || "Imported lesson",
+      detail: row.recommended_action_label || row.topic || "Needs intake review",
+      action: "Review",
+      onclick: `openLessonDetailModal('${row.lesson_id}')`,
+      tone: "warn",
+      icon: "calendar-plus",
+      student: row.student_name || row.external_contact_name || "New"
+    })),
+    ...publicMaterialRows.map((row) => ({
+      title: getMaterialDisplayName(row.file),
+      detail: `${row.student_name} / ${row.file.category || row.file.material_kind || "Public material"}`,
+      action: "Review",
+      onclick: `openStudentPublicMaterials('${row.file.student_id}')`,
+      tone: "warn",
+      icon: "image",
+      student: row.student_name || "Actor"
+    }))
+  ];
+  const moneyCards = [
+    ...packageFollowUps.map((row) => ({
+      title: row.student_name,
+      detail: `${row.package_name} / ${row.label}${row.remaining ? ` / ${formatCurrency(row.remaining)} due` : ""}`,
+      action: "Open",
+      onclick: "navigateTo('finance')",
+      tone: row.remaining ? "alert" : "warn",
+      icon: "wallet",
+      student: row.student_name
+    })),
+    ...outstandingRows.map((row) => ({
+      title: row.student_name,
+      detail: `${getBillingModelLabel(row.billing_model)} / ${formatCurrency(row.finance.remainingAmount)} due`,
+      action: "Open",
+      onclick: "navigateTo('finance')",
+      tone: "alert",
+      icon: "circle-dollar-sign",
+      student: row.student_name
+    }))
+  ];
+  const requestCards = [
+    ...readerRows.map((request) => ({
+      title: request.student_name || getStudentNameById(request.student_id),
+      detail: `${getReaderRequestLabel(request)} / ${String(request.meeting_method || "").replace(/_/g, " ").toLowerCase()}`,
+      action: "Blast",
+      onclick: `sendReaderBlast('${request.reader_request_id}')`,
+      tone: "alert",
+      icon: "radio",
+      student: request.student_name || getStudentNameById(request.student_id)
+    })),
+    ...lessonCommentRows.map((comment) => ({
+      title: getStudentNameById(comment.student_id),
+      detail: getLessonCommentLabel(comment),
+      action: "Open",
+      onclick: `openLessonDetailModal('${comment.lesson_id}')`,
+      tone: "warn",
+      icon: "message-square",
+      student: getStudentNameById(comment.student_id)
+    }))
+  ];
+  const todayCards = (urgentTasks.length ? urgentTasks : dailyTasks).slice(0, 7).map((task) => ({
+    title: task.title,
+    detail: task.detail,
+    action: "Open",
+    onclick: `openTodoTask('${task.id}')`,
+    tone: task.priority >= 5 ? "alert" : "warn",
+    icon: task.priority >= 5 ? "alarm-clock" : "check-circle-2",
+    student: task.title.replace(/^.* for /, "")
+  }));
+  const weeklyCards = weeklyTasks.slice(0, 5).map((task) => ({
+    title: task.title,
+    detail: task.detail,
+    action: "Open",
+    onclick: `openTodoTask('${task.id}')`,
+    tone: "neutral",
+    icon: "calendar-range",
+    student: "Week"
+  }));
+
+  const totalSignals = todayCards.length + inboxCards.length + moneyCards.length + requestCards.length + unresolvedTasks;
+  const calmScore = Math.max(0, Math.min(100, 100 - (urgentTasks.length * 16 + unresolvedTasks * 9 + intakeRows.length * 5 + moneyCards.length * 4)));
+  const signalTone = calmScore >= 75 ? "good" : calmScore >= 45 ? "warn" : "alert";
+  const laneMeta = [
+    { key: "today", label: "Teach Today", count: todayCards.length, max: 8, icon: "sun", tone: urgentTasks.length ? "alert" : "good" },
+    { key: "inbox", label: "Follow Up", count: inboxCards.length, max: 10, icon: "inbox", tone: inboxCards.length ? "warn" : "good" },
+    { key: "money", label: "Payments", count: moneyCards.length, max: 10, icon: "wallet", tone: moneyCards.length ? "alert" : "good" },
+    { key: "requests", label: "Student Signals", count: requestCards.length, max: 8, icon: "message-circle", tone: requestCards.length ? "warn" : "good" },
+    { key: "week", label: "Recently Updated", count: weeklyCards.length, max: 8, icon: "calendar-range", tone: "neutral" }
+  ];
+  const initials = (name) => String(name || "?")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0])
+    .join("")
+    .toUpperCase() || "?";
+  const lanePercent = (lane) => Math.max(7, Math.min(100, Math.round((lane.count / lane.max) * 100)));
+  const toneClass = (tone) => tone === "alert" ? "is-alert" : tone === "warn" ? "is-warn" : tone === "good" ? "is-good" : "is-neutral";
+  const queueList = (rows, emptyText) => rows.length ? rows.slice(0, 6).map((row) => `
+    <article class="ops-item ${toneClass(row.tone)}">
+      <div class="ops-avatar" aria-hidden="true">${escapeHtml(initials(row.student || row.title))}</div>
+      <div class="min-w-0 flex-1">
+        <div class="flex items-center gap-2 min-w-0">
+          <i data-lucide="${escapeHtml(row.icon || "circle")}" class="w-4 h-4 text-warmgray shrink-0"></i>
+          <p class="text-sm font-semibold text-warmblack truncate">${escapeHtml(row.title)}</p>
+        </div>
+        <p class="text-xs text-warmgray mt-1 truncate">${escapeHtml(row.detail || "")}</p>
+      </div>
+      ${row.action ? `<button type="button" class="ops-item-action" onclick="${row.onclick}">${escapeHtml(row.action)}</button>` : ""}
+    </article>
+  `).join("") : `<div class="ops-empty"><i data-lucide="check" class="w-5 h-5"></i><span>${escapeHtml(emptyText)}</span></div>`;
+  const lessonTimeline = lessonsToday.length ? lessonsToday.slice(0, 5).map((lesson) => {
+    const status = getEffectiveLessonStatus(lesson);
+    return `
+      <button type="button" class="ops-timeline-step" onclick="openLessonDetailModal('${lesson.lesson_id}')">
+        <span class="ops-time">${escapeHtml(formatLessonTimeRange(lesson.scheduled_start, lesson.scheduled_end))}</span>
+        <span class="ops-dot ${status === "COMPLETED" ? "is-good" : status === "CANCELLED" ? "is-alert" : "is-warn"}"></span>
+        <span class="ops-student truncate">${escapeHtml(getStudentNameById(lesson.student_id))}</span>
+      </button>
+    `;
+  }).join("") : `<div class="ops-empty ops-empty-inline"><i data-lucide="calendar-check" class="w-5 h-5"></i><span>No lessons today</span></div>`;
 
   root.innerHTML = `
-    <div class="p-4 sm:p-6 xl:p-8 w-full dashboard-shell">
-      <header class="mb-5 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 fade-in">
+    <div class="p-4 sm:p-6 xl:p-8 w-full dashboard-shell ops-shell">
+      <header class="ops-hero fade-in">
         <div class="min-w-0">
-          <h2 class="font-display text-2xl font-bold text-warmblack">Daily Operations</h2>
-          <p class="text-sm text-warmgray mt-1">Start here first. The portal should tell you what to do next, what needs review, and what can wait.</p>
-          <div class="page-compact-summary mt-3">
-            <span class="page-compact-summary-pill">Urgent today · ${urgentTasks.length}</span>
-            <span class="page-compact-summary-pill">Intake review · ${intakeRows.length}</span>
-            <span class="page-compact-summary-pill">Public review · ${publicMaterialRows.length}</span>
-            <span class="page-compact-summary-pill">Outstanding balances · ${outstandingRows.length}</span>
-            <span class="page-compact-summary-pill">Still open · ${unresolvedTasks}</span>
+          <p class="ops-eyebrow">Home</p>
+          <h2 class="font-display text-3xl font-bold text-warmblack">What needs attention right now?</h2>
+          <div class="ops-hero-actions">
+            <button type="button" class="button-like is-primary" onclick="navigateTo('today')"><i data-lucide="sun" class="w-4 h-4"></i>Today</button>
+            <button type="button" class="button-like" onclick="navigateTo('notes')"><i data-lucide="file-text" class="w-4 h-4"></i>Notes</button>
+            <button type="button" class="button-like" onclick="navigateTo('finance')"><i data-lucide="wallet" class="w-4 h-4"></i>Payments</button>
           </div>
         </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold" onclick="navigateTo('todo')">Open To-Do</button>
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('schedule')">Open Schedule Intake</button>
-          <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('finance')">Open Finance</button>
+        <div class="ops-score ${toneClass(signalTone)}">
+          <svg viewBox="0 0 120 120" role="img" aria-label="Operations clarity score ${calmScore}">
+            <circle cx="60" cy="60" r="50" class="ops-score-track"></circle>
+            <circle cx="60" cy="60" r="50" class="ops-score-fill" style="stroke-dasharray:${calmScore * 3.14} 314"></circle>
+          </svg>
+          <div class="ops-score-label"><strong>${calmScore}</strong><span>clarity</span></div>
         </div>
       </header>
 
-      <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5 mb-5 fade-in">
-        <div class="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-          <div class="min-w-0">
-            <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sync Hub</p>
-            <p class="text-sm text-warmgray mt-1">Manual review-first sync under ${escapeHtml(currentGoogleAccount)}. Run Calendar or Gmail from here instead of hunting through Settings.</p>
-          </div>
-          <div class="flex flex-wrap gap-2">
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGoogleCalendarSync()">Run Calendar Sync</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="runGmailAssistSync()">Run Gmail Assist</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="refreshPortalReviewQueue()">Refresh Portal Queue</button>
-            <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack" onclick="navigateTo('settings')">Open Settings</button>
-          </div>
-        </div>
-        <div class="page-compact-summary mt-4">
-          <span class="page-compact-summary-pill">Calendar · ${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
-          <span class="page-compact-summary-pill">Gmail · ${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
-          <span class="page-compact-summary-pill">Review queue · ${intakeRows.length}</span>
-          <span class="page-compact-summary-pill">Public materials · ${publicMaterialRows.length}</span>
-          <span class="page-compact-summary-pill">Package follow-up · ${packageFollowUps.length}</span>
-        </div>
-      </div>
+      <section class="ops-radar fade-in">
+        ${laneMeta.map((lane) => `
+          <button type="button" class="ops-radar-cell ${toneClass(lane.tone)}" onclick="${lane.key === "today" ? "navigateTo('today')" : lane.key === "inbox" ? "navigateTo('notes')" : lane.key === "money" ? "navigateTo('finance')" : lane.key === "requests" ? "navigateTo('profile')" : "setTodoView('weekly'); navigateTo('today')"}">
+            <span class="ops-radar-icon"><i data-lucide="${lane.icon}" class="w-4 h-4"></i></span>
+            <span class="ops-radar-label">${lane.label}</span>
+            <strong>${lane.count}</strong>
+            <span class="ops-meter"><span style="width:${lanePercent(lane)}%"></span></span>
+          </button>
+        `).join("")}
+      </section>
 
-      <section class="dashboard-panel bg-white rounded-2xl border border-cream mb-5 fade-in">
-        <div class="dashboard-panel-header p-5 border-b border-cream flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          <div>
-            <h3 class="font-display text-lg font-semibold">Public Page Review Queue</h3>
-            <p class="text-xs text-warmgray mt-1">Student portal uploads land here first. Approving a headshot also makes it the main public-page photo.</p>
-          </div>
-          <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="refreshPortalReviewQueue()">Refresh From Portal</button>
+      <section class="ops-sync-strip fade-in">
+        <div class="min-w-0">
+          <p class="ops-eyebrow">Sync</p>
+          <p class="text-sm font-semibold text-warmblack truncate">${escapeHtml(currentGoogleAccount)}</p>
         </div>
-        <div class="p-4 grid grid-cols-1 xl:grid-cols-2 gap-3">
-          ${publicMaterialRows.length ? publicMaterialRows.map((row) => {
-            const url = getMaterialSourceUrl(row.file);
-            return `
-              <article class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
-                  <div class="min-w-0">
-                    <p class="text-sm font-semibold text-warmblack">${escapeHtml(getMaterialDisplayName(row.file))}</p>
-                    <p class="text-xs text-warmgray mt-1">${escapeHtml(row.student_name)} · ${escapeHtml(row.file.category || row.file.material_kind || "Public material")}</p>
-                    <p class="text-xs text-warmgray mt-1">${row.submitted_at ? `Submitted ${escapeHtml(formatLastSyncMeta(row.submitted_at))}` : "Submitted from student portal"}</p>
-                  </div>
-                  <span class="inline-flex self-start px-2 py-1 rounded-full bg-gold/10 text-gold text-[11px] font-medium">Pending</span>
-                </div>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="approvePublicMaterial('${row.file.file_id}')">Approve</button>
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="rejectPublicMaterial('${row.file.file_id}')">Reject</button>
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openStudentPublicMaterials('${row.file.student_id}')">Open Student</button>
-                  ${url ? `<a class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" href="${escapeHtml(url)}" target="_blank" rel="noopener">View File</a>` : ""}
-                </div>
-              </article>
-            `;
-          }).join("") : `<div class="xl:col-span-2 page-empty-state"><p class="text-sm font-medium text-warmblack">No public materials waiting for approval</p><p class="text-xs text-warmgray mt-1">Use Refresh From Portal after a student submits from their portal.</p></div>`}
+        <div class="ops-sync-status">
+          <span>Calendar ${escapeHtml(getGoogleServiceStatusLabel(calendarStatus))}</span>
+          <span>Gmail ${escapeHtml(getGoogleServiceStatusLabel(gmailStatus))}</span>
+          <span>${totalSignals} signals</span>
+        </div>
+        <div class="ops-sync-actions">
+          <button type="button" onclick="runGoogleCalendarSync()">Calendar</button>
+          <button type="button" onclick="runGmailAssistSync()">Gmail</button>
+          <button type="button" onclick="refreshPortalReviewQueue()">Queue</button>
+          <button type="button" onclick="navigateTo('settings')">Settings</button>
         </div>
       </section>
 
-      <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
-          <div class="dashboard-panel-header p-5 border-b border-cream">
-            <h3 class="font-display text-lg font-semibold">Top Recommended</h3>
+      <div class="ops-grid fade-in">
+        <section class="ops-board ops-board-primary">
+          <div class="ops-board-head">
+            <div><p class="ops-eyebrow">Do Now</p><h3>Teach Today</h3></div>
+            <span class="ops-count ${urgentTasks.length ? "is-alert" : "is-good"}">${todayCards.length}</span>
           </div>
-          <div class="p-4 space-y-3">
-            ${urgentTasks.length ? urgentTasks.map((task) => `
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
-                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "")}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  ${task.action ? `<button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openTodoTask('${task.id}')">Open</button>` : ""}
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="completeTodoTask('${task.id}')">Check Off</button>
-                </div>
-              </div>
-            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No urgent tasks right now</p></div>`}
-          </div>
+          <div class="ops-queue">${queueList(todayCards, "Nothing urgent before the next lesson")}</div>
         </section>
 
-        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
-          <div class="dashboard-panel-header p-5 border-b border-cream">
-            <h3 class="font-display text-lg font-semibold">Needs Attention</h3>
+        <section class="ops-board">
+          <div class="ops-board-head">
+            <div><p class="ops-eyebrow">Student Day</p><h3>Lesson Flow</h3></div>
+            <span class="ops-count is-neutral">${lessonsToday.length}</span>
           </div>
-          <div class="p-4 space-y-3">
-            ${intakeRows.length ? intakeRows.map((row) => `
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>
-                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.recommended_action_label)} · ${escapeHtml(row.review_reasons[0] || row.topic)}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="openLessonDetailModal('${row.lesson_id}')">Open Lesson</button>
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="navigateTo('schedule')">Go to Intake</button>
-                </div>
-              </div>
-            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">Intake is under control</p></div>`}
-          </div>
+          <div class="ops-timeline">${lessonTimeline}</div>
         </section>
 
-        <section class="dashboard-panel bg-white rounded-2xl border border-cream">
-          <div class="dashboard-panel-header p-5 border-b border-cream">
-            <h3 class="font-display text-lg font-semibold">Package / Payment Follow-Up</h3>
-          </div>
-          <div class="p-4 space-y-3">
-            ${(packageFollowUps.length || outstandingRows.length) ? [...packageFollowUps, ...outstandingRows.map((row) => ({
-              student_name: row.student_name,
-              package_name: getBillingModelLabel(row.billing_model),
-              label: "Outstanding Balance",
-              remaining: row.finance.remainingAmount
-            }))].slice(0, 8).map((row) => `
-              <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
-                <p class="text-sm font-semibold text-warmblack">${escapeHtml(row.student_name)}</p>
-                <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(row.package_name)} · ${escapeHtml(row.label)}${row.remaining ? ` · ${formatCurrency(row.remaining)} due` : ""}</p>
-                <div class="mt-3 flex flex-wrap gap-2">
-                  <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack" onclick="navigateTo('finance')">Open Finance</button>
-                </div>
-              </div>
-            `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">No package or payment follow-up right now</p></div>`}
-          </div>
+        <section class="ops-board">
+          <div class="ops-board-head"><div><p class="ops-eyebrow">Review</p><h3>Follow Up</h3></div><span class="ops-count ${inboxCards.length ? "is-warn" : "is-good"}">${inboxCards.length}</span></div>
+          <div class="ops-queue">${queueList(inboxCards, "Follow-up clear")}</div>
+        </section>
+
+        <section class="ops-board">
+          <div class="ops-board-head"><div><p class="ops-eyebrow">Revenue</p><h3>Payments</h3></div><span class="ops-count ${moneyCards.length ? "is-alert" : "is-good"}">${moneyCards.length}</span></div>
+          <div class="ops-queue">${queueList(moneyCards, "Payment queue clear")}</div>
+        </section>
+
+        <section class="ops-board">
+          <div class="ops-board-head"><div><p class="ops-eyebrow">Incoming</p><h3>Student Signals</h3></div><span class="ops-count ${requestCards.length ? "is-warn" : "is-good"}">${requestCards.length}</span></div>
+          <div class="ops-queue">${queueList(requestCards, "No open requests")}</div>
+        </section>
+
+        <section class="ops-board">
+          <div class="ops-board-head"><div><p class="ops-eyebrow">Studio Pulse</p><h3>Recently Updated</h3></div><span class="ops-count is-neutral">${weeklyCards.length}</span></div>
+          <div class="ops-queue">${queueList(weeklyCards, "No recent updates need review")}</div>
         </section>
       </div>
     </div>
@@ -12216,6 +12525,8 @@ function renderTodoPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
 
+  const isTodayMode = currentPage === "today";
+  if (isTodayMode) currentTodoView = "daily";
   const compact = isCompactView("todo");
   const tasks = currentTodoView === "weekly" ? getWeeklyTodoItems() : getDailyTodoItems();
   const autoTasks = tasks.filter((task) => task.type === "auto");
@@ -12229,8 +12540,8 @@ function renderTodoPage() {
     <div class="todo-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
-          <h2 class="font-display text-2xl font-bold text-warmblack">To-Do</h2>
-          <p class="text-sm text-warmgray mt-1">Your working checklist for follow-up, prep, intake, package pressure, and manual reminders.</p>
+          <h2 class="font-display text-2xl font-bold text-warmblack">${isTodayMode ? "Today" : "To-Do"}</h2>
+          <p class="text-sm text-warmgray mt-1">${isTodayMode ? "Your teaching day in order: prep, lessons, follow-up, and student signals." : "Your working checklist for follow-up, prep, intake, package pressure, and manual reminders."}</p>
           <div class="page-compact-summary mt-3">
             <span class="page-compact-summary-pill">${currentTodoView === "weekly" ? "This week" : "Today"} · ${tasks.length}</span>
             <span class="page-compact-summary-pill">Urgent · ${urgentTasks.length}</span>
@@ -12292,7 +12603,9 @@ function renderTodoPage() {
                         <div class="min-w-0 flex-1">
                           <div class="flex flex-wrap items-center gap-2 mb-2">
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${task.priority >= 5 ? "bg-burgundy/10 text-burgundy" : task.priority >= 4 ? "bg-gold/10 text-gold" : "bg-white border border-cream text-warmgray"}">${task.priority >= 5 ? "Urgent" : task.priority >= 4 ? "Priority" : "Queued"}</span>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-white border border-cream text-warmgray">${currentTodoView === "weekly" ? "Weekly" : "Daily"}</span>
                             <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-white border border-cream text-warmgray">${task.type === "manual" ? "Manual" : "Automatic"}</span>
+                            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium bg-white border border-cream text-warmgray">${escapeHtml(getTodoSourceLabel(task.source))}</span>
                           </div>
                           <p class="text-sm font-semibold text-warmblack">${escapeHtml(task.title)}</p>
                           <p class="text-xs text-warmgray mt-1 wrap-anywhere">${escapeHtml(task.detail || "Follow up when you're ready.")}</p>
@@ -12474,8 +12787,8 @@ function getSettingsSections(status, backend, blueprintRows) {
     },
     {
       key: "branding",
-      label: "Branding",
-      summary: typeof getStudioBranding === "function" && getStudioBranding().logo_url ? "Logo uploaded" : "Default mark"
+      label: "Studio",
+      summary: backend.studio_name || "Identity"
     },
     {
       key: "persistence",
@@ -12497,7 +12810,7 @@ function getSettingsSections(status, backend, blueprintRows) {
     {
       key: "backend",
       label: "Backend",
-      summary: `${status.endpoint_configured ? "Configured" : "Not configured"} · ${blueprintRows.length} tabs`
+      summary: `${status.endpoint_configured ? "Configured" : "Not configured"} / ${blueprintRows.length} tabs`
     }
   ];
 }
@@ -12535,30 +12848,30 @@ function getGoogleSetupChecklist(backend) {
 function getStudentPortalReadinessChecklist() {
   return [
     {
-      label: "Student and guardian contact modeling",
-      detail: "Student, parent/guardian, preferred contact, multiple emails, and multiple phones are already modeled.",
+      label: "Contacts",
+      detail: "Student and guardian contact fields are ready for invites.",
       done: true
     },
     {
-      label: "Lesson, package, and payment foundations",
-      detail: "Lessons, reservations, package balances, manual payment states, and payment review all exist in the coach portal.",
+      label: "Private workspace",
+      detail: "Lessons, homework, materials, scripts, and finance are server scoped.",
       done: true
     },
     {
-      label: "Materials and vault structure",
-      detail: "Student materials, actor materials, linked resources, and vault behavior exist for coach-side management.",
+      label: "Actor pages",
+      detail: "Public pages only show approved public profile data and materials.",
       done: true
     },
     {
-      label: "Review-first imports and sync evidence",
-      detail: "Calendar and Gmail imports land in review before becoming trusted workflow records.",
+      label: "Coach review",
+      detail: "Student submissions and imported records wait for coach approval.",
       done: true
     },
     {
-      label: "Student-facing auth and permissions",
+      label: "Accounts",
       detail: typeof getStudentPortalPermissionSummary === "function"
-        ? "Local preview sign-in, guardian-aware identity matching, and scoped visibility helpers are now wired for the student portal."
-        : "This is the main Phase 6A build target: student login, guardian-aware access, and scoped visibility.",
+        ? "Invite, password, reset, and signed-cookie sessions are active."
+        : "Account flow still needs verification.",
       done: typeof getStudentPortalPermissionSummary === "function"
     }
   ];
@@ -12624,6 +12937,104 @@ function clearStudioLogo() {
   });
   applyConfig();
   setSettingsActionFeedback("Sidebar logo cleared.", "success");
+  renderSettingsPage();
+}
+
+function renderTodayPage() {
+  renderTodoPage();
+}
+
+function renderMaterialsPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+
+  const studentsForMaterials = getStudentRecords();
+  const rows = studentsForMaterials.flatMap((student) => (
+    typeof getMaterialRowsByStudentId === "function"
+      ? getMaterialRowsByStudentId(student.student_id).map((row) => ({ ...row, student_name: student.full_name, student_id: student.student_id }))
+      : []
+  ));
+  const currentRows = rows.filter((row) => String(row.status || "").toLowerCase() !== "vaulted");
+  const vaultRows = rows.filter((row) => String(row.status || "").toLowerCase() === "vaulted");
+  const studentVisibleRows = rows.filter((row) => normalizeMaterialVisibility(row.visibility) === "STUDENT_VISIBLE");
+  const actorRows = rows.filter((row) => row.group_key === "actor");
+  const recentRows = currentRows
+    .slice()
+    .sort((a, b) => new Date(b.uploaded_at || 0).getTime() - new Date(a.uploaded_at || 0).getTime())
+    .slice(0, 16);
+
+  const rowMarkup = (materialRows, emptyText) => materialRows.length ? materialRows.map((row) => `
+    <article class="rounded-xl border border-cream bg-white p-4">
+      <div class="grid grid-cols-1 lg:grid-cols-[120px_minmax(0,1fr)_auto] gap-4">
+        <div>${getMaterialPreviewMarkup(row, { compact: true })}</div>
+        <div class="min-w-0">
+          <div class="flex flex-wrap items-center gap-2">
+            <p class="text-sm font-semibold text-warmblack break-words">${escapeHtml(row.display_name)}</p>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${row.status_badge}">${escapeHtml(row.status_label)}</span>
+            <span class="inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium ${row.visibility_badge}">${escapeHtml(row.visibility_label)}</span>
+          </div>
+          <button type="button" class="text-xs text-gold font-medium mt-1 hover:underline" onclick="selectedStudentId='${escapeHtml(row.student_id)}'; navigateTo('profile')">${escapeHtml(row.student_name || "Student")}</button>
+          <p class="text-xs text-warmgray mt-1">${escapeHtml(row.kind_label)} / ${escapeHtml(row.category)} / ${escapeHtml(row.scope_label)}</p>
+          <p class="text-xs text-warmgray mt-1">${escapeHtml(row.lesson_label || "No lesson link")}</p>
+        </div>
+        <div class="flex flex-wrap lg:flex-col gap-2">
+          ${row.source_url ? `<a href="${escapeHtml(row.source_url)}" target="_blank" rel="noopener noreferrer" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-gold text-center card-hover">${escapeHtml(row.action_label || "Open")}</a>` : ""}
+          <button type="button" onclick="selectedStudentId='${escapeHtml(row.student_id)}'; openMaterialModal('${escapeHtml(row.student_id)}', '${escapeHtml(row.file_id)}')" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Edit</button>
+        </div>
+      </div>
+    </article>
+  `).join("") : `<div class="page-empty-state"><p class="text-sm font-medium text-warmblack">${escapeHtml(emptyText)}</p></div>`;
+
+  root.innerHTML = `
+    <div class="materials-shell p-4 sm:p-6 xl:p-8 w-full">
+      <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
+        <div class="min-w-0">
+          <h2 class="font-display text-2xl font-bold text-warmblack">Materials</h2>
+          <p class="text-sm text-warmgray mt-1">Current work stays easy to reach. Vault keeps older files accessible without crowding the studio flow.</p>
+        </div>
+        <button type="button" onclick="openMaterialModal()" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Add Material</button>
+      </header>
+
+      <div class="page-stats-strip mb-5 fade-in">
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--good"><p class="text-[11px] uppercase tracking-wider text-warmgray">Current</p><p class="text-lg font-semibold text-warmblack mt-1">${currentRows.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact page-stat-chip--warm"><p class="text-[11px] uppercase tracking-wider text-warmgray">Actor Assets</p><p class="text-lg font-semibold text-warmblack mt-1">${actorRows.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Student Visible</p><p class="text-lg font-semibold text-warmblack mt-1">${studentVisibleRows.length}</p></div>
+        <div class="page-stat-chip page-stat-chip--compact"><p class="text-[11px] uppercase tracking-wider text-warmgray">Vault</p><p class="text-lg font-semibold text-warmblack mt-1">${vaultRows.length}</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1fr)_360px] gap-5">
+        <section class="dashboard-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in">
+          <div class="dashboard-panel-header p-5 border-b border-cream">
+            <p class="text-xs uppercase tracking-wider text-gold font-medium">Current</p>
+            <h3 class="font-display text-lg font-semibold mt-1">Active Scripts, Sides, Resources, And Actor Assets</h3>
+          </div>
+          <div class="p-4 space-y-3">${rowMarkup(recentRows, "No current materials yet.")}</div>
+        </section>
+
+        <aside class="space-y-5">
+          <section class="dashboard-panel bg-white rounded-2xl border border-cream overflow-hidden fade-in">
+            <div class="dashboard-panel-header p-5 border-b border-cream">
+              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Vault</p>
+              <h3 class="font-display text-lg font-semibold mt-1">Archived But Available</h3>
+            </div>
+            <div class="p-4 space-y-3">${rowMarkup(vaultRows.slice(0, 6), "Nothing is vaulted right now.")}</div>
+          </section>
+        </aside>
+      </div>
+    </div>
+  `;
+
+  lucide.createIcons();
+}
+
+async function copyStudentPortalLink() {
+  const url = `${window.location.origin}/portal`;
+  try {
+    await navigator.clipboard.writeText(url);
+    setSettingsActionFeedback(`Student portal link copied: ${url}`, "success");
+  } catch (error) {
+    setSettingsActionFeedback(`Student portal link: ${url}`, "warm");
+  }
   renderSettingsPage();
 }
 
@@ -13246,9 +13657,9 @@ function renderSettingsPage() {
       description: "Calendar and Gmail stay manual-sync and review-first, but the controls now live in one focused workspace."
     },
     branding: {
-      eyebrow: "Branding",
-      title: "Your studio mark in the app shell",
-      description: "Upload a logo once and the sidebar uses it beside the app name instead of the default mark."
+      eyebrow: "Studio Identity",
+      title: "Personalize what you and students see",
+      description: "Set the app name, coach contact details, student portal label, logo, and student-facing defaults in one place."
     },
     persistence: {
       eyebrow: "Persistence",
@@ -13316,6 +13727,34 @@ function renderSettingsPage() {
                 class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
               />
             </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Booking URL</span>
+              <input
+                name="booking_url"
+                type="url"
+                value="${escapeHtml(backend.booking_url || "https://coach.as.me")}"
+                placeholder="https://coach.as.me"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label class="block">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Reader Contacts Group</span>
+              <input
+                name="reader_contacts_group"
+                value="${escapeHtml(backend.reader_contacts_group || "")}"
+                placeholder="Readers"
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label class="block xl:col-span-2">
+              <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Stripe Package Price Map</span>
+              <textarea
+                name="stripe_price_map_json"
+                rows="3"
+                placeholder='{"default":"price_...","Intro Package":"price_..."}'
+                class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm font-mono"
+              >${escapeHtml(backend.stripe_price_map_json || "")}</textarea>
+            </label>
             <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
               <p class="text-[11px] uppercase tracking-wider text-warmgray">Calendar Intake</p>
               <div class="flex flex-wrap items-center gap-2 mt-2">
@@ -13349,27 +13788,89 @@ function renderSettingsPage() {
 
     if (activeSection.key === "branding") {
       const branding = typeof getStudioBranding === "function" ? getStudioBranding() : {};
+      const studioName = backend.studio_name || branding.studio_name || "Stage & Story";
+      const studioTagline = backend.studio_tagline || branding.tagline || "Studio Management";
+      const coachName = backend.coach_name || branding.coach_name || "Darius A. Journigan";
+      const coachTitle = backend.coach_title || branding.coach_title || "Acting Coach";
+      const coachEmail = backend.coach_contact_email || branding.contact_email || "coach@d-a-j.com";
+      const coachPhone = backend.coach_contact_phone || branding.contact_phone || "9292160175";
+      const studentPortalLabel = backend.student_portal_label || branding.student_portal_label || "Student Workspace";
+      const studentWelcomeMessage = backend.student_welcome_message || branding.student_welcome_message || "Your lessons, homework, materials, and actor page drafts live here.";
       return `
-        <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5 fade-in">
-          <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-            <div class="min-w-0">
-              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Sidebar Logo</p>
-              <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Upload the studio logo</h3>
-              <p class="text-sm text-warmgray mt-1">The uploaded image is stored in this browser and appears next to the app name in the sidebar.</p>
-              ${branding.logo_file_name ? `<p class="text-xs text-warmgray mt-2">Current file: ${escapeHtml(branding.logo_file_name)}</p>` : ""}
+        <div class="space-y-4 fade-in">
+          <form id="settings-studio-identity-form" class="rounded-2xl border border-cream bg-white p-4 sm:p-5" onsubmit="saveStudioIdentitySettings(event)">
+            <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_220px] gap-5">
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Studio Title</span>
+                  <input name="studio_name" value="${escapeHtml(studioName)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Sidebar Tagline</span>
+                  <input name="studio_tagline" value="${escapeHtml(studioTagline)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Coach Name</span>
+                  <input name="coach_name" value="${escapeHtml(coachName)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Coach Title</span>
+                  <input name="coach_title" value="${escapeHtml(coachTitle)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Coach Email</span>
+                  <input name="coach_contact_email" type="email" value="${escapeHtml(coachEmail)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Coach Text Number</span>
+                  <input name="coach_contact_phone" inputmode="tel" value="${escapeHtml(coachPhone)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Student Portal Label</span>
+                  <input name="student_portal_label" value="${escapeHtml(studentPortalLabel)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+                <label class="block">
+                  <span class="text-xs uppercase tracking-wider text-warmgray font-medium">Student Welcome</span>
+                  <input name="student_welcome_message" value="${escapeHtml(studentWelcomeMessage)}" class="mt-2 w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm" />
+                </label>
+              </div>
+              <div class="rounded-2xl border border-cream bg-parchment p-4 min-w-0">
+                <div class="w-24 h-24 rounded-2xl border border-cream bg-white flex items-center justify-center overflow-hidden">
+                  ${branding.logo_url ? `<img src="${escapeHtml(branding.logo_url)}" alt="Studio logo preview" class="w-full h-full object-contain bg-white" />` : `<i data-lucide="clapperboard" class="w-8 h-8 text-warmgray"></i>`}
+                </div>
+                <p class="text-sm font-semibold text-warmblack mt-4">${escapeHtml(studioName)}</p>
+                <p class="text-xs text-warmgray mt-1">${escapeHtml(studioTagline)}</p>
+                ${branding.logo_file_name ? `<p class="text-xs text-warmgray mt-3 wrap-anywhere">Logo: ${escapeHtml(branding.logo_file_name)}</p>` : ""}
+                <div class="flex flex-wrap gap-2 mt-4">
+                  <label class="inline-flex items-center px-3 py-2 rounded-xl gold-gradient text-warmblack text-xs font-semibold card-hover cursor-pointer">
+                    Upload Logo
+                    <input type="file" accept="image/*" class="hidden" onchange="saveStudioLogoUpload(event)" />
+                  </label>
+                  ${branding.logo_url ? `<button type="button" class="px-3 py-2 rounded-xl bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="clearStudioLogo()">Clear</button>` : ""}
+                </div>
+              </div>
             </div>
-            <div class="w-24 h-24 rounded-2xl border border-cream bg-parchment flex items-center justify-center overflow-hidden shrink-0">
-              ${branding.logo_url ? `<img src="${escapeHtml(branding.logo_url)}" alt="Studio logo preview" class="w-full h-full object-contain bg-white" />` : `<i data-lucide="drama" class="w-8 h-8 text-warmgray"></i>`}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 mt-4">
+              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+                <input type="checkbox" name="student_show_contact_buttons" class="mt-1" ${backend.student_show_contact_buttons !== false ? "checked" : ""}>
+                <span class="min-w-0"><span class="block text-sm font-medium text-warmblack">Show Text/Email Coach</span><span class="block text-xs text-warmgray mt-1">Students see direct contact actions near the top.</span></span>
+              </label>
+              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+                <input type="checkbox" name="student_show_booking_button" class="mt-1" ${backend.student_show_booking_button !== false ? "checked" : ""}>
+                <span class="min-w-0"><span class="block text-sm font-medium text-warmblack">Show Book Lesson</span><span class="block text-xs text-warmgray mt-1">Keeps the booking CTA visible in the workspace.</span></span>
+              </label>
+              <label class="rounded-xl border border-cream bg-parchment px-4 py-3 flex items-start gap-3">
+                <input type="checkbox" name="student_show_drive_folder" class="mt-1" ${backend.student_show_drive_folder !== false ? "checked" : ""}>
+                <span class="min-w-0"><span class="block text-sm font-medium text-warmblack">Show Drive Folder</span><span class="block text-xs text-warmgray mt-1">Uses the folder URL saved on each student.</span></span>
+              </label>
             </div>
-          </div>
-          <div class="flex flex-wrap items-center gap-2 mt-5">
-            <label class="inline-flex items-center px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover cursor-pointer">
-              Upload Logo
-              <input type="file" accept="image/*" class="hidden" onchange="saveStudioLogoUpload(event)" />
-            </label>
-            ${branding.logo_url ? `<button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="clearStudioLogo()">Clear Logo</button>` : ""}
-          </div>
-        </section>
+            <div class="flex flex-wrap items-center gap-2 mt-5">
+              <button type="submit" class="px-4 py-2.5 rounded-xl gold-gradient text-warmblack text-sm font-semibold card-hover">Save Studio Identity</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="copyStudentPortalLink()">Copy Portal Link</button>
+              <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="window.open('/portal', '_blank', 'noopener')">Open Portal</button>
+            </div>
+          </form>
+        </div>
       `;
     }
 
@@ -13527,8 +14028,8 @@ function renderSettingsPage() {
     return `
       <div class="space-y-4 fade-in">
         <div class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
-          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Phase 6A Readiness</p>
-          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">Coach-side foundation is ready to start the student portal</h3>
+          <p class="text-xs uppercase tracking-wider text-warmgray font-medium">Student System</p>
+          <h3 class="font-display text-xl font-semibold text-warmblack mt-1">What is live now</h3>
           <div class="grid grid-cols-1 xl:grid-cols-2 gap-3 mt-4">
             ${studentPortalReadiness.map((item, index) => `
               <div class="rounded-xl border ${item.done ? "border-sage/20 bg-sage/5" : "border-gold/20 bg-gold/5"} px-4 py-3">
@@ -13986,8 +14487,8 @@ function renderFinancePage() {
     <div class="finance-shell p-4 sm:p-6 xl:p-8 w-full ${compact ? "compact-view" : ""}">
       <header class="mb-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 fade-in">
         <div class="min-w-0">
-          <h2 class="font-display text-2xl font-bold text-warmblack">Finance</h2>
-          <p class="text-sm text-warmgray mt-0.5">Packages and payments across the whole studio</p>
+          <h2 class="font-display text-2xl font-bold text-warmblack">Payments</h2>
+          <p class="text-sm text-warmgray mt-0.5">Packages, balances, renewals, and payment review across the whole studio</p>
           <div class="page-compact-summary mt-3">
             <span class="page-compact-summary-pill">Outstanding · ${summary.outstandingTotal}</span>
             <span class="page-compact-summary-pill">Students owing · ${summary.outstandingStudents}</span>
@@ -15201,7 +15702,7 @@ function renderProfilePage() {
           </button>
           <div class="min-w-0">
             <h2 id="profile-page-title" class="font-display text-2xl font-bold text-warmblack">Student Profile</h2>
-            <p id="profile-page-subtitle" class="text-sm text-warmgray mt-0.5">Current work, lessons, finance, and contact details</p>
+            <p id="profile-page-subtitle" class="text-sm text-warmgray mt-0.5">One hub for lessons, notes, current work, payments, and actor page progress</p>
           </div>
         </div>
 
@@ -15210,6 +15711,9 @@ function renderProfilePage() {
           <button id="profile-add-package-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Package</button>
           <button id="profile-add-payment-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Add Payment</button>
           <button id="profile-invite-student-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Invite Student</button>
+          <button id="profile-copy-login-link-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Copy Login Link</button>
+          <button id="profile-reset-access-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Reset Access</button>
+          <button id="profile-seed-aiden-demo-btn" class="hidden px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Seed Aiden Demo</button>
           <button id="profile-open-public-page-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Open Public Page</button>
           <button id="profile-copy-public-link-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Copy Public Link</button>
           <button id="profile-preview-student-portal-btn" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-warmblack text-sm font-medium card-hover">Preview as Student</button>
@@ -15224,6 +15728,16 @@ function renderProfilePage() {
         <span class="page-compact-summary-pill">Last lesson · <span id="profile-last-lesson-pill">—</span></span>
         <span class="page-compact-summary-pill">Public page · <span id="profile-public-pill">—</span></span>
       </div>
+
+      <nav class="profile-hub-nav mb-4" aria-label="Student profile sections">
+        <button type="button" onclick="document.getElementById('profile-overview-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Overview</button>
+        <button type="button" onclick="document.getElementById('profile-lessons-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Lessons</button>
+        <button type="button" onclick="switchProfileTab('notes', document.querySelector('[data-profile-tab=notes]')); document.getElementById('profile-work-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Notes</button>
+        <button type="button" onclick="switchProfileTab('materials', document.querySelector('[data-profile-tab=materials]')); document.getElementById('profile-work-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Materials</button>
+        <button type="button" onclick="document.getElementById('profile-payments-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Payments</button>
+        <button type="button" onclick="document.getElementById('profile-actor-page-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Actor Page</button>
+        <button type="button" onclick="document.getElementById('profile-admin-notes-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' })">Admin Notes</button>
+      </nav>
 
       <div class="page-stats-strip mb-4">
         <div class="page-stat-chip page-stat-chip--compact">
@@ -15246,7 +15760,7 @@ function renderProfilePage() {
 
       <div class="grid grid-cols-1 2xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] gap-5 profile-workspace">
         <div class="space-y-5 min-w-0">
-          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in">
+          <section id="profile-overview-section" class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in">
             <div class="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_320px] gap-5 profile-overview-grid">
               <div class="min-w-0">
                 <div class="flex items-start gap-4">
@@ -15279,6 +15793,13 @@ function renderProfilePage() {
                     <p class="text-[11px] uppercase tracking-wider text-warmgray">Lead Source</p>
                     <p id="profile-lead-source" class="text-sm font-medium text-warmblack mt-1">—</p>
                     <p class="text-xs text-warmgray mt-1">Timezone: <span id="profile-timezone">—</span></p>
+                    <div class="mt-3 pt-3 border-t border-cream">
+                      <p class="text-[11px] uppercase tracking-wider text-warmgray">Drive Folder</p>
+                      <p id="profile-drive-folder-label" class="text-sm font-medium text-warmblack mt-1">Not linked</p>
+                      <a id="profile-drive-folder-link" href="#" target="_blank" rel="noopener" class="inline-flex items-center gap-1 text-xs text-gold font-medium mt-2 hidden">
+                        Open Folder <i data-lucide="external-link" class="w-3 h-3"></i>
+                      </a>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -15323,18 +15844,18 @@ function renderProfilePage() {
             </div>
           </section>
 
-          <section class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.05s">
+          <section id="profile-work-section" class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.05s">
             <div class="profile-tab-bar flex flex-wrap border-b border-cream">
-              <button onclick="switchProfileTab('notes', this)" class="tab-btn active-tab px-5 py-3.5 text-sm font-medium text-gold border-b-2 border-gold">Lesson Notes</button>
-              <button onclick="switchProfileTab('homework', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Homework</button>
-              <button onclick="switchProfileTab('materials', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Materials</button>
+              <button data-profile-tab="notes" onclick="switchProfileTab('notes', this)" class="tab-btn active-tab px-5 py-3.5 text-sm font-medium text-gold border-b-2 border-gold">Notes</button>
+              <button data-profile-tab="current" onclick="switchProfileTab('current', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Current Work</button>
+              <button data-profile-tab="materials" onclick="switchProfileTab('materials', this)" class="tab-btn px-5 py-3.5 text-sm font-medium text-warmgray border-b-2 border-transparent">Materials</button>
             </div>
             <div id="profile-tab-notes" class="p-5 space-y-4"></div>
             <div id="profile-tab-homework" class="p-5" style="display:none;"></div>
             <div id="profile-tab-materials" class="p-5" style="display:none;"></div>
           </section>
 
-          <section class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.08s">
+          <section id="profile-lessons-section" class="profile-panel bg-white rounded-2xl border border-cream fade-in" style="animation-delay:0.08s">
             <div class="dashboard-panel-header p-5 border-b border-cream flex items-center justify-between gap-3">
               <div class="min-w-0">
                 <h3 class="font-display text-lg font-semibold">Lessons</h3>
@@ -15356,12 +15877,15 @@ function renderProfilePage() {
             </div>
             <div id="profile-student-flow-next-steps" class="space-y-3"></div>
             <div class="flex flex-wrap gap-2 mt-4">
+              <a href="${escapeHtml(getBookingUrlSetting())}" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Book Link</a>
+              <a id="profile-flow-drive-folder-link" href="#" target="_blank" rel="noopener" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover hidden">Drive Folder</a>
               <button id="profile-invite-guardian-btn" type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Invite Guardian</button>
+              <button type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover" onclick="navigateTo('finance')">Renewal</button>
               <button id="profile-review-public-materials-btn" type="button" class="px-3 py-2 rounded-lg bg-white border border-cream text-xs font-medium text-warmblack card-hover">Review Submissions</button>
             </div>
           </section>
 
-          <section class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.03s">
+          <section id="profile-payments-section" class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.03s">
             <div class="flex items-center justify-between gap-3 mb-3">
               <h4 class="font-display font-semibold">Payments</h4>
               <span id="profile-payments-count" class="text-xs text-warmgray">—</span>
@@ -15384,9 +15908,9 @@ function renderProfilePage() {
             </div>
           </section>
 
-          <details class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
+          <details id="profile-admin-notes-section" open class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.09s">
             <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
-              <span class="font-display font-semibold">Extended Contact</span>
+              <span class="font-display font-semibold">Family & Contacts</span>
               <i data-lucide="chevron-down" class="w-4 h-4 text-warmgray"></i>
             </summary>
             <div class="space-y-3 text-sm mt-4">
@@ -15397,9 +15921,9 @@ function renderProfilePage() {
             </div>
           </details>
 
-          <details class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.12s">
+          <details id="profile-actor-page-section" class="profile-panel bg-white rounded-2xl border border-cream p-4 sm:p-5 fade-in" style="animation-delay:0.12s">
             <summary class="cursor-pointer list-none flex items-center justify-between gap-3">
-              <span class="font-display font-semibold">Bio & Public Page</span>
+              <span class="font-display font-semibold">Actor Page</span>
               <span id="profile-public-status-secondary" class="text-xs text-warmgray">—</span>
             </summary>
             <p id="profile-bio" class="text-sm text-warmgray leading-relaxed wrap-anywhere mt-4"></p>
@@ -15431,6 +15955,19 @@ function renderProfilePage() {
 
   const inviteGuardianBtn = document.getElementById("profile-invite-guardian-btn");
   if (inviteGuardianBtn) inviteGuardianBtn.onclick = () => createStudentAccountInviteFromProfile("GUARDIAN");
+
+  const copyLoginLinkBtn = document.getElementById("profile-copy-login-link-btn");
+  if (copyLoginLinkBtn) copyLoginLinkBtn.onclick = () => copyStudentPortalLoginLink();
+
+  const resetAccessBtn = document.getElementById("profile-reset-access-btn");
+  if (resetAccessBtn) resetAccessBtn.onclick = () => resetStudentAccountAccessFromProfile("STUDENT");
+
+  const seedAidenDemoBtn = document.getElementById("profile-seed-aiden-demo-btn");
+  const selectedStudent = getSchemaStudentById(selectedStudentId);
+  if (seedAidenDemoBtn && selectedStudent && String(selectedStudent.email || "").toLowerCase() === "aiden@example.com") {
+    seedAidenDemoBtn.classList.remove("hidden");
+    seedAidenDemoBtn.onclick = seedAidenDemoAccountFromProfile;
+  }
 
   const openPublicPageBtn = document.getElementById("profile-open-public-page-btn");
   if (openPublicPageBtn) openPublicPageBtn.onclick = () => openSelectedStudentPublicPage();
@@ -15519,6 +16056,28 @@ function getPublicActorUrlForStudent(studentId) {
   const profile = getActorProfileByStudentId(studentId);
   if (!profile || !profile.slug) return "";
   return `${window.location.origin}/actors/${encodeURIComponent(profile.slug)}`;
+}
+
+function getStudentPortalLoginUrl() {
+  return `${window.location.origin}/portal`;
+}
+
+function getStudentAccountsForStudent(studentId) {
+  const directAccounts = typeof getDataCollection === "function" ? getDataCollection("studentAccounts") : [];
+  const student = getSchemaStudentById(studentId);
+  const embeddedAccounts = (() => {
+    try {
+      const parsed = JSON.parse(String(student?.portal_account_data || "[]"));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  })();
+  const byId = new Map();
+  [...directAccounts, ...embeddedAccounts].forEach((account) => {
+    if (account && account.account_id && account.student_id === studentId) byId.set(account.account_id, account);
+  });
+  return Array.from(byId.values());
 }
 
 function getStudentAccountAdminToken() {
@@ -15629,6 +16188,144 @@ async function createStudentAccountInviteFromProfile(role = "STUDENT") {
   }
 }
 
+async function copyStudentPortalLoginLink() {
+  const url = getStudentPortalLoginUrl();
+  await copyTextToClipboard(url);
+  notifyUser({
+    title: "Login link copied",
+    message: url,
+    tone: "success",
+    source: "student_accounts"
+  });
+}
+
+async function resetStudentAccountAccessFromProfile(role = "STUDENT") {
+  if (!selectedStudentId) return;
+  const student = getSchemaStudentById(selectedStudentId);
+  if (!student) return;
+  const resolvedRole = String(role || "STUDENT").toUpperCase() === "GUARDIAN" ? "GUARDIAN" : "STUDENT";
+  const email = resolvedRole === "GUARDIAN"
+    ? (student.guardian_email || student.preferred_contact_email || "")
+    : (student.email || "");
+  if (!email) {
+    notifyUser({
+      title: "Reset needs an email",
+      message: resolvedRole === "GUARDIAN" ? "Add a guardian email before resetting guardian access." : "Add a student email before resetting student access.",
+      tone: "error",
+      source: "student_accounts"
+    });
+    return;
+  }
+
+  if (!getStudentAccountAdminToken() && !promptStudentAccountAdminToken()) return;
+
+  try {
+    const payload = await requestStudentAccountAction("request_reset", { email });
+    const resetUrl = payload.result?.reset_url || "";
+    if (resetUrl) await copyTextToClipboard(resetUrl);
+    notifyUser({
+      title: resetUrl ? "Reset link copied" : "Reset requested",
+      message: resetUrl || "If an active account exists, reset instructions are ready for delivery.",
+      tone: "success",
+      source: "student_accounts"
+    });
+    renderStudentFlowNextSteps(selectedStudentId);
+  } catch (error) {
+    setStudentAccountAdminToken("");
+    notifyUser({
+      title: "Reset failed",
+      message: String(error && error.message ? error.message : error || "Unable to create reset link."),
+      tone: "error",
+      source: "student_accounts"
+    });
+  }
+}
+
+async function seedAidenDemoAccountFromProfile() {
+  const student = getSchemaStudentById(selectedStudentId);
+  if (!student || String(student.email || "").toLowerCase() !== "aiden@example.com") {
+    notifyUser({
+      title: "Demo seed unavailable",
+      message: "This action is only for the Aiden Liu demo student.",
+      tone: "error",
+      source: "student_accounts"
+    });
+    return;
+  }
+
+  if (!getStudentAccountAdminToken() && !promptStudentAccountAdminToken()) return;
+  const password = window.prompt("Enter the temporary demo password for Aiden Liu.");
+  if (!password) return;
+
+  try {
+    await requestStudentAccountAction("seed_aiden_demo_account", {
+      email: "aiden@example.com",
+      password
+    });
+    await copyTextToClipboard(getStudentPortalLoginUrl());
+    notifyUser({
+      title: "Aiden demo login ready",
+      message: "Portal link copied. Sign in with aiden@example.com and the temporary password you entered.",
+      tone: "success",
+      source: "student_accounts"
+    });
+    renderStudentFlowNextSteps(selectedStudentId);
+  } catch (error) {
+    setStudentAccountAdminToken("");
+    notifyUser({
+      title: "Demo seed failed",
+      message: String(error && error.message ? error.message : error || "Unable to seed Aiden's demo login."),
+      tone: "error",
+      source: "student_accounts"
+    });
+  }
+}
+
+async function sendReaderBlast(readerRequestId) {
+  const request = getReaderRequestRecords().find((row) => row.reader_request_id === readerRequestId);
+  if (!request) return;
+  if (!getStudentAccountAdminToken() && !promptStudentAccountAdminToken()) return;
+  const backend = studioDataService.getBackendSettings();
+  try {
+    const response = await fetch("/api/reader-blast", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        admin_token: getStudentAccountAdminToken(),
+        contacts_group: backend.reader_contacts_group || "Readers",
+        student_name: request.student_name || getStudentNameById(request.student_id),
+        filming_label: getReaderRequestLabel(request),
+        details: [
+          `Meeting: ${String(request.meeting_method || "").replace(/_/g, " ")}`,
+          request.meeting_details ? `Details: ${request.meeting_details}` : "",
+          request.sides_url ? `Sides: ${request.sides_url}` : "",
+          request.instructions_url ? `Instructions: ${request.instructions_url}` : "",
+          request.notes ? `Notes: ${request.notes}` : ""
+        ].filter(Boolean).join("\n")
+      })
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok || payload.ok === false) throw new Error(payload.error || "Unable to send reader blast.");
+    notifyUser({
+      title: "Reader blast sent",
+      message: `${payload.sent_to_count || 0} reader contact${payload.sent_to_count === 1 ? "" : "s"} emailed.`,
+      tone: "success",
+      source: "reader"
+    });
+  } catch (error) {
+    setStudentAccountAdminToken("");
+    notifyUser({
+      title: "Reader blast failed",
+      message: String(error && error.message ? error.message : error || "Unable to send reader blast."),
+      tone: "error",
+      source: "reader"
+    });
+  }
+}
+
 function openSelectedStudentPublicPage() {
   const url = getPublicActorUrlForStudent(selectedStudentId);
   if (!url) {
@@ -15673,15 +16370,32 @@ function renderStudentFlowNextSteps(studentId) {
   const pendingPublic = files.filter((file) => String(file.submitted_by || "").toUpperCase() === "STUDENT_PORTAL" && String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW");
   const approvedPublic = files.filter(isPublicPageApprovedMaterial);
   const homeworkReminder = getHomeworkByStudentId(studentId).filter((item) => item.student_reminder_requested_at && String(item.status || "").toUpperCase() !== "COMPLETED");
+  const readerRequests = getActiveReaderRequests().filter((request) => request.student_id === studentId);
+  const lessonComments = getOpenLessonComments().filter((comment) => comment.student_id === studentId);
+  const packageRows = getPackageRecords().filter((pkg) => pkg.student_id === studentId && !isPackageArchived(pkg));
+  const renewalNeeded = packageRows.some((pkg) => {
+    const financials = getPackageFinancials(pkg);
+    return Number(financials.remaining || 0) > 0 || Number(pkg.sessions_remaining || 0) <= 1 || getPackageDeclaredPaymentStatus(pkg) === "OVERDUE";
+  });
+  const accounts = getStudentAccountsForStudent(studentId);
+  const activeAccounts = accounts.filter((account) => String(account.status || "").toUpperCase() === "ACTIVE");
+  const invitedAccounts = accounts.filter((account) => String(account.status || "").toUpperCase() === "INVITED");
   const steps = [];
   if (!student?.email) steps.push({ title: "Add student email", detail: "Student accounts need a direct email on file." });
+  if (!accounts.length) steps.push({ title: "Invite student account", detail: "Send the setup link before sharing the workspace login." });
+  if (invitedAccounts.length) steps.push({ title: `${invitedAccounts.length} invite${invitedAccounts.length === 1 ? "" : "s"} waiting`, detail: "Copy or refresh the setup link if the student has not created a password yet." });
   if (student?.guardian_email && student.guardian_portal_access_enabled !== false) steps.push({ title: "Guardian invite available", detail: "Guardian access can be invited separately from the student." });
   if (!profile) steps.push({ title: "Create actor profile", detail: "Public page link appears after a profile slug exists." });
   if (profile && String(profile.status || "").toLowerCase() !== "active") steps.push({ title: "Public page is draft", detail: "Student can edit; coach keeps approval authority for materials." });
   if (pendingPublic.length) steps.push({ title: `${pendingPublic.length} public submission${pendingPublic.length === 1 ? "" : "s"} pending`, detail: "Review headshots, resumes, reels, or self tapes." });
   if (!approvedPublic.length) steps.push({ title: "No approved public materials", detail: "Approve at least a headshot or resume before sharing the actor page." });
   if (homeworkReminder.length) steps.push({ title: `${homeworkReminder.length} reminder request${homeworkReminder.length === 1 ? "" : "s"}`, detail: "Student asked for homework follow-up." });
-  statusEl.textContent = profile && String(profile.status || "").toLowerCase() === "active" ? "Live" : "Needs setup";
+  if (renewalNeeded) steps.push({ title: "Package renewal needed", detail: "Review package/payment status or send the student to Stripe checkout." });
+  if (readerRequests.length) steps.push({ title: `${readerRequests.length} reader request${readerRequests.length === 1 ? "" : "s"} open`, detail: "Review sides, draft the blast, and update the request status." });
+  if (lessonComments.length) steps.push({ title: `${lessonComments.length} lesson comment${lessonComments.length === 1 ? "" : "s"}`, detail: "Open the lesson and respond from the coach workflow." });
+  statusEl.textContent = activeAccounts.length
+    ? (profile && String(profile.status || "").toLowerCase() === "active" ? "Live" : "Workspace active")
+    : "Needs invite";
   listEl.innerHTML = steps.length
     ? steps.slice(0, 5).map((step) => `
       <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
@@ -15717,6 +16431,8 @@ function populateStudentProfile(studentId) {
 
   const subtitleEl = document.getElementById("profile-page-subtitle");
   if (subtitleEl) subtitleEl.textContent = `${schemaStudent.student_id} · ${schemaStudent.billing_model} · ${getStudentLeadSourceLabel(schemaStudent.lead_source)}`;
+
+  if (subtitleEl) subtitleEl.textContent = `Hub for lessons, notes, current work, payments, and actor page progress / ${schemaStudent.student_id} / ${schemaStudent.billing_model} / ${getStudentLeadSourceLabel(schemaStudent.lead_source)}`;
 
   const nameEl = document.getElementById("profile-student-name");
   if (nameEl) nameEl.textContent = student.name;
@@ -15766,11 +16482,12 @@ function populateStudentProfile(studentId) {
   const publicStatusSecondaryEl = document.getElementById("profile-public-status-secondary");
   if (publicStatusEl) {
     const isActive = actorProfile && actorProfile.status === "Active";
+    const actorStatusLabel = actorProfile && actorProfile.status === "Active" ? "Live" : actorProfile ? actorProfile.status : "Not Live";
     const lateCancelCount = getLateCancelCountForStudent(studentId, 6);
     const blockedByPolicy = isStudentPublicPageBlockedByLessonPolicy(studentId);
     const publicStatusMarkup = blockedByPolicy
       ? `<span class="inline-flex items-center gap-1 text-burgundy"><span class="w-1.5 h-1.5 rounded-full bg-burgundy"></span>Blocked · ${lateCancelCount} late cancels in 6 months</span>`
-      : `<span class="inline-flex items-center gap-1 ${isActive ? "text-sage" : "text-warmgray"}"><span class="w-1.5 h-1.5 rounded-full ${isActive ? "bg-sage" : "bg-warmgray"}"></span>${actorProfile ? actorProfile.status : "Not Live"}</span>`;
+      : `<span class="inline-flex items-center gap-1 ${isActive ? "text-sage" : "text-warmgray"}"><span class="w-1.5 h-1.5 rounded-full ${isActive ? "bg-sage" : "bg-warmgray"}"></span>${actorStatusLabel}</span>`;
 
     publicStatusEl.innerHTML = publicStatusMarkup;
     if (publicStatusSecondaryEl) publicStatusSecondaryEl.innerHTML = publicStatusMarkup;
@@ -15780,7 +16497,7 @@ function populateStudentProfile(studentId) {
     const lateCancelCount = getLateCancelCountForStudent(studentId, 6);
     publicPillEl.textContent = isStudentPublicPageBlockedByLessonPolicy(studentId)
       ? `Blocked (${lateCancelCount} late cancels)`
-      : (actorProfile ? actorProfile.status : "Not live");
+      : (actorProfile && actorProfile.status === "Active" ? "Live" : actorProfile ? actorProfile.status : "Not live");
   }
 
   renderStudentFlowNextSteps(studentId);
@@ -15817,6 +16534,22 @@ function populateStudentProfile(studentId) {
     const base = getStudentLeadSourceLabel(schemaStudent.lead_source);
     leadSourceEl.textContent = schemaStudent.lead_source_detail ? `${base} · ${schemaStudent.lead_source_detail}` : base;
   }
+
+  const driveFolderUrl = String(schemaStudent.drive_folder_url || "").trim();
+  const driveFolderLabelEl = document.getElementById("profile-drive-folder-label");
+  const driveFolderLinkEl = document.getElementById("profile-drive-folder-link");
+  const flowDriveFolderLinkEl = document.getElementById("profile-flow-drive-folder-link");
+  if (driveFolderLabelEl) driveFolderLabelEl.textContent = driveFolderUrl ? "Linked" : "Not linked";
+  [driveFolderLinkEl, flowDriveFolderLinkEl].forEach((linkEl) => {
+    if (!linkEl) return;
+    if (driveFolderUrl) {
+      linkEl.href = driveFolderUrl;
+      linkEl.classList.remove("hidden");
+    } else {
+      linkEl.href = "#";
+      linkEl.classList.add("hidden");
+    }
+  });
 
   const emailBtn = document.getElementById("profile-email-btn");
   const bestContactEmail = String(schemaStudent.email || schemaStudent.guardian_email || parseStoredEmailList(schemaStudent.additional_emails || "")[0] || "").trim();
@@ -15966,7 +16699,7 @@ if (paymentsListEl) {
       ? `
         <p class="text-xs text-gold font-medium uppercase tracking-wider mb-1">Primary Actor Material</p>
         <p class="text-sm font-medium">${escapeHtml(primaryActorMaterial.display_name)}</p>
-        <p class="text-xs text-warmgray mt-0.5">${escapeHtml(primaryActorMaterial.category)} � ${escapeHtml(primaryActorMaterial.visibility_label)} � ${escapeHtml(formatLongDate(primaryActorMaterial.uploaded_at))}</p>
+        <p class="text-xs text-warmgray mt-0.5">${escapeHtml(primaryActorMaterial.category)} ? ${escapeHtml(primaryActorMaterial.visibility_label)} ? ${escapeHtml(formatLongDate(primaryActorMaterial.uploaded_at))}</p>
       `
       : `
         <p class="text-xs text-gold font-medium uppercase tracking-wider mb-1">Primary Actor Material</p>
@@ -15981,7 +16714,7 @@ if (paymentsListEl) {
       ? `
         <p class="text-xs text-sage font-medium uppercase tracking-wider mb-1">Current Coaching Material</p>
         <p class="text-sm font-medium">${escapeHtml(latestCoachingMaterial.display_name)}</p>
-        <p class="text-xs text-warmgray mt-0.5">${escapeHtml(latestCoachingMaterial.category)} � ${escapeHtml(latestCoachingMaterial.scope_label)} � ${escapeHtml(formatLongDate(latestCoachingMaterial.uploaded_at))}</p>
+        <p class="text-xs text-warmgray mt-0.5">${escapeHtml(latestCoachingMaterial.category)} ? ${escapeHtml(latestCoachingMaterial.scope_label)} ? ${escapeHtml(formatLongDate(latestCoachingMaterial.uploaded_at))}</p>
       `
       : `
         <p class="text-xs text-sage font-medium uppercase tracking-wider mb-1">Current Coaching Material</p>
@@ -16130,6 +16863,7 @@ function openStudentModal(mode = "create", studentId = null) {
     if (form.elements.preferred_contact_name) form.elements.preferred_contact_name.value = schemaStudent.preferred_contact_name || "";
     if (form.elements.preferred_contact_email) form.elements.preferred_contact_email.value = schemaStudent.preferred_contact_email || "";
     if (form.elements.preferred_contact_phone) form.elements.preferred_contact_phone.value = schemaStudent.preferred_contact_phone || "";
+    if (form.elements.drive_folder_url) form.elements.drive_folder_url.value = schemaStudent.drive_folder_url || "";
     if (form.elements.emergency_contact_name) form.elements.emergency_contact_name.value = schemaStudent.emergency_contact_name || "";
     if (form.elements.emergency_contact_phone) form.elements.emergency_contact_phone.value = schemaStudent.emergency_contact_phone || "";
     if (form.elements.business_notes) form.elements.business_notes.value = schemaStudent.business_notes || "";
@@ -16309,6 +17043,7 @@ function handleStudentFormSubmit(event) {
     preferred_contact_name: form.elements.preferred_contact_name ? form.elements.preferred_contact_name.value.trim() : "",
     preferred_contact_email: form.elements.preferred_contact_email ? form.elements.preferred_contact_email.value.trim() : "",
     preferred_contact_phone: form.elements.preferred_contact_phone ? form.elements.preferred_contact_phone.value.trim() : "",
+    drive_folder_url: form.elements.drive_folder_url ? form.elements.drive_folder_url.value.trim() : "",
     emergency_contact_name: form.elements.emergency_contact_name ? form.elements.emergency_contact_name.value.trim() : "",
     emergency_contact_phone: form.elements.emergency_contact_phone ? form.elements.emergency_contact_phone.value.trim() : "",
     business_notes: form.elements.business_notes ? form.elements.business_notes.value.trim() : "",
@@ -16722,6 +17457,9 @@ function openLessonDetailModal(lessonId) {
   const note = getLessonNoteByLessonId(lessonId);
   const homeworkItems = getHomeworkByLessonId(lessonId);
   const lessonFiles = getLessonFiles(lessonId);
+  const studentLessonComments = getLessonCommentRecords()
+    .filter((comment) => comment.lesson_id === lessonId)
+    .sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime());
   const importedContact = getImportedLessonContactInfo(lesson);
   const effectiveStatus = getEffectiveLessonStatus(lesson);
   const paymentStatusLabel = getLessonManualPaymentStatusLabel(lesson.manual_payment_status);
@@ -17000,7 +17738,7 @@ function openLessonDetailModal(lessonId) {
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
                   <p class="text-[11px] uppercase tracking-wider text-warmgray">Student Visibility</p>
-                  <p class="text-sm font-semibold text-warmblack mt-1">${note && normalizeNoteStatus(note.status) === "PUBLISHED" ? "Visible to student portal later" : "Admin only"}</p>
+                  <p class="text-sm font-semibold text-warmblack mt-1">${note && normalizeNoteStatus(note.status) === "PUBLISHED" ? "Visible in student workspace" : "Coach only"}</p>
                 </div>
                 <div class="rounded-xl border border-cream bg-parchment px-4 py-3">
                   <p class="text-[11px] uppercase tracking-wider text-warmgray">Last Activity</p>
@@ -17053,6 +17791,27 @@ function openLessonDetailModal(lessonId) {
                 <div class="rounded-xl bg-parchment border border-cream p-3">
                   <p class="text-xs font-medium uppercase tracking-wider text-warmgray mb-1">Internal Comments</p>
                   <p class="text-sm text-warmblack wrap-anywhere">${escapeHtml(lesson.internal_comments || "No internal comments saved yet.")}</p>
+                </div>
+
+                <div class="rounded-xl bg-parchment border border-cream p-3">
+                  <div class="flex items-center justify-between gap-3 mb-2">
+                    <p class="text-xs font-medium uppercase tracking-wider text-warmgray">Student Comments</p>
+                    <span class="text-[11px] px-2 py-1 rounded-full ${studentLessonComments.some((comment) => !comment.resolved_at) ? "bg-gold/10 text-gold" : "bg-sage/10 text-sage"}">
+                      ${studentLessonComments.filter((comment) => !comment.resolved_at).length} open
+                    </span>
+                  </div>
+                  <div class="space-y-2">
+                    ${
+                      studentLessonComments.length
+                        ? studentLessonComments.map((comment) => `
+                          <div class="rounded-lg border border-cream bg-white px-3 py-2">
+                            <p class="text-sm text-warmblack wrap-anywhere">${escapeHtml(comment.body || "Student comment")}</p>
+                            <p class="text-[11px] text-warmgray mt-1">${escapeHtml(comment.author_email || comment.author_role || "Student")} · ${escapeHtml(formatLastSyncMeta(comment.created_at))}</p>
+                          </div>
+                        `).join("")
+                        : `<p class="text-sm text-warmgray">No student comments on this lesson yet.</p>`
+                    }
+                  </div>
                 </div>
 
                 <div class="flex justify-end gap-3 pt-1">
@@ -17266,4 +18025,6 @@ function openLessonDetailModal(lessonId) {
 
   lucide.createIcons();
 }
+
+
 

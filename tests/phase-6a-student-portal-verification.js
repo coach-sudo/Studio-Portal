@@ -28,7 +28,9 @@ function loadSampleSnapshot() {
       payments: samplePayments,
       actorProfiles: sampleActorProfiles,
       files: sampleFiles,
-      studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : []
+      studentAccounts: typeof sampleStudentAccounts !== "undefined" ? sampleStudentAccounts : [],
+      readerRequests: typeof sampleReaderRequests !== "undefined" ? sampleReaderRequests : [],
+      lessonComments: typeof sampleLessonComments !== "undefined" ? sampleLessonComments : []
     });`);
   return script.runInNewContext({ console, Date, Math, JSON });
 }
@@ -42,6 +44,9 @@ function resetEnv() {
   delete process.env.GOOGLE_APPS_SCRIPT_TOKEN;
   delete process.env.NETLIFY_GAS_URL;
   delete process.env.STUDIO_PORTAL_TOKEN;
+  delete process.env.GOOGLE_OAUTH_CLIENT_ID;
+  delete process.env.GOOGLE_OAUTH_CLIENT_SECRET;
+  delete process.env.GOOGLE_REFRESH_TOKEN;
 }
 
 function configureLocalAuth() {
@@ -139,7 +144,7 @@ function installSnapshotBackend(initialSnapshot) {
 function assertScopedToStudent(data, studentId) {
   assert(data.student, "Expected scoped student");
   assert.strictEqual(data.student.student_id, studentId);
-  ["lessons", "notes", "homework", "packages", "payments", "materials"].forEach((key) => {
+  ["lessons", "notes", "homework", "packages", "payments", "materials", "lessonComments"].forEach((key) => {
     assert(Array.isArray(data[key]), `Expected ${key} array`);
     data[key].forEach((record) => {
       assert.strictEqual(record.student_id, studentId, `${key} leaked another student record`);
@@ -232,7 +237,7 @@ async function runLocalMutationChecks() {
       homework_id: "HW-2026-000002",
       completed: true
     }, cookie);
-    assert.strictEqual(response.statusCode, 500);
+    assert.strictEqual(response.statusCode, 404);
     assert.match(response.payload.error, /Homework item not found/);
 
     response = await invoke("POST", "update_public_profile", {
@@ -286,6 +291,51 @@ async function runLocalMutationChecks() {
     response = await invoke("POST", "archive_current_script", {}, cookie);
     assert.strictEqual(response.statusCode, 200);
     assert.strictEqual(response.payload.result.status, "Archived");
+
+    response = await invoke("POST", "request_reader", {
+      filming_date: "2026-06-15",
+      filming_time: "14:30",
+      duration_minutes: 60,
+      meeting_method: "ZOOM",
+      meeting_details: "Zoom link will be provided.",
+      sides_url: "https://example.com/sides.pdf",
+      instructions_url: "https://example.com/instructions",
+      notes: "Automated reader request verification."
+    }, cookie);
+    assert.strictEqual(response.statusCode, 200);
+    const readerRequest = backend.snapshot.readerRequests.find((request) => request.student_id === "STU-000001");
+    assert(readerRequest, "Expected reader request to be stored");
+    assert.strictEqual(readerRequest.status, "SUBMITTED");
+    assert.strictEqual(readerRequest.meeting_method, "ZOOM");
+    assert.strictEqual(response.payload.data.readerRequests.length, 1);
+
+    const ownLesson = backend.snapshot.lessons.find((lesson) => lesson.student_id === "STU-000001");
+    assert(ownLesson, "Expected an own lesson for comment verification");
+    response = await invoke("POST", "add_lesson_comment", {
+      lesson_id: ownLesson.lesson_id,
+      comment: "Phase 6A lesson question."
+    }, cookie);
+    assert.strictEqual(response.statusCode, 200);
+    assert.strictEqual(response.payload.result.body, "Phase 6A lesson question.");
+    assert.strictEqual(response.payload.result.student_id, "STU-000001");
+    assert(
+      backend.snapshot.lessonComments.some((comment) => comment.lesson_id === ownLesson.lesson_id && comment.body === "Phase 6A lesson question."),
+      "Expected lesson comment to be stored"
+    );
+    assert(
+      response.payload.data.lessonComments.some((comment) => comment.lesson_id === ownLesson.lesson_id && comment.body === "Phase 6A lesson question."),
+      "Expected scoped portal data to include the new lesson comment"
+    );
+
+    const otherLesson = backend.snapshot.lessons.find((lesson) => lesson.student_id && lesson.student_id !== "STU-000001");
+    if (otherLesson) {
+      response = await invoke("POST", "add_lesson_comment", {
+        lesson_id: otherLesson.lesson_id,
+        comment: "Cross-student attempt."
+      }, cookie);
+      assert.strictEqual(response.statusCode, 404);
+      assert.match(response.payload.error, /Lesson not found/);
+    }
   } finally {
     backend.restore();
   }
@@ -295,21 +345,22 @@ async function runAccountFlowChecks() {
   resetEnv();
   configureLocalAuth();
   const backend = installSnapshotBackend(loadSampleSnapshot());
+  const accountEmail = `phase6a-local-${Date.now()}@example.com`;
 
   try {
     let response = await invoke("POST", "create_invite", {
       student_id: "STU-000001",
       role: "STUDENT",
-      email: "maya@example.com",
+      email: accountEmail,
       admin_token: "wrong-token"
     });
-    assert.strictEqual(response.statusCode, 500);
+    assert.strictEqual(response.statusCode, 403);
     assert.match(response.payload.error, /Invalid student account admin token/);
 
     response = await invoke("POST", "create_invite", {
       student_id: "STU-000001",
       role: "STUDENT",
-      email: "maya@example.com",
+      email: accountEmail,
       admin_token: LOCAL_ADMIN_TOKEN
     });
     assert.strictEqual(response.statusCode, 200);
@@ -328,8 +379,9 @@ async function runAccountFlowChecks() {
     assert(backend.snapshot.studentAccounts[0].password_hash, "Expected password hash");
     assert(!backend.snapshot.studentAccounts[0].invite_token_hash, "Invite token hash should be cleared");
 
+    delete process.env.STUDENT_PORTAL_ACCESS_CODE;
     const loginResponse = await invoke("POST", "login", {
-      email: "maya@example.com",
+      email: accountEmail,
       password: "phase6a-password"
     });
     assert.strictEqual(loginResponse.statusCode, 200);
@@ -344,8 +396,49 @@ async function runAccountFlowChecks() {
     assert.strictEqual(response.payload.data.studentAccounts, undefined, "Private account metadata leaked in portal data");
 
     response = await invoke("POST", "login", {
-      email: "maya@example.com",
+      email: accountEmail,
       password: "wrong-password"
+    });
+    assert.strictEqual(response.statusCode, 401);
+
+    response = await invoke("POST", "request_reset", {
+      email: accountEmail,
+      admin_token: LOCAL_ADMIN_TOKEN
+    });
+    assert.strictEqual(response.statusCode, 200);
+    assert(response.payload.result.reset_token, "Expected reset token");
+    assert(response.payload.result.reset_url.includes("/portal?reset="), "Expected reset URL");
+
+    const resetToken = response.payload.result.reset_token;
+    response = await invoke("POST", "complete_reset", {
+      token: resetToken,
+      password: "phase6a-password-reset"
+    });
+    assert.strictEqual(response.statusCode, 200);
+    assert(!backend.snapshot.studentAccounts[0].reset_token_hash, "Reset token hash should be cleared");
+
+    response = await invoke("POST", "login", {
+      email: accountEmail,
+      password: "phase6a-password"
+    });
+    assert.strictEqual(response.statusCode, 401);
+
+    response = await invoke("POST", "login", {
+      email: accountEmail,
+      password: "phase6a-password-reset"
+    });
+    assert.strictEqual(response.statusCode, 200);
+
+    response = await invoke("POST", "disable_account", {
+      account_id: backend.snapshot.studentAccounts[0].account_id,
+      admin_token: LOCAL_ADMIN_TOKEN
+    });
+    assert.strictEqual(response.statusCode, 200);
+    assert.strictEqual(backend.snapshot.studentAccounts[0].status, "DISABLED");
+
+    response = await invoke("POST", "login", {
+      email: accountEmail,
+      password: "phase6a-password-reset"
     });
     assert.strictEqual(response.statusCode, 401);
   } finally {
@@ -384,17 +477,17 @@ async function runPermissionHardeningChecks() {
       title: "Should fail",
       script_text: "Should fail"
     }, cookie);
-    assert.strictEqual(response.statusCode, 500);
+    assert.strictEqual(response.statusCode, 403);
     assert.match(response.payload.error, /Current script access is not enabled/);
 
     response = await invoke("POST", "add_script_comment", {
       comment: "Should fail"
     }, cookie);
-    assert.strictEqual(response.statusCode, 500);
+    assert.strictEqual(response.statusCode, 403);
     assert.match(response.payload.error, /Current script access is not enabled/);
 
     response = await invoke("POST", "archive_current_script", {}, cookie);
-    assert.strictEqual(response.statusCode, 500);
+    assert.strictEqual(response.statusCode, 403);
     assert.match(response.payload.error, /Current script access is not enabled/);
   } finally {
     backend.restore();
