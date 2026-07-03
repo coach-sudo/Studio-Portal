@@ -67,6 +67,9 @@ function updateNavState(page) {
       btn.classList.remove("text-cream/70");
     }
   });
+  document.querySelectorAll("[data-mobile-nav]").forEach((btn) => {
+    btn.classList.toggle("active", btn.dataset.mobileNav === page);
+  });
 }
 
 function navigateTo(page) {
@@ -205,7 +208,7 @@ function renderCurrentPage() {
   updateNavState(currentPage);
   const pageRenderers = {
     dashboard: typeof renderDashboardPage === "function" ? renderDashboardPage : null,
-    operations: typeof renderOperationsPage === "function" ? renderOperationsPage : null,
+    operations: typeof renderHumanOperationsPage === "function" ? renderHumanOperationsPage : renderOperationsPage,
     today: typeof renderTodayPage === "function" ? renderTodayPage : (typeof renderTodoPage === "function" ? renderTodoPage : null),
     students: typeof renderStudentsPage === "function" ? renderStudentsPage : null,
     lessons: typeof renderLessonsPage === "function" ? renderLessonsPage : null,

@@ -8,7 +8,7 @@
   <script src="https://cdn.tailwindcss.com/3.4.17"></script>
   <script src="https://cdn.jsdelivr.net/npm/lucide@0.263.0/dist/umd/lucide.min.js"></script>
   <link
-    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap"
     rel="stylesheet"
   />
 
@@ -28,14 +28,15 @@
           },
           fontFamily: {
             sans: ["DM Sans", "sans-serif"],
-            display: ["Playfair Display", "serif"]
+            display: ["DM Sans", "sans-serif"],
+            brand: ["Oswald", "sans-serif"]
           }
         }
       }
     };
   </script>
 
-  <link rel="stylesheet" href="assets/css/styles.css" />
+  <link rel="stylesheet" href="assets/css/styles.css?v=human-first-1" />
   <style>
     body { box-sizing: border-box; }
   </style>
@@ -57,8 +58,8 @@
             <i data-lucide="clapperboard" class="w-5 h-5 text-warmblack"></i>
           </div>
           <div class="sidebar-brand-copy min-w-0">
-            <h1 id="sidebar-studio-name" class="font-display text-lg font-bold text-white leading-tight">
-              Stage &amp; Story
+            <h1 id="sidebar-studio-name" class="studio-wordmark text-lg font-bold text-white leading-tight">
+              Stage <span>&amp;</span> Story
             </h1>
             <p id="sidebar-tagline" class="text-[11px] text-warmgray tracking-wider uppercase">
               Studio Management
@@ -192,22 +193,13 @@
   <div id="notification-center-root"></div>
   <div id="global-loading-indicator" aria-hidden="true"><span></span></div>
   <div id="command-palette-root"></div>
-  <details id="quick-switcher-button">
-    <summary aria-label="Open quick switcher">
-      <span>Quick</span>
-      <kbd>Ctrl K</kbd>
-    </summary>
-    <div class="quick-switcher-menu">
-      <button type="button" onclick="navigateTo('operations'); document.getElementById('quick-switcher-button').removeAttribute('open')">Home</button>
-      <button type="button" onclick="navigateTo('today'); document.getElementById('quick-switcher-button').removeAttribute('open')">Today</button>
-      <button type="button" onclick="navigateTo('students'); document.getElementById('quick-switcher-button').removeAttribute('open')">Students</button>
-      <button type="button" onclick="navigateTo('lessons'); document.getElementById('quick-switcher-button').removeAttribute('open')">Lessons</button>
-      <button type="button" onclick="navigateTo('notes'); document.getElementById('quick-switcher-button').removeAttribute('open')">Notes</button>
-      <button type="button" onclick="navigateTo('materials'); document.getElementById('quick-switcher-button').removeAttribute('open')">Materials</button>
-      <button type="button" onclick="navigateTo('finance'); document.getElementById('quick-switcher-button').removeAttribute('open')">Payments</button>
-      <button type="button" onclick="navigateTo('public'); document.getElementById('quick-switcher-button').removeAttribute('open')">Actor Pages</button>
-    </div>
-  </details>
+  <nav id="mobile-navigation" aria-label="Primary mobile navigation">
+    <button type="button" data-mobile-nav="operations" onclick="navigateTo('operations')"><i data-lucide="home"></i><span>Home</span></button>
+    <button type="button" data-mobile-nav="today" onclick="navigateTo('today')"><i data-lucide="calendar-days"></i><span>Today</span></button>
+    <button type="button" data-mobile-nav="students" onclick="navigateTo('students')"><i data-lucide="users"></i><span>Students</span></button>
+    <button type="button" data-mobile-nav="lessons" onclick="navigateTo('lessons')"><i data-lucide="book-open"></i><span>Lessons</span></button>
+    <button type="button" onclick="openCommandPalette()"><i data-lucide="menu"></i><span>More</span></button>
+  </nav>
   <div id="toast-root" class="fixed top-4 right-4 z-[120] space-y-3 pointer-events-none"></div>
 
   <!-- Student Modal -->
@@ -220,6 +212,7 @@
 
       <form id="student-form" class="space-y-4">
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <h4 class="form-section-title col-span-2">Essentials</h4>
           <div class="col-span-2">
             <label class="block text-xs font-medium text-warmgray mb-1">Full Name</label>
             <input name="full_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
@@ -245,6 +238,7 @@
             <input name="additional_phones" type="text" placeholder="Comma-separated phones" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
 
+          <h4 class="form-section-title col-span-2">Contact</h4>
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Guardian / Parent Name</label>
             <input name="guardian_name" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
@@ -308,6 +302,7 @@
             <input name="timezone" type="text" placeholder="America/New_York" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
 
+          <h4 class="form-section-title col-span-2">Studio setup</h4>
           <div>
             <label class="block text-xs font-medium text-warmgray mb-1">Studio Status</label>
             <select name="studio_status" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
@@ -363,6 +358,7 @@
             <input name="focus_area" type="text" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm">
           </div>
 
+          <h4 class="form-section-title col-span-2">Notes</h4>
           <div class="col-span-2">
             <label class="block text-xs font-medium text-warmgray mb-1">Business / Family Notes</label>
             <textarea name="business_notes" rows="3" class="w-full rounded-xl border border-cream bg-parchment px-3 py-2.5 text-sm"></textarea>
@@ -622,9 +618,9 @@
   <script src="assets/js/data.js"></script>
   <script src="assets/js/student-store.js"></script>
   <script src="assets/js/lesson-store.js"></script>
-  <script src="assets/js/navigation.js"></script>
-  <script src="assets/js/ui.js"></script>
-  <script src="assets/js/student-portal.js"></script>
+  <script src="assets/js/navigation.js?v=human-first-1"></script>
+  <script src="assets/js/ui.js?v=human-first-1"></script>
+  <script src="assets/js/student-portal.js?v=human-first-1"></script>
   <script src="assets/js/config.js"></script>
   <script src="assets/js/app.js"></script>
 </body>
