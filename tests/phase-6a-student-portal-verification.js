@@ -583,6 +583,19 @@ async function runLiveCredentialChecksIfConfigured() {
 }
 
 async function main() {
+  const uiSource = fs.readFileSync(path.resolve(__dirname, "../assets/js/ui.js"), "utf8");
+  const shellSource = fs.readFileSync(path.resolve(__dirname, "../index.html"), "utf8");
+  const portalSource = fs.readFileSync(path.resolve(__dirname, "../pages/portal.html"), "utf8");
+  assert.match(uiSource, /function normalizePriorityAction/);
+  assert.match(uiSource, /Good morning,/);
+  assert.match(uiSource, /Needs attention/);
+  assert.doesNotMatch(uiSource, /\b(?:window\.)?confirm\s*\(/);
+  assert.match(shellSource, /id="mobile-navigation"/);
+  assert.doesNotMatch(shellSource, /id="quick-switcher-button"/);
+  assert.match(portalSource, /Continue your work/);
+  assert.match(portalSource, /Your practice/);
+  console.log("PASS human-first UI contract checks");
+
   await runLocalAuthChecks();
   console.log("PASS local auth/session/scoping checks");
 

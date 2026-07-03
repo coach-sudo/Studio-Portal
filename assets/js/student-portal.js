@@ -593,14 +593,13 @@ function renderStudentPortalDashboard(identity, scoped) {
   }, Number(scoped.student?.custom_balance_due || 0));
 
   root.innerHTML = `
-    <div class="p-4 sm:p-6 xl:p-8 w-full">
-      <div class="max-w-7xl mx-auto space-y-5">
-        <section class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
+    <div class="student-studio-page w-full">
+      <div class="student-studio-shell">
+        <section class="student-studio-header">
           <div class="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-4">
             <div class="min-w-0">
-              <p class="text-xs uppercase tracking-wider text-warmgray font-medium">${escapeHtml(identity.role === "GUARDIAN" ? "Guardian Workspace" : "Student Workspace")}</p>
-              <h2 class="font-display text-3xl font-bold text-warmblack mt-1">${escapeHtml(scoped.student?.full_name || identity.student_name || "Student Portal")}</h2>
-              <p class="text-sm text-warmgray mt-2">Signed in as ${escapeHtml(identity.email)}.</p>
+              <h2>Welcome back, ${escapeHtml(String(scoped.student?.full_name || identity.student_name || "there").split(/\s+/)[0])}</h2>
+              <p>You’ve got a great plan. Let’s keep the momentum.</p>
             </div>
             <div class="flex flex-wrap gap-2">
               <button type="button" class="px-4 py-2.5 rounded-xl bg-white border border-cream text-sm font-medium text-warmblack card-hover" onclick="signOutStudentPortal()">Sign Out</button>
@@ -609,9 +608,9 @@ function renderStudentPortalDashboard(identity, scoped) {
           ${studentPortalMessage ? `<div class="mt-4">${getStudentPortalMessageMarkup()}</div>` : ""}
         </section>
 
-        <nav class="student-portal-tabbar rounded-2xl border border-cream bg-white p-2 flex flex-wrap gap-2">
+        <nav class="student-portal-tabbar" aria-label="Student workspace">
           ${tabs.map((tab) => `
-            <button type="button" onclick="setStudentPortalTab('${tab.key}')" class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium ${studentPortalState.activeTab === tab.key ? "gold-gradient text-warmblack" : "bg-parchment text-warmgray"}">
+            <button type="button" onclick="setStudentPortalTab('${tab.key}')" class="${studentPortalState.activeTab === tab.key ? "active" : ""}">
               <i data-lucide="${tab.icon}" class="w-4 h-4"></i>
               ${escapeHtml(tab.label)}
             </button>
@@ -637,43 +636,18 @@ function renderStudentPortalActiveTab(scoped, meta) {
 }
 
 function renderStudentPortalOverviewTab(scoped, meta) {
+  const currentHomework = scoped.homework.find((item) => String(item.status || "").toUpperCase() !== "COMPLETED");
+  const nextLesson = meta.nextLessons[0];
+  const recentMaterial = scoped.materials.find((item) => String(item.status || "").toUpperCase() !== "ARCHIVED");
   return `
-    <section class="grid grid-cols-1 md:grid-cols-4 gap-3">
-      <div class="rounded-xl border border-cream bg-white px-4 py-3">
-        <p class="text-[11px] uppercase tracking-wider text-warmgray">Upcoming</p>
-        <p class="text-2xl font-semibold text-warmblack mt-1">${meta.nextLessons.length}</p>
-      </div>
-      <div class="rounded-xl border border-cream bg-white px-4 py-3">
-        <p class="text-[11px] uppercase tracking-wider text-warmgray">Homework</p>
-        <p class="text-2xl font-semibold text-warmblack mt-1">${scoped.homework.filter((item) => String(item.status || "").toUpperCase() !== "COMPLETED").length}</p>
-      </div>
-      <div class="rounded-xl border border-cream bg-white px-4 py-3">
-        <p class="text-[11px] uppercase tracking-wider text-warmgray">Script</p>
-        <p class="text-lg font-semibold text-warmblack mt-1">${escapeHtml(scoped.currentScript?.title || "Not set")}</p>
-      </div>
-      ${scoped.permissions.finance ? `
-        <div class="rounded-xl border border-cream bg-white px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Balance</p>
-          <p class="text-2xl font-semibold text-warmblack mt-1">${formatCurrency(Math.max(0, meta.balance))}</p>
-        </div>
-      ` : `
-        <div class="rounded-xl border border-cream bg-white px-4 py-3">
-          <p class="text-[11px] uppercase tracking-wider text-warmgray">Finance</p>
-          <p class="text-lg font-semibold text-warmblack mt-1">Hidden</p>
-        </div>
-      `}
-    </section>
-    <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
-      <section class="xl:col-span-2 rounded-2xl border border-cream bg-white p-4 sm:p-5">
-        <h3 class="font-display text-xl font-semibold text-warmblack">Upcoming Lessons</h3>
-        <div class="space-y-3 mt-4">
-          ${meta.nextLessons.length ? meta.nextLessons.map(renderStudentPortalLessonCard).join("") : `<div class="page-empty-state py-8"><p class="text-sm text-warmgray">No upcoming lessons are visible yet.</p></div>`}
-        </div>
+    <div class="student-studio-overview">
+      <section class="student-studio-section is-primary"><h3><span>Continue your work</span></h3>
+        <div class="student-studio-row"><i data-lucide="file-text"></i><div><strong>${escapeHtml(scoped.currentScript?.title || "Your current script")}</strong><small>${escapeHtml(scoped.currentScript?.scene || "Pick up where you left off")}</small></div><button type="button" onclick="setStudentPortalTab('script')">Open script<i data-lucide="chevron-right"></i></button></div>
       </section>
-      <aside class="rounded-2xl border border-cream bg-white p-4 sm:p-5">
-        <h3 class="font-display text-xl font-semibold text-warmblack">Current Script</h3>
-        ${renderStudentPortalScriptSummary(scoped.currentScript)}
-      </aside>
+      <section class="student-studio-section"><h3>Next lesson</h3>${nextLesson ? `<div class="student-studio-row"><i data-lucide="calendar-days"></i><div><strong>${escapeHtml(nextLesson.topic || "Coaching lesson")}</strong><small>${escapeHtml(formatLessonDateTime(nextLesson.scheduled_start))}</small></div><button type="button" onclick="openStudentPortalLessonModal('${nextLesson.lesson_id}')">View lesson<i data-lucide="chevron-right"></i></button></div>` : `<div class="student-studio-empty">No lesson is scheduled yet.</div>`}</section>
+      <section class="student-studio-section"><h3><span>Your practice</span></h3>${currentHomework ? `<div class="student-studio-row"><i data-lucide="clipboard-check"></i><div><strong>${escapeHtml(currentHomework.title || "Practice")}</strong><small>${escapeHtml(currentHomework.details || "Ready when you are")}</small></div><button type="button" onclick="setStudentPortalTab('assignments')">Open<i data-lucide="chevron-right"></i></button></div>` : `<div class="student-studio-empty">You’re all caught up on practice.</div>`}</section>
+      <section class="student-studio-section"><h3><span>Your materials</span></h3>${recentMaterial ? `<div class="student-studio-row"><i data-lucide="folder-open"></i><div><strong>${escapeHtml(recentMaterial.title || recentMaterial.file_name || "Recent material")}</strong><small>${escapeHtml(recentMaterial.category || "Studio material")}</small></div><button type="button" onclick="setStudentPortalTab('materials')">View<i data-lucide="chevron-right"></i></button></div>` : `<div class="student-studio-empty">No materials have been shared yet.</div>`}</section>
+      ${scoped.permissions.finance ? `<section class="student-studio-section"><h3><span>Your package</span></h3><div class="student-studio-row"><i data-lucide="circle-dollar-sign"></i><div><strong>${escapeHtml(meta.activePackage?.package_name || "Pay as you go")}</strong><small>${meta.activePackage ? `${escapeHtml(meta.activePackage.sessions_remaining || "0")} sessions remaining` : "No active package"}</small></div><button type="button" onclick="setStudentPortalTab('finance')">${formatCurrency(Math.max(0, meta.balance))}<i data-lucide="chevron-right"></i></button></div></section>` : ""}
     </div>
   `;
 }

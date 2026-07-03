@@ -4,24 +4,26 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Student Workspace</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Playfair+Display:wght@700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Oswald:wght@500;600&display=swap" rel="stylesheet" />
   <style>
     :root {
       --ink: #17211d;
       --muted: #66736b;
       --line: #dbe1d8;
       --paper: #ffffff;
-      --soft: #f5f6f2;
-      --gold: #b88a2f;
+      --soft: #f1f3eb;
+      --gold: #d49b00;
       --danger: #9b3146;
-      --good: #4f7d60;
+      --good: #4f8a62;
+      --forest: #0d322b;
+      --coral: #ef5d51;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       font-family: "DM Sans", system-ui, sans-serif;
       color: var(--ink);
-      background: var(--soft);
+      background: #fffdf8;
     }
     button, input, textarea, select {
       font: inherit;
@@ -39,9 +41,11 @@
       margin-bottom: 18px;
     }
     .brand {
-      font-family: "Playfair Display", Georgia, serif;
-      font-size: 30px;
-      line-height: 1;
+      font-family: "Oswald", sans-serif;
+      font-size: 25px;
+      line-height: 1.05;
+      letter-spacing: .07em;
+      text-transform: uppercase;
     }
     .panel {
       background: var(--paper);
@@ -57,7 +61,8 @@
     }
     h1, h2, h3 {
       margin: 0;
-      font-family: "Playfair Display", Georgia, serif;
+      font-family: "DM Sans", sans-serif;
+      letter-spacing: -.035em;
     }
     h1 { font-size: clamp(34px, 5vw, 62px); line-height: 1; }
     h2 { font-size: 28px; }
@@ -243,7 +248,7 @@
     .progress span {
       display: block;
       height: 100%;
-      background: linear-gradient(135deg, #f0d489, var(--gold));
+      background: var(--gold);
     }
     .button {
       border: 1px solid var(--ink);
@@ -480,12 +485,44 @@
       }
       .topbar { align-items: flex-start; flex-direction: column; }
     }
+    *:focus-visible { outline: 3px solid rgba(239,93,81,.45); outline-offset: 2px; }
+    .workspace-header { padding: 18px 0 24px; border-bottom: 1px solid var(--line); }
+    .workspace-header h1 { font-size: clamp(36px, 5vw, 48px); }
+    .workspace-header p { margin-bottom: 0; }
+    .workspace-layout { width: min(100%, 940px); margin: 0 auto; }
+    .portal-nav { padding: 12px 0; border-bottom: 1px solid var(--line); overflow-x: auto; flex-wrap: nowrap; scrollbar-width: none; }
+    .portal-nav::-webkit-scrollbar { display: none; }
+    .portal-nav button { flex: 0 0 auto; border: 0; border-radius: 7px; background: transparent; }
+    .portal-nav button.active { border: 0; background: var(--soft); box-shadow: inset 0 -3px var(--gold); }
+    .human-overview { margin-top: 4px; }
+    .human-section { padding: 24px 0 0; border-bottom: 1px solid var(--line); }
+    .human-section h2 { display: inline-block; position: relative; z-index: 0; font-size: 21px; }
+    .human-section.marked h2::after { content: ""; position: absolute; z-index: -1; left: -7px; right: -7px; bottom: -2px; height: 9px; background: #e3e8d3; transform: rotate(-1deg); }
+    .human-row { min-height: 100px; display: flex; align-items: center; gap: 16px; }
+    .human-row-icon { width: 48px; height: 48px; flex: 0 0 48px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: 8px; background: white; font-size: 20px; }
+    .human-row-copy { min-width: 0; flex: 1; }
+    .human-row-copy strong, .human-row-copy small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .human-row-copy strong { font-size: 16px; }
+    .human-row-copy small { margin-top: 4px; color: var(--muted); font-size: 13px; }
+    .human-row .button { min-height: 40px; background: white; color: var(--ink); border-color: var(--line); font-size: 13px; }
+    .human-section.primary .human-row .button { background: var(--gold); border-color: var(--gold); }
+    @media (max-width: 640px) {
+      .shell { padding: 18px 16px 86px; }
+      .topbar { flex-direction: row; align-items: center; }
+      .human-row { gap: 10px; }
+      .human-row-icon { width: 42px; height: 42px; flex-basis: 42px; }
+      .human-row .button { width: 42px; padding: 0; font-size: 0; }
+      .human-row .button::after { content: "›"; font-size: 22px; }
+      .human-section.primary .human-row .button { width: auto; padding: 0 12px; font-size: 12px; }
+      .human-section.primary .human-row .button::after { content: ""; }
+    }
+    @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; } }
   </style>
 </head>
 <body>
   <main class="shell">
     <div class="topbar">
-      <div class="brand" id="portal-brand">Student Workspace</div>
+      <div class="brand" id="portal-brand">Stage <span style="color:var(--coral)">&amp;</span> Story</div>
       <button id="sign-out" class="button secondary hidden">Sign Out</button>
     </div>
     <div id="message"></div>
@@ -856,40 +893,27 @@
     }
     function renderWorkspace() {
       var data = state.data || {};
-      var homeworkOpen = (data.homework || []).filter(isOpenHomework);
-      var lesson = nextLesson(data);
-      var readerOpen = openReaderRequests(data);
-      var currentCount = currentMaterials(data).length + (data.currentScript ? 1 : 0);
       var tabs = ["overview", "script", "materials", "lessons", "homework", "payments", "contact"];
       if (actorToolsRelevant(data)) tabs.push("profile", "submissions");
-      document.getElementById("portal-brand").textContent = studentPortalLabel();
+      document.getElementById("portal-brand").innerHTML = 'Stage <span style="color:var(--coral)">&amp;</span> Story';
       document.getElementById("auth-panel").classList.add("hidden");
       document.getElementById("workspace").classList.remove("hidden");
       document.getElementById("sign-out").classList.remove("hidden");
       document.getElementById("workspace").innerHTML = `
         ${joinNowBanner(data)}
-        <section class="hero">
-          <div class="panel workspace-hero">
-            <h1>${escapeHtml(data.student && data.student.full_name || state.identity.student_name || "Student")}</h1>
-            <p class="muted">${escapeHtml(studentWelcomeMessage())}</p>
-            <div class="portal-nav" aria-label="Student workspace sections">
-              ${tabs.map(function (tab) {
-                var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Package", profile: "Actor Page", submissions: "Public Materials", contact: "Contact" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
-                return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + label + "</button>";
-              }).join("")}
-            </div>
-          </div>
-          <aside class="panel">
-            <p class="card-label">At a glance</p>
-            <h3>${lesson ? escapeHtml(formatDateTime(lesson.scheduled_start)) : "No lesson booked"}</h3>
-            <div class="list">
-              <div class="row"><strong>${currentCount}</strong> current work item${currentCount === 1 ? "" : "s"}</div>
-              <div class="row"><strong>${homeworkOpen.length}</strong> open practice item${homeworkOpen.length === 1 ? "" : "s"}</div>
-              <div class="row"><strong>${readerOpen.length}</strong> reader request${readerOpen.length === 1 ? "" : "s"}</div>
-            </div>
-          </aside>
-        </section>
-        ${renderActiveTab(data)}
+        <div class="workspace-layout">
+          <header class="workspace-header">
+            <h1>Welcome back, ${escapeHtml(String(data.student && data.student.full_name || state.identity.student_name || "there").split(/\s+/)[0])}</h1>
+            <p class="muted">You’ve got a great plan. Let’s keep the momentum.</p>
+          </header>
+          <nav class="portal-nav" aria-label="Student workspace sections">
+            ${tabs.map(function (tab) {
+              var label = { overview: "Home", script: "Current Work", homework: "Practice", payments: "Payments", profile: "Actor Page", submissions: "Public Materials", contact: "Contact" }[tab] || tab.charAt(0).toUpperCase() + tab.slice(1);
+              return "<button type=\"button\" class=\"" + (state.tab === tab ? "active" : "") + "\" onclick=\"setTab('" + tab + "')\">" + label + "</button>";
+            }).join("")}
+          </nav>
+          ${renderActiveTab(data)}
+        </div>
       `;
     }
     function renderActiveTab(data) {
@@ -908,55 +932,15 @@
       var lesson = nextLesson(data);
       var openHomework = (data.homework || []).filter(isOpenHomework);
       var pkg = activePackage(data);
-      var progress = packageProgress(pkg);
-      var pending = publicSubmissions(data).filter(function (file) { return String(file.public_page_status || "").toUpperCase() === "PENDING_REVIEW"; });
-      var readerOpen = openReaderRequests(data);
-      var note = publishedLatestNote(data);
       var current = currentMaterials(data);
-      var vault = vaultMaterials(data);
-      return `<section class="desk-grid">
-        <article class="desk-card wide gold">
-          <p class="card-label">Next Lesson</p>
-          <h2>${lesson ? escapeHtml(lesson.topic || lesson.lesson_type || "Your lesson") : "Ready when you are"}</h2>
-          <p class="muted">${lesson ? escapeHtml(formatDateTime(lesson.scheduled_start)) : "No lesson is on the calendar yet."}</p>
-          ${joinAvailabilityMarkup(data, lesson)}
-        </article>
-        <article class="desk-card soft">
-          <p class="card-label">Contact Darius</p>
-          <h3>Questions or prep?</h3>
-          <p class="muted">Reach out without hunting through the portal.</p>
-          <div class="card-actions">
-            ${shouldShowStudentAction("contact") ? `<a class="button secondary" href="mailto:${coachEmail()}">Email</a><a class="button secondary" href="sms:${coachPhone()}">Text</a>` : ""}
-          </div>
-        </article>
-        <article class="desk-card wide">
-          <p class="card-label">Current Work</p>
-          <h3>${escapeHtml(data.currentScript && data.currentScript.title || current[0]?.title || current[0]?.file_name || "Your active studio desk")}</h3>
-          <p class="muted">${data.currentScript || current.length ? "Scripts, sides, scenes, links, and focus items you are working with now." : "No active script or material is posted yet."}</p>
-          <div class="chip-row"><span class="status">${materialCountLabel(current.length)} current</span><span class="status ${openHomework.length ? "warn" : ""}">${openHomework.length} practice</span><span class="status ${readerOpen.length ? "warn" : ""}">${readerOpen.length} reader</span></div>
-          <div class="card-actions"><button class="button secondary" onclick="setTab('script')">Open Current Work</button></div>
-        </article>
-        <article class="desk-card">
-          <p class="card-label">Latest Note</p>
-          <h3>${note ? escapeHtml(note.title || "Lesson note") : "No published note yet"}</h3>
-          <p class="muted">${note ? escapeHtml(formatDate(note.published_at || note.updated_at)) : "When Darius publishes a note, it will appear here."}</p>
-          <div class="card-actions"><button class="button secondary" onclick="setTab('lessons')">Review Lessons</button></div>
-        </article>
-        <article class="desk-card">
-          <p class="card-label">Materials</p>
-          <h3>${current.length} Current / ${vault.length} Vault</h3>
-          <p class="muted">Current stays up front. Vault keeps older work available without clutter.</p>
-          <div class="card-actions"><button class="button secondary" onclick="setTab('materials')">Open Materials</button></div>
-        </article>
-        <article class="desk-card">
-          <p class="card-label">Practice</p>
-          <h3>${openHomework.length ? openHomework.length + " open item" + (openHomework.length === 1 ? "" : "s") : "No open practice"}</h3>
-          <p class="muted">${readerOpen.length ? readerOpen.length + " reader request also active." : "Homework, reminders, and reader requests live here."}</p>
-          <div class="card-actions"><button class="button secondary" onclick="setTab('homework')">Open Practice</button></div>
-        </article>
-        ${pkg ? '<article class="desk-card"><p class="card-label">Package</p><h3>' + escapeHtml(pkg.package_name || "Package") + '</h3><p class="muted">' + escapeHtml(pkg.sessions_remaining || "0") + ' of ' + escapeHtml(pkg.sessions_total || "0") + ' sessions remaining</p><div class="progress"><span style="width:' + progress + '%"></span></div><div class="card-actions"><button class="button secondary" onclick="setTab(\'payments\')">View Package</button></div></article>' : ""}
-        ${actorToolsRelevant(data) ? '<article class="desk-card"><p class="card-label">Actor Page</p><h3>' + escapeHtml(publicStatusText(data)) + '</h3><p class="muted">' + (pending.length ? pending.length + ' material pending Darius review.' : 'Public materials and profile edits stay in a secondary workspace.') + '</p><div class="card-actions"><button class="button secondary" onclick="setTab(\'profile\')">Open Actor Tools</button></div></article>' : ""}
-      </section>`;
+      var activeWork = data.currentScript && data.currentScript.title || current[0]?.title || current[0]?.file_name || "Your current work";
+      return `<div class="human-overview">
+        <section class="human-section primary marked"><h2>Continue your work</h2><div class="human-row"><span class="human-row-icon">▤</span><div class="human-row-copy"><strong>${escapeHtml(activeWork)}</strong><small>${data.currentScript || current.length ? "Pick up where you left off." : "Your coach will add work here."}</small></div><button class="button" onclick="setTab('script')">Open script</button></div></section>
+        <section class="human-section"><h2>Next lesson</h2><div class="human-row"><span class="human-row-icon">◷</span><div class="human-row-copy"><strong>${lesson ? escapeHtml(lesson.topic || lesson.lesson_type || "Your lesson") : "Ready when you are"}</strong><small>${lesson ? escapeHtml(formatDateTime(lesson.scheduled_start)) : "No lesson is on the calendar yet."}</small></div><button class="button" onclick="setTab('lessons')">View lesson</button></div></section>
+        <section class="human-section marked"><h2>Your practice</h2><div class="human-row"><span class="human-row-icon">✓</span><div class="human-row-copy"><strong>${openHomework[0] ? escapeHtml(openHomework[0].title || "Practice") : "You’re all caught up"}</strong><small>${openHomework[0] ? escapeHtml(openHomework[0].details || "Ready when you are") : "No open practice right now."}</small></div><button class="button" onclick="setTab('homework')">Open</button></div></section>
+        <section class="human-section marked"><h2>Your materials</h2><div class="human-row"><span class="human-row-icon">□</span><div class="human-row-copy"><strong>${current[0] ? escapeHtml(current[0].title || current[0].file_name || "Recent material") : "No shared materials yet"}</strong><small>${current[0] ? escapeHtml(current[0].category || "Studio material") : "New materials will appear here."}</small></div><button class="button" onclick="setTab('materials')">View</button></div></section>
+        ${pkg ? '<section class="human-section marked"><h2>Your package</h2><div class="human-row"><span class="human-row-icon">$</span><div class="human-row-copy"><strong>' + escapeHtml(pkg.package_name || "Package") + '</strong><small>' + escapeHtml(pkg.sessions_remaining || "0") + ' of ' + escapeHtml(pkg.sessions_total || "0") + ' sessions remaining</small></div><button class="button" onclick="setTab(\'payments\')">View</button></div></section>' : ""}
+      </div>`;
     }
     function renderProfileTab(data) {
       var profile = data.publicProfile || {};

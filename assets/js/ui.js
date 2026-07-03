@@ -6235,8 +6235,8 @@ function beginHomeworkEdit(homeworkId, lessonId) {
   }, 0);
 }
 
-function removeHomeworkFromLessonDetail(homeworkId, lessonId) {
-  const confirmed = window.confirm("Delete this homework item?");
+async function removeHomeworkFromLessonDetail(homeworkId, lessonId) {
+  const confirmed = await requestConfirmation("Delete this homework item?");
   if (!confirmed) return;
 
   const result = deleteHomeworkItem(homeworkId);
@@ -7416,11 +7416,11 @@ function removePublicMaterial(fileId) {
   });
 }
 
-function deleteMaterialNow(fileId) {
+async function deleteMaterialNow(fileId) {
   const file = getFileById(fileId);
   if (!file) return;
   const label = getMaterialDisplayName(file);
-  if (!confirm(`Delete "${label}" permanently? This removes it from the student profile, public page, and portal material library.`)) {
+  if (!await requestConfirmation(`Delete "${label}" permanently? This removes it from the student profile, public page, and portal material library.`)) {
     return;
   }
 
@@ -7443,7 +7443,7 @@ function previewPublicMaterial(fileId) {
   navigateTo("public");
 }
 
-function deleteMaterialPermanently(fileId) {
+async function deleteMaterialPermanently(fileId) {
   const file = getFileById(fileId);
   if (!file) return;
 
@@ -7457,7 +7457,7 @@ function deleteMaterialPermanently(fileId) {
     return;
   }
 
-  const confirmed = confirm(`Permanently delete "${getMaterialDisplayName(file)}" from the vault? This cannot be undone.`);
+  const confirmed = await requestConfirmation(`Permanently delete "${getMaterialDisplayName(file)}" from the vault? This cannot be undone.`);
   if (!confirmed) return;
 
   removeRecordById("files", fileId);
@@ -11543,7 +11543,7 @@ function clearReviewedScheduleIntake() {
   });
 }
 
-function ignoreAllVisibleActionRequiredIntake() {
+async function ignoreAllVisibleActionRequiredIntake() {
   const rows = getFilteredScheduleIntakeRows().filter((row) => row.action_required);
   if (!rows.length) {
     notifyUser({
@@ -11554,7 +11554,7 @@ function ignoreAllVisibleActionRequiredIntake() {
     });
     return;
   }
-  if (!confirm(`Ignore ${rows.length} visible intake item${rows.length === 1 ? "" : "s"} and remove them from the active queue?`)) return;
+  if (!await requestConfirmation(`Ignore ${rows.length} visible intake item${rows.length === 1 ? "" : "s"} and remove them from the active queue?`)) return;
   rows.forEach((row) => setLessonIntakeReviewState(row.lesson_id, "IGNORED"));
   selectedScheduleIntakeLessonIds = new Set();
   renderAppFromSchema();
@@ -13162,6 +13162,114 @@ function renderOperationsPage() {
   lucide.createIcons();
 }
 
+function requestConfirmation(message, confirmLabel = "Confirm") {
+  return new Promise((resolve) => {
+    const overlay = document.createElement("div");
+    overlay.className = "studio-dialog-backdrop";
+    overlay.innerHTML = `<section class="studio-dialog" role="alertdialog" aria-modal="true" aria-labelledby="studio-dialog-title" aria-describedby="studio-dialog-message">
+      <h2 id="studio-dialog-title">Are you sure?</h2><p id="studio-dialog-message">${escapeHtml(message)}</p>
+      <div><button type="button" data-dialog-cancel>Cancel</button><button type="button" class="is-danger" data-dialog-confirm>${escapeHtml(confirmLabel)}</button></div>
+    </section>`;
+    const previousFocus = document.activeElement;
+    const finish = (value) => {
+      overlay.remove();
+      document.body.classList.remove("dialog-open");
+      if (previousFocus && typeof previousFocus.focus === "function") previousFocus.focus();
+      resolve(value);
+    };
+    overlay.querySelector("[data-dialog-cancel]").onclick = () => finish(false);
+    overlay.querySelector("[data-dialog-confirm]").onclick = () => finish(true);
+    overlay.onclick = (event) => { if (event.target === overlay) finish(false); };
+    overlay.onkeydown = (event) => { if (event.key === "Escape") finish(false); };
+    document.body.appendChild(overlay);
+    document.body.classList.add("dialog-open");
+    overlay.querySelector("[data-dialog-cancel]").focus();
+  });
+}
+
+function normalizePriorityAction({ id, kind, title, detail, urgency = 1, timestamp = "", studentId = "", action = "" }) {
+  return { id, kind, title, detail, urgency, timestamp, studentId, action };
+}
+
+function renderActionRow(item, label = "Open") {
+  const initials = String(item.title || "?").split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
+  return `<div class="studio-action-row ${item.urgency >= 5 ? "is-urgent" : ""}">
+    <span class="studio-avatar" aria-hidden="true">${escapeHtml(initials)}</span>
+    <span class="studio-action-copy"><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.detail || "Ready when you are")}</small></span>
+    <button type="button" onclick="${item.action}" aria-label="${escapeHtml(label)} ${escapeHtml(item.title)}">${escapeHtml(label)}<i data-lucide="chevron-right"></i></button>
+  </div>`;
+}
+
+function renderHumanOperationsPage() {
+  const root = document.getElementById("page-root");
+  if (!root) return;
+  syncCalendarStateFromBackendSettings();
+
+  const todayStart = startOfLocalDay(APP_NOW);
+  const todayEnd = endOfLocalDay(APP_NOW);
+  const lessons = getLessonRecords().filter((lesson) => {
+    const start = new Date(lesson.scheduled_start || 0);
+    return !Number.isNaN(start.getTime()) && start >= todayStart && start <= todayEnd;
+  }).sort((a, b) => new Date(a.scheduled_start) - new Date(b.scheduled_start));
+  const tasks = getDailyTodoItems().map((task) => normalizePriorityAction({
+    id: task.id, kind: "task", title: task.title, detail: task.detail,
+    urgency: Number(task.priority || 1), action: `openTodoTask('${task.id}')`
+  }));
+  const followUps = getScheduleIntakeRows().filter((row) => row.action_required).map((row) => normalizePriorityAction({
+    id: row.lesson_id, kind: "intake", title: row.student_name || row.external_contact_name || "New student",
+    detail: row.recommended_action_label || "Confirm intake", urgency: 4,
+    studentId: row.student_id, action: `openLessonDetailModal('${row.lesson_id}')`
+  }));
+  const balances = getOutstandingBalanceRows().map((row) => normalizePriorityAction({
+    id: row.student_id, kind: "payment", title: row.student_name,
+    detail: `${formatCurrency(row.finance.remainingAmount)} needs review`, urgency: 5,
+    studentId: row.student_id, action: "navigateTo('finance')"
+  }));
+  const actions = [...tasks, ...followUps, ...balances].sort((a, b) => b.urgency - a.urgency);
+  const upNext = actions[0] || normalizePriorityAction({ id: "clear", kind: "clear", title: "Your studio is caught up", detail: "Nothing urgent needs your attention", action: "navigateTo('today')" });
+  const attention = actions.slice(1, 5);
+  const branding = typeof getStudioBranding === "function" ? getStudioBranding() : {};
+  const firstName = String(branding.coach_name || "Darius").split(/\s+/)[0];
+  const backend = studioDataService.getBackendSettings();
+  const syncHealthy = [backend.google_calendar_status, backend.google_gmail_status].every((status) => !status || ["connected", "demo_ready", "ready"].includes(String(status).toLowerCase()));
+
+  root.innerHTML = `<div class="studio-page studio-home">
+    <header class="studio-page-header">
+      <div><h2>Good morning, ${escapeHtml(firstName)}</h2></div>
+      <div class="studio-header-actions">
+        <button type="button" class="studio-search-button" onclick="openCommandPalette()"><i data-lucide="search"></i><span>Search</span><kbd>⌘ K</kbd></button>
+        <details class="studio-add-menu"><summary><i data-lucide="plus"></i>Add<i data-lucide="chevron-down"></i></summary><div>
+          <button type="button" onclick="openStudentModal('add')">Student</button>
+          <button type="button" onclick="openLessonModal('add')">Lesson</button>
+          <button type="button" onclick="navigateTo('materials')">Material</button>
+        </div></details>
+      </div>
+    </header>
+
+    <section class="studio-section studio-up-next" aria-labelledby="up-next-title">
+      <h3 id="up-next-title"><span>Up next</span></h3>
+      ${renderActionRow(upNext, upNext.kind === "clear" ? "View today" : "Open")}
+    </section>
+
+    <section class="studio-section" aria-labelledby="today-title">
+      <div class="studio-section-heading"><h3 id="today-title">Today</h3><button type="button" onclick="navigateTo('today')">View day</button></div>
+      <div class="studio-timeline">${lessons.length ? lessons.map((lesson) => `<button type="button" class="studio-timeline-row" onclick="openLessonDetailModal('${lesson.lesson_id}')">
+        <time>${escapeHtml(formatLessonTimeRange(lesson.scheduled_start, lesson.scheduled_end))}</time><span></span><strong>${escapeHtml(getStudentNameById(lesson.student_id))}</strong><small>${escapeHtml(lesson.topic || "Coaching lesson")}</small><i data-lucide="chevron-right"></i>
+      </button>`).join("") : `<div class="studio-empty"><i data-lucide="calendar-check"></i><div><strong>No lessons today</strong><small>Use the space for prep, notes, or a proper breather.</small></div></div>`}</div>
+    </section>
+
+    <section class="studio-section" aria-labelledby="attention-title">
+      <div class="studio-section-heading"><h3 id="attention-title">Needs attention</h3><span>${attention.length}</span></div>
+      <div class="studio-action-list">${attention.length ? attention.map((item) => renderActionRow(item, item.kind === "intake" ? "Review" : "View")).join("") : `<div class="studio-empty"><i data-lucide="circle-check-big"></i><div><strong>You’re caught up</strong><small>New follow-ups will appear here.</small></div></div>`}</div>
+    </section>
+
+    <section class="studio-sync ${syncHealthy ? "is-healthy" : "is-warning"}">
+      <i data-lucide="${syncHealthy ? "check-circle-2" : "alert-triangle"}"></i><div><strong>${syncHealthy ? "All synced" : "Sync needs attention"}</strong><small>${syncHealthy ? "Calendar and Gmail are ready" : "Open settings to reconnect a service"}</small></div><button type="button" onclick="navigateTo('settings')">View sync health<i data-lucide="chevron-right"></i></button>
+    </section>
+  </div>`;
+  lucide.createIcons();
+}
+
 function renderTodoPage() {
   const root = document.getElementById("page-root");
   if (!root) return;
@@ -13948,7 +14056,7 @@ async function syncSettingsSnapshotToBackend() {
 }
 
 async function pullSettingsSnapshotFromBackend() {
-  if (!confirm("Pulling from the backend will replace the current in-browser data with the backend snapshot. Continue?")) {
+  if (!await requestConfirmation("Pulling from the backend will replace the current in-browser data with the backend snapshot. Continue?")) {
     return;
   }
 
@@ -14038,7 +14146,7 @@ async function handleDataResetSubmit(event) {
     return;
   }
 
-  if (!confirm(`Clear ${selectedCollections.length} selected data group${selectedCollections.length === 1 ? "" : "s"}? This will remove the selected records from the portal${studioDataService.getPersistenceStatus().mode === "google_sheets" ? " and sync that cleared snapshot to Google Sheets" : ""}.`)) {
+  if (!await requestConfirmation(`Clear ${selectedCollections.length} selected data group${selectedCollections.length === 1 ? "" : "s"}? This will remove the selected records from the portal${studioDataService.getPersistenceStatus().mode === "google_sheets" ? " and sync that cleared snapshot to Google Sheets" : ""}.`)) {
     return;
   }
 
