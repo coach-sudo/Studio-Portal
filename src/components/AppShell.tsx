@@ -1,0 +1,27 @@
+import { CalendarDays, Clapperboard, FileText, FolderOpen, Home, Menu, NotebookTabs, Search, Settings, Users, WalletCards } from "lucide-react";
+import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+
+const nav = [
+  ["/", "Home", Home], ["/today", "Today", CalendarDays], ["/students", "Students", Users], ["/lessons", "Lessons", NotebookTabs],
+  ["/notes", "Notes", FileText], ["/materials", "Materials", FolderOpen], ["/finance", "Payments", WalletCards], ["/actor-pages", "Actor Pages", Clapperboard], ["/settings", "Settings", Settings],
+] as const;
+
+export function AppShell() {
+  const [searchOpen, setSearchOpen] = useState(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const open = (event: KeyboardEvent) => { if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") { event.preventDefault(); setSearchOpen(true); } };
+    window.addEventListener("keydown", open); return () => window.removeEventListener("keydown", open);
+  }, []);
+  return <div className="app-shell">
+    <aside className="sidebar">
+      <div className="wordmark">Stage <b>&amp;</b> Story</div>
+      <nav aria-label="Coach navigation">{nav.map(([to, label, Icon]) => <NavLink key={to} to={to} end={to === "/"}><Icon aria-hidden="true" /><span>{label}</span></NavLink>)}</nav>
+      <div className="identity"><span>DA</span><div><strong>Darius A. Journigan</strong><small>Acting Coach</small></div></div>
+    </aside>
+    <main className="main"><Outlet /></main>
+    <nav className="mobile-nav" aria-label="Mobile navigation">{nav.slice(0, 4).map(([to, label, Icon]) => <NavLink key={to} to={to} end={to === "/"}><Icon /><span>{label}</span></NavLink>)}<button onClick={() => setSearchOpen(true)}><Menu /><span>More</span></button></nav>
+    {searchOpen && <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSearchOpen(false)}><section className="command-dialog" role="dialog" aria-modal="true" aria-label="Go to"><header><Search /><input autoFocus placeholder="Find a workflow…" aria-label="Find a workflow" onKeyDown={(event) => { const match = nav.find(([, label]) => label.toLowerCase() === event.currentTarget.value.toLowerCase()); if (event.key === "Enter" && match) { navigate(match[0]); setSearchOpen(false); } if (event.key === "Escape") setSearchOpen(false); }} /></header>{nav.map(([to, label, Icon]) => <button key={to} onClick={() => { navigate(to); setSearchOpen(false); }}><Icon /><span>{label}</span></button>)}</section></div>}
+  </div>;
+}

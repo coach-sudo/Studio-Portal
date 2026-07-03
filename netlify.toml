@@ -1,5 +1,6 @@
 [build]
-  publish = "."
+  command = "npm run build"
+  publish = "dist"
   functions = "netlify/functions"
 
 [functions]
@@ -81,11 +82,6 @@
   status = 200
 
 [[redirects]]
-  from = "/portal"
-  to = "/pages/portal.html"
-  status = 200
-
-[[redirects]]
-  from = "/actors/:slug"
-  to = "/pages/public-profile.html?slug=:slug"
+  from = "/*"
+  to = "/index.html"
   status = 200
