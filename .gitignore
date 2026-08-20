@@ -8,3 +8,10 @@ vitest.config.js
 vitest.config.d.ts
 netlify/functions/**/*.js
 netlify/functions/**/*.d.ts
+supabase/.temp/
+.stripe-setup-token.tmp
+.env
+.env.*
+!.env.example
+.netlify/
+npm-debug.log*

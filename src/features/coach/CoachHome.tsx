@@ -7,7 +7,7 @@ import { ActionRow, EmptyState, ExplanationDialog, PageHeader, Section } from ".
 
 const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 export function CoachHome() {
-  const { data, isLoading, error } = useStudio();
+  const { data, isLoading, error, isDemo } = useStudio();
   const navigate = useNavigate();
   const [selected, setSelected] = useState<Recommendation>();
   if (isLoading) return <div className="loading">Preparing today’s studio…</div>;
@@ -20,7 +20,7 @@ export function CoachHome() {
     <Section title="Up next" marked>{upNext ? <ActionRow initials={initials(upNext.title.replace(/^Review |^Write |^Complete /, ""))} title={upNext.title} detail={upNext.explanation} urgent={upNext.urgency === 5} onClick={() => setSelected(upNext)} /> : <EmptyState title="Your studio is caught up" detail="Nothing urgent needs your attention." />}</Section>
     <Section title="Today" aside={<button className="text-button" onClick={() => navigate("/today")}>View day</button>}><div className="timeline">{lessons.length ? lessons.map((lesson) => { const student = data.students.find((row) => row.id === lesson.studentId); return <button key={lesson.id} onClick={() => navigate(`/lessons?lesson=${lesson.id}`)}><time>{new Date(lesson.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time><i /><div><strong>{student?.fullName}</strong><small>{lesson.topic} · {lesson.locationLabel}</small></div></button>; }) : <EmptyState title="No lessons today" detail="Use the space for prep, notes, or a proper breather." />}</div></Section>
     <Section title="Needs attention" aside={<span className="count">{attention.length}</span>}><div>{attention.slice(0, 5).map((item) => <ActionRow key={item.id} initials={initials(data.students.find((student) => student.id === item.studentId)?.fullName ?? item.title)} title={item.title} detail={item.explanation} urgent={item.urgency === 5} actionLabel="Review" onClick={() => setSelected(item)} />)}{!attention.length && <EmptyState title="You’re caught up" detail="New follow-ups will appear here with an explanation." />}</div></Section>
-    <div className="sync-row"><CheckCircle2 /><div><strong>All systems ready</strong><small>Postgres is canonical; Calendar and messages use reviewable queues.</small></div><button onClick={() => navigate("/settings")}>View health</button></div>
-    {selected && <ExplanationDialog title={selected.title} explanation={selected.explanation} evidence={selected.evidence} action={selected.suggestedAction} onClose={() => setSelected(undefined)} />}
+    <div className="sync-row"><CheckCircle2 /><div><strong>{isDemo ? "Core studio saving locally" : "Studio data connected"}</strong><small>{isDemo ? "Student records, lessons, practice, notes, materials, and settings persist on this device." : "Postgres is canonical; Calendar and messages use reviewable queues."}</small></div><button onClick={() => navigate("/settings")}>View settings</button></div>
+    {selected && <ExplanationDialog title={selected.title} explanation={selected.explanation} evidence={selected.evidence} action={selected.suggestedAction} onClose={() => setSelected(undefined)} onAction={() => navigate(selected.reasonCode.includes("note") ? "/notes" : selected.reasonCode.includes("package") ? "/finance" : selected.entityType === "booking" ? "/bookings" : "/lessons")} />}
   </div>;
 }
