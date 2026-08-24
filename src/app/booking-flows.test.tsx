@@ -88,8 +88,8 @@ describe("interactive booking flows", () => {
       await screen.findByText(/demo mode does not send email/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: "Open guardian demo" }),
-    ).toHaveAttribute("href", "/guardian");
+      screen.getByRole("link", { name: "Open student portal demo" }),
+    ).toHaveAttribute("href", "/portal");
   });
 
   it("reports missing live integrations truthfully", async () => {

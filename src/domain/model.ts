@@ -240,6 +240,9 @@ export interface ServiceOffering extends Versioned {
   enrolled: number;
   lessonIds: UUID[];
   published: boolean;
+  description?: string;
+  meetingUrl?: string;
+  resourceLinks?: { label: string; url: string }[];
 }
 export interface RecurringSeries extends Versioned {
   studioId: UUID;
@@ -311,6 +314,15 @@ export interface LessonParticipant {
   displayName: string;
   email: string;
   status: ParticipantStatus;
+}
+export interface LessonMessage {
+  id: UUID;
+  lessonId: UUID;
+  studentId: UUID;
+  authorUserId?: UUID;
+  authorRole: Role;
+  body: string;
+  createdAt: string;
 }
 export interface Note extends Versioned {
   lessonId: UUID;
@@ -534,6 +546,7 @@ export interface StudioSnapshot {
   recurringSeries: RecurringSeries[];
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];
+  lessonMessages: LessonMessage[];
   integrationImports: IntegrationImport[];
 }
 

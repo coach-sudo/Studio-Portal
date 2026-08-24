@@ -75,7 +75,19 @@ export function StudioSettings({
           payload: { settings: updates },
           reason: "Coach updated studio settings",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        queryClient.setQueryData<StudioSnapshot>(
+          ["studio", "coach", undefined],
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  displayName:
+                    updates.coachName?.split(" ")[0] || current.displayName,
+                  settings: { ...current.settings, ...updates },
+                }
+              : current,
+        );
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(message);
     } catch (reason) {

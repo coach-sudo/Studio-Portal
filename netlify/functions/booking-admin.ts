@@ -281,7 +281,55 @@ export default async (request: Request, context: Context) => {
         publish_now: body.payload.published,
       });
       if (error) throw error;
-      return json({ resource: data }, 201);
+      const { data: enriched, error: enrichError } = await db
+        .from("service_offerings")
+        .update({
+          description: String(body.payload.description || ""),
+          meeting_url: body.payload.meeting_url || null,
+          resource_links: Array.isArray(body.payload.resource_links)
+            ? body.payload.resource_links
+            : [],
+        })
+        .eq("id", data.id)
+        .select()
+        .single();
+      if (enrichError) throw enrichError;
+      return json({ resource: enriched }, 201);
+    }
+
+    if (
+      resource === "offerings" &&
+      body.command === "delete" &&
+      body.id &&
+      body.expectedVersion
+    ) {
+      const { data: offering, error: offeringError } = await db
+        .from("service_offerings")
+        .select("*")
+        .eq("id", body.id)
+        .single();
+      if (offeringError || !offering) throw new Error("FORBIDDEN");
+      if (offering.version !== body.expectedVersion)
+        throw new Error(`VERSION_CONFLICT:${body.expectedVersion}`);
+      const { count } = await db
+        .from("bookings")
+        .select("id", { count: "exact", head: true })
+        .eq("offering_id", offering.id)
+        .not("status", "in", '(cancelled,expired)');
+      if ((count || 0) > 0 || offering.enrolled > 0)
+        throw new Error(
+          "VALIDATION_FAILED: Cancel or move active enrollments before deleting this offering.",
+        );
+      const service = serviceClient();
+      if (offering.lesson_ids?.length)
+        await service.from("lessons").delete().in("id", offering.lesson_ids);
+      const { error } = await service
+        .from("service_offerings")
+        .delete()
+        .eq("id", offering.id)
+        .eq("version", offering.version);
+      if (error) throw error;
+      return json({ resource: { id: offering.id, deleted: true } });
     }
 
     if (

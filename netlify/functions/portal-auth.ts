@@ -66,7 +66,7 @@ export default async (request: Request, context: Context) => {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
       expiresAt: data.session.expires_at,
-      destination: student.is_minor ? "/guardian" : "/student",
+      destination: "/portal",
     });
   } catch (error) {
     return apiError(error, id);

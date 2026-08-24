@@ -104,6 +104,9 @@ const mapOffering = (row: any): ServiceOffering => ({
   enrolled: row.enrolled,
   lessonIds: row.lesson_ids,
   published: true,
+  description: row.description || undefined,
+  meetingUrl: row.meeting_url || undefined,
+  resourceLinks: row.resource_links ?? [],
 });
 
 interface DemoBookingInput {
@@ -480,7 +483,7 @@ function BookingHeader({
   return (
     <header className="booking-topbar">
       <Link
-        to={back ? "/book" : "/"}
+        to="/book"
         aria-label={back ? "Back to services" : `${studio.name} home`}
       >
         {back ? (
@@ -768,8 +771,8 @@ function BookingFlow({
             exceptions: store.snapshot.availabilityExceptions,
             lessons: store.snapshot.lessons,
             from: new Date(),
-            days: 18,
-          }).slice(0, 20)
+            days: 45,
+          })
         : offerings
             .filter(
               (offering) =>
@@ -809,9 +812,7 @@ function BookingFlow({
       )
       .then((payload: { slots: { startsAt: string; endsAt: string }[] }) =>
         setSlots(
-          payload.slots
-            .slice(0, 20)
-            .map((item) => ({
+          payload.slots.map((item) => ({
               ...item,
               label: new Date(item.startsAt).toLocaleTimeString([], {
                 hour: "numeric",
@@ -826,6 +827,26 @@ function BookingFlow({
         ),
       );
   }, [demoSlots, live, service.category, service.id]);
+  const dayKey = (value: string | Date) => {
+    const date = value instanceof Date ? value : new Date(value);
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+  };
+  const [selectedDay, setSelectedDay] = useState("");
+  useEffect(() => {
+    const availableDays = [...new Set(slots.map((item) => dayKey(item.startsAt)))];
+    if (!availableDays.includes(selectedDay)) setSelectedDay(availableDays[0] || "");
+  }, [selectedDay, slots]);
+  const calendarDays = useMemo(
+    () =>
+      Array.from({ length: 45 }, (_, index) => {
+        const value = new Date();
+        value.setHours(12, 0, 0, 0);
+        value.setDate(value.getDate() + index);
+        return value;
+      }),
+    [],
+  );
+  const daySlots = slots.filter((item) => dayKey(item.startsAt) === selectedDay);
   const chosen = slots.find((item) => item.startsAt === slot);
   const chosenOffering = offerings.find(
     (item) =>
@@ -1070,14 +1091,33 @@ function BookingFlow({
                 {error}
               </p>
             )}
-            <div className="slot-list">
-              {slots.map((item) => (
+            <div className="booking-calendar" aria-label="Available dates">
+              <div className="booking-calendar-weekdays" aria-hidden="true">
+                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day) => <span key={day}>{day}</span>)}
+              </div>
+              <div className="booking-calendar-grid">
+                {Array.from({ length: calendarDays[0]?.getDay() || 0 }, (_, index) => <span key={`blank-${index}`} />)}
+                {calendarDays.map((day) => {
+                  const key = dayKey(day);
+                  const count = slots.filter((item) => dayKey(item.startsAt) === key).length;
+                  return (
+                    <button key={key} type="button" disabled={!count} className={selectedDay === key ? "selected" : ""} onClick={() => { setSelectedDay(key); setSlot(undefined); }} aria-label={`${day.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}${count ? `, ${count} times available` : ', unavailable'}`}>
+                      <small>{day.toLocaleDateString([], { month: 'short' })}</small>
+                      <strong>{day.getDate()}</strong>
+                      {count > 0 && <i>{count}</i>}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {selectedDay && <h3>{new Date(`${selectedDay}T12:00:00`).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</h3>}
+            <div className="slot-list booking-time-list">
+              {daySlots.map((item) => (
                 <button
                   key={item.startsAt}
                   className={slot === item.startsAt ? "selected" : ""}
                   onClick={() => setSlot(item.startsAt)}
                 >
-                  <span>{formatDate(item.startsAt)}</span>
                   <strong>{item.label}</strong>
                 </button>
               ))}

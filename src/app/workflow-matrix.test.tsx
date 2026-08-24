@@ -295,27 +295,10 @@ describe("30 start-to-finish studio workflows", () => {
       ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });
-    it("18 requests a reader", async () => {
-      const user = userEvent.setup();
+    it("18 keeps current work focused on assigned studio work", async () => {
       renderApp("/portal/work");
-      await user.click(
-        await screen.findByRole("button", { name: "Request a reader" }),
-      );
-      const dialog = screen.getByRole("dialog");
-      await user.type(
-        within(dialog).getByLabelText("Filming time"),
-        "2026-09-12T18:00",
-      );
-      await user.type(
-        within(dialog).getByLabelText("Details"),
-        "Reader for Nina scene.",
-      );
-      await user.click(
-        within(dialog).getByRole("button", { name: "Send request" }),
-      );
-      expect(
-        await screen.findByText(/Reader request sent/i),
-      ).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: "Current Work" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Request a reader/i })).not.toBeInTheDocument();
     });
     it("19 completes practice", async () => {
       const user = userEvent.setup();

@@ -17,6 +17,7 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
+import DOMPurify from "dompurify";
 import {
   NavLink,
   Link,
@@ -24,6 +25,7 @@ import {
   Route,
   Routes,
   useNavigate,
+  useParams,
 } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -59,6 +61,7 @@ const studentTabs = [
   ["", "Home", Home],
   ["work", "Current Work", BookOpen],
   ["bookings", "Bookings", CalendarDays],
+  ["notes", "Notes", FileText],
   ["practice", "Practice", CheckSquare],
   ["materials", "Materials", FolderOpen],
   ["payments", "Payments", CircleDollarSign],
@@ -78,8 +81,10 @@ export function StudentPortal({
 }) {
   const studentId = role === "guardian" ? "student-sarah" : "student-maya";
   const { data, isLoading, isDemo } = useStudio(role, studentId);
-  const base = role === "guardian" ? "/guardian" : "/student";
+  const base = "/portal";
   const tabs = role === "guardian" ? guardianTabs : studentTabs;
+  const navigatePortal = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
     if (data?.settings.studioName)
       document.title = `${data.settings.studioName} — ${role === "guardian" ? "Guardian" : "Student"} workspace`;
@@ -145,7 +150,7 @@ export function StudentPortal({
               )
             }
           />
-          <Route path="work" element={<Work data={data} isDemo={isDemo} />} />
+          <Route path="work" element={<Work data={data} />} />
           <Route
             path="bookings"
             element={<StudentBookings data={data} isDemo={isDemo} />}
@@ -154,6 +159,8 @@ export function StudentPortal({
             path="lessons"
             element={<StudentBookings data={data} isDemo={isDemo} />}
           />
+          <Route path="lessons/:lessonId" element={<LessonHub data={data} isDemo={isDemo} />} />
+          <Route path="notes" element={<StudentNotes data={data} />} />
           <Route
             path="practice"
             element={<Practice data={data} isDemo={isDemo} />}
@@ -185,12 +192,24 @@ export function StudentPortal({
           </NavLink>
         ))}
         {role === "student" && (
-          <NavLink to="/student/materials">
+          <button type="button" onClick={() => setMobileMenuOpen(true)}>
             <Menu />
             <span>More</span>
-          </NavLink>
+          </button>
         )}
       </nav>
+      {mobileMenuOpen && (
+        <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setMobileMenuOpen(false)}>
+          <section className="command-dialog mobile-workspace-menu" role="dialog" aria-modal="true" aria-label="Student portal menu">
+            <header><Menu /><strong>Portal menu</strong><button type="button" aria-label="Close portal menu" onClick={() => setMobileMenuOpen(false)}>×</button></header>
+            {tabs.map(([to, label, Icon]) => (
+              <button type="button" key={to} onClick={() => { navigatePortal(`${base}${to ? `/${to}` : ""}`); setMobileMenuOpen(false); }}>
+                <Icon /><span>{label}</span>
+              </button>
+            ))}
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -301,7 +320,7 @@ function StudentHome({ data, base }: { data: Snapshot; base: string }) {
             title={lesson.topic}
             detail={`${new Date(lesson.startsAt).toLocaleString()} · ${lesson.locationLabel}`}
             action="View lesson"
-            onClick={() => navigate(`${base}/bookings`)}
+            onClick={() => navigate(`${base}/lessons/${lesson.id}`)}
           />
         ) : (
           <EmptyState
@@ -406,64 +425,14 @@ function GuardianHome({ data }: { data: Snapshot }) {
   );
 }
 
-function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
-  const store = useStudioStore();
-  const queryClient = useQueryClient();
+function Work({ data }: { data: Snapshot }) {
   const work = data.materials.filter((item) => item.role === "current_script");
-  const [readerOpen, setReaderOpen] = useState(false);
-  const [notice, setNotice] = useState("");
-  const requestReader = async (
-    filmingAt: string,
-    meetingMethod: string,
-    instructions: string,
-  ) => {
-    const studentId = data.students[0]?.id;
-    if (!studentId) return;
-    try {
-      if (isDemo)
-        store.transact((draft) =>
-          draft.readerRequests.push({
-            id: `reader-${crypto.randomUUID()}`,
-            studentId,
-            filmingAt: new Date(filmingAt).toISOString(),
-            meetingMethod,
-            instructions,
-            status: "submitted",
-            version: 1,
-            updatedAt: new Date().toISOString(),
-          }),
-        );
-      else {
-        await studioCommand("reader-requests", {
-          command: "create",
-          expectedVersion: 0,
-          payload: {
-            studentId,
-            filmingAt: new Date(filmingAt).toISOString(),
-            meetingMethod,
-            instructions,
-          },
-          reason: "Student requested a reader",
-        });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setReaderOpen(false);
-      setNotice("Reader request sent to your coach for review.");
-    } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Reader request could not be sent.");
-    }
-  };
   return (
     <div className="student-page">
       <header className="student-header">
         <h1>Current Work</h1>
-        <p>Your active script, connected practice, and reader support.</p>
+        <p>Your active scripts and lesson-connected materials.</p>
       </header>
-      {notice && (
-        <p className="portal-notice" role="status">
-          {notice}
-        </p>
-      )}
       <Section title="Active script" marked>
         <div className="table-list">
           {work.map((item) => (
@@ -489,111 +458,7 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           )}
         </div>
       </Section>
-      <Section
-        title="Reader support"
-        aside={
-          <button onClick={() => setReaderOpen(true)}>Request a reader</button>
-        }
-      >
-        <div className="table-list">
-          {data.readerRequests.map((request) => (
-            <article key={request.id}>
-              <MessageSquare />
-              <div>
-                <strong>{new Date(request.filmingAt).toLocaleString()}</strong>
-                <small>
-                  {request.meetingMethod} · {request.instructions}
-                </small>
-              </div>
-              <Status
-                tone={request.status === "fulfilled" ? "good" : "neutral"}
-              >
-                {request.status.replaceAll("_", " ")}
-              </Status>
-            </article>
-          ))}
-          {!data.readerRequests.length && (
-            <EmptyState
-              title="No reader request open"
-              detail="Ask your coach to help coordinate a reader for a self-tape."
-            />
-          )}
-        </div>
-      </Section>
-      {readerOpen && (
-        <ReaderRequestDialog
-          onClose={() => setReaderOpen(false)}
-          onSave={requestReader}
-        />
-      )}
     </div>
-  );
-}
-
-function ReaderRequestDialog({
-  onClose,
-  onSave,
-}: {
-  onClose: () => void;
-  onSave: (
-    filmingAt: string,
-    meetingMethod: string,
-    instructions: string,
-  ) => void;
-}) {
-  const [filmingAt, setFilmingAt] = useState(""),
-    [method, setMethod] = useState("Google Meet"),
-    [instructions, setInstructions] = useState("");
-  return (
-    <Dialog
-      title="Request a reader"
-      description="Your coach reviews the request before contacting the reader group."
-      onClose={onClose}
-    >
-      <form
-        className="workflow-form"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSave(filmingAt, method, instructions);
-        }}
-      >
-        <label>
-          Filming time
-          <input
-            required
-            type="datetime-local"
-            value={filmingAt}
-            onChange={(event) => setFilmingAt(event.target.value)}
-          />
-        </label>
-        <label>
-          Meeting method
-          <select
-            value={method}
-            onChange={(event) => setMethod(event.target.value)}
-          >
-            <option>Google Meet</option>
-            <option>Zoom</option>
-            <option>In person</option>
-          </select>
-        </label>
-        <label className="full">
-          Details
-          <textarea
-            required
-            value={instructions}
-            onChange={(event) => setInstructions(event.target.value)}
-            placeholder="Scene, sides, deadline, and anything the reader should know."
-          />
-        </label>
-        <div className="form-actions full">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="primary">Send request</button>
-        </div>
-      </form>
-    </Dialog>
   );
 }
 
@@ -604,6 +469,7 @@ function StudentBookings({
   data: Snapshot;
   isDemo: boolean;
 }) {
+  const navigate = useNavigate();
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
@@ -722,7 +588,7 @@ function StudentBookings({
             ? { startsAt: slot.startsAt, endsAt: slot.endsAt, scope }
             : {},
         );
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setSelected(undefined);
       setNextStart(undefined);
@@ -762,7 +628,7 @@ function StudentBookings({
           body: JSON.stringify({ bookingId: booking.id }),
         });
         if (!response.ok) throw new Error((await response.json()).message);
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice("The series will end after the current paid period.");
     } catch (reason) {
@@ -844,6 +710,7 @@ function StudentBookings({
                   </span>
                 </div>
                 <div className="student-booking-actions">
+                  {lesson && <Link className="button-link" to={`/portal/lessons/${lesson.id}`}>Details</Link>}
                   {booking.location === "google_meet" &&
                     (lesson?.joinUrl ? (
                       <a
@@ -866,6 +733,8 @@ function StudentBookings({
                     ))}
                   {booking.status === "confirmed" && (
                     <button
+                      disabled={isLateChange(booking.startsAt, booking.policySnapshot.cancellationWindowHours)}
+                      title={isLateChange(booking.startsAt, booking.policySnapshot.cancellationWindowHours) ? `Online changes close ${booking.policySnapshot.cancellationWindowHours} hours before the lesson` : "Choose another available time"}
                       onClick={() => {
                         setSelected(booking);
                         setMode("reschedule");
@@ -932,7 +801,7 @@ function StudentBookings({
             .filter((lesson) => lesson.status !== "scheduled")
             .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
             .map((lesson) => (
-              <article key={lesson.id}>
+              <article key={lesson.id} className="clickable-row" onClick={() => navigate(`/portal/lessons/${lesson.id}`)}>
                 <CalendarDays />
                 <div>
                   <strong>{lesson.topic}</strong>
@@ -946,6 +815,7 @@ function StudentBookings({
                 >
                   {lesson.status.replaceAll("_", " ")}
                 </Status>
+                <span className="open-label">Open</span>
               </article>
             ))}
           {!data.lessons.some((lesson) => lesson.status !== "scheduled") && (
@@ -1023,7 +893,7 @@ function StudentBookings({
                     selected.startsAt,
                     selected.policySnapshot.cancellationWindowHours,
                   )
-                    ? "This is now a late cancellation."
+                    ? `Online cancellation and rescheduling closed ${selected.policySnapshot.cancellationWindowHours} hours before this lesson. Contact the studio if you need help.`
                     : `Eligible settlement: ${selected.policySnapshot.settlement.replaceAll("_", " ")}.`}
                 </p>
               </div>
@@ -1031,7 +901,7 @@ function StudentBookings({
                 <button onClick={() => setSelected(undefined)}>
                   Keep booking
                 </button>
-                {selected.status === "confirmed" && (
+                {selected.status === "confirmed" && !isLateChange(selected.startsAt, selected.policySnapshot.cancellationWindowHours) && (
                   <button className="primary" onClick={() => change("cancel")}>
                     Cancel booking
                   </button>
@@ -1041,6 +911,115 @@ function StudentBookings({
           )}
         </Dialog>
       )}
+    </div>
+  );
+}
+
+function StudentNotes({ data }: { data: Snapshot }) {
+  const [query, setQuery] = useState("");
+  const filtered = data.notes
+    .filter((note) =>
+      [note.title, note.body, note.category, ...(note.tags ?? [])]
+        .join(" ")
+        .toLowerCase()
+        .includes(query.toLowerCase()),
+    )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const page = usePagedList(filtered);
+  return (
+    <div className="student-page">
+      <header className="student-header">
+        <h1>Notes</h1>
+        <p>Published coaching notes, organized by lesson.</p>
+      </header>
+      <Section title="Lesson notes" marked>
+        <div className="library-toolbar">
+          <label><FileText /><input aria-label="Search notes" placeholder="Search your notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+        </div>
+        <ListControls page={page.page} pageCount={page.pageCount} pageSize={page.pageSize} total={page.total} onPage={page.setPage} onPageSize={page.setPageSize} label="notes" />
+        <div className="note-cards">
+          {page.visible.map((note) => {
+            const lesson = data.lessons.find((item) => item.id === note.lessonId);
+            return (
+              <article key={note.id}>
+                <header><strong>{note.title}</strong><Status tone="good">published</Status></header>
+                {note.bodyHtml ? <div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml, { ALLOWED_TAGS: ["p","div","br","strong","b","em","i","u","a","ul","ol","li","span"], ALLOWED_ATTR: ["href","target","rel","style"] }) }} /> : <p>{note.body}</p>}
+                <small>{lesson ? `${new Date(lesson.startsAt).toLocaleDateString()} · ${lesson.topic}` : "General coaching note"} · updated {new Date(note.updatedAt).toLocaleString()}</small>
+                {lesson && <Link className="text-link" to={`/portal/lessons/${lesson.id}`}>Open lesson workspace</Link>}
+              </article>
+            );
+          })}
+          {!page.total && <EmptyState title="No published notes yet" detail="Notes appear here as soon as your coach publishes them." />}
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+  const { lessonId = "" } = useParams();
+  const lesson = data.lessons.find((item) => item.id === lessonId);
+  const store = useStudioStore();
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  if (!lesson) return <Navigate to="/portal/bookings" replace />;
+  const notes = data.notes.filter((item) => item.lessonId === lesson.id);
+  const assignments = data.assignments.filter((item) => item.lessonId === lesson.id);
+  const materials = data.materials.filter((item) => item.lessonId === lesson.id);
+  const messages = data.lessonMessages.filter((item) => item.lessonId === lesson.id);
+  const offering = data.serviceOfferings.find((item) => item.id === lesson.offeringId);
+  const student = data.students.find((item) => item.id === lesson.studentId) ?? data.students[0];
+  const sendMessage = async (event: FormEvent) => {
+    event.preventDefault();
+    const body = message.trim();
+    if (!body || !student || busy) return;
+    setBusy(true);
+    setNotice("");
+    try {
+      if (isDemo) store.transact((draft) => draft.lessonMessages.push({ id: `message-${crypto.randomUUID()}`, lessonId: lesson.id, studentId: student.id, authorRole: "student", body, createdAt: new Date().toISOString() }));
+      else {
+        await studioCommand("messages", { command: "create", entityId: lesson.id, expectedVersion: 0, payload: { studentId: student.id, body }, reason: "Student sent a lesson message" });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setMessage("");
+      setNotice("Message sent to your coach.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Message could not be sent.");
+    } finally { setBusy(false); }
+  };
+  return (
+    <div className="student-page lesson-hub">
+      <header className="student-header lesson-hub-header">
+        <div><Link className="text-link" to="/portal/bookings">‹ Back to bookings</Link><h1>{lesson.topic}</h1><p>{new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}</p></div>
+        {lesson.joinUrl && <a className="button-link primary" href={lesson.joinUrl} target="_blank" rel="noreferrer"><Video />Join Google Meet</a>}
+      </header>
+      {notice && <p className="portal-notice" role="status">{notice}</p>}
+      {offering && (
+        <Section title="Class or course information" marked>
+          <p>{offering.description || "Your enrollment details and shared class resources live here."}</p>
+          <div className="student-quick-actions">
+            {(offering.meetingUrl || lesson.joinUrl) && <a className="button-link primary" href={offering.meetingUrl || lesson.joinUrl} target="_blank" rel="noreferrer"><Video />Open Google Meet</a>}
+            {offering.resourceLinks?.map((resource) => <a className="button-link" key={`${resource.label}-${resource.url}`} href={resource.url} target="_blank" rel="noreferrer"><FolderOpen />{resource.label}</a>)}
+          </div>
+        </Section>
+      )}
+      <div className="lesson-hub-grid">
+        <Section title="Coach notes" marked>
+          <div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone="good">published</Status></header>{note.bodyHtml ? <div className="published-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(note.bodyHtml)}} /> : <p>{note.body}</p>}</article>)}{!notes.length && <EmptyState title="No published note yet" detail="Your coach’s lesson note will appear here." />}</div>
+        </Section>
+        <Section title="Practice & assignments">
+          <div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}{item.dueAt ? ` · due ${new Date(item.dueAt).toLocaleDateString()}` : ""}</small></div><Status tone={item.status === "completed" ? "good" : "neutral"}>{item.status.replaceAll("_"," ")}</Status></article>)}{!assignments.length && <EmptyState title="No practice attached" detail="Assignments connected to this lesson appear here." />}</div>
+        </Section>
+        <Section title="Attachments & resources">
+          <div className="table-list">{materials.map((item) => <article key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl && <a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!materials.length && <EmptyState title="No lesson resources" detail="Scripts and files attached to this lesson appear here." />}</div>
+        </Section>
+        <Section title="Conversation" marked>
+          <div className="lesson-conversation">{messages.map((item) => <article key={item.id} className={item.authorRole === "coach" ? "coach-message" : "student-message"}><strong>{item.authorRole === "coach" ? data.settings.coachName : student?.preferredName || student?.fullName}</strong><p>{item.body}</p><small>{new Date(item.createdAt).toLocaleString()}</small></article>)}{!messages.length && <EmptyState title="No messages yet" detail="Ask a lesson-specific question without losing the context." />}</div>
+          <form className="lesson-message-form" onSubmit={sendMessage}><label htmlFor="lesson-message">Message your coach</label><textarea id="lesson-message" required maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask about this lesson, assignment, or material…" /><button className="primary" disabled={busy || !message.trim()}>{busy ? "Sending…" : "Send message"}</button></form>
+        </Section>
+      </div>
     </div>
   );
 }
@@ -1075,7 +1054,7 @@ function Practice({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
               ? "Student completed practice"
               : "Student requested practice help",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(
         command === "complete"
@@ -1194,7 +1173,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           reason: "Student submitted actor material",
         });
       }
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      void queryClient.invalidateQueries({ queryKey: ["studio"] });
       setAdding(false);
       setNotice("Material submitted to your coach for review.");
     } catch (reason) {
@@ -1520,7 +1499,7 @@ function StudentSettings({
           payload: updates,
           reason: "Student updated portal settings",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice("Your settings were saved.");
     } catch (reason) {
@@ -1594,7 +1573,7 @@ function StudentSettings({
           const { error } = await supabase.auth.updateUser({ password: loginForm.password });
           if (error) throw error;
         }
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setLoginForm((value) => ({ ...value, password: "" }));
       setNotice("Your username and password are ready for future sign-ins.");
@@ -1769,7 +1748,7 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             status: submit ? "review_requested" : "draft",
           },
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setEditing(false);
       setNotice(
@@ -1804,10 +1783,13 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
               {profile.status.replaceAll("_", " ")}
             </Status>
             <button onClick={() => setEditing(true)}>Edit</button>
+            {profile.status === "published" && (
+              <a className="button-link" href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">View live page</a>
+            )}
           </article>
         </div>
       </Section>
-      <Section title="Headshots, gallery, reel & résumé" aside={<Link to="/student/materials">Manage portfolio media</Link>}>
+      <Section title="Headshots, gallery, reel & résumé" aside={<Link to="/portal/materials">Manage portfolio media</Link>}>
         <p className="section-intro">Upload headshots, gallery images, video reels, performance clips, and PDF résumés. Your coach reviews each item before it appears publicly.</p>
         <div className="actor-media-grid">{data.materials.filter((item) => item.role === "actor_material").map((item) => <article className="actor-media-card" key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category} · {item.approvalStatus.replaceAll("_", " ")}</small></div></article>)}</div>
       </Section>

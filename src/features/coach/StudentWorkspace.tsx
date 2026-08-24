@@ -45,6 +45,7 @@ import type {
   Note,
   Student,
   StudentStatus,
+  StudioSnapshot,
 } from "../../domain/model";
 import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -72,6 +73,15 @@ export function StudentWorkspace() {
   if (!student) return <Navigate to="/students" replace />;
 
   const base = `/students/${student.id}`;
+  const studentLessons = data.lessons
+    .filter((item) =>
+      item.studentId === student.id ||
+      data.lessonParticipants.some(
+        (participant) =>
+          participant.lessonId === item.id && participant.studentId === student.id,
+      ),
+    )
+    .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const tabs = [
     ["", "Overview"],
     ["lessons", "Lessons"],
@@ -102,7 +112,26 @@ export function StudentWorkspace() {
           payload: updates as Record<string, unknown>,
           reason: "Coach updated student record",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        queryClient.setQueryData<StudioSnapshot>(
+          ["studio", "coach", undefined],
+          (current) =>
+            current
+              ? {
+                  ...current,
+                  students: current.students.map((item) =>
+                    item.id === student.id
+                      ? {
+                          ...item,
+                          ...updates,
+                          version: item.version + 1,
+                          updatedAt: now(),
+                        }
+                      : item,
+                  ),
+                }
+              : current,
+        );
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
       setNotice("Student details saved.");
@@ -135,7 +164,7 @@ export function StudentWorkspace() {
           expectedVersion: student.version,
           reason: "Coach sent student portal invitation",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(
         `Portal invitation sent to ${student.isMinor ? student.guardianEmail : student.email}.`,
@@ -171,7 +200,7 @@ export function StudentWorkspace() {
           payload: { username, password },
           reason: "Coach created or reset portal credentials",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(`Portal login is ready for username ${username}.`);
     } catch (reason) {
@@ -204,7 +233,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach created lesson",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
       setNotice("Lesson added to the schedule.");
@@ -255,6 +284,7 @@ export function StudentWorkspace() {
             studentId: student.id,
             title: material.title,
             category: material.category,
+            lessonId: material.lessonId,
             externalUrl: material.externalUrl,
             storagePath: material.storagePath,
             role: material.role,
@@ -266,7 +296,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach added student material",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
       setNotice("Material added to the student record.");
@@ -296,7 +326,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach created student note",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
       setNotice(
@@ -397,6 +427,10 @@ export function StudentWorkspace() {
           element={<Lessons data={data} student={student} />}
         />
         <Route
+          path="lessons/:lessonId"
+          element={<CoachLessonHub data={data} student={student} />}
+        />
+        <Route
           path="work"
           element={
             <Work
@@ -450,6 +484,7 @@ export function StudentWorkspace() {
       {dialog === "assignment" && (
         <AssignmentForm
           student={student}
+          lessons={studentLessons}
           onClose={() => setDialog(null)}
           onSave={addAssignment}
         />
@@ -457,6 +492,7 @@ export function StudentWorkspace() {
       {dialog === "material" && (
         <MaterialForm
           student={student}
+          lessons={studentLessons}
           isDemo={isDemo}
           onClose={() => setDialog(null)}
           onSave={addMaterial}
@@ -465,11 +501,7 @@ export function StudentWorkspace() {
       {dialog === "note" && (
         <NoteForm
           student={student}
-          lessonId={
-            data.lessons
-              .filter((item) => item.studentId === student.id)
-              .sort((a, b) => b.startsAt.localeCompare(a.startsAt))[0]?.id
-          }
+          lessons={studentLessons}
           onClose={() => setDialog(null)}
           onSave={addNote}
         />
@@ -648,7 +680,7 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
     <Section title="Lesson history" marked>
       <div className="table-list">
         {lessons.map((lesson) => (
-          <article key={lesson.id}>
+          <Link className="student-roster-row" key={lesson.id} to={`/students/${student.id}/lessons/${lesson.id}`}>
             <CalendarDays />
             <div>
               <strong>{lesson.topic}</strong>
@@ -668,7 +700,8 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
             >
               {lesson.status}
             </Status>
-          </article>
+            <span className="open-label">Open</span>
+          </Link>
         ))}
         {!lessons.length && (
           <EmptyState
@@ -678,6 +711,55 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
         )}
       </div>
     </Section>
+  );
+}
+function CoachLessonHub({ data, student }: { data: Data; student: Student }) {
+  const { lessonId = "" } = useParams();
+  const queryClient = useQueryClient();
+  const lesson = data.lessons.find((item) => item.id === lessonId);
+  const [message, setMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [notice, setNotice] = useState("");
+  if (!lesson) return <Navigate to={`/students/${student.id}/lessons`} replace />;
+  const notes = data.notes.filter((item) => item.lessonId === lesson.id);
+  const assignments = data.assignments.filter((item) => item.lessonId === lesson.id);
+  const materials = data.materials.filter((item) => item.lessonId === lesson.id);
+  const messages = data.lessonMessages.filter((item) => item.lessonId === lesson.id);
+  const send = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!message.trim() || sending) return;
+    setSending(true);
+    try {
+      await studioCommand("messages", {
+        command: "create",
+        expectedVersion: 0,
+        payload: { lessonId: lesson.id, studentId: student.id, body: message.trim() },
+        reason: "Coach sent a lesson message",
+      });
+      setMessage("");
+      setNotice("Message shared in the student lesson workspace.");
+      void queryClient.invalidateQueries({ queryKey: ["studio"] });
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Message could not be sent.");
+    } finally {
+      setSending(false);
+    }
+  };
+  return (
+    <div>
+      <Link className="back-button" to={`/students/${student.id}/lessons`}><ArrowLeft /> Lesson history</Link>
+      <Section title={lesson.topic} marked>
+        <p className="section-intro">{new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel} · {lesson.status}</p>
+        {lesson.joinUrl && <a className="button-link" href={lesson.joinUrl} target="_blank" rel="noreferrer">Open Google Meet</a>}
+      </Section>
+      {notice && <p className="portal-notice" role="status">{notice}</p>}
+      <div className="lesson-hub-grid">
+        <Section title="Notes"><div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></header><div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml || note.body) }} /></article>)}{!notes.length && <EmptyState title="No lesson notes" detail="Use the Notes tab to add one for this lesson." />}</div></Section>
+        <Section title="Practice"><div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}</small></div><Status tone={item.helpRequested ? "warn" : "neutral"}>{item.helpRequested ? "help requested" : item.status.replaceAll("_", " ")}</Status></article>)}{!assignments.length && <EmptyState title="No linked practice" detail="Use Current work to assign practice to this lesson." />}</div></Section>
+        <Section title="Attachments"><div className="table-list">{materials.map((item) => <article key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl && <a className="button-link" href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!materials.length && <EmptyState title="No attachments" detail="Use Current work to attach a file or link to this lesson." />}</div></Section>
+        <Section title="Conversation"><div className="note-cards">{messages.map((item) => <article key={item.id}><header><strong>{item.authorRole === "coach" ? "Coach" : student.preferredName || student.fullName}</strong><small>{new Date(item.createdAt).toLocaleString()}</small></header><p>{item.body}</p></article>)}</div><form className="credential-form" onSubmit={send}><label>Message<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Follow up about this lesson…" /></label><button className="primary-button" disabled={sending || !message.trim()}>{sending ? "Sending…" : "Send to student"}</button></form></Section>
+      </div>
+    </div>
   );
 }
 function Work({
@@ -1201,6 +1283,11 @@ function ActorPage({
             {profile.status.replaceAll("_", " ")}
           </Status>
           <Link to="/actor-pages">Open publishing workflow</Link>
+          {profile.status === "published" && (
+            <a href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">
+              View live page
+            </a>
+          )}
         </div>
       ) : (
         <div>
@@ -1389,8 +1476,10 @@ function StudentEditor({
             studio settings.
           </small>
         </label>
-        <Toggle checked={form.portalEnabled} label="Student portal access" detail="Allow secure student or guardian access." onChange={(portalEnabled) => setForm({ ...form, portalEnabled })} />
-        <Toggle checked={form.actorPageEligible} label="Actor page eligible" detail="Allow profile creation and publishing review." onChange={(actorPageEligible) => setForm({ ...form, actorPageEligible })} />
+        <p className="portal-notice full">
+          Portal access, login credentials, and actor-page eligibility are managed
+          in the Account tab so there is one authoritative control for each.
+        </p>
         <div className="form-actions full">
           <button type="button" onClick={onClose}>
             Cancel
@@ -1502,16 +1591,19 @@ function LessonForm({
 }
 function AssignmentForm({
   student,
+  lessons,
   onClose,
   onSave,
 }: {
   student: Student;
+  lessons: Lesson[];
   onClose: () => void;
   onSave: (a: Assignment) => void;
 }) {
   const [title, setTitle] = useState(""),
     [details, setDetails] = useState(""),
-    [dueAt, setDueAt] = useState("");
+    [dueAt, setDueAt] = useState(""),
+    [lessonId, setLessonId] = useState(lessons[0]?.id ?? "");
   return (
     <Dialog
       title="Assign practice"
@@ -1525,6 +1617,7 @@ function AssignmentForm({
           onSave({
             id: uid("assignment"),
             studentId: student.id,
+            lessonId,
             title,
             details,
             dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
@@ -1535,6 +1628,18 @@ function AssignmentForm({
           });
         }}
       >
+        <label className="full">
+          Related lesson
+          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
+            <option value="" disabled>Select a lesson</option>
+            {lessons.map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+              </option>
+            ))}
+          </select>
+          {!lessons.length && <small>Add a lesson before assigning practice.</small>}
+        </label>
         <label className="full">
           Title
           <input
@@ -1563,7 +1668,7 @@ function AssignmentForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary">Assign</button>
+          <button className="primary" disabled={!lessonId}>Assign</button>
         </div>
       </form>
     </Dialog>
@@ -1571,11 +1676,13 @@ function AssignmentForm({
 }
 function MaterialForm({
   student,
+  lessons,
   isDemo,
   onClose,
   onSave,
 }: {
   student: Student;
+  lessons: Lesson[];
   isDemo: boolean;
   onClose: () => void;
   onSave: (m: Material) => void;
@@ -1584,6 +1691,7 @@ function MaterialForm({
     [category, setCategory] = useState("Script"),
     [url, setUrl] = useState(""),
     [role, setRole] = useState<Material["role"]>("current_script"),
+    [lessonId, setLessonId] = useState(lessons[0]?.id ?? ""),
     [file, setFile] = useState<File>(),
     [uploading, setUploading] = useState(false);
   return (
@@ -1603,7 +1711,8 @@ function MaterialForm({
                 ? await uploadStudioFile({
                     studioId: student.studioId,
                     studentId: student.id,
-                    entityType: "material",
+                    entityType: "lesson",
+                    entityId: lessonId,
                     file,
                     visibility: "student",
                   })
@@ -1611,6 +1720,7 @@ function MaterialForm({
             onSave({
               id: uid("material"),
               studentId: student.id,
+              lessonId,
               title,
               category,
               externalUrl: url || undefined,
@@ -1637,6 +1747,18 @@ function MaterialForm({
           }
         }}
       >
+        <label className="full">
+          Related lesson
+          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
+            <option value="" disabled>Select a lesson</option>
+            {lessons.map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+              </option>
+            ))}
+          </select>
+          {!lessons.length && <small>Add a lesson before attaching materials.</small>}
+        </label>
         <label>
           Title
           <input
@@ -1686,7 +1808,7 @@ function MaterialForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={uploading}>
+          <button className="primary" disabled={uploading || !lessonId}>
             {uploading ? "Uploading…" : "Add material"}
           </button>
         </div>
@@ -1696,18 +1818,19 @@ function MaterialForm({
 }
 function NoteForm({
   student,
-  lessonId,
+  lessons,
   onClose,
   onSave,
 }: {
   student: Student;
-  lessonId?: string;
+  lessons: Lesson[];
   onClose: () => void;
   onSave: (n: Note) => void;
 }) {
   const [title, setTitle] = useState("Lesson note"),
     [body, setBody] = useState(""),
-    [published, setPublished] = useState(false);
+    [published, setPublished] = useState(false),
+    [lessonId, setLessonId] = useState(lessons[0]?.id ?? "");
   const editorRef = useRef<HTMLDivElement>(null);
   const format = (command: string, value?: string) => {
     editorRef.current?.focus();
@@ -1723,7 +1846,7 @@ function NoteForm({
           onSave({
             id: uid("note"),
             studentId: student.id,
-            lessonId: lessonId || uid("lesson-reference"),
+            lessonId,
             title,
             body: (
               editorRef.current?.innerText ||
@@ -1754,6 +1877,18 @@ function NoteForm({
           });
         }}
       >
+        <label className="full">
+          Related lesson
+          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
+            <option value="" disabled>Select a lesson</option>
+            {lessons.map((lesson) => (
+              <option key={lesson.id} value={lesson.id}>
+                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+              </option>
+            ))}
+          </select>
+          {!lessons.length && <small>Add a lesson before writing a lesson note.</small>}
+        </label>
         <label className="full">
           Title
           <input
@@ -1788,6 +1923,12 @@ function NoteForm({
             </button>
             <button type="button" onClick={() => format("justifyRight")}>
               Right
+            </button>
+            <button type="button" onClick={() => format("insertUnorderedList")} aria-label="Bulleted list">
+              • List
+            </button>
+            <button type="button" onClick={() => format("insertOrderedList")} aria-label="Numbered list">
+              1. List
             </button>
             <button
               type="button"
@@ -1826,7 +1967,7 @@ function NoteForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!body.trim()}>
+          <button className="primary" disabled={!body.trim() || !lessonId}>
             Save note
           </button>
         </div>

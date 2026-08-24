@@ -656,6 +656,16 @@ const base: StudioSnapshot = {
       status: "confirmed",
     },
   ],
+  lessonMessages: [
+    {
+      id: "message-maya-1",
+      lessonId: "lesson-maya-next",
+      studentId: "student-maya",
+      authorRole: "coach",
+      body: "Bring the latest marked-up scene and any questions from practice.",
+      createdAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(),
+    },
+  ],
   integrationImports: [],
 };
 base.recommendations = buildRecommendations(base, now);

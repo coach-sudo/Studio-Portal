@@ -21,9 +21,9 @@ function AppRoutes() {
   return <Suspense fallback={<div className="loading">Opening the studio…</div>}><Routes>
     <Route path="/login" element={<MagicLinkLogin />} />
     <Route path="/terms" element={<TermsPage />} />
-    <Route path="/student/*" element={<AuthGate role="portal"><StudentPortal /></AuthGate>} />
-    <Route path="/portal/*" element={<LegacyPortalRedirect />} />
-    <Route path="/guardian/*" element={<AuthGate role="portal"><StudentPortal role="guardian" /></AuthGate>} />
+    <Route path="/portal/*" element={<AuthGate role="portal"><StudentPortal /></AuthGate>} />
+    <Route path="/student/*" element={<LegacyPortalRedirect legacyPrefix="student" />} />
+    <Route path="/guardian/*" element={<LegacyPortalRedirect legacyPrefix="guardian" />} />
     <Route path="/actors/:slug" element={<PublicActorPage />} />
     <Route path="/book" element={<PublicBooking />} />
     <Route path="/book/:slug" element={<PublicBooking />} />
@@ -38,7 +38,7 @@ function AppRoutes() {
   </Routes></Suspense>;
 }
 
-function LegacyPortalRedirect(){const location=useLocation(),suffix=location.pathname.replace(/^\/portal/,"");return <Navigate to={`/student${suffix}${location.search}`} replace/>;}
+function LegacyPortalRedirect({legacyPrefix}:{legacyPrefix:"student"|"guardian"}){const location=useLocation(),suffix=location.pathname.replace(new RegExp(`^/${legacyPrefix}`),"");return <Navigate to={`/portal${suffix}${location.search}`} replace/>;}
 
 function AuthGate({role,children}:{role:"coach"|"portal";children:ReactNode}){
   const [state,setState]=useState<"checking"|"allowed"|"denied">(isSupabaseConfigured?"checking":isDemoMode?"allowed":"denied"),location=useLocation();

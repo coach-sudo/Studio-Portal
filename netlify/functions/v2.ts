@@ -11,11 +11,11 @@ const domains = new Set([
   "lessons",
   "notes",
   "materials",
+  "messages",
   "work",
   "finance",
   "packages",
   "actor-pages",
-  "reader-requests",
   "outbox",
   "integrations",
   "recommendations",
@@ -137,6 +137,44 @@ export default async (request: Request, context: Context) => {
         ),
         queuedSideEffects: [],
       });
+    }
+    if (domain === "messages" && input.command === "create") {
+      const body = String(input.payload.body || "").trim(),
+        studentId = String(input.payload.studentId || ""),
+        lessonId = String(input.entityId || input.payload.lessonId || "");
+      if (!lessonId || !studentId || body.length < 1 || body.length > 4000)
+        throw new Error("VALIDATION_FAILED: Write a message between 1 and 4,000 characters.");
+      const [{ data: lesson, error: lessonError }, { data: participant }] = await Promise.all([
+        db.from("lessons").select("id,studio_id,student_id").eq("id", lessonId).single(),
+        db.from("lesson_participants").select("id").eq("lesson_id", lessonId).eq("student_id", studentId).maybeSingle(),
+      ]);
+      if (lessonError || !lesson || (lesson.student_id !== studentId && !participant))
+        throw new Error("FORBIDDEN");
+      const [{ data: coachMembership }, { data: authData }] = await Promise.all([
+        db.from("memberships").select("id").eq("studio_id", lesson.studio_id).eq("role", "coach").maybeSingle(),
+        db.auth.getUser(),
+      ]);
+      const user = authData.user;
+      if (!user) throw new Error("FORBIDDEN");
+      let authorRole: "coach" | "student" | "guardian" = coachMembership ? "coach" : "student";
+      if (!coachMembership) {
+        const { data: relationship } = await db.from("student_relationships").select("id").eq("student_id", studentId).eq("user_id", user.id).maybeSingle();
+        if (relationship) authorRole = "guardian";
+      }
+      const { data, error } = await serviceClient().from("lesson_messages").insert({
+        lesson_id: lesson.id,
+        student_id: studentId,
+        author_user_id: user.id,
+        author_role: authorRole,
+        body,
+      }).select().single();
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(lesson.studio_id, "lesson_message", data.id, "lesson_message.created", null, { lesson_id: lesson.id, author_role: authorRole }),
+        queuedSideEffects: [],
+      }, 201);
     }
     if (domain === "students" && input.command === "invite" && input.entityId) {
       const studioId = await requireCoach(),
@@ -262,7 +300,20 @@ export default async (request: Request, context: Context) => {
         .maybeSingle();
       if (duplicate)
         throw new Error("VALIDATION_FAILED: That username is already in use.");
-      let authUser: { id: string } | undefined;
+      let authUser: { id: string } | undefined = student.user_id
+        ? { id: student.user_id }
+        : undefined;
+      if (!authUser && student.is_minor) {
+        const { data: existingRelationship } = await service
+          .from("student_relationships")
+          .select("user_id")
+          .eq("student_id", student.id)
+          .eq("relationship", "guardian")
+          .limit(1)
+          .maybeSingle();
+        if (existingRelationship?.user_id)
+          authUser = { id: existingRelationship.user_id };
+      }
       for (let page = 1; page <= 10 && !authUser; page += 1) {
         const listed = await service.auth.admin.listUsers({ page, perPage: 1000 });
         if (listed.error) throw listed.error;
@@ -537,49 +588,6 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
-    if (domain === "reader-requests" && input.command === "create") {
-      const studentId = String(input.payload.studentId || ""),
-        filmingAt = String(input.payload.filmingAt || ""),
-        meetingMethod = String(input.payload.meetingMethod || "").trim();
-      if (
-        !studentId ||
-        !filmingAt ||
-        Number.isNaN(new Date(filmingAt).getTime()) ||
-        !meetingMethod
-      )
-        throw new Error("VALIDATION_FAILED: Reader timing and meeting method are required.");
-      const { data: student, error: studentError } = await db
-        .from("students")
-        .select("id,studio_id")
-        .eq("id", studentId)
-        .single();
-      if (studentError || !student) throw new Error("FORBIDDEN");
-      const { data, error } = await db
-        .from("reader_requests")
-        .insert({
-          student_id: student.id,
-          filming_at: filmingAt,
-          meeting_method: meetingMethod,
-          instructions: String(input.payload.instructions || ""),
-          status: "submitted",
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return json({
-        resource: data,
-        recommendations: [],
-        auditEventId: await audit(
-          student.studio_id,
-          "reader_request",
-          data.id,
-          "reader_request.created",
-          null,
-          data,
-        ),
-        queuedSideEffects: [],
-      });
-    }
     if (domain === "notes" && input.command === "create") {
       const studioId = await requireCoach(),
         lessonId = String(input.payload.lessonId || ""),
@@ -672,6 +680,7 @@ export default async (request: Request, context: Context) => {
         .insert({
           material_id: data.id,
           student_id: student.id,
+          lesson_id: input.payload.lessonId || null,
           role: String(input.payload.role || "library"),
           visible_to_student: true,
         });
@@ -1550,8 +1559,8 @@ export default async (request: Request, context: Context) => {
             mode: "payment",
             line_items: [{ price: definition.stripe_price_id, quantity: 1 }],
             client_reference_id: `${student.id}:${pkg.id}`,
-            success_url: `${origin}/student/payments?checkout=processing`,
-            cancel_url: `${origin}/student/payments?checkout=cancelled`,
+            success_url: `${origin}/portal/payments?checkout=processing`,
+            cancel_url: `${origin}/portal/payments?checkout=cancelled`,
             metadata: {
               student_id: student.id,
               package_id: pkg.id,
@@ -1589,8 +1598,8 @@ export default async (request: Request, context: Context) => {
         mode: "payment",
         line_items: [{ price: pkg.stripe_price_id, quantity: 1 }],
         client_reference_id: `${pkg.student_id}:${pkg.id}`,
-        success_url: `${origin}/student/payments?checkout=processing`,
-        cancel_url: `${origin}/student/payments?checkout=cancelled`,
+        success_url: `${origin}/portal/payments?checkout=processing`,
+        cancel_url: `${origin}/portal/payments?checkout=cancelled`,
         metadata: {
           student_id: pkg.student_id,
           package_id: pkg.id,

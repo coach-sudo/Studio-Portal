@@ -212,6 +212,9 @@ export function scopeStudioSnapshot(
         (Boolean(row.studentId) && studentIds.includes(row.studentId!)) ||
         Boolean(row.bookingId && bookingIds.has(row.bookingId)),
     ),
+    lessonMessages: snapshot.lessonMessages.filter((row) =>
+      studentIds.includes(row.studentId),
+    ),
     integrationImports: [],
   };
 }

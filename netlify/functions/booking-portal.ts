@@ -16,8 +16,8 @@ export default async (request: Request, context: Context) => {
       const {data:student,error:studentError}=await userDb.from("students").select("id,studio_id,email,guardian_email,stripe_customer_id").eq("id",body.studentId).single();if(studentError||!student)throw new Error("FORBIDDEN");const stripeKey=Netlify.env.get("STRIPE_SECRET_KEY");if(!stripeKey)throw new Error("Stripe is not configured.");const stripe=new Stripe(stripeKey,{apiVersion:"2026-07-29.dahlia"});let customerId=student.stripe_customer_id as string|undefined;
       if(!customerId){const customer=await stripe.customers.create({email:student.guardian_email||student.email||undefined,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:`student-customer:${student.id}`});customerId=customer.id;const {error:updateError}=await serviceClient().from("students").update({stripe_customer_id:customerId,updated_at:new Date().toISOString()}).eq("id",student.id);if(updateError)throw updateError;}
       const origin=new URL(request.url).origin;
-      if(action==="payment-method"){const session=await stripe.checkout.sessions.create({mode:"setup",customer:customerId,payment_method_types:["card"],client_reference_id:student.id,success_url:`${origin}/student/settings?payment=updated`,cancel_url:`${origin}/student/settings?payment=cancelled`,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:request.headers.get("idempotency-key")||`setup:${student.id}:${Math.floor(Date.now()/30000)}`});if(!session.url)throw new Error("Stripe did not return a setup URL.");return json({url:session.url});}
-      const session=await stripe.billingPortal.sessions.create({customer:customerId,return_url:`${origin}/student/settings`});return json({url:session.url});
+      if(action==="payment-method"){const session=await stripe.checkout.sessions.create({mode:"setup",customer:customerId,payment_method_types:["card"],client_reference_id:student.id,success_url:`${origin}/portal/settings?payment=updated`,cancel_url:`${origin}/portal/settings?payment=cancelled`,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:request.headers.get("idempotency-key")||`setup:${student.id}:${Math.floor(Date.now()/30000)}`});if(!session.url)throw new Error("Stripe did not return a setup URL.");return json({url:session.url});}
+      const session=await stripe.billingPortal.sessions.create({customer:customerId,return_url:`${origin}/portal/settings`});return json({url:session.url});
     }
     if (!body.bookingId) throw new Error("VALIDATION_FAILED: bookingId is required.");
     const { data: booking, error: accessError } = await userDb.from("bookings").select("*").eq("id", body.bookingId).single();
@@ -27,6 +27,7 @@ export default async (request: Request, context: Context) => {
     if (action === "cancel") {
       if(booking.status!=="confirmed")throw new Error("INVALID_TRANSITION");
       const late = new Date(booking.starts_at).getTime() - Date.now() < Number(booking.policy_snapshot.cancellationWindowHours) * 3_600_000;
+      if (late) throw new Error(`VALIDATION_FAILED: Online cancellation closes ${booking.policy_snapshot.cancellationWindowHours} hours before the lesson. Contact the studio if you need help.`);
       const status = late ? "late_cancelled" : "cancelled";
       const { data: participants } = await db.from("lesson_participants").select("lesson_id").eq("booking_id", booking.id);
       const lessonIds = (participants ?? []).map((item) => item.lesson_id);
@@ -64,6 +65,8 @@ export default async (request: Request, context: Context) => {
     }
 
     if (action === "reschedule" && body.startsAt && body.endsAt) {
+      const late = new Date(booking.starts_at).getTime() - Date.now() < Number(booking.policy_snapshot.cancellationWindowHours) * 3_600_000;
+      if (late) throw new Error(`VALIDATION_FAILED: Online rescheduling closes ${booking.policy_snapshot.cancellationWindowHours} hours before the lesson. Contact the studio if you need help.`);
       if (booking.reschedule_count >= Number(booking.policy_snapshot.rescheduleLimit)) throw new Error("VALIDATION_FAILED: The self-service reschedule limit has been reached.");
       const token = await googleAccessToken();
       const { data: participants } = await db.from("lesson_participants").select("lesson_id").eq("booking_id", booking.id);

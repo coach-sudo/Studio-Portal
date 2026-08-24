@@ -330,6 +330,9 @@ export function BookingCenter() {
                 capacity: value.capacity,
                 published: value.published,
                 occurrence_count: value.lessonIds.length,
+                description: value.description,
+                meeting_url: value.meetingUrl,
+                resource_links: value.resourceLinks,
               },
               undefined,
               (draft) => createDemoOffering(draft, value),
@@ -342,6 +345,13 @@ export function BookingCenter() {
           offering={dialog.item}
           data={data}
           onClose={() => setDialog(undefined)}
+          onDelete={() => {
+            if (!window.confirm(`Delete “${dialog.item.title}” and its unsold occurrences?`)) return;
+            void run("offerings", "delete", {}, dialog.item, (draft) => {
+              draft.serviceOfferings = draft.serviceOfferings.filter((item) => item.id !== dialog.item.id);
+              draft.lessons = draft.lessons.filter((lesson) => !dialog.item.lessonIds.includes(lesson.id));
+            });
+          }}
         />
       )}
       {dialog?.type === "series" && (
@@ -1811,6 +1821,9 @@ function OfferingDialog({
     new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 16),
   );
   const [capacity, setCapacity] = useState(8);
+  const [description, setDescription] = useState("");
+  const [meetingUrl, setMeetingUrl] = useState("");
+  const [resourceText, setResourceText] = useState("");
   const selected = services.find((item) => item.id === serviceId);
   const count = selected?.category === "course" ? 6 : 1;
   return (
@@ -1842,6 +1855,17 @@ function OfferingDialog({
             enrolled: 0,
             lessonIds: Array.from({ length: count }, () => uid("lesson")),
             published: true,
+            description,
+            meetingUrl: meetingUrl || undefined,
+            resourceLinks: resourceText
+              .split("\n")
+              .map((line) => line.trim())
+              .filter(Boolean)
+              .map((line) => {
+                const [label, ...urlParts] = line.split("|");
+                const url = urlParts.join("|").trim() || label.trim();
+                return { label: urlParts.length ? label.trim() : "Resource", url };
+              }),
             version: 1,
             updatedAt: new Date().toISOString(),
           });
@@ -1887,6 +1911,19 @@ function OfferingDialog({
             onChange={(event) => setStartsAt(event.target.value)}
           />
         </label>
+        <label className="full">
+          Description
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What students should know about this class or course." />
+        </label>
+        <label className="full">
+          Google Meet or class link
+          <input type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="https://meet.google.com/…" />
+        </label>
+        <label className="full">
+          Resources
+          <textarea value={resourceText} onChange={(event) => setResourceText(event.target.value)} placeholder={"Warm-up | https://…\nScript | https://…"} />
+          <small>One resource per line. Use “Label | URL”.</small>
+        </label>
         <p className="portal-notice full">
           <CalendarDays />
           {count} occurrence{count === 1 ? "" : "s"} will be created.
@@ -1900,10 +1937,12 @@ function RosterDialog({
   offering,
   data,
   onClose,
+  onDelete,
 }: {
   offering: ServiceOffering;
   data: StudioSnapshot;
   onClose: () => void;
+  onDelete: () => void;
 }) {
   const participants = data.lessonParticipants.filter((part) =>
     offering.lessonIds.includes(part.lessonId),
@@ -1918,6 +1957,17 @@ function RosterDialog({
       onClose={onClose}
     >
       <div className="workflow-content">
+        {offering.description && <p>{offering.description}</p>}
+        {offering.meetingUrl && (
+          <a className="button-link" href={offering.meetingUrl} target="_blank" rel="noreferrer">Open Google Meet</a>
+        )}
+        {!!offering.resourceLinks?.length && (
+          <div className="table-list">
+            {offering.resourceLinks.map((resource) => (
+              <a key={`${resource.label}-${resource.url}`} className="button-link" href={resource.url} target="_blank" rel="noreferrer">{resource.label}</a>
+            ))}
+          </div>
+        )}
         <div className="table-list">
           {unique.map((part) => (
             <article key={part.email}>
@@ -1937,6 +1987,10 @@ function RosterDialog({
               detail="Confirmed students will appear here."
             />
           )}
+        </div>
+        <div className="form-actions">
+          <button type="button" onClick={onClose}>Close</button>
+          <button type="button" className="danger-button" onClick={onDelete} disabled={unique.length > 0}>Delete offering</button>
         </div>
       </div>
     </Dialog>

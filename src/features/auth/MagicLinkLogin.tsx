@@ -66,7 +66,7 @@ export function MagicLinkLogin() {
         refresh_token: result.refreshToken,
       });
       if (error) throw error;
-      window.location.assign(safeReturn(result.destination || "/student"));
+      window.location.assign(safeReturn(result.destination || "/portal"));
     } catch {
       setStatus("error");
     }
@@ -82,7 +82,7 @@ export function MagicLinkLogin() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}${safeReturn("/student")}`,
+        emailRedirectTo: `${window.location.origin}${safeReturn("/portal")}`,
       },
     });
     setStatus(error ? "error" : "sent");
@@ -182,8 +182,7 @@ export function MagicLinkLogin() {
           <div role="status">
             <strong>Demo mode does not send email.</strong>
             <br />
-            <Link to="/student">Open student demo</Link> ·{" "}
-            <Link to="/guardian">Open guardian demo</Link>
+            <Link to="/portal">Open student portal demo</Link>
           </div>
         )}
         {status === "error" && (

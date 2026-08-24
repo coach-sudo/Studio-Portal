@@ -9,7 +9,7 @@ export async function ensureBookingPortalAccess(db: SupabaseClient, bookingId: s
   if (!email) throw new Error("Portal invitation email is missing.");
   let userId = booking.for_minor ? undefined : student.user_id as string | undefined;
   if (!userId) {
-    const { data: invite, error: inviteError } = await db.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}${booking.for_minor ? "/guardian" : "/student"}` });
+    const { data: invite, error: inviteError } = await db.auth.admin.inviteUserByEmail(email, { redirectTo: `${origin}/portal` });
     userId = invite.user?.id;
     if (inviteError && !String(inviteError.message).toLowerCase().includes("already")) throw inviteError;
     if (!userId) {
