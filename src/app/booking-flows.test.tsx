@@ -49,7 +49,7 @@ describe("interactive booking flows", () => {
 
   it("creates and publishes a coach service", async () => {
     const user = userEvent.setup();
-    renderApp("/bookings");
+    renderApp("/coach/bookings");
     await user.click(await screen.findByRole("button", { name: "Services" }));
     await user.click(screen.getByRole("button", { name: /add service/i }));
     const dialog = screen.getByRole("dialog", { name: "Add service" });
@@ -94,7 +94,7 @@ describe("interactive booking flows", () => {
 
   it("reports missing live integrations truthfully", async () => {
     const user = userEvent.setup();
-    renderApp("/settings");
+    renderApp("/coach/settings");
     await user.click(
       await screen.findByRole("button", { name: /Connections/i }),
     );
@@ -108,7 +108,7 @@ describe("interactive booking flows", () => {
 
   it("creates a coach booking with an audited override form", async () => {
     const user = userEvent.setup();
-    renderApp("/bookings");
+    renderApp("/coach/bookings");
     await user.click(
       await screen.findByRole("button", { name: "New booking" }),
     );
@@ -124,7 +124,7 @@ describe("interactive booking flows", () => {
 
   it("creates an editable lesson package product", async () => {
     const user = userEvent.setup();
-    renderApp("/finance");
+    renderApp("/coach/finance");
     await user.click(
       await screen.findByRole("button", { name: "Add package" }),
     );

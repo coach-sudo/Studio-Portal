@@ -324,7 +324,8 @@ const base: StudioSnapshot = {
       status: "draft",
     },
   ],
-  readerRequests: [],
+  lessonWhiteboards: [],
+  discountCodes: [],
   outbox: [],
   recommendations: [],
   bookingServices: [

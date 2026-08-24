@@ -1,26 +1,35 @@
-import { CalendarCheck, CheckCircle2, Plus, Search } from "lucide-react";
-import { useState } from "react";
+import { CalendarDays, CircleDollarSign, Plus, Search, UserRound, Waypoints } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import type { Recommendation } from "../../domain/model";
+import { EmptyState, PageHeader, Section, Status } from "../../components/Primitives";
+import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import { useStudio } from "../../hooks/useStudio";
-import { ActionRow, EmptyState, ExplanationDialog, PageHeader, Section } from "../../components/Primitives";
 
-const initials = (name: string) => name.split(/\s+/).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 export function CoachHome() {
-  const { data, isLoading, error, isDemo } = useStudio();
+  const { data, isLoading, error } = useStudio();
   const navigate = useNavigate();
-  const [selected, setSelected] = useState<Recommendation>();
-  if (isLoading) return <div className="loading">Preparing today’s studio…</div>;
+  if (isLoading) return <div className="loading">Preparing your studio…</div>;
   if (error || !data) return <div className="error-state"><strong>We couldn’t load the studio.</strong><span>{String(error ?? "Unknown error")}</span></div>;
-  const today = new Date().toDateString();
-  const lessons = data.lessons.filter((lesson) => new Date(lesson.startsAt).toDateString() === today && lesson.status === "scheduled");
-  const [upNext, ...attention] = data.recommendations;
+  const now = Date.now(), weekEnd = now + 7 * 86_400_000, hour = new Date(now).getHours(), greeting = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
+  const upcoming = data.lessons.filter((lesson) => lesson.status === "scheduled" && new Date(lesson.startsAt).getTime() >= now && new Date(lesson.startsAt).getTime() < weekEnd).sort((a,b)=>a.startsAt.localeCompare(b.startsAt));
+  const activeStudents = data.students.filter((student)=>student.status === "active").length;
+  const reviewCount = data.integrationImports.filter((item)=>item.status === "needs_review").length;
+  const outstanding = data.students.reduce((total,student)=>total + Math.max(0,studentBalanceMinor(student.id,data.payments)),0);
+  const attention = data.recommendations.slice(0,5);
   return <div className="page home-page">
-    <PageHeader title={`Good morning, ${data.displayName}`} action={<div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/students?new=1")}><Plus />Add</button></div>} />
-    <Section title="Up next" marked>{upNext ? <ActionRow initials={initials(upNext.title.replace(/^Review |^Write |^Complete /, ""))} title={upNext.title} detail={upNext.explanation} urgent={upNext.urgency === 5} onClick={() => setSelected(upNext)} /> : <EmptyState title="Your studio is caught up" detail="Nothing urgent needs your attention." />}</Section>
-    <Section title="Today" aside={<button className="text-button" onClick={() => navigate("/today")}>View day</button>}><div className="timeline">{lessons.length ? lessons.map((lesson) => { const student = data.students.find((row) => row.id === lesson.studentId); return <button key={lesson.id} onClick={() => navigate(`/lessons?lesson=${lesson.id}`)}><time>{new Date(lesson.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</time><i /><div><strong>{student?.fullName}</strong><small>{lesson.topic} · {lesson.locationLabel}</small></div></button>; }) : <EmptyState title="No lessons today" detail="Use the space for prep, notes, or a proper breather." />}</div></Section>
-    <Section title="Needs attention" aside={<span className="count">{attention.length}</span>}><div>{attention.slice(0, 5).map((item) => <ActionRow key={item.id} initials={initials(data.students.find((student) => student.id === item.studentId)?.fullName ?? item.title)} title={item.title} detail={item.explanation} urgent={item.urgency === 5} actionLabel="Review" onClick={() => setSelected(item)} />)}{!attention.length && <EmptyState title="You’re caught up" detail="New follow-ups will appear here with an explanation." />}</div></Section>
-    <div className="sync-row"><CheckCircle2 /><div><strong>{isDemo ? "Core studio saving locally" : "Studio data connected"}</strong><small>{isDemo ? "Student records, lessons, practice, notes, materials, and settings persist on this device." : "Postgres is canonical; Calendar and messages use reviewable queues."}</small></div><button onClick={() => navigate("/settings")}>View settings</button></div>
-    {selected && <ExplanationDialog title={selected.title} explanation={selected.explanation} evidence={selected.evidence} action={selected.suggestedAction} onClose={() => setSelected(undefined)} onAction={() => navigate(selected.reasonCode.includes("note") ? "/notes" : selected.reasonCode.includes("package") ? "/finance" : selected.entityType === "booking" ? "/bookings" : "/lessons")} />}
+    <PageHeader title={`${greeting}, ${data.displayName}`} action={<div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/coach/students?new=1")}><Plus />Add student</button></div>}>A clear view of the studio—not a second to-do list.</PageHeader>
+    <div className="studio-pulse-grid" aria-label="Studio overview">
+      <button onClick={()=>navigate("/coach/students?status=active")}><UserRound/><span><strong>{activeStudents}</strong><small>active students</small></span></button>
+      <button onClick={()=>navigate("/coach/lessons")}><CalendarDays/><span><strong>{upcoming.length}</strong><small>lessons in 7 days</small></span></button>
+      <button onClick={()=>navigate("/coach/today#verification")}><Waypoints/><span><strong>{reviewCount}</strong><small>imports to verify</small></span></button>
+      <button onClick={()=>navigate("/coach/finance")}><CircleDollarSign/><span><strong>{formatMoney(outstanding)}</strong><small>open balances</small></span></button>
+    </div>
+    <div className="home-dashboard-grid">
+      <Section title="Coming up this week" marked aside={<button className="text-button" onClick={()=>navigate("/coach/today")}>Run today</button>}>
+        <div className="timeline">{upcoming.slice(0,6).map((lesson)=>{const student=data.students.find((item)=>item.id===lesson.studentId);return <button key={lesson.id} onClick={()=>navigate(`/coach/students/${lesson.studentId}/lessons/${lesson.id}`)}><time>{new Date(lesson.startsAt).toLocaleDateString([],{weekday:"short"})}<br/>{new Date(lesson.startsAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"})}</time><i/><div><strong>{student?.preferredName || student?.fullName || "Student"}</strong><small>{lesson.topic} · {lesson.locationLabel}</small></div></button>;})}{!upcoming.length&&<EmptyState title="The next seven days are clear" detail="New lessons appear here as soon as they are booked or verified."/>}</div>
+      </Section>
+      <Section title="Studio attention" aside={<span className="count">{data.recommendations.length}</span>}>
+        <div className="table-list compact-list">{attention.map((item)=><article key={item.id}><Waypoints/><div><strong>{item.title}</strong><small>{item.explanation}</small></div><Status tone={item.urgency>=4?"warn":"neutral"}>{item.urgency>=4?"priority":"review"}</Status><button onClick={()=>navigate(item.reasonCode.includes("note")?"/coach/notes":item.reasonCode.includes("package")?"/coach/finance":item.entityType==="booking"?"/coach/bookings":"/coach/today")}>Open</button></article>)}{!attention.length&&<EmptyState title="The studio is caught up" detail="Cross-studio issues and opportunities appear here."/>}</div>
+      </Section>
+    </div>
   </div>;
 }

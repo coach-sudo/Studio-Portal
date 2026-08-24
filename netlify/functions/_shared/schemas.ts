@@ -11,7 +11,6 @@ export const commandSchema = z.object({
       "note",
       "assignment",
       "material",
-      "reader_request",
     ])
     .optional(),
   entityId: z.string().uuid().optional(),
@@ -44,6 +43,7 @@ export const publicBookingSchema = z
     guardianEmail: z.string().email().optional(),
     timezone: z.string().min(3).max(80),
     occurrenceCount: z.number().int().min(2).max(52).optional(),
+    discountCode: z.string().trim().min(3).max(40).optional(),
     termsAccepted: z.literal(true),
     termsVersion: z.literal("2026-08-20"),
   })

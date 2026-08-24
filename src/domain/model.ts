@@ -33,14 +33,6 @@ export type ActorProfileStatus =
   | "approved"
   | "published"
   | "archived";
-export type ReaderRequestStatus =
-  | "submitted"
-  | "coach_review"
-  | "approved"
-  | "queued"
-  | "sent"
-  | "fulfilled"
-  | "cancelled";
 export type CreditEntryKind =
   | "purchase"
   | "reservation"
@@ -171,6 +163,9 @@ export interface IntegrationImport {
   status: "imported" | "needs_review" | "ignored" | "failed";
   confidence: number;
   matchedBy?: string;
+  verifiedAt?: string;
+  verifiedBy?: UUID;
+  verificationNote?: string;
   payload?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
@@ -286,6 +281,8 @@ export interface Booking extends Versioned {
   paymentStatus: BookingPaymentStatus;
   totalMinor: number;
   paidMinor: number;
+  discountCodeId?: UUID;
+  discountMinor?: number;
   currency: string;
   policySnapshot: BookingPolicy;
   pricingSnapshot?: Record<string, unknown>;
@@ -323,6 +320,16 @@ export interface LessonMessage {
   authorRole: Role;
   body: string;
   createdAt: string;
+}
+export type WhiteboardElement =
+  | { id: UUID; type: "path"; points: { x: number; y: number }[]; color: string; width: number; highlighted?: boolean }
+  | { id: UUID; type: "text"; x: number; y: number; width: number; height: number; text: string; color: string; fontSize: number; fontFamily: string; underline?: boolean; highlighted?: boolean }
+  | { id: UUID; type: "table"; x: number; y: number; width: number; height: number; rows: number; columns: number; cells: string[] }
+  | { id: UUID; type: "pdf"; x: number; y: number; width: number; height: number; materialId: UUID; page?: number };
+export interface LessonWhiteboard extends Versioned {
+  studioId: UUID;
+  lessonId: UUID;
+  document: { version: number; elements: WhiteboardElement[] };
 }
 export interface Note extends Versioned {
   lessonId: UUID;
@@ -386,6 +393,20 @@ export interface PackageDefinition extends Versioned {
   directPurchase: boolean;
   active: boolean;
 }
+export interface DiscountCode extends Versioned {
+  studioId: UUID;
+  code: string;
+  description: string;
+  discountType: "percent" | "fixed";
+  amount: number;
+  currency: string;
+  serviceIds: UUID[];
+  active: boolean;
+  startsAt?: string;
+  endsAt?: string;
+  maxRedemptions?: number;
+  redemptionCount: number;
+}
 export interface StudentPricingRule extends Versioned {
   studioId: UUID;
   studentId: UUID;
@@ -435,13 +456,6 @@ export interface ActorProfile extends Versioned {
     representation?: string;
     accentColor?: string;
   };
-}
-export interface ReaderRequest extends Versioned {
-  studentId: UUID;
-  filmingAt: string;
-  meetingMethod: string;
-  instructions: string;
-  status: ReaderRequestStatus;
 }
 export interface OutboxMessage extends Versioned {
   studentId?: UUID;
@@ -536,7 +550,6 @@ export interface StudioSnapshot {
   creditEntries: CreditEntry[];
   payments: PaymentEntry[];
   actorProfiles: ActorProfile[];
-  readerRequests: ReaderRequest[];
   outbox: OutboxMessage[];
   recommendations: Recommendation[];
   bookingServices: BookingService[];
@@ -547,7 +560,9 @@ export interface StudioSnapshot {
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];
   lessonMessages: LessonMessage[];
+  lessonWhiteboards: LessonWhiteboard[];
   integrationImports: IntegrationImport[];
+  discountCodes: DiscountCode[];
 }
 
 export interface CommandEnvelope<T> {

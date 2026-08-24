@@ -15,12 +15,16 @@ const domains = new Set([
   "work",
   "finance",
   "packages",
+  "credits",
+  "discounts",
+  "whiteboards",
   "actor-pages",
   "outbox",
   "integrations",
   "recommendations",
   "settings",
 ]);
+const sourceLabelServer=(value:string)=>({lessonface:"Lessonface",wyzant:"Wyzant",lessons_com:"Lessons.com",acuity:"Acuity",google_calendar:"Google Calendar",gmail:"Gmail"} as Record<string,string>)[value]||value;
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
   try {
@@ -652,6 +656,12 @@ export default async (request: Request, context: Context) => {
           .eq("id", studentId)
           .single();
       if (studentError || !student) throw new Error("FORBIDDEN");
+      const materialRole = String(input.payload.role || "library");
+      if (materialRole === "current_script") {
+        const { data: currentLinks } = await serviceClient().from("material_links").select("material_id").eq("student_id", student.id).eq("role", "current_script");
+        const currentIds = (currentLinks || []).map((item) => item.material_id);
+        if (currentIds.length) await serviceClient().from("materials").update({ status: "archived", updated_at: new Date().toISOString() }).in("id", currentIds).eq("status", "active");
+      }
       const { data, error } = await serviceClient()
         .from("materials")
         .insert({
@@ -681,7 +691,7 @@ export default async (request: Request, context: Context) => {
           material_id: data.id,
           student_id: student.id,
           lesson_id: input.payload.lessonId || null,
-          role: String(input.payload.role || "library"),
+          role: materialRole,
           visible_to_student: true,
         });
       return json({
@@ -697,6 +707,21 @@ export default async (request: Request, context: Context) => {
         ),
         queuedSideEffects: [],
       });
+    }
+    if (domain === "whiteboards" && input.command === "save" && input.entityId) {
+      const { data: lesson, error: lessonError } = await db.from("lessons").select("id,studio_id,student_id").eq("id", input.entityId).single();
+      if (lessonError || !lesson) throw new Error("FORBIDDEN");
+      const elements = Array.isArray((input.payload.document as any)?.elements) ? (input.payload.document as any).elements : [];
+      if (elements.length > 500) throw new Error("VALIDATION_FAILED: A whiteboard can contain up to 500 items.");
+      const document = { version: 1, elements };
+      const service = serviceClient();
+      const { data: before } = await service.from("lesson_whiteboards").select("*").eq("lesson_id", lesson.id).maybeSingle();
+      if (before && before.version !== input.expectedVersion) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const { data, error } = before
+        ? await service.from("lesson_whiteboards").update({ document, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", before.version).select().single()
+        : await service.from("lesson_whiteboards").insert({ studio_id: lesson.studio_id, lesson_id: lesson.id, document }).select().single();
+      if (error) throw error;
+      return json({ resource: data, recommendations: [], auditEventId: await audit(lesson.studio_id,"lesson_whiteboard",data.id,"lesson_whiteboard.saved",before,data), queuedSideEffects: [] });
     }
     if (
       domain === "materials" &&
@@ -1000,7 +1025,8 @@ export default async (request: Request, context: Context) => {
       });
     }
     if (domain === "integrations" && input.command === "review_import" && input.entityId) {
-      const studioId = await requireCoach(), service = serviceClient();
+      const studioId = await requireCoach(), service = serviceClient(), {data:{user}}=await db.auth.getUser();
+      if(!user)throw new Error("FORBIDDEN");
       const { data: before, error: readError } = await db
         .from("integration_imports")
         .select("*")
@@ -1025,7 +1051,7 @@ export default async (request: Request, context: Context) => {
       if (action === "ignore") {
         const { data, error } = await service
           .from("integration_imports")
-          .update({ status: "ignored", matched_by: "coach review", updated_at: new Date().toISOString() })
+          .update({ status: "ignored", matched_by: "coach review", verified_at: new Date().toISOString(), verified_by: user.id, verification_note: String(input.payload.note || "Ignored by coach"), updated_at: new Date().toISOString() })
           .in("id", importIds)
           .select()
           ;
@@ -1052,15 +1078,25 @@ export default async (request: Request, context: Context) => {
         const { error: mergeError } = await db.rpc("merge_studio_students", {keep_student_id:targetStudentId,remove_student_id:mergeStudentId});
         if (mergeError) throw mergeError;
       }
-      for (const item of imports) if (item.lesson_id) {
-        const { error: lessonError } = await service.from("lessons").update({student_id:targetStudentId,updated_at:new Date().toISOString()}).eq("id",item.lesson_id).eq("studio_id",studioId);
-        if (lessonError) throw lessonError;
-        const { error: participantError } = await service.from("lesson_participants").update({student_id:targetStudentId}).eq("lesson_id",item.lesson_id);
-        if (participantError) throw participantError;
+      for (const item of imports) {
+        let lessonId=item.lesson_id as string|undefined;
+        if (lessonId) {
+          const { error: lessonError } = await service.from("lessons").update({student_id:targetStudentId,updated_at:new Date().toISOString()}).eq("id",lessonId).eq("studio_id",studioId);
+          if (lessonError) throw lessonError;
+          const { error: participantError } = await service.from("lesson_participants").update({student_id:targetStudentId}).eq("lesson_id",lessonId);
+          if (participantError) throw participantError;
+        } else {
+          const candidate=item.payload?.candidate as {startsAt?:string;endsAt?:string;topic?:string;locationLabel?:string;joinUrl?:string}|undefined;
+          if(candidate?.startsAt&&candidate?.endsAt){
+            const created=await service.from("lessons").insert({studio_id:studioId,student_id:targetStudentId,topic:candidate.topic||`${sourceLabelServer(item.detected_source)} lesson`,starts_at:candidate.startsAt,ends_at:candidate.endsAt,status:new Date(candidate.endsAt)<new Date()?"completed":"scheduled",location_type:candidate.joinUrl?"virtual":"in_person",location_label:candidate.locationLabel||(candidate.joinUrl?"Online":"Provider booking"),join_url:candidate.joinUrl||null,meeting_provider:candidate.joinUrl?"google_meet":"in_person",source_provider:item.detected_source||item.provider,source_external_id:item.external_id,source_confidence:1,imported_at:new Date().toISOString()}).select("id").single();if(created.error)throw created.error;lessonId=created.data.id;
+            const {data:targetStudent}=await service.from("students").select("full_name,preferred_name,email").eq("id",targetStudentId).single();await service.from("lesson_participants").insert({lesson_id:lessonId,student_id:targetStudentId,display_name:targetStudent?.preferred_name||targetStudent?.full_name||"Student",email:targetStudent?.email||"",status:"confirmed"});
+            await service.from("integration_imports").update({lesson_id:lessonId}).eq("id",item.id);
+          }
+        }
       }
       const { data, error } = await service
         .from("integration_imports")
-        .update({student_id:targetStudentId,status:"imported",confidence:1,matched_by:"coach confirmation",last_error:null,updated_at:new Date().toISOString()})
+        .update({student_id:targetStudentId,status:"imported",confidence:1,matched_by:"coach confirmation",verified_at:new Date().toISOString(),verified_by:user.id,verification_note:String(input.payload.note||"Student and lesson confirmed"),last_error:null,updated_at:new Date().toISOString()})
         .in("id",importIds)
         .select()
         ;
@@ -1305,6 +1341,26 @@ export default async (request: Request, context: Context) => {
           ? ["stripe_price_created"]
           : [],
       });
+    }
+    if (domain === "credits" && input.command === "grant") {
+      const studioId = await requireCoach(), studentId = String(input.payload.studentId || ""), quantity = Number(input.payload.quantity || 0), reason = String(input.payload.reason || "Coach credit adjustment").trim();
+      if (!studentId || !Number.isInteger(quantity) || quantity === 0 || Math.abs(quantity) > 100 || reason.length < 3) throw new Error("VALIDATION_FAILED: Enter a student, a non-zero credit quantity, and a reason.");
+      const service = serviceClient(), { data: student, error: studentError } = await service.from("students").select("id").eq("id",studentId).eq("studio_id",studioId).single();
+      if (studentError || !student) throw new Error("FORBIDDEN");
+      let { data: pkg } = await service.from("packages").select("id").eq("student_id",studentId).eq("name","Studio lesson credits").maybeSingle();
+      if (!pkg) { const created = await service.from("packages").insert({student_id:studentId,name:"Studio lesson credits",price_minor:0,currency:"USD",credit_quantity:1}).select("id").single(); if(created.error)throw created.error; pkg=created.data; }
+      const { data, error } = await service.from("package_credit_entries").insert({package_id:pkg.id,kind:"adjustment",quantity,reason,idempotency_key:`coach-credit:${input.idempotencyKey}`}).select().single();
+      if (error) throw error;
+      return json({resource:data,recommendations:[],auditEventId:await audit(studioId,"credit",data.id,"credit.granted",null,data),queuedSideEffects:[]});
+    }
+    if (domain === "discounts" && ["create","update","archive"].includes(input.command)) {
+      const studioId=await requireCoach(), service=serviceClient(), payload=input.payload as Record<string,any>;
+      let before:any=null;if(input.command!=="create"){const read=await service.from("discount_codes").select("*").eq("id",input.entityId).eq("studio_id",studioId).single();if(read.error||!read.data)throw new Error("FORBIDDEN");before=read.data;if(before.version!==input.expectedVersion)throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);}
+      if(input.command==="archive"){const updated=await service.from("discount_codes").update({active:false,version:before.version+1,updated_at:new Date().toISOString()}).eq("id",before.id).eq("version",before.version).select().single();if(updated.error)throw updated.error;return json({resource:updated.data,recommendations:[],auditEventId:await audit(studioId,"discount_code",before.id,"discount_code.archived",before,updated.data),queuedSideEffects:[]});}
+      const code=String(payload.code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"");const discountType=payload.discountType==="fixed"?"fixed":"percent",amount=Number(payload.amount||0);if(code.length<3||amount<=0||(discountType==="percent"&&amount>100))throw new Error("VALIDATION_FAILED: Use a 3+ character code and a valid discount amount.");
+      const values={studio_id:studioId,code,description:String(payload.description||""),discount_type:discountType,amount,currency:String(payload.currency||"USD").toUpperCase(),service_ids:Array.isArray(payload.serviceIds)?payload.serviceIds:[],active:payload.active!==false,starts_at:payload.startsAt||null,ends_at:payload.endsAt||null,max_redemptions:payload.maxRedemptions?Number(payload.maxRedemptions):null};
+      const result=input.command==="create"?await service.from("discount_codes").insert(values).select().single():await service.from("discount_codes").update({...values,version:before.version+1,updated_at:new Date().toISOString()}).eq("id",before.id).eq("version",before.version).select().single();if(result.error)throw result.error;
+      return json({resource:result.data,recommendations:[],auditEventId:await audit(studioId,"discount_code",result.data.id,`discount_code.${input.command}d`,before,result.data),queuedSideEffects:[]});
     }
     if (domain === "settings" && input.command === "update") {
       const studioId = await requireCoach(),

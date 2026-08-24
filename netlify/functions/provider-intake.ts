@@ -1,6 +1,7 @@
 import type { Config } from "@netlify/functions";
 import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
+import { zonedDateTimeToUtc } from "./_shared/timezone";
 
 type StudentRow = { id:string; full_name:string; preferred_name?:string|null; email?:string|null; guardian_name?:string|null; guardian_email?:string|null };
 type CalendarEvent = { id:string; status?:string; summary?:string; description?:string; location?:string; hangoutLink?:string; htmlLink?:string; organizer?:{email?:string;self?:boolean}; attendees?:Array<{email?:string;displayName?:string;self?:boolean}>; start?:{dateTime?:string}; end?:{dateTime?:string}; updated?:string };
@@ -20,6 +21,22 @@ function matchStudent(students:StudentRow[], text:string, emails:string[]) {
   const haystack=` ${normalize(text)} `;
   const byName=students.find((student)=>[student.full_name,student.preferred_name,student.guardian_name].filter(Boolean).some((value)=>{const name=normalize(value);return name.length>=4&&haystack.includes(` ${name} `);}));
   return byName?{student:byName,matchedBy:"student or guardian name",confidence:.91}:undefined;
+}
+
+function messageText(message:any){
+  const chunks:string[]=[];const walk=(part:any)=>{if(part?.body?.data){try{chunks.push(Buffer.from(String(part.body.data).replace(/-/g,"+").replace(/_/g,"/"),"base64").toString("utf8"));}catch{}}for(const child of part?.parts||[])walk(child);};walk(message.payload);return [message.snippet,...chunks].filter(Boolean).join("\n").replace(/<[^>]+>/g," ").replace(/&nbsp;|&#160;/gi," ");
+}
+export function gmailCandidate(text:string,headers:Record<string,string>,timeZone:string){
+  const iso=text.match(/20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})/i)?.[0];
+  const natural=text.match(/(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)?,?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}\s+(?:at\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s+(?:EST|EDT|CST|CDT|MST|MDT|PST|PDT))?/i)?.[0];
+  let start=iso?new Date(iso):undefined;
+  if(!start&&natural){
+    const parsed=natural.match(/(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+    if(parsed){const months=["january","february","march","april","may","june","july","august","september","october","november","december"],hour12=Number(parsed[4]),hour=hour12%12+(parsed[6].toLowerCase()==="pm"?12:0);start=zonedDateTimeToUtc({year:Number(parsed[3]),month:months.indexOf(parsed[1].toLowerCase())+1,day:Number(parsed[2]),hour,minute:Number(parsed[5])},timeZone);}
+  }
+  if(!start||Number.isNaN(start.getTime()))return undefined;
+  const duration=Number(text.match(/(30|45|60|75|90|120)\s*(?:minutes?|mins?)\b/i)?.[1]||60),joinUrl=text.match(/https:\/\/(?:meet\.google\.com|lessonface\.com|www\.lessonface\.com|zoom\.us)\/[^\s"'<>]+/i)?.[0];
+  return {startsAt:start.toISOString(),endsAt:new Date(start.getTime()+duration*60000).toISOString(),topic:headers.subject||"Imported lesson",locationLabel:joinUrl?/lessonface/i.test(joinUrl)?"Lessonface":"Online":"Provider booking",joinUrl,timeZone};
 }
 
 async function importCalendar(token:string, studio:any, students:StudentRow[]) {
@@ -53,14 +70,25 @@ async function importCalendar(token:string, studio:any, students:StudentRow[]) {
 }
 
 async function scanGmail(token:string,studio:any,students:StudentRow[]){
-  const db=serviceClient(),query=encodeURIComponent('newer_than:45d {lessonface wyzant "lessons.com" acuity "squarespace scheduling"}'),list=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=100`,{headers:{Authorization:`Bearer ${token}`}}),payload=await list.json() as {messages?:Array<{id:string}>;error?:any};
-  if(!list.ok){await db.from("recommendations").upsert({studio_id:studio.id,entity_type:"integration",reason_code:"gmail_read_scope_required",title:"Reconnect Google to import booking emails",explanation:"Sending email works, but smart booking intake also needs read-only Gmail permission.",evidence:[payload.error?.message||"Gmail read unavailable"],urgency:3,suggested_action:"open_integrations",requires_confirmation:false,status:"open",dedupe_key:`studio:${studio.id}:gmail-read`},{onConflict:"dedupe_key"});return {review:0,scope:false};}
-  let review=0;
-  for(const item of payload.messages||[]){const {data:prior}=await db.from("integration_imports").select("id").eq("studio_id",studio.id).eq("provider","gmail").eq("external_id",item.id).maybeSingle();if(prior)continue;const response=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=metadata&metadataHeaders=Subject&metadataHeaders=From&metadataHeaders=To&metadataHeaders=Date`,{headers:{Authorization:`Bearer ${token}`}}),message=await response.json() as any;if(!response.ok)continue;const headers=Object.fromEntries((message.payload?.headers||[]).map((header:any)=>[String(header.name).toLowerCase(),header.value])),text=[headers.subject,headers.from,message.snippet].filter(Boolean).join(" "),detected=provider(text);if(!detected)continue;const emails=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]),match=matchStudent(eligibleStudents(studio,students),text,emails);await db.from("integration_imports").upsert({studio_id:studio.id,provider:"gmail",external_id:item.id,detected_source:detected,student_id:match?.student.id||null,status:"needs_review",confidence:match?.confidence||.65,matched_by:match?.matchedBy||null,payload:{headers,snippet:message.snippet,threadId:message.threadId},updated_at:new Date().toISOString()},{onConflict:"studio_id,provider,external_id"});review++;}
+  const db=serviceClient(),query=encodeURIComponent('newer_than:90d {lessonface wyzant "lessons.com" acuity "squarespace scheduling"}'),list=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=200`,{headers:{Authorization:`Bearer ${token}`}}),payload=await list.json() as {messages?:Array<{id:string}>;error?:any};
+  if(!list.ok){await db.from("recommendations").upsert({studio_id:studio.id,entity_type:"integration",reason_code:"gmail_read_scope_required",title:"Reconnect Google to import booking emails",explanation:"Sending email works, but smart booking intake also needs read-only Gmail permission.",evidence:[payload.error?.message||"Gmail read unavailable"],urgency:3,suggested_action:"open_integrations",requires_confirmation:false,status:"open",dedupe_key:`studio:${studio.id}:gmail-read`},{onConflict:"dedupe_key"});return {review:0,imported:0,scope:false};}
+  let review=0,imported=0;
+  for(const item of payload.messages||[]){
+    const response=await fetch(`https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=full`,{headers:{Authorization:`Bearer ${token}`}}),message=await response.json() as any;if(!response.ok)continue;
+    const headers=Object.fromEntries((message.payload?.headers||[]).map((header:any)=>[String(header.name).toLowerCase(),header.value])),body=messageText(message),text=[headers.subject,headers.from,headers.to,body].filter(Boolean).join(" "),detected=provider(text);if(!detected)continue;
+    const emails=(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]).filter((value:string)=>!coachEmailKeys(studio).includes(normalize(value))),match=matchStudent(eligibleStudents(studio,students),text,emails),candidate=gmailCandidate(body,headers,studio.timezone||"America/New_York");
+    const {data:prior}=await db.from("integration_imports").select("id,lesson_id,status").eq("studio_id",studio.id).eq("provider","gmail").eq("external_id",item.id).maybeSingle();if(prior?.status==="imported"&&prior.lesson_id)continue;
+    let lessonId=prior?.lesson_id as string|undefined;
+    if(match&&candidate&&!lessonId){
+      const {data:existing}=await db.from("lessons").select("id,starts_at").eq("studio_id",studio.id).eq("student_id",match.student.id).gte("starts_at",new Date(new Date(candidate.startsAt).getTime()-15*60000).toISOString()).lte("starts_at",new Date(new Date(candidate.startsAt).getTime()+15*60000).toISOString()).limit(1).maybeSingle();
+      if(existing)lessonId=existing.id;else{const created=await db.from("lessons").insert({studio_id:studio.id,student_id:match.student.id,topic:candidate.topic,starts_at:candidate.startsAt,ends_at:candidate.endsAt,status:new Date(candidate.endsAt)<new Date()?"completed":"scheduled",location_type:candidate.joinUrl?"virtual":"in_person",location_label:candidate.locationLabel,join_url:candidate.joinUrl||null,meeting_provider:candidate.joinUrl?"google_meet":"in_person",source_provider:detected,source_external_id:item.id,source_confidence:match.confidence,imported_at:new Date().toISOString()}).select("id").single();if(!created.error&&created.data){lessonId=created.data.id;await db.from("lesson_participants").insert({lesson_id:lessonId,student_id:match.student.id,display_name:match.student.preferred_name||match.student.full_name,email:match.student.email||emails[0]||"",status:"confirmed"});}}
+    }
+    const status=lessonId?"imported":"needs_review";await db.from("integration_imports").upsert({studio_id:studio.id,provider:"gmail",external_id:item.id,detected_source:detected,student_id:match?.student.id||null,lesson_id:lessonId||null,status,confidence:match?.confidence||.65,matched_by:lessonId?`${match?.matchedBy||"provider message"}; Gmail lesson parsed`:match?.matchedBy||null,payload:{headers,snippet:message.snippet,threadId:message.threadId,candidate},updated_at:new Date().toISOString()},{onConflict:"studio_id,provider,external_id"});if(lessonId)imported++;else review++;
+  }
   await db.from("recommendations").update({status:"resolved",updated_at:new Date().toISOString()}).eq("dedupe_key",`studio:${studio.id}:gmail-read`);
-  return {review,scope:true};
+  return {review,imported,scope:true};
 }
 
-export async function runProviderIntake(){const db=serviceClient(),{data:studios,error}=await db.from("studios").select("id,settings");if(error)throw error;const token=await googleAccessToken();let calendarImported=0,calendarReview=0,gmailReview=0,gmailScope=true;for(const studio of studios||[]){const {data:students}=await db.from("students").select("id,full_name,preferred_name,email,guardian_name,guardian_email").eq("studio_id",studio.id);const calendar=await importCalendar(token,studio,students||[]);calendarImported+=calendar.imported;calendarReview+=calendar.review;const gmail=await scanGmail(token,studio,students||[]);gmailReview+=gmail.review;gmailScope=gmailScope&&gmail.scope;}return {ok:true,calendarImported,calendarReview,gmailReview,gmailScope};}
+export async function runProviderIntake(){const db=serviceClient(),{data:studios,error}=await db.from("studios").select("id,settings,timezone");if(error)throw error;const token=await googleAccessToken();let calendarImported=0,calendarReview=0,gmailImported=0,gmailReview=0,gmailScope=true;for(const studio of studios||[]){const {data:students}=await db.from("students").select("id,full_name,preferred_name,email,guardian_name,guardian_email").eq("studio_id",studio.id);const calendar=await importCalendar(token,studio,students||[]);calendarImported+=calendar.imported;calendarReview+=calendar.review;const gmail=await scanGmail(token,studio,students||[]);gmailImported+=gmail.imported;gmailReview+=gmail.review;gmailScope=gmailScope&&gmail.scope;}return {ok:true,calendarImported,calendarReview,gmailImported,gmailReview,gmailScope};}
 export default async()=>Response.json(await runProviderIntake());
 export const config:Config={schedule:"*/10 * * * *"};

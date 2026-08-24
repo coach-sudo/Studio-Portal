@@ -1,4 +1,4 @@
-import type { ActorProfileStatus, AssignmentStatus, LessonStatus, MaterialStatus, NoteStatus, ReaderRequestStatus, StudentStatus } from "./model";
+import type { ActorProfileStatus, AssignmentStatus, LessonStatus, MaterialStatus, NoteStatus, StudentStatus } from "./model";
 
 const transitions = {
   student: { lead: ["active", "inactive"], active: ["paused", "alumni", "inactive"], paused: ["active", "alumni", "inactive"], alumni: ["active"], inactive: ["lead", "active"] },
@@ -7,10 +7,9 @@ const transitions = {
   assignment: { assigned: ["in_progress", "completed"], in_progress: ["completed", "reopened"], completed: ["reopened"], reopened: ["in_progress", "completed"] },
   material: { active: ["vaulted", "archived"], vaulted: ["active", "archived"], archived: [] },
   actorProfile: { draft: ["review_requested", "archived"], review_requested: ["changes_requested", "approved", "draft"], changes_requested: ["review_requested", "draft"], approved: ["published", "draft"], published: ["draft", "archived"], archived: ["draft"] },
-  readerRequest: { submitted: ["coach_review", "cancelled"], coach_review: ["approved", "cancelled"], approved: ["queued", "cancelled"], queued: ["sent", "cancelled"], sent: ["fulfilled", "cancelled"], fulfilled: [], cancelled: [] },
 } as const;
 
-type StateByMachine = { student: StudentStatus; lesson: LessonStatus; note: NoteStatus; assignment: AssignmentStatus; material: MaterialStatus; actorProfile: ActorProfileStatus; readerRequest: ReaderRequestStatus };
+type StateByMachine = { student: StudentStatus; lesson: LessonStatus; note: NoteStatus; assignment: AssignmentStatus; material: MaterialStatus; actorProfile: ActorProfileStatus };
 
 export function canTransition<K extends keyof StateByMachine>(machine: K, from: StateByMachine[K], to: StateByMachine[K]) {
   const machineTransitions = transitions[machine] as Record<string, readonly string[]>;

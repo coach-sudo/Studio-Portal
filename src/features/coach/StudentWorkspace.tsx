@@ -51,6 +51,7 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
+import { LessonWhiteboardBoard } from "../../components/LessonWhiteboard";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -70,9 +71,9 @@ export function StudentWorkspace() {
   const [settingCredentials, setSettingCredentials] = useState(false);
   const student = data?.students.find((item) => item.id === studentId);
   if (!data) return <div className="loading">Opening student record…</div>;
-  if (!student) return <Navigate to="/students" replace />;
+  if (!student) return <Navigate to="/coach/students" replace />;
 
-  const base = `/students/${student.id}`;
+  const base = `/coach/students/${student.id}`;
   const studentLessons = data.lessons
     .filter((item) =>
       item.studentId === student.id ||
@@ -112,26 +113,7 @@ export function StudentWorkspace() {
           payload: updates as Record<string, unknown>,
           reason: "Coach updated student record",
         });
-        queryClient.setQueryData<StudioSnapshot>(
-          ["studio", "coach", undefined],
-          (current) =>
-            current
-              ? {
-                  ...current,
-                  students: current.students.map((item) =>
-                    item.id === student.id
-                      ? {
-                          ...item,
-                          ...updates,
-                          version: item.version + 1,
-                          updatedAt: now(),
-                        }
-                      : item,
-                  ),
-                }
-              : current,
-        );
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
       setNotice("Student details saved.");
@@ -349,7 +331,7 @@ export function StudentWorkspace() {
   return (
     <div className="page student-record-page">
       <header className="student-record-header">
-        <button className="back-button" onClick={() => navigate("/students")}>
+        <button className="back-button" onClick={() => navigate("/coach/students")}>
           <ArrowLeft />
           Students
         </button>
@@ -428,7 +410,7 @@ export function StudentWorkspace() {
         />
         <Route
           path="lessons/:lessonId"
-          element={<CoachLessonHub data={data} student={student} />}
+          element={<CoachLessonHub data={data} student={student} isDemo={isDemo} />}
         />
         <Route
           path="work"
@@ -551,7 +533,7 @@ function Overview({
                   : "Nothing scheduled"
               }
               detail={upcoming?.topic || "Add a lesson when ready"}
-              link={`${`/students/${student.id}/lessons`}`}
+              link={`${`/coach/students/${student.id}/lessons`}`}
             />
             <RecordCard
               icon={FileText}
@@ -560,14 +542,14 @@ function Overview({
               detail={
                 current?.category || "Add the material they are working on"
               }
-              link={`/students/${student.id}/work`}
+              link={`/coach/students/${student.id}/work`}
             />
             <RecordCard
               icon={CheckSquare}
               label="Practice"
               value={assignment?.title || "Caught up"}
               detail={assignment?.details || "No open assignment"}
-              link={`/students/${student.id}/work`}
+              link={`/coach/students/${student.id}/work`}
             />
             <RecordCard
               icon={CircleDollarSign}
@@ -578,7 +560,7 @@ function Overview({
                   : "Pay as you go"
               }
               detail={`Balance ${formatMoney(Math.max(0, studentBalanceMinor(student.id, data.payments)))}`}
-              link={`/students/${student.id}/payments`}
+              link={`/coach/students/${student.id}/payments`}
             />
           </div>
         </Section>
@@ -680,7 +662,7 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
     <Section title="Lesson history" marked>
       <div className="table-list">
         {lessons.map((lesson) => (
-          <Link className="student-roster-row" key={lesson.id} to={`/students/${student.id}/lessons/${lesson.id}`}>
+          <Link className="student-roster-row" key={lesson.id} to={`/coach/students/${student.id}/lessons/${lesson.id}`}>
             <CalendarDays />
             <div>
               <strong>{lesson.topic}</strong>
@@ -713,14 +695,15 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
     </Section>
   );
 }
-function CoachLessonHub({ data, student }: { data: Data; student: Student }) {
+function CoachLessonHub({ data, student, isDemo }: { data: Data; student: Student; isDemo: boolean }) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
+  const store = useStudioStore();
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
-  if (!lesson) return <Navigate to={`/students/${student.id}/lessons`} replace />;
+  if (!lesson) return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
   const assignments = data.assignments.filter((item) => item.lessonId === lesson.id);
   const materials = data.materials.filter((item) => item.lessonId === lesson.id);
@@ -747,12 +730,13 @@ function CoachLessonHub({ data, student }: { data: Data; student: Student }) {
   };
   return (
     <div>
-      <Link className="back-button" to={`/students/${student.id}/lessons`}><ArrowLeft /> Lesson history</Link>
+      <Link className="back-button" to={`/coach/students/${student.id}/lessons`}><ArrowLeft /> Lesson history</Link>
       <Section title={lesson.topic} marked>
         <p className="section-intro">{new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel} · {lesson.status}</p>
         {lesson.joinUrl && <a className="button-link" href={lesson.joinUrl} target="_blank" rel="noreferrer">Open Google Meet</a>}
       </Section>
       {notice && <p className="portal-notice" role="status">{notice}</p>}
+      <LessonWhiteboardBoard data={data} lesson={lesson} student={student} isDemo={isDemo} onDemoChange={(board)=>store.transact((draft)=>{const current=draft.lessonWhiteboards.find((item)=>item.lessonId===lesson.id);if(current)Object.assign(current,board);else draft.lessonWhiteboards.push(board);})}/>
       <div className="lesson-hub-grid">
         <Section title="Notes"><div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></header><div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml || note.body) }} /></article>)}{!notes.length && <EmptyState title="No lesson notes" detail="Use the Notes tab to add one for this lesson." />}</div></Section>
         <Section title="Practice"><div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}</small></div><Status tone={item.helpRequested ? "warn" : "neutral"}>{item.helpRequested ? "help requested" : item.status.replaceAll("_", " ")}</Status></article>)}{!assignments.length && <EmptyState title="No linked practice" detail="Use Current work to assign practice to this lesson." />}</div></Section>
@@ -1065,7 +1049,11 @@ function Payments({
     [definitionId, setDefinitionId] = useState(
       data.packageDefinitions.find((item) => item.active)?.id ?? "",
     ),
+    [crediting, setCrediting] = useState(false),
+    [creditQuantity, setCreditQuantity] = useState(1),
+    [creditReason, setCreditReason] = useState("Courtesy lesson credit"),
     [notice, setNotice] = useState("");
+  const grantCredit = async (event: FormEvent) => { event.preventDefault(); try { if(isDemo){store.transact((draft)=>{let pkg=draft.packages.find((item)=>item.studentId===student.id&&item.name==="Studio lesson credits");if(!pkg){pkg={id:uid("package"),studentId:student.id,name:"Studio lesson credits",priceMinor:0,currency:"USD",version:1,updatedAt:now()};draft.packages.push(pkg);}draft.creditEntries.push({id:uid("credit"),packageId:pkg.id,kind:"adjustment",quantity:creditQuantity,reason:creditReason,createdAt:now()});});}else{await studioCommand("credits",{command:"grant",expectedVersion:0,payload:{studentId:student.id,quantity:creditQuantity,reason:creditReason},reason:"Coach adjusted student credits"});await queryClient.invalidateQueries({queryKey:["studio"]});}setCrediting(false);setNotice(`${creditQuantity>0?"Added":"Removed"} ${Math.abs(creditQuantity)} lesson credit${Math.abs(creditQuantity)===1?"":"s"}.`);}catch(reason){setNotice(reason instanceof Error?reason.message:"Credits could not be updated.");} };
   const assign = async (event: FormEvent) => {
     event.preventDefault();
     const definition = data.packageDefinitions.find(
@@ -1134,12 +1122,7 @@ function Payments({
           title="Packages"
           marked
           aside={
-            <button
-              disabled={!data.packageDefinitions.some((item) => item.active)}
-              onClick={() => setAssigning(true)}
-            >
-              Assign package
-            </button>
+            <div className="header-actions"><button onClick={() => setCrediting(true)}>Adjust credits</button><button disabled={!data.packageDefinitions.some((item) => item.active)} onClick={() => setAssigning(true)}>Assign package</button></div>
           }
         >
           <div className="table-list">
@@ -1217,6 +1200,7 @@ function Payments({
           </form>
         </Dialog>
       )}
+      {crediting && <Dialog title="Adjust lesson credits" description={`Add or remove credits for ${student.preferredName||student.fullName}. Every adjustment is recorded in the ledger.`} onClose={()=>setCrediting(false)}><form className="workflow-form" onSubmit={grantCredit}><label>Credits<input required type="number" min="-100" max="100" step="1" value={creditQuantity} onChange={event=>setCreditQuantity(Number(event.target.value))}/><small>Use a negative number to correct a balance.</small></label><label className="full">Reason<input required minLength={3} value={creditReason} onChange={event=>setCreditReason(event.target.value)}/></label><div className="form-actions full"><button type="button" onClick={()=>setCrediting(false)}>Cancel</button><button className="primary" disabled={!creditQuantity||creditReason.trim().length<3}>Save credit adjustment</button></div></form></Dialog>}
     </div>
   );
 }
@@ -1282,7 +1266,7 @@ function ActorPage({
           <Status tone={profile.status === "published" ? "good" : "warn"}>
             {profile.status.replaceAll("_", " ")}
           </Status>
-          <Link to="/actor-pages">Open publishing workflow</Link>
+          <Link to="/coach/actor-pages">Open publishing workflow</Link>
           {profile.status === "published" && (
             <a href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">
               View live page
@@ -1330,13 +1314,37 @@ function StudentEditor({
   onSave: (u: Partial<Student>) => void;
 }) {
   const [form, setForm] = useState({
-    ...student,
+    fullName: student.fullName,
+    preferredName: student.preferredName || "",
+    email: student.email || "",
+    phone: student.phone || "",
+    isMinor: student.isMinor,
+    guardianName: student.guardianName || "",
+    guardianEmail: student.guardianEmail || "",
+    status: student.status,
+    focusArea: student.focusArea || "",
+    goals: student.goals || "",
+    privateNotes: student.privateNotes || "",
+    leadSource: student.leadSource || "",
+    driveFolderUrl: student.driveFolderUrl || "",
     tagsText: student.tags?.join(", ") || "",
   });
   const submit = (e: FormEvent) => {
     e.preventDefault();
     onSave({
-      ...form,
+      fullName: form.fullName.trim(),
+      preferredName: form.preferredName.trim(),
+      email: form.email.trim(),
+      phone: form.phone.trim(),
+      isMinor: form.isMinor,
+      guardianName: form.isMinor ? form.guardianName.trim() : "",
+      guardianEmail: form.isMinor ? form.guardianEmail.trim() : "",
+      status: form.status,
+      focusArea: form.focusArea.trim(),
+      goals: form.goals.trim(),
+      privateNotes: form.privateNotes.trim(),
+      leadSource: form.leadSource.trim(),
+      driveFolderUrl: form.driveFolderUrl.trim(),
       tags: form.tagsText
         .split(",")
         .map((i) => i.trim())

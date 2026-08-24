@@ -26,6 +26,7 @@ import {
 } from "../../domain/finance";
 import type {
   ActorProfileStatus,
+  DiscountCode,
   IntegrationImport,
   Lesson,
   PackageDefinition,
@@ -43,13 +44,15 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
     navigate = useNavigate(),
     [notice, setNotice] = useState(""),
     [reviewing, setReviewing] = useState<IntegrationImport>();
+  const today = new Date().toDateString();
   const lessons = data.lessons
-    .filter((i) => i.status === "scheduled")
+    .filter((i) => i.status === "scheduled" && new Date(i.startsAt).toDateString() === today)
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const noteFollowups = data.lessons.filter((lesson) => {
     const ended = new Date(lesson.endsAt).getTime();
     return ended <= Date.now() && !["cancelled", "late_cancelled"].includes(lesson.status) && !data.notes.some((note) => note.lessonId === lesson.id && note.status === "published");
   }).sort((a, b) => a.endsAt.localeCompare(b.endsAt));
+  const notePage = usePagedList(noteFollowups);
   const reviewGroups = Object.values(
     data.integrationImports
       .filter((item) => item.status === "needs_review")
@@ -59,6 +62,7 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
         return groups;
       }, {}),
   );
+  const importPage = usePagedList(reviewGroups);
   const complete = async (lesson: Lesson) => {
     try {
       if (isDemo) store.transact((draft) => {
@@ -81,14 +85,7 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
   };
   return (
     <>
-    <Section title="Notes due within 48 hours" marked>
-      <div className="workflow-list">
-        {noteFollowups.map((lesson) => { const due = new Date(new Date(lesson.endsAt).getTime() + 48 * 60 * 60 * 1000), remaining = due.getTime() - Date.now(); return <article key={`note-${lesson.id}`}><FileText /><div><strong>{studentName(data, lesson.studentId)} · {lesson.topic}</strong><small>{remaining > 0 ? `${Math.max(1, Math.ceil(remaining / 3_600_000))} hours remaining` : `Overdue since ${due.toLocaleString()}`}</small></div><Status tone={remaining <= 0 ? "danger" : remaining < 12 * 3_600_000 ? "warn" : "neutral"}>{remaining <= 0 ? "overdue" : "due"}</Status><button onClick={() => navigate(`/students/${lesson.studentId}/notes`)}>Write note</button></article>; })}
-        {!noteFollowups.length && <EmptyState title="Lesson notes are caught up" detail="A reminder appears here after each lesson and remains until a note is published." />}
-      </div>
-    </Section>
-    {reviewGroups.length > 0 && <Section title="Imported booking signals"><p className="section-intro">Confirm the student, link an existing record, merge a duplicate, or ignore the signal. Recurring matches are grouped so one decision handles the series.</p><div className="table-list">{reviewGroups.slice(0,10).map((group) => {const item=group[0];return <article key={item.id}><CalendarDays /><div><strong>{sourceLabel(item.detectedSource)} booking signal{group.length>1?` · ${group.length} occurrences`:""}</strong><small>{importSummary(item)} · {item.studentId ? `${studentName(data,item.studentId)} · ` : "Unmatched · "}{Math.round(item.confidence*100)}% match{item.matchedBy ? ` by ${item.matchedBy}` : ""}</small></div><Status tone="warn">review</Status><button onClick={() => setReviewing(item)}>Review</button></article>;})}</div></Section>}
-    <Section title="Teaching flow" marked>
+    <Section title="Today’s teaching flow" marked>
       {notice && <p className="portal-notice">{notice}</p>}
       <div className="workflow-list">
         {lessons.map((lesson, index) => (
@@ -109,12 +106,20 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
         ))}
         {!lessons.length && (
           <EmptyState
-            title="The day is clear"
-            detail="New scheduled lessons appear here in order."
+            title="The rest of today is clear"
+            detail="Only today’s scheduled lessons appear here. Use Home for the week ahead."
           />
         )}
       </div>
     </Section>
+    <Section title="Notes due within 48 hours" marked>
+      <div className="workflow-list">
+        {notePage.visible.map((lesson) => { const due = new Date(new Date(lesson.endsAt).getTime() + 48 * 60 * 60 * 1000), remaining = due.getTime() - Date.now(); return <article key={`note-${lesson.id}`}><FileText /><div><strong>{studentName(data, lesson.studentId)} · {lesson.topic}</strong><small>{remaining > 0 ? `${Math.max(1, Math.ceil(remaining / 3_600_000))} hours remaining` : `Overdue since ${due.toLocaleString()}`}</small></div><Status tone={remaining <= 0 ? "danger" : remaining < 12 * 3_600_000 ? "warn" : "neutral"}>{remaining <= 0 ? "overdue" : "due"}</Status><button onClick={() => navigate(`/coach/students/${lesson.studentId}/notes`)}>Write note</button></article>; })}
+        {!noteFollowups.length && <EmptyState title="Lesson notes are caught up" detail="A reminder appears here after each lesson and remains until a note is published." />}
+      </div>
+      {noteFollowups.length > 0 && <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="note follow-ups" />}
+    </Section>
+    {reviewGroups.length > 0 && <div id="verification"><Section title="Verify imported lessons"><p className="section-intro">These are provider signals waiting for one clear decision. Confirming links the lesson to the student profile; matching series can be handled together.</p><div className="table-list">{importPage.visible.map((group) => {const item=group[0];return <article key={item.id}><CalendarDays /><div><strong>{sourceLabel(item.detectedSource)}{group.length>1?` · ${group.length} matching lessons`:" lesson"}</strong><small>{importSummary(item)} · {item.studentId ? `suggested: ${studentName(data,item.studentId)} · ` : "student not matched · "}{Math.round(item.confidence*100)}% confidence{item.matchedBy ? ` by ${item.matchedBy}` : ""}</small></div><Status tone="warn">needs decision</Status><button onClick={() => setReviewing(item)}>Verify</button></article>;})}</div><ListControls page={importPage.page} pageCount={importPage.pageCount} pageSize={importPage.pageSize} total={importPage.total} onPage={importPage.setPage} onPageSize={importPage.setPageSize} label="import groups" /></Section></div>}
     {reviewing && <ImportReviewDialog item={reviewing} similarCount={reviewGroups.find((group)=>group.some((entry)=>entry.id===reviewing.id))?.length||1} data={data} onClose={() => setReviewing(undefined)} onReviewed={reviewed} />}
     </>
   );
@@ -138,10 +143,10 @@ function importEmail(item: IntegrationImport, data: StudioSnapshot) {
 }
 
 function ImportReviewDialog({ item, similarCount, data, onClose, onReviewed }: { item: IntegrationImport; similarCount:number; data: StudioSnapshot; onClose:()=>void; onReviewed:()=>Promise<void> }) {
-  const [mode,setMode]=useState<"existing"|"create">(item.studentId?"existing":"create"), [studentId,setStudentId]=useState(item.studentId||""), [name,setName]=useState(""), [email,setEmail]=useState(importEmail(item,data)), [merge,setMerge]=useState(false), [saving,setSaving]=useState(false), [error,setError]=useState("");
-  const submit=async(event:FormEvent)=>{event.preventDefault();if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:mode,applySimilar:similarCount>1,studentId:mode==="existing"?studentId:undefined,fullName:mode==="create"?name:undefined,email:mode==="create"?email:undefined,mergeStudentId:merge&&item.studentId&&item.studentId!==studentId?item.studentId:undefined},reason:"Coach reviewed provider booking signal"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The booking signal could not be saved.");}finally{setSaving(false);}};
-  const ignore=async()=>{if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:"ignore",applySimilar:similarCount>1},reason:"Coach ignored provider booking signal"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The booking signal could not be ignored.");}finally{setSaving(false);}};
-  return <Dialog title="Review booking signal" description={`${sourceLabel(item.detectedSource)} · ${importSummary(item)}${similarCount>1?` · ${similarCount} matching occurrences`:""}`} onClose={onClose}><form className="workflow-form" onSubmit={submit}>{error&&<p className="inline-error" role="alert">{error}</p>}<div className="settings-list full"><button type="button" role="switch" aria-checked={mode==="existing"} className={`setting-toggle toggle-button ${mode==="existing"?"on":""}`} onClick={()=>setMode("existing")}><span><strong>Link an existing student</strong><small>Use one current record and avoid a duplicate.</small></span><i aria-hidden="true"><b /></i></button><button type="button" role="switch" aria-checked={mode==="create"} className={`setting-toggle toggle-button ${mode==="create"?"on":""}`} onClick={()=>setMode("create")}><span><strong>Create an interested student</strong><small>Save a new lead from this provider signal.</small></span><i aria-hidden="true"><b /></i></button></div>{mode==="existing"?<><label className="full">Student<select required value={studentId} onChange={event=>{setStudentId(event.target.value);setMerge(false);}}><option value="">Choose a student</option>{[...data.students].sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(student=><option key={student.id} value={student.id}>{student.fullName} · {student.email||student.guardianEmail||"no email"}</option>)}</select></label>{item.studentId&&studentId&&item.studentId!==studentId&&<label className="check-row full"><input type="checkbox" checked={merge} onChange={event=>setMerge(event.target.checked)}/><span><strong>Merge {studentName(data,item.studentId)} into this record</strong><small>Lessons, notes, materials, payments, relationships, and portal access move to the selected student.</small></span></label>}</>:<><label>Full name<input required autoFocus value={name} onChange={event=>setName(event.target.value)}/></label><label>Email<input type="email" value={email} onChange={event=>setEmail(event.target.value)}/></label></>}<div className="form-actions full"><button type="button" disabled={saving} onClick={()=>void ignore()}>Ignore{similarCount>1?` ${similarCount} signals`:" signal"}</button><button type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="primary" disabled={saving}>{saving?"Saving…":mode==="create"?`Create & confirm${similarCount>1?` ${similarCount}`:""}`:`Link & confirm${similarCount>1?` ${similarCount}`:""}`}</button></div></form></Dialog>;
+  const candidate=(item.payload?.candidate||{}) as {startsAt?:string;endsAt?:string;locationLabel?:string}, [mode,setMode]=useState<"existing"|"create">(item.studentId?"existing":"create"), [studentId,setStudentId]=useState(item.studentId||""), [name,setName]=useState(""), [email,setEmail]=useState(importEmail(item,data)), [merge,setMerge]=useState(false), [note,setNote]=useState(""), [saving,setSaving]=useState(false), [error,setError]=useState("");
+  const submit=async(event:FormEvent)=>{event.preventDefault();if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:mode,applySimilar:similarCount>1,studentId:mode==="existing"?studentId:undefined,fullName:mode==="create"?name:undefined,email:mode==="create"?email:undefined,mergeStudentId:merge&&item.studentId&&item.studentId!==studentId?item.studentId:undefined,note},reason:"Coach reviewed provider lesson"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The lesson could not be verified.");}finally{setSaving(false);}};
+  const ignore=async()=>{if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:"ignore",applySimilar:similarCount>1,note},reason:"Coach ignored provider lesson"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The provider item could not be ignored.");}finally{setSaving(false);}};
+  return <Dialog title="Verify imported lesson" description={`${sourceLabel(item.detectedSource)} · ${importSummary(item)}${similarCount>1?` · ${similarCount} matching occurrences`:""}`} onClose={onClose}><form className="workflow-form" onSubmit={submit}>{error&&<p className="inline-error" role="alert">{error}</p>}{candidate.startsAt&&<div className="import-evidence full"><strong>Lesson detected</strong><span>{new Date(candidate.startsAt).toLocaleString()} – {candidate.endsAt?new Date(candidate.endsAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"end time unavailable"}</span><small>{candidate.locationLabel||"Provider booking"}. Confirming creates or links this lesson in the selected student profile.</small></div>}<div className="settings-list full"><button type="button" role="switch" aria-checked={mode==="existing"} className={`setting-toggle toggle-button ${mode==="existing"?"on":""}`} onClick={()=>setMode("existing")}><span><strong>Link an existing student</strong><small>Use one current record and avoid a duplicate.</small></span><i aria-hidden="true"><b /></i></button><button type="button" role="switch" aria-checked={mode==="create"} className={`setting-toggle toggle-button ${mode==="create"?"on":""}`} onClick={()=>setMode("create")}><span><strong>Create an interested student</strong><small>Save a new lead from this provider signal.</small></span><i aria-hidden="true"><b /></i></button></div>{mode==="existing"?<><label className="full">Student<select required value={studentId} onChange={event=>{setStudentId(event.target.value);setMerge(false);}}><option value="">Choose a student</option>{[...data.students].sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(student=><option key={student.id} value={student.id}>{student.fullName} · {student.email||student.guardianEmail||"no email"}</option>)}</select></label>{item.studentId&&studentId&&item.studentId!==studentId&&<label className="check-row full"><input type="checkbox" checked={merge} onChange={event=>setMerge(event.target.checked)}/><span><strong>Merge {studentName(data,item.studentId)} into this record</strong><small>Lessons, notes, materials, payments, relationships, and portal access move to the selected student.</small></span></label>}</>:<><label>Full name<input required autoFocus value={name} onChange={event=>setName(event.target.value)}/></label><label>Email<input type="email" value={email} onChange={event=>setEmail(event.target.value)}/></label></>}<label className="full">Verification note (optional)<input value={note} onChange={event=>setNote(event.target.value)} placeholder="What you checked or corrected"/></label><div className="form-actions full"><button type="button" disabled={saving} onClick={()=>void ignore()}>Ignore{similarCount>1?` ${similarCount} signals`:" signal"}</button><button type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="primary" disabled={saving}>{saving?"Saving…":mode==="create"?`Create & attach lesson${similarCount>1?`s (${similarCount})`:""}`:`Confirm student & lesson${similarCount>1?`s (${similarCount})`:""}`}</button></div></form></Dialog>;
 }
 export function LessonsView({ data, isDemo }: { data: StudioSnapshot; isDemo: boolean }) {
   const navigate = useNavigate(),
@@ -239,7 +244,7 @@ export function LessonsView({ data, isDemo }: { data: StudioSnapshot; isDemo: bo
             <button
               className="text-button"
               onClick={() =>
-                navigate(`/students/${selected.studentId}/lessons`)
+                navigate(`/coach/students/${selected.studentId}/lessons`)
               }
             >
               Open full student lesson history
@@ -308,7 +313,7 @@ export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDe
                 {note.status}
               </Status>
               <button
-                onClick={() => navigate(`/students/${note.studentId}/notes`)}
+                onClick={() => navigate(`/coach/students/${note.studentId}/notes`)}
               >
                 Open
               </button>
@@ -422,7 +427,7 @@ export function MaterialsView({
               {item.status}
             </Status>
             <button
-              onClick={() => navigate(`/students/${item.studentId}/work`)}
+              onClick={() => navigate(`/coach/students/${item.studentId}/work`)}
             >
               Student
             </button>
@@ -458,7 +463,9 @@ export function FinanceView({
     store = useStudioStore(),
     queryClient = useQueryClient(),
     [dialog, setDialog] = useState<PackageDefinition | "new">(),
+    [discountDialog, setDiscountDialog] = useState<DiscountCode | "new">(),
     [notice, setNotice] = useState("");
+  const saveDiscount = async(value:DiscountCode)=>{try{if(isDemo)store.transact((draft)=>{const current=draft.discountCodes.find((item)=>item.id===value.id);if(current)Object.assign(current,value,{version:current.version+1,updatedAt:new Date().toISOString()});else draft.discountCodes.push(value);});else{await studioCommand("discounts",{command:data.discountCodes.some((item)=>item.id===value.id)?"update":"create",entityId:data.discountCodes.some((item)=>item.id===value.id)?value.id:undefined,expectedVersion:data.discountCodes.find((item)=>item.id===value.id)?.version??0,payload:value as unknown as Record<string,unknown>,reason:"Coach configured a booking discount"});await queryClient.invalidateQueries({queryKey:["studio"]});}setDiscountDialog(undefined);setNotice("Discount code saved and available to the booking checkout.");}catch(reason){setNotice(reason instanceof Error?reason.message:"Discount code could not be saved.");}};
   const save = async (value: PackageDefinition) => {
     try {
       if (isDemo)
@@ -570,7 +577,7 @@ export function FinanceView({
                 </Status>
                 <button
                   onClick={() =>
-                    navigate(`/students/${pkg.studentId}/payments`)
+                    navigate(`/coach/students/${pkg.studentId}/payments`)
                   }
                 >
                   Open
@@ -598,7 +605,7 @@ export function FinanceView({
                   {formatMoney(studentBalanceMinor(student.id, data.payments))}
                 </strong>
                 <button
-                  onClick={() => navigate(`/students/${student.id}/payments`)}
+                  onClick={() => navigate(`/coach/students/${student.id}/payments`)}
                 >
                   Open
                 </button>
@@ -612,6 +619,9 @@ export function FinanceView({
             )}
           </div>
         </Section>
+        <Section title="Coupons & discounts" marked aside={<button onClick={()=>setDiscountDialog("new")}>Create code</button>}>
+          <div className="table-list">{data.discountCodes.map((code)=><article key={code.id}><CircleDollarSign/><div><strong>{code.code}</strong><small>{code.description||"Booking discount"} · {code.discountType==="percent"?`${code.amount}%`:formatMoney(code.amount,code.currency)} · {code.redemptionCount} used</small></div><Status tone={code.active?"good":"neutral"}>{code.active?"active":"inactive"}</Status><button onClick={()=>setDiscountDialog(code)}>Edit</button></article>)}{!data.discountCodes.length&&<EmptyState title="No discount codes" detail="Create optional codes that can apply to every service or selected services."/>}</div>
+        </Section>
       </div>
       {dialog && (
         <PackageDefinitionDialog
@@ -621,8 +631,15 @@ export function FinanceView({
           onSave={(value) => void save(value)}
         />
       )}
+      {discountDialog && <DiscountDialog value={discountDialog==="new"?undefined:discountDialog} data={data} onClose={()=>setDiscountDialog(undefined)} onSave={(value)=>void saveDiscount(value)}/>}
     </div>
   );
+}
+
+function DiscountDialog({value,data,onClose,onSave}:{value?:DiscountCode;data:StudioSnapshot;onClose:()=>void;onSave:(value:DiscountCode)=>void}){
+  const [form,setForm]=useState<DiscountCode>(()=>value?structuredClone(value):{id:`discount-${crypto.randomUUID()}`,studioId:data.studioId,code:"",description:"",discountType:"percent",amount:10,currency:"USD",serviceIds:[],active:true,redemptionCount:0,version:1,updatedAt:new Date().toISOString()});
+  const toggle=(id:string,checked:boolean)=>setForm({...form,serviceIds:checked?[...new Set([...form.serviceIds,id])]:form.serviceIds.filter((item)=>item!==id)});
+  return <Dialog title={value?`Edit ${value.code}`:"Create discount code"} description="Codes are validated on the server and snapshotted on each booking." onClose={onClose}><form className="workflow-form" onSubmit={event=>{event.preventDefault();onSave({...form,code:form.code.toUpperCase()});}}><label>Code<input required minLength={3} value={form.code} onChange={event=>setForm({...form,code:event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,"")})} placeholder="WELCOME10"/></label><label>Discount<select value={form.discountType} onChange={event=>setForm({...form,discountType:event.target.value as DiscountCode["discountType"]})}><option value="percent">Percentage</option><option value="fixed">Fixed USD amount</option></select></label><label>Amount<input required type="number" min="1" max={form.discountType==="percent"?100:100000} value={form.discountType==="fixed"?form.amount/100:form.amount} onChange={event=>setForm({...form,amount:form.discountType==="fixed"?Math.round(Number(event.target.value)*100):Number(event.target.value)})}/></label><label>Maximum uses<input type="number" min="1" value={form.maxRedemptions||""} onChange={event=>setForm({...form,maxRedemptions:event.target.value?Number(event.target.value):undefined})}/></label><label className="full">Description<input value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label><fieldset className="full option-fieldset"><legend>Eligible services</legend><small>Leave every service unchecked to apply the code studio-wide.</small>{data.bookingServices.map((service)=><label className="check-row" key={service.id}><input type="checkbox" checked={form.serviceIds.includes(service.id)} onChange={event=>toggle(service.id,event.target.checked)}/>{service.name}</label>)}</fieldset><label className="check-row full"><input type="checkbox" checked={form.active} onChange={event=>setForm({...form,active:event.target.checked})}/>Active</label><div className="form-actions full"><button type="button" onClick={onClose}>Cancel</button><button className="primary">Save discount</button></div></form></Dialog>;
 }
 
 function PackageDefinitionDialog({
@@ -912,7 +929,7 @@ export function ActorPagesView({
             </Status>
             <button
               onClick={() =>
-                navigate(`/students/${profile.studentId}/actor-page`)
+                navigate(`/coach/students/${profile.studentId}/actor-page`)
               }
             >
               Open

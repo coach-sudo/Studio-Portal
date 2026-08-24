@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   Sparkles,
   TriangleAlert,
-  Users,
   Video,
 } from "lucide-react";
 import { applyStudioBranding } from "../../lib/branding";
@@ -53,6 +52,7 @@ type PublicStudio = {
   bookingPage: StudioSnapshot["settings"]["bookingPage"];
   contactEmail?: string;
 };
+type AuthenticatedBooker = { studentId: string; name: string; email: string; forMinor: boolean; guardianName?: string; guardianEmail?: string };
 
 const mapService = (row: any): BookingService => ({
   id: row.id,
@@ -378,6 +378,7 @@ export function PublicBooking() {
   const [liveCatalog, setLiveCatalog] = useState(false);
   const [catalogLoading, setCatalogLoading] = useState(!isDemoMode);
   const [catalogError, setCatalogError] = useState("");
+  const [booker, setBooker] = useState<AuthenticatedBooker>();
   const [studio, setStudio] = useState<PublicStudio>({
     name: store.snapshot.settings.studioName,
     coachName: store.snapshot.settings.coachName,
@@ -386,6 +387,7 @@ export function PublicBooking() {
     bookingPage: store.snapshot.settings.bookingPage,
     contactEmail: store.snapshot.settings.contactEmail,
   });
+  useEffect(()=>{let active=true;const load=async()=>{if(!supabase)return;const {data:{session}}=await supabase.auth.getSession();if(!session)return;const {data:owned}=await supabase.from("students").select("id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email").eq("user_id",session.user.id).limit(1).maybeSingle();let student=owned;if(!student){const {data:relation}=await supabase.from("student_relationships").select("student_id").eq("user_id",session.user.id).limit(1).maybeSingle();if(relation?.student_id){const {data:related}=await supabase.from("students").select("id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email").eq("id",relation.student_id).maybeSingle();student=related;}}if(active&&student)setBooker({studentId:student.id,name:student.preferred_name||student.full_name,email:student.email||student.guardian_email||session.user.email||"",forMinor:Boolean(student.is_minor),guardianName:student.guardian_name||undefined,guardianEmail:student.guardian_email||session.user.email||undefined});};void load();return()=>{active=false;};},[]);
   useEffect(() => {
     let active = true;
     const controller = new AbortController(), timeout = window.setTimeout(() => controller.abort(), 12000);
@@ -442,7 +444,7 @@ export function PublicBooking() {
   const selected = services.find((service) => service.slug === slug);
   return (
     <main className="booking-public">
-      <BookingHeader back={Boolean(selected)} studio={studio} />
+      <BookingHeader back={Boolean(selected)} studio={studio} booker={booker} />
       {!liveCatalog && isDemoMode && (
         <div className="demo-banner">
           <TriangleAlert />
@@ -465,6 +467,7 @@ export function PublicBooking() {
           offerings={offerings}
           live={liveCatalog}
           studio={studio}
+          booker={booker}
         />
       ) : !catalogLoading ? (
         <LiveServiceCatalog services={services} studio={studio} />
@@ -476,9 +479,11 @@ export function PublicBooking() {
 function BookingHeader({
   back,
   studio,
+  booker,
 }: {
   back: boolean;
   studio: PublicStudio;
+  booker?: AuthenticatedBooker;
 }) {
   return (
     <header className="booking-topbar">
@@ -503,7 +508,7 @@ function BookingHeader({
           ? `Book with ${studio.coachName.split(" ")[0]}`
           : "Book a lesson"}
       </span>
-      <Link to="/login">Student or guardian sign in</Link>
+      {booker ? <Link to="/portal">Booking as {booker.name}</Link> : <Link to="/login?returnTo=%2Fbook">Student or guardian sign in</Link>}
     </header>
   );
 }
@@ -619,108 +624,19 @@ function LiveServiceCatalog({
   );
 }
 
-function ServiceCatalog({ services }: { services: BookingService[] }) {
-  return (
-    <>
-      <section className="booking-hero">
-        <span className="eyebrow">
-          <Sparkles />
-          Coaching built around your work
-        </span>
-        <h1>
-          Find the right room
-          <br />
-          for your next breakthrough.
-        </h1>
-        <p>
-          Private acting coaching, ensemble classes, and focused courses with
-          straightforward scheduling and policies.
-        </p>
-        <div className="trust-row">
-          <span>
-            <ShieldCheck />
-            Secure checkout
-          </span>
-          <span>
-            <CalendarDays />
-            Live availability
-          </span>
-          <span>
-            <Video />
-            Meet or studio
-          </span>
-        </div>
-      </section>
-      <section className="service-catalog" aria-labelledby="services-title">
-        <div className="catalog-heading">
-          <div>
-            <span className="eyebrow">Ways to work together</span>
-            <h2 id="services-title">Choose your session</h2>
-          </div>
-          <p>
-            All times are shown in your timezone. You’ll review the full policy
-            before confirming.
-          </p>
-        </div>
-        <div className="service-grid">
-          {services.map((service) => (
-            <article
-              key={service.id}
-              className={`service-card ${service.category}`}
-            >
-              <div className="service-card-top">
-                <span>{service.category.replaceAll("_", " ")}</span>
-                <strong>
-                  {formatMoney(service.priceMinor, service.currency)}
-                </strong>
-              </div>
-              <h3>{service.name}</h3>
-              <p>{service.description}</p>
-              <div className="service-meta">
-                <span>
-                  <Clock3 />
-                  {service.durationMinutes} min
-                </span>
-                <span>
-                  <MapPin />
-                  {service.locationOptions.map(locationLabel).join(" · ")}
-                </span>
-                {service.capacity > 1 && (
-                  <span>
-                    <Users />
-                    {service.capacity} seats
-                  </span>
-                )}
-              </div>
-              <Link to={`/book/${service.slug}`}>
-                View times <ChevronRight />
-              </Link>
-            </article>
-          ))}
-        </div>
-      </section>
-      <footer className="booking-footer">
-        <div className="wordmark">
-          Stage <b>&amp;</b> Story
-        </div>
-        <p>Acting coaching with craft, clarity, and momentum.</p>
-        <Link to="/terms">Terms and Conditions</Link>
-      </footer>
-    </>
-  );
-}
-
 type Step = "format" | "time" | "details" | "payment" | "done";
 function BookingFlow({
   service,
   offerings,
   live,
   studio,
+  booker,
 }: {
   service: BookingService;
   offerings: ServiceOffering[];
   live: boolean;
   studio: PublicStudio;
+  booker?: AuthenticatedBooker;
 }) {
   const store = useStudioStore();
   const [step, setStep] = useState<Step>("format");
@@ -745,12 +661,13 @@ function BookingFlow({
   );
   const [payment, setPayment] = useState<PaymentPolicy>(validPayments[0]);
   const [slot, setSlot] = useState<string>();
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [forMinor, setForMinor] = useState(false);
-  const [guardian, setGuardian] = useState("");
-  const [guardianEmail, setGuardianEmail] = useState("");
+  const [name, setName] = useState(booker?.name || "");
+  const [email, setEmail] = useState(booker?.email || "");
+  const [forMinor, setForMinor] = useState(booker?.forMinor || false);
+  const [guardian, setGuardian] = useState(booker?.guardianName || "");
+  const [guardianEmail, setGuardianEmail] = useState(booker?.guardianEmail || "");
   const [termsAccepted, setTermsAccepted] = useState(false);
+  const [discountCode, setDiscountCode] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<{
@@ -762,6 +679,7 @@ function BookingFlow({
   useEffect(() => {
     if (!validPayments.includes(payment)) setPayment(validPayments[0]);
   }, [payment, validPayments]);
+  useEffect(()=>{if(!booker)return;setName(booker.name);setEmail(booker.email);setForMinor(booker.forMinor);setGuardian(booker.guardianName||"");setGuardianEmail(booker.guardianEmail||"");},[booker]);
   const demoSlots = useMemo(
     () =>
       service.category === "private"
@@ -887,10 +805,7 @@ function BookingFlow({
         setStep("done");
         return;
       }
-      const session =
-        payment === "credits" && isSupabaseConfigured
-          ? await supabase?.auth.getSession()
-          : undefined;
+      const session = isSupabaseConfigured ? await supabase?.auth.getSession() : undefined;
       const accessToken = session?.data.session?.access_token;
       if (payment === "credits" && !accessToken) {
         window.location.assign(
@@ -922,6 +837,7 @@ function BookingFlow({
            occurrenceCount: recurrence === "none" ? undefined : 6,
            termsAccepted: true,
            termsVersion: "2026-08-20",
+           discountCode: discountCode.trim() || undefined,
         }),
       });
       const result = await response.json();
@@ -1166,12 +1082,14 @@ function BookingFlow({
           >
             <span className="eyebrow">Your details</span>
             <h2>Who is this session for?</h2>
+            {booker && <p className="portal-notice"><strong>Booking from your portal profile.</strong> This lesson will be attached to {booker.name} automatically. Change contact details in <Link to="/portal/settings">portal settings</Link>.</p>}
             <label>
               Student name
               <input
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 required
+                readOnly={Boolean(booker)}
                 autoComplete="name"
                 placeholder="Full name"
               />
@@ -1182,12 +1100,13 @@ function BookingFlow({
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
+                readOnly={Boolean(booker)}
                 type="email"
                 autoComplete="email"
                 placeholder="you@example.com"
               />
             </label>
-            <label className="check-row">
+            {!booker && <label className="check-row">
               <input
                 type="checkbox"
                 checked={forMinor}
@@ -1199,7 +1118,7 @@ function BookingFlow({
                   A guardian will receive account and payment access.
                 </small>
               </span>
-            </label>
+            </label>}
             {forMinor && (
               <>
                 <label>
@@ -1208,6 +1127,7 @@ function BookingFlow({
                     value={guardian}
                     onChange={(event) => setGuardian(event.target.value)}
                     required
+                    readOnly={Boolean(booker)}
                     placeholder="Guardian full name"
                   />
                 </label>
@@ -1217,6 +1137,7 @@ function BookingFlow({
                     value={guardianEmail}
                     onChange={(event) => setGuardianEmail(event.target.value)}
                     required
+                    readOnly={Boolean(booker)}
                     type="email"
                     placeholder="guardian@example.com"
                   />
@@ -1255,6 +1176,7 @@ function BookingFlow({
                 </button>
               ))}
             </div>
+            <label className="booking-discount">Coupon or discount code<input value={discountCode} onChange={event=>setDiscountCode(event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,""))} placeholder="Optional" maxLength={40}/><small>Valid codes are applied securely before Stripe opens.</small></label>
             {studio.bookingPage.showPolicies && <div className="policy-box">
               <strong>Change policy</strong>
               <p>

@@ -28,7 +28,8 @@ const CORE_KEYS = [
   "assignments",
   "materials",
   "actorProfiles",
-  "readerRequests",
+  "lessonWhiteboards",
+  "discountCodes",
   "settings",
 ] as const;
 
@@ -183,9 +184,7 @@ export function scopeStudioSnapshot(
     assignments: snapshot.assignments.filter((row) =>
       studentIds.includes(row.studentId),
     ),
-    materials: snapshot.materials.filter(
-      (row) => studentIds.includes(row.studentId) && row.status === "active",
-    ),
+    materials: snapshot.materials.filter((row) => studentIds.includes(row.studentId)),
     packages: snapshot.packages.filter((row) =>
       studentIds.includes(row.studentId),
     ),
@@ -196,9 +195,6 @@ export function scopeStudioSnapshot(
       studentIds.includes(row.studentId),
     ),
     actorProfiles: snapshot.actorProfiles.filter((row) =>
-      studentIds.includes(row.studentId),
-    ),
-    readerRequests: snapshot.readerRequests.filter((row) =>
       studentIds.includes(row.studentId),
     ),
     outbox: [],
@@ -215,6 +211,10 @@ export function scopeStudioSnapshot(
     lessonMessages: snapshot.lessonMessages.filter((row) =>
       studentIds.includes(row.studentId),
     ),
+    lessonWhiteboards: snapshot.lessonWhiteboards.filter((row) =>
+      snapshot.lessons.some((lesson) => lesson.id === row.lessonId && studentIds.includes(lesson.studentId)),
+    ),
     integrationImports: [],
+    discountCodes: [],
   };
 }

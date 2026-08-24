@@ -257,17 +257,5 @@ export function adaptLegacySnapshot(raw: unknown): StudioSnapshot | null {
       version: num(row.version) || 1,
       updatedAt: date(row.updated_at || row.created_at, now),
     }));
-  next.readerRequests = rows(source.readerRequests || source.reader_requests)
-    .filter((row) => studentIds.has(text(row.student_id)))
-    .map((row) => ({
-      id: text(row.reader_request_id),
-      studentId: text(row.student_id),
-      filmingAt: date(row.filming_at || row.filming_date),
-      meetingMethod: text(row.meeting_method),
-      instructions: text(row.instructions || row.notes),
-      status: "submitted",
-      version: num(row.version) || 1,
-      updatedAt: date(row.updated_at || row.created_at, now),
-    }));
   return next;
 }

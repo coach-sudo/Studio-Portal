@@ -32,6 +32,8 @@ All checks below were run against `https://portal.d-a-j.com` after the database 
 | 24 | Open all six Settings panels | Pass |
 | 25 | Use the complete mobile More menu | Pass |
 
+The coach landing page is now intentionally different from Today: Home is a seven-day studio pulse and planning view, while Today is the ordered execution view for today’s lessons, note deadlines, and provider verification. Both were checked at desktop and 390px mobile widths.
+
 ## Current-student workflows (26–40)
 
 | # | Workflow | Result |
@@ -52,6 +54,8 @@ All checks below were run against `https://portal.d-a-j.com` after the database 
 | 39 | Complete practice and request coach help | Pass — component workflow |
 | 40 | Open materials, settings, payments, and actor editor | Pass — component workflows |
 
+`/portal` is the canonical student hub. `/student/*` and `/guardian/*` remain redirect-only compatibility paths, and an authenticated user who opens the wrong role workspace is sent to their own role home without ending the session.
+
 ## Interested-student booking workflows (41–50)
 
 | # | Workflow | Result |
@@ -67,9 +71,19 @@ All checks below were run against `https://portal.d-a-j.com` after the database 
 | 49 | Choose a day and then a time in the 45-day calendar | Pass |
 | 50 | Open Terms and the configured external website footer link | Pass |
 
+## Cohesive operations added in this pass
+
+- Gmail intake recognizes Lessonface, Wyzant, Lessons.com, and Acuity confirmations, parses the complete MIME body, converts studio-local wall time safely through daylight-saving changes, deduplicates against the student schedule, and attaches high-confidence lessons directly to the matched student profile.
+- The verification queue shows its evidence, proposed student, occurrence grouping, provider, confidence, and optional audit note before the coach confirms, creates, merges, or ignores it.
+- Student detail updates send only supported fields and wait for the authoritative database refresh; status, goals, contact details, guardian data, tags, notes, and Drive folder are all handled by the same editor.
+- Finance includes auditable credit adjustments and service-scoped fixed or percentage discount codes. A rolled-back production database contract check confirmed a $5.00 claim against a $32.00 subtotal and left no test data behind.
+- Coach and student lesson workspaces share a persisted whiteboard with drawing, highlights over rendered PDFs, text, tables, movement, erasing, undo/redo, font controls, and version-checked saves.
+- Current-script uploads automatically archive the previous current script while preserving every old file in the script archive.
+- Anonymous users cannot insert discounts or whiteboards or execute the discount-claim function; the server service role can execute the protected claim.
+
 ## Automated regression result
 
-`npm test -- --run`: 107/107 passed across 12 test files. The workflow suites now contain the original 30 start-to-finish scenarios plus 20 production-completeness routes, alongside booking, provider, data, and policy tests.
+`npm test -- --run`: 110/110 passed across 13 test files. The workflow suites contain the original 30 start-to-finish scenarios plus 20 production-completeness routes, alongside booking, provider-email timezone, data, and policy tests.
 
 `npm run typecheck`: passed.
 

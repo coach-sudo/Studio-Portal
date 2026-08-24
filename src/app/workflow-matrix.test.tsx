@@ -21,7 +21,7 @@ describe("30 start-to-finish studio workflows", () => {
   describe("coach — 15 workflows", () => {
     it("01 opens a full student record from the roster", async () => {
       const user = userEvent.setup();
-      renderApp("/students");
+      renderApp("/coach/students");
       await user.click(
         await screen.findByRole("button", { name: /Maya Kim/i }),
       );
@@ -34,7 +34,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("02 filters interested students", async () => {
       const user = userEvent.setup();
-      renderApp("/students");
+      renderApp("/coach/students");
       await user.click(
         await screen.findByRole("button", { name: /Interested/i }),
       );
@@ -47,7 +47,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("03 adds an adult student", async () => {
       const user = userEvent.setup();
-      renderApp("/students");
+      renderApp("/coach/students");
       await user.click(
         await screen.findByRole("button", { name: /Add student/i }),
       );
@@ -69,7 +69,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("04 adds a minor with guardian details", async () => {
       const user = userEvent.setup();
-      renderApp("/students");
+      renderApp("/coach/students");
       await user.click(
         await screen.findByRole("button", { name: /Add student/i }),
       );
@@ -96,7 +96,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("05 edits student goals and status", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-liam");
+      renderApp("/coach/students/student-liam");
       await user.click(
         await screen.findByRole("button", { name: "Edit details" }),
       );
@@ -120,7 +120,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("06 schedules a lesson from the student record", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-maya");
+      renderApp("/coach/students/student-maya");
       await user.click(
         await screen.findByRole("button", { name: /Add lesson/i }),
       );
@@ -143,7 +143,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("07 assigns practice", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-maya");
+      renderApp("/coach/students/student-maya");
       await user.click(
         await screen.findByRole("button", { name: /Assign practice/i }),
       );
@@ -161,7 +161,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("08 adds current material", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-liam");
+      renderApp("/coach/students/student-liam");
       await user.click(
         await screen.findByRole("button", { name: /Add material/i }),
       );
@@ -176,7 +176,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("09 saves a private coach note", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-maya/notes");
+      renderApp("/coach/students/student-maya/notes");
       await user.click(
         await screen.findByRole("button", { name: /New note/i }),
       );
@@ -194,7 +194,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("10 publishes a student note", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-maya/notes");
+      renderApp("/coach/students/student-maya/notes");
       await user.click(
         await screen.findByRole("button", { name: /New note/i }),
       );
@@ -213,7 +213,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("11 changes portal access", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-sarah/account");
+      renderApp("/coach/students/student-sarah/account");
       const toggle = await screen.findByRole("switch", {
         name: /Student workspace/i,
       });
@@ -226,7 +226,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("12 creates an actor-page draft", async () => {
       const user = userEvent.setup();
-      renderApp("/students/student-sarah/actor-page");
+      renderApp("/coach/students/student-sarah/actor-page");
       await user.click(
         await screen.findByRole("button", { name: /Create draft/i }),
       );
@@ -236,7 +236,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("13 updates studio identity", async () => {
       const user = userEvent.setup();
-      renderApp("/settings");
+      renderApp("/coach/settings");
       const input = await screen.findByLabelText("Studio name");
       await user.clear(input);
       await user.type(input, "New Studio Name");
@@ -248,7 +248,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("14 updates student workspace visibility", async () => {
       const user = userEvent.setup();
-      renderApp("/settings");
+      renderApp("/coach/settings");
       await user.click(
         await screen.findByRole("button", { name: /Student workspace/i }),
       );
@@ -261,7 +261,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("15 updates pricing defaults", async () => {
       const user = userEvent.setup();
-      renderApp("/settings");
+      renderApp("/coach/settings");
       await user.click(
         await screen.findByRole("button", { name: /Pricing & reminders/i }),
       );

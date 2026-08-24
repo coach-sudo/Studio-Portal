@@ -56,6 +56,7 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
+import { LessonWhiteboardBoard } from "../../components/LessonWhiteboard";
 
 const studentTabs = [
   ["", "Home", Home],
@@ -426,7 +427,7 @@ function GuardianHome({ data }: { data: Snapshot }) {
 }
 
 function Work({ data }: { data: Snapshot }) {
-  const work = data.materials.filter((item) => item.role === "current_script");
+  const work = data.materials.filter((item) => item.role === "current_script" && item.status === "active"), archived = data.materials.filter((item)=>item.role==="current_script"&&item.status==="archived").sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
   return (
     <div className="student-page">
       <header className="student-header">
@@ -457,6 +458,10 @@ function Work({ data }: { data: Snapshot }) {
             />
           )}
         </div>
+      </Section>
+      <Section title="Script archive">
+        <ListControls page={1} pageCount={1} pageSize={Math.max(10,archived.length)} total={archived.length} onPage={()=>undefined} onPageSize={()=>undefined} label="archived scripts" />
+        <div className="table-list">{archived.map((item)=><article key={item.id}><FileText/><div><strong>{item.title}</strong><small>{item.category} · archived {new Date(item.updatedAt).toLocaleDateString()}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!archived.length&&<EmptyState title="No archived scripts" detail="When a new current script is uploaded, the previous one moves here automatically."/>}</div>
       </Section>
     </div>
   );
@@ -1005,6 +1010,19 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           </div>
         </Section>
       )}
+      {student && (
+        <LessonWhiteboardBoard
+          data={data}
+          lesson={lesson}
+          student={student}
+          isDemo={isDemo}
+          onDemoChange={(board) => store.transact((draft) => {
+            const current = draft.lessonWhiteboards.find((item) => item.lessonId === lesson.id);
+            if (current) Object.assign(current, board);
+            else draft.lessonWhiteboards.push(board);
+          })}
+        />
+      )}
       <div className="lesson-hub-grid">
         <Section title="Coach notes" marked>
           <div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone="good">published</Status></header>{note.bodyHtml ? <div className="published-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(note.bodyHtml)}} /> : <p>{note.body}</p>}</article>)}{!notes.length && <EmptyState title="No published note yet" detail="Your coach’s lesson note will appear here." />}</div>
@@ -1117,6 +1135,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     title: string,
     category: string,
     url: string,
+    role: "current_script"|"actor_material"|"lesson_material"|"library",
     file?: File,
   ) => {
     const studentId = data.students[0]?.id;
@@ -1130,7 +1149,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             title,
             category,
             externalUrl: url,
-            role: "actor_material",
+            role,
             status: "active",
             approvalStatus: "pending_review",
             version: 1,
@@ -1167,7 +1186,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                   : storage
                     ? "document"
                     : "link",
-            role: "actor_material",
+            role,
             publicEmbed: false,
           },
           reason: "Student submitted actor material",
@@ -1175,7 +1194,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       }
       void queryClient.invalidateQueries({ queryKey: ["studio"] });
       setAdding(false);
-      setNotice("Material submitted to your coach for review.");
+      setNotice(role==="current_script"?"Current script updated. The previous script is now in your archive.":"Material submitted to your coach for review.");
     } catch (reason) {
       setNotice(
         reason instanceof Error ? reason.message : "Material upload failed.",
@@ -1243,11 +1262,12 @@ function MaterialSubmission({
   onSave,
 }: {
   onClose: () => void;
-  onSave: (title: string, category: string, url: string, file?: File) => void;
+  onSave: (title: string, category: string, url: string, role: "current_script"|"actor_material"|"lesson_material"|"library", file?: File) => void;
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Reel"),
     [url, setUrl] = useState(""),
+    [role,setRole]=useState<"current_script"|"actor_material"|"lesson_material"|"library">("actor_material"),
     [file, setFile] = useState<File>();
   return (
     <Dialog
@@ -1259,7 +1279,7 @@ function MaterialSubmission({
         className="workflow-form"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(title, category, url, file);
+          onSave(title, category, url, role, file);
         }}
       >
         <label>
@@ -1283,6 +1303,7 @@ function MaterialSubmission({
             <option>Performance clip</option>
           </select>
         </label>
+        <label>Use in portal<select value={role} onChange={event=>setRole(event.target.value as typeof role)}><option value="current_script">Current script</option><option value="lesson_material">Lesson material</option><option value="library">Private material library</option><option value="actor_material">Actor-page submission</option></select></label>
         <label className="full">
           Share link
           <input
@@ -1304,8 +1325,7 @@ function MaterialSubmission({
             onChange={(event) => setFile(event.target.files?.[0])}
           />
           <small>
-            Photos, reels, audio, and PDFs are stored privately until your coach
-            approves them.
+            Files stay private to your studio. Only actor-page submissions enter public-page review.
           </small>
         </label>
         <div className="form-actions full">
@@ -1313,7 +1333,7 @@ function MaterialSubmission({
             Cancel
           </button>
           <button className="primary" disabled={!url && !file}>
-            Submit for review
+            {role==="current_script"?"Set as current script":role==="actor_material"?"Submit for review":"Upload material"}
           </button>
         </div>
       </form>

@@ -18,16 +18,16 @@ import { useStudio } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 
 const nav = [
-  ["/", "Home", Home],
-  ["/today", "Today", CalendarDays],
-  ["/bookings", "Bookings", CalendarCheck2],
-  ["/students", "Students", Users],
-  ["/lessons", "Lessons", NotebookTabs],
-  ["/notes", "Notes", FileText],
-  ["/materials", "Materials", FolderOpen],
-  ["/finance", "Payments", WalletCards],
-  ["/actor-pages", "Actor Pages", Clapperboard],
-  ["/settings", "Settings", Settings],
+  ["/coach", "Home", Home],
+  ["/coach/today", "Today", CalendarDays],
+  ["/coach/bookings", "Bookings", CalendarCheck2],
+  ["/coach/students", "Students", Users],
+  ["/coach/lessons", "Lessons", NotebookTabs],
+  ["/coach/notes", "Notes", FileText],
+  ["/coach/materials", "Materials", FolderOpen],
+  ["/coach/finance", "Payments", WalletCards],
+  ["/coach/actor-pages", "Actor Pages", Clapperboard],
+  ["/coach/settings", "Settings", Settings],
 ] as const;
 
 export function AppShell() {
@@ -62,7 +62,7 @@ export function AppShell() {
         </div>
         <nav aria-label="Coach navigation">
           {nav.map(([to, label, Icon]) => (
-            <NavLink key={to} to={to} end={to === "/"}>
+            <NavLink key={to} to={to} end={to === "/coach"}>
               <Icon aria-hidden="true" />
               <span>{label}</span>
             </NavLink>
@@ -87,7 +87,7 @@ export function AppShell() {
       </main>
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {nav.slice(0, 4).map(([to, label, Icon]) => (
-          <NavLink key={to} to={to} end={to === "/"}>
+          <NavLink key={to} to={to} end={to === "/coach"}>
             <Icon />
             <span>{label}</span>
           </NavLink>

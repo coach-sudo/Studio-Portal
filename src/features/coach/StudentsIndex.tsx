@@ -173,7 +173,7 @@ export function StudentsIndex({ data, isDemo }: { data: StudioSnapshot; isDemo: 
         </label>
         <div className="student-roster">
           {students.map((student) => (
-            <button key={student.id} className="student-roster-row" onClick={() => navigate(`/students/${student.id}`)}>
+            <button key={student.id} className="student-roster-row" onClick={() => navigate(`/coach/students/${student.id}`)}>
               <span className="avatar">{student.fullName.split(" ").map((part) => part[0]).join("")}</span>
               <div><strong>{student.fullName}</strong><small>{student.focusArea || "Focus not set"} · {student.portalEnabled ? "Workspace ready" : "No portal access"}</small></div>
               <span className="roster-contact">{student.email || student.guardianEmail || "No email"}</span>
