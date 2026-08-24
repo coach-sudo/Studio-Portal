@@ -9,6 +9,7 @@ import {
 } from "react";
 import { demoSnapshot } from "../data/demo";
 import { adaptLegacySnapshot } from "../data/legacyAdapter";
+import { mergeStudioSettings } from "../data/settings";
 import type { Role, StudioSnapshot } from "../domain/model";
 
 type Transaction = <T>(mutator: (draft: StudioSnapshot) => T) => T;
@@ -85,6 +86,9 @@ function loadLocalSnapshot() {
     for (const key of CORE_KEYS)
       if (saved[key] !== undefined)
         (fresh as unknown as Record<string, unknown>)[key] = saved[key];
+    if (saved.settings) {
+      fresh.settings=mergeStudioSettings(demoSnapshot.settings,saved.settings);
+    }
     return fresh;
   } catch {
     return fresh;

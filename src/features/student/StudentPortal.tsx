@@ -56,15 +56,13 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
-import { LessonWhiteboardBoard } from "../../components/LessonWhiteboard";
+import { LessonWhiteboard } from "../../components/LessonWhiteboard";
 
 const studentTabs = [
   ["", "Home", Home],
   ["work", "Current Work", BookOpen],
   ["bookings", "Bookings", CalendarDays],
   ["notes", "Notes", FileText],
-  ["practice", "Practice", CheckSquare],
-  ["materials", "Materials", FolderOpen],
   ["payments", "Payments", CircleDollarSign],
   ["actor-page", "Actor Page", UserRound],
   ["settings", "Settings", Settings],
@@ -105,7 +103,7 @@ export function StudentPortal({
     <div className="student-shell">
       <aside>
         <div className="shell-brand">
-          {data.settings.branding.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
+          {data.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
           <div className="wordmark">{data.settings.studioName}</div>
         </div>
         <nav>
@@ -151,7 +149,7 @@ export function StudentPortal({
               )
             }
           />
-          <Route path="work" element={<Work data={data} />} />
+          <Route path="work" element={<Work data={data} isDemo={isDemo} />} />
           <Route
             path="bookings"
             element={<StudentBookings data={data} isDemo={isDemo} />}
@@ -162,14 +160,8 @@ export function StudentPortal({
           />
           <Route path="lessons/:lessonId" element={<LessonHub data={data} isDemo={isDemo} />} />
           <Route path="notes" element={<StudentNotes data={data} />} />
-          <Route
-            path="practice"
-            element={<Practice data={data} isDemo={isDemo} />}
-          />
-          <Route
-            path="materials"
-            element={<Materials data={data} isDemo={isDemo} />}
-          />
+          <Route path="practice" element={<Practice data={data} isDemo={isDemo} />} />
+          <Route path="materials" element={<Materials data={data} isDemo={isDemo} />} />
           <Route
             path="payments"
             element={<Payments data={data} isDemo={isDemo} />}
@@ -426,8 +418,8 @@ function GuardianHome({ data }: { data: Snapshot }) {
   );
 }
 
-function Work({ data }: { data: Snapshot }) {
-  const work = data.materials.filter((item) => item.role === "current_script" && item.status === "active"), archived = data.materials.filter((item)=>item.role==="current_script"&&item.status==="archived").sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+  const work = data.materials.filter((item) => item.role === "current_script" && item.status === "active"), lessonMaterials=data.materials.filter(item=>item.role==="lesson_material"||item.role==="library"), archived = data.materials.filter((item)=>item.role==="current_script"&&item.status==="archived").sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
   return (
     <div className="student-page">
       <header className="student-header">
@@ -459,6 +451,8 @@ function Work({ data }: { data: Snapshot }) {
           )}
         </div>
       </Section>
+      <Practice data={data} isDemo={isDemo} compact />
+      <Section title="Lesson materials"><div className="table-list">{lessonMaterials.map(item=><article key={item.id}><FolderOpen/><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!lessonMaterials.length&&<EmptyState title="No lesson materials" detail="Files and links shared for your coaching work appear here."/>}</div></Section>
       <Section title="Script archive">
         <ListControls page={1} pageCount={1} pageSize={Math.max(10,archived.length)} total={archived.length} onPage={()=>undefined} onPageSize={()=>undefined} label="archived scripts" />
         <div className="table-list">{archived.map((item)=><article key={item.id}><FileText/><div><strong>{item.title}</strong><small>{item.category} · archived {new Date(item.updatedAt).toLocaleDateString()}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!archived.length&&<EmptyState title="No archived scripts" detail="When a new current script is uploaded, the previous one moves here automatically."/>}</div>
@@ -921,7 +915,7 @@ function StudentBookings({
 }
 
 function StudentNotes({ data }: { data: Snapshot }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(""), [selected,setSelected]=useState<Snapshot["notes"][number]>();
   const filtered = data.notes
     .filter((note) =>
       [note.title, note.body, note.category, ...(note.tags ?? [])]
@@ -942,20 +936,16 @@ function StudentNotes({ data }: { data: Snapshot }) {
           <label><FileText /><input aria-label="Search notes" placeholder="Search your notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
         </div>
         <ListControls page={page.page} pageCount={page.pageCount} pageSize={page.pageSize} total={page.total} onPage={page.setPage} onPageSize={page.setPageSize} label="notes" />
-        <div className="note-cards">
+        <div className="lesson-note-index">
           {page.visible.map((note) => {
             const lesson = data.lessons.find((item) => item.id === note.lessonId);
             return (
-              <article key={note.id}>
-                <header><strong>{note.title}</strong><Status tone="good">published</Status></header>
-                {note.bodyHtml ? <div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml, { ALLOWED_TAGS: ["p","div","br","strong","b","em","i","u","a","ul","ol","li","span"], ALLOWED_ATTR: ["href","target","rel","style"] }) }} /> : <p>{note.body}</p>}
-                <small>{lesson ? `${new Date(lesson.startsAt).toLocaleDateString()} · ${lesson.topic}` : "General coaching note"} · updated {new Date(note.updatedAt).toLocaleString()}</small>
-                {lesson && <Link className="text-link" to={`/portal/lessons/${lesson.id}`}>Open lesson workspace</Link>}
-              </article>
+              <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{lesson?new Date(lesson.startsAt).toLocaleDateString():"General note"}</strong><small>{lesson?.topic||note.title} · {note.title}</small></span><Status tone="good">published</Status></button>
             );
           })}
           {!page.total && <EmptyState title="No published notes yet" detail="Notes appear here as soon as your coach publishes them." />}
         </div>
+        {selected&&<Dialog title={selected.title} description={selected.lessonId?`${new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString()} · ${data.lessons.find(item=>item.id===selected.lessonId)?.topic||"Lesson"}`:"General coaching note"} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="published-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions">{selected.lessonId&&<Link className="button-link" to={`/portal/lessons/${selected.lessonId}`}>Open lesson workspace</Link>}<button type="button" onClick={()=>setSelected(undefined)}>Close</button></div></Dialog>}
       </Section>
     </div>
   );
@@ -1011,7 +1001,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         </Section>
       )}
       {student && (
-        <LessonWhiteboardBoard
+        <LessonWhiteboard
           data={data}
           lesson={lesson}
           student={student}
@@ -1042,7 +1032,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   );
 }
 
-function Practice({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boolean; compact?: boolean }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
@@ -1088,11 +1078,11 @@ function Practice({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     }
   };
   return (
-    <div className="student-page">
-      <header className="student-header">
+    <div className={compact?"current-work-practice":"student-page"}>
+      {!compact&&<header className="student-header">
         <h1>Practice</h1>
         <p>Published assignments you can complete or ask about.</p>
-      </header>
+      </header>}
       {notice && <p className="portal-notice">{notice}</p>}
       <Section title="Assignments" marked>
         <ListControls page={assignmentPage.page} pageCount={assignmentPage.pageCount} pageSize={assignmentPage.pageSize} total={assignmentPage.total} onPage={assignmentPage.setPage} onPageSize={assignmentPage.setPageSize} label="assignments" />
@@ -1125,12 +1115,12 @@ function Practice({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     </div>
   );
 }
-function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+function Materials({ data, isDemo, embedded=false, actorOnly=false }: { data: Snapshot; isDemo: boolean; embedded?: boolean; actorOnly?: boolean }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     [adding, setAdding] = useState(false),
     [notice, setNotice] = useState("");
-  const materialPage = usePagedList(data.materials);
+  const materialPage = usePagedList(actorOnly?data.materials.filter(item=>item.role==="actor_material"):data.materials);
   const add = async (
     title: string,
     category: string,
@@ -1202,18 +1192,18 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     }
   };
   return (
-    <div className="student-page">
-      <header className="student-header">
+    <div className={embedded?"embedded-materials":"student-page"}>
+      {!embedded&&<header className="student-header">
         <h1>Materials</h1>
         <p>Shared studio materials and actor-page submissions.</p>
-      </header>
+      </header>}
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
       )}
       <Section
-        title="Your materials"
+        title={actorOnly?"Actor-page media":"Your materials"}
         marked
         aside={<button onClick={() => setAdding(true)}>Submit material</button>}
       >
@@ -1252,7 +1242,7 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         </div>
       </Section>
       {adding && (
-        <MaterialSubmission onClose={() => setAdding(false)} onSave={add} />
+        <MaterialSubmission onClose={() => setAdding(false)} onSave={add} fixedRole={actorOnly?"actor_material":undefined} />
       )}
     </div>
   );
@@ -1260,14 +1250,16 @@ function Materials({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
 function MaterialSubmission({
   onClose,
   onSave,
+  fixedRole,
 }: {
   onClose: () => void;
   onSave: (title: string, category: string, url: string, role: "current_script"|"actor_material"|"lesson_material"|"library", file?: File) => void;
+  fixedRole?: "actor_material";
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Reel"),
     [url, setUrl] = useState(""),
-    [role,setRole]=useState<"current_script"|"actor_material"|"lesson_material"|"library">("actor_material"),
+    [role,setRole]=useState<"current_script"|"actor_material"|"lesson_material"|"library">(fixedRole||"actor_material"),
     [file, setFile] = useState<File>();
   return (
     <Dialog
@@ -1303,7 +1295,7 @@ function MaterialSubmission({
             <option>Performance clip</option>
           </select>
         </label>
-        <label>Use in portal<select value={role} onChange={event=>setRole(event.target.value as typeof role)}><option value="current_script">Current script</option><option value="lesson_material">Lesson material</option><option value="library">Private material library</option><option value="actor_material">Actor-page submission</option></select></label>
+        {!fixedRole&&<label>Use in portal<select value={role} onChange={event=>setRole(event.target.value as typeof role)}><option value="current_script">Current script</option><option value="lesson_material">Lesson material</option><option value="library">Private material library</option><option value="actor_material">Actor-page submission</option></select></label>}
         <label className="full">
           Share link
           <input
@@ -1809,10 +1801,8 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           </article>
         </div>
       </Section>
-      <Section title="Headshots, gallery, reel & résumé" aside={<Link to="/portal/materials">Manage portfolio media</Link>}>
-        <p className="section-intro">Upload headshots, gallery images, video reels, performance clips, and PDF résumés. Your coach reviews each item before it appears publicly.</p>
-        <div className="actor-media-grid">{data.materials.filter((item) => item.role === "actor_material").map((item) => <article className="actor-media-card" key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category} · {item.approvalStatus.replaceAll("_", " ")}</small></div></article>)}</div>
-      </Section>
+      <p className="section-intro">Actor-page uploads live here—not in Current Work. Your coach reviews each headshot, gallery image, reel, performance clip, and PDF résumé before it appears publicly.</p>
+      <Materials data={data} isDemo={isDemo} embedded actorOnly />
       {editing && (
         <ActorDialog
           profile={profile}
@@ -1820,6 +1810,7 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           onSave={(displayName, bio, portfolio, submit) =>
             void save(displayName, bio, portfolio, submit)
           }
+          materials={data.materials.filter(item=>item.role==="actor_material"&&item.mediaKind==="image")}
         />
       )}
     </div>
@@ -1829,10 +1820,12 @@ function ActorDialog({
   profile,
   onClose,
   onSave,
+  materials,
 }: {
   profile: Snapshot["actorProfiles"][number];
   onClose: () => void;
   onSave: (name: string, bio: string, portfolio: ActorPortfolioDraft, submit: boolean) => void;
+  materials: Snapshot["materials"];
 }) {
   const [name, setName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
@@ -1847,6 +1840,11 @@ function ActorDialog({
     website: profile.draftContent?.website || "",
     representation: profile.draftContent?.representation || "",
     accentColor: profile.draftContent?.accentColor || "#c46b56",
+    contactEmail: profile.draftContent?.contactEmail || "",
+    contactPhone: profile.draftContent?.contactPhone || "",
+    showEmail: Boolean(profile.draftContent?.showEmail),
+    showPhone: Boolean(profile.draftContent?.showPhone),
+    primaryHeadshotMaterialId: profile.draftContent?.primaryHeadshotMaterialId || "",
   });
   const [submit, setSubmit] = useState(false);
   const save = (event: FormEvent) => {
@@ -1904,6 +1902,11 @@ function ActorDialog({
           Professional website
           <input type="url" value={portfolio.website} onChange={(event) => setPortfolio({ ...portfolio, website: event.target.value })} placeholder="https://…" />
         </label>
+        <label>Public email<input type="email" value={portfolio.contactEmail} onChange={(event)=>setPortfolio({...portfolio,contactEmail:event.target.value})} /></label>
+        <label>Public phone<input type="tel" value={portfolio.contactPhone} onChange={(event)=>setPortfolio({...portfolio,contactPhone:event.target.value})} /></label>
+        <label className="check-row"><input type="checkbox" checked={portfolio.showEmail} onChange={(event)=>setPortfolio({...portfolio,showEmail:event.target.checked})}/>Show Email button</label>
+        <label className="check-row"><input type="checkbox" checked={portfolio.showPhone} onChange={(event)=>setPortfolio({...portfolio,showPhone:event.target.checked})}/>Show Call button</label>
+        <label className="full">Main headshot<select value={portfolio.primaryHeadshotMaterialId} onChange={(event)=>setPortfolio({...portfolio,primaryHeadshotMaterialId:event.target.value})}><option value="">Use first approved headshot</option>{materials.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select><small>All other approved photos appear in the gallery.</small></label>
         <label className="full">
           Bio
           <textarea

@@ -1,4 +1,4 @@
-import { ArrowLeft, FileText, MapPin } from "lucide-react";
+import { ArrowLeft, FileText, Mail, MapPin, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStudio } from "../../hooks/useStudio";
@@ -38,6 +38,11 @@ interface PublicActor {
   website?: string;
   representation?: string;
   accentColor?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  showEmail?: boolean;
+  showPhone?: boolean;
+  primaryHeadshotMaterialId?: string;
   materials: ActorMaterial[];
 }
 const embedUrl = (url: string) => {
@@ -120,6 +125,7 @@ export function PublicActorPage() {
             displayName: demoProfile.displayName,
             bio: demoProfile.bio,
             focusArea: demoStudent?.focusArea,
+            ...demoProfile.draftContent,
             materials: (data?.materials || [])
               .filter(
                 (row) =>
@@ -132,7 +138,8 @@ export function PublicActorPage() {
                 title: row.title,
                 category: row.category,
                 url: row.externalUrl!,
-                media_kind: "link",
+                media_kind: row.mediaKind || (row.mimeType?.startsWith("image/") ? "image" : "link"),
+                mime_type: row.mimeType,
               })),
           }
         : undefined,
@@ -170,11 +177,16 @@ export function PublicActorPage() {
         </Link>
       </main>
     );
+  const imageMaterials = actor.materials.filter((item) => item.media_kind === "image" || item.mime_type?.startsWith("image/"));
+  const headshot = imageMaterials.find((item) => item.id === actor.primaryHeadshotMaterialId) || imageMaterials.find((item) => item.category.toLowerCase().includes("headshot")) || imageMaterials[0];
+  const gallery = imageMaterials.filter((item) => item.id !== headshot?.id);
+  const reel = actor.materials.filter((item) => item.id !== headshot?.id && (item.media_kind === "video" || /(reel|performance|clip)/i.test(item.category)));
+  const documents = actor.materials.filter((item) => item.id !== headshot?.id && !gallery.some((photo) => photo.id === item.id) && !reel.some((video) => video.id === item.id));
   return (
     <main className="actor-public">
       <header><span>Actor portfolio</span></header>
       <article>
-        {actor.materials.find((item) => item.category.toLowerCase().includes("headshot") && (item.media_kind === "image" || item.mime_type?.startsWith("image/"))) ? <img className="actor-headshot" src={actor.materials.find((item) => item.category.toLowerCase().includes("headshot") && (item.media_kind === "image" || item.mime_type?.startsWith("image/")))!.url} alt={`${actor.displayName} headshot`} /> : <div className="actor-monogram">
+        {headshot ? <img className="actor-headshot" src={headshot.url} alt={`${actor.displayName} headshot`} /> : <div className="actor-monogram">
           {actor.displayName
             .split(" ")
             .map((part) => part[0])
@@ -183,29 +195,22 @@ export function PublicActorPage() {
         <div>
           <h1>{actor.displayName}</h1>
           {actor.headline && <h2>{actor.headline}</h2>}
+          {(actor.showPhone || actor.showEmail) && <div className="actor-contact-actions">{actor.showPhone && actor.contactPhone && <a href={`tel:${actor.contactPhone}`}><Phone />Call</a>}{actor.showEmail && actor.contactEmail && <a href={`mailto:${actor.contactEmail}`}><Mail />Email</a>}</div>}
           <p>{actor.bio}</p>
-          {(actor.location || actor.focusArea) && (
+          {actor.location && (
             <span>
               <MapPin />
-              {actor.location || `Available for ${actor.focusArea}`}
+              {actor.location}
             </span>
           )}
           <dl className="actor-stats">{actor.unionStatus && <div><dt>Union</dt><dd>{actor.unionStatus}</dd></div>}{actor.playingAge && <div><dt>Playing age</dt><dd>{actor.playingAge}</dd></div>}{actor.height && <div><dt>Height</dt><dd>{actor.height}</dd></div>}{actor.eyeColor && <div><dt>Eyes</dt><dd>{actor.eyeColor}</dd></div>}{actor.hairColor && <div><dt>Hair</dt><dd>{actor.hairColor}</dd></div>}{actor.representation && <div><dt>Representation</dt><dd>{actor.representation}</dd></div>}</dl>
           {actor.website && <a className="actor-website" href={actor.website} target="_blank" rel="noreferrer">Official website</a>}
         </div>
       </article>
-      <section>
-        <h2>Selected work</h2>
-        {actor.materials.length ? (
-          <div className="actor-media-grid">
-            {actor.materials.map((item) => (
-              <ActorMedia key={item.id} item={item} />
-            ))}
-          </div>
-        ) : (
-          <p>Selected work is being prepared.</p>
-        )}
-      </section>
+      {gallery.length > 0 && <section><h2>Gallery</h2><div className="actor-media-grid actor-gallery">{gallery.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {reel.length > 0 && <section><h2>Reel & performance</h2><div className="actor-media-grid">{reel.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {documents.length > 0 && <section><h2>Résumé & selected work</h2><div className="actor-media-grid">{documents.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {!actor.materials.length && <section><h2>Selected work</h2><p>Selected work is being prepared.</p></section>}
       <footer className="actor-footer">{actor.studio.branding.logoUrl ? <img className="booking-logo" src={actor.studio.branding.logoUrl} alt={actor.studio.name} /> : <div className="wordmark">{actor.studio.name}</div>}{actor.studio.websiteUrl && <a href={actor.studio.websiteUrl} target="_blank" rel="noreferrer">Visit {actor.studio.name}</a>}</footer>
     </main>
   );

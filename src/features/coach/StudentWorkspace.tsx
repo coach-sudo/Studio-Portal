@@ -51,7 +51,7 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
-import { LessonWhiteboardBoard } from "../../components/LessonWhiteboard";
+import { LessonWhiteboard } from "../../components/LessonWhiteboard";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -63,7 +63,7 @@ export function StudentWorkspace() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<
-    "edit" | "lesson" | "assignment" | "material" | "note" | null
+    "edit" | "lesson" | "assignment" | "material" | "actor-material" | "note" | null
   >(null);
   const [notice, setNotice] = useState("");
   const [savingStudent, setSavingStudent] = useState(false);
@@ -444,7 +444,7 @@ export function StudentWorkspace() {
         />
         <Route
           path="actor-page"
-          element={<ActorPage data={data} student={student} isDemo={isDemo} />}
+          element={<ActorPage data={data} student={student} isDemo={isDemo} onAddMaterial={()=>setDialog("actor-material")} />}
         />
         <Route path="*" element={<Navigate to={base} replace />} />
       </Routes>
@@ -479,6 +479,9 @@ export function StudentWorkspace() {
           onClose={() => setDialog(null)}
           onSave={addMaterial}
         />
+      )}
+      {dialog === "actor-material" && (
+        <MaterialForm student={student} lessons={studentLessons} isDemo={isDemo} fixedRole="actor_material" onClose={() => setDialog(null)} onSave={addMaterial} />
       )}
       {dialog === "note" && (
         <NoteForm
@@ -736,7 +739,7 @@ function CoachLessonHub({ data, student, isDemo }: { data: Data; student: Studen
         {lesson.joinUrl && <a className="button-link" href={lesson.joinUrl} target="_blank" rel="noreferrer">Open Google Meet</a>}
       </Section>
       {notice && <p className="portal-notice" role="status">{notice}</p>}
-      <LessonWhiteboardBoard data={data} lesson={lesson} student={student} isDemo={isDemo} onDemoChange={(board)=>store.transact((draft)=>{const current=draft.lessonWhiteboards.find((item)=>item.lessonId===lesson.id);if(current)Object.assign(current,board);else draft.lessonWhiteboards.push(board);})}/>
+      <LessonWhiteboard data={data} lesson={lesson} student={student} isDemo={isDemo} onDemoChange={(board)=>store.transact((draft)=>{const current=draft.lessonWhiteboards.find((item)=>item.lessonId===lesson.id);if(current)Object.assign(current,board);else draft.lessonWhiteboards.push(board);})}/>
       <div className="lesson-hub-grid">
         <Section title="Notes"><div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></header><div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml || note.body) }} /></article>)}{!notes.length && <EmptyState title="No lesson notes" detail="Use the Notes tab to add one for this lesson." />}</div></Section>
         <Section title="Practice"><div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}</small></div><Status tone={item.helpRequested ? "warn" : "neutral"}>{item.helpRequested ? "help requested" : item.status.replaceAll("_", " ")}</Status></article>)}{!assignments.length && <EmptyState title="No linked practice" detail="Use Current work to assign practice to this lesson." />}</div></Section>
@@ -760,7 +763,7 @@ function Work({
   const assignments = data.assignments.filter(
       (i) => i.studentId === student.id,
     ),
-    materials = data.materials.filter((i) => i.studentId === student.id);
+    materials = data.materials.filter((i) => i.studentId === student.id && i.role !== "actor_material");
   return (
     <div className="two-section-grid">
       <Section
@@ -799,7 +802,7 @@ function Work({
         </div>
       </Section>
       <Section
-        title="Materials"
+        title="Scripts & lesson materials"
         aside={
           <button onClick={onAddMaterial}>
             <Plus />
@@ -849,7 +852,7 @@ function Notes({
   onAdd: () => void;
   onDelete: (note: Note) => void;
 }) {
-  const [query, setQuery] = useState(""), [status, setStatus] = useState("all");
+  const [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [selected,setSelected]=useState<Note>();
   const notes = data.notes
     .filter((i) => i.studentId === student.id)
     .filter((note) => (status === "all" || note.status === status) && [note.title,note.body,...(note.tags||[])].join(" ").toLowerCase().includes(query.toLowerCase()))
@@ -868,45 +871,9 @@ function Notes({
     >
       <div className="library-toolbar"><label><Search /><input aria-label="Search this student’s notes" placeholder="Search notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Note status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="draft">Drafts</option><option value="published">Published</option></select></div>
       <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="notes" />
-      <div className="note-cards">
+      <div className="lesson-note-index">
         {notePage.visible.map((note) => (
-          <article key={note.id}>
-            <header>
-              <strong>{note.title}</strong>
-              <Status tone={note.status === "published" ? "good" : "neutral"}>
-                {note.status}
-              </Status>
-            </header>
-            {note.bodyHtml ? (
-              <div
-                className="rich-note-body"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(note.bodyHtml, {
-                    ALLOWED_TAGS: [
-                      "p",
-                      "div",
-                      "br",
-                      "strong",
-                      "b",
-                      "em",
-                      "i",
-                      "u",
-                      "a",
-                      "ul",
-                      "ol",
-                      "li",
-                      "span",
-                    ],
-                    ALLOWED_ATTR: ["href", "target", "rel", "style"],
-                  }),
-                }}
-              />
-            ) : (
-              <p>{note.body}</p>
-            )}
-            <small>{new Date(note.updatedAt).toLocaleString()}</small>
-            <button className="danger-button" onClick={() => onDelete(note)}><Trash2 />Delete note</button>
-          </article>
+          <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{note.lessonId?new Date(data.lessons.find(item=>item.id===note.lessonId)?.startsAt||note.updatedAt).toLocaleDateString():"General note"}</strong><small>{data.lessons.find(item=>item.id===note.lessonId)?.topic||note.title} · {note.title}</small></span><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></button>
         ))}
         {!notes.length && (
           <EmptyState
@@ -915,6 +882,7 @@ function Notes({
           />
         )}
       </div>
+      {selected&&<Dialog title={selected.title} description={selected.lessonId?`${new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString()} · ${data.lessons.find(item=>item.id===selected.lessonId)?.topic||"Lesson"}`:"General coaching note"} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="rich-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions"><button type="button" className="danger-button" onClick={()=>{onDelete(selected);setSelected(undefined);}}><Trash2/>Delete note</button><button type="button" onClick={()=>setSelected(undefined)}>Close</button></div></Dialog>}
     </Section>
   );
 }
@@ -1208,10 +1176,12 @@ function ActorPage({
   data,
   student,
   isDemo,
+  onAddMaterial,
 }: {
   data: Data;
   student: Student;
   isDemo: boolean;
+  onAddMaterial:()=>void;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
@@ -1253,8 +1223,9 @@ function ActorPage({
       await queryClient.invalidateQueries({ queryKey: ["studio"] });
     }
   };
+  const actorMaterials=data.materials.filter(item=>item.studentId===student.id&&item.role==="actor_material");
   return (
-    <Section title="Actor page" marked>
+    <div className="student-page"><Section title="Actor page" marked>
       {profile ? (
         <div className="profile-preview">
           <UserRound />
@@ -1285,7 +1256,7 @@ function ActorPage({
           </button>
         </div>
       )}
-    </Section>
+    </Section><Section title="Headshots, gallery, reel & résumé" aside={<button onClick={onAddMaterial}><Plus/>Add actor material</button>}><p className="section-intro">These uploads are reserved for the public actor page and its review workflow.</p><div className="table-list">{actorMaterials.map(item=><article key={item.id}><FolderOpen/><div><strong>{item.title}</strong><small>{item.category} · {item.approvalStatus.replaceAll("_"," ")}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!actorMaterials.length&&<EmptyState title="No actor-page media" detail="Add the main headshot, gallery photos, reel, and résumé here."/>}</div></Section></div>
   );
 }
 function SettingToggle({
@@ -1688,17 +1659,19 @@ function MaterialForm({
   isDemo,
   onClose,
   onSave,
+  fixedRole,
 }: {
   student: Student;
   lessons: Lesson[];
   isDemo: boolean;
   onClose: () => void;
   onSave: (m: Material) => void;
+  fixedRole?: Material["role"];
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Script"),
     [url, setUrl] = useState(""),
-    [role, setRole] = useState<Material["role"]>("current_script"),
+    [role, setRole] = useState<Material["role"]>(fixedRole||"current_script"),
     [lessonId, setLessonId] = useState(lessons[0]?.id ?? ""),
     [file, setFile] = useState<File>(),
     [uploading, setUploading] = useState(false);
@@ -1719,8 +1692,8 @@ function MaterialForm({
                 ? await uploadStudioFile({
                     studioId: student.studioId,
                     studentId: student.id,
-                    entityType: "lesson",
-                    entityId: lessonId,
+                    entityType: fixedRole==="actor_material"?"material":"lesson",
+                    entityId: fixedRole==="actor_material"?undefined:lessonId,
                     file,
                     visibility: "student",
                   })
@@ -1728,7 +1701,7 @@ function MaterialForm({
             onSave({
               id: uid("material"),
               studentId: student.id,
-              lessonId,
+              lessonId: fixedRole==="actor_material"?undefined:lessonId,
               title,
               category,
               externalUrl: url || undefined,
@@ -1755,7 +1728,7 @@ function MaterialForm({
           }
         }}
       >
-        <label className="full">
+        {fixedRole!=="actor_material"&&<label className="full">
           Related lesson
           <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
             <option value="" disabled>Select a lesson</option>
@@ -1766,7 +1739,7 @@ function MaterialForm({
             ))}
           </select>
           {!lessons.length && <small>Add a lesson before attaching materials.</small>}
-        </label>
+        </label>}
         <label>
           Title
           <input
@@ -1775,13 +1748,13 @@ function MaterialForm({
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
-        <label>
+        {!fixedRole&&<label>
           Category
           <input
             value={category}
             onChange={(e) => setCategory(e.target.value)}
           />
-        </label>
+        </label>}
         <label>
           Role
           <select
@@ -1816,7 +1789,7 @@ function MaterialForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={uploading || !lessonId}>
+          <button className="primary" disabled={uploading || (!lessonId&&fixedRole!=="actor_material") || (fixedRole==="actor_material"&&!url&&!file)}>
             {uploading ? "Uploading…" : "Add material"}
           </button>
         </div>

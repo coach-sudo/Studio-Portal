@@ -1,4 +1,5 @@
 import { demoSnapshot } from "./demo";
+import { mergeStudioSettings } from "./settings";
 import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
 import type { Role, StudioSnapshot } from "../domain/model";
 import { scopeStudioSnapshot } from "../state/StudioStore";
@@ -38,7 +39,8 @@ export async function loadStudioSnapshot(role: Role = "coach", studentId?: strin
     (role === "student"
       ? currentStudent?.preferred_name || currentStudent?.full_name || "Student"
       : "Studio");
-  const settings = { ...structuredClone(demoSnapshot.settings), ...(studio.data?.settings ?? {}), timezone: studio.data?.timezone ?? demoSnapshot.settings.timezone } as StudioSnapshot["settings"];
+  const raw=(studio.data?.settings??{}) as Partial<StudioSnapshot["settings"]>;
+  const settings=mergeStudioSettings(structuredClone(demoSnapshot.settings),{...raw,timezone:studio.data?.timezone??raw.timezone??demoSnapshot.settings.timezone});
   if (settings.branding?.logoStoragePath) {
     const { data: signed } = await supabase.storage.from("studio-materials").createSignedUrl(settings.branding.logoStoragePath, 3600);
     if (signed?.signedUrl) settings.branding = { ...settings.branding, logoUrl: signed.signedUrl };

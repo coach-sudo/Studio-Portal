@@ -455,6 +455,11 @@ export interface ActorProfile extends Versioned {
     website?: string;
     representation?: string;
     accentColor?: string;
+    contactEmail?: string;
+    contactPhone?: string;
+    showEmail?: boolean;
+    showPhone?: boolean;
+    primaryHeadshotMaterialId?: string;
   };
 }
 export interface OutboxMessage extends Versioned {

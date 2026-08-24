@@ -57,7 +57,7 @@ export function AppShell() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="shell-brand">
-          {data?.settings.branding.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
+          {data?.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
           <div className="wordmark">{data?.settings.studioName ?? "Studio"}</div>
         </div>
         <nav aria-label="Coach navigation">

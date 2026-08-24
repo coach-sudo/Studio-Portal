@@ -5,6 +5,7 @@ import { apiError, correlationId, json } from "./_shared/http";
 import { userClient } from "./_shared/supabase";
 import { serviceClient } from "./_shared/supabase";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
+import { mapStudentChanges } from "./_shared/student-updates";
 
 const domains = new Set([
   "students",
@@ -467,14 +468,7 @@ export default async (request: Request, context: Context) => {
         portalUsername: "portal_username",
         portalPreferences: "portal_preferences",
       };
-      for (const key of allowed)
-        if (key in payload) {
-          const value = payload[key];
-          changes[columns[key]] =
-            typeof value === "string" && value.trim() === ""
-              ? null
-              : value ?? null;
-        }
+      Object.assign(changes, mapStudentChanges(payload, allowed, columns));
       const { data, error } = await serviceClient()
         .from("students")
         .update(changes)

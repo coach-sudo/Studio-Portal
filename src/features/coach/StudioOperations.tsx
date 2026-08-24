@@ -9,6 +9,7 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import DOMPurify from "dompurify";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -283,7 +284,7 @@ export function LessonsView({ data, isDemo }: { data: StudioSnapshot; isDemo: bo
 }
 export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDemo?: boolean }) {
   const navigate = useNavigate(), store = useStudioStore(), queryClient = useQueryClient();
-  const [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [notice, setNotice] = useState(""), [deleting, setDeleting] = useState("");
+  const [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [notice, setNotice] = useState(""), [deleting, setDeleting] = useState(""), [selected,setSelected]=useState<StudioSnapshot["notes"][number]>();
   const filtered = [...data.notes].filter((note) => (status === "all" || note.status === status) && [note.title, note.body, studentName(data, note.studentId), ...(note.tags || [])].join(" ").toLowerCase().includes(query.toLowerCase())).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const notePage = usePagedList(filtered);
   const remove = async (note: StudioSnapshot["notes"][number]) => {
@@ -298,27 +299,10 @@ export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDe
       {notice && <p className="portal-notice">{notice}</p>}
       <div className="library-toolbar"><label><Search /><input aria-label="Search notes" placeholder="Search notes or students…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Note status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="draft">Drafts</option><option value="published">Published</option></select></div>
       <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="notes" />
-      <div className="table-list">
+      <div className="lesson-note-index">
         {notePage.visible
           .map((note) => (
-            <article key={note.id}>
-              <FileText />
-              <div>
-                <strong>{note.title}</strong>
-                <small>
-                  {studentName(data, note.studentId)} · {note.body}
-                </small>
-              </div>
-              <Status tone={note.status === "published" ? "good" : "neutral"}>
-                {note.status}
-              </Status>
-              <button
-                onClick={() => navigate(`/coach/students/${note.studentId}/notes`)}
-              >
-                Open
-              </button>
-              <button className="danger-button" disabled={deleting === note.id} onClick={() => void remove(note)} aria-label={`Delete ${note.title}`}><Trash2 />{deleting === note.id ? "Deleting…" : "Delete"}</button>
-            </article>
+            <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{note.lessonId?new Date(data.lessons.find(item=>item.id===note.lessonId)?.startsAt||note.updatedAt).toLocaleDateString():"General note"}</strong><small>{studentName(data,note.studentId)} · {data.lessons.find(item=>item.id===note.lessonId)?.topic||note.title} · {note.title}</small></span><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></button>
           ))}
         {!filtered.length && (
           <EmptyState
@@ -327,6 +311,7 @@ export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDe
           />
         )}
       </div>
+      {selected&&<Dialog title={selected.title} description={`${studentName(data,selected.studentId)} · ${selected.lessonId?new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString():"General note"}`} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="rich-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions"><button type="button" onClick={()=>{setSelected(undefined);navigate(`/coach/students/${selected.studentId}/notes`);}}>Open student notes</button><button type="button" className="danger-button" disabled={deleting===selected.id} onClick={()=>{void remove(selected);setSelected(undefined);}}><Trash2/>Delete note</button></div></Dialog>}
     </Section>
   );
 }
@@ -427,7 +412,7 @@ export function MaterialsView({
               {item.status}
             </Status>
             <button
-              onClick={() => navigate(`/coach/students/${item.studentId}/work`)}
+              onClick={() => navigate(`/coach/students/${item.studentId}/${item.role==="actor_material"?"actor-page":"work"}`)}
             >
               Student
             </button>
