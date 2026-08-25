@@ -3,6 +3,10 @@ import { serviceClient } from "./_shared/supabase";
 
 export default async () => {
   const db = serviceClient();
+  const maintenanceTime = new Date();
+  const runDailyStorageCleanup =
+    maintenanceTime.getUTCHours() === 8 &&
+    maintenanceTime.getUTCMinutes() < 5;
   const [
     { data: expired, error },
     { data: extended, error: extendError },
@@ -10,7 +14,9 @@ export default async () => {
   ] = await Promise.all([
     db.rpc("expire_booking_holds"),
     db.rpc("extend_ongoing_series"),
-    db.rpc("cleanup_transient_studio_data"),
+    runDailyStorageCleanup
+      ? db.rpc("cleanup_transient_studio_data")
+      : Promise.resolve({ data: null, error: null }),
   ]);
   if (error || extendError || cleanupError)
     throw error || extendError || cleanupError;
@@ -40,7 +46,7 @@ export default async () => {
     await db.from("recommendations").upsert({ studio_id: lesson.studio_id, student_id: lesson.student_id, entity_type: "lesson", entity_id: lesson.id, reason_code: "lesson_note_due_48h", title: `Write follow-up for ${lesson.topic}`, explanation: "Lesson notes are due within 48 hours of the lesson ending.", evidence: [`Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" })}`, `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone: "America/New_York" })}`], urgency: new Date(dueAt) <= new Date() ? 5 : 4, due_at: dueAt, suggested_action: "write_note", requires_confirmation: false, status: "open", dedupe_key: `lesson:${lesson.id}:note-48h`, updated_at: now }, { onConflict: "dedupe_key" });
     noteReminders++;
   }
-  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, delinquentCancelled: delinquent?.length || 0, noteReminders });
+  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, storageCleanupRan: runDailyStorageCleanup, delinquentCancelled: delinquent?.length || 0, noteReminders });
 };
 
 export const config: Config = { schedule: "*/5 * * * *" };
