@@ -31,14 +31,69 @@ const base: StudioSnapshot = {
     showDriveFolder: true,
     reminderHours: [72, 24, 2],
     lessonRatesMinor: { 30: 3500, 60: 5000, 90: 7200, intro: 3500 },
-    bookingDefaults: { minimumNoticeHours: 72, bookingHorizonDays: 90, cancellationWindowHours: 24, bufferBeforeMinutes: 0, bufferAfterMinutes: 0, recurringHorizonWeeks: 12, inPersonUpchargeMinor: 0 },
-    meetingFormats: { google_meet: { enabled: true, label: "Google Meet" }, in_person: { enabled: true, label: "In person", location: "" } },
+    bookingDefaults: {
+      minimumNoticeHours: 72,
+      bookingHorizonDays: 90,
+      cancellationWindowHours: 24,
+      bufferBeforeMinutes: 0,
+      bufferAfterMinutes: 0,
+      recurringHorizonWeeks: 12,
+      inPersonUpchargeMinor: 0,
+      requirePhone: false,
+      allowRecurring: true,
+      allowPayLater: true,
+      showPrices: true,
+      confirmationMessage:
+        "Your lesson is reserved. Check your email for the confirmation and calendar invitation.",
+      bookingButtonLabel: "View times",
+    },
+    meetingFormats: {
+      google_meet: { enabled: true, label: "Google Meet" },
+      in_person: { enabled: true, label: "In person", location: "" },
+    },
     coachEmails: ["coach@d-a-j.com"],
-    branding: { primaryColor: "#173F35", secondaryColor: "#C99A45", accentColor: "#E46F61", surfaceColor: "#F7F3EA" },
-    bookingCopy: { eyebrow: "Coaching built around your work", headline: "Find the right room for your next breakthrough.", intro: "Private acting coaching with straightforward scheduling and policies." },
-    bookingPage: { footerWebsiteUrl: "https://d-a-j.com", footerWebsiteLabel: "Visit d-a-j.com", showCoachName: true, showTrustRow: true, showPolicies: true },
-    emailAutomations: { enabled: true, coachNewBooking: true, studentConfirmation: true, reminders: true, confirmationSubject: "Your {{studioName}} booking is confirmed", confirmationBody: "Hi {{studentName}},\n\nYour {{serviceName}} booking is confirmed for {{startsAt}}.\n\nManage your booking: {{manageUrl}}", coachSubject: "New booking: {{studentName}} — {{serviceName}}", coachBody: "{{studentName}} booked {{serviceName}} for {{startsAt}} ({{location}}). Reference: {{reference}}.", reminderSubject: "Reminder: {{serviceName}} in {{hours}} hours", reminderBody: "Hi {{studentName}},\n\nYour {{serviceName}} session starts at {{startsAt}}. {{meetingDetails}}", paymentFailedSubject: "Payment needs attention for {{studioName}}", paymentFailedBody: "We could not collect your scheduled payment. Please update your payment method within seven days." },
-    portalDefaults: { compactView: false, showProgress: true, showActorPage: true },
+    branding: {
+      primaryColor: "#173F35",
+      secondaryColor: "#C99A45",
+      accentColor: "#E46F61",
+      surfaceColor: "#F7F3EA",
+    },
+    bookingCopy: {
+      eyebrow: "Coaching built around your work",
+      headline: "Find the right room for your next breakthrough.",
+      intro:
+        "Private acting coaching with straightforward scheduling and policies.",
+    },
+    bookingPage: {
+      footerWebsiteUrl: "https://d-a-j.com",
+      footerWebsiteLabel: "Visit d-a-j.com",
+      showCoachName: true,
+      showTrustRow: true,
+      showPolicies: true,
+    },
+    emailAutomations: {
+      enabled: true,
+      coachNewBooking: true,
+      studentConfirmation: true,
+      reminders: true,
+      confirmationSubject: "Your {{studioName}} booking is confirmed",
+      confirmationBody:
+        "Hi {{studentName}},\n\nYour {{serviceName}} booking is confirmed for {{startsAt}}.\n\nManage your booking: {{manageUrl}}",
+      coachSubject: "New booking: {{studentName}} — {{serviceName}}",
+      coachBody:
+        "{{studentName}} booked {{serviceName}} for {{startsAt}} ({{location}}). Reference: {{reference}}.",
+      reminderSubject: "Reminder: {{serviceName}} in {{hours}} hours",
+      reminderBody:
+        "Hi {{studentName}},\n\nYour {{serviceName}} session starts at {{startsAt}}. {{meetingDetails}}",
+      paymentFailedSubject: "Payment needs attention for {{studioName}}",
+      paymentFailedBody:
+        "We could not collect your scheduled payment. Please update your payment method within seven days.",
+    },
+    portalDefaults: {
+      compactView: false,
+      showProgress: true,
+      showActorPage: true,
+    },
   },
   students: [
     {

@@ -17,6 +17,7 @@ const publicBooking = fs.readFileSync(
   "netlify/functions/public-booking.ts",
   "utf8",
 );
+const compactPublicBooking = publicBooking.replace(/\s+/g, "");
 const stripeWebhook = fs.readFileSync(
   "netlify/functions/stripe-webhook-v2.ts",
   "utf8",
@@ -110,7 +111,7 @@ describe("database contracts", () => {
   it("holds every recurring occurrence in one database transaction", () => {
     expect(booking).toContain("create_booking_series_holds");
     expect(booking).toContain("foreach occurrence_start");
-    expect(publicBooking).toContain("target_starts:occurrenceStarts");
+    expect(compactPublicBooking).toContain("target_starts:occurrenceStarts");
   });
   it("reschedules occurrences atomically while preserving studio-local recurrence", () => {
     expect(booking).toContain("reschedule_booking_occurrences");
@@ -121,12 +122,12 @@ describe("database contracts", () => {
     expect(publicBooking).toContain("idempotency_keys");
     expect(publicBooking).toContain("googleFreeBusy");
     expect(publicBooking).toContain("availabilityUrl");
-    expect(publicBooking).toContain("idempotencyKey:idempotency");
+    expect(compactPublicBooking).toContain("idempotencyKey:idempotency");
   });
   it("rate limits public catalog, availability, holds, and management commands", () => {
     expect(booking).toContain("claim_public_rate_limit");
     expect(booking).toContain("public_endpoint_rate_limits");
-    expect(publicBooking).toContain("rateLimit(request,action)");
+    expect(compactPublicBooking).toContain("rateLimit(request,action)");
   });
   it("handles payment failures, refunds, expired sessions, and subscription lifecycle", () => {
     for (const event of [
@@ -148,7 +149,9 @@ describe("database contracts", () => {
     );
   });
   it("splits finite course installments without overcharging rounding cents", () => {
-    expect(publicBooking).toContain("Math.floor(totalMinor/billingCount)");
+    expect(compactPublicBooking).toContain(
+      "Math.floor(totalMinor/billingCount)",
+    );
     expect(stripeWebhook).toContain("Final installment rounding adjustment");
     expect(booking).toContain("installment_remainder_minor");
   });

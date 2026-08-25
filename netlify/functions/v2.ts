@@ -25,7 +25,17 @@ const domains = new Set([
   "recommendations",
   "settings",
 ]);
-const sourceLabelServer=(value:string)=>({lessonface:"Lessonface",wyzant:"Wyzant",lessons_com:"Lessons.com",acuity:"Acuity",google_calendar:"Google Calendar",gmail:"Gmail"} as Record<string,string>)[value]||value;
+const sourceLabelServer = (value: string) =>
+  (
+    ({
+      lessonface: "Lessonface",
+      wyzant: "Wyzant",
+      lessons_com: "Lessons.com",
+      acuity: "Acuity",
+      google_calendar: "Google Calendar",
+      gmail: "Gmail",
+    }) as Record<string, string>
+  )[value] || value;
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
   try {
@@ -68,6 +78,50 @@ export default async (request: Request, context: Context) => {
         .single();
       if (error || !data) throw new Error("FORBIDDEN");
       return data.studio_id as string;
+    };
+    const requireMaterialManager = async (materialId: string) => {
+      const service = serviceClient();
+      const [{ data: material, error: materialError }, { data: authData }] =
+        await Promise.all([
+          service.from("materials").select("*").eq("id", materialId).single(),
+          db.auth.getUser(),
+        ]);
+      if (materialError || !material || !authData.user)
+        throw new Error("FORBIDDEN");
+      const [{ data: coach }, { data: owner }, { data: guardian }] =
+        await Promise.all([
+          service
+            .from("memberships")
+            .select("id")
+            .eq("studio_id", material.studio_id)
+            .eq("user_id", authData.user.id)
+            .eq("role", "coach")
+            .maybeSingle(),
+          material.owner_student_id
+            ? service
+                .from("students")
+                .select("id")
+                .eq("id", material.owner_student_id)
+                .eq("user_id", authData.user.id)
+                .is("deleted_at", null)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+          material.owner_student_id
+            ? service
+                .from("student_relationships")
+                .select("id")
+                .eq("student_id", material.owner_student_id)
+                .eq("user_id", authData.user.id)
+                .eq("can_manage_profile", true)
+                .maybeSingle()
+            : Promise.resolve({ data: null }),
+        ]);
+      if (!coach && !owner && !guardian) throw new Error("FORBIDDEN");
+      return {
+        studioId: material.studio_id as string,
+        before: material,
+        isCoach: Boolean(coach),
+      };
     };
     const audit = async (
       studioId: string,
@@ -148,38 +202,82 @@ export default async (request: Request, context: Context) => {
         studentId = String(input.payload.studentId || ""),
         lessonId = String(input.entityId || input.payload.lessonId || "");
       if (!lessonId || !studentId || body.length < 1 || body.length > 4000)
-        throw new Error("VALIDATION_FAILED: Write a message between 1 and 4,000 characters.");
-      const [{ data: lesson, error: lessonError }, { data: participant }] = await Promise.all([
-        db.from("lessons").select("id,studio_id,student_id").eq("id", lessonId).single(),
-        db.from("lesson_participants").select("id").eq("lesson_id", lessonId).eq("student_id", studentId).maybeSingle(),
-      ]);
-      if (lessonError || !lesson || (lesson.student_id !== studentId && !participant))
+        throw new Error(
+          "VALIDATION_FAILED: Write a message between 1 and 4,000 characters.",
+        );
+      const [{ data: lesson, error: lessonError }, { data: participant }] =
+        await Promise.all([
+          db
+            .from("lessons")
+            .select("id,studio_id,student_id")
+            .eq("id", lessonId)
+            .single(),
+          db
+            .from("lesson_participants")
+            .select("id")
+            .eq("lesson_id", lessonId)
+            .eq("student_id", studentId)
+            .maybeSingle(),
+        ]);
+      if (
+        lessonError ||
+        !lesson ||
+        (lesson.student_id !== studentId && !participant)
+      )
         throw new Error("FORBIDDEN");
-      const [{ data: coachMembership }, { data: authData }] = await Promise.all([
-        db.from("memberships").select("id").eq("studio_id", lesson.studio_id).eq("role", "coach").maybeSingle(),
-        db.auth.getUser(),
-      ]);
+      const [{ data: coachMembership }, { data: authData }] = await Promise.all(
+        [
+          db
+            .from("memberships")
+            .select("id")
+            .eq("studio_id", lesson.studio_id)
+            .eq("role", "coach")
+            .maybeSingle(),
+          db.auth.getUser(),
+        ],
+      );
       const user = authData.user;
       if (!user) throw new Error("FORBIDDEN");
-      let authorRole: "coach" | "student" | "guardian" = coachMembership ? "coach" : "student";
+      let authorRole: "coach" | "student" | "guardian" = coachMembership
+        ? "coach"
+        : "student";
       if (!coachMembership) {
-        const { data: relationship } = await db.from("student_relationships").select("id").eq("student_id", studentId).eq("user_id", user.id).maybeSingle();
+        const { data: relationship } = await db
+          .from("student_relationships")
+          .select("id")
+          .eq("student_id", studentId)
+          .eq("user_id", user.id)
+          .maybeSingle();
         if (relationship) authorRole = "guardian";
       }
-      const { data, error } = await serviceClient().from("lesson_messages").insert({
-        lesson_id: lesson.id,
-        student_id: studentId,
-        author_user_id: user.id,
-        author_role: authorRole,
-        body,
-      }).select().single();
+      const { data, error } = await serviceClient()
+        .from("lesson_messages")
+        .insert({
+          lesson_id: lesson.id,
+          student_id: studentId,
+          author_user_id: user.id,
+          author_role: authorRole,
+          body,
+        })
+        .select()
+        .single();
       if (error) throw error;
-      return json({
-        resource: data,
-        recommendations: [],
-        auditEventId: await audit(lesson.studio_id, "lesson_message", data.id, "lesson_message.created", null, { lesson_id: lesson.id, author_role: authorRole }),
-        queuedSideEffects: [],
-      }, 201);
+      return json(
+        {
+          resource: data,
+          recommendations: [],
+          auditEventId: await audit(
+            lesson.studio_id,
+            "lesson_message",
+            data.id,
+            "lesson_message.created",
+            null,
+            { lesson_id: lesson.id, author_role: authorRole },
+          ),
+          queuedSideEffects: [],
+        },
+        201,
+      );
     }
     if (domain === "students" && input.command === "invite" && input.entityId) {
       const studioId = await requireCoach(),
@@ -261,7 +359,9 @@ export default async (request: Request, context: Context) => {
       input.entityId
     ) {
       const studioId = await requireCoach();
-      const username = String(input.payload.username || "").trim().toLowerCase();
+      const username = String(input.payload.username || "")
+        .trim()
+        .toLowerCase();
       const password = String(input.payload.password || "");
       if (!/^[a-z][a-z0-9._-]{2,31}$/.test(username))
         throw new Error(
@@ -320,7 +420,10 @@ export default async (request: Request, context: Context) => {
           authUser = { id: existingRelationship.user_id };
       }
       for (let page = 1; page <= 10 && !authUser; page += 1) {
-        const listed = await service.auth.admin.listUsers({ page, perPage: 1000 });
+        const listed = await service.auth.admin.listUsers({
+          page,
+          perPage: 1000,
+        });
         if (listed.error) throw listed.error;
         authUser = listed.data.users.find(
           (item) => item.email?.toLowerCase() === email,
@@ -328,13 +431,16 @@ export default async (request: Request, context: Context) => {
         if (listed.data.users.length < 1000) break;
       }
       if (authUser) {
-        const updatedAuth = await service.auth.admin.updateUserById(authUser.id, {
-          password,
-          email_confirm: true,
-          user_metadata: {
-            portal_role: student.is_minor ? "guardian" : "student",
+        const updatedAuth = await service.auth.admin.updateUserById(
+          authUser.id,
+          {
+            password,
+            email_confirm: true,
+            user_metadata: {
+              portal_role: student.is_minor ? "guardian" : "student",
+            },
           },
-        });
+        );
         if (updatedAuth.error) throw updatedAuth.error;
       } else {
         const createdAuth = await service.auth.admin.createUser({
@@ -346,7 +452,10 @@ export default async (request: Request, context: Context) => {
           },
         });
         if (createdAuth.error || !createdAuth.data.user)
-          throw createdAuth.error || new Error("Portal identity could not be created.");
+          throw (
+            createdAuth.error ||
+            new Error("Portal identity could not be created.")
+          );
         authUser = createdAuth.data.user;
       }
       if (student.is_minor) {
@@ -492,6 +601,86 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
+    if (domain === "students" && input.command === "remove" && input.entityId) {
+      const studioId = await requireCoach();
+      const service = serviceClient();
+      const { data: before, error: readError } = await service
+        .from("students")
+        .select("*")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .is("deleted_at", null)
+        .single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      if (before.version !== input.expectedVersion)
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const { data: authData } = await db.auth.getUser();
+      const removedAt = new Date().toISOString();
+      const { data: removed, error: removeError } = await service
+        .from("students")
+        .update({
+          deleted_at: removedAt,
+          deleted_by: authData.user?.id || null,
+          status: "inactive",
+          portal_enabled: false,
+          portal_username: null,
+          user_id: null,
+          version: before.version + 1,
+          updated_at: removedAt,
+        })
+        .eq("id", before.id)
+        .eq("version", before.version)
+        .select()
+        .maybeSingle();
+      if (removeError) throw removeError;
+      if (!removed)
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const { data: futureLessons, error: lessonsError } = await service
+        .from("lessons")
+        .update({ status: "cancelled", updated_at: removedAt })
+        .eq("student_id", before.id)
+        .eq("status", "scheduled")
+        .gte("starts_at", removedAt)
+        .select("id");
+      if (lessonsError) throw lessonsError;
+      const futureLessonIds = (futureLessons || []).map((lesson) => lesson.id);
+      await Promise.all([
+        service
+          .from("student_relationships")
+          .delete()
+          .eq("student_id", before.id),
+        service
+          .from("recurring_series")
+          .update({ status: "cancelled", updated_at: removedAt })
+          .eq("student_id", before.id)
+          .in("status", ["active", "paused", "cancel_at_period_end"]),
+        futureLessonIds.length
+          ? service
+              .from("calendar_projections")
+              .update({ status: "queued", last_error: null })
+              .in("lesson_id", futureLessonIds)
+          : Promise.resolve({ error: null }),
+      ]);
+      return json({
+        resource: {
+          id: before.id,
+          removedAt,
+          cancelledLessons: futureLessonIds.length,
+        },
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "student",
+          before.id,
+          "student.removed",
+          before,
+          { removed_at: removedAt, cancelled_lessons: futureLessonIds.length },
+        ),
+        queuedSideEffects: futureLessonIds.length
+          ? ["calendar_projection"]
+          : [],
+      });
+    }
     if (domain === "lessons" && input.command === "create") {
       const studioId = await requireCoach(),
         studentId = String(input.payload.studentId || ""),
@@ -538,6 +727,24 @@ export default async (request: Request, context: Context) => {
         lesson_id: data.id,
         status: "queued",
       });
+      const cadence = String(input.payload.recurrence || "none");
+      const occurrenceCount = Number(input.payload.occurrenceCount || 1);
+      if (["weekly", "biweekly"].includes(cadence) && occurrenceCount > 1) {
+        const repeated = await serviceClient().rpc(
+          "command_make_lesson_recurring",
+          {
+            p_lesson_id: data.id,
+            p_expected_version: data.version,
+            p_cadence: cadence,
+            p_occurrence_count: occurrenceCount,
+            p_timezone: String(input.payload.timezone || "America/New_York"),
+          },
+        );
+        if (repeated.error) {
+          await serviceClient().from("lessons").delete().eq("id", data.id);
+          throw repeated.error;
+        }
+      }
       return json({
         resource: data,
         recommendations: [],
@@ -547,6 +754,44 @@ export default async (request: Request, context: Context) => {
           data.id,
           "lesson.created",
           null,
+          data,
+        ),
+        queuedSideEffects: ["calendar_projection"],
+      });
+    }
+    if (
+      domain === "lessons" &&
+      input.command === "make_recurring" &&
+      input.entityId
+    ) {
+      const studioId = await requireCoach();
+      const { data: lesson, error: readError } = await db
+        .from("lessons")
+        .select("id,studio_id")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      if (readError || !lesson) throw new Error("FORBIDDEN");
+      const { data, error } = await serviceClient().rpc(
+        "command_make_lesson_recurring",
+        {
+          p_lesson_id: lesson.id,
+          p_expected_version: input.expectedVersion,
+          p_cadence: String(input.payload.cadence || ""),
+          p_occurrence_count: Number(input.payload.occurrenceCount || 0),
+          p_timezone: String(input.payload.timezone || "America/New_York"),
+        },
+      );
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "lesson",
+          lesson.id,
+          "lesson.series_created",
+          { version: input.expectedVersion },
           data,
         ),
         queuedSideEffects: ["calendar_projection"],
@@ -636,11 +881,32 @@ export default async (request: Request, context: Context) => {
     }
     if (domain === "notes" && input.command === "delete" && input.entityId) {
       const studioId = await requireCoach(),
-        { data: before, error: readError } = await db.from("notes").select("*,students!inner(studio_id)").eq("id", input.entityId).single();
-      if (readError || !before || before.students.studio_id !== studioId) throw new Error("FORBIDDEN");
-      const { error } = await serviceClient().from("notes").delete().eq("id", before.id).eq("version", input.expectedVersion);
+        { data: before, error: readError } = await db
+          .from("notes")
+          .select("*,students!inner(studio_id)")
+          .eq("id", input.entityId)
+          .single();
+      if (readError || !before || before.students.studio_id !== studioId)
+        throw new Error("FORBIDDEN");
+      const { error } = await serviceClient()
+        .from("notes")
+        .delete()
+        .eq("id", before.id)
+        .eq("version", input.expectedVersion);
       if (error) throw error;
-      return json({ resource: { id: before.id, deleted: true }, recommendations: [], auditEventId: await audit(studioId, "note", before.id, "note.deleted", before, null), queuedSideEffects: [] });
+      return json({
+        resource: { id: before.id, deleted: true },
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "note",
+          before.id,
+          "note.deleted",
+          before,
+          null,
+        ),
+        queuedSideEffects: [],
+      });
     }
     if (domain === "materials" && input.command === "create") {
       const studentId = String(input.payload.studentId || ""),
@@ -652,9 +918,21 @@ export default async (request: Request, context: Context) => {
       if (studentError || !student) throw new Error("FORBIDDEN");
       const materialRole = String(input.payload.role || "library");
       if (materialRole === "current_script") {
-        const { data: currentLinks } = await serviceClient().from("material_links").select("material_id").eq("student_id", student.id).eq("role", "current_script");
+        const { data: currentLinks } = await serviceClient()
+          .from("material_links")
+          .select("material_id")
+          .eq("student_id", student.id)
+          .eq("role", "current_script");
         const currentIds = (currentLinks || []).map((item) => item.material_id);
-        if (currentIds.length) await serviceClient().from("materials").update({ status: "archived", updated_at: new Date().toISOString() }).in("id", currentIds).eq("status", "active");
+        if (currentIds.length)
+          await serviceClient()
+            .from("materials")
+            .update({
+              status: "archived",
+              updated_at: new Date().toISOString(),
+            })
+            .in("id", currentIds)
+            .eq("status", "active");
       }
       const { data, error } = await serviceClient()
         .from("materials")
@@ -702,20 +980,68 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
-    if (domain === "whiteboards" && input.command === "save" && input.entityId) {
-      const { data: lesson, error: lessonError } = await db.from("lessons").select("id,studio_id,student_id").eq("id", input.entityId).single();
+    if (
+      domain === "whiteboards" &&
+      input.command === "save" &&
+      input.entityId
+    ) {
+      const { data: lesson, error: lessonError } = await db
+        .from("lessons")
+        .select("id,studio_id,student_id")
+        .eq("id", input.entityId)
+        .single();
       if (lessonError || !lesson) throw new Error("FORBIDDEN");
-      const elements = Array.isArray((input.payload.document as any)?.elements) ? (input.payload.document as any).elements : [];
-      if (elements.length > 500) throw new Error("VALIDATION_FAILED: A whiteboard can contain up to 500 items.");
+      const elements = Array.isArray((input.payload.document as any)?.elements)
+        ? (input.payload.document as any).elements
+        : [];
+      if (elements.length > 500)
+        throw new Error(
+          "VALIDATION_FAILED: A whiteboard can contain up to 500 items.",
+        );
       const document = { version: 1, elements };
       const service = serviceClient();
-      const { data: before } = await service.from("lesson_whiteboards").select("*").eq("lesson_id", lesson.id).maybeSingle();
-      if (before && before.version !== input.expectedVersion) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const { data: before } = await service
+        .from("lesson_whiteboards")
+        .select("*")
+        .eq("lesson_id", lesson.id)
+        .maybeSingle();
+      if (before && before.version !== input.expectedVersion)
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
       const { data, error } = before
-        ? await service.from("lesson_whiteboards").update({ document, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", before.version).select().single()
-        : await service.from("lesson_whiteboards").insert({ studio_id: lesson.studio_id, lesson_id: lesson.id, document }).select().single();
+        ? await service
+            .from("lesson_whiteboards")
+            .update({
+              document,
+              version: before.version + 1,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", before.id)
+            .eq("version", before.version)
+            .select()
+            .single()
+        : await service
+            .from("lesson_whiteboards")
+            .insert({
+              studio_id: lesson.studio_id,
+              lesson_id: lesson.id,
+              document,
+            })
+            .select()
+            .single();
       if (error) throw error;
-      return json({ resource: data, recommendations: [], auditEventId: await audit(lesson.studio_id,"lesson_whiteboard",data.id,"lesson_whiteboard.saved",before,data), queuedSideEffects: [] });
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          lesson.studio_id,
+          "lesson_whiteboard",
+          data.id,
+          "lesson_whiteboard.saved",
+          before,
+          data,
+        ),
+        queuedSideEffects: [],
+      });
     }
     if (
       domain === "materials" &&
@@ -763,14 +1089,7 @@ export default async (request: Request, context: Context) => {
       input.command === "update_status" &&
       input.entityId
     ) {
-      const studioId = await requireCoach(),
-        { data: before, error: readError } = await db
-          .from("materials")
-          .select("*")
-          .eq("id", input.entityId)
-          .eq("studio_id", studioId)
-          .single();
-      if (readError || !before) throw new Error("FORBIDDEN");
+      const { studioId, before } = await requireMaterialManager(input.entityId);
       const status = String(input.payload.status || "");
       if (!["active", "archived"].includes(status))
         throw new Error("VALIDATION_FAILED");
@@ -799,6 +1118,53 @@ export default async (request: Request, context: Context) => {
         ),
         queuedSideEffects: [],
         recommendations: [],
+      });
+    }
+    if (
+      domain === "materials" &&
+      input.command === "delete" &&
+      input.entityId
+    ) {
+      const { studioId, before } = await requireMaterialManager(input.entityId);
+      const service = serviceClient();
+      if (before.version !== input.expectedVersion)
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const { data: deleted, error: deleteError } = await service
+        .from("materials")
+        .delete()
+        .eq("id", before.id)
+        .eq("version", before.version)
+        .select("id")
+        .maybeSingle();
+      if (deleteError) throw deleteError;
+      if (!deleted)
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      let storageWarning = false;
+      if (before.storage_path) {
+        const storageResult = await service.storage
+          .from("studio-materials")
+          .remove([before.storage_path]);
+        storageWarning = Boolean(storageResult.error);
+      }
+      return json({
+        resource: { id: before.id, deleted: true, storageWarning },
+        auditEventId: await audit(
+          studioId,
+          "material",
+          before.id,
+          "material.deleted",
+          before,
+          { deleted: true, storage_warning: storageWarning },
+        ),
+        queuedSideEffects: [],
+        recommendations: storageWarning
+          ? [
+              {
+                title: "A removed file needs storage cleanup",
+                suggestedAction: "open_integrations",
+              },
+            ]
+          : [],
       });
     }
     if (domain === "actor-pages" && input.command === "create") {
@@ -877,22 +1243,31 @@ export default async (request: Request, context: Context) => {
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
       if (input.command === "help") {
-        await serviceClient().from("recommendations").upsert({
-          studio_id: before.students.studio_id,
-          student_id: before.student_id,
-          entity_type: "assignment",
-          entity_id: before.id,
-          reason_code: "practice_help_requested",
-          title: `${before.title}: student asked for help`,
-          explanation: "The student used Ask coach from their practice page.",
-          evidence: [before.details || "Practice assignment", `Requested ${new Date().toISOString()}`],
-          urgency: 4,
-          suggested_action: "open_student_work",
-          requires_confirmation: false,
-          status: "open",
-          dedupe_key: `assignment:${before.id}:help`,
-          due_at: new Date().toISOString(),
-        }, { onConflict: "dedupe_key" });
+        await serviceClient()
+          .from("recommendations")
+          .upsert(
+            {
+              studio_id: before.students.studio_id,
+              student_id: before.student_id,
+              entity_type: "assignment",
+              entity_id: before.id,
+              reason_code: "practice_help_requested",
+              title: `${before.title}: student asked for help`,
+              explanation:
+                "The student used Ask coach from their practice page.",
+              evidence: [
+                before.details || "Practice assignment",
+                `Requested ${new Date().toISOString()}`,
+              ],
+              urgency: 4,
+              suggested_action: "open_student_work",
+              requires_confirmation: false,
+              status: "open",
+              dedupe_key: `assignment:${before.id}:help`,
+              due_at: new Date().toISOString(),
+            },
+            { onConflict: "dedupe_key" },
+          );
       }
       return json({
         resource: data,
@@ -941,7 +1316,10 @@ export default async (request: Request, context: Context) => {
         changes.bio = String(input.payload.bio || before.bio).trim();
         changes.draft_content = {
           ...(before.draft_content || {}),
-          ...(typeof input.payload.portfolio === "object" && input.payload.portfolio ? input.payload.portfolio : {}),
+          ...(typeof input.payload.portfolio === "object" &&
+          input.payload.portfolio
+            ? input.payload.portfolio
+            : {}),
         };
       }
       if (nextStatus === "published") {
@@ -1018,9 +1396,17 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: ["outbox_worker"],
       });
     }
-    if (domain === "integrations" && input.command === "review_import" && input.entityId) {
-      const studioId = await requireCoach(), service = serviceClient(), {data:{user}}=await db.auth.getUser();
-      if(!user)throw new Error("FORBIDDEN");
+    if (
+      domain === "integrations" &&
+      input.command === "review_import" &&
+      input.entityId
+    ) {
+      const studioId = await requireCoach(),
+        service = serviceClient(),
+        {
+          data: { user },
+        } = await db.auth.getUser();
+      if (!user) throw new Error("FORBIDDEN");
       const { data: before, error: readError } = await db
         .from("integration_imports")
         .select("*")
@@ -1038,76 +1424,239 @@ export default async (request: Request, context: Context) => {
           .eq("status", "needs_review")
           .eq("detected_source", before.detected_source);
         if (candidatesError) throw candidatesError;
-        const signature = (row: any) => String(row.payload?.summary || row.payload?.headers?.subject || row.payload?.snippet || row.external_id);
-        imports = (candidates || []).filter((row) => signature(row) === signature(before));
+        const signature = (row: any) =>
+          String(
+            row.payload?.summary ||
+              row.payload?.headers?.subject ||
+              row.payload?.snippet ||
+              row.external_id,
+          );
+        imports = (candidates || []).filter(
+          (row) => signature(row) === signature(before),
+        );
       }
       const importIds = imports.map((row) => row.id);
       if (action === "ignore") {
         const { data, error } = await service
           .from("integration_imports")
-          .update({ status: "ignored", matched_by: "coach review", verified_at: new Date().toISOString(), verified_by: user.id, verification_note: String(input.payload.note || "Ignored by coach"), updated_at: new Date().toISOString() })
+          .update({
+            status: "ignored",
+            matched_by: "coach review",
+            verified_at: new Date().toISOString(),
+            verified_by: user.id,
+            verification_note: String(input.payload.note || "Ignored by coach"),
+            updated_at: new Date().toISOString(),
+          })
           .in("id", importIds)
-          .select()
-          ;
+          .select();
         if (error) throw error;
-        return json({resource:{reviewed:data?.length||0},recommendations:[],auditEventId:await audit(studioId,"integration_import",before.id,"integration_import.ignored",imports,data),queuedSideEffects:[]});
+        return json({
+          resource: { reviewed: data?.length || 0 },
+          recommendations: [],
+          auditEventId: await audit(
+            studioId,
+            "integration_import",
+            before.id,
+            "integration_import.ignored",
+            imports,
+            data,
+          ),
+          queuedSideEffects: [],
+        });
       }
       let targetStudentId = String(input.payload.studentId || "");
       if (action === "create") {
-        const fullName = String(input.payload.fullName || "").trim(), email = String(input.payload.email || "").trim().toLowerCase();
-        if (fullName.length < 2) throw new Error("VALIDATION_FAILED: Enter the student's name.");
+        const fullName = String(input.payload.fullName || "").trim(),
+          email = String(input.payload.email || "")
+            .trim()
+            .toLowerCase();
+        if (fullName.length < 2)
+          throw new Error("VALIDATION_FAILED: Enter the student's name.");
         const { data: created, error: createError } = await service
           .from("students")
-          .insert({studio_id:studioId,full_name:fullName,email:email||null,status:"lead",portal_enabled:false,lead_source:String(before.detected_source||before.provider)})
+          .insert({
+            studio_id: studioId,
+            full_name: fullName,
+            email: email || null,
+            status: "lead",
+            portal_enabled: false,
+            lead_source: String(before.detected_source || before.provider),
+          })
           .select("id")
           .single();
         if (createError) throw createError;
         targetStudentId = created.id;
       }
-      if (!targetStudentId) throw new Error("VALIDATION_FAILED: Choose or create a student.");
-      const { data: target, error: targetError } = await db.from("students").select("id").eq("id",targetStudentId).eq("studio_id",studioId).single();
+      if (!targetStudentId)
+        throw new Error("VALIDATION_FAILED: Choose or create a student.");
+      const { data: target, error: targetError } = await db
+        .from("students")
+        .select("id")
+        .eq("id", targetStudentId)
+        .eq("studio_id", studioId)
+        .single();
       if (targetError || !target) throw new Error("FORBIDDEN");
       const mergeStudentId = String(input.payload.mergeStudentId || "");
       if (mergeStudentId && mergeStudentId !== targetStudentId) {
-        const { error: mergeError } = await db.rpc("merge_studio_students", {keep_student_id:targetStudentId,remove_student_id:mergeStudentId});
+        const { error: mergeError } = await db.rpc("merge_studio_students", {
+          keep_student_id: targetStudentId,
+          remove_student_id: mergeStudentId,
+        });
         if (mergeError) throw mergeError;
       }
       for (const item of imports) {
-        let lessonId=item.lesson_id as string|undefined;
+        let lessonId = item.lesson_id as string | undefined;
         if (lessonId) {
-          const { error: lessonError } = await service.from("lessons").update({student_id:targetStudentId,updated_at:new Date().toISOString()}).eq("id",lessonId).eq("studio_id",studioId);
+          const { error: lessonError } = await service
+            .from("lessons")
+            .update({
+              student_id: targetStudentId,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("id", lessonId)
+            .eq("studio_id", studioId);
           if (lessonError) throw lessonError;
-          const { error: participantError } = await service.from("lesson_participants").update({student_id:targetStudentId}).eq("lesson_id",lessonId);
+          const { error: participantError } = await service
+            .from("lesson_participants")
+            .update({ student_id: targetStudentId })
+            .eq("lesson_id", lessonId);
           if (participantError) throw participantError;
         } else {
-          const candidate=item.payload?.candidate as {startsAt?:string;endsAt?:string;topic?:string;locationLabel?:string;joinUrl?:string}|undefined;
-          if(candidate?.startsAt&&candidate?.endsAt){
-            const created=await service.from("lessons").insert({studio_id:studioId,student_id:targetStudentId,topic:candidate.topic||`${sourceLabelServer(item.detected_source)} lesson`,starts_at:candidate.startsAt,ends_at:candidate.endsAt,status:new Date(candidate.endsAt)<new Date()?"completed":"scheduled",location_type:candidate.joinUrl?"virtual":"in_person",location_label:candidate.locationLabel||(candidate.joinUrl?"Online":"Provider booking"),join_url:candidate.joinUrl||null,meeting_provider:candidate.joinUrl?"google_meet":"in_person",source_provider:item.detected_source||item.provider,source_external_id:item.external_id,source_confidence:1,imported_at:new Date().toISOString()}).select("id").single();if(created.error)throw created.error;lessonId=created.data.id;
-            const {data:targetStudent}=await service.from("students").select("full_name,preferred_name,email").eq("id",targetStudentId).single();await service.from("lesson_participants").insert({lesson_id:lessonId,student_id:targetStudentId,display_name:targetStudent?.preferred_name||targetStudent?.full_name||"Student",email:targetStudent?.email||"",status:"confirmed"});
-            await service.from("integration_imports").update({lesson_id:lessonId}).eq("id",item.id);
+          const candidate = item.payload?.candidate as
+            | {
+                startsAt?: string;
+                endsAt?: string;
+                topic?: string;
+                locationLabel?: string;
+                joinUrl?: string;
+              }
+            | undefined;
+          if (candidate?.startsAt && candidate?.endsAt) {
+            const created = await service
+              .from("lessons")
+              .insert({
+                studio_id: studioId,
+                student_id: targetStudentId,
+                topic:
+                  candidate.topic ||
+                  `${sourceLabelServer(item.detected_source)} lesson`,
+                starts_at: candidate.startsAt,
+                ends_at: candidate.endsAt,
+                status:
+                  new Date(candidate.endsAt) < new Date()
+                    ? "completed"
+                    : "scheduled",
+                location_type: candidate.joinUrl ? "virtual" : "in_person",
+                location_label:
+                  candidate.locationLabel ||
+                  (candidate.joinUrl ? "Online" : "Provider booking"),
+                join_url: candidate.joinUrl || null,
+                meeting_provider: candidate.joinUrl
+                  ? "google_meet"
+                  : "in_person",
+                source_provider: item.detected_source || item.provider,
+                source_external_id: item.external_id,
+                source_confidence: 1,
+                imported_at: new Date().toISOString(),
+              })
+              .select("id")
+              .single();
+            if (created.error) throw created.error;
+            lessonId = created.data.id;
+            const { data: targetStudent } = await service
+              .from("students")
+              .select("full_name,preferred_name,email")
+              .eq("id", targetStudentId)
+              .single();
+            await service.from("lesson_participants").insert({
+              lesson_id: lessonId,
+              student_id: targetStudentId,
+              display_name:
+                targetStudent?.preferred_name ||
+                targetStudent?.full_name ||
+                "Student",
+              email: targetStudent?.email || "",
+              status: "confirmed",
+            });
+            await service
+              .from("integration_imports")
+              .update({ lesson_id: lessonId })
+              .eq("id", item.id);
           }
         }
       }
       const { data, error } = await service
         .from("integration_imports")
-        .update({student_id:targetStudentId,status:"imported",confidence:1,matched_by:"coach confirmation",verified_at:new Date().toISOString(),verified_by:user.id,verification_note:String(input.payload.note||"Student and lesson confirmed"),last_error:null,updated_at:new Date().toISOString()})
-        .in("id",importIds)
-        .select()
-        ;
+        .update({
+          student_id: targetStudentId,
+          status: "imported",
+          confidence: 1,
+          matched_by: "coach confirmation",
+          verified_at: new Date().toISOString(),
+          verified_by: user.id,
+          verification_note: String(
+            input.payload.note || "Student and lesson confirmed",
+          ),
+          last_error: null,
+          updated_at: new Date().toISOString(),
+        })
+        .in("id", importIds)
+        .select();
       if (error) throw error;
-      return json({resource:{reviewed:data?.length||0,studentId:targetStudentId},recommendations:[],auditEventId:await audit(studioId,"integration_import",before.id,"integration_import.confirmed",imports,data),queuedSideEffects:[]});
+      return json({
+        resource: { reviewed: data?.length || 0, studentId: targetStudentId },
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "integration_import",
+          before.id,
+          "integration_import.confirmed",
+          imports,
+          data,
+        ),
+        queuedSideEffects: [],
+      });
     }
     if (domain === "students" && input.command === "merge" && input.entityId) {
-      const studioId = await requireCoach(), removeStudentId = String(input.payload.removeStudentId || "");
-      const { data: keep, error: keepError } = await db.from("students").select("id,studio_id").eq("id",input.entityId).eq("studio_id",studioId).single();
-      const { data: remove, error: removeError } = await db.from("students").select("id,studio_id").eq("id",removeStudentId).eq("studio_id",studioId).single();
-      if (keepError || removeError || !keep || !remove) throw new Error("FORBIDDEN");
-      const { data, error } = await db.rpc("merge_studio_students", {keep_student_id:keep.id,remove_student_id:remove.id});
+      const studioId = await requireCoach(),
+        removeStudentId = String(input.payload.removeStudentId || "");
+      const { data: keep, error: keepError } = await db
+        .from("students")
+        .select("id,studio_id")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      const { data: remove, error: removeError } = await db
+        .from("students")
+        .select("id,studio_id")
+        .eq("id", removeStudentId)
+        .eq("studio_id", studioId)
+        .single();
+      if (keepError || removeError || !keep || !remove)
+        throw new Error("FORBIDDEN");
+      const { data, error } = await db.rpc("merge_studio_students", {
+        keep_student_id: keep.id,
+        remove_student_id: remove.id,
+      });
       if (error) throw error;
-      return json({resource:data,recommendations:[],auditEventId:await audit(studioId,"student",keep.id,"student.merged",{keep,remove},data),queuedSideEffects:[]});
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "student",
+          keep.id,
+          "student.merged",
+          { keep, remove },
+          data,
+        ),
+        queuedSideEffects: [],
+      });
     }
     if (domain === "integrations" && input.command === "retry_failed") {
-      const studioId = await requireCoach(), service = serviceClient(), now = new Date().toISOString();
+      const studioId = await requireCoach(),
+        service = serviceClient(),
+        now = new Date().toISOString();
       const { data: lessonRows, error: lessonsError } = await service
         .from("lessons")
         .select("id")
@@ -1127,16 +1676,31 @@ export default async (request: Request, context: Context) => {
       }
       const emailResult = await service
         .from("outbox_messages")
-        .update({ status: "queued", next_attempt_at: now, last_error: null, updated_at: now })
+        .update({
+          status: "queued",
+          next_attempt_at: now,
+          last_error: null,
+          updated_at: now,
+        })
         .eq("studio_id", studioId)
         .eq("status", "failed")
         .select("id");
       if (emailResult.error) throw emailResult.error;
-      const result = { calendar: calendar.length, email: emailResult.data?.length || 0 };
+      const result = {
+        calendar: calendar.length,
+        email: emailResult.data?.length || 0,
+      };
       return json({
         resource: result,
         recommendations: [],
-        auditEventId: await audit(studioId, "studio", studioId, "integrations.retry_failed", null, result),
+        auditEventId: await audit(
+          studioId,
+          "studio",
+          studioId,
+          "integrations.retry_failed",
+          null,
+          result,
+        ),
         queuedSideEffects: ["calendar_worker", "outbox_worker"],
       });
     }
@@ -1337,24 +1901,326 @@ export default async (request: Request, context: Context) => {
       });
     }
     if (domain === "credits" && input.command === "grant") {
-      const studioId = await requireCoach(), studentId = String(input.payload.studentId || ""), quantity = Number(input.payload.quantity || 0), reason = String(input.payload.reason || "Coach credit adjustment").trim();
-      if (!studentId || !Number.isInteger(quantity) || quantity === 0 || Math.abs(quantity) > 100 || reason.length < 3) throw new Error("VALIDATION_FAILED: Enter a student, a non-zero credit quantity, and a reason.");
-      const service = serviceClient(), { data: student, error: studentError } = await service.from("students").select("id").eq("id",studentId).eq("studio_id",studioId).single();
+      const studioId = await requireCoach(),
+        studentId = String(input.payload.studentId || ""),
+        quantity = Number(input.payload.quantity || 0),
+        reason = String(
+          input.payload.reason || "Coach credit adjustment",
+        ).trim();
+      if (
+        !studentId ||
+        !Number.isInteger(quantity) ||
+        quantity === 0 ||
+        Math.abs(quantity) > 100 ||
+        reason.length < 3
+      )
+        throw new Error(
+          "VALIDATION_FAILED: Enter a student, a non-zero credit quantity, and a reason.",
+        );
+      const service = serviceClient(),
+        { data: student, error: studentError } = await service
+          .from("students")
+          .select("id")
+          .eq("id", studentId)
+          .eq("studio_id", studioId)
+          .single();
       if (studentError || !student) throw new Error("FORBIDDEN");
-      let { data: pkg } = await service.from("packages").select("id").eq("student_id",studentId).eq("name","Studio lesson credits").maybeSingle();
-      if (!pkg) { const created = await service.from("packages").insert({student_id:studentId,name:"Studio lesson credits",price_minor:0,currency:"USD",credit_quantity:1}).select("id").single(); if(created.error)throw created.error; pkg=created.data; }
-      const { data, error } = await service.from("package_credit_entries").insert({package_id:pkg.id,kind:"adjustment",quantity,reason,idempotency_key:`coach-credit:${input.idempotencyKey}`}).select().single();
+      let { data: pkg } = await service
+        .from("packages")
+        .select("id")
+        .eq("student_id", studentId)
+        .eq("name", "Studio lesson credits")
+        .maybeSingle();
+      if (!pkg) {
+        const created = await service
+          .from("packages")
+          .insert({
+            student_id: studentId,
+            name: "Studio lesson credits",
+            price_minor: 0,
+            currency: "USD",
+            credit_quantity: 1,
+          })
+          .select("id")
+          .single();
+        if (created.error) throw created.error;
+        pkg = created.data;
+      }
+      const lessonId = String(input.payload.lessonId || "") || null;
+      if (lessonId) {
+        const linked = await service
+          .from("lessons")
+          .select("id")
+          .eq("id", lessonId)
+          .eq("studio_id", studioId)
+          .eq("student_id", studentId)
+          .single();
+        if (linked.error)
+          throw new Error(
+            "VALIDATION_FAILED: The lesson does not belong to this student.",
+          );
+      }
+      const { data, error } = await service
+        .from("package_credit_entries")
+        .insert({
+          package_id: pkg.id,
+          lesson_id: lessonId,
+          kind: "adjustment",
+          quantity,
+          reason,
+          idempotency_key: `coach-credit:${input.idempotencyKey}`,
+        })
+        .select()
+        .single();
       if (error) throw error;
-      return json({resource:data,recommendations:[],auditEventId:await audit(studioId,"credit",data.id,"credit.granted",null,data),queuedSideEffects:[]});
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "credit",
+          data.id,
+          "credit.granted",
+          null,
+          data,
+        ),
+        queuedSideEffects: [],
+      });
     }
-    if (domain === "discounts" && ["create","update","archive"].includes(input.command)) {
-      const studioId=await requireCoach(), service=serviceClient(), payload=input.payload as Record<string,any>;
-      let before:any=null;if(input.command!=="create"){const read=await service.from("discount_codes").select("*").eq("id",input.entityId).eq("studio_id",studioId).single();if(read.error||!read.data)throw new Error("FORBIDDEN");before=read.data;if(before.version!==input.expectedVersion)throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);}
-      if(input.command==="archive"){const updated=await service.from("discount_codes").update({active:false,version:before.version+1,updated_at:new Date().toISOString()}).eq("id",before.id).eq("version",before.version).select().single();if(updated.error)throw updated.error;return json({resource:updated.data,recommendations:[],auditEventId:await audit(studioId,"discount_code",before.id,"discount_code.archived",before,updated.data),queuedSideEffects:[]});}
-      const code=String(payload.code||"").trim().toUpperCase().replace(/[^A-Z0-9_-]/g,"");const discountType=payload.discountType==="fixed"?"fixed":"percent",amount=Number(payload.amount||0);if(code.length<3||amount<=0||(discountType==="percent"&&amount>100))throw new Error("VALIDATION_FAILED: Use a 3+ character code and a valid discount amount.");
-      const values={studio_id:studioId,code,description:String(payload.description||""),discount_type:discountType,amount,currency:String(payload.currency||"USD").toUpperCase(),service_ids:Array.isArray(payload.serviceIds)?payload.serviceIds:[],active:payload.active!==false,starts_at:payload.startsAt||null,ends_at:payload.endsAt||null,max_redemptions:payload.maxRedemptions?Number(payload.maxRedemptions):null};
-      const result=input.command==="create"?await service.from("discount_codes").insert(values).select().single():await service.from("discount_codes").update({...values,version:before.version+1,updated_at:new Date().toISOString()}).eq("id",before.id).eq("version",before.version).select().single();if(result.error)throw result.error;
-      return json({resource:result.data,recommendations:[],auditEventId:await audit(studioId,"discount_code",result.data.id,`discount_code.${input.command}d`,before,result.data),queuedSideEffects:[]});
+    if (
+      domain === "credits" &&
+      input.command === "use_for_lesson" &&
+      input.entityId
+    ) {
+      const studioId = await requireCoach(),
+        service = serviceClient();
+      const { data: lesson, error: lessonError } = await service
+        .from("lessons")
+        .select("*")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      if (lessonError || !lesson || !lesson.student_id)
+        throw new Error("FORBIDDEN");
+      if (["cancelled", "late_cancelled"].includes(lesson.status))
+        throw new Error(
+          "INVALID_TRANSITION: A cancelled lesson cannot use a credit.",
+        );
+      const existing = await service
+        .from("package_credit_entries")
+        .select("id")
+        .eq("lesson_id", lesson.id)
+        .in("kind", ["reservation", "consumption"])
+        .limit(1)
+        .maybeSingle();
+      if (existing.data)
+        throw new Error(
+          "INVALID_TRANSITION: This lesson is already paid by credit.",
+        );
+      const { data: packages, error: packageError } = await service
+        .from("packages")
+        .select("id,name,expires_at,package_credit_entries(quantity)")
+        .eq("student_id", lesson.student_id);
+      if (packageError) throw packageError;
+      const requestedPackage = String(input.payload.packageId || "");
+      const available = (packages || [])
+        .filter(
+          (item: any) =>
+            !item.expires_at || new Date(item.expires_at) > new Date(),
+        )
+        .map((item: any) => ({
+          ...item,
+          balance: (item.package_credit_entries || []).reduce(
+            (sum: number, entry: any) => sum + Number(entry.quantity),
+            0,
+          ),
+        }))
+        .find(
+          (item: any) =>
+            (!requestedPackage || item.id === requestedPackage) &&
+            item.balance > 0,
+        );
+      if (!available)
+        throw new Error(
+          "VALIDATION_FAILED: This student does not have an available lesson credit.",
+        );
+      const { data: entry, error: entryError } = await service
+        .from("package_credit_entries")
+        .insert({
+          package_id: available.id,
+          lesson_id: lesson.id,
+          kind: "consumption",
+          quantity: -1,
+          reason: String(
+            input.payload.reason || `Credit used for ${lesson.topic}`,
+          ),
+          idempotency_key: `lesson-credit:${lesson.id}`,
+        })
+        .select()
+        .single();
+      if (entryError) throw entryError;
+      await Promise.all([
+        service
+          .from("lessons")
+          .update({
+            package_id: available.id,
+            version: lesson.version + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", lesson.id)
+          .eq("version", lesson.version),
+        service.from("payment_entries").insert({
+          student_id: lesson.student_id,
+          package_id: available.id,
+          kind: "adjustment",
+          amount_minor: 0,
+          currency: "USD",
+          external_reference: `credit:${lesson.id}`,
+          reason: `Paid by lesson credit: ${lesson.topic}`,
+        }),
+      ]);
+      const { data: participants } = await service
+        .from("lesson_participants")
+        .select("booking_id")
+        .eq("lesson_id", lesson.id)
+        .not("booking_id", "is", null);
+      const bookingIds = (participants || [])
+        .map((item: any) => item.booking_id)
+        .filter(Boolean);
+      if (bookingIds.length)
+        await service
+          .from("bookings")
+          .update({
+            payment_status: "paid",
+            paid_minor: 0,
+            updated_at: new Date().toISOString(),
+          })
+          .in("id", bookingIds);
+      return json({
+        resource: entry,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "lesson",
+          lesson.id,
+          "lesson.paid_by_credit",
+          lesson,
+          { package_id: available.id, credit_entry_id: entry.id },
+        ),
+        queuedSideEffects: [],
+      });
+    }
+    if (
+      domain === "discounts" &&
+      ["create", "update", "archive"].includes(input.command)
+    ) {
+      const studioId = await requireCoach(),
+        service = serviceClient(),
+        payload = input.payload as Record<string, any>;
+      let before: any = null;
+      if (input.command !== "create") {
+        const read = await service
+          .from("discount_codes")
+          .select("*")
+          .eq("id", input.entityId)
+          .eq("studio_id", studioId)
+          .single();
+        if (read.error || !read.data) throw new Error("FORBIDDEN");
+        before = read.data;
+        if (before.version !== input.expectedVersion)
+          throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      }
+      if (input.command === "archive") {
+        const updated = await service
+          .from("discount_codes")
+          .update({
+            active: false,
+            version: before.version + 1,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", before.id)
+          .eq("version", before.version)
+          .select()
+          .single();
+        if (updated.error) throw updated.error;
+        return json({
+          resource: updated.data,
+          recommendations: [],
+          auditEventId: await audit(
+            studioId,
+            "discount_code",
+            before.id,
+            "discount_code.archived",
+            before,
+            updated.data,
+          ),
+          queuedSideEffects: [],
+        });
+      }
+      const code = String(payload.code || "")
+        .trim()
+        .toUpperCase()
+        .replace(/[^A-Z0-9_-]/g, "");
+      const discountType =
+          payload.discountType === "fixed" ? "fixed" : "percent",
+        amount = Number(payload.amount || 0);
+      if (
+        code.length < 3 ||
+        amount <= 0 ||
+        (discountType === "percent" && amount > 100)
+      )
+        throw new Error(
+          "VALIDATION_FAILED: Use a 3+ character code and a valid discount amount.",
+        );
+      const values = {
+        studio_id: studioId,
+        code,
+        description: String(payload.description || ""),
+        discount_type: discountType,
+        amount,
+        currency: String(payload.currency || "USD").toUpperCase(),
+        service_ids: Array.isArray(payload.serviceIds)
+          ? payload.serviceIds
+          : [],
+        active: payload.active !== false,
+        starts_at: payload.startsAt || null,
+        ends_at: payload.endsAt || null,
+        max_redemptions: payload.maxRedemptions
+          ? Number(payload.maxRedemptions)
+          : null,
+      };
+      const result =
+        input.command === "create"
+          ? await service
+              .from("discount_codes")
+              .insert(values)
+              .select()
+              .single()
+          : await service
+              .from("discount_codes")
+              .update({
+                ...values,
+                version: before.version + 1,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("id", before.id)
+              .eq("version", before.version)
+              .select()
+              .single();
+      if (result.error) throw result.error;
+      return json({
+        resource: result.data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "discount_code",
+          result.data.id,
+          `discount_code.${input.command}d`,
+          before,
+          result.data,
+        ),
+        queuedSideEffects: [],
+      });
     }
     if (domain === "settings" && input.command === "update") {
       const studioId = await requireCoach(),
@@ -1364,14 +2230,26 @@ export default async (request: Request, context: Context) => {
           .eq("id", studioId)
           .single();
       if (readError || !before) throw new Error("FORBIDDEN");
-      const incomingSettings = (input.payload.settings as Record<string, any>) || {};
+      const incomingSettings =
+        (input.payload.settings as Record<string, any>) || {};
       const nextSettings = {
         ...(before.settings || {}),
         ...incomingSettings,
       };
-      for (const key of ["branding", "bookingCopy", "bookingPage", "bookingDefaults", "meetingFormats", "emailAutomations", "portalDefaults"]) {
+      for (const key of [
+        "branding",
+        "bookingCopy",
+        "bookingPage",
+        "bookingDefaults",
+        "meetingFormats",
+        "emailAutomations",
+        "portalDefaults",
+      ]) {
         if (incomingSettings[key])
-          (nextSettings as any)[key] = { ...((before.settings || {})[key] || {}), ...incomingSettings[key] };
+          (nextSettings as any)[key] = {
+            ...((before.settings || {})[key] || {}),
+            ...incomingSettings[key],
+          };
       }
       const name = String(
         (nextSettings as Record<string, unknown>).studioName || before.name,
@@ -1440,11 +2318,7 @@ export default async (request: Request, context: Context) => {
       if (error) throw error;
       return json(data);
     }
-    if (
-      domain === "lessons" &&
-      input.command === "cancel" &&
-      input.entityId
-    ) {
+    if (domain === "lessons" && input.command === "cancel" && input.entityId) {
       const studioId = await requireCoach(),
         { data: before, error: readError } = await db
           .from("lessons")
@@ -1472,14 +2346,7 @@ export default async (request: Request, context: Context) => {
           .from("calendar_projections")
           .update({ status: "queued", last_error: null })
           .eq("lesson_id", before.id),
-        audit(
-          studioId,
-          "lesson",
-          before.id,
-          "lesson.cancelled",
-          before,
-          data,
-        ),
+        audit(studioId, "lesson", before.id, "lesson.cancelled", before, data),
       ]);
       if (projectionError) throw projectionError;
       return json({

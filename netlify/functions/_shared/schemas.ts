@@ -5,13 +5,7 @@ export const commandSchema = z.object({
   expectedVersion: z.number().int().min(0),
   reason: z.string().min(3).max(500),
   entityType: z
-    .enum([
-      "student",
-      "lesson",
-      "note",
-      "assignment",
-      "material",
-    ])
+    .enum(["student", "lesson", "note", "assignment", "material"])
     .optional(),
   entityId: z.string().uuid().optional(),
   nextStatus: z.string().optional(),
@@ -38,6 +32,7 @@ export const publicBookingSchema = z
       .string()
       .email()
       .transform((value) => value.toLowerCase()),
+    guestPhone: z.string().trim().min(7).max(30).optional(),
     forMinor: z.boolean().default(false),
     guardianName: z.string().trim().min(2).max(120).optional(),
     guardianEmail: z.string().email().optional(),

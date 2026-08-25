@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { gmailCandidate } from "../../netlify/functions/provider-intake";
+import fs from "node:fs";
+import {
+  gmailCandidate,
+  gmailChangeType,
+} from "../../netlify/functions/provider-intake";
 
 describe("Gmail provider lesson parsing", () => {
   it("keeps a Lessonface wall time in the studio timezone", () => {
@@ -39,5 +43,23 @@ describe("Gmail provider lesson parsing", () => {
         "America/New_York",
       ),
     ).toBeUndefined();
+  });
+
+  it("classifies provider reschedules and cancellations before reconciliation", () => {
+    expect(
+      gmailChangeType("Your Lessonface lesson was rescheduled to a new time"),
+    ).toBe("reschedule");
+    expect(gmailChangeType("Your Wyzant lesson has been cancelled")).toBe(
+      "cancellation",
+    );
+    expect(gmailChangeType("Your Acuity lesson is confirmed")).toBe(
+      "confirmation",
+    );
+  });
+
+  it("requests deleted Calendar events so cancellations can remove app lessons", () => {
+    expect(
+      fs.readFileSync("netlify/functions/provider-intake.ts", "utf8"),
+    ).toContain("showDeleted=true");
   });
 });

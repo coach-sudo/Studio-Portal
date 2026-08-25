@@ -50,9 +50,17 @@ type PublicStudio = {
   branding: StudioSnapshot["settings"]["branding"];
   bookingCopy: StudioSnapshot["settings"]["bookingCopy"];
   bookingPage: StudioSnapshot["settings"]["bookingPage"];
+  bookingDefaults: StudioSnapshot["settings"]["bookingDefaults"];
   contactEmail?: string;
 };
-type AuthenticatedBooker = { studentId: string; name: string; email: string; forMinor: boolean; guardianName?: string; guardianEmail?: string };
+type AuthenticatedBooker = {
+  studentId: string;
+  name: string;
+  email: string;
+  forMinor: boolean;
+  guardianName?: string;
+  guardianEmail?: string;
+};
 
 const mapService = (row: any): BookingService => ({
   id: row.id,
@@ -119,6 +127,7 @@ interface DemoBookingInput {
   paymentPolicy: PaymentPolicy;
   guestName: string;
   guestEmail: string;
+  guestPhone?: string;
   forMinor: boolean;
   guardianName?: string;
   guardianEmail?: string;
@@ -385,12 +394,65 @@ export function PublicBooking() {
     branding: store.snapshot.settings.branding,
     bookingCopy: store.snapshot.settings.bookingCopy,
     bookingPage: store.snapshot.settings.bookingPage,
+    bookingDefaults: store.snapshot.settings.bookingDefaults,
     contactEmail: store.snapshot.settings.contactEmail,
   });
-  useEffect(()=>{let active=true;const load=async()=>{if(!supabase)return;const {data:{session}}=await supabase.auth.getSession();if(!session)return;const {data:owned}=await supabase.from("students").select("id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email").eq("user_id",session.user.id).limit(1).maybeSingle();let student=owned;if(!student){const {data:relation}=await supabase.from("student_relationships").select("student_id").eq("user_id",session.user.id).limit(1).maybeSingle();if(relation?.student_id){const {data:related}=await supabase.from("students").select("id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email").eq("id",relation.student_id).maybeSingle();student=related;}}if(active&&student)setBooker({studentId:student.id,name:student.preferred_name||student.full_name,email:student.email||student.guardian_email||session.user.email||"",forMinor:Boolean(student.is_minor),guardianName:student.guardian_name||undefined,guardianEmail:student.guardian_email||session.user.email||undefined});};void load();return()=>{active=false;};},[]);
   useEffect(() => {
     let active = true;
-    const controller = new AbortController(), timeout = window.setTimeout(() => controller.abort(), 12000);
+    const load = async () => {
+      if (!supabase) return;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (!session) return;
+      const { data: owned } = await supabase
+        .from("students")
+        .select(
+          "id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email",
+        )
+        .eq("user_id", session.user.id)
+        .limit(1)
+        .maybeSingle();
+      let student = owned;
+      if (!student) {
+        const { data: relation } = await supabase
+          .from("student_relationships")
+          .select("student_id")
+          .eq("user_id", session.user.id)
+          .limit(1)
+          .maybeSingle();
+        if (relation?.student_id) {
+          const { data: related } = await supabase
+            .from("students")
+            .select(
+              "id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email",
+            )
+            .eq("id", relation.student_id)
+            .maybeSingle();
+          student = related;
+        }
+      }
+      if (active && student)
+        setBooker({
+          studentId: student.id,
+          name: student.preferred_name || student.full_name,
+          email:
+            student.email || student.guardian_email || session.user.email || "",
+          forMinor: Boolean(student.is_minor),
+          guardianName: student.guardian_name || undefined,
+          guardianEmail:
+            student.guardian_email || session.user.email || undefined,
+        });
+    };
+    void load();
+    return () => {
+      active = false;
+    };
+  }, []);
+  useEffect(() => {
+    let active = true;
+    const controller = new AbortController(),
+      timeout = window.setTimeout(() => controller.abort(), 12000);
     fetch("/api/v2/public/booking/services", { signal: controller.signal })
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then(
@@ -400,7 +462,13 @@ export function PublicBooking() {
           offerings: any[];
         }) => {
           if (active) {
-            setStudio(payload.studio);
+            setStudio({
+              ...payload.studio,
+              bookingDefaults: {
+                ...store.snapshot.settings.bookingDefaults,
+                ...payload.studio.bookingDefaults,
+              },
+            });
             setServices(payload.services.map(mapService));
             setOfferings(payload.offerings.map(mapOffering));
             setLiveCatalog(true);
@@ -416,7 +484,10 @@ export function PublicBooking() {
           );
         }
       })
-      .finally(() => { window.clearTimeout(timeout); if(active) setCatalogLoading(false); });
+      .finally(() => {
+        window.clearTimeout(timeout);
+        if (active) setCatalogLoading(false);
+      });
     return () => {
       active = false;
       controller.abort();
@@ -453,12 +524,33 @@ export function PublicBooking() {
         </div>
       )}
       {catalogError && !isDemoMode && (
-        <div className="catalog-error" role="alert"><strong>Booking could not load.</strong><p>{catalogError}</p><button className="booking-primary" onClick={() => window.location.reload()}>Try again</button></div>
+        <div className="catalog-error" role="alert">
+          <strong>Booking could not load.</strong>
+          <p>{catalogError}</p>
+          <button
+            className="booking-primary"
+            onClick={() => window.location.reload()}
+          >
+            Try again
+          </button>
+        </div>
       )}
       {catalogLoading && !token && (
-        <section className="booking-loading" aria-live="polite" aria-busy="true">
-          <div className="booking-loading-copy"><span className="eyebrow">Live availability</span><h1>Opening the booking calendar…</h1><p>Loading services, pricing, and the studio’s current schedule.</p></div>
-          <div className="booking-loading-grid" aria-hidden="true"><i /><i /><i /></div>
+        <section
+          className="booking-loading"
+          aria-live="polite"
+          aria-busy="true"
+        >
+          <div className="booking-loading-copy">
+            <span className="eyebrow">Live availability</span>
+            <h1>Opening the booking calendar…</h1>
+            <p>Loading services, pricing, and the studio’s current schedule.</p>
+          </div>
+          <div className="booking-loading-grid" aria-hidden="true">
+            <i />
+            <i />
+            <i />
+          </div>
         </section>
       )}
       {!catalogLoading && selected ? (
@@ -508,7 +600,11 @@ function BookingHeader({
           ? `Book with ${studio.coachName.split(" ")[0]}`
           : "Book a lesson"}
       </span>
-      {booker ? <Link to="/portal">Booking as {booker.name}</Link> : <Link to="/login?returnTo=%2Fbook">Student or guardian sign in</Link>}
+      {booker ? (
+        <Link to="/portal">Booking as {booker.name}</Link>
+      ) : (
+        <Link to="/login?returnTo=%2Fbook">Student or guardian sign in</Link>
+      )}
     </header>
   );
 }
@@ -569,7 +665,9 @@ function LiveServiceCatalog({
               <div className="service-card-top">
                 <span>{service.category.replaceAll("_", " ")}</span>
                 <strong>
-                  From {formatMoney(service.priceMinor, service.currency)}
+                  {studio.bookingDefaults.showPrices
+                    ? `From ${formatMoney(service.priceMinor, service.currency)}`
+                    : "Session details"}
                 </strong>
               </div>
               <h3>{service.name}</h3>
@@ -590,7 +688,8 @@ function LiveServiceCatalog({
                 </span>
               </div>
               <Link to={`/book/${service.slug}`}>
-                View times <ChevronRight />
+                {studio.bookingDefaults.bookingButtonLabel || "View times"}{" "}
+                <ChevronRight />
               </Link>
             </article>
           ))}
@@ -650,22 +749,30 @@ function BookingFlow({
   const [recurrence, setRecurrence] = useState<RecurrenceCadence>(
     service.category === "course" ? "weekly" : "none",
   );
+  const recurrenceOptions =
+    service.category === "private" && !studio.bookingDefaults.allowRecurring
+      ? service.recurrenceOptions.filter((item) => item === "none")
+      : service.recurrenceOptions;
   const validPayments = useMemo(
     () =>
       service.paymentPolicies.filter(
         (item) =>
-          recurrence !== "none" ||
-          !["installments", "subscription"].includes(item),
+          (studio.bookingDefaults.allowPayLater || item !== "pay_later") &&
+          (recurrence !== "none" ||
+            !["installments", "subscription"].includes(item)),
       ),
-    [recurrence, service.paymentPolicies],
+    [recurrence, service.paymentPolicies, studio.bookingDefaults.allowPayLater],
   );
   const [payment, setPayment] = useState<PaymentPolicy>(validPayments[0]);
   const [slot, setSlot] = useState<string>();
   const [name, setName] = useState(booker?.name || "");
   const [email, setEmail] = useState(booker?.email || "");
+  const [phone, setPhone] = useState("");
   const [forMinor, setForMinor] = useState(booker?.forMinor || false);
   const [guardian, setGuardian] = useState(booker?.guardianName || "");
-  const [guardianEmail, setGuardianEmail] = useState(booker?.guardianEmail || "");
+  const [guardianEmail, setGuardianEmail] = useState(
+    booker?.guardianEmail || "",
+  );
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -679,7 +786,14 @@ function BookingFlow({
   useEffect(() => {
     if (!validPayments.includes(payment)) setPayment(validPayments[0]);
   }, [payment, validPayments]);
-  useEffect(()=>{if(!booker)return;setName(booker.name);setEmail(booker.email);setForMinor(booker.forMinor);setGuardian(booker.guardianName||"");setGuardianEmail(booker.guardianEmail||"");},[booker]);
+  useEffect(() => {
+    if (!booker) return;
+    setName(booker.name);
+    setEmail(booker.email);
+    setForMinor(booker.forMinor);
+    setGuardian(booker.guardianName || "");
+    setGuardianEmail(booker.guardianEmail || "");
+  }, [booker]);
   const demoSlots = useMemo(
     () =>
       service.category === "private"
@@ -731,12 +845,12 @@ function BookingFlow({
       .then((payload: { slots: { startsAt: string; endsAt: string }[] }) =>
         setSlots(
           payload.slots.map((item) => ({
-              ...item,
-              label: new Date(item.startsAt).toLocaleTimeString([], {
-                hour: "numeric",
-                minute: "2-digit",
-              }),
-            })),
+            ...item,
+            label: new Date(item.startsAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+          })),
         ),
       )
       .catch((reason) =>
@@ -751,8 +865,11 @@ function BookingFlow({
   };
   const [selectedDay, setSelectedDay] = useState("");
   useEffect(() => {
-    const availableDays = [...new Set(slots.map((item) => dayKey(item.startsAt)))];
-    if (!availableDays.includes(selectedDay)) setSelectedDay(availableDays[0] || "");
+    const availableDays = [
+      ...new Set(slots.map((item) => dayKey(item.startsAt))),
+    ];
+    if (!availableDays.includes(selectedDay))
+      setSelectedDay(availableDays[0] || "");
   }, [selectedDay, slots]);
   const calendarDays = useMemo(
     () =>
@@ -764,7 +881,9 @@ function BookingFlow({
       }),
     [],
   );
-  const daySlots = slots.filter((item) => dayKey(item.startsAt) === selectedDay);
+  const daySlots = slots.filter(
+    (item) => dayKey(item.startsAt) === selectedDay,
+  );
   const chosen = slots.find((item) => item.startsAt === slot);
   const chosenOffering = offerings.find(
     (item) =>
@@ -790,6 +909,7 @@ function BookingFlow({
             paymentPolicy: payment,
             guestName: name,
             guestEmail: email,
+            guestPhone: phone || undefined,
             forMinor,
             guardianName: guardian || undefined,
             guardianEmail: guardianEmail || undefined,
@@ -805,7 +925,9 @@ function BookingFlow({
         setStep("done");
         return;
       }
-      const session = isSupabaseConfigured ? await supabase?.auth.getSession() : undefined;
+      const session = isSupabaseConfigured
+        ? await supabase?.auth.getSession()
+        : undefined;
       const accessToken = session?.data.session?.access_token;
       if (payment === "credits" && !accessToken) {
         window.location.assign(
@@ -830,14 +952,15 @@ function BookingFlow({
           paymentPolicy: payment,
           guestName: name,
           guestEmail: email,
+          guestPhone: phone || undefined,
           forMinor,
           guardianName: guardian || undefined,
           guardianEmail: guardianEmail || undefined,
           timezone,
-           occurrenceCount: recurrence === "none" ? undefined : 6,
-           termsAccepted: true,
-           termsVersion: "2026-08-20",
-           discountCode: discountCode.trim() || undefined,
+          occurrenceCount: recurrence === "none" ? undefined : 6,
+          termsAccepted: true,
+          termsVersion: "2026-08-20",
+          discountCode: discountCode.trim() || undefined,
         }),
       });
       const result = await response.json();
@@ -874,6 +997,7 @@ function BookingFlow({
         slot={confirmed.startsAt}
         name={name}
         result={confirmed}
+        message={studio.bookingDefaults.confirmationMessage}
       />
     );
   return (
@@ -919,15 +1043,17 @@ function BookingFlow({
             </div>
           )}
         </dl>
-        {studio.bookingPage.showPolicies && <div className="policy-note">
-          <ShieldCheck />
-          <p>
-            <strong>Plans change.</strong>
-            <br />
-            {service.policy.cancellationWindowHours}-hour notice ·{" "}
-            {service.policy.rescheduleLimit} self-service reschedule.
-          </p>
-        </div>}
+        {studio.bookingPage.showPolicies && (
+          <div className="policy-note">
+            <ShieldCheck />
+            <p>
+              <strong>Plans change.</strong>
+              <br />
+              {service.policy.cancellationWindowHours}-hour notice ·{" "}
+              {service.policy.rescheduleLimit} self-service reschedule.
+            </p>
+          </div>
+        )}
       </aside>
       <div className="booking-step">
         <ol className="stepper" aria-label="Booking progress">
@@ -968,11 +1094,11 @@ function BookingFlow({
                 </button>
               ))}
             </div>
-            {service.recurrenceOptions.length > 1 && (
+            {recurrenceOptions.length > 1 && (
               <>
                 <h3>Booking rhythm</h3>
                 <div className="segmented">
-                  {service.recurrenceOptions.map((item) => (
+                  {recurrenceOptions.map((item) => (
                     <button
                       key={item}
                       className={recurrence === item ? "selected" : ""}
@@ -1009,16 +1135,39 @@ function BookingFlow({
             )}
             <div className="booking-calendar" aria-label="Available dates">
               <div className="booking-calendar-weekdays" aria-hidden="true">
-                {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((day) => <span key={day}>{day}</span>)}
+                {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
+                  (day) => (
+                    <span key={day}>{day}</span>
+                  ),
+                )}
               </div>
               <div className="booking-calendar-grid">
-                {Array.from({ length: calendarDays[0]?.getDay() || 0 }, (_, index) => <span key={`blank-${index}`} />)}
+                {Array.from(
+                  { length: calendarDays[0]?.getDay() || 0 },
+                  (_, index) => (
+                    <span key={`blank-${index}`} />
+                  ),
+                )}
                 {calendarDays.map((day) => {
                   const key = dayKey(day);
-                  const count = slots.filter((item) => dayKey(item.startsAt) === key).length;
+                  const count = slots.filter(
+                    (item) => dayKey(item.startsAt) === key,
+                  ).length;
                   return (
-                    <button key={key} type="button" disabled={!count} className={selectedDay === key ? "selected" : ""} onClick={() => { setSelectedDay(key); setSlot(undefined); }} aria-label={`${day.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}${count ? `, ${count} times available` : ', unavailable'}`}>
-                      <small>{day.toLocaleDateString([], { month: 'short' })}</small>
+                    <button
+                      key={key}
+                      type="button"
+                      disabled={!count}
+                      className={selectedDay === key ? "selected" : ""}
+                      onClick={() => {
+                        setSelectedDay(key);
+                        setSlot(undefined);
+                      }}
+                      aria-label={`${day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}${count ? `, ${count} times available` : ", unavailable"}`}
+                    >
+                      <small>
+                        {day.toLocaleDateString([], { month: "short" })}
+                      </small>
                       <strong>{day.getDate()}</strong>
                       {count > 0 && <i>{count}</i>}
                     </button>
@@ -1026,7 +1175,15 @@ function BookingFlow({
                 })}
               </div>
             </div>
-            {selectedDay && <h3>{new Date(`${selectedDay}T12:00:00`).toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' })}</h3>}
+            {selectedDay && (
+              <h3>
+                {new Date(`${selectedDay}T12:00:00`).toLocaleDateString([], {
+                  weekday: "long",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </h3>
+            )}
             <div className="slot-list booking-time-list">
               {daySlots.map((item) => (
                 <button
@@ -1082,7 +1239,13 @@ function BookingFlow({
           >
             <span className="eyebrow">Your details</span>
             <h2>Who is this session for?</h2>
-            {booker && <p className="portal-notice"><strong>Booking from your portal profile.</strong> This lesson will be attached to {booker.name} automatically. Change contact details in <Link to="/portal/settings">portal settings</Link>.</p>}
+            {booker && (
+              <p className="portal-notice">
+                <strong>Booking from your portal profile.</strong> This lesson
+                will be attached to {booker.name} automatically. Change contact
+                details in <Link to="/portal/settings">portal settings</Link>.
+              </p>
+            )}
             <label>
               Student name
               <input
@@ -1106,19 +1269,35 @@ function BookingFlow({
                 placeholder="you@example.com"
               />
             </label>
-            {!booker && <label className="check-row">
+            <label>
+              Phone number
+              {studio.bookingDefaults.requirePhone
+                ? " (required)"
+                : " (optional)"}
               <input
-                type="checkbox"
-                checked={forMinor}
-                onChange={(event) => setForMinor(event.target.checked)}
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                required={studio.bookingDefaults.requirePhone}
+                type="tel"
+                autoComplete="tel"
+                placeholder="(555) 555-5555"
               />
-              <span>
-                <strong>I’m booking for a student under 18</strong>
-                <small>
-                  A guardian will receive account and payment access.
-                </small>
-              </span>
-            </label>}
+            </label>
+            {!booker && (
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={forMinor}
+                  onChange={(event) => setForMinor(event.target.checked)}
+                />
+                <span>
+                  <strong>I’m booking for a student under 18</strong>
+                  <small>
+                    A guardian will receive account and payment access.
+                  </small>
+                </span>
+              </label>
+            )}
             {forMinor && (
               <>
                 <label>
@@ -1176,21 +1355,56 @@ function BookingFlow({
                 </button>
               ))}
             </div>
-            <label className="booking-discount">Coupon or discount code<input value={discountCode} onChange={event=>setDiscountCode(event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,""))} placeholder="Optional" maxLength={40}/><small>Valid codes are applied securely before Stripe opens.</small></label>
-            {studio.bookingPage.showPolicies && <div className="policy-box">
-              <strong>Change policy</strong>
-              <p>
-                Change this booking at least{" "}
-                {service.policy.cancellationWindowHours} hours before it starts
-                for {service.policy.settlement.replaceAll("_", " ")}. Changes
-                inside that window are treated as a late cancellation.
-              </p>
-            </div>}
+            <label className="booking-discount">
+              Coupon or discount code
+              <input
+                value={discountCode}
+                onChange={(event) =>
+                  setDiscountCode(
+                    event.target.value
+                      .toUpperCase()
+                      .replace(/[^A-Z0-9_-]/g, ""),
+                  )
+                }
+                placeholder="Optional"
+                maxLength={40}
+              />
+              <small>
+                Valid codes are applied securely before Stripe opens.
+              </small>
+            </label>
+            {studio.bookingPage.showPolicies && (
+              <div className="policy-box">
+                <strong>Change policy</strong>
+                <p>
+                  Change this booking at least{" "}
+                  {service.policy.cancellationWindowHours} hours before it
+                  starts for {service.policy.settlement.replaceAll("_", " ")}.
+                  Changes inside that window are treated as a late cancellation.
+                </p>
+              </div>
+            )}
             <label className="check-row terms-check">
-              <input type="checkbox" checked={termsAccepted} onChange={(event) => setTermsAccepted(event.target.checked)} />
+              <input
+                type="checkbox"
+                checked={termsAccepted}
+                onChange={(event) => setTermsAccepted(event.target.checked)}
+              />
               <span>
-                <strong>{forMinor ? "I am the student’s parent or legal guardian and I agree" : "I agree"} to the <Link to="/terms" target="_blank">Terms and Conditions</Link>.</strong>
-                <small>Effective August 20, 2026. Your acceptance is stored with this booking.</small>
+                <strong>
+                  {forMinor
+                    ? "I am the student’s parent or legal guardian and I agree"
+                    : "I agree"}{" "}
+                  to the{" "}
+                  <Link to="/terms" target="_blank">
+                    Terms and Conditions
+                  </Link>
+                  .
+                </strong>
+                <small>
+                  Effective August 20, 2026. Your acceptance is stored with this
+                  booking.
+                </small>
               </span>
             </label>
             {!live && (
@@ -1246,11 +1460,13 @@ function Confirmation({
   slot,
   name,
   result,
+  message,
 }: {
   service: BookingService;
   slot: string;
   name: string;
   result: { reference: string; manageUrl?: string; demo: boolean };
+  message?: string;
 }) {
   return (
     <div className="booking-confirmation">
@@ -1264,7 +1480,8 @@ function Confirmation({
       <p>
         {result.demo
           ? "This session now appears throughout the interactive coach and student demo. No card was charged and no email was sent."
-          : "We sent your confirmation and secure management link. Google Meet details will appear as soon as the calendar invitation is ready."}
+          : message ||
+            "We sent your confirmation and secure management link. Google Meet details will appear as soon as the calendar invitation is ready."}
       </p>
       <article>
         <strong>{service.name}</strong>
@@ -1404,15 +1621,13 @@ function ManageBooking({
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then((payload: { slots: { startsAt: string; endsAt: string }[] }) =>
         setSlots(
-          payload.slots
-            .slice(0, 8)
-            .map((item) => ({
-              ...item,
-              label: new Date(item.startsAt).toLocaleTimeString([], {
-                hour: "numeric",
-                minute: "2-digit",
-              }),
-            })),
+          payload.slots.slice(0, 8).map((item) => ({
+            ...item,
+            label: new Date(item.startsAt).toLocaleTimeString([], {
+              hour: "numeric",
+              minute: "2-digit",
+            }),
+          })),
         ),
       )
       .catch(() =>

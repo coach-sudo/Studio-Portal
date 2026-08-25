@@ -30,8 +30,23 @@ export async function sendGmail(
   token: string,
   message: { recipient: string; subject: string; body: string },
 ) {
+  const clean = (value: string) =>
+    value
+      .replace(/\u00e2\u20ac\u201d/g, "—")
+      .replace(/\u00e2\u20ac\u2122/g, "’")
+      .replace(/\u00e2\u20ac\u00a2/g, "•")
+      .replace(/\u00c2\u00a0/g, " ")
+      .normalize("NFC")
+      .replace(/[\u200B-\u200D\uFEFF\uFFFD]/g, "")
+      .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+      .replace(/\r?\n/g, "\r\n");
+  const subject = `=?UTF-8?B?${Buffer.from(clean(message.subject), "utf8").toString("base64")}?=`;
+  const encodedBody = Buffer.from(clean(message.body), "utf8")
+    .toString("base64")
+    .replace(/.{1,76}/g, "$&\r\n")
+    .trim();
   const raw = Buffer.from(
-    `To: ${message.recipient}\r\nSubject: ${message.subject}\r\nContent-Type: text/plain; charset=utf-8\r\n\r\n${message.body}`,
+    `MIME-Version: 1.0\r\nTo: ${message.recipient}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${encodedBody}`,
   ).toString("base64url");
   const response = await fetch(
     "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",

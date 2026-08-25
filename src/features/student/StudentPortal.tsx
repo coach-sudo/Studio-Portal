@@ -13,6 +13,7 @@ import {
   Repeat2,
   Settings,
   ShieldCheck,
+  Trash2,
   UserRound,
   Video,
 } from "lucide-react";
@@ -88,11 +89,15 @@ export function StudentPortal({
     if (data?.settings.studioName)
       document.title = `${data.settings.studioName} — ${role === "guardian" ? "Guardian" : "Student"} workspace`;
   }, [data?.settings.studioName, role]);
-  useEffect(() => applyStudioBranding(data?.settings.branding), [data?.settings.branding]);
+  useEffect(
+    () => applyStudioBranding(data?.settings.branding),
+    [data?.settings.branding],
+  );
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
-  const studentDisplayName = person?.preferredName || person?.fullName || "Student";
+  const studentDisplayName =
+    person?.preferredName || person?.fullName || "Student";
   const initials =
     (role === "guardian" ? person?.guardianName : studentDisplayName)
       ?.split(" ")
@@ -103,7 +108,9 @@ export function StudentPortal({
     <div className="student-shell">
       <aside>
         <div className="shell-brand">
-          {data.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
+          {data.settings.branding?.logoUrl && (
+            <img src={data.settings.branding.logoUrl} alt="" />
+          )}
           <div className="wordmark">{data.settings.studioName}</div>
         </div>
         <nav>
@@ -158,10 +165,19 @@ export function StudentPortal({
             path="lessons"
             element={<StudentBookings data={data} isDemo={isDemo} />}
           />
-          <Route path="lessons/:lessonId" element={<LessonHub data={data} isDemo={isDemo} />} />
+          <Route
+            path="lessons/:lessonId"
+            element={<LessonHub data={data} isDemo={isDemo} />}
+          />
           <Route path="notes" element={<StudentNotes data={data} />} />
-          <Route path="practice" element={<Practice data={data} isDemo={isDemo} />} />
-          <Route path="materials" element={<Materials data={data} isDemo={isDemo} />} />
+          <Route
+            path="practice"
+            element={<Practice data={data} isDemo={isDemo} />}
+          />
+          <Route
+            path="materials"
+            element={<Materials data={data} isDemo={isDemo} />}
+          />
           <Route
             path="payments"
             element={<Payments data={data} isDemo={isDemo} />}
@@ -192,12 +208,40 @@ export function StudentPortal({
         )}
       </nav>
       {mobileMenuOpen && (
-        <div className="dialog-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setMobileMenuOpen(false)}>
-          <section className="command-dialog mobile-workspace-menu" role="dialog" aria-modal="true" aria-label="Student portal menu">
-            <header><Menu /><strong>Portal menu</strong><button type="button" aria-label="Close portal menu" onClick={() => setMobileMenuOpen(false)}>×</button></header>
+        <div
+          className="dialog-backdrop"
+          onMouseDown={(event) =>
+            event.target === event.currentTarget && setMobileMenuOpen(false)
+          }
+        >
+          <section
+            className="command-dialog mobile-workspace-menu"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Student portal menu"
+          >
+            <header>
+              <Menu />
+              <strong>Portal menu</strong>
+              <button
+                type="button"
+                aria-label="Close portal menu"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ×
+              </button>
+            </header>
             {tabs.map(([to, label, Icon]) => (
-              <button type="button" key={to} onClick={() => { navigatePortal(`${base}${to ? `/${to}` : ""}`); setMobileMenuOpen(false); }}>
-                <Icon /><span>{label}</span>
+              <button
+                type="button"
+                key={to}
+                onClick={() => {
+                  navigatePortal(`${base}${to ? `/${to}` : ""}`);
+                  setMobileMenuOpen(false);
+                }}
+              >
+                <Icon />
+                <span>{label}</span>
               </button>
             ))}
           </section>
@@ -208,7 +252,9 @@ export function StudentPortal({
 }
 
 type Snapshot = StudioSnapshot;
-type ActorPortfolioDraft = NonNullable<Snapshot["actorProfiles"][number]["draftContent"]>;
+type ActorPortfolioDraft = NonNullable<
+  Snapshot["actorProfiles"][number]["draftContent"]
+>;
 function Header({ data }: { data: Snapshot }) {
   return (
     <header className="student-header">
@@ -378,7 +424,10 @@ function GuardianHome({ data }: { data: Snapshot }) {
   return (
     <div className="student-page">
       <Header data={data} />
-      <Section title={`For ${student?.preferredName || student?.fullName || "your student"}`} marked>
+      <Section
+        title={`For ${student?.preferredName || student?.fullName || "your student"}`}
+        marked
+      >
         <div className="table-list">
           <article>
             <CalendarDays />
@@ -419,7 +468,17 @@ function GuardianHome({ data }: { data: Snapshot }) {
 }
 
 function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
-  const work = data.materials.filter((item) => item.role === "current_script" && item.status === "active"), lessonMaterials=data.materials.filter(item=>item.role==="lesson_material"||item.role==="library"), archived = data.materials.filter((item)=>item.role==="current_script"&&item.status==="archived").sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));
+  const work = data.materials.filter(
+      (item) => item.role === "current_script" && item.status === "active",
+    ),
+    lessonMaterials = data.materials.filter(
+      (item) => item.role === "lesson_material" || item.role === "library",
+    ),
+    archived = data.materials
+      .filter(
+        (item) => item.role === "current_script" && item.status === "archived",
+      )
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <div className="student-page">
       <header className="student-header">
@@ -452,10 +511,65 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         </div>
       </Section>
       <Practice data={data} isDemo={isDemo} compact />
-      <Section title="Lesson materials"><div className="table-list">{lessonMaterials.map(item=><article key={item.id}><FolderOpen/><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!lessonMaterials.length&&<EmptyState title="No lesson materials" detail="Files and links shared for your coaching work appear here."/>}</div></Section>
+      <Section title="Lesson materials">
+        <div className="table-list">
+          {lessonMaterials.map((item) => (
+            <article key={item.id}>
+              <FolderOpen />
+              <div>
+                <strong>{item.title}</strong>
+                <small>{item.category}</small>
+              </div>
+              {item.externalUrl && (
+                <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+              )}
+            </article>
+          ))}
+          {!lessonMaterials.length && (
+            <EmptyState
+              title="No lesson materials"
+              detail="Files and links shared for your coaching work appear here."
+            />
+          )}
+        </div>
+      </Section>
       <Section title="Script archive">
-        <ListControls page={1} pageCount={1} pageSize={Math.max(10,archived.length)} total={archived.length} onPage={()=>undefined} onPageSize={()=>undefined} label="archived scripts" />
-        <div className="table-list">{archived.map((item)=><article key={item.id}><FileText/><div><strong>{item.title}</strong><small>{item.category} · archived {new Date(item.updatedAt).toLocaleDateString()}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!archived.length&&<EmptyState title="No archived scripts" detail="When a new current script is uploaded, the previous one moves here automatically."/>}</div>
+        <ListControls
+          page={1}
+          pageCount={1}
+          pageSize={Math.max(10, archived.length)}
+          total={archived.length}
+          onPage={() => undefined}
+          onPageSize={() => undefined}
+          label="archived scripts"
+        />
+        <div className="table-list">
+          {archived.map((item) => (
+            <article key={item.id}>
+              <FileText />
+              <div>
+                <strong>{item.title}</strong>
+                <small>
+                  {item.category} · archived{" "}
+                  {new Date(item.updatedAt).toLocaleDateString()}
+                </small>
+              </div>
+              {item.externalUrl && (
+                <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+              )}
+            </article>
+          ))}
+          {!archived.length && (
+            <EmptyState
+              title="No archived scripts"
+              detail="When a new current script is uploaded, the previous one moves here automatically."
+            />
+          )}
+        </div>
       </Section>
     </div>
   );
@@ -709,7 +823,14 @@ function StudentBookings({
                   </span>
                 </div>
                 <div className="student-booking-actions">
-                  {lesson && <Link className="button-link" to={`/portal/lessons/${lesson.id}`}>Details</Link>}
+                  {lesson && (
+                    <Link
+                      className="button-link"
+                      to={`/portal/lessons/${lesson.id}`}
+                    >
+                      Details
+                    </Link>
+                  )}
                   {booking.location === "google_meet" &&
                     (lesson?.joinUrl ? (
                       <a
@@ -732,8 +853,18 @@ function StudentBookings({
                     ))}
                   {booking.status === "confirmed" && (
                     <button
-                      disabled={isLateChange(booking.startsAt, booking.policySnapshot.cancellationWindowHours)}
-                      title={isLateChange(booking.startsAt, booking.policySnapshot.cancellationWindowHours) ? `Online changes close ${booking.policySnapshot.cancellationWindowHours} hours before the lesson` : "Choose another available time"}
+                      disabled={isLateChange(
+                        booking.startsAt,
+                        booking.policySnapshot.cancellationWindowHours,
+                      )}
+                      title={
+                        isLateChange(
+                          booking.startsAt,
+                          booking.policySnapshot.cancellationWindowHours,
+                        )
+                          ? `Online changes close ${booking.policySnapshot.cancellationWindowHours} hours before the lesson`
+                          : "Choose another available time"
+                      }
                       onClick={() => {
                         setSelected(booking);
                         setMode("reschedule");
@@ -800,7 +931,11 @@ function StudentBookings({
             .filter((lesson) => lesson.status !== "scheduled")
             .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
             .map((lesson) => (
-              <article key={lesson.id} className="clickable-row" onClick={() => navigate(`/portal/lessons/${lesson.id}`)}>
+              <article
+                key={lesson.id}
+                className="clickable-row"
+                onClick={() => navigate(`/portal/lessons/${lesson.id}`)}
+              >
                 <CalendarDays />
                 <div>
                   <strong>{lesson.topic}</strong>
@@ -900,11 +1035,18 @@ function StudentBookings({
                 <button onClick={() => setSelected(undefined)}>
                   Keep booking
                 </button>
-                {selected.status === "confirmed" && !isLateChange(selected.startsAt, selected.policySnapshot.cancellationWindowHours) && (
-                  <button className="primary" onClick={() => change("cancel")}>
-                    Cancel booking
-                  </button>
-                )}
+                {selected.status === "confirmed" &&
+                  !isLateChange(
+                    selected.startsAt,
+                    selected.policySnapshot.cancellationWindowHours,
+                  ) && (
+                    <button
+                      className="primary"
+                      onClick={() => change("cancel")}
+                    >
+                      Cancel booking
+                    </button>
+                  )}
               </div>
             </div>
           )}
@@ -915,7 +1057,8 @@ function StudentBookings({
 }
 
 function StudentNotes({ data }: { data: Snapshot }) {
-  const [query, setQuery] = useState(""), [selected,setSelected]=useState<Snapshot["notes"][number]>();
+  const [query, setQuery] = useState(""),
+    [selected, setSelected] = useState<Snapshot["notes"][number]>();
   const filtered = data.notes
     .filter((note) =>
       [note.title, note.body, note.category, ...(note.tags ?? [])]
@@ -933,19 +1076,93 @@ function StudentNotes({ data }: { data: Snapshot }) {
       </header>
       <Section title="Lesson notes" marked>
         <div className="library-toolbar">
-          <label><FileText /><input aria-label="Search notes" placeholder="Search your notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+          <label>
+            <FileText />
+            <input
+              aria-label="Search notes"
+              placeholder="Search your notes…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
         </div>
-        <ListControls page={page.page} pageCount={page.pageCount} pageSize={page.pageSize} total={page.total} onPage={page.setPage} onPageSize={page.setPageSize} label="notes" />
+        <ListControls
+          page={page.page}
+          pageCount={page.pageCount}
+          pageSize={page.pageSize}
+          total={page.total}
+          onPage={page.setPage}
+          onPageSize={page.setPageSize}
+          label="notes"
+        />
         <div className="lesson-note-index">
           {page.visible.map((note) => {
-            const lesson = data.lessons.find((item) => item.id === note.lessonId);
+            const lesson = data.lessons.find(
+              (item) => item.id === note.lessonId,
+            );
             return (
-              <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{lesson?new Date(lesson.startsAt).toLocaleDateString():"General note"}</strong><small>{lesson?.topic||note.title} · {note.title}</small></span><Status tone="good">published</Status></button>
+              <button
+                type="button"
+                key={note.id}
+                onClick={() => setSelected(note)}
+              >
+                <CalendarDays />
+                <span>
+                  <strong>
+                    {lesson
+                      ? new Date(lesson.startsAt).toLocaleDateString()
+                      : "General note"}
+                  </strong>
+                  <small>
+                    {lesson?.topic || note.title} · {note.title}
+                  </small>
+                </span>
+                <Status tone="good">published</Status>
+              </button>
             );
           })}
-          {!page.total && <EmptyState title="No published notes yet" detail="Notes appear here as soon as your coach publishes them." />}
+          {!page.total && (
+            <EmptyState
+              title="No published notes yet"
+              detail="Notes appear here as soon as your coach publishes them."
+            />
+          )}
         </div>
-        {selected&&<Dialog title={selected.title} description={selected.lessonId?`${new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString()} · ${data.lessons.find(item=>item.id===selected.lessonId)?.topic||"Lesson"}`:"General coaching note"} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="published-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions">{selected.lessonId&&<Link className="button-link" to={`/portal/lessons/${selected.lessonId}`}>Open lesson workspace</Link>}<button type="button" onClick={()=>setSelected(undefined)}>Close</button></div></Dialog>}
+        {selected && (
+          <Dialog
+            title={selected.title}
+            description={
+              selected.lessonId
+                ? `${new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()} · ${data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Lesson"}`
+                : "General coaching note"
+            }
+            onClose={() => setSelected(undefined)}
+          >
+            {selected.bodyHtml ? (
+              <div
+                className="published-note-body"
+                dangerouslySetInnerHTML={{
+                  __html: DOMPurify.sanitize(selected.bodyHtml),
+                }}
+              />
+            ) : (
+              <p>{selected.body}</p>
+            )}
+            <div className="form-actions">
+              {selected.lessonId && (
+                <Link
+                  className="button-link"
+                  to={`/portal/lessons/${selected.lessonId}`}
+                >
+                  Open lesson workspace
+                </Link>
+              )}
+              <button type="button" onClick={() => setSelected(undefined)}>
+                Close
+              </button>
+            </div>
+          </Dialog>
+        )}
       </Section>
     </div>
   );
@@ -961,11 +1178,21 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const [notice, setNotice] = useState("");
   if (!lesson) return <Navigate to="/portal/bookings" replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
-  const assignments = data.assignments.filter((item) => item.lessonId === lesson.id);
-  const materials = data.materials.filter((item) => item.lessonId === lesson.id);
-  const messages = data.lessonMessages.filter((item) => item.lessonId === lesson.id);
-  const offering = data.serviceOfferings.find((item) => item.id === lesson.offeringId);
-  const student = data.students.find((item) => item.id === lesson.studentId) ?? data.students[0];
+  const assignments = data.assignments.filter(
+    (item) => item.lessonId === lesson.id,
+  );
+  const materials = data.materials.filter(
+    (item) => item.lessonId === lesson.id,
+  );
+  const messages = data.lessonMessages.filter(
+    (item) => item.lessonId === lesson.id,
+  );
+  const offering = data.serviceOfferings.find(
+    (item) => item.id === lesson.offeringId,
+  );
+  const student =
+    data.students.find((item) => item.id === lesson.studentId) ??
+    data.students[0];
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
     const body = message.trim();
@@ -973,30 +1200,97 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     setBusy(true);
     setNotice("");
     try {
-      if (isDemo) store.transact((draft) => draft.lessonMessages.push({ id: `message-${crypto.randomUUID()}`, lessonId: lesson.id, studentId: student.id, authorRole: "student", body, createdAt: new Date().toISOString() }));
+      if (isDemo)
+        store.transact((draft) =>
+          draft.lessonMessages.push({
+            id: `message-${crypto.randomUUID()}`,
+            lessonId: lesson.id,
+            studentId: student.id,
+            authorRole: "student",
+            body,
+            createdAt: new Date().toISOString(),
+          }),
+        );
       else {
-        await studioCommand("messages", { command: "create", entityId: lesson.id, expectedVersion: 0, payload: { studentId: student.id, body }, reason: "Student sent a lesson message" });
+        await studioCommand("messages", {
+          command: "create",
+          entityId: lesson.id,
+          expectedVersion: 0,
+          payload: { studentId: student.id, body },
+          reason: "Student sent a lesson message",
+        });
         void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setMessage("");
       setNotice("Message sent to your coach.");
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Message could not be sent.");
-    } finally { setBusy(false); }
+      setNotice(
+        reason instanceof Error ? reason.message : "Message could not be sent.",
+      );
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <div className="student-page lesson-hub">
       <header className="student-header lesson-hub-header">
-        <div><Link className="text-link" to="/portal/bookings">‹ Back to bookings</Link><h1>{lesson.topic}</h1><p>{new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}</p></div>
-        {lesson.joinUrl && <a className="button-link primary" href={lesson.joinUrl} target="_blank" rel="noreferrer"><Video />Join Google Meet</a>}
+        <div>
+          <Link className="text-link" to="/portal/bookings">
+            ‹ Back to bookings
+          </Link>
+          <h1>{lesson.topic}</h1>
+          <p>
+            {new Date(lesson.startsAt).toLocaleString()} ·{" "}
+            {lesson.locationLabel}
+          </p>
+        </div>
+        {lesson.joinUrl && (
+          <a
+            className="button-link primary"
+            href={lesson.joinUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Video />
+            Join Google Meet
+          </a>
+        )}
       </header>
-      {notice && <p className="portal-notice" role="status">{notice}</p>}
+      {notice && (
+        <p className="portal-notice" role="status">
+          {notice}
+        </p>
+      )}
       {offering && (
         <Section title="Class or course information" marked>
-          <p>{offering.description || "Your enrollment details and shared class resources live here."}</p>
+          <p>
+            {offering.description ||
+              "Your enrollment details and shared class resources live here."}
+          </p>
           <div className="student-quick-actions">
-            {(offering.meetingUrl || lesson.joinUrl) && <a className="button-link primary" href={offering.meetingUrl || lesson.joinUrl} target="_blank" rel="noreferrer"><Video />Open Google Meet</a>}
-            {offering.resourceLinks?.map((resource) => <a className="button-link" key={`${resource.label}-${resource.url}`} href={resource.url} target="_blank" rel="noreferrer"><FolderOpen />{resource.label}</a>)}
+            {(offering.meetingUrl || lesson.joinUrl) && (
+              <a
+                className="button-link primary"
+                href={offering.meetingUrl || lesson.joinUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <Video />
+                Open Google Meet
+              </a>
+            )}
+            {offering.resourceLinks?.map((resource) => (
+              <a
+                className="button-link"
+                key={`${resource.label}-${resource.url}`}
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                <FolderOpen />
+                {resource.label}
+              </a>
+            ))}
           </div>
         </Section>
       )}
@@ -1006,33 +1300,153 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           lesson={lesson}
           student={student}
           isDemo={isDemo}
-          onDemoChange={(board) => store.transact((draft) => {
-            const current = draft.lessonWhiteboards.find((item) => item.lessonId === lesson.id);
-            if (current) Object.assign(current, board);
-            else draft.lessonWhiteboards.push(board);
-          })}
+          onDemoChange={(board) =>
+            store.transact((draft) => {
+              const current = draft.lessonWhiteboards.find(
+                (item) => item.lessonId === lesson.id,
+              );
+              if (current) Object.assign(current, board);
+              else draft.lessonWhiteboards.push(board);
+            })
+          }
         />
       )}
       <div className="lesson-hub-grid">
         <Section title="Coach notes" marked>
-          <div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone="good">published</Status></header>{note.bodyHtml ? <div className="published-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(note.bodyHtml)}} /> : <p>{note.body}</p>}</article>)}{!notes.length && <EmptyState title="No published note yet" detail="Your coach’s lesson note will appear here." />}</div>
+          <div className="note-cards">
+            {notes.map((note) => (
+              <article key={note.id}>
+                <header>
+                  <strong>{note.title}</strong>
+                  <Status tone="good">published</Status>
+                </header>
+                {note.bodyHtml ? (
+                  <div
+                    className="published-note-body"
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(note.bodyHtml),
+                    }}
+                  />
+                ) : (
+                  <p>{note.body}</p>
+                )}
+              </article>
+            ))}
+            {!notes.length && (
+              <EmptyState
+                title="No published note yet"
+                detail="Your coach’s lesson note will appear here."
+              />
+            )}
+          </div>
         </Section>
         <Section title="Practice & assignments">
-          <div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}{item.dueAt ? ` · due ${new Date(item.dueAt).toLocaleDateString()}` : ""}</small></div><Status tone={item.status === "completed" ? "good" : "neutral"}>{item.status.replaceAll("_"," ")}</Status></article>)}{!assignments.length && <EmptyState title="No practice attached" detail="Assignments connected to this lesson appear here." />}</div>
+          <div className="table-list">
+            {assignments.map((item) => (
+              <article key={item.id}>
+                <CheckSquare />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.details}
+                    {item.dueAt
+                      ? ` · due ${new Date(item.dueAt).toLocaleDateString()}`
+                      : ""}
+                  </small>
+                </div>
+                <Status tone={item.status === "completed" ? "good" : "neutral"}>
+                  {item.status.replaceAll("_", " ")}
+                </Status>
+              </article>
+            ))}
+            {!assignments.length && (
+              <EmptyState
+                title="No practice attached"
+                detail="Assignments connected to this lesson appear here."
+              />
+            )}
+          </div>
         </Section>
         <Section title="Attachments & resources">
-          <div className="table-list">{materials.map((item) => <article key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl && <a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!materials.length && <EmptyState title="No lesson resources" detail="Scripts and files attached to this lesson appear here." />}</div>
+          <div className="table-list">
+            {materials.map((item) => (
+              <article key={item.id}>
+                <FolderOpen />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.category}</small>
+                </div>
+                {item.externalUrl && (
+                  <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                )}
+              </article>
+            ))}
+            {!materials.length && (
+              <EmptyState
+                title="No lesson resources"
+                detail="Scripts and files attached to this lesson appear here."
+              />
+            )}
+          </div>
         </Section>
         <Section title="Conversation" marked>
-          <div className="lesson-conversation">{messages.map((item) => <article key={item.id} className={item.authorRole === "coach" ? "coach-message" : "student-message"}><strong>{item.authorRole === "coach" ? data.settings.coachName : student?.preferredName || student?.fullName}</strong><p>{item.body}</p><small>{new Date(item.createdAt).toLocaleString()}</small></article>)}{!messages.length && <EmptyState title="No messages yet" detail="Ask a lesson-specific question without losing the context." />}</div>
-          <form className="lesson-message-form" onSubmit={sendMessage}><label htmlFor="lesson-message">Message your coach</label><textarea id="lesson-message" required maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Ask about this lesson, assignment, or material…" /><button className="primary" disabled={busy || !message.trim()}>{busy ? "Sending…" : "Send message"}</button></form>
+          <div className="lesson-conversation">
+            {messages.map((item) => (
+              <article
+                key={item.id}
+                className={
+                  item.authorRole === "coach"
+                    ? "coach-message"
+                    : "student-message"
+                }
+              >
+                <strong>
+                  {item.authorRole === "coach"
+                    ? data.settings.coachName
+                    : student?.preferredName || student?.fullName}
+                </strong>
+                <p>{item.body}</p>
+                <small>{new Date(item.createdAt).toLocaleString()}</small>
+              </article>
+            ))}
+            {!messages.length && (
+              <EmptyState
+                title="No messages yet"
+                detail="Ask a lesson-specific question without losing the context."
+              />
+            )}
+          </div>
+          <form className="lesson-message-form" onSubmit={sendMessage}>
+            <label htmlFor="lesson-message">Message your coach</label>
+            <textarea
+              id="lesson-message"
+              required
+              maxLength={4000}
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+              placeholder="Ask about this lesson, assignment, or material…"
+            />
+            <button className="primary" disabled={busy || !message.trim()}>
+              {busy ? "Sending…" : "Send message"}
+            </button>
+          </form>
         </Section>
       </div>
     </div>
   );
 }
 
-function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boolean; compact?: boolean }) {
+function Practice({
+  data,
+  isDemo,
+  compact = false,
+}: {
+  data: Snapshot;
+  isDemo: boolean;
+  compact?: boolean;
+}) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
@@ -1078,14 +1492,24 @@ function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boo
     }
   };
   return (
-    <div className={compact?"current-work-practice":"student-page"}>
-      {!compact&&<header className="student-header">
-        <h1>Practice</h1>
-        <p>Published assignments you can complete or ask about.</p>
-      </header>}
+    <div className={compact ? "current-work-practice" : "student-page"}>
+      {!compact && (
+        <header className="student-header">
+          <h1>Practice</h1>
+          <p>Published assignments you can complete or ask about.</p>
+        </header>
+      )}
       {notice && <p className="portal-notice">{notice}</p>}
       <Section title="Assignments" marked>
-        <ListControls page={assignmentPage.page} pageCount={assignmentPage.pageCount} pageSize={assignmentPage.pageSize} total={assignmentPage.total} onPage={assignmentPage.setPage} onPageSize={assignmentPage.setPageSize} label="assignments" />
+        <ListControls
+          page={assignmentPage.page}
+          pageCount={assignmentPage.pageCount}
+          pageSize={assignmentPage.pageSize}
+          total={assignmentPage.total}
+          onPage={assignmentPage.setPage}
+          onPageSize={assignmentPage.setPageSize}
+          label="assignments"
+        />
         <div className="table-list">
           {assignmentPage.visible.map((item) => (
             <article key={item.id}>
@@ -1098,7 +1522,10 @@ function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boo
                 {item.status.replaceAll("_", " ")}
               </Status>
               {item.status !== "completed" && (
-                <button disabled={busyId === item.id} onClick={() => void change(item.id, "complete")}>
+                <button
+                  disabled={busyId === item.id}
+                  onClick={() => void change(item.id, "complete")}
+                >
                   {busyId === item.id ? "Saving…" : "Complete"}
                 </button>
               )}
@@ -1106,7 +1533,11 @@ function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boo
                 disabled={item.helpRequested || busyId === item.id}
                 onClick={() => void change(item.id, "help")}
               >
-                {item.helpRequested ? "Help requested" : busyId === item.id ? "Sending…" : "Ask coach"}
+                {item.helpRequested
+                  ? "Help requested"
+                  : busyId === item.id
+                    ? "Sending…"
+                    : "Ask coach"}
               </button>
             </article>
           ))}
@@ -1115,17 +1546,32 @@ function Practice({ data, isDemo, compact=false }: { data: Snapshot; isDemo: boo
     </div>
   );
 }
-function Materials({ data, isDemo, embedded=false, actorOnly=false }: { data: Snapshot; isDemo: boolean; embedded?: boolean; actorOnly?: boolean }) {
+function Materials({
+  data,
+  isDemo,
+  embedded = false,
+  actorOnly = false,
+}: {
+  data: Snapshot;
+  isDemo: boolean;
+  embedded?: boolean;
+  actorOnly?: boolean;
+}) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     [adding, setAdding] = useState(false),
+    [busyId, setBusyId] = useState(""),
     [notice, setNotice] = useState("");
-  const materialPage = usePagedList(actorOnly?data.materials.filter(item=>item.role==="actor_material"):data.materials);
+  const materialPage = usePagedList(
+    actorOnly
+      ? data.materials.filter((item) => item.role === "actor_material")
+      : data.materials,
+  );
   const add = async (
     title: string,
     category: string,
     url: string,
-    role: "current_script"|"actor_material"|"lesson_material"|"library",
+    role: "current_script" | "actor_material" | "lesson_material" | "library",
     file?: File,
   ) => {
     const studentId = data.students[0]?.id;
@@ -1184,30 +1630,118 @@ function Materials({ data, isDemo, embedded=false, actorOnly=false }: { data: Sn
       }
       void queryClient.invalidateQueries({ queryKey: ["studio"] });
       setAdding(false);
-      setNotice(role==="current_script"?"Current script updated. The previous script is now in your archive.":"Material submitted to your coach for review.");
+      setNotice(
+        role === "current_script"
+          ? "Current script updated. The previous script is now in your archive."
+          : "Material submitted to your coach for review.",
+      );
     } catch (reason) {
       setNotice(
         reason instanceof Error ? reason.message : "Material upload failed.",
       );
     }
   };
+  const updateStatus = async (material: Snapshot["materials"][number]) => {
+    if (busyId) return;
+    setBusyId(material.id);
+    try {
+      const status = material.status === "active" ? "archived" : "active";
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.materials.find(
+            (item) => item.id === material.id,
+          );
+          if (current) {
+            current.status = status;
+            current.version += 1;
+          }
+        });
+      else
+        await studioCommand("materials", {
+          command: "update_status",
+          entityId: material.id,
+          expectedVersion: material.version,
+          payload: { status },
+          reason: "Student updated material status",
+        });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setNotice(
+        status === "archived"
+          ? "Material moved to your archive."
+          : "Material restored.",
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Material could not be updated.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
+  const remove = async (material: Snapshot["materials"][number]) => {
+    if (
+      busyId ||
+      !window.confirm(
+        `Permanently delete “${material.title}”? The uploaded file will also be removed.`,
+      )
+    )
+      return;
+    setBusyId(material.id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.materials = draft.materials.filter(
+            (item) => item.id !== material.id,
+          );
+        });
+      else
+        await studioCommand("materials", {
+          command: "delete",
+          entityId: material.id,
+          expectedVersion: material.version,
+          reason: "Student permanently deleted own material",
+        });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setNotice("Material and uploaded file deleted.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Material could not be deleted.",
+      );
+    } finally {
+      setBusyId("");
+    }
+  };
   return (
-    <div className={embedded?"embedded-materials":"student-page"}>
-      {!embedded&&<header className="student-header">
-        <h1>Materials</h1>
-        <p>Shared studio materials and actor-page submissions.</p>
-      </header>}
+    <div className={embedded ? "embedded-materials" : "student-page"}>
+      {!embedded && (
+        <header className="student-header">
+          <h1>Materials</h1>
+          <p>Shared studio materials and actor-page submissions.</p>
+        </header>
+      )}
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
       )}
       <Section
-        title={actorOnly?"Actor-page media":"Your materials"}
+        title={actorOnly ? "Actor-page media" : "Your materials"}
         marked
         aside={<button onClick={() => setAdding(true)}>Submit material</button>}
       >
-        <ListControls page={materialPage.page} pageCount={materialPage.pageCount} pageSize={materialPage.pageSize} total={materialPage.total} onPage={materialPage.setPage} onPageSize={materialPage.setPageSize} label="materials" />
+        <ListControls
+          page={materialPage.page}
+          pageCount={materialPage.pageCount}
+          pageSize={materialPage.pageSize}
+          total={materialPage.total}
+          onPage={materialPage.setPage}
+          onPageSize={materialPage.setPageSize}
+          label="materials"
+        />
         <div className="table-list">
           {materialPage.visible.map((item) => (
             <article key={item.id}>
@@ -1237,12 +1771,32 @@ function Materials({ data, isDemo, embedded=false, actorOnly=false }: { data: Sn
                   Open
                 </a>
               )}
+              <button
+                type="button"
+                disabled={busyId === item.id}
+                onClick={() => void updateStatus(item)}
+              >
+                {item.status === "active" ? "Archive" : "Restore"}
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                disabled={busyId === item.id}
+                onClick={() => void remove(item)}
+              >
+                <Trash2 />
+                Delete
+              </button>
             </article>
           ))}
         </div>
       </Section>
       {adding && (
-        <MaterialSubmission onClose={() => setAdding(false)} onSave={add} fixedRole={actorOnly?"actor_material":undefined} />
+        <MaterialSubmission
+          onClose={() => setAdding(false)}
+          onSave={add}
+          fixedRole={actorOnly ? "actor_material" : undefined}
+        />
       )}
     </div>
   );
@@ -1253,13 +1807,21 @@ function MaterialSubmission({
   fixedRole,
 }: {
   onClose: () => void;
-  onSave: (title: string, category: string, url: string, role: "current_script"|"actor_material"|"lesson_material"|"library", file?: File) => void;
+  onSave: (
+    title: string,
+    category: string,
+    url: string,
+    role: "current_script" | "actor_material" | "lesson_material" | "library",
+    file?: File,
+  ) => void;
   fixedRole?: "actor_material";
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Reel"),
     [url, setUrl] = useState(""),
-    [role,setRole]=useState<"current_script"|"actor_material"|"lesson_material"|"library">(fixedRole||"actor_material"),
+    [role, setRole] = useState<
+      "current_script" | "actor_material" | "lesson_material" | "library"
+    >(fixedRole || "actor_material"),
     [file, setFile] = useState<File>();
   return (
     <Dialog
@@ -1295,7 +1857,20 @@ function MaterialSubmission({
             <option>Performance clip</option>
           </select>
         </label>
-        {!fixedRole&&<label>Use in portal<select value={role} onChange={event=>setRole(event.target.value as typeof role)}><option value="current_script">Current script</option><option value="lesson_material">Lesson material</option><option value="library">Private material library</option><option value="actor_material">Actor-page submission</option></select></label>}
+        {!fixedRole && (
+          <label>
+            Use in portal
+            <select
+              value={role}
+              onChange={(event) => setRole(event.target.value as typeof role)}
+            >
+              <option value="current_script">Current script</option>
+              <option value="lesson_material">Lesson material</option>
+              <option value="library">Private material library</option>
+              <option value="actor_material">Actor-page submission</option>
+            </select>
+          </label>
+        )}
         <label className="full">
           Share link
           <input
@@ -1317,7 +1892,8 @@ function MaterialSubmission({
             onChange={(event) => setFile(event.target.files?.[0])}
           />
           <small>
-            Files stay private to your studio. Only actor-page submissions enter public-page review.
+            Files stay private to your studio. Only actor-page submissions enter
+            public-page review.
           </small>
         </label>
         <div className="form-actions full">
@@ -1325,7 +1901,11 @@ function MaterialSubmission({
             Cancel
           </button>
           <button className="primary" disabled={!url && !file}>
-            {role==="current_script"?"Set as current script":role==="actor_material"?"Submit for review":"Upload material"}
+            {role === "current_script"
+              ? "Set as current script"
+              : role === "actor_material"
+                ? "Submit for review"
+                : "Upload material"}
           </button>
         </div>
       </form>
@@ -1476,9 +2056,14 @@ function StudentSettings({
     }),
     [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
-    [loginForm, setLoginForm] = useState({ username: student?.portalUsername || "", password: "" }),
+    [loginForm, setLoginForm] = useState({
+      username: student?.portalUsername || "",
+      password: "",
+    }),
     [loginBusy, setLoginBusy] = useState(false),
-    [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">("");
+    [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
+      "",
+    );
   if (!student) return <div className="loading">Opening settings…</div>;
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -1527,7 +2112,11 @@ function StudentSettings({
   const stripeAction = async (action: "payment-method" | "billing") => {
     if (stripeBusy) return;
     setStripeBusy(action);
-    setNotice(action === "payment-method" ? "Opening Stripe’s secure card setup…" : "Opening secure billing…");
+    setNotice(
+      action === "payment-method"
+        ? "Opening Stripe’s secure card setup…"
+        : "Opening secure billing…",
+    );
     try {
       const { supabase } = await import("../../lib/supabase"),
         token = (await supabase?.auth.getSession())?.data.session?.access_token,
@@ -1581,8 +2170,12 @@ function StudentSettings({
             !/\d/.test(loginForm.password) ||
             !/[^A-Za-z0-9]/.test(loginForm.password)
           )
-            throw new Error("Password must be 12+ characters with upper/lowercase letters, a number, and a symbol.");
-          const { error } = await supabase.auth.updateUser({ password: loginForm.password });
+            throw new Error(
+              "Password must be 12+ characters with upper/lowercase letters, a number, and a symbol.",
+            );
+          const { error } = await supabase.auth.updateUser({
+            password: loginForm.password,
+          });
           if (error) throw error;
         }
         void queryClient.invalidateQueries({ queryKey: ["studio"] });
@@ -1590,7 +2183,11 @@ function StudentSettings({
       setLoginForm((value) => ({ ...value, password: "" }));
       setNotice("Your username and password are ready for future sign-ins.");
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Login settings could not be saved.");
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Login settings could not be saved.",
+      );
     } finally {
       setLoginBusy(false);
     }
@@ -1661,9 +2258,26 @@ function StudentSettings({
             </select>
           </label>
           <div className="settings-list full">
-            <Toggle checked={form.compactView} label="Compact view" detail="Fit more work on each screen." onChange={(compactView) => setForm({ ...form, compactView })} />
-            <Toggle checked={form.showProgress} label="Show progress" detail="Include practice progress in your workspace." onChange={(showProgress) => setForm({ ...form, showProgress })} />
-            <Toggle checked={form.emailReminders} label="Email reminders" detail="Receive the lesson reminders configured by the studio." onChange={(emailReminders) => setForm({ ...form, emailReminders })} />
+            <Toggle
+              checked={form.compactView}
+              label="Compact view"
+              detail="Fit more work on each screen."
+              onChange={(compactView) => setForm({ ...form, compactView })}
+            />
+            <Toggle
+              checked={form.showProgress}
+              label="Show progress"
+              detail="Include practice progress in your workspace."
+              onChange={(showProgress) => setForm({ ...form, showProgress })}
+            />
+            <Toggle
+              checked={form.emailReminders}
+              label="Email reminders"
+              detail="Receive the lesson reminders configured by the studio."
+              onChange={(emailReminders) =>
+                setForm({ ...form, emailReminders })
+              }
+            />
           </div>
           <div className="form-actions full">
             <button className="primary" disabled={saving}>
@@ -1676,15 +2290,42 @@ function StudentSettings({
         <form className="settings-form" onSubmit={saveLogin}>
           <label>
             Username
-            <input required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9._-]{2,31}" autoComplete="username" value={loginForm.username} onChange={(event) => setLoginForm({ ...loginForm, username: event.target.value.toLowerCase() })} />
+            <input
+              required
+              minLength={3}
+              maxLength={32}
+              pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
+              autoComplete="username"
+              value={loginForm.username}
+              onChange={(event) =>
+                setLoginForm({
+                  ...loginForm,
+                  username: event.target.value.toLowerCase(),
+                })
+              }
+            />
           </label>
           <label>
             New password
-            <input type="password" minLength={12} autoComplete="new-password" value={loginForm.password} onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })} placeholder="Leave blank to keep your password" />
-            <small>Use 12+ characters with upper/lowercase letters, a number, and a symbol.</small>
+            <input
+              type="password"
+              minLength={12}
+              autoComplete="new-password"
+              value={loginForm.password}
+              onChange={(event) =>
+                setLoginForm({ ...loginForm, password: event.target.value })
+              }
+              placeholder="Leave blank to keep your password"
+            />
+            <small>
+              Use 12+ characters with upper/lowercase letters, a number, and a
+              symbol.
+            </small>
           </label>
           <div className="form-actions full">
-            <button className="primary" disabled={loginBusy}>{loginBusy ? "Saving login…" : "Save login"}</button>
+            <button className="primary" disabled={loginBusy}>
+              {loginBusy ? "Saving login…" : "Save login"}
+            </button>
           </div>
         </form>
       </Section>
@@ -1701,13 +2342,21 @@ function StudentSettings({
           </div>
         </div>
         <div className="form-actions">
-          <button disabled={Boolean(stripeBusy)} onClick={() => void stripeAction("payment-method")}>
-            {stripeBusy === "payment-method" ? "Opening Stripe…" : student.stripeCustomerId
-              ? "Add another payment method"
-              : "Add payment method"}
+          <button
+            disabled={Boolean(stripeBusy)}
+            onClick={() => void stripeAction("payment-method")}
+          >
+            {stripeBusy === "payment-method"
+              ? "Opening Stripe…"
+              : student.stripeCustomerId
+                ? "Add another payment method"
+                : "Add payment method"}
           </button>
           {student.stripeCustomerId && (
-            <button disabled={Boolean(stripeBusy)} onClick={() => void stripeAction("billing")}>
+            <button
+              disabled={Boolean(stripeBusy)}
+              onClick={() => void stripeAction("billing")}
+            >
               {stripeBusy === "billing" ? "Opening…" : "Manage billing"}
             </button>
           )}
@@ -1731,7 +2380,12 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         items={[]}
       />
     );
-  const save = async (displayName: string, bio: string, portfolio: ActorPortfolioDraft, submit: boolean) => {
+  const save = async (
+    displayName: string,
+    bio: string,
+    portfolio: ActorPortfolioDraft,
+    submit: boolean,
+  ) => {
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -1796,12 +2450,23 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             </Status>
             <button onClick={() => setEditing(true)}>Edit</button>
             {profile.status === "published" && (
-              <a className="button-link" href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">View live page</a>
+              <a
+                className="button-link"
+                href={`/actors/${profile.slug}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View live page
+              </a>
             )}
           </article>
         </div>
       </Section>
-      <p className="section-intro">Actor-page uploads live here—not in Current Work. Your coach reviews each headshot, gallery image, reel, performance clip, and PDF résumé before it appears publicly.</p>
+      <p className="section-intro">
+        Actor-page uploads live here—not in Current Work. Your coach reviews
+        each headshot, gallery image, reel, performance clip, and PDF résumé
+        before it appears publicly.
+      </p>
       <Materials data={data} isDemo={isDemo} embedded actorOnly />
       {editing && (
         <ActorDialog
@@ -1810,7 +2475,10 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           onSave={(displayName, bio, portfolio, submit) =>
             void save(displayName, bio, portfolio, submit)
           }
-          materials={data.materials.filter(item=>item.role==="actor_material"&&item.mediaKind==="image")}
+          materials={data.materials.filter(
+            (item) =>
+              item.role === "actor_material" && item.mediaKind === "image",
+          )}
         />
       )}
     </div>
@@ -1824,7 +2492,12 @@ function ActorDialog({
 }: {
   profile: Snapshot["actorProfiles"][number];
   onClose: () => void;
-  onSave: (name: string, bio: string, portfolio: ActorPortfolioDraft, submit: boolean) => void;
+  onSave: (
+    name: string,
+    bio: string,
+    portfolio: ActorPortfolioDraft,
+    submit: boolean,
+  ) => void;
   materials: Snapshot["materials"];
 }) {
   const [name, setName] = useState(profile.displayName);
@@ -1844,7 +2517,8 @@ function ActorDialog({
     contactPhone: profile.draftContent?.contactPhone || "",
     showEmail: Boolean(profile.draftContent?.showEmail),
     showPhone: Boolean(profile.draftContent?.showPhone),
-    primaryHeadshotMaterialId: profile.draftContent?.primaryHeadshotMaterialId || "",
+    primaryHeadshotMaterialId:
+      profile.draftContent?.primaryHeadshotMaterialId || "",
   });
   const [submit, setSubmit] = useState(false);
   const save = (event: FormEvent) => {
@@ -1864,49 +2538,168 @@ function ActorDialog({
         </label>
         <label className="full">
           Professional headline
-          <input value={portfolio.headline} onChange={(event) => setPortfolio({ ...portfolio, headline: event.target.value })} placeholder="Actor · Singer · Teaching artist" />
+          <input
+            value={portfolio.headline}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, headline: event.target.value })
+            }
+            placeholder="Actor · Singer · Teaching artist"
+          />
         </label>
         <label>
           Union status
-          <select value={portfolio.unionStatus} onChange={(event) => setPortfolio({ ...portfolio, unionStatus: event.target.value })}><option>Non-union</option><option>SAG-AFTRA Eligible</option><option>SAG-AFTRA</option><option>AEA Candidate</option><option>AEA</option><option>Other</option></select>
+          <select
+            value={portfolio.unionStatus}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, unionStatus: event.target.value })
+            }
+          >
+            <option>Non-union</option>
+            <option>SAG-AFTRA Eligible</option>
+            <option>SAG-AFTRA</option>
+            <option>AEA Candidate</option>
+            <option>AEA</option>
+            <option>Other</option>
+          </select>
         </label>
         <label>
           Base location
-          <input value={portfolio.location} onChange={(event) => setPortfolio({ ...portfolio, location: event.target.value })} placeholder="New York, NY" />
+          <input
+            value={portfolio.location}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, location: event.target.value })
+            }
+            placeholder="New York, NY"
+          />
         </label>
         <label>
           Playing age
-          <input value={portfolio.playingAge} onChange={(event) => setPortfolio({ ...portfolio, playingAge: event.target.value })} placeholder="18–25" />
+          <input
+            value={portfolio.playingAge}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, playingAge: event.target.value })
+            }
+            placeholder="18–25"
+          />
         </label>
         <label>
           Height
-          <input value={portfolio.height} onChange={(event) => setPortfolio({ ...portfolio, height: event.target.value })} placeholder={`5' 8\"`} />
+          <input
+            value={portfolio.height}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, height: event.target.value })
+            }
+            placeholder={`5' 8\"`}
+          />
         </label>
         <label>
           Eye color
-          <input value={portfolio.eyeColor} onChange={(event) => setPortfolio({ ...portfolio, eyeColor: event.target.value })} />
+          <input
+            value={portfolio.eyeColor}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, eyeColor: event.target.value })
+            }
+          />
         </label>
         <label>
           Hair color
-          <input value={portfolio.hairColor} onChange={(event) => setPortfolio({ ...portfolio, hairColor: event.target.value })} />
+          <input
+            value={portfolio.hairColor}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, hairColor: event.target.value })
+            }
+          />
         </label>
         <label>
           Representation
-          <input value={portfolio.representation} onChange={(event) => setPortfolio({ ...portfolio, representation: event.target.value })} />
+          <input
+            value={portfolio.representation}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, representation: event.target.value })
+            }
+          />
         </label>
         <label>
           Personal accent color
-          <input type="color" value={portfolio.accentColor} onChange={(event) => setPortfolio({ ...portfolio, accentColor: event.target.value })} />
+          <input
+            type="color"
+            value={portfolio.accentColor}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, accentColor: event.target.value })
+            }
+          />
         </label>
         <label className="full">
           Professional website
-          <input type="url" value={portfolio.website} onChange={(event) => setPortfolio({ ...portfolio, website: event.target.value })} placeholder="https://…" />
+          <input
+            type="url"
+            value={portfolio.website}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, website: event.target.value })
+            }
+            placeholder="https://…"
+          />
         </label>
-        <label>Public email<input type="email" value={portfolio.contactEmail} onChange={(event)=>setPortfolio({...portfolio,contactEmail:event.target.value})} /></label>
-        <label>Public phone<input type="tel" value={portfolio.contactPhone} onChange={(event)=>setPortfolio({...portfolio,contactPhone:event.target.value})} /></label>
-        <label className="check-row"><input type="checkbox" checked={portfolio.showEmail} onChange={(event)=>setPortfolio({...portfolio,showEmail:event.target.checked})}/>Show Email button</label>
-        <label className="check-row"><input type="checkbox" checked={portfolio.showPhone} onChange={(event)=>setPortfolio({...portfolio,showPhone:event.target.checked})}/>Show Call button</label>
-        <label className="full">Main headshot<select value={portfolio.primaryHeadshotMaterialId} onChange={(event)=>setPortfolio({...portfolio,primaryHeadshotMaterialId:event.target.value})}><option value="">Use first approved headshot</option>{materials.map(item=><option key={item.id} value={item.id}>{item.title}</option>)}</select><small>All other approved photos appear in the gallery.</small></label>
+        <label>
+          Public email
+          <input
+            type="email"
+            value={portfolio.contactEmail}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, contactEmail: event.target.value })
+            }
+          />
+        </label>
+        <label>
+          Public phone
+          <input
+            type="tel"
+            value={portfolio.contactPhone}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, contactPhone: event.target.value })
+            }
+          />
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={portfolio.showEmail}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, showEmail: event.target.checked })
+            }
+          />
+          Show Email button
+        </label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={portfolio.showPhone}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, showPhone: event.target.checked })
+            }
+          />
+          Show Call button
+        </label>
+        <label className="full">
+          Main headshot
+          <select
+            value={portfolio.primaryHeadshotMaterialId}
+            onChange={(event) =>
+              setPortfolio({
+                ...portfolio,
+                primaryHeadshotMaterialId: event.target.value,
+              })
+            }
+          >
+            <option value="">Use first approved headshot</option>
+            {materials.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.title}
+              </option>
+            ))}
+          </select>
+          <small>All other approved photos appear in the gallery.</small>
+        </label>
         <label className="full">
           Bio
           <textarea

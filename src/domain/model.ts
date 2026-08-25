@@ -1,11 +1,7 @@
 export type UUID = string;
 export type Role = "coach" | "student" | "guardian";
 export type StudentStatus =
-  | "lead"
-  | "active"
-  | "paused"
-  | "alumni"
-  | "inactive";
+  "lead" | "active" | "paused" | "alumni" | "inactive";
 export type LessonStatus =
   | "draft"
   | "scheduled"
@@ -15,10 +11,7 @@ export type LessonStatus =
   | "no_show";
 export type NoteStatus = "draft" | "published" | "archived";
 export type AssignmentStatus =
-  | "assigned"
-  | "in_progress"
-  | "completed"
-  | "reopened";
+  "assigned" | "in_progress" | "completed" | "reopened";
 export type MaterialStatus = "active" | "vaulted" | "archived";
 export type ApprovalStatus =
   | "not_public"
@@ -42,13 +35,7 @@ export type CreditEntryKind =
   | "expiration";
 export type PaymentEntryKind = "payment" | "refund" | "adjustment";
 export type DeliveryStatus =
-  | "draft"
-  | "approved"
-  | "queued"
-  | "sending"
-  | "sent"
-  | "failed"
-  | "cancelled";
+  "draft" | "approved" | "queued" | "sending" | "sent" | "failed" | "cancelled";
 export type ServiceCategory = "private" | "group_class" | "course";
 export type MeetingProvider = "google_meet" | "in_person";
 export type RecurrenceCadence = "none" | "weekly" | "biweekly" | "custom";
@@ -80,22 +67,11 @@ export type BookingPaymentStatus =
   | "failed";
 export type SeriesKind = "fixed" | "ongoing" | "course";
 export type SeriesStatus =
-  | "active"
-  | "paused"
-  | "cancel_at_period_end"
-  | "cancelled"
-  | "completed";
+  "active" | "paused" | "cancel_at_period_end" | "cancelled" | "completed";
 export type ParticipantStatus =
-  | "reserved"
-  | "confirmed"
-  | "cancelled"
-  | "attended"
-  | "no_show";
+  "reserved" | "confirmed" | "cancelled" | "attended" | "no_show";
 export type PolicySettlement =
-  | "original_payment"
-  | "studio_credit"
-  | "none"
-  | "manual";
+  "original_payment" | "studio_credit" | "none" | "manual";
 
 export interface Versioned {
   id: UUID;
@@ -122,14 +98,19 @@ export interface Student extends Versioned {
   leadSource?: string;
   goals?: string;
   privateNotes?: string;
-    driveFolderUrl?: string;
-    timezone?: string;
-    portalPreferences?: { compactView?: boolean; showProgress?: boolean; emailReminders?: boolean };
-    stripeCustomerId?: string;
-    paymentMethodSummary?: string;
-    defaultRateMinor?: number;
+  driveFolderUrl?: string;
+  timezone?: string;
+  portalPreferences?: {
+    compactView?: boolean;
+    showProgress?: boolean;
+    emailReminders?: boolean;
+  };
+  stripeCustomerId?: string;
+  paymentMethodSummary?: string;
+  defaultRateMinor?: number;
   tags?: string[];
   lastContactAt?: string;
+  deletedAt?: string;
 }
 export interface Lesson extends Versioned {
   studioId: UUID;
@@ -147,7 +128,15 @@ export interface Lesson extends Versioned {
   seriesId?: UUID;
   meetingProvider?: MeetingProvider;
   capacity?: number;
-  sourceProvider?: "studio" | "public_booking" | "google_calendar" | "gmail" | "lessonface" | "wyzant" | "lessons_com" | "acuity";
+  sourceProvider?:
+    | "studio"
+    | "public_booking"
+    | "google_calendar"
+    | "gmail"
+    | "lessonface"
+    | "wyzant"
+    | "lessons_com"
+    | "acuity";
   sourceExternalId?: string;
   sourceConfidence?: number;
   importedAt?: string;
@@ -155,7 +144,13 @@ export interface Lesson extends Versioned {
 export interface IntegrationImport {
   id: UUID;
   studioId: UUID;
-  provider: "google_calendar" | "gmail" | "lessonface" | "wyzant" | "lessons_com" | "acuity";
+  provider:
+    | "google_calendar"
+    | "gmail"
+    | "lessonface"
+    | "wyzant"
+    | "lessons_com"
+    | "acuity";
   externalId: string;
   detectedSource: string;
   studentId?: UUID;
@@ -198,7 +193,9 @@ export interface BookingService extends Versioned {
   paymentPolicies: PaymentPolicy[];
   bufferBeforeMinutes: number;
   bufferAfterMinutes: number;
-  bufferByLocation: Partial<Record<MeetingProvider, { beforeMinutes: number; afterMinutes: number }>>;
+  bufferByLocation: Partial<
+    Record<MeetingProvider, { beforeMinutes: number; afterMinutes: number }>
+  >;
   locationPriceAdjustments: Partial<Record<MeetingProvider, number>>;
   minimumNoticeHours: number;
   bookingHorizonDays: number;
@@ -241,7 +238,7 @@ export interface ServiceOffering extends Versioned {
 }
 export interface RecurringSeries extends Versioned {
   studioId: UUID;
-  serviceId: UUID;
+  serviceId?: UUID;
   studentId?: UUID;
   kind: SeriesKind;
   cadence: Exclude<RecurrenceCadence, "none">;
@@ -251,7 +248,10 @@ export interface RecurringSeries extends Versioned {
   occurrenceCount?: number;
   paymentPolicy: PaymentPolicy;
   nextBillingAt?: string;
-  recurrenceRule: { intervalWeeks: number; slots: { weekday: number; time: string }[] };
+  recurrenceRule: {
+    intervalWeeks: number;
+    slots: { weekday: number; time: string }[];
+  };
   studentCanModify: boolean;
   priceMinor?: number;
   discountMinor: number;
@@ -322,10 +322,49 @@ export interface LessonMessage {
   createdAt: string;
 }
 export type WhiteboardElement =
-  | { id: UUID; type: "path"; points: { x: number; y: number }[]; color: string; width: number; highlighted?: boolean }
-  | { id: UUID; type: "text"; x: number; y: number; width: number; height: number; text: string; color: string; fontSize: number; fontFamily: string; underline?: boolean; highlighted?: boolean }
-  | { id: UUID; type: "table"; x: number; y: number; width: number; height: number; rows: number; columns: number; cells: string[] }
-  | { id: UUID; type: "pdf"; x: number; y: number; width: number; height: number; materialId: UUID; page?: number };
+  | {
+      id: UUID;
+      type: "path";
+      points: { x: number; y: number }[];
+      color: string;
+      width: number;
+      highlighted?: boolean;
+    }
+  | {
+      id: UUID;
+      type: "text";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      text: string;
+      color: string;
+      fontSize: number;
+      fontFamily: string;
+      underline?: boolean;
+      highlighted?: boolean;
+    }
+  | {
+      id: UUID;
+      type: "table";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      rows: number;
+      columns: number;
+      cells: string[];
+    }
+  | {
+      id: UUID;
+      type: "pdf";
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+      materialId: UUID;
+      page?: number;
+    };
 export interface LessonWhiteboard extends Versioned {
   studioId: UUID;
   lessonId: UUID;
@@ -335,13 +374,13 @@ export interface Note extends Versioned {
   lessonId: UUID;
   studentId: UUID;
   title: string;
-    body: string;
-    bodyHtml?: string;
-    richContent?: Record<string, unknown>;
-    tags?: string[];
-    category?: string;
-    pinned?: boolean;
-    status: NoteStatus;
+  body: string;
+  bodyHtml?: string;
+  richContent?: Record<string, unknown>;
+  tags?: string[];
+  category?: string;
+  pinned?: boolean;
+  status: NoteStatus;
 }
 export interface Assignment extends Versioned {
   lessonId?: UUID;
@@ -517,12 +556,42 @@ export interface StudioSettings {
   showDriveFolder: boolean;
   reminderHours: number[];
   lessonRatesMinor: { 30: number; 60: number; 90: number; intro: number };
-  bookingDefaults: { minimumNoticeHours: number; bookingHorizonDays: number; cancellationWindowHours: number; bufferBeforeMinutes: number; bufferAfterMinutes: number; recurringHorizonWeeks: number; inPersonUpchargeMinor: number };
-  meetingFormats: Record<string, { enabled: boolean; label: string; location?: string }>;
+  bookingDefaults: {
+    minimumNoticeHours: number;
+    bookingHorizonDays: number;
+    cancellationWindowHours: number;
+    bufferBeforeMinutes: number;
+    bufferAfterMinutes: number;
+    recurringHorizonWeeks: number;
+    inPersonUpchargeMinor: number;
+    requirePhone: boolean;
+    allowRecurring: boolean;
+    allowPayLater: boolean;
+    showPrices: boolean;
+    confirmationMessage: string;
+    bookingButtonLabel: string;
+  };
+  meetingFormats: Record<
+    string,
+    { enabled: boolean; label: string; location?: string }
+  >;
   coachEmails?: string[];
-  branding: { primaryColor: string; secondaryColor: string; accentColor: string; surfaceColor: string; logoUrl?: string; logoStoragePath?: string };
+  branding: {
+    primaryColor: string;
+    secondaryColor: string;
+    accentColor: string;
+    surfaceColor: string;
+    logoUrl?: string;
+    logoStoragePath?: string;
+  };
   bookingCopy: { eyebrow: string; headline: string; intro: string };
-  bookingPage: { footerWebsiteUrl: string; footerWebsiteLabel: string; showCoachName: boolean; showTrustRow: boolean; showPolicies: boolean };
+  bookingPage: {
+    footerWebsiteUrl: string;
+    footerWebsiteLabel: string;
+    showCoachName: boolean;
+    showTrustRow: boolean;
+    showPolicies: boolean;
+  };
   emailAutomations: {
     enabled: boolean;
     coachNewBooking: boolean;
@@ -537,7 +606,11 @@ export interface StudioSettings {
     paymentFailedSubject: string;
     paymentFailedBody: string;
   };
-  portalDefaults: { compactView: boolean; showProgress: boolean; showActorPage: boolean };
+  portalDefaults: {
+    compactView: boolean;
+    showProgress: boolean;
+    showActorPage: boolean;
+  };
 }
 export interface StudioSnapshot {
   studioId: UUID;

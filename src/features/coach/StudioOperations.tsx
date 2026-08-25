@@ -20,6 +20,7 @@ import {
   Status,
   usePagedList,
 } from "../../components/Primitives";
+import { LessonCalendar } from "../../components/LessonCalendar";
 import {
   formatMoney,
   packageSummary,
@@ -38,8 +39,28 @@ import { studioCommand } from "../../data/bookingCommands";
 
 const studentName = (data: StudioSnapshot, id: string) =>
   data.students.find((item) => item.id === id)?.fullName || "Student";
-const sourceLabel = (source?: string) => ({studio:"Studio",public_booking:"Direct booking",google_calendar:"Google Calendar",gmail:"Gmail",lessonface:"Lessonface",wyzant:"Wyzant",lessons_com:"Lessons.com",acuity:"Acuity"} as Record<string,string>)[source||"studio"] || source;
-export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: boolean }) {
+const sourceLabel = (source?: string) =>
+  (
+    ({
+      studio: "Studio",
+      public_booking: "Direct booking",
+      google_calendar: "Google Calendar",
+      gmail: "Gmail",
+      lessonface: "Lessonface",
+      wyzant: "Wyzant",
+      lessons_com: "Lessons.com",
+      acuity: "Acuity",
+    }) as Record<string, string>
+  )[source || "studio"] ||
+  source ||
+  "Studio";
+export function TodayView({
+  data,
+  isDemo,
+}: {
+  data: StudioSnapshot;
+  isDemo: boolean;
+}) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     navigate = useNavigate(),
@@ -47,12 +68,24 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
     [reviewing, setReviewing] = useState<IntegrationImport>();
   const today = new Date().toDateString();
   const lessons = data.lessons
-    .filter((i) => i.status === "scheduled" && new Date(i.startsAt).toDateString() === today)
+    .filter(
+      (i) =>
+        i.status === "scheduled" &&
+        new Date(i.startsAt).toDateString() === today,
+    )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
-  const noteFollowups = data.lessons.filter((lesson) => {
-    const ended = new Date(lesson.endsAt).getTime();
-    return ended <= Date.now() && !["cancelled", "late_cancelled"].includes(lesson.status) && !data.notes.some((note) => note.lessonId === lesson.id && note.status === "published");
-  }).sort((a, b) => a.endsAt.localeCompare(b.endsAt));
+  const noteFollowups = data.lessons
+    .filter((lesson) => {
+      const ended = new Date(lesson.endsAt).getTime();
+      return (
+        ended <= Date.now() &&
+        !["cancelled", "late_cancelled"].includes(lesson.status) &&
+        !data.notes.some(
+          (note) => note.lessonId === lesson.id && note.status === "published",
+        )
+      );
+    })
+    .sort((a, b) => a.endsAt.localeCompare(b.endsAt));
   const notePage = usePagedList(noteFollowups);
   const reviewGroups = Object.values(
     data.integrationImports
@@ -66,244 +99,1087 @@ export function TodayView({ data, isDemo }: { data: StudioSnapshot; isDemo: bool
   const importPage = usePagedList(reviewGroups);
   const complete = async (lesson: Lesson) => {
     try {
-      if (isDemo) store.transact((draft) => {
-        const item = draft.lessons.find((i) => i.id === lesson.id)!;
-        item.status = "completed";
-        item.version += 1;
-        item.updatedAt = new Date().toISOString();
-      });
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.lessons.find((i) => i.id === lesson.id)!;
+          item.status = "completed";
+          item.version += 1;
+          item.updatedAt = new Date().toISOString();
+        });
       else {
-        await studioCommand("lessons", { command: "complete", entityId: lesson.id, expectedVersion: lesson.version, reason: "Coach completed lesson" });
+        await studioCommand("lessons", {
+          command: "complete",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          reason: "Coach completed lesson",
+        });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
-      setNotice("Lesson completed. Add the follow-up from the student record when you are ready.");
-    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Lesson could not be completed."); }
+      setNotice(
+        "Lesson completed. Add the follow-up from the student record when you are ready.",
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson could not be completed.",
+      );
+    }
   };
   const reviewed = async () => {
     setReviewing(undefined);
     await queryClient.invalidateQueries({ queryKey: ["studio"] });
-    setNotice("The provider signal was reviewed and the student record was updated.");
+    setNotice(
+      "The provider signal was reviewed and the student record was updated.",
+    );
   };
   return (
     <>
-    <Section title="Today’s teaching flow" marked>
-      {notice && <p className="portal-notice">{notice}</p>}
-      <div className="workflow-list">
-        {lessons.map((lesson, index) => (
-          <article key={lesson.id}>
-            <span>{index + 1}</span>
-            <div>
-              <strong>
-                {studentName(data, lesson.studentId)} · {lesson.topic}
-              </strong>
-              <small>
-                {new Date(lesson.startsAt).toLocaleString()} ·{" "}
-                {lesson.locationLabel} · {sourceLabel(lesson.sourceProvider)}
-              </small>
-            </div>
-            <Status tone="good">scheduled</Status>
-            <button onClick={() => void complete(lesson)}>Complete</button>
-          </article>
-        ))}
-        {!lessons.length && (
-          <EmptyState
-            title="The rest of today is clear"
-            detail="Only today’s scheduled lessons appear here. Use Home for the week ahead."
-          />
-        )}
-      </div>
-    </Section>
-    <Section title="Notes due within 48 hours" marked>
-      <div className="workflow-list">
-        {notePage.visible.map((lesson) => { const due = new Date(new Date(lesson.endsAt).getTime() + 48 * 60 * 60 * 1000), remaining = due.getTime() - Date.now(); return <article key={`note-${lesson.id}`}><FileText /><div><strong>{studentName(data, lesson.studentId)} · {lesson.topic}</strong><small>{remaining > 0 ? `${Math.max(1, Math.ceil(remaining / 3_600_000))} hours remaining` : `Overdue since ${due.toLocaleString()}`}</small></div><Status tone={remaining <= 0 ? "danger" : remaining < 12 * 3_600_000 ? "warn" : "neutral"}>{remaining <= 0 ? "overdue" : "due"}</Status><button onClick={() => navigate(`/coach/students/${lesson.studentId}/notes`)}>Write note</button></article>; })}
-        {!noteFollowups.length && <EmptyState title="Lesson notes are caught up" detail="A reminder appears here after each lesson and remains until a note is published." />}
-      </div>
-      {noteFollowups.length > 0 && <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="note follow-ups" />}
-    </Section>
-    {reviewGroups.length > 0 && <div id="verification"><Section title="Verify imported lessons"><p className="section-intro">These are provider signals waiting for one clear decision. Confirming links the lesson to the student profile; matching series can be handled together.</p><div className="table-list">{importPage.visible.map((group) => {const item=group[0];return <article key={item.id}><CalendarDays /><div><strong>{sourceLabel(item.detectedSource)}{group.length>1?` · ${group.length} matching lessons`:" lesson"}</strong><small>{importSummary(item)} · {item.studentId ? `suggested: ${studentName(data,item.studentId)} · ` : "student not matched · "}{Math.round(item.confidence*100)}% confidence{item.matchedBy ? ` by ${item.matchedBy}` : ""}</small></div><Status tone="warn">needs decision</Status><button onClick={() => setReviewing(item)}>Verify</button></article>;})}</div><ListControls page={importPage.page} pageCount={importPage.pageCount} pageSize={importPage.pageSize} total={importPage.total} onPage={importPage.setPage} onPageSize={importPage.setPageSize} label="import groups" /></Section></div>}
-    {reviewing && <ImportReviewDialog item={reviewing} similarCount={reviewGroups.find((group)=>group.some((entry)=>entry.id===reviewing.id))?.length||1} data={data} onClose={() => setReviewing(undefined)} onReviewed={reviewed} />}
-    </>
-  );
-}
-
-function importSummary(item: IntegrationImport) {
-  const payload = item.payload || {}, headers = (payload.headers || {}) as Record<string,string>;
-  return String(payload.summary || headers.subject || payload.snippet || sourceLabel(item.detectedSource));
-}
-
-function importEmail(item: IntegrationImport, data: StudioSnapshot) {
-  const payload = item.payload || {}, attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
-  const attendeeEmails = attendees.map((attendee)=>String((attendee as Record<string,unknown>).email||""));
-  const textEmails = JSON.stringify(payload).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) || [];
-  const matches = [...attendeeEmails, ...textEmails].filter(Boolean);
-  const coachEmails = new Set([data.settings.contactEmail, ...(data.settings.coachEmails || [])].map((email)=>email.toLowerCase()));
-  return matches.find((email)=>{
-    const normalized=email.toLowerCase();
-    return !coachEmails.has(normalized) && !normalized.endsWith("@google.com") && !normalized.includes("calendar-notification") && !normalized.includes("noreply");
-  }) || "";
-}
-
-function ImportReviewDialog({ item, similarCount, data, onClose, onReviewed }: { item: IntegrationImport; similarCount:number; data: StudioSnapshot; onClose:()=>void; onReviewed:()=>Promise<void> }) {
-  const candidate=(item.payload?.candidate||{}) as {startsAt?:string;endsAt?:string;locationLabel?:string}, [mode,setMode]=useState<"existing"|"create">(item.studentId?"existing":"create"), [studentId,setStudentId]=useState(item.studentId||""), [name,setName]=useState(""), [email,setEmail]=useState(importEmail(item,data)), [merge,setMerge]=useState(false), [note,setNote]=useState(""), [saving,setSaving]=useState(false), [error,setError]=useState("");
-  const submit=async(event:FormEvent)=>{event.preventDefault();if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:mode,applySimilar:similarCount>1,studentId:mode==="existing"?studentId:undefined,fullName:mode==="create"?name:undefined,email:mode==="create"?email:undefined,mergeStudentId:merge&&item.studentId&&item.studentId!==studentId?item.studentId:undefined,note},reason:"Coach reviewed provider lesson"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The lesson could not be verified.");}finally{setSaving(false);}};
-  const ignore=async()=>{if(saving)return;setSaving(true);setError("");try{await studioCommand("integrations",{command:"review_import",entityId:item.id,expectedVersion:0,payload:{action:"ignore",applySimilar:similarCount>1,note},reason:"Coach ignored provider lesson"});await onReviewed();}catch(reason){setError(reason instanceof Error?reason.message:"The provider item could not be ignored.");}finally{setSaving(false);}};
-  return <Dialog title="Verify imported lesson" description={`${sourceLabel(item.detectedSource)} · ${importSummary(item)}${similarCount>1?` · ${similarCount} matching occurrences`:""}`} onClose={onClose}><form className="workflow-form" onSubmit={submit}>{error&&<p className="inline-error" role="alert">{error}</p>}{candidate.startsAt&&<div className="import-evidence full"><strong>Lesson detected</strong><span>{new Date(candidate.startsAt).toLocaleString()} – {candidate.endsAt?new Date(candidate.endsAt).toLocaleTimeString([],{hour:"numeric",minute:"2-digit"}):"end time unavailable"}</span><small>{candidate.locationLabel||"Provider booking"}. Confirming creates or links this lesson in the selected student profile.</small></div>}<div className="settings-list full"><button type="button" role="switch" aria-checked={mode==="existing"} className={`setting-toggle toggle-button ${mode==="existing"?"on":""}`} onClick={()=>setMode("existing")}><span><strong>Link an existing student</strong><small>Use one current record and avoid a duplicate.</small></span><i aria-hidden="true"><b /></i></button><button type="button" role="switch" aria-checked={mode==="create"} className={`setting-toggle toggle-button ${mode==="create"?"on":""}`} onClick={()=>setMode("create")}><span><strong>Create an interested student</strong><small>Save a new lead from this provider signal.</small></span><i aria-hidden="true"><b /></i></button></div>{mode==="existing"?<><label className="full">Student<select required value={studentId} onChange={event=>{setStudentId(event.target.value);setMerge(false);}}><option value="">Choose a student</option>{[...data.students].sort((a,b)=>a.fullName.localeCompare(b.fullName)).map(student=><option key={student.id} value={student.id}>{student.fullName} · {student.email||student.guardianEmail||"no email"}</option>)}</select></label>{item.studentId&&studentId&&item.studentId!==studentId&&<label className="check-row full"><input type="checkbox" checked={merge} onChange={event=>setMerge(event.target.checked)}/><span><strong>Merge {studentName(data,item.studentId)} into this record</strong><small>Lessons, notes, materials, payments, relationships, and portal access move to the selected student.</small></span></label>}</>:<><label>Full name<input required autoFocus value={name} onChange={event=>setName(event.target.value)}/></label><label>Email<input type="email" value={email} onChange={event=>setEmail(event.target.value)}/></label></>}<label className="full">Verification note (optional)<input value={note} onChange={event=>setNote(event.target.value)} placeholder="What you checked or corrected"/></label><div className="form-actions full"><button type="button" disabled={saving} onClick={()=>void ignore()}>Ignore{similarCount>1?` ${similarCount} signals`:" signal"}</button><button type="button" disabled={saving} onClick={onClose}>Cancel</button><button className="primary" disabled={saving}>{saving?"Saving…":mode==="create"?`Create & attach lesson${similarCount>1?`s (${similarCount})`:""}`:`Confirm student & lesson${similarCount>1?`s (${similarCount})`:""}`}</button></div></form></Dialog>;
-}
-export function LessonsView({ data, isDemo }: { data: StudioSnapshot; isDemo: boolean }) {
-  const navigate = useNavigate(),
-    store = useStudioStore(),
-    queryClient = useQueryClient(),
-    [selected, setSelected] = useState<Lesson>(),
-    [start, setStart] = useState(""),
-    [notice, setNotice] = useState("");
-  const sortedLessons = [...data.lessons].sort((a, b) => b.startsAt.localeCompare(a.startsAt));
-  const lessonPage = usePagedList(sortedLessons);
-  const update = async (status: "completed" | "cancelled") => {
-    if (!selected) return;
-    try {
-      if (isDemo) store.transact((draft) => {
-        const item = draft.lessons.find((i) => i.id === selected.id)!;
-        item.status = status;
-        item.version += 1;
-        item.updatedAt = new Date().toISOString();
-      });
-      else {
-        await studioCommand("lessons", { command: status === "completed" ? "complete" : "cancel", entityId: selected.id, expectedVersion: selected.version, reason: `Coach marked lesson ${status}` });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setSelected(undefined); setNotice(`Lesson marked ${status}.`);
-    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Lesson could not be updated."); }
-  };
-  const move = async () => {
-    if (!selected || !start) return;
-    const startsAt = new Date(start).toISOString(),
-      duration =
-        new Date(selected.endsAt).getTime() -
-        new Date(selected.startsAt).getTime();
-    const endsAt = new Date(new Date(startsAt).getTime() + duration).toISOString();
-    try {
-      if (isDemo) store.transact((draft) => {
-        const item = draft.lessons.find((i) => i.id === selected.id)!;
-        item.startsAt = startsAt; item.endsAt = endsAt; item.version += 1;
-      });
-      else {
-        await studioCommand("lessons", { command: "reschedule", entityId: selected.id, expectedVersion: selected.version, payload: { startsAt, endsAt }, reason: "Coach rescheduled lesson" });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setSelected(undefined); setNotice("Lesson rescheduled.");
-    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Lesson could not be rescheduled."); }
-  };
-  return (
-    <Section title="All lessons" marked>
-      {notice && <p className="portal-notice">{notice}</p>}
-      <ListControls page={lessonPage.page} pageCount={lessonPage.pageCount} pageSize={lessonPage.pageSize} total={lessonPage.total} onPage={lessonPage.setPage} onPageSize={lessonPage.setPageSize} label="lessons" />
-      <div className="table-list">
-        {lessonPage.visible
-          .map((lesson) => (
+      <Section title="Today’s teaching flow" marked>
+        {notice && <p className="portal-notice">{notice}</p>}
+        <div className="workflow-list">
+          {lessons.map((lesson, index) => (
             <article key={lesson.id}>
-              <CalendarDays />
+              <span>{index + 1}</span>
               <div>
                 <strong>
-                  {lesson.topic} · {studentName(data, lesson.studentId)}
+                  {studentName(data, lesson.studentId)} · {lesson.topic}
                 </strong>
                 <small>
                   {new Date(lesson.startsAt).toLocaleString()} ·{" "}
                   {lesson.locationLabel} · {sourceLabel(lesson.sourceProvider)}
                 </small>
               </div>
+              <Status tone="good">scheduled</Status>
+              <button onClick={() => void complete(lesson)}>Complete</button>
+            </article>
+          ))}
+          {!lessons.length && (
+            <EmptyState
+              title="The rest of today is clear"
+              detail="Only today’s scheduled lessons appear here. Use Home for the week ahead."
+            />
+          )}
+        </div>
+      </Section>
+      <Section title="Notes due within 48 hours" marked>
+        <div className="workflow-list">
+          {notePage.visible.map((lesson) => {
+            const due = new Date(
+                new Date(lesson.endsAt).getTime() + 48 * 60 * 60 * 1000,
+              ),
+              remaining = due.getTime() - Date.now();
+            return (
+              <article key={`note-${lesson.id}`}>
+                <FileText />
+                <div>
+                  <strong>
+                    {studentName(data, lesson.studentId)} · {lesson.topic}
+                  </strong>
+                  <small>
+                    {remaining > 0
+                      ? `${Math.max(1, Math.ceil(remaining / 3_600_000))} hours remaining`
+                      : `Overdue since ${due.toLocaleString()}`}
+                  </small>
+                </div>
+                <Status
+                  tone={
+                    remaining <= 0
+                      ? "danger"
+                      : remaining < 12 * 3_600_000
+                        ? "warn"
+                        : "neutral"
+                  }
+                >
+                  {remaining <= 0 ? "overdue" : "due"}
+                </Status>
+                <button
+                  onClick={() =>
+                    navigate(`/coach/students/${lesson.studentId}/notes`)
+                  }
+                >
+                  Write note
+                </button>
+              </article>
+            );
+          })}
+          {!noteFollowups.length && (
+            <EmptyState
+              title="Lesson notes are caught up"
+              detail="A reminder appears here after each lesson and remains until a note is published."
+            />
+          )}
+        </div>
+        {noteFollowups.length > 0 && (
+          <ListControls
+            page={notePage.page}
+            pageCount={notePage.pageCount}
+            pageSize={notePage.pageSize}
+            total={notePage.total}
+            onPage={notePage.setPage}
+            onPageSize={notePage.setPageSize}
+            label="note follow-ups"
+          />
+        )}
+      </Section>
+      {reviewGroups.length > 0 && (
+        <div id="verification">
+          <Section title="Verify imported lessons">
+            <p className="section-intro">
+              These are provider signals waiting for one clear decision.
+              Confirming links the lesson to the student profile; matching
+              series can be handled together.
+            </p>
+            <div className="table-list">
+              {importPage.visible.map((group) => {
+                const item = group[0];
+                return (
+                  <article key={item.id}>
+                    <CalendarDays />
+                    <div>
+                      <strong>
+                        {sourceLabel(item.detectedSource)}
+                        {group.length > 1
+                          ? ` · ${group.length} matching lessons`
+                          : " lesson"}
+                      </strong>
+                      <small>
+                        {importSummary(item)} ·{" "}
+                        {item.studentId
+                          ? `suggested: ${studentName(data, item.studentId)} · `
+                          : "student not matched · "}
+                        {Math.round(item.confidence * 100)}% confidence
+                        {item.matchedBy ? ` by ${item.matchedBy}` : ""}
+                      </small>
+                    </div>
+                    <Status tone="warn">needs decision</Status>
+                    <button onClick={() => setReviewing(item)}>Verify</button>
+                  </article>
+                );
+              })}
+            </div>
+            <ListControls
+              page={importPage.page}
+              pageCount={importPage.pageCount}
+              pageSize={importPage.pageSize}
+              total={importPage.total}
+              onPage={importPage.setPage}
+              onPageSize={importPage.setPageSize}
+              label="import groups"
+            />
+          </Section>
+        </div>
+      )}
+      {reviewing && (
+        <ImportReviewDialog
+          item={reviewing}
+          similarCount={
+            reviewGroups.find((group) =>
+              group.some((entry) => entry.id === reviewing.id),
+            )?.length || 1
+          }
+          data={data}
+          onClose={() => setReviewing(undefined)}
+          onReviewed={reviewed}
+        />
+      )}
+    </>
+  );
+}
+
+function importSummary(item: IntegrationImport) {
+  const payload = item.payload || {},
+    headers = (payload.headers || {}) as Record<string, string>;
+  return String(
+    payload.summary ||
+      headers.subject ||
+      payload.snippet ||
+      sourceLabel(item.detectedSource),
+  );
+}
+
+function importEmail(item: IntegrationImport, data: StudioSnapshot) {
+  const payload = item.payload || {},
+    attendees = Array.isArray(payload.attendees) ? payload.attendees : [];
+  const attendeeEmails = attendees.map((attendee) =>
+    String((attendee as Record<string, unknown>).email || ""),
+  );
+  const textEmails =
+    JSON.stringify(payload).match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ||
+    [];
+  const matches = [...attendeeEmails, ...textEmails].filter(Boolean);
+  const coachEmails = new Set(
+    [data.settings.contactEmail, ...(data.settings.coachEmails || [])].map(
+      (email) => email.toLowerCase(),
+    ),
+  );
+  return (
+    matches.find((email) => {
+      const normalized = email.toLowerCase();
+      return (
+        !coachEmails.has(normalized) &&
+        !normalized.endsWith("@google.com") &&
+        !normalized.includes("calendar-notification") &&
+        !normalized.includes("noreply")
+      );
+    }) || ""
+  );
+}
+
+function ImportReviewDialog({
+  item,
+  similarCount,
+  data,
+  onClose,
+  onReviewed,
+}: {
+  item: IntegrationImport;
+  similarCount: number;
+  data: StudioSnapshot;
+  onClose: () => void;
+  onReviewed: () => Promise<void>;
+}) {
+  const candidate = (item.payload?.candidate || {}) as {
+      startsAt?: string;
+      endsAt?: string;
+      locationLabel?: string;
+    },
+    [mode, setMode] = useState<"existing" | "create">(
+      item.studentId ? "existing" : "create",
+    ),
+    [studentId, setStudentId] = useState(item.studentId || ""),
+    [name, setName] = useState(""),
+    [email, setEmail] = useState(importEmail(item, data)),
+    [merge, setMerge] = useState(false),
+    [note, setNote] = useState(""),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState("");
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await studioCommand("integrations", {
+        command: "review_import",
+        entityId: item.id,
+        expectedVersion: 0,
+        payload: {
+          action: mode,
+          applySimilar: similarCount > 1,
+          studentId: mode === "existing" ? studentId : undefined,
+          fullName: mode === "create" ? name : undefined,
+          email: mode === "create" ? email : undefined,
+          mergeStudentId:
+            merge && item.studentId && item.studentId !== studentId
+              ? item.studentId
+              : undefined,
+          note,
+        },
+        reason: "Coach reviewed provider lesson",
+      });
+      await onReviewed();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "The lesson could not be verified.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  const ignore = async () => {
+    if (saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      await studioCommand("integrations", {
+        command: "review_import",
+        entityId: item.id,
+        expectedVersion: 0,
+        payload: { action: "ignore", applySimilar: similarCount > 1, note },
+        reason: "Coach ignored provider lesson",
+      });
+      await onReviewed();
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "The provider item could not be ignored.",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+  return (
+    <Dialog
+      title="Verify imported lesson"
+      description={`${sourceLabel(item.detectedSource)} · ${importSummary(item)}${similarCount > 1 ? ` · ${similarCount} matching occurrences` : ""}`}
+      onClose={onClose}
+    >
+      <form className="workflow-form" onSubmit={submit}>
+        {error && (
+          <p className="inline-error" role="alert">
+            {error}
+          </p>
+        )}
+        {candidate.startsAt && (
+          <div className="import-evidence full">
+            <strong>Lesson detected</strong>
+            <span>
+              {new Date(candidate.startsAt).toLocaleString()} –{" "}
+              {candidate.endsAt
+                ? new Date(candidate.endsAt).toLocaleTimeString([], {
+                    hour: "numeric",
+                    minute: "2-digit",
+                  })
+                : "end time unavailable"}
+            </span>
+            <small>
+              {candidate.locationLabel || "Provider booking"}. Confirming
+              creates or links this lesson in the selected student profile.
+            </small>
+          </div>
+        )}
+        <div className="settings-list full">
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mode === "existing"}
+            className={`setting-toggle toggle-button ${mode === "existing" ? "on" : ""}`}
+            onClick={() => setMode("existing")}
+          >
+            <span>
+              <strong>Link an existing student</strong>
+              <small>Use one current record and avoid a duplicate.</small>
+            </span>
+            <i aria-hidden="true">
+              <b />
+            </i>
+          </button>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={mode === "create"}
+            className={`setting-toggle toggle-button ${mode === "create" ? "on" : ""}`}
+            onClick={() => setMode("create")}
+          >
+            <span>
+              <strong>Create an interested student</strong>
+              <small>Save a new lead from this provider signal.</small>
+            </span>
+            <i aria-hidden="true">
+              <b />
+            </i>
+          </button>
+        </div>
+        {mode === "existing" ? (
+          <>
+            <label className="full">
+              Student
+              <select
+                required
+                value={studentId}
+                onChange={(event) => {
+                  setStudentId(event.target.value);
+                  setMerge(false);
+                }}
+              >
+                <option value="">Choose a student</option>
+                {[...data.students]
+                  .sort((a, b) => a.fullName.localeCompare(b.fullName))
+                  .map((student) => (
+                    <option key={student.id} value={student.id}>
+                      {student.fullName} ·{" "}
+                      {student.email || student.guardianEmail || "no email"}
+                    </option>
+                  ))}
+              </select>
+            </label>
+            {item.studentId && studentId && item.studentId !== studentId && (
+              <label className="check-row full">
+                <input
+                  type="checkbox"
+                  checked={merge}
+                  onChange={(event) => setMerge(event.target.checked)}
+                />
+                <span>
+                  <strong>
+                    Merge {studentName(data, item.studentId)} into this record
+                  </strong>
+                  <small>
+                    Lessons, notes, materials, payments, relationships, and
+                    portal access move to the selected student.
+                  </small>
+                </span>
+              </label>
+            )}
+          </>
+        ) : (
+          <>
+            <label>
+              Full name
+              <input
+                required
+                autoFocus
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+              />
+            </label>
+            <label>
+              Email
+              <input
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+              />
+            </label>
+          </>
+        )}
+        <label className="full">
+          Verification note (optional)
+          <input
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            placeholder="What you checked or corrected"
+          />
+        </label>
+        <div className="form-actions full">
+          <button type="button" disabled={saving} onClick={() => void ignore()}>
+            Ignore{similarCount > 1 ? ` ${similarCount} signals` : " signal"}
+          </button>
+          <button type="button" disabled={saving} onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary" disabled={saving}>
+            {saving
+              ? "Saving…"
+              : mode === "create"
+                ? `Create & attach lesson${similarCount > 1 ? `s (${similarCount})` : ""}`
+                : `Confirm student & lesson${similarCount > 1 ? `s (${similarCount})` : ""}`}
+          </button>
+        </div>
+      </form>
+    </Dialog>
+  );
+}
+export function LessonsView({
+  data,
+  isDemo,
+}: {
+  data: StudioSnapshot;
+  isDemo: boolean;
+}) {
+  const navigate = useNavigate(),
+    store = useStudioStore(),
+    queryClient = useQueryClient(),
+    [selected, setSelected] = useState<Lesson>(),
+    [start, setStart] = useState(""),
+    [notice, setNotice] = useState(""),
+    [busy, setBusy] = useState(""),
+    [confirmCancel, setConfirmCancel] = useState(false),
+    [cadence, setCadence] = useState<"weekly" | "biweekly">("weekly"),
+    [occurrences, setOccurrences] = useState(6),
+    [creditQuantity, setCreditQuantity] = useState(1),
+    [creditReason, setCreditReason] = useState("Lesson-specific credit");
+  const openLesson = (lesson: Lesson) => {
+    setSelected(lesson);
+    setConfirmCancel(false);
+    const local = new Date(lesson.startsAt);
+    local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
+    setStart(local.toISOString().slice(0, 16));
+  };
+  const update = async (status: "completed" | "cancelled") => {
+    if (!selected || busy) return;
+    setBusy(status);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.lessons.find((i) => i.id === selected.id)!;
+          item.status = status;
+          item.version += 1;
+          item.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: status === "completed" ? "complete" : "cancel",
+          entityId: selected.id,
+          expectedVersion: selected.version,
+          reason: `Coach marked lesson ${status}`,
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setSelected(undefined);
+      setNotice(
+        status === "cancelled"
+          ? "Lesson cancelled and removed from the active calendar. Calendar notifications are being updated."
+          : "Lesson marked completed.",
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson could not be updated.",
+      );
+    } finally {
+      setBusy("");
+    }
+  };
+  const move = async () => {
+    if (!selected || !start || busy) return;
+    setBusy("reschedule");
+    const startsAt = new Date(start).toISOString(),
+      duration =
+        new Date(selected.endsAt).getTime() -
+        new Date(selected.startsAt).getTime();
+    const endsAt = new Date(
+      new Date(startsAt).getTime() + duration,
+    ).toISOString();
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.lessons.find((i) => i.id === selected.id)!;
+          item.startsAt = startsAt;
+          item.endsAt = endsAt;
+          item.version += 1;
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "reschedule",
+          entityId: selected.id,
+          expectedVersion: selected.version,
+          payload: { startsAt, endsAt },
+          reason: "Coach rescheduled lesson",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setSelected(undefined);
+      setNotice("Lesson rescheduled.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson could not be rescheduled.",
+      );
+    } finally {
+      setBusy("");
+    }
+  };
+  const makeRecurring = async () => {
+    if (!selected || busy) return;
+    setBusy("recurring");
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const base = draft.lessons.find(
+            (lesson) => lesson.id === selected.id,
+          )!;
+          const seriesId = `series-${crypto.randomUUID()}`;
+          base.seriesId = seriesId;
+          base.version += 1;
+          for (let index = 1; index < occurrences; index += 1) {
+            const days = (cadence === "biweekly" ? 14 : 7) * index;
+            draft.lessons.push({
+              ...base,
+              id: `lesson-${crypto.randomUUID()}`,
+              seriesId,
+              startsAt: new Date(
+                new Date(base.startsAt).getTime() + days * 86400000,
+              ).toISOString(),
+              endsAt: new Date(
+                new Date(base.endsAt).getTime() + days * 86400000,
+              ).toISOString(),
+              version: 1,
+              updatedAt: new Date().toISOString(),
+            });
+          }
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "make_recurring",
+          entityId: selected.id,
+          expectedVersion: selected.version,
+          payload: {
+            cadence,
+            occurrenceCount: occurrences,
+            timezone: data.settings.timezone,
+          },
+          reason: "Coach created recurring lesson series",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setSelected(undefined);
+      setNotice(`${occurrences} ${cadence} lessons added as one series.`);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Recurring lessons could not be created.",
+      );
+    } finally {
+      setBusy("");
+    }
+  };
+  const adjustLessonCredit = async () => {
+    if (!selected || !creditQuantity || creditReason.trim().length < 3 || busy)
+      return;
+    setBusy("credit");
+    try {
+      if (isDemo) {
+        store.transact((draft) => {
+          let pkg = draft.packages.find(
+            (item) =>
+              item.studentId === selected.studentId &&
+              item.name === "Studio lesson credits",
+          );
+          if (!pkg) {
+            pkg = {
+              id: `package-${crypto.randomUUID()}`,
+              studentId: selected.studentId,
+              name: "Studio lesson credits",
+              priceMinor: 0,
+              currency: "USD",
+              version: 1,
+              updatedAt: new Date().toISOString(),
+            };
+            draft.packages.push(pkg);
+          }
+          draft.creditEntries.push({
+            id: `credit-${crypto.randomUUID()}`,
+            packageId: pkg.id,
+            lessonId: selected.id,
+            kind: "adjustment",
+            quantity: creditQuantity,
+            reason: creditReason,
+            createdAt: new Date().toISOString(),
+          });
+        });
+      } else {
+        await studioCommand("credits", {
+          command: "grant",
+          expectedVersion: 0,
+          payload: {
+            studentId: selected.studentId,
+            lessonId: selected.id,
+            quantity: creditQuantity,
+            reason: creditReason,
+          },
+          reason: "Coach adjusted credit for a specific lesson",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice(`Credit adjustment attached to ${selected.topic}.`);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson credit could not be adjusted.",
+      );
+    } finally {
+      setBusy("");
+    }
+  };
+  const payWithCredit = async () => {
+    if (!selected || busy) return;
+    setBusy("pay-credit");
+    try {
+      if (isDemo) {
+        store.transact((draft) => {
+          const pkg = draft.packages
+            .filter((item) => item.studentId === selected.studentId)
+            .find(
+              (item) =>
+                packageSummary(item, draft.creditEntries).remainingCredits >
+                0,
+            );
+          if (!pkg) throw new Error("This student does not have an available credit.");
+          draft.creditEntries.push({
+            id: `credit-${crypto.randomUUID()}`,
+            packageId: pkg.id,
+            lessonId: selected.id,
+            kind: "consumption",
+            quantity: -1,
+            reason: `Paid by credit for ${selected.topic}`,
+            createdAt: new Date().toISOString(),
+          });
+          const lesson = draft.lessons.find((item) => item.id === selected.id);
+          if (lesson) lesson.packageId = pkg.id;
+        });
+      } else {
+        await studioCommand("credits", {
+          command: "use_for_lesson",
+          entityId: selected.id,
+          expectedVersion: selected.version,
+          payload: { reason: `Paid by credit for ${selected.topic}` },
+          reason: "Coach marked lesson paid by credit",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setSelected(undefined);
+      setNotice("One credit was used and the lesson is marked paid by credit.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "The lesson could not be paid by credit.",
+      );
+    } finally {
+      setBusy("");
+    }
+  };
+  const selectedStudent = selected
+    ? data.students.find((student) => student.id === selected.studentId)
+    : undefined;
+  const availableCredits = selectedStudent
+    ? data.packages
+        .filter((pkg) => pkg.studentId === selectedStudent.id)
+        .reduce(
+          (total, pkg) =>
+            total + packageSummary(pkg, data.creditEntries).remainingCredits,
+          0,
+        )
+    : 0;
+  const paidByCredit = selected
+    ? data.creditEntries.some(
+        (entry) =>
+          entry.lessonId === selected.id &&
+          ["reservation", "consumption"].includes(entry.kind),
+      )
+    : false;
+  return (
+    <Section title="Lesson calendar" marked>
+      {notice && <p className="portal-notice">{notice}</p>}
+      <p className="section-intro">
+        Day, week, month, and year views share one searchable schedule.
+        Cancelled lessons stay out of the way unless you choose to show them.
+      </p>
+      <LessonCalendar
+        lessons={data.lessons}
+        timezone={data.settings.timezone}
+        studentName={(id) => studentName(data, id)}
+        sourceName={sourceLabel}
+        onOpen={openLesson}
+      />
+      {selected && (
+        <Dialog
+          title={selected.topic}
+          description={`${studentName(data, selected.studentId)} · ${new Date(selected.startsAt).toLocaleString()} · ${sourceLabel(selected.sourceProvider)}`}
+          onClose={() => setSelected(undefined)}
+        >
+          <div className="workflow-content lesson-command-center">
+            <div className="lesson-command-summary">
               <Status
                 tone={
-                  lesson.status === "completed"
+                  selected.status === "completed"
                     ? "good"
-                    : lesson.status === "scheduled"
+                    : selected.status === "scheduled"
                       ? "neutral"
                       : "warn"
                 }
               >
-                {lesson.status}
+                {selected.status}
               </Status>
-              <button
-                onClick={() => {
-                  setSelected(lesson);
-                  setStart(
-                    new Date(lesson.startsAt).toISOString().slice(0, 16),
-                  );
-                }}
-              >
-                Open
-              </button>
-            </article>
-          ))}
-      </div>
-      {selected && (
-        <Dialog
-          title={selected.topic}
-          description={studentName(data, selected.studentId)}
-          onClose={() => setSelected(undefined)}
-        >
-          <div className="workflow-content">
-            <button
-              className="text-button"
-              onClick={() =>
-                navigate(`/coach/students/${selected.studentId}/lessons`)
-              }
-            >
-              Open full student lesson history
-            </button>
-            {selected.status === "scheduled" && (
-              <label>
-                New start
-                <input
-                  type="datetime-local"
-                  value={start}
-                  onChange={(e) => setStart(e.target.value)}
-                />
-              </label>
-            )}
-            <div className="form-actions">
-              {selected.status === "scheduled" && (
-                <>
-                  <button onClick={() => void update("cancelled")}>
-                    Cancel lesson
-                  </button>
-                  <button onClick={() => void move()}>Reschedule</button>
-                  <button
-                    className="primary"
-                    onClick={() => void update("completed")}
-                  >
-                    Mark complete
-                  </button>
-                </>
-              )}
+              <span>{selected.locationLabel}</span>
+              <span>
+                {selected.seriesId ? "Recurring series" : "Single lesson"}
+              </span>
+              <span>
+                {paidByCredit
+                  ? "Paid by credit"
+                  : `${availableCredits} credits available`}
+              </span>
             </div>
+            <div className="form-actions">
+              <button
+                className="text-button"
+                onClick={() =>
+                  navigate(
+                    `/coach/students/${selected.studentId}/lessons/${selected.id}`,
+                  )
+                }
+              >
+                Open lesson workspace
+              </button>
+              <button
+                className="text-button"
+                onClick={() =>
+                  navigate(`/coach/students/${selected.studentId}/lessons`)
+                }
+              >
+                Student history
+              </button>
+            </div>
+            {selected.status === "scheduled" && (
+              <section className="lesson-command-section">
+                <h3>Move this lesson</h3>
+                <div className="inline-command">
+                  <label>
+                    New start
+                    <input
+                      type="datetime-local"
+                      value={start}
+                      onChange={(e) => setStart(e.target.value)}
+                    />
+                  </label>
+                  <button
+                    disabled={Boolean(busy) || !start}
+                    onClick={() => void move()}
+                  >
+                    {busy === "reschedule" ? "Moving…" : "Reschedule"}
+                  </button>
+                </div>
+              </section>
+            )}
+            {selected.status === "scheduled" && !selected.seriesId && (
+              <section className="lesson-command-section">
+                <h3>Make recurring</h3>
+                <p>Create the remaining occurrences in one DST-safe series.</p>
+                <div className="inline-command">
+                  <label>
+                    Rhythm
+                    <select
+                      value={cadence}
+                      onChange={(event) =>
+                        setCadence(event.target.value as typeof cadence)
+                      }
+                    >
+                      <option value="weekly">Weekly</option>
+                      <option value="biweekly">Every other week</option>
+                    </select>
+                  </label>
+                  <label>
+                    Total lessons
+                    <input
+                      type="number"
+                      min="2"
+                      max="52"
+                      value={occurrences}
+                      onChange={(event) =>
+                        setOccurrences(Number(event.target.value))
+                      }
+                    />
+                  </label>
+                  <button
+                    disabled={
+                      Boolean(busy) || occurrences < 2 || occurrences > 52
+                    }
+                    onClick={() => void makeRecurring()}
+                  >
+                    {busy === "recurring" ? "Creating…" : "Create series"}
+                  </button>
+                </div>
+              </section>
+            )}
+            <section className="lesson-command-section">
+              <h3>Credits & payment</h3>
+              <div className="inline-command">
+                <label>
+                  Credits
+                  <input
+                    type="number"
+                    min="-20"
+                    max="20"
+                    value={creditQuantity}
+                    onChange={(event) =>
+                      setCreditQuantity(Number(event.target.value))
+                    }
+                  />
+                </label>
+                <label>
+                  Reason
+                  <input
+                    value={creditReason}
+                    onChange={(event) => setCreditReason(event.target.value)}
+                  />
+                </label>
+                <button
+                  disabled={
+                    Boolean(busy) ||
+                    !creditQuantity ||
+                    creditReason.trim().length < 3
+                  }
+                  onClick={() => void adjustLessonCredit()}
+                >
+                  {busy === "credit" ? "Saving…" : "Add adjustment"}
+                </button>
+              </div>
+              {!paidByCredit && (
+                <button
+                  className="primary"
+                  disabled={Boolean(busy) || availableCredits < 1}
+                  onClick={() => void payWithCredit()}
+                >
+                  {busy === "pay-credit"
+                    ? "Applying…"
+                    : availableCredits > 0
+                      ? "Use 1 credit for this lesson"
+                      : "No credit available"}
+                </button>
+              )}
+            </section>
+            {selected.status === "scheduled" && (
+              <div className="form-actions lesson-final-actions">
+                <button
+                  className="primary"
+                  disabled={Boolean(busy)}
+                  onClick={() => void update("completed")}
+                >
+                  {busy === "completed" ? "Saving…" : "Mark complete"}
+                </button>
+                {confirmCancel ? (
+                  <>
+                    <span>
+                      This removes it from active calendars and sends the
+                      cancellation to Google.
+                    </span>
+                    <button
+                      className="danger-button"
+                      disabled={Boolean(busy)}
+                      onClick={() => void update("cancelled")}
+                    >
+                      {busy === "cancelled"
+                        ? "Cancelling…"
+                        : "Confirm cancellation"}
+                    </button>
+                    <button onClick={() => setConfirmCancel(false)}>
+                      Keep lesson
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="danger-button"
+                    onClick={() => setConfirmCancel(true)}
+                  >
+                    Cancel & remove lesson
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </Dialog>
       )}
     </Section>
   );
 }
-export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDemo?: boolean }) {
-  const navigate = useNavigate(), store = useStudioStore(), queryClient = useQueryClient();
-  const [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [notice, setNotice] = useState(""), [deleting, setDeleting] = useState(""), [selected,setSelected]=useState<StudioSnapshot["notes"][number]>();
-  const filtered = [...data.notes].filter((note) => (status === "all" || note.status === status) && [note.title, note.body, studentName(data, note.studentId), ...(note.tags || [])].join(" ").toLowerCase().includes(query.toLowerCase())).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+export function NotesView({
+  data,
+  isDemo = false,
+}: {
+  data: StudioSnapshot;
+  isDemo?: boolean;
+}) {
+  const navigate = useNavigate(),
+    store = useStudioStore(),
+    queryClient = useQueryClient();
+  const [query, setQuery] = useState(""),
+    [status, setStatus] = useState("all"),
+    [notice, setNotice] = useState(""),
+    [deleting, setDeleting] = useState(""),
+    [selected, setSelected] = useState<StudioSnapshot["notes"][number]>();
+  const filtered = [...data.notes]
+    .filter(
+      (note) =>
+        (status === "all" || note.status === status) &&
+        [
+          note.title,
+          note.body,
+          studentName(data, note.studentId),
+          ...(note.tags || []),
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const notePage = usePagedList(filtered);
   const remove = async (note: StudioSnapshot["notes"][number]) => {
-    if (deleting || !window.confirm(`Delete “${note.title}”? This cannot be undone.`)) return;
+    if (
+      deleting ||
+      !window.confirm(`Delete “${note.title}”? This cannot be undone.`)
+    )
+      return;
     setDeleting(note.id);
-    try { if (isDemo) store.transact((draft) => { draft.notes = draft.notes.filter((item) => item.id !== note.id); }); else { await studioCommand("notes", { command: "delete", entityId: note.id, expectedVersion: note.version, reason: "Coach deleted note" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); } setNotice("Note deleted."); }
-    catch (reason) { setNotice(reason instanceof Error ? reason.message : "Note could not be deleted."); }
-    finally { setDeleting(""); }
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.notes = draft.notes.filter((item) => item.id !== note.id);
+        });
+      else {
+        await studioCommand("notes", {
+          command: "delete",
+          entityId: note.id,
+          expectedVersion: note.version,
+          reason: "Coach deleted note",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Note deleted.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error ? reason.message : "Note could not be deleted.",
+      );
+    } finally {
+      setDeleting("");
+    }
   };
   return (
     <Section title="Notes across the studio" marked>
       {notice && <p className="portal-notice">{notice}</p>}
-      <div className="library-toolbar"><label><Search /><input aria-label="Search notes" placeholder="Search notes or students…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Note status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="draft">Drafts</option><option value="published">Published</option></select></div>
-      <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="notes" />
+      <div className="library-toolbar">
+        <label>
+          <Search />
+          <input
+            aria-label="Search notes"
+            placeholder="Search notes or students…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <select
+          aria-label="Note status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="all">All statuses</option>
+          <option value="draft">Drafts</option>
+          <option value="published">Published</option>
+        </select>
+      </div>
+      <ListControls
+        page={notePage.page}
+        pageCount={notePage.pageCount}
+        pageSize={notePage.pageSize}
+        total={notePage.total}
+        onPage={notePage.setPage}
+        onPageSize={notePage.setPageSize}
+        label="notes"
+      />
       <div className="lesson-note-index">
-        {notePage.visible
-          .map((note) => (
-            <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{note.lessonId?new Date(data.lessons.find(item=>item.id===note.lessonId)?.startsAt||note.updatedAt).toLocaleDateString():"General note"}</strong><small>{studentName(data,note.studentId)} · {data.lessons.find(item=>item.id===note.lessonId)?.topic||note.title} · {note.title}</small></span><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></button>
-          ))}
+        {notePage.visible.map((note) => (
+          <button type="button" key={note.id} onClick={() => setSelected(note)}>
+            <CalendarDays />
+            <span>
+              <strong>
+                {note.lessonId
+                  ? new Date(
+                      data.lessons.find((item) => item.id === note.lessonId)
+                        ?.startsAt || note.updatedAt,
+                    ).toLocaleDateString()
+                  : "General note"}
+              </strong>
+              <small>
+                {studentName(data, note.studentId)} ·{" "}
+                {data.lessons.find((item) => item.id === note.lessonId)
+                  ?.topic || note.title}{" "}
+                · {note.title}
+              </small>
+            </span>
+            <Status tone={note.status === "published" ? "good" : "neutral"}>
+              {note.status}
+            </Status>
+          </button>
+        ))}
         {!filtered.length && (
           <EmptyState
             title="No notes yet"
@@ -311,7 +1187,47 @@ export function NotesView({ data, isDemo = false }: { data: StudioSnapshot; isDe
           />
         )}
       </div>
-      {selected&&<Dialog title={selected.title} description={`${studentName(data,selected.studentId)} · ${selected.lessonId?new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString():"General note"}`} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="rich-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions"><button type="button" onClick={()=>{setSelected(undefined);navigate(`/coach/students/${selected.studentId}/notes`);}}>Open student notes</button><button type="button" className="danger-button" disabled={deleting===selected.id} onClick={()=>{void remove(selected);setSelected(undefined);}}><Trash2/>Delete note</button></div></Dialog>}
+      {selected && (
+        <Dialog
+          title={selected.title}
+          description={`${studentName(data, selected.studentId)} · ${selected.lessonId ? new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString() : "General note"}`}
+          onClose={() => setSelected(undefined)}
+        >
+          {selected.bodyHtml ? (
+            <div
+              className="rich-note-body"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(selected.bodyHtml),
+              }}
+            />
+          ) : (
+            <p>{selected.body}</p>
+          )}
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={() => {
+                setSelected(undefined);
+                navigate(`/coach/students/${selected.studentId}/notes`);
+              }}
+            >
+              Open student notes
+            </button>
+            <button
+              type="button"
+              className="danger-button"
+              disabled={deleting === selected.id}
+              onClick={() => {
+                void remove(selected);
+                setSelected(undefined);
+              }}
+            >
+              <Trash2 />
+              Delete note
+            </button>
+          </div>
+        </Dialog>
+      )}
     </Section>
   );
 }
@@ -325,7 +1241,8 @@ export function MaterialsView({
   const navigate = useNavigate(),
     store = useStudioStore(),
     queryClient = useQueryClient(),
-    [notice, setNotice] = useState("");
+    [notice, setNotice] = useState(""),
+    [deleting, setDeleting] = useState("");
   const archive = async (id: string) => {
     const current = data.materials.find((item) => item.id === id)!;
     try {
@@ -386,6 +1303,42 @@ export function MaterialsView({
       );
     }
   };
+  const remove = async (id: string) => {
+    const current = data.materials.find((item) => item.id === id);
+    if (
+      !current ||
+      deleting ||
+      !window.confirm(
+        `Permanently delete “${current.title}”? The uploaded file will also be removed and this cannot be undone.`,
+      )
+    )
+      return;
+    setDeleting(id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.materials = draft.materials.filter((item) => item.id !== id);
+        });
+      else {
+        await studioCommand("materials", {
+          command: "delete",
+          entityId: id,
+          expectedVersion: current.version,
+          reason: "Coach permanently deleted material",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Material and uploaded file deleted.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Material could not be deleted.",
+      );
+    } finally {
+      setDeleting("");
+    }
+  };
   return (
     <Section title="Material library" marked>
       {notice && <p className="portal-notice">{notice}</p>}
@@ -412,7 +1365,11 @@ export function MaterialsView({
               {item.status}
             </Status>
             <button
-              onClick={() => navigate(`/coach/students/${item.studentId}/${item.role==="actor_material"?"actor-page":"work"}`)}
+              onClick={() =>
+                navigate(
+                  `/coach/students/${item.studentId}/${item.role === "actor_material" ? "actor-page" : "work"}`,
+                )
+              }
             >
               Student
             </button>
@@ -430,6 +1387,14 @@ export function MaterialsView({
             )}
             <button onClick={() => void archive(item.id)}>
               {item.status === "active" ? "Archive" : "Restore"}
+            </button>
+            <button
+              className="danger-button"
+              disabled={deleting === item.id}
+              onClick={() => void remove(item.id)}
+            >
+              <Trash2 />
+              {deleting === item.id ? "Deleting…" : "Delete"}
             </button>
           </article>
         ))}
@@ -450,7 +1415,46 @@ export function FinanceView({
     [dialog, setDialog] = useState<PackageDefinition | "new">(),
     [discountDialog, setDiscountDialog] = useState<DiscountCode | "new">(),
     [notice, setNotice] = useState("");
-  const saveDiscount = async(value:DiscountCode)=>{try{if(isDemo)store.transact((draft)=>{const current=draft.discountCodes.find((item)=>item.id===value.id);if(current)Object.assign(current,value,{version:current.version+1,updatedAt:new Date().toISOString()});else draft.discountCodes.push(value);});else{await studioCommand("discounts",{command:data.discountCodes.some((item)=>item.id===value.id)?"update":"create",entityId:data.discountCodes.some((item)=>item.id===value.id)?value.id:undefined,expectedVersion:data.discountCodes.find((item)=>item.id===value.id)?.version??0,payload:value as unknown as Record<string,unknown>,reason:"Coach configured a booking discount"});await queryClient.invalidateQueries({queryKey:["studio"]});}setDiscountDialog(undefined);setNotice("Discount code saved and available to the booking checkout.");}catch(reason){setNotice(reason instanceof Error?reason.message:"Discount code could not be saved.");}};
+  const saveDiscount = async (value: DiscountCode) => {
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.discountCodes.find(
+            (item) => item.id === value.id,
+          );
+          if (current)
+            Object.assign(current, value, {
+              version: current.version + 1,
+              updatedAt: new Date().toISOString(),
+            });
+          else draft.discountCodes.push(value);
+        });
+      else {
+        await studioCommand("discounts", {
+          command: data.discountCodes.some((item) => item.id === value.id)
+            ? "update"
+            : "create",
+          entityId: data.discountCodes.some((item) => item.id === value.id)
+            ? value.id
+            : undefined,
+          expectedVersion:
+            data.discountCodes.find((item) => item.id === value.id)?.version ??
+            0,
+          payload: value as unknown as Record<string, unknown>,
+          reason: "Coach configured a booking discount",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setDiscountDialog(undefined);
+      setNotice("Discount code saved and available to the booking checkout.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Discount code could not be saved.",
+      );
+    }
+  };
   const save = async (value: PackageDefinition) => {
     try {
       if (isDemo)
@@ -590,7 +1594,9 @@ export function FinanceView({
                   {formatMoney(studentBalanceMinor(student.id, data.payments))}
                 </strong>
                 <button
-                  onClick={() => navigate(`/coach/students/${student.id}/payments`)}
+                  onClick={() =>
+                    navigate(`/coach/students/${student.id}/payments`)
+                  }
                 >
                   Open
                 </button>
@@ -604,8 +1610,42 @@ export function FinanceView({
             )}
           </div>
         </Section>
-        <Section title="Coupons & discounts" marked aside={<button onClick={()=>setDiscountDialog("new")}>Create code</button>}>
-          <div className="table-list">{data.discountCodes.map((code)=><article key={code.id}><CircleDollarSign/><div><strong>{code.code}</strong><small>{code.description||"Booking discount"} · {code.discountType==="percent"?`${code.amount}%`:formatMoney(code.amount,code.currency)} · {code.redemptionCount} used</small></div><Status tone={code.active?"good":"neutral"}>{code.active?"active":"inactive"}</Status><button onClick={()=>setDiscountDialog(code)}>Edit</button></article>)}{!data.discountCodes.length&&<EmptyState title="No discount codes" detail="Create optional codes that can apply to every service or selected services."/>}</div>
+        <Section
+          title="Coupons & discounts"
+          marked
+          aside={
+            <button onClick={() => setDiscountDialog("new")}>
+              Create code
+            </button>
+          }
+        >
+          <div className="table-list">
+            {data.discountCodes.map((code) => (
+              <article key={code.id}>
+                <CircleDollarSign />
+                <div>
+                  <strong>{code.code}</strong>
+                  <small>
+                    {code.description || "Booking discount"} ·{" "}
+                    {code.discountType === "percent"
+                      ? `${code.amount}%`
+                      : formatMoney(code.amount, code.currency)}{" "}
+                    · {code.redemptionCount} used
+                  </small>
+                </div>
+                <Status tone={code.active ? "good" : "neutral"}>
+                  {code.active ? "active" : "inactive"}
+                </Status>
+                <button onClick={() => setDiscountDialog(code)}>Edit</button>
+              </article>
+            ))}
+            {!data.discountCodes.length && (
+              <EmptyState
+                title="No discount codes"
+                detail="Create optional codes that can apply to every service or selected services."
+              />
+            )}
+          </div>
         </Section>
       </div>
       {dialog && (
@@ -616,15 +1656,181 @@ export function FinanceView({
           onSave={(value) => void save(value)}
         />
       )}
-      {discountDialog && <DiscountDialog value={discountDialog==="new"?undefined:discountDialog} data={data} onClose={()=>setDiscountDialog(undefined)} onSave={(value)=>void saveDiscount(value)}/>}
+      {discountDialog && (
+        <DiscountDialog
+          value={discountDialog === "new" ? undefined : discountDialog}
+          data={data}
+          onClose={() => setDiscountDialog(undefined)}
+          onSave={(value) => void saveDiscount(value)}
+        />
+      )}
     </div>
   );
 }
 
-function DiscountDialog({value,data,onClose,onSave}:{value?:DiscountCode;data:StudioSnapshot;onClose:()=>void;onSave:(value:DiscountCode)=>void}){
-  const [form,setForm]=useState<DiscountCode>(()=>value?structuredClone(value):{id:`discount-${crypto.randomUUID()}`,studioId:data.studioId,code:"",description:"",discountType:"percent",amount:10,currency:"USD",serviceIds:[],active:true,redemptionCount:0,version:1,updatedAt:new Date().toISOString()});
-  const toggle=(id:string,checked:boolean)=>setForm({...form,serviceIds:checked?[...new Set([...form.serviceIds,id])]:form.serviceIds.filter((item)=>item!==id)});
-  return <Dialog title={value?`Edit ${value.code}`:"Create discount code"} description="Codes are validated on the server and snapshotted on each booking." onClose={onClose}><form className="workflow-form" onSubmit={event=>{event.preventDefault();onSave({...form,code:form.code.toUpperCase()});}}><label>Code<input required minLength={3} value={form.code} onChange={event=>setForm({...form,code:event.target.value.toUpperCase().replace(/[^A-Z0-9_-]/g,"")})} placeholder="WELCOME10"/></label><label>Discount<select value={form.discountType} onChange={event=>setForm({...form,discountType:event.target.value as DiscountCode["discountType"]})}><option value="percent">Percentage</option><option value="fixed">Fixed USD amount</option></select></label><label>Amount<input required type="number" min="1" max={form.discountType==="percent"?100:100000} value={form.discountType==="fixed"?form.amount/100:form.amount} onChange={event=>setForm({...form,amount:form.discountType==="fixed"?Math.round(Number(event.target.value)*100):Number(event.target.value)})}/></label><label>Maximum uses<input type="number" min="1" value={form.maxRedemptions||""} onChange={event=>setForm({...form,maxRedemptions:event.target.value?Number(event.target.value):undefined})}/></label><label className="full">Description<input value={form.description} onChange={event=>setForm({...form,description:event.target.value})}/></label><fieldset className="full option-fieldset"><legend>Eligible services</legend><small>Leave every service unchecked to apply the code studio-wide.</small>{data.bookingServices.map((service)=><label className="check-row" key={service.id}><input type="checkbox" checked={form.serviceIds.includes(service.id)} onChange={event=>toggle(service.id,event.target.checked)}/>{service.name}</label>)}</fieldset><label className="check-row full"><input type="checkbox" checked={form.active} onChange={event=>setForm({...form,active:event.target.checked})}/>Active</label><div className="form-actions full"><button type="button" onClick={onClose}>Cancel</button><button className="primary">Save discount</button></div></form></Dialog>;
+function DiscountDialog({
+  value,
+  data,
+  onClose,
+  onSave,
+}: {
+  value?: DiscountCode;
+  data: StudioSnapshot;
+  onClose: () => void;
+  onSave: (value: DiscountCode) => void;
+}) {
+  const [form, setForm] = useState<DiscountCode>(() =>
+    value
+      ? structuredClone(value)
+      : {
+          id: `discount-${crypto.randomUUID()}`,
+          studioId: data.studioId,
+          code: "",
+          description: "",
+          discountType: "percent",
+          amount: 10,
+          currency: "USD",
+          serviceIds: [],
+          active: true,
+          redemptionCount: 0,
+          version: 1,
+          updatedAt: new Date().toISOString(),
+        },
+  );
+  const toggle = (id: string, checked: boolean) =>
+    setForm({
+      ...form,
+      serviceIds: checked
+        ? [...new Set([...form.serviceIds, id])]
+        : form.serviceIds.filter((item) => item !== id),
+    });
+  return (
+    <Dialog
+      title={value ? `Edit ${value.code}` : "Create discount code"}
+      description="Codes are validated on the server and snapshotted on each booking."
+      onClose={onClose}
+    >
+      <form
+        className="workflow-form"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave({ ...form, code: form.code.toUpperCase() });
+        }}
+      >
+        <label>
+          Code
+          <input
+            required
+            minLength={3}
+            value={form.code}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                code: event.target.value
+                  .toUpperCase()
+                  .replace(/[^A-Z0-9_-]/g, ""),
+              })
+            }
+            placeholder="WELCOME10"
+          />
+        </label>
+        <label>
+          Discount
+          <select
+            value={form.discountType}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                discountType: event.target
+                  .value as DiscountCode["discountType"],
+              })
+            }
+          >
+            <option value="percent">Percentage</option>
+            <option value="fixed">Fixed USD amount</option>
+          </select>
+        </label>
+        <label>
+          Amount
+          <input
+            required
+            type="number"
+            min="1"
+            max={form.discountType === "percent" ? 100 : 100000}
+            value={
+              form.discountType === "fixed" ? form.amount / 100 : form.amount
+            }
+            onChange={(event) =>
+              setForm({
+                ...form,
+                amount:
+                  form.discountType === "fixed"
+                    ? Math.round(Number(event.target.value) * 100)
+                    : Number(event.target.value),
+              })
+            }
+          />
+        </label>
+        <label>
+          Maximum uses
+          <input
+            type="number"
+            min="1"
+            value={form.maxRedemptions || ""}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                maxRedemptions: event.target.value
+                  ? Number(event.target.value)
+                  : undefined,
+              })
+            }
+          />
+        </label>
+        <label className="full">
+          Description
+          <input
+            value={form.description}
+            onChange={(event) =>
+              setForm({ ...form, description: event.target.value })
+            }
+          />
+        </label>
+        <fieldset className="full option-fieldset">
+          <legend>Eligible services</legend>
+          <small>
+            Leave every service unchecked to apply the code studio-wide.
+          </small>
+          {data.bookingServices.map((service) => (
+            <label className="check-row" key={service.id}>
+              <input
+                type="checkbox"
+                checked={form.serviceIds.includes(service.id)}
+                onChange={(event) => toggle(service.id, event.target.checked)}
+              />
+              {service.name}
+            </label>
+          ))}
+        </fieldset>
+        <label className="check-row full">
+          <input
+            type="checkbox"
+            checked={form.active}
+            onChange={(event) =>
+              setForm({ ...form, active: event.target.checked })
+            }
+          />
+          Active
+        </label>
+        <div className="form-actions full">
+          <button type="button" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="primary">Save discount</button>
+        </div>
+      </form>
+    </Dialog>
+  );
 }
 
 function PackageDefinitionDialog({
@@ -931,10 +2137,17 @@ export function ActorPagesView({
             )}
             {profile.status === "published" && (
               <>
-                <a className="button-link" href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">
+                <a
+                  className="button-link"
+                  href={`/actors/${profile.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
                   View live page
                 </a>
-                <button onClick={() => void change(profile.id, "changes_requested")}>
+                <button
+                  onClick={() => void change(profile.id, "changes_requested")}
+                >
                   Unpublish
                 </button>
               </>

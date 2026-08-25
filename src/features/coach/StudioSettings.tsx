@@ -12,7 +12,13 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { EmptyState, ListControls, Section, Status, usePagedList } from "../../components/Primitives";
+import {
+  EmptyState,
+  ListControls,
+  Section,
+  Status,
+  usePagedList,
+} from "../../components/Primitives";
 import {
   loadPlatformHealth,
   startProviderIntake,
@@ -27,12 +33,7 @@ import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 
 type Panel =
-  | "studio"
-  | "portal"
-  | "pricing"
-  | "email"
-  | "integrations"
-  | "data";
+  "studio" | "portal" | "pricing" | "email" | "integrations" | "data";
 export function StudioSettings({
   data,
   isDemo,
@@ -169,7 +170,18 @@ export function StudioSettings({
             }
           />
         )}{" "}
-        {panel === "integrations" && <Integrations health={health} onNotice={setNotice} onRefresh={async () => { await Promise.all([refreshHealth(), queryClient.invalidateQueries({queryKey:["studio"]})]); }} />}{" "}
+        {panel === "integrations" && (
+          <Integrations
+            health={health}
+            onNotice={setNotice}
+            onRefresh={async () => {
+              await Promise.all([
+                refreshHealth(),
+                queryClient.invalidateQueries({ queryKey: ["studio"] }),
+              ]);
+            }}
+          />
+        )}{" "}
         {panel === "data" && (
           <DataPanel data={data} isDemo={isDemo} onNotice={setNotice} />
         )}
@@ -413,6 +425,41 @@ function PortalForm({
           />
         </label>
         <label>
+          Booking button label
+          <input
+            value={form.bookingDefaults.bookingButtonLabel}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  bookingButtonLabel: event.target.value,
+                },
+              })
+            }
+            placeholder="View times"
+          />
+        </label>
+        <label className="full">
+          Confirmation message
+          <textarea
+            value={form.bookingDefaults.confirmationMessage}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  confirmationMessage: event.target.value,
+                },
+              })
+            }
+          />
+          <small>
+            Shown immediately after a successful non-Stripe booking
+            confirmation.
+          </small>
+        </label>
+        <label>
           Footer website URL
           <input
             type="url"
@@ -474,6 +521,62 @@ function PortalForm({
               setForm({
                 ...form,
                 bookingPage: { ...form.bookingPage, showPolicies: checked },
+              })
+            }
+          />
+          <Toggle
+            title="Show prices"
+            detail="Display prices in the public service catalog and checkout."
+            checked={form.bookingDefaults.showPrices}
+            onChange={(checked) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  showPrices: checked,
+                },
+              })
+            }
+          />
+          <Toggle
+            title="Require a phone number"
+            detail="Require a reachable phone number before checkout."
+            checked={form.bookingDefaults.requirePhone}
+            onChange={(checked) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  requirePhone: checked,
+                },
+              })
+            }
+          />
+          <Toggle
+            title="Allow recurring booking"
+            detail="Let clients choose weekly or biweekly options offered by a service."
+            checked={form.bookingDefaults.allowRecurring}
+            onChange={(checked) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  allowRecurring: checked,
+                },
+              })
+            }
+          />
+          <Toggle
+            title="Allow pay later"
+            detail="Offer pay-later only when the selected service also supports it."
+            checked={form.bookingDefaults.allowPayLater}
+            onChange={(checked) =>
+              setForm({
+                ...form,
+                bookingDefaults: {
+                  ...form.bookingDefaults,
+                  allowPayLater: checked,
+                },
               })
             }
           />
@@ -583,14 +686,16 @@ function PricingForm({
           />
           <small>Separate multiple reminders with commas.</small>
         </label>
-        {([
-          ["minimumNoticeHours", "Default minimum notice (hours)"],
-          ["bookingHorizonDays", "Default booking horizon (days)"],
-          ["cancellationWindowHours", "Default cancellation notice (hours)"],
-          ["bufferBeforeMinutes", "Default buffer before (minutes)"],
-          ["bufferAfterMinutes", "Default buffer after (minutes)"],
-          ["recurringHorizonWeeks", "Ongoing-series horizon (weeks)"],
-        ] as const).map(([key, label]) => (
+        {(
+          [
+            ["minimumNoticeHours", "Default minimum notice (hours)"],
+            ["bookingHorizonDays", "Default booking horizon (days)"],
+            ["cancellationWindowHours", "Default cancellation notice (hours)"],
+            ["bufferBeforeMinutes", "Default buffer before (minutes)"],
+            ["bufferAfterMinutes", "Default buffer after (minutes)"],
+            ["recurringHorizonWeeks", "Ongoing-series horizon (weeks)"],
+          ] as const
+        ).map(([key, label]) => (
           <label key={key}>
             {label}
             <input
@@ -760,11 +865,71 @@ function EmailAutomationForm({
   );
 }
 
-function Integrations({ health, onNotice, onRefresh }: { health: PlatformHealth; onNotice:(value:string)=>void; onRefresh:()=>Promise<unknown> }) {
-  const [syncing,setSyncing]=useState(false), [repairing,setRepairing]=useState(false), [refreshing,setRefreshing]=useState(false);
-  const sync=async()=>{if(syncing)return;setSyncing(true);try{await startProviderIntake();onNotice("Calendar and Gmail check started. High-confidence lessons will appear automatically; uncertain provider messages stay in Today for review.");window.setTimeout(()=>void onRefresh(),15000);}catch(reason){onNotice(reason instanceof Error?reason.message:"Calendar and Gmail could not be checked.");}finally{setSyncing(false);}};
-  const repair=async()=>{if(repairing)return;setRepairing(true);try{const result=await studioCommand("integrations",{command:"retry_failed",expectedVersion:0,reason:"Coach retried failed Calendar and email work"});await onRefresh();const resource=result.resource||{};onNotice(`Queued ${Number(resource.calendar||0)} Calendar and ${Number(resource.email||0)} email job${Number(resource.calendar||0)+Number(resource.email||0)===1?"":"s"} for another attempt.`);}catch(reason){onNotice(reason instanceof Error?reason.message:"Failed integration work could not be retried.");}finally{setRepairing(false);}};
-  const refresh=async()=>{if(refreshing)return;setRefreshing(true);try{await onRefresh();onNotice("Connection status refreshed.");}finally{setRefreshing(false);}};
+function Integrations({
+  health,
+  onNotice,
+  onRefresh,
+}: {
+  health: PlatformHealth;
+  onNotice: (value: string) => void;
+  onRefresh: () => Promise<unknown>;
+}) {
+  const [syncing, setSyncing] = useState(false),
+    [repairing, setRepairing] = useState(false),
+    [refreshing, setRefreshing] = useState(false);
+  const sync = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await startProviderIntake();
+      onNotice(
+        "Calendar and Gmail check started. High-confidence lessons will appear automatically; uncertain provider messages stay in Today for review.",
+      );
+      window.setTimeout(() => void onRefresh(), 15000);
+    } catch (reason) {
+      onNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Calendar and Gmail could not be checked.",
+      );
+    } finally {
+      setSyncing(false);
+    }
+  };
+  const repair = async () => {
+    if (repairing) return;
+    setRepairing(true);
+    try {
+      const result = await studioCommand("integrations", {
+        command: "retry_failed",
+        expectedVersion: 0,
+        reason: "Coach retried failed Calendar and email work",
+      });
+      await onRefresh();
+      const resource = result.resource || {};
+      onNotice(
+        `Queued ${Number(resource.calendar || 0)} Calendar and ${Number(resource.email || 0)} email job${Number(resource.calendar || 0) + Number(resource.email || 0) === 1 ? "" : "s"} for another attempt.`,
+      );
+    } catch (reason) {
+      onNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Failed integration work could not be retried.",
+      );
+    } finally {
+      setRepairing(false);
+    }
+  };
+  const refresh = async () => {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+      onNotice("Connection status refreshed.");
+    } finally {
+      setRefreshing(false);
+    }
+  };
   const cards = [
     [
       "Google Calendar & Meet",
@@ -811,10 +976,29 @@ function Integrations({ health, onNotice, onRefresh }: { health: PlatformHealth;
           </article>
         ))}
       </div>
-      <div className="form-actions"><button className="primary" disabled={syncing||!health.googleCalendar} onClick={() => void sync()}><RefreshCw />{syncing?"Checking Calendar & Gmail…":"Check Calendar & Gmail now"}</button></div>
       <div className="form-actions">
-        <button disabled={repairing} onClick={() => void repair()}><RefreshCw />{repairing?"Queuing retries…":"Retry failed Calendar & email jobs"}</button>
-        <button disabled={refreshing} onClick={() => void refresh()}><RefreshCw />{refreshing?"Refreshing…":"Refresh connection status"}</button>
+        <button
+          className="primary"
+          disabled={syncing || !health.googleCalendar}
+          onClick={() => void sync()}
+        >
+          <RefreshCw />
+          {syncing
+            ? "Checking Calendar & Gmail…"
+            : "Check Calendar & Gmail now"}
+        </button>
+      </div>
+      <div className="form-actions">
+        <button disabled={repairing} onClick={() => void repair()}>
+          <RefreshCw />
+          {repairing
+            ? "Queuing retries…"
+            : "Retry failed Calendar & email jobs"}
+        </button>
+        <button disabled={refreshing} onClick={() => void refresh()}>
+          <RefreshCw />
+          {refreshing ? "Refreshing…" : "Refresh connection status"}
+        </button>
       </div>
     </Section>
   );
@@ -828,7 +1012,9 @@ function DataPanel({
   isDemo: boolean;
   onNotice: (v: string) => void;
 }) {
-  const messagePage = usePagedList([...data.outbox].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)));
+  const messagePage = usePagedList(
+    [...data.outbox].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+  );
   const queryClient = useQueryClient();
   const store = useStudioStore();
   const failed = data.outbox.filter((item) => item.status === "failed");
@@ -918,7 +1104,15 @@ function DataPanel({
           </button>
         }
       >
-        <ListControls page={messagePage.page} pageCount={messagePage.pageCount} pageSize={messagePage.pageSize} total={messagePage.total} onPage={messagePage.setPage} onPageSize={messagePage.setPageSize} label="messages" />
+        <ListControls
+          page={messagePage.page}
+          pageCount={messagePage.pageCount}
+          pageSize={messagePage.pageSize}
+          total={messagePage.total}
+          onPage={messagePage.setPage}
+          onPageSize={messagePage.setPageSize}
+          label="messages"
+        />
         <div className="table-list">
           {messagePage.visible.map((message) => (
             <article key={message.id}>
@@ -976,12 +1170,20 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button type="button" role="switch" aria-checked={checked} className={`setting-toggle toggle-button ${checked ? "on" : ""}`} onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      className={`setting-toggle toggle-button ${checked ? "on" : ""}`}
+      onClick={() => onChange(!checked)}
+    >
       <span>
         <strong>{title}</strong>
         <small>{detail}</small>
       </span>
-      <i aria-hidden="true"><b /></i>
+      <i aria-hidden="true">
+        <b />
+      </i>
     </button>
   );
 }

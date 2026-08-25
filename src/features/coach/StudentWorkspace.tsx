@@ -63,24 +63,34 @@ export function StudentWorkspace() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState<
-    "edit" | "lesson" | "assignment" | "material" | "actor-material" | "note" | null
+    | "edit"
+    | "lesson"
+    | "assignment"
+    | "material"
+    | "actor-material"
+    | "note"
+    | null
   >(null);
   const [notice, setNotice] = useState("");
   const [savingStudent, setSavingStudent] = useState(false);
   const [invitingStudent, setInvitingStudent] = useState(false);
   const [settingCredentials, setSettingCredentials] = useState(false);
+  const [removingStudent, setRemovingStudent] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   const student = data?.students.find((item) => item.id === studentId);
   if (!data) return <div className="loading">Opening student record…</div>;
   if (!student) return <Navigate to="/coach/students" replace />;
 
   const base = `/coach/students/${student.id}`;
   const studentLessons = data.lessons
-    .filter((item) =>
-      item.studentId === student.id ||
-      data.lessonParticipants.some(
-        (participant) =>
-          participant.lessonId === item.id && participant.studentId === student.id,
-      ),
+    .filter(
+      (item) =>
+        item.studentId === student.id ||
+        data.lessonParticipants.some(
+          (participant) =>
+            participant.lessonId === item.id &&
+            participant.studentId === student.id,
+        ),
     )
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const tabs = [
@@ -196,7 +206,11 @@ export function StudentWorkspace() {
       setSettingCredentials(false);
     }
   };
-  const addLesson = async (lesson: Lesson) => {
+  const addLesson = async (
+    lesson: Lesson,
+    recurrence: "none" | "weekly" | "biweekly" = "none",
+    occurrenceCount = 1,
+  ) => {
     try {
       if (isDemo) store.transact((draft) => draft.lessons.push(lesson));
       else {
@@ -212,6 +226,9 @@ export function StudentWorkspace() {
             endsAt: lesson.endsAt,
             locationType: lesson.locationType,
             locationLabel: lesson.locationLabel,
+            recurrence,
+            occurrenceCount,
+            timezone: data.settings.timezone,
           },
           reason: "Coach created lesson",
         });
@@ -323,15 +340,138 @@ export function StudentWorkspace() {
     }
   };
   const deleteNote = async (note: Note) => {
-    if (!window.confirm(`Delete “${note.title}”? This cannot be undone.`)) return;
-    try { if (isDemo) store.transact((draft) => { draft.notes = draft.notes.filter((item) => item.id !== note.id); }); else { await studioCommand("notes", { command: "delete", entityId: note.id, expectedVersion: note.version, reason: "Coach deleted student note" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); } setNotice("Note deleted."); }
-    catch (reason) { setNotice(reason instanceof Error ? reason.message : "Note could not be deleted."); }
+    if (!window.confirm(`Delete “${note.title}”? This cannot be undone.`))
+      return;
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.notes = draft.notes.filter((item) => item.id !== note.id);
+        });
+      else {
+        await studioCommand("notes", {
+          command: "delete",
+          entityId: note.id,
+          expectedVersion: note.version,
+          reason: "Coach deleted student note",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Note deleted.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error ? reason.message : "Note could not be deleted.",
+      );
+    }
+  };
+  const updateMaterialStatus = async (material: Material) => {
+    try {
+      const status = material.status === "active" ? "archived" : "active";
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.materials.find(
+            (item) => item.id === material.id,
+          );
+          if (current) {
+            current.status = status;
+            current.version += 1;
+          }
+        });
+      else {
+        await studioCommand("materials", {
+          command: "update_status",
+          entityId: material.id,
+          expectedVersion: material.version,
+          payload: { status },
+          reason: "Coach updated student material status",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice(
+        status === "archived"
+          ? "Material archived."
+          : "Material restored to current work.",
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Material could not be updated.",
+      );
+    }
+  };
+  const deleteMaterial = async (material: Material) => {
+    if (
+      !window.confirm(
+        `Permanently delete “${material.title}”? The uploaded file will also be removed.`,
+      )
+    )
+      return;
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.materials = draft.materials.filter(
+            (item) => item.id !== material.id,
+          );
+        });
+      else {
+        await studioCommand("materials", {
+          command: "delete",
+          entityId: material.id,
+          expectedVersion: material.version,
+          reason: "Coach permanently deleted student material",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Material and uploaded file deleted.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Material could not be deleted.",
+      );
+    }
+  };
+  const removeStudent = async () => {
+    if (removingStudent) return;
+    setRemovingStudent(true);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          draft.students = draft.students.filter(
+            (item) => item.id !== student.id,
+          );
+          draft.lessons = draft.lessons.filter(
+            (item) => item.studentId !== student.id,
+          );
+        });
+      else
+        await studioCommand("students", {
+          command: "remove",
+          entityId: student.id,
+          expectedVersion: student.version,
+          reason: "Coach removed student from the studio",
+        });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      navigate("/coach/students", { replace: true });
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Student could not be removed.",
+      );
+      setConfirmRemove(false);
+    } finally {
+      setRemovingStudent(false);
+    }
   };
 
   return (
     <div className="page student-record-page">
       <header className="student-record-header">
-        <button className="back-button" onClick={() => navigate("/coach/students")}>
+        <button
+          className="back-button"
+          onClick={() => navigate("/coach/students")}
+        >
           <ArrowLeft />
           Students
         </button>
@@ -374,6 +514,13 @@ export function StudentWorkspace() {
               Email
             </a>
           )}
+          <button
+            className="danger-button"
+            onClick={() => setConfirmRemove(true)}
+          >
+            <Trash2 />
+            Remove student
+          </button>
         </div>
       </header>
       {notice && (
@@ -410,7 +557,9 @@ export function StudentWorkspace() {
         />
         <Route
           path="lessons/:lessonId"
-          element={<CoachLessonHub data={data} student={student} isDemo={isDemo} />}
+          element={
+            <CoachLessonHub data={data} student={student} isDemo={isDemo} />
+          }
         />
         <Route
           path="work"
@@ -420,6 +569,8 @@ export function StudentWorkspace() {
               student={student}
               onAddAssignment={() => setDialog("assignment")}
               onAddMaterial={() => setDialog("material")}
+              onArchiveMaterial={updateMaterialStatus}
+              onDeleteMaterial={deleteMaterial}
             />
           }
         />
@@ -436,7 +587,16 @@ export function StudentWorkspace() {
         />
         <Route
           path="account"
-          element={<Account student={student} onSave={saveStudent} onInvite={inviteStudent} inviting={invitingStudent} onSetCredentials={setPortalCredentials} settingCredentials={settingCredentials} />}
+          element={
+            <Account
+              student={student}
+              onSave={saveStudent}
+              onInvite={inviteStudent}
+              inviting={invitingStudent}
+              onSetCredentials={setPortalCredentials}
+              settingCredentials={settingCredentials}
+            />
+          }
         />
         <Route
           path="payments"
@@ -444,7 +604,14 @@ export function StudentWorkspace() {
         />
         <Route
           path="actor-page"
-          element={<ActorPage data={data} student={student} isDemo={isDemo} onAddMaterial={()=>setDialog("actor-material")} />}
+          element={
+            <ActorPage
+              data={data}
+              student={student}
+              isDemo={isDemo}
+              onAddMaterial={() => setDialog("actor-material")}
+            />
+          }
         />
         <Route path="*" element={<Navigate to={base} replace />} />
       </Routes>
@@ -455,6 +622,35 @@ export function StudentWorkspace() {
           onClose={() => setDialog(null)}
           onSave={saveStudent}
         />
+      )}
+      {confirmRemove && (
+        <Dialog
+          title="Remove student from the studio?"
+          description="This is different from inactive status."
+          onClose={() => setConfirmRemove(false)}
+        >
+          <div className="workflow-content">
+            <p>
+              <strong>{student.fullName}</strong> will lose portal access.
+              Future lessons will be cancelled and removed from active
+              calendars. Past lessons, payments, credits, and audit history stay
+              preserved.
+            </p>
+            <div className="form-actions">
+              <button type="button" onClick={() => setConfirmRemove(false)}>
+                Keep student
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                disabled={removingStudent}
+                onClick={() => void removeStudent()}
+              >
+                {removingStudent ? "Removing…" : "Remove student"}
+              </button>
+            </div>
+          </div>
+        </Dialog>
       )}
       {dialog === "lesson" && (
         <LessonForm
@@ -481,7 +677,14 @@ export function StudentWorkspace() {
         />
       )}
       {dialog === "actor-material" && (
-        <MaterialForm student={student} lessons={studentLessons} isDemo={isDemo} fixedRole="actor_material" onClose={() => setDialog(null)} onSave={addMaterial} />
+        <MaterialForm
+          student={student}
+          lessons={studentLessons}
+          isDemo={isDemo}
+          fixedRole="actor_material"
+          onClose={() => setDialog(null)}
+          onSave={addMaterial}
+        />
       )}
       {dialog === "note" && (
         <NoteForm
@@ -665,7 +868,11 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
     <Section title="Lesson history" marked>
       <div className="table-list">
         {lessons.map((lesson) => (
-          <Link className="student-roster-row" key={lesson.id} to={`/coach/students/${student.id}/lessons/${lesson.id}`}>
+          <Link
+            className="student-roster-row"
+            key={lesson.id}
+            to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+          >
             <CalendarDays />
             <div>
               <strong>{lesson.topic}</strong>
@@ -698,19 +905,36 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
     </Section>
   );
 }
-function CoachLessonHub({ data, student, isDemo }: { data: Data; student: Student; isDemo: boolean }) {
+function CoachLessonHub({
+  data,
+  student,
+  isDemo,
+}: {
+  data: Data;
+  student: Student;
+  isDemo: boolean;
+}) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const store = useStudioStore();
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const [message, setMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
-  if (!lesson) return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
+  const [cancelling, setCancelling] = useState(false);
+  if (!lesson)
+    return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
-  const assignments = data.assignments.filter((item) => item.lessonId === lesson.id);
-  const materials = data.materials.filter((item) => item.lessonId === lesson.id);
-  const messages = data.lessonMessages.filter((item) => item.lessonId === lesson.id);
+  const assignments = data.assignments.filter(
+    (item) => item.lessonId === lesson.id,
+  );
+  const materials = data.materials.filter(
+    (item) => item.lessonId === lesson.id,
+  );
+  const messages = data.lessonMessages.filter(
+    (item) => item.lessonId === lesson.id,
+  );
   const send = async (event: FormEvent) => {
     event.preventDefault();
     if (!message.trim() || sending) return;
@@ -719,32 +943,233 @@ function CoachLessonHub({ data, student, isDemo }: { data: Data; student: Studen
       await studioCommand("messages", {
         command: "create",
         expectedVersion: 0,
-        payload: { lessonId: lesson.id, studentId: student.id, body: message.trim() },
+        payload: {
+          lessonId: lesson.id,
+          studentId: student.id,
+          body: message.trim(),
+        },
         reason: "Coach sent a lesson message",
       });
       setMessage("");
       setNotice("Message shared in the student lesson workspace.");
       void queryClient.invalidateQueries({ queryKey: ["studio"] });
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Message could not be sent.");
+      setNotice(
+        reason instanceof Error ? reason.message : "Message could not be sent.",
+      );
     } finally {
       setSending(false);
     }
   };
+  const cancelLesson = async () => {
+    if (
+      cancelling ||
+      !window.confirm(
+        "Cancel and remove this lesson from active calendars? Google Calendar will be updated.",
+      )
+    )
+      return;
+    setCancelling(true);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.lessons.find((item) => item.id === lesson.id);
+          if (current) {
+            current.status = "cancelled";
+            current.version += 1;
+          }
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "cancel",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          reason: "Coach cancelled lesson from lesson workspace",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      navigate(`/coach/students/${student.id}/lessons`);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson could not be cancelled.",
+      );
+    } finally {
+      setCancelling(false);
+    }
+  };
   return (
     <div>
-      <Link className="back-button" to={`/coach/students/${student.id}/lessons`}><ArrowLeft /> Lesson history</Link>
+      <Link
+        className="back-button"
+        to={`/coach/students/${student.id}/lessons`}
+      >
+        <ArrowLeft /> Lesson history
+      </Link>
       <Section title={lesson.topic} marked>
-        <p className="section-intro">{new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel} · {lesson.status}</p>
-        {lesson.joinUrl && <a className="button-link" href={lesson.joinUrl} target="_blank" rel="noreferrer">Open Google Meet</a>}
+        <p className="section-intro">
+          {new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}{" "}
+          · {lesson.status}
+        </p>
+        <div className="form-actions">
+          {lesson.joinUrl && (
+            <a
+              className="button-link"
+              href={lesson.joinUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Open Google Meet
+            </a>
+          )}
+          {lesson.status === "scheduled" && (
+            <button
+              className="danger-button"
+              disabled={cancelling}
+              onClick={() => void cancelLesson()}
+            >
+              <Trash2 />
+              {cancelling ? "Cancelling…" : "Cancel & remove lesson"}
+            </button>
+          )}
+        </div>
       </Section>
-      {notice && <p className="portal-notice" role="status">{notice}</p>}
-      <LessonWhiteboard data={data} lesson={lesson} student={student} isDemo={isDemo} onDemoChange={(board)=>store.transact((draft)=>{const current=draft.lessonWhiteboards.find((item)=>item.lessonId===lesson.id);if(current)Object.assign(current,board);else draft.lessonWhiteboards.push(board);})}/>
+      {notice && (
+        <p className="portal-notice" role="status">
+          {notice}
+        </p>
+      )}
+      <LessonWhiteboard
+        data={data}
+        lesson={lesson}
+        student={student}
+        isDemo={isDemo}
+        onDemoChange={(board) =>
+          store.transact((draft) => {
+            const current = draft.lessonWhiteboards.find(
+              (item) => item.lessonId === lesson.id,
+            );
+            if (current) Object.assign(current, board);
+            else draft.lessonWhiteboards.push(board);
+          })
+        }
+      />
       <div className="lesson-hub-grid">
-        <Section title="Notes"><div className="note-cards">{notes.map((note) => <article key={note.id}><header><strong>{note.title}</strong><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></header><div className="published-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml || note.body) }} /></article>)}{!notes.length && <EmptyState title="No lesson notes" detail="Use the Notes tab to add one for this lesson." />}</div></Section>
-        <Section title="Practice"><div className="table-list">{assignments.map((item) => <article key={item.id}><CheckSquare /><div><strong>{item.title}</strong><small>{item.details}</small></div><Status tone={item.helpRequested ? "warn" : "neutral"}>{item.helpRequested ? "help requested" : item.status.replaceAll("_", " ")}</Status></article>)}{!assignments.length && <EmptyState title="No linked practice" detail="Use Current work to assign practice to this lesson." />}</div></Section>
-        <Section title="Attachments"><div className="table-list">{materials.map((item) => <article key={item.id}><FolderOpen /><div><strong>{item.title}</strong><small>{item.category}</small></div>{item.externalUrl && <a className="button-link" href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!materials.length && <EmptyState title="No attachments" detail="Use Current work to attach a file or link to this lesson." />}</div></Section>
-        <Section title="Conversation"><div className="note-cards">{messages.map((item) => <article key={item.id}><header><strong>{item.authorRole === "coach" ? "Coach" : student.preferredName || student.fullName}</strong><small>{new Date(item.createdAt).toLocaleString()}</small></header><p>{item.body}</p></article>)}</div><form className="credential-form" onSubmit={send}><label>Message<textarea value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Follow up about this lesson…" /></label><button className="primary-button" disabled={sending || !message.trim()}>{sending ? "Sending…" : "Send to student"}</button></form></Section>
+        <Section title="Notes">
+          <div className="note-cards">
+            {notes.map((note) => (
+              <article key={note.id}>
+                <header>
+                  <strong>{note.title}</strong>
+                  <Status
+                    tone={note.status === "published" ? "good" : "neutral"}
+                  >
+                    {note.status}
+                  </Status>
+                </header>
+                <div
+                  className="published-note-body"
+                  dangerouslySetInnerHTML={{
+                    __html: DOMPurify.sanitize(note.bodyHtml || note.body),
+                  }}
+                />
+              </article>
+            ))}
+            {!notes.length && (
+              <EmptyState
+                title="No lesson notes"
+                detail="Use the Notes tab to add one for this lesson."
+              />
+            )}
+          </div>
+        </Section>
+        <Section title="Practice">
+          <div className="table-list">
+            {assignments.map((item) => (
+              <article key={item.id}>
+                <CheckSquare />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.details}</small>
+                </div>
+                <Status tone={item.helpRequested ? "warn" : "neutral"}>
+                  {item.helpRequested
+                    ? "help requested"
+                    : item.status.replaceAll("_", " ")}
+                </Status>
+              </article>
+            ))}
+            {!assignments.length && (
+              <EmptyState
+                title="No linked practice"
+                detail="Use Current work to assign practice to this lesson."
+              />
+            )}
+          </div>
+        </Section>
+        <Section title="Attachments">
+          <div className="table-list">
+            {materials.map((item) => (
+              <article key={item.id}>
+                <FolderOpen />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.category}</small>
+                </div>
+                {item.externalUrl && (
+                  <a
+                    className="button-link"
+                    href={item.externalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Open
+                  </a>
+                )}
+              </article>
+            ))}
+            {!materials.length && (
+              <EmptyState
+                title="No attachments"
+                detail="Use Current work to attach a file or link to this lesson."
+              />
+            )}
+          </div>
+        </Section>
+        <Section title="Conversation">
+          <div className="note-cards">
+            {messages.map((item) => (
+              <article key={item.id}>
+                <header>
+                  <strong>
+                    {item.authorRole === "coach"
+                      ? "Coach"
+                      : student.preferredName || student.fullName}
+                  </strong>
+                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                </header>
+                <p>{item.body}</p>
+              </article>
+            ))}
+          </div>
+          <form className="credential-form" onSubmit={send}>
+            <label>
+              Message
+              <textarea
+                value={message}
+                onChange={(event) => setMessage(event.target.value)}
+                placeholder="Follow up about this lesson…"
+              />
+            </label>
+            <button
+              className="primary-button"
+              disabled={sending || !message.trim()}
+            >
+              {sending ? "Sending…" : "Send to student"}
+            </button>
+          </form>
+        </Section>
       </div>
     </div>
   );
@@ -754,16 +1179,22 @@ function Work({
   student,
   onAddAssignment,
   onAddMaterial,
+  onArchiveMaterial,
+  onDeleteMaterial,
 }: {
   data: Data;
   student: Student;
   onAddAssignment: () => void;
   onAddMaterial: () => void;
+  onArchiveMaterial: (material: Material) => void;
+  onDeleteMaterial: (material: Material) => void;
 }) {
   const assignments = data.assignments.filter(
       (i) => i.studentId === student.id,
     ),
-    materials = data.materials.filter((i) => i.studentId === student.id && i.role !== "actor_material");
+    materials = data.materials.filter(
+      (i) => i.studentId === student.id && i.role !== "actor_material",
+    );
   return (
     <div className="two-section-grid">
       <Section
@@ -828,6 +1259,17 @@ function Work({
                   Open
                 </a>
               )}
+              <button type="button" onClick={() => onArchiveMaterial(item)}>
+                {item.status === "active" ? "Archive" : "Restore"}
+              </button>
+              <button
+                type="button"
+                className="danger-button"
+                onClick={() => onDeleteMaterial(item)}
+              >
+                <Trash2 />
+                Delete
+              </button>
             </article>
           ))}
           {!materials.length && (
@@ -852,10 +1294,19 @@ function Notes({
   onAdd: () => void;
   onDelete: (note: Note) => void;
 }) {
-  const [query, setQuery] = useState(""), [status, setStatus] = useState("all"), [selected,setSelected]=useState<Note>();
+  const [query, setQuery] = useState(""),
+    [status, setStatus] = useState("all"),
+    [selected, setSelected] = useState<Note>();
   const notes = data.notes
     .filter((i) => i.studentId === student.id)
-    .filter((note) => (status === "all" || note.status === status) && [note.title,note.body,...(note.tags||[])].join(" ").toLowerCase().includes(query.toLowerCase()))
+    .filter(
+      (note) =>
+        (status === "all" || note.status === status) &&
+        [note.title, note.body, ...(note.tags || [])]
+          .join(" ")
+          .toLowerCase()
+          .includes(query.toLowerCase()),
+    )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   const notePage = usePagedList(notes);
   return (
@@ -869,11 +1320,58 @@ function Notes({
         </button>
       }
     >
-      <div className="library-toolbar"><label><Search /><input aria-label="Search this student’s notes" placeholder="Search notes…" value={query} onChange={(event) => setQuery(event.target.value)} /></label><select aria-label="Note status" value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All statuses</option><option value="draft">Drafts</option><option value="published">Published</option></select></div>
-      <ListControls page={notePage.page} pageCount={notePage.pageCount} pageSize={notePage.pageSize} total={notePage.total} onPage={notePage.setPage} onPageSize={notePage.setPageSize} label="notes" />
+      <div className="library-toolbar">
+        <label>
+          <Search />
+          <input
+            aria-label="Search this student’s notes"
+            placeholder="Search notes…"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <select
+          aria-label="Note status"
+          value={status}
+          onChange={(event) => setStatus(event.target.value)}
+        >
+          <option value="all">All statuses</option>
+          <option value="draft">Drafts</option>
+          <option value="published">Published</option>
+        </select>
+      </div>
+      <ListControls
+        page={notePage.page}
+        pageCount={notePage.pageCount}
+        pageSize={notePage.pageSize}
+        total={notePage.total}
+        onPage={notePage.setPage}
+        onPageSize={notePage.setPageSize}
+        label="notes"
+      />
       <div className="lesson-note-index">
         {notePage.visible.map((note) => (
-          <button type="button" key={note.id} onClick={()=>setSelected(note)}><CalendarDays/><span><strong>{note.lessonId?new Date(data.lessons.find(item=>item.id===note.lessonId)?.startsAt||note.updatedAt).toLocaleDateString():"General note"}</strong><small>{data.lessons.find(item=>item.id===note.lessonId)?.topic||note.title} · {note.title}</small></span><Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status></button>
+          <button type="button" key={note.id} onClick={() => setSelected(note)}>
+            <CalendarDays />
+            <span>
+              <strong>
+                {note.lessonId
+                  ? new Date(
+                      data.lessons.find((item) => item.id === note.lessonId)
+                        ?.startsAt || note.updatedAt,
+                    ).toLocaleDateString()
+                  : "General note"}
+              </strong>
+              <small>
+                {data.lessons.find((item) => item.id === note.lessonId)
+                  ?.topic || note.title}{" "}
+                · {note.title}
+              </small>
+            </span>
+            <Status tone={note.status === "published" ? "good" : "neutral"}>
+              {note.status}
+            </Status>
+          </button>
         ))}
         {!notes.length && (
           <EmptyState
@@ -882,7 +1380,44 @@ function Notes({
           />
         )}
       </div>
-      {selected&&<Dialog title={selected.title} description={selected.lessonId?`${new Date(data.lessons.find(item=>item.id===selected.lessonId)?.startsAt||selected.updatedAt).toLocaleString()} · ${data.lessons.find(item=>item.id===selected.lessonId)?.topic||"Lesson"}`:"General coaching note"} onClose={()=>setSelected(undefined)}>{selected.bodyHtml?<div className="rich-note-body" dangerouslySetInnerHTML={{__html:DOMPurify.sanitize(selected.bodyHtml)}}/>:<p>{selected.body}</p>}<div className="form-actions"><button type="button" className="danger-button" onClick={()=>{onDelete(selected);setSelected(undefined);}}><Trash2/>Delete note</button><button type="button" onClick={()=>setSelected(undefined)}>Close</button></div></Dialog>}
+      {selected && (
+        <Dialog
+          title={selected.title}
+          description={
+            selected.lessonId
+              ? `${new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()} · ${data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Lesson"}`
+              : "General coaching note"
+          }
+          onClose={() => setSelected(undefined)}
+        >
+          {selected.bodyHtml ? (
+            <div
+              className="rich-note-body"
+              dangerouslySetInnerHTML={{
+                __html: DOMPurify.sanitize(selected.bodyHtml),
+              }}
+            />
+          ) : (
+            <p>{selected.body}</p>
+          )}
+          <div className="form-actions">
+            <button
+              type="button"
+              className="danger-button"
+              onClick={() => {
+                onDelete(selected);
+                setSelected(undefined);
+              }}
+            >
+              <Trash2 />
+              Delete note
+            </button>
+            <button type="button" onClick={() => setSelected(undefined)}>
+              Close
+            </button>
+          </div>
+        </Dialog>
+      )}
     </Section>
   );
 }
@@ -901,8 +1436,16 @@ function Account({
   onSetCredentials: (username: string, password: string) => Promise<void>;
   settingCredentials: boolean;
 }) {
-  const usernameBase = student.fullName.toLowerCase().replace(/[^a-z0-9]+/g, ".").replace(/^\.|\.$/g, "");
-  const defaultUsername = student.portalUsername || (/^[a-z]/.test(usernameBase) ? usernameBase : `actor.${usernameBase}`).slice(0, 32);
+  const usernameBase = student.fullName
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ".")
+    .replace(/^\.|\.$/g, "");
+  const defaultUsername =
+    student.portalUsername ||
+    (/^[a-z]/.test(usernameBase)
+      ? usernameBase
+      : `actor.${usernameBase}`
+    ).slice(0, 32);
   const [username, setUsername] = useState(defaultUsername);
   const [password, setPassword] = useState("");
   const toggle = (field: "portalEnabled" | "actorPageEligible") =>
@@ -927,11 +1470,20 @@ function Account({
             <span>
               <strong>Portal invitation</strong>
               <small>
-                Send a secure Supabase invitation to the student or guardian email on file.
+                Send a secure Supabase invitation to the student or guardian
+                email on file.
               </small>
             </span>
-            <button type="button" disabled={inviting} onClick={() => void onInvite()}>
-              {inviting ? "Sending…" : student.portalEnabled ? "Resend invite" : "Send invite"}
+            <button
+              type="button"
+              disabled={inviting}
+              onClick={() => void onInvite()}
+            >
+              {inviting
+                ? "Sending…"
+                : student.portalEnabled
+                  ? "Resend invite"
+                  : "Send invite"}
             </button>
           </div>
           <form
@@ -945,18 +1497,43 @@ function Account({
           >
             <div>
               <strong>Username &amp; password</strong>
-              <small>Create or reset a reliable login. Use 12+ characters with upper/lowercase letters, a number, and a symbol. Share it securely; it is never stored by the studio.</small>
+              <small>
+                Create or reset a reliable login. Use 12+ characters with
+                upper/lowercase letters, a number, and a symbol. Share it
+                securely; it is never stored by the studio.
+              </small>
             </div>
             <label>
               Username
-              <input required minLength={3} maxLength={32} pattern="[A-Za-z][A-Za-z0-9._-]{2,31}" autoComplete="off" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} />
+              <input
+                required
+                minLength={3}
+                maxLength={32}
+                pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
+                autoComplete="off"
+                value={username}
+                onChange={(event) =>
+                  setUsername(event.target.value.toLowerCase())
+                }
+              />
             </label>
             <label>
               Temporary password
-              <input required minLength={12} type="password" autoComplete="new-password" value={password} onChange={(event) => setPassword(event.target.value)} />
+              <input
+                required
+                minLength={12}
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+              />
             </label>
             <button className="primary" disabled={settingCredentials}>
-              {settingCredentials ? "Creating login…" : student.portalUsername ? "Reset login" : "Create login"}
+              {settingCredentials
+                ? "Creating login…"
+                : student.portalUsername
+                  ? "Reset login"
+                  : "Create login"}
             </button>
           </form>
         </div>
@@ -1021,7 +1598,62 @@ function Payments({
     [creditQuantity, setCreditQuantity] = useState(1),
     [creditReason, setCreditReason] = useState("Courtesy lesson credit"),
     [notice, setNotice] = useState("");
-  const grantCredit = async (event: FormEvent) => { event.preventDefault(); try { if(isDemo){store.transact((draft)=>{let pkg=draft.packages.find((item)=>item.studentId===student.id&&item.name==="Studio lesson credits");if(!pkg){pkg={id:uid("package"),studentId:student.id,name:"Studio lesson credits",priceMinor:0,currency:"USD",version:1,updatedAt:now()};draft.packages.push(pkg);}draft.creditEntries.push({id:uid("credit"),packageId:pkg.id,kind:"adjustment",quantity:creditQuantity,reason:creditReason,createdAt:now()});});}else{await studioCommand("credits",{command:"grant",expectedVersion:0,payload:{studentId:student.id,quantity:creditQuantity,reason:creditReason},reason:"Coach adjusted student credits"});await queryClient.invalidateQueries({queryKey:["studio"]});}setCrediting(false);setNotice(`${creditQuantity>0?"Added":"Removed"} ${Math.abs(creditQuantity)} lesson credit${Math.abs(creditQuantity)===1?"":"s"}.`);}catch(reason){setNotice(reason instanceof Error?reason.message:"Credits could not be updated.");} };
+  const grantCredit = async (event: FormEvent) => {
+    event.preventDefault();
+    try {
+      if (isDemo) {
+        store.transact((draft) => {
+          let pkg = draft.packages.find(
+            (item) =>
+              item.studentId === student.id &&
+              item.name === "Studio lesson credits",
+          );
+          if (!pkg) {
+            pkg = {
+              id: uid("package"),
+              studentId: student.id,
+              name: "Studio lesson credits",
+              priceMinor: 0,
+              currency: "USD",
+              version: 1,
+              updatedAt: now(),
+            };
+            draft.packages.push(pkg);
+          }
+          draft.creditEntries.push({
+            id: uid("credit"),
+            packageId: pkg.id,
+            kind: "adjustment",
+            quantity: creditQuantity,
+            reason: creditReason,
+            createdAt: now(),
+          });
+        });
+      } else {
+        await studioCommand("credits", {
+          command: "grant",
+          expectedVersion: 0,
+          payload: {
+            studentId: student.id,
+            quantity: creditQuantity,
+            reason: creditReason,
+          },
+          reason: "Coach adjusted student credits",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setCrediting(false);
+      setNotice(
+        `${creditQuantity > 0 ? "Added" : "Removed"} ${Math.abs(creditQuantity)} lesson credit${Math.abs(creditQuantity) === 1 ? "" : "s"}.`,
+      );
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Credits could not be updated.",
+      );
+    }
+  };
   const assign = async (event: FormEvent) => {
     event.preventDefault();
     const definition = data.packageDefinitions.find(
@@ -1090,7 +1722,15 @@ function Payments({
           title="Packages"
           marked
           aside={
-            <div className="header-actions"><button onClick={() => setCrediting(true)}>Adjust credits</button><button disabled={!data.packageDefinitions.some((item) => item.active)} onClick={() => setAssigning(true)}>Assign package</button></div>
+            <div className="header-actions">
+              <button onClick={() => setCrediting(true)}>Adjust credits</button>
+              <button
+                disabled={!data.packageDefinitions.some((item) => item.active)}
+                onClick={() => setAssigning(true)}
+              >
+                Assign package
+              </button>
+            </div>
           }
         >
           <div className="table-list">
@@ -1168,7 +1808,51 @@ function Payments({
           </form>
         </Dialog>
       )}
-      {crediting && <Dialog title="Adjust lesson credits" description={`Add or remove credits for ${student.preferredName||student.fullName}. Every adjustment is recorded in the ledger.`} onClose={()=>setCrediting(false)}><form className="workflow-form" onSubmit={grantCredit}><label>Credits<input required type="number" min="-100" max="100" step="1" value={creditQuantity} onChange={event=>setCreditQuantity(Number(event.target.value))}/><small>Use a negative number to correct a balance.</small></label><label className="full">Reason<input required minLength={3} value={creditReason} onChange={event=>setCreditReason(event.target.value)}/></label><div className="form-actions full"><button type="button" onClick={()=>setCrediting(false)}>Cancel</button><button className="primary" disabled={!creditQuantity||creditReason.trim().length<3}>Save credit adjustment</button></div></form></Dialog>}
+      {crediting && (
+        <Dialog
+          title="Adjust lesson credits"
+          description={`Add or remove credits for ${student.preferredName || student.fullName}. Every adjustment is recorded in the ledger.`}
+          onClose={() => setCrediting(false)}
+        >
+          <form className="workflow-form" onSubmit={grantCredit}>
+            <label>
+              Credits
+              <input
+                required
+                type="number"
+                min="-100"
+                max="100"
+                step="1"
+                value={creditQuantity}
+                onChange={(event) =>
+                  setCreditQuantity(Number(event.target.value))
+                }
+              />
+              <small>Use a negative number to correct a balance.</small>
+            </label>
+            <label className="full">
+              Reason
+              <input
+                required
+                minLength={3}
+                value={creditReason}
+                onChange={(event) => setCreditReason(event.target.value)}
+              />
+            </label>
+            <div className="form-actions full">
+              <button type="button" onClick={() => setCrediting(false)}>
+                Cancel
+              </button>
+              <button
+                className="primary"
+                disabled={!creditQuantity || creditReason.trim().length < 3}
+              >
+                Save credit adjustment
+              </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
     </div>
   );
 }
@@ -1181,7 +1865,7 @@ function ActorPage({
   data: Data;
   student: Student;
   isDemo: boolean;
-  onAddMaterial:()=>void;
+  onAddMaterial: () => void;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
@@ -1223,40 +1907,86 @@ function ActorPage({
       await queryClient.invalidateQueries({ queryKey: ["studio"] });
     }
   };
-  const actorMaterials=data.materials.filter(item=>item.studentId===student.id&&item.role==="actor_material");
+  const actorMaterials = data.materials.filter(
+    (item) => item.studentId === student.id && item.role === "actor_material",
+  );
   return (
-    <div className="student-page"><Section title="Actor page" marked>
-      {profile ? (
-        <div className="profile-preview">
-          <UserRound />
-          <div>
-            <span>/actors/{profile.slug}</span>
-            <h2>{profile.displayName}</h2>
-            <p>{profile.bio}</p>
+    <div className="student-page">
+      <Section title="Actor page" marked>
+        {profile ? (
+          <div className="profile-preview">
+            <UserRound />
+            <div>
+              <span>/actors/{profile.slug}</span>
+              <h2>{profile.displayName}</h2>
+              <p>{profile.bio}</p>
+            </div>
+            <Status tone={profile.status === "published" ? "good" : "warn"}>
+              {profile.status.replaceAll("_", " ")}
+            </Status>
+            <Link to="/coach/actor-pages">Open publishing workflow</Link>
+            {profile.status === "published" && (
+              <a
+                href={`/actors/${profile.slug}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View live page
+              </a>
+            )}
           </div>
-          <Status tone={profile.status === "published" ? "good" : "warn"}>
-            {profile.status.replaceAll("_", " ")}
-          </Status>
-          <Link to="/coach/actor-pages">Open publishing workflow</Link>
-          {profile.status === "published" && (
-            <a href={`/actors/${profile.slug}`} target="_blank" rel="noreferrer">
-              View live page
-            </a>
+        ) : (
+          <div>
+            <EmptyState
+              title="No actor page yet"
+              detail="Start a private draft, then the student can add their bio and submit it for review."
+            />
+            <button className="primary-button" onClick={() => void create()}>
+              <Plus />
+              Create draft
+            </button>
+          </div>
+        )}
+      </Section>
+      <Section
+        title="Headshots, gallery, reel & résumé"
+        aside={
+          <button onClick={onAddMaterial}>
+            <Plus />
+            Add actor material
+          </button>
+        }
+      >
+        <p className="section-intro">
+          These uploads are reserved for the public actor page and its review
+          workflow.
+        </p>
+        <div className="table-list">
+          {actorMaterials.map((item) => (
+            <article key={item.id}>
+              <FolderOpen />
+              <div>
+                <strong>{item.title}</strong>
+                <small>
+                  {item.category} · {item.approvalStatus.replaceAll("_", " ")}
+                </small>
+              </div>
+              {item.externalUrl && (
+                <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                  Open
+                </a>
+              )}
+            </article>
+          ))}
+          {!actorMaterials.length && (
+            <EmptyState
+              title="No actor-page media"
+              detail="Add the main headshot, gallery photos, reel, and résumé here."
+            />
           )}
         </div>
-      ) : (
-        <div>
-          <EmptyState
-            title="No actor page yet"
-            detail="Start a private draft, then the student can add their bio and submit it for review."
-          />
-          <button className="primary-button" onClick={() => void create()}>
-            <Plus />
-            Create draft
-          </button>
-        </div>
-      )}
-    </Section><Section title="Headshots, gallery, reel & résumé" aside={<button onClick={onAddMaterial}><Plus/>Add actor material</button>}><p className="section-intro">These uploads are reserved for the public actor page and its review workflow.</p><div className="table-list">{actorMaterials.map(item=><article key={item.id}><FolderOpen/><div><strong>{item.title}</strong><small>{item.category} · {item.approvalStatus.replaceAll("_"," ")}</small></div>{item.externalUrl&&<a href={item.externalUrl} target="_blank" rel="noreferrer">Open</a>}</article>)}{!actorMaterials.length&&<EmptyState title="No actor-page media" detail="Add the main headshot, gallery photos, reel, and résumé here."/>}</div></Section></div>
+      </Section>
+    </div>
   );
 }
 function SettingToggle({
@@ -1270,7 +2000,14 @@ function SettingToggle({
   checked: boolean;
   onChange: () => void;
 }) {
-  return <Toggle checked={checked} label={title} detail={detail} onChange={onChange} />;
+  return (
+    <Toggle
+      checked={checked}
+      label={title}
+      detail={detail}
+      onChange={onChange}
+    />
+  );
 }
 
 function StudentEditor({
@@ -1456,14 +2193,17 @@ function StudentEditor({
           </small>
         </label>
         <p className="portal-notice full">
-          Portal access, login credentials, and actor-page eligibility are managed
-          in the Account tab so there is one authoritative control for each.
+          Portal access, login credentials, and actor-page eligibility are
+          managed in the Account tab so there is one authoritative control for
+          each.
         </p>
         <div className="form-actions full">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={saving}>{saving ? "Saving…" : "Save details"}</button>
+          <button className="primary" disabled={saving}>
+            {saving ? "Saving…" : "Save details"}
+          </button>
         </div>
       </form>
     </Dialog>
@@ -1476,12 +2216,20 @@ function LessonForm({
 }: {
   student: Student;
   onClose: () => void;
-  onSave: (l: Lesson) => void;
+  onSave: (
+    l: Lesson,
+    recurrence: "none" | "weekly" | "biweekly",
+    occurrenceCount: number,
+  ) => void;
 }) {
   const [topic, setTopic] = useState("Private coaching"),
     [start, setStart] = useState(""),
     [duration, setDuration] = useState(60),
     [location, setLocation] = useState<"virtual" | "in_person">("virtual"),
+    [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly">(
+      "none",
+    ),
+    [occurrenceCount, setOccurrenceCount] = useState(6),
     [locationLabel, setLocationLabel] = useState("");
   return (
     <Dialog title="Add lesson" description={student.fullName} onClose={onClose}>
@@ -1490,24 +2238,28 @@ function LessonForm({
         onSubmit={(e) => {
           e.preventDefault();
           const startsAt = new Date(start).toISOString();
-          onSave({
-            id: uid("lesson"),
-            studioId: student.studioId,
-            studentId: student.id,
-            topic,
-            startsAt,
-            endsAt: new Date(
-              new Date(startsAt).getTime() + duration * 60000,
-            ).toISOString(),
-            status: "scheduled",
-            locationType: location,
-            locationLabel:
-              location === "virtual"
-                ? "Google Meet pending"
-                : locationLabel || "Location to be confirmed",
-            version: 1,
-            updatedAt: now(),
-          });
+          onSave(
+            {
+              id: uid("lesson"),
+              studioId: student.studioId,
+              studentId: student.id,
+              topic,
+              startsAt,
+              endsAt: new Date(
+                new Date(startsAt).getTime() + duration * 60000,
+              ).toISOString(),
+              status: "scheduled",
+              locationType: location,
+              locationLabel:
+                location === "virtual"
+                  ? "Google Meet pending"
+                  : locationLabel || "Location to be confirmed",
+              version: 1,
+              updatedAt: now(),
+            },
+            recurrence,
+            recurrence === "none" ? 1 : occurrenceCount,
+          );
         }}
       >
         <label className="full">
@@ -1558,11 +2310,52 @@ function LessonForm({
             />
           </label>
         )}
+        <label>
+          Repeat
+          <select
+            value={recurrence}
+            onChange={(event) =>
+              setRecurrence(event.target.value as typeof recurrence)
+            }
+          >
+            <option value="none">Does not repeat</option>
+            <option value="weekly">Weekly</option>
+            <option value="biweekly">Every other week</option>
+          </select>
+        </label>
+        {recurrence !== "none" && (
+          <label>
+            Total lessons
+            <input
+              type="number"
+              min="2"
+              max="52"
+              value={occurrenceCount}
+              onChange={(event) =>
+                setOccurrenceCount(Number(event.target.value))
+              }
+            />
+            <small>
+              Includes the first lesson. Times stay fixed in the studio timezone
+              through daylight-saving changes.
+            </small>
+          </label>
+        )}
         <div className="form-actions full">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary">Add lesson</button>
+          <button
+            className="primary"
+            disabled={
+              recurrence !== "none" &&
+              (occurrenceCount < 2 || occurrenceCount > 52)
+            }
+          >
+            {recurrence === "none"
+              ? "Add lesson"
+              : `Add ${occurrenceCount} lessons`}
+          </button>
         </div>
       </form>
     </Dialog>
@@ -1609,15 +2402,23 @@ function AssignmentForm({
       >
         <label className="full">
           Related lesson
-          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
-            <option value="" disabled>Select a lesson</option>
+          <select
+            required
+            value={lessonId}
+            onChange={(event) => setLessonId(event.target.value)}
+          >
+            <option value="" disabled>
+              Select a lesson
+            </option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
                 {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
               </option>
             ))}
           </select>
-          {!lessons.length && <small>Add a lesson before assigning practice.</small>}
+          {!lessons.length && (
+            <small>Add a lesson before assigning practice.</small>
+          )}
         </label>
         <label className="full">
           Title
@@ -1647,7 +2448,9 @@ function AssignmentForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!lessonId}>Assign</button>
+          <button className="primary" disabled={!lessonId}>
+            Assign
+          </button>
         </div>
       </form>
     </Dialog>
@@ -1671,7 +2474,7 @@ function MaterialForm({
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Script"),
     [url, setUrl] = useState(""),
-    [role, setRole] = useState<Material["role"]>(fixedRole||"current_script"),
+    [role, setRole] = useState<Material["role"]>(fixedRole || "current_script"),
     [lessonId, setLessonId] = useState(lessons[0]?.id ?? ""),
     [file, setFile] = useState<File>(),
     [uploading, setUploading] = useState(false);
@@ -1692,8 +2495,10 @@ function MaterialForm({
                 ? await uploadStudioFile({
                     studioId: student.studioId,
                     studentId: student.id,
-                    entityType: fixedRole==="actor_material"?"material":"lesson",
-                    entityId: fixedRole==="actor_material"?undefined:lessonId,
+                    entityType:
+                      fixedRole === "actor_material" ? "material" : "lesson",
+                    entityId:
+                      fixedRole === "actor_material" ? undefined : lessonId,
                     file,
                     visibility: "student",
                   })
@@ -1701,7 +2506,7 @@ function MaterialForm({
             onSave({
               id: uid("material"),
               studentId: student.id,
-              lessonId: fixedRole==="actor_material"?undefined:lessonId,
+              lessonId: fixedRole === "actor_material" ? undefined : lessonId,
               title,
               category,
               externalUrl: url || undefined,
@@ -1728,18 +2533,28 @@ function MaterialForm({
           }
         }}
       >
-        {fixedRole!=="actor_material"&&<label className="full">
-          Related lesson
-          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
-            <option value="" disabled>Select a lesson</option>
-            {lessons.map((lesson) => (
-              <option key={lesson.id} value={lesson.id}>
-                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+        {fixedRole !== "actor_material" && (
+          <label className="full">
+            Related lesson
+            <select
+              required
+              value={lessonId}
+              onChange={(event) => setLessonId(event.target.value)}
+            >
+              <option value="" disabled>
+                Select a lesson
               </option>
-            ))}
-          </select>
-          {!lessons.length && <small>Add a lesson before attaching materials.</small>}
-        </label>}
+              {lessons.map((lesson) => (
+                <option key={lesson.id} value={lesson.id}>
+                  {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+                </option>
+              ))}
+            </select>
+            {!lessons.length && (
+              <small>Add a lesson before attaching materials.</small>
+            )}
+          </label>
+        )}
         <label>
           Title
           <input
@@ -1748,13 +2563,15 @@ function MaterialForm({
             onChange={(e) => setTitle(e.target.value)}
           />
         </label>
-        {!fixedRole&&<label>
-          Category
-          <input
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
-        </label>}
+        {!fixedRole && (
+          <label>
+            Category
+            <input
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            />
+          </label>
+        )}
         <label>
           Role
           <select
@@ -1789,7 +2606,14 @@ function MaterialForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={uploading || (!lessonId&&fixedRole!=="actor_material") || (fixedRole==="actor_material"&&!url&&!file)}>
+          <button
+            className="primary"
+            disabled={
+              uploading ||
+              (!lessonId && fixedRole !== "actor_material") ||
+              (fixedRole === "actor_material" && !url && !file)
+            }
+          >
             {uploading ? "Uploading…" : "Add material"}
           </button>
         </div>
@@ -1860,15 +2684,23 @@ function NoteForm({
       >
         <label className="full">
           Related lesson
-          <select required value={lessonId} onChange={(event) => setLessonId(event.target.value)}>
-            <option value="" disabled>Select a lesson</option>
+          <select
+            required
+            value={lessonId}
+            onChange={(event) => setLessonId(event.target.value)}
+          >
+            <option value="" disabled>
+              Select a lesson
+            </option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
                 {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
               </option>
             ))}
           </select>
-          {!lessons.length && <small>Add a lesson before writing a lesson note.</small>}
+          {!lessons.length && (
+            <small>Add a lesson before writing a lesson note.</small>
+          )}
         </label>
         <label className="full">
           Title
@@ -1905,10 +2737,18 @@ function NoteForm({
             <button type="button" onClick={() => format("justifyRight")}>
               Right
             </button>
-            <button type="button" onClick={() => format("insertUnorderedList")} aria-label="Bulleted list">
+            <button
+              type="button"
+              onClick={() => format("insertUnorderedList")}
+              aria-label="Bulleted list"
+            >
               • List
             </button>
-            <button type="button" onClick={() => format("insertOrderedList")} aria-label="Numbered list">
+            <button
+              type="button"
+              onClick={() => format("insertOrderedList")}
+              aria-label="Numbered list"
+            >
               1. List
             </button>
             <button
