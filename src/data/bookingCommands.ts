@@ -66,6 +66,32 @@ export interface PlatformHealth {
   issues?: string[];
 }
 
+export interface StorageHealth {
+  databaseBytes: number;
+  storageBytes: number;
+  storageObjects: number;
+  measuredAt: string;
+  largestTables: Array<{ name: string; bytes: number; rows: number }>;
+  cleanupCandidates: Record<string, number>;
+}
+
+export async function loadStorageHealth(): Promise<StorageHealth> {
+  if (!isSupabaseConfigured || !supabase)
+    throw new Error("Production database is not configured.");
+  const { data } = await supabase.auth.getSession();
+  if (!data.session) throw new Error("Sign in as the coach to view storage.");
+  const response = await fetch("/api/v2/storage-health", {
+    headers: {
+      Accept: "application/json",
+      Authorization: `Bearer ${data.session.access_token}`,
+    },
+  });
+  const payload = await response.json();
+  if (!response.ok)
+    throw new Error(payload.message || "Storage information could not be loaded.");
+  return payload as StorageHealth;
+}
+
 export async function loadPlatformHealth(): Promise<PlatformHealth> {
   try {
     const response = await fetch("/api/v2/health", {

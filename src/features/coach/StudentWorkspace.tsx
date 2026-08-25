@@ -52,6 +52,7 @@ import { useStudioStore } from "../../state/StudioStore";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import { LessonWhiteboard } from "../../components/LessonWhiteboard";
+import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -923,6 +924,10 @@ function CoachLessonHub({
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [lessonAction, setLessonAction] = useState<"reschedule" | "credits" | null>(null);
+  const [actionBusy, setActionBusy] = useState("");
+  const [creditQuantity, setCreditQuantity] = useState(1);
+  const [creditReason, setCreditReason] = useState("Lesson-specific credit");
   if (!lesson)
     return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
@@ -934,6 +939,20 @@ function CoachLessonHub({
   );
   const messages = data.lessonMessages.filter(
     (item) => item.lessonId === lesson.id,
+  );
+  const availableCredits = data.packages
+    .filter((item) => item.studentId === student.id)
+    .reduce(
+      (total, item) => total + packageSummary(item, data.creditEntries).remainingCredits,
+      0,
+    );
+  const paidByCredit = data.creditEntries.some(
+    (item) =>
+      item.lessonId === lesson.id &&
+      ["reservation", "consumption"].includes(item.kind),
+  );
+  const durationMinutes = Math.round(
+    (new Date(lesson.endsAt).getTime() - new Date(lesson.startsAt).getTime()) / 60_000,
   );
   const send = async (event: FormEvent) => {
     event.preventDefault();
@@ -999,6 +1018,81 @@ function CoachLessonHub({
       setCancelling(false);
     }
   };
+  const rescheduleLesson = async (startsAt: string, endsAt: string) => {
+    if (actionBusy) return;
+    setActionBusy("reschedule");
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.lessons.find((item) => item.id === lesson.id);
+          if (!current) return;
+          current.startsAt = startsAt;
+          current.endsAt = endsAt;
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "reschedule",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          payload: { startsAt, endsAt },
+          reason: "Coach rescheduled lesson from student workspace",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setLessonAction(null);
+      setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Lesson could not be rescheduled.");
+    } finally {
+      setActionBusy("");
+    }
+  };
+  const adjustCredit = async () => {
+    if (actionBusy || !creditQuantity || creditReason.trim().length < 3) return;
+    setActionBusy("credit");
+    try {
+      await studioCommand("credits", {
+        command: "grant",
+        expectedVersion: 0,
+        payload: {
+          studentId: student.id,
+          lessonId: lesson.id,
+          quantity: creditQuantity,
+          reason: creditReason.trim(),
+        },
+        reason: "Coach adjusted credit from lesson workspace",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setLessonAction(null);
+      setNotice("Credit adjustment saved on this lesson.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Credit could not be adjusted.");
+    } finally {
+      setActionBusy("");
+    }
+  };
+  const useCredit = async () => {
+    if (actionBusy || availableCredits < 1 || paidByCredit) return;
+    setActionBusy("use-credit");
+    try {
+      await studioCommand("credits", {
+        command: "use_for_lesson",
+        entityId: lesson.id,
+        expectedVersion: lesson.version,
+        payload: { reason: `Paid by credit for ${lesson.topic}` },
+        reason: "Coach marked lesson paid by credit from lesson workspace",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setLessonAction(null);
+      setNotice("One credit was used and this lesson is marked paid by credit.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Credit could not be used.");
+    } finally {
+      setActionBusy("");
+    }
+  };
   return (
     <div>
       <Link
@@ -1024,6 +1118,14 @@ function CoachLessonHub({
             </a>
           )}
           {lesson.status === "scheduled" && (
+            <button className="primary-button" onClick={() => setLessonAction("reschedule")}>
+              <CalendarDays /> Reschedule
+            </button>
+          )}
+          <button className="primary-button" onClick={() => setLessonAction("credits")}>
+            <CircleDollarSign /> Credits & payment
+          </button>
+          {lesson.status === "scheduled" && (
             <button
               className="danger-button"
               disabled={cancelling}
@@ -1034,11 +1136,65 @@ function CoachLessonHub({
             </button>
           )}
         </div>
+        <section className="lesson-facts" aria-label="Lesson information">
+          <div><small>Date & time</small><strong>{new Date(lesson.startsAt).toLocaleString()}</strong></div>
+          <div><small>Duration</small><strong>{durationMinutes} minutes</strong></div>
+          <div><small>Delivery</small><strong>{lesson.locationLabel}</strong></div>
+          <div><small>Source</small><strong>{lesson.sourceProvider?.replaceAll("_", " ") || "Studio"}</strong></div>
+          <div><small>Lesson work</small><strong>{notes.length} notes · {assignments.length} practice · {materials.length} files</strong></div>
+          <div><small>Payment</small><strong>{paidByCredit ? "Paid with lesson credit" : `${availableCredits} credits available`}</strong></div>
+        </section>
       </Section>
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
+      )}
+      {lessonAction === "reschedule" && (
+        <Dialog
+          title="Reschedule lesson"
+          description={`${student.preferredName || student.fullName} · ${lesson.topic}`}
+          onClose={() => !actionBusy && setLessonAction(null)}
+        >
+          <RescheduleLessonForm
+            lesson={lesson}
+            studentName={student.preferredName || student.fullName}
+            timezone={data.settings.timezone}
+            cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
+            busy={actionBusy === "reschedule"}
+            onCancel={() => setLessonAction(null)}
+            onSubmit={rescheduleLesson}
+          />
+        </Dialog>
+      )}
+      {lessonAction === "credits" && (
+        <Dialog
+          title="Lesson credits"
+          description={`${student.preferredName || student.fullName} · ${lesson.topic}`}
+          onClose={() => !actionBusy && setLessonAction(null)}
+        >
+          <div className="workflow-content lesson-command-center">
+            <div className="lesson-command-summary">
+              <span>{availableCredits} credits available</span>
+              <span>{paidByCredit ? "This lesson is paid by credit" : "No credit used for this lesson"}</span>
+            </div>
+            <section className="lesson-command-section">
+              <p>Positive numbers add credits; negative numbers remove them. The reason stays attached to this lesson.</p>
+              <div className="inline-command">
+                <label>Credits<input type="number" min="-20" max="20" value={creditQuantity} onChange={(event) => setCreditQuantity(Number(event.target.value))} /></label>
+                <label>Reason<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} /></label>
+                <button disabled={Boolean(actionBusy) || !creditQuantity || creditReason.trim().length < 3} onClick={() => void adjustCredit()}>
+                  {actionBusy === "credit" ? "Saving…" : "Save adjustment"}
+                </button>
+              </div>
+            </section>
+            {!paidByCredit && (
+              <button className="primary-button" disabled={Boolean(actionBusy) || availableCredits < 1} onClick={() => void useCredit()}>
+                {actionBusy === "use-credit" ? "Applying…" : availableCredits ? "Use 1 credit for this lesson" : "No credit available"}
+              </button>
+            )}
+          </div>
+        </Dialog>
       )}
       <LessonWhiteboard
         data={data}

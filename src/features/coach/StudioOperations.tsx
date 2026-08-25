@@ -21,6 +21,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { LessonCalendar } from "../../components/LessonCalendar";
+import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import {
   formatMoney,
   packageSummary,
@@ -65,7 +66,9 @@ export function TodayView({
     queryClient = useQueryClient(),
     navigate = useNavigate(),
     [notice, setNotice] = useState(""),
-    [reviewing, setReviewing] = useState<IntegrationImport>();
+    [reviewing, setReviewing] = useState<IntegrationImport>(),
+    [rescheduling, setRescheduling] = useState<Lesson>(),
+    [rescheduleBusy, setRescheduleBusy] = useState(false);
   const today = new Date().toDateString();
   const lessons = data.lessons
     .filter(
@@ -133,6 +136,37 @@ export function TodayView({
       "The provider signal was reviewed and the student record was updated.",
     );
   };
+  const reschedule = async (startsAt: string, endsAt: string) => {
+    if (!rescheduling || rescheduleBusy) return;
+    setRescheduleBusy(true);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.lessons.find((lesson) => lesson.id === rescheduling.id);
+          if (!item) return;
+          item.startsAt = startsAt;
+          item.endsAt = endsAt;
+          item.version += 1;
+          item.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "reschedule",
+          entityId: rescheduling.id,
+          expectedVersion: rescheduling.version,
+          payload: { startsAt, endsAt },
+          reason: "Coach rescheduled lesson from Today",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setRescheduling(undefined);
+      setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Lesson could not be rescheduled.");
+    } finally {
+      setRescheduleBusy(false);
+    }
+  };
   return (
     <>
       <Section title="Today’s teaching flow" marked>
@@ -151,7 +185,10 @@ export function TodayView({
                 </small>
               </div>
               <Status tone="good">scheduled</Status>
-              <button onClick={() => void complete(lesson)}>Complete</button>
+              <div className="row-actions">
+                <button onClick={() => setRescheduling(lesson)}>Reschedule</button>
+                <button onClick={() => void complete(lesson)}>Complete</button>
+              </div>
             </article>
           ))}
           {!lessons.length && (
@@ -282,6 +319,23 @@ export function TodayView({
           onClose={() => setReviewing(undefined)}
           onReviewed={reviewed}
         />
+      )}
+      {rescheduling && (
+        <Dialog
+          title="Reschedule lesson"
+          description={`${studentName(data, rescheduling.studentId)} · ${rescheduling.topic}`}
+          onClose={() => !rescheduleBusy && setRescheduling(undefined)}
+        >
+          <RescheduleLessonForm
+            lesson={rescheduling}
+            studentName={studentName(data, rescheduling.studentId)}
+            timezone={data.settings.timezone}
+            cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
+            busy={rescheduleBusy}
+            onCancel={() => setRescheduling(undefined)}
+            onSubmit={reschedule}
+          />
+        </Dialog>
       )}
     </>
   );
@@ -575,7 +629,7 @@ export function LessonsView({
     store = useStudioStore(),
     queryClient = useQueryClient(),
     [selected, setSelected] = useState<Lesson>(),
-    [start, setStart] = useState(""),
+    [panel, setPanel] = useState<"details" | "reschedule" | "credits">("details"),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(""),
     [confirmCancel, setConfirmCancel] = useState(false),
@@ -585,10 +639,8 @@ export function LessonsView({
     [creditReason, setCreditReason] = useState("Lesson-specific credit");
   const openLesson = (lesson: Lesson) => {
     setSelected(lesson);
+    setPanel("details");
     setConfirmCancel(false);
-    const local = new Date(lesson.startsAt);
-    local.setMinutes(local.getMinutes() - local.getTimezoneOffset());
-    setStart(local.toISOString().slice(0, 16));
   };
   const update = async (status: "completed" | "cancelled") => {
     if (!selected || busy) return;
@@ -626,16 +678,9 @@ export function LessonsView({
       setBusy("");
     }
   };
-  const move = async () => {
-    if (!selected || !start || busy) return;
+  const move = async (startsAt: string, endsAt: string) => {
+    if (!selected || busy) return;
     setBusy("reschedule");
-    const startsAt = new Date(start).toISOString(),
-      duration =
-        new Date(selected.endsAt).getTime() -
-        new Date(selected.startsAt).getTime();
-    const endsAt = new Date(
-      new Date(startsAt).getTime() + duration,
-    ).toISOString();
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -655,7 +700,7 @@ export function LessonsView({
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setSelected(undefined);
-      setNotice("Lesson rescheduled.");
+      setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -847,6 +892,18 @@ export function LessonsView({
           ["reservation", "consumption"].includes(entry.kind),
       )
     : false;
+  const selectedNotes = selected
+    ? data.notes.filter((item) => item.lessonId === selected.id).length
+    : 0;
+  const selectedPractice = selected
+    ? data.assignments.filter((item) => item.lessonId === selected.id).length
+    : 0;
+  const selectedMaterials = selected
+    ? data.materials.filter((item) => item.lessonId === selected.id).length
+    : 0;
+  const selectedDuration = selected
+    ? Math.round((new Date(selected.endsAt).getTime() - new Date(selected.startsAt).getTime()) / 60_000)
+    : 0;
   return (
     <Section title="Lesson calendar" marked>
       {notice && <p className="portal-notice">{notice}</p>}
@@ -863,10 +920,27 @@ export function LessonsView({
       />
       {selected && (
         <Dialog
-          title={selected.topic}
+          title={
+            panel === "reschedule"
+              ? "Reschedule lesson"
+              : panel === "credits"
+                ? "Lesson credits"
+                : selected.topic
+          }
           description={`${studentName(data, selected.studentId)} · ${new Date(selected.startsAt).toLocaleString()} · ${sourceLabel(selected.sourceProvider)}`}
           onClose={() => setSelected(undefined)}
         >
+          {panel === "reschedule" ? (
+            <RescheduleLessonForm
+              lesson={selected}
+              studentName={studentName(data, selected.studentId)}
+              timezone={data.settings.timezone}
+              cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
+              busy={busy === "reschedule"}
+              onCancel={() => setPanel("details")}
+              onSubmit={move}
+            />
+          ) : (
           <div className="workflow-content lesson-command-center">
             <div className="lesson-command-summary">
               <Status
@@ -891,6 +965,21 @@ export function LessonsView({
               </span>
             </div>
             <div className="form-actions">
+              {panel === "credits" && (
+                <button className="text-button" onClick={() => setPanel("details")}>
+                  Back to lesson details
+                </button>
+              )}
+              {panel === "details" && selected.status === "scheduled" && (
+                <button className="primary" onClick={() => setPanel("reschedule")}>
+                  Reschedule
+                </button>
+              )}
+              {panel === "details" && (
+                <button className="text-button" onClick={() => setPanel("credits")}>
+                  Adjust credits
+                </button>
+              )}
               <button
                 className="text-button"
                 onClick={() =>
@@ -910,28 +999,26 @@ export function LessonsView({
                 Student history
               </button>
             </div>
-            {selected.status === "scheduled" && (
-              <section className="lesson-command-section">
-                <h3>Move this lesson</h3>
-                <div className="inline-command">
-                  <label>
-                    New start
-                    <input
-                      type="datetime-local"
-                      value={start}
-                      onChange={(e) => setStart(e.target.value)}
-                    />
-                  </label>
-                  <button
-                    disabled={Boolean(busy) || !start}
-                    onClick={() => void move()}
-                  >
-                    {busy === "reschedule" ? "Moving…" : "Reschedule"}
-                  </button>
+            {panel === "details" && (
+              <section className="lesson-facts" aria-label="Lesson information">
+                <div>
+                  <small>Date & time</small>
+                  <strong>{new Date(selected.startsAt).toLocaleString()}</strong>
+                </div>
+                <div><small>Duration</small><strong>{selectedDuration} minutes</strong></div>
+                <div><small>Delivery</small><strong>{selected.locationLabel}</strong></div>
+                <div><small>Source</small><strong>{sourceLabel(selected.sourceProvider)}</strong></div>
+                <div>
+                  <small>Lesson work</small>
+                  <strong>{selectedNotes} notes · {selectedPractice} practice · {selectedMaterials} files</strong>
+                </div>
+                <div>
+                  <small>Payment</small>
+                  <strong>{paidByCredit ? "Paid with lesson credit" : selected.packageId ? "Package attached" : "No credit applied"}</strong>
                 </div>
               </section>
             )}
-            {selected.status === "scheduled" && !selected.seriesId && (
+            {panel === "details" && selected.status === "scheduled" && !selected.seriesId && (
               <section className="lesson-command-section">
                 <h3>Make recurring</h3>
                 <p>Create the remaining occurrences in one DST-safe series.</p>
@@ -971,8 +1058,12 @@ export function LessonsView({
                 </div>
               </section>
             )}
-            <section className="lesson-command-section">
+            {panel === "credits" && <section className="lesson-command-section">
               <h3>Credits & payment</h3>
+              <p>
+                Adjust the student’s balance and attach the reason to this lesson.
+                Positive numbers add credits; negative numbers remove them.
+              </p>
               <div className="inline-command">
                 <label>
                   Credits
@@ -1017,8 +1108,8 @@ export function LessonsView({
                       : "No credit available"}
                 </button>
               )}
-            </section>
-            {selected.status === "scheduled" && (
+            </section>}
+            {panel === "details" && selected.status === "scheduled" && (
               <div className="form-actions lesson-final-actions">
                 <button
                   className="primary"
@@ -1057,6 +1148,7 @@ export function LessonsView({
               </div>
             )}
           </div>
+          )}
         </Dialog>
       )}
     </Section>

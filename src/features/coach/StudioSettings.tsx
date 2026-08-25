@@ -21,9 +21,11 @@ import {
 } from "../../components/Primitives";
 import {
   loadPlatformHealth,
+  loadStorageHealth,
   startProviderIntake,
   studioCommand,
   type PlatformHealth,
+  type StorageHealth,
 } from "../../data/bookingCommands";
 import type {
   StudioSettings as Settings,
@@ -1017,7 +1019,29 @@ function DataPanel({
   );
   const queryClient = useQueryClient();
   const store = useStudioStore();
+  const [storage, setStorage] = useState<StorageHealth>();
+  const [storageError, setStorageError] = useState("");
+  const [cleaning, setCleaning] = useState(false);
   const failed = data.outbox.filter((item) => item.status === "failed");
+  const cleanupCount = storage
+    ? Object.values(storage.cleanupCandidates).reduce((total, value) => total + value, 0)
+    : 0;
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+  };
+  const refreshStorage = async () => {
+    if (isDemo) return;
+    try {
+      setStorageError("");
+      setStorage(await loadStorageHealth());
+    } catch (reason) {
+      setStorageError(reason instanceof Error ? reason.message : "Storage information could not be loaded.");
+    }
+  };
+  useEffect(() => {
+    void refreshStorage();
+  }, [isDemo]);
   const retry = async () => {
     if (isDemo)
       store.transact((draft) =>
@@ -1050,6 +1074,23 @@ function DataPanel({
       onNotice("Local studio data reset.");
     }
   };
+  const cleanup = async () => {
+    if (isDemo || cleaning || !cleanupCount) return;
+    setCleaning(true);
+    try {
+      await studioCommand("settings", {
+        command: "cleanup_storage",
+        expectedVersion: 0,
+        reason: "Coach ran safe transient-data cleanup",
+      });
+      await refreshStorage();
+      onNotice("Safe cleanup finished. Student, lesson, note, payment, credit, and file records were preserved.");
+    } catch (reason) {
+      onNotice(reason instanceof Error ? reason.message : "Safe cleanup could not be completed.");
+    } finally {
+      setCleaning(false);
+    }
+  };
   return (
     <>
       <Section title="Saved studio data" marked>
@@ -1071,6 +1112,41 @@ function DataPanel({
           </div>
           <Status tone="good">saved</Status>
         </div>
+        {!isDemo && (
+          <div className="storage-health-grid">
+            <article>
+              <small>Database</small>
+              <strong>{storage ? formatBytes(storage.databaseBytes) : "Measuring…"}</strong>
+              <span>Includes Supabase’s system tables and indexes, not just studio records.</span>
+            </article>
+            <article>
+              <small>Uploaded files</small>
+              <strong>{storage ? formatBytes(storage.storageBytes) : "Measuring…"}</strong>
+              <span>{storage?.storageObjects ?? 0} stored objects. Active files are never auto-deleted.</span>
+            </article>
+            <article>
+              <small>Safe cleanup</small>
+              <strong>{storage ? `${cleanupCount} eligible records` : "Measuring…"}</strong>
+              <span>Only expired or reconstructable operational records qualify.</span>
+            </article>
+          </div>
+        )}
+        {storageError && <p className="inline-error">{storageError}</p>}
+        {!isDemo && (
+          <div className="storage-retention-note">
+            <ShieldCheck />
+            <div>
+              <strong>Studio history is protected</strong>
+              <small>
+                Students, lessons, notes, practice, payments, credits, actor profiles,
+                audit history, and current materials are retained. Automated cleanup
+                targets expired booking holds and rate limits, old processed webhook
+                receipts, successful delivery attempts, resolved alerts, and bulky old
+                provider-import payloads.
+              </small>
+            </div>
+          </div>
+        )}
         <div className="form-actions">
           <button
             onClick={() => {
@@ -1091,6 +1167,12 @@ function DataPanel({
           {isDemo && (
             <button className="danger-button" onClick={reset}>
               Reset local data
+            </button>
+          )}
+          {!isDemo && (
+            <button disabled={cleaning || !cleanupCount} onClick={() => void cleanup()}>
+              <RefreshCw />
+              {cleaning ? "Cleaning safely…" : cleanupCount ? `Clean ${cleanupCount} transient records` : "Nothing safe to clean"}
             </button>
           )}
         </div>

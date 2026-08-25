@@ -284,6 +284,42 @@
   background: var(--wash);
   font-size: 11px;
 }
+
+.lesson-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+}
+
+.lesson-facts > div {
+  min-height: 76px;
+  padding: 13px;
+  background: white;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.lesson-facts small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.lesson-facts strong {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  .lesson-facts { grid-template-columns: 1fr; }
+}
 .lesson-command-section {
   padding: 12px;
   border: 1px solid var(--line);

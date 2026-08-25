@@ -3,11 +3,17 @@ import { serviceClient } from "./_shared/supabase";
 
 export default async () => {
   const db = serviceClient();
-  const [{ data: expired, error }, { data: extended, error: extendError }] = await Promise.all([
+  const [
+    { data: expired, error },
+    { data: extended, error: extendError },
+    { data: cleaned, error: cleanupError },
+  ] = await Promise.all([
     db.rpc("expire_booking_holds"),
     db.rpc("extend_ongoing_series"),
+    db.rpc("cleanup_transient_studio_data"),
   ]);
-  if (error || extendError) throw error || extendError;
+  if (error || extendError || cleanupError)
+    throw error || extendError || cleanupError;
   const grace = new Date(Date.now() - 7 * 86400000).toISOString(), now = new Date().toISOString();
   const { data: delinquent } = await db.from("bookings").select("id,series_id,offering_id").eq("payment_status", "past_due").lte("updated_at", grace);
   if (delinquent?.length) {
@@ -34,7 +40,7 @@ export default async () => {
     await db.from("recommendations").upsert({ studio_id: lesson.studio_id, student_id: lesson.student_id, entity_type: "lesson", entity_id: lesson.id, reason_code: "lesson_note_due_48h", title: `Write follow-up for ${lesson.topic}`, explanation: "Lesson notes are due within 48 hours of the lesson ending.", evidence: [`Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" })}`, `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone: "America/New_York" })}`], urgency: new Date(dueAt) <= new Date() ? 5 : 4, due_at: dueAt, suggested_action: "write_note", requires_confirmation: false, status: "open", dedupe_key: `lesson:${lesson.id}:note-48h`, updated_at: now }, { onConflict: "dedupe_key" });
     noteReminders++;
   }
-  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, delinquentCancelled: delinquent?.length || 0, noteReminders });
+  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, delinquentCancelled: delinquent?.length || 0, noteReminders });
 };
 
 export const config: Config = { schedule: "*/5 * * * *" };

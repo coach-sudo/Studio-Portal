@@ -2222,6 +2222,26 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
+    if (domain === "settings" && input.command === "cleanup_storage") {
+      const studioId = await requireCoach();
+      const { data, error } = await serviceClient().rpc(
+        "cleanup_transient_studio_data",
+      );
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "studio",
+          studioId,
+          "studio.transient_storage_cleaned",
+          null,
+          data,
+        ),
+        queuedSideEffects: [],
+      });
+    }
     if (domain === "settings" && input.command === "update") {
       const studioId = await requireCoach(),
         { data: before, error: readError } = await db
@@ -2361,14 +2381,32 @@ export default async (request: Request, context: Context) => {
       input.command === "reschedule" &&
       input.entityId
     ) {
-      const startsAt = String(input.payload.startsAt || ""),
+      const studioId = await requireCoach(),
+        startsAt = String(input.payload.startsAt || ""),
         endsAt = String(input.payload.endsAt || "");
-      if (!startsAt || !endsAt || new Date(endsAt) <= new Date(startsAt))
+      if (
+        !startsAt ||
+        !endsAt ||
+        !Number.isFinite(new Date(startsAt).getTime()) ||
+        !Number.isFinite(new Date(endsAt).getTime()) ||
+        new Date(endsAt) <= new Date(startsAt) ||
+        new Date(startsAt) <= new Date()
+      )
         throw new Error("VALIDATION_FAILED: A valid lesson time is required.");
+      const service = serviceClient();
+      const { data: before, error: readError } = await service
+        .from("lessons")
+        .select("*")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .maybeSingle();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      if (before.status !== "scheduled")
+        throw new Error("VALIDATION_FAILED: Only scheduled lessons can be rescheduled.");
       const token = await googleAccessToken();
       if ((await googleFreeBusy(token, startsAt, endsAt)).length)
         throw new Error("SLOT_UNAVAILABLE");
-      const { data, error } = await db
+      const { data, error } = await service
         .from("lessons")
         .update({
           starts_at: startsAt,
@@ -2377,23 +2415,26 @@ export default async (request: Request, context: Context) => {
           updated_at: new Date().toISOString(),
         })
         .eq("id", input.entityId)
+        .eq("studio_id", studioId)
         .eq("version", input.expectedVersion)
         .select()
         .maybeSingle();
+      if (error?.code === "23P01") throw new Error("SLOT_UNAVAILABLE");
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      const service = serviceClient();
       const [{ error: projectionError }, auditEventId] = await Promise.all([
         service
           .from("calendar_projections")
-          .update({ status: "queued", last_error: null })
-          .eq("lesson_id", input.entityId),
+          .upsert(
+            { lesson_id: input.entityId, status: "queued", last_error: null },
+            { onConflict: "lesson_id" },
+          ),
         audit(
-          data.studio_id,
+          studioId,
           "lesson",
           data.id,
           "lesson.rescheduled",
-          { version: input.expectedVersion },
+          before,
           { starts_at: startsAt, ends_at: endsAt, version: data.version },
         ),
       ]);
