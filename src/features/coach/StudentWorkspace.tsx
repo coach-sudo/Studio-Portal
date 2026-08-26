@@ -72,6 +72,7 @@ export function StudentWorkspace() {
     | "note"
     | null
   >(null);
+  const [editingNote, setEditingNote] = useState<Note>();
   const [notice, setNotice] = useState("");
   const [savingStudent, setSavingStudent] = useState(false);
   const [invitingStudent, setInvitingStudent] = useState(false);
@@ -310,11 +311,18 @@ export function StudentWorkspace() {
   };
   const addNote = async (note: Note) => {
     try {
-      if (isDemo) store.transact((draft) => draft.notes.push(note));
+      const existing = data.notes.find((item) => item.id === note.id);
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.notes.find((item) => item.id === note.id);
+          if (current) Object.assign(current, note, { version: current.version + 1 });
+          else draft.notes.push(note);
+        });
       else {
         await studioCommand("notes", {
-          command: "create",
-          expectedVersion: 0,
+          command: existing ? "update" : "create",
+          entityId: existing?.id,
+          expectedVersion: existing?.version ?? 0,
           payload: {
             studentId: student.id,
             lessonId: note.lessonId,
@@ -329,6 +337,7 @@ export function StudentWorkspace() {
         void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(null);
+      setEditingNote(undefined);
       setNotice(
         note.status === "published"
           ? "Note published to the student."
@@ -582,6 +591,10 @@ export function StudentWorkspace() {
               data={data}
               student={student}
               onAdd={() => setDialog("note")}
+              onEdit={(note) => {
+                setEditingNote(note);
+                setDialog("note");
+              }}
               onDelete={deleteNote}
             />
           }
@@ -691,7 +704,11 @@ export function StudentWorkspace() {
         <NoteForm
           student={student}
           lessons={studentLessons}
-          onClose={() => setDialog(null)}
+          note={editingNote}
+          onClose={() => {
+            setDialog(null);
+            setEditingNote(undefined);
+          }}
           onSave={addNote}
         />
       )}
@@ -1443,16 +1460,18 @@ function Notes({
   data,
   student,
   onAdd,
+  onEdit,
   onDelete,
 }: {
   data: Data;
   student: Student;
   onAdd: () => void;
+  onEdit: (note: Note) => void;
   onDelete: (note: Note) => void;
 }) {
   const [query, setQuery] = useState(""),
     [status, setStatus] = useState("all"),
-    [selected, setSelected] = useState<Note>();
+    [selectedLessonId, setSelectedLessonId] = useState("");
   const notes = data.notes
     .filter((i) => i.studentId === student.id)
     .filter(
@@ -1464,7 +1483,29 @@ function Notes({
           .includes(query.toLowerCase()),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const notePage = usePagedList(notes);
+  const groups = Object.values(
+    notes.reduce<Record<string, { lessonId: string; notes: Note[]; updatedAt: string }>>(
+      (result, note) => {
+        const key = note.lessonId || `general-${note.id}`;
+        const group = result[key] || {
+          lessonId: note.lessonId,
+          notes: [],
+          updatedAt: note.updatedAt,
+        };
+        group.notes.push(note);
+        if (note.updatedAt > group.updatedAt) group.updatedAt = note.updatedAt;
+        result[key] = group;
+        return result;
+      },
+      {},
+    ),
+  ).sort((a, b) => {
+    const aDate = data.lessons.find((item) => item.id === a.lessonId)?.startsAt || a.updatedAt;
+    const bDate = data.lessons.find((item) => item.id === b.lessonId)?.startsAt || b.updatedAt;
+    return bDate.localeCompare(aDate);
+  });
+  const notePage = usePagedList(groups);
+  const selected = groups.find((group) => group.lessonId === selectedLessonId);
   return (
     <Section
       title="Coach notes"
@@ -1503,29 +1544,29 @@ function Notes({
         total={notePage.total}
         onPage={notePage.setPage}
         onPageSize={notePage.setPageSize}
-        label="notes"
+        label="lessons with notes"
       />
       <div className="lesson-note-index">
-        {notePage.visible.map((note) => (
-          <button type="button" key={note.id} onClick={() => setSelected(note)}>
+        {notePage.visible.map((group) => (
+          <button type="button" key={group.lessonId} onClick={() => setSelectedLessonId(group.lessonId)}>
             <CalendarDays />
             <span>
               <strong>
-                {note.lessonId
+                {group.lessonId
                   ? new Date(
-                      data.lessons.find((item) => item.id === note.lessonId)
-                        ?.startsAt || note.updatedAt,
+                      data.lessons.find((item) => item.id === group.lessonId)
+                        ?.startsAt || group.updatedAt,
                     ).toLocaleDateString()
                   : "General note"}
               </strong>
               <small>
-                {data.lessons.find((item) => item.id === note.lessonId)
-                  ?.topic || note.title}{" "}
-                · {note.title}
+                {data.lessons.find((item) => item.id === group.lessonId)
+                  ?.topic || "General coaching"}{" "}
+                · {group.notes.length} {group.notes.length === 1 ? "note" : "notes"}
               </small>
             </span>
-            <Status tone={note.status === "published" ? "good" : "neutral"}>
-              {note.status}
+            <Status tone={group.notes.every((note) => note.status === "published") ? "good" : "neutral"}>
+              {group.notes.some((note) => note.status === "draft") ? "has draft" : "published"}
             </Status>
           </button>
         ))}
@@ -1538,40 +1579,34 @@ function Notes({
       </div>
       {selected && (
         <Dialog
-          title={selected.title}
+          title={data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Coaching notes"}
           description={
-            selected.lessonId
-              ? `${new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()} · ${data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Lesson"}`
+              selected.lessonId
+              ? new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()
               : "General coaching note"
           }
-          onClose={() => setSelected(undefined)}
+          onClose={() => setSelectedLessonId("")}
         >
-          {selected.bodyHtml ? (
-            <div
-              className="rich-note-body"
-              dangerouslySetInnerHTML={{
-                __html: DOMPurify.sanitize(selected.bodyHtml),
-              }}
-            />
-          ) : (
-            <p>{selected.body}</p>
-          )}
-          <div className="form-actions">
-            <button
-              type="button"
-              className="danger-button"
-              onClick={() => {
-                onDelete(selected);
-                setSelected(undefined);
-              }}
-            >
-              <Trash2 />
-              Delete note
-            </button>
-            <button type="button" onClick={() => setSelected(undefined)}>
-              Close
-            </button>
+          <div className="lesson-note-stack">
+            {selected.notes.map((note) => (
+              <article key={note.id}>
+                <header>
+                  <strong>{note.title}</strong>
+                  <Status tone={note.status === "published" ? "good" : "neutral"}>{note.status}</Status>
+                </header>
+                {note.bodyHtml ? (
+                  <div className="rich-note-body" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(note.bodyHtml) }} />
+                ) : (
+                  <p>{note.body}</p>
+                )}
+                <div className="row-actions">
+                  <button type="button" onClick={() => { setSelectedLessonId(""); onEdit(note); }}>Edit</button>
+                  <button type="button" className="danger-button" onClick={() => { onDelete(note); setSelectedLessonId(""); }}><Trash2 />Delete</button>
+                </div>
+              </article>
+            ))}
           </div>
+          <div className="form-actions"><button type="button" onClick={() => setSelectedLessonId("")}>Close</button></div>
         </Dialog>
       )}
     </Section>
@@ -2520,11 +2555,13 @@ function LessonForm({
 function AssignmentForm({
   student,
   lessons,
+  note,
   onClose,
   onSave,
 }: {
   student: Student;
   lessons: Lesson[];
+  note?: Note;
   onClose: () => void;
   onSave: (a: Assignment) => void;
 }) {
@@ -2689,7 +2726,7 @@ function MaterialForm({
           }
         }}
       >
-        {fixedRole !== "actor_material" && (
+        {role === "lesson_material" && (
           <label className="full">
             Related lesson
             <select
@@ -2766,7 +2803,7 @@ function MaterialForm({
             className="primary"
             disabled={
               uploading ||
-              (!lessonId && fixedRole !== "actor_material") ||
+              (role === "lesson_material" && !lessonId) ||
               (fixedRole === "actor_material" && !url && !file)
             }
           >
@@ -2780,18 +2817,20 @@ function MaterialForm({
 function NoteForm({
   student,
   lessons,
+  note,
   onClose,
   onSave,
 }: {
   student: Student;
   lessons: Lesson[];
+  note?: Note;
   onClose: () => void;
   onSave: (n: Note) => void;
 }) {
-  const [title, setTitle] = useState("Lesson note"),
-    [body, setBody] = useState(""),
-    [published, setPublished] = useState(false),
-    [lessonId, setLessonId] = useState(lessons[0]?.id ?? "");
+  const [title, setTitle] = useState(note?.title || "Lesson note"),
+    [body, setBody] = useState(note?.bodyHtml || note?.body || ""),
+    [published, setPublished] = useState(note?.status === "published"),
+    [lessonId, setLessonId] = useState(note?.lessonId || lessons[0]?.id || "");
   const editorRef = useRef<HTMLDivElement>(null);
   const format = (command: string, value?: string) => {
     editorRef.current?.focus();
@@ -2799,13 +2838,13 @@ function NoteForm({
     setBody(editorRef.current?.innerHTML || "");
   };
   return (
-    <Dialog title="New note" description={student.fullName} onClose={onClose}>
+    <Dialog title={note ? "Edit note" : "New note"} description={student.fullName} onClose={onClose}>
       <form
         className="workflow-form"
         onSubmit={(e) => {
           e.preventDefault();
           onSave({
-            id: uid("note"),
+            id: note?.id || uid("note"),
             studentId: student.id,
             lessonId,
             title,
@@ -2833,7 +2872,7 @@ function NoteForm({
               ALLOWED_ATTR: ["href", "target", "rel", "style"],
             }),
             status: published ? "published" : "draft",
-            version: 1,
+            version: note?.version || 1,
             updatedAt: now(),
           });
         }}
@@ -2926,6 +2965,7 @@ function NoteForm({
             aria-label="Note"
             aria-multiline="true"
             data-placeholder="Write coaching notes…"
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(body) }}
             onInput={(event) => setBody(event.currentTarget.innerHTML)}
           />
         </div>
@@ -2945,7 +2985,7 @@ function NoteForm({
             Cancel
           </button>
           <button className="primary" disabled={!body.trim() || !lessonId}>
-            Save note
+            {note ? "Save changes" : "Save note"}
           </button>
         </div>
       </form>

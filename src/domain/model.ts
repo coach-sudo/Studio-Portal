@@ -140,6 +140,11 @@ export interface Lesson extends Versioned {
   sourceExternalId?: string;
   sourceConfidence?: number;
   importedAt?: string;
+  preparation?: {
+    planned: boolean;
+    setupReady: boolean;
+    materialsReady: boolean;
+  };
 }
 export interface IntegrationImport {
   id: UUID;
@@ -414,6 +419,7 @@ export interface PackageAccount extends Versioned {
   expiresAt?: string;
   priceMinor: number;
   currency: string;
+  autoApply?: boolean;
 }
 export interface PackageDefinition extends Versioned {
   studioId: UUID;
@@ -503,6 +509,8 @@ export interface ActorProfile extends Versioned {
 }
 export interface OutboxMessage extends Versioned {
   studentId?: UUID;
+  lessonId?: UUID;
+  correlationId?: string;
   channel: "email" | "sms";
   recipient: string;
   subject: string;

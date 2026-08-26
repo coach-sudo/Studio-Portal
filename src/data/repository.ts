@@ -153,6 +153,8 @@ export async function loadStudioSnapshot(
   >;
   const settings = mergeStudioSettings(structuredClone(demoSnapshot.settings), {
     ...raw,
+    studioName:
+      raw.studioName ?? studio.data?.name ?? demoSnapshot.settings.studioName,
     timezone:
       studio.data?.timezone ?? raw.timezone ?? demoSnapshot.settings.timezone,
   });
@@ -227,6 +229,11 @@ export async function loadStudioSnapshot(
       sourceConfidence:
         r.source_confidence == null ? undefined : Number(r.source_confidence),
       importedAt: r.imported_at,
+      preparation: r.preparation ?? {
+        planned: false,
+        setupReady: false,
+        materialsReady: false,
+      },
       version: r.version,
       updatedAt: r.updated_at,
     })),
@@ -290,6 +297,7 @@ export async function loadStudioSnapshot(
       expiresAt: r.expires_at,
       priceMinor: Number(r.price_minor),
       currency: r.currency,
+      autoApply: Boolean(r.auto_apply),
       version: r.version,
       updatedAt: r.updated_at,
     })),
@@ -361,6 +369,8 @@ export async function loadStudioSnapshot(
     outbox: (outbox.data ?? []).map((r: any) => ({
       id: r.id,
       studentId: r.student_id,
+      lessonId: r.lesson_id,
+      correlationId: r.correlation_id,
       channel: r.channel,
       recipient: r.recipient,
       subject: r.subject,

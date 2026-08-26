@@ -58,12 +58,17 @@ import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
 import { LessonWhiteboard } from "../../components/LessonWhiteboard";
+import {
+  isJoinableLesson,
+  lessonDateLabel,
+  sortAssignments,
+  splitLessons,
+} from "../../domain/lessonExperience";
 
 const studentTabs = [
   ["", "Home", Home],
   ["work", "Current Work", BookOpen],
-  ["bookings", "Bookings", CalendarDays],
-  ["notes", "Notes", FileText],
+  ["bookings", "Schedule", CalendarDays],
   ["payments", "Payments", CircleDollarSign],
   ["actor-page", "Actor Page", UserRound],
   ["settings", "Settings", Settings],
@@ -163,7 +168,7 @@ export function StudentPortal({
           />
           <Route
             path="lessons"
-            element={<StudentBookings data={data} isDemo={isDemo} />}
+            element={<Navigate to={`${base}/bookings`} replace />}
           />
           <Route
             path="lessons/:lessonId"
@@ -172,11 +177,11 @@ export function StudentPortal({
           <Route path="notes" element={<StudentNotes data={data} />} />
           <Route
             path="practice"
-            element={<Practice data={data} isDemo={isDemo} />}
+            element={<Navigate to={`${base}/work`} replace />}
           />
           <Route
             path="materials"
-            element={<Materials data={data} isDemo={isDemo} />}
+            element={<Navigate to={`${base}/work`} replace />}
           />
           <Route
             path="payments"
@@ -292,17 +297,38 @@ function PortalRow({
 }
 function StudentHome({ data, base }: { data: Snapshot; base: string }) {
   const navigate = useNavigate();
-  const lesson = data.lessons.find((item) => item.status === "scheduled");
-  const work = data.materials.find((item) => item.role === "current_script");
-  const practice = data.assignments.find((item) => item.status !== "completed");
+  const lesson = splitLessons(data.lessons).active[0];
+  const joinable = splitLessons(data.lessons).active.find((item) =>
+    isJoinableLesson(item),
+  );
+  const work = data.materials
+    .filter(
+      (item) => item.role === "current_script" && item.status === "active",
+    )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  const practice = sortAssignments(data.assignments).active[0];
   const material = data.materials.find(
-    (item) => item.role !== "current_script",
+    (item) =>
+      item.role !== "current_script" &&
+      item.role !== "actor_material" &&
+      item.status === "active",
   );
   const pkg = data.packages[0];
   return (
     <div className="student-page">
       <Header data={data} />
       <div className="student-quick-actions">
+        {joinable?.joinUrl && (
+          <a
+            className="join-button"
+            href={joinable.joinUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            <Video />
+            Join lesson
+          </a>
+        )}
         {data.settings.showBookingButton && (
           <a href={data.settings.bookingUrl}>
             <CalendarDays />
@@ -357,8 +383,8 @@ function StudentHome({ data, base }: { data: Snapshot; base: string }) {
           <PortalRow
             icon={CalendarDays}
             title={lesson.topic}
-            detail={`${new Date(lesson.startsAt).toLocaleString()} · ${lesson.locationLabel}`}
-            action="View lesson"
+            detail={`${lessonDateLabel(lesson)} · ${lesson.locationLabel}`}
+            action={isJoinableLesson(lesson) ? "Open lesson" : "View lesson"}
             onClick={() => navigate(`${base}/lessons/${lesson.id}`)}
           />
         ) : (
@@ -471,9 +497,6 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const work = data.materials.filter(
       (item) => item.role === "current_script" && item.status === "active",
     ),
-    lessonMaterials = data.materials.filter(
-      (item) => item.role === "lesson_material" || item.role === "library",
-    ),
     archived = data.materials
       .filter(
         (item) => item.role === "current_script" && item.status === "archived",
@@ -511,30 +534,7 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         </div>
       </Section>
       <Practice data={data} isDemo={isDemo} compact />
-      <Section title="Lesson materials">
-        <div className="table-list">
-          {lessonMaterials.map((item) => (
-            <article key={item.id}>
-              <FolderOpen />
-              <div>
-                <strong>{item.title}</strong>
-                <small>{item.category}</small>
-              </div>
-              {item.externalUrl && (
-                <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                  Open
-                </a>
-              )}
-            </article>
-          ))}
-          {!lessonMaterials.length && (
-            <EmptyState
-              title="No lesson materials"
-              detail="Files and links shared for your coaching work appear here."
-            />
-          )}
-        </div>
-      </Section>
+      <Materials data={data} isDemo={isDemo} embedded />
       <Section title="Script archive">
         <ListControls
           page={1}
@@ -590,7 +590,9 @@ function StudentBookings({
   const [mode, setMode] = useState<"manage" | "reschedule">("manage");
   const [nextStart, setNextStart] = useState<string>();
   const [scope, setScope] = useState<"occurrence" | "series">("occurrence");
-  const bookings = data.bookings.filter((item) => item.status !== "expired");
+  const { active: upcomingLessons, history: lessonHistory } = splitLessons(
+    data.lessons,
+  );
   const service = selected
     ? data.bookingServices.find((item) => item.id === selected.serviceId)
     : undefined;
@@ -757,9 +759,10 @@ function StudentBookings({
     <div className="student-page">
       <header className="student-header">
         <div>
-          <h1>Bookings</h1>
+          <h1>Schedule</h1>
           <p>
-            Upcoming coaching, recurring plans, classes, and lesson history.
+            Every lesson in one place, including studio bookings and imported
+            provider appointments.
           </p>
         </div>
         <a className="button-link primary" href="/book">
@@ -775,64 +778,70 @@ function StudentBookings({
       )}
       <Section title="Upcoming" marked>
         <div className="student-bookings">
-          {bookings.map((booking) => {
-            const itemService = data.bookingServices.find(
-              (item) => item.id === booking.serviceId,
+          {upcomingLessons.map((lesson) => {
+            const participant = data.lessonParticipants.find(
+              (part) => part.lessonId === lesson.id && part.bookingId,
             );
-            const lesson = data.lessons.find((row) =>
-              data.lessonParticipants.some(
-                (part) =>
-                  part.bookingId === booking.id && part.lessonId === row.id,
-              ),
+            const booking = data.bookings.find(
+              (item) => item.id === participant?.bookingId,
+            );
+            const itemService = data.bookingServices.find(
+              (item) => item.id === (booking?.serviceId || lesson.serviceId),
             );
             return (
-              <article key={booking.id}>
+              <article key={lesson.id}>
                 <div className="booking-date">
                   <span>
-                    {new Date(booking.startsAt).toLocaleDateString([], {
+                    {new Date(lesson.startsAt).toLocaleDateString([], {
                       month: "short",
                     })}
                   </span>
-                  <strong>{new Date(booking.startsAt).getDate()}</strong>
+                  <strong>{new Date(lesson.startsAt).getDate()}</strong>
                 </div>
                 <div>
-                  <strong>{itemService?.name}</strong>
+                  <strong>{itemService?.name || lesson.topic}</strong>
                   <small>
-                    {new Date(booking.startsAt).toLocaleString([], {
+                    {new Date(lesson.startsAt).toLocaleString([], {
                       weekday: "long",
                       hour: "numeric",
                       minute: "2-digit",
                     })}{" "}
                     ·{" "}
-                    {booking.location === "google_meet"
+                    {lesson.meetingProvider === "google_meet" ||
+                    lesson.locationType === "virtual"
                       ? "Google Meet"
                       : "In person"}
                   </small>
                   <span>
-                    {booking.seriesId && (
+                    {lesson.seriesId && (
                       <>
                         <Repeat2 />
                         Recurring
                       </>
                     )}
-                    <Status
-                      tone={booking.paymentStatus === "paid" ? "good" : "warn"}
-                    >
-                      {booking.paymentStatus.replaceAll("_", " ")}
-                    </Status>
+                    {booking ? (
+                      <Status
+                        tone={booking.paymentStatus === "paid" ? "good" : "warn"}
+                      >
+                        {booking.paymentStatus.replaceAll("_", " ")}
+                      </Status>
+                    ) : (
+                      <Status tone="neutral">
+                        {(lesson.sourceProvider || "studio").replaceAll("_", " ")}
+                      </Status>
+                    )}
                   </span>
                 </div>
                 <div className="student-booking-actions">
-                  {lesson && (
-                    <Link
-                      className="button-link"
-                      to={`/portal/lessons/${lesson.id}`}
-                    >
-                      Details
-                    </Link>
-                  )}
-                  {booking.location === "google_meet" &&
-                    (lesson?.joinUrl ? (
+                  <Link
+                    className="button-link"
+                    to={`/portal/lessons/${lesson.id}`}
+                  >
+                    Details
+                  </Link>
+                  {(lesson.meetingProvider === "google_meet" ||
+                    lesson.locationType === "virtual") &&
+                    (isJoinableLesson(lesson) && lesson.joinUrl ? (
                       <a
                         className="join-button"
                         href={lesson.joinUrl}
@@ -842,6 +851,8 @@ function StudentBookings({
                         <Video />
                         Join
                       </a>
+                    ) : lesson.joinUrl ? (
+                      <span className="open-label">Meet link ready</span>
                     ) : (
                       <button
                         disabled
@@ -851,7 +862,7 @@ function StudentBookings({
                         Meet pending
                       </button>
                     ))}
-                  {booking.status === "confirmed" && (
+                  {booking?.status === "confirmed" && (
                     <button
                       disabled={isLateChange(
                         booking.startsAt,
@@ -873,19 +884,21 @@ function StudentBookings({
                       Reschedule
                     </button>
                   )}
-                  <button
-                    onClick={() => {
-                      setSelected(booking);
-                      setMode("manage");
-                    }}
-                  >
-                    Manage
-                  </button>
+                  {booking && (
+                    <button
+                      onClick={() => {
+                        setSelected(booking);
+                        setMode("manage");
+                      }}
+                    >
+                      Manage
+                    </button>
+                  )}
                 </div>
               </article>
             );
           })}
-          {!bookings.length && (
+          {!upcomingLessons.length && (
             <EmptyState
               title="No bookings yet"
               detail="Book a service when you are ready for the next step."
@@ -927,10 +940,7 @@ function StudentBookings({
       </Section>
       <Section title="Lesson history">
         <div className="table-list">
-          {data.lessons
-            .filter((lesson) => lesson.status !== "scheduled")
-            .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
-            .map((lesson) => (
+          {lessonHistory.map((lesson) => (
               <article
                 key={lesson.id}
                 className="clickable-row"
@@ -952,7 +962,7 @@ function StudentBookings({
                 <span className="open-label">Open</span>
               </article>
             ))}
-          {!data.lessons.some((lesson) => lesson.status !== "scheduled") && (
+          {!lessonHistory.length && (
             <EmptyState
               title="No lesson history yet"
               detail="Completed lessons will remain here with their published notes and materials."
@@ -1058,7 +1068,7 @@ function StudentBookings({
 
 function StudentNotes({ data }: { data: Snapshot }) {
   const [query, setQuery] = useState(""),
-    [selected, setSelected] = useState<Snapshot["notes"][number]>();
+    [selectedLessonId, setSelectedLessonId] = useState<string>();
   const filtered = data.notes
     .filter((note) =>
       [note.title, note.body, note.category, ...(note.tags ?? [])]
@@ -1067,7 +1077,37 @@ function StudentNotes({ data }: { data: Snapshot }) {
         .includes(query.toLowerCase()),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const page = usePagedList(filtered);
+  const groups = Object.values(
+    filtered.reduce<
+      Record<
+        string,
+        { lessonId: string; notes: Snapshot["notes"]; updatedAt: string }
+      >
+    >((result, note) => {
+      const key = note.lessonId || `general-${note.id}`;
+      const group = result[key] || {
+        lessonId: note.lessonId,
+        notes: [],
+        updatedAt: note.updatedAt,
+      };
+      group.notes.push(note);
+      if (note.updatedAt > group.updatedAt) group.updatedAt = note.updatedAt;
+      result[key] = group;
+      return result;
+    }, {}),
+  ).sort((a, b) => {
+    const aDate =
+      data.lessons.find((item) => item.id === a.lessonId)?.startsAt ||
+      a.updatedAt;
+    const bDate =
+      data.lessons.find((item) => item.id === b.lessonId)?.startsAt ||
+      b.updatedAt;
+    return bDate.localeCompare(aDate);
+  });
+  const page = usePagedList(groups);
+  const selected = groups.find(
+    (group) => group.lessonId === selectedLessonId,
+  );
   return (
     <div className="student-page">
       <header className="student-header">
@@ -1093,18 +1133,18 @@ function StudentNotes({ data }: { data: Snapshot }) {
           total={page.total}
           onPage={page.setPage}
           onPageSize={page.setPageSize}
-          label="notes"
+          label="lessons with notes"
         />
         <div className="lesson-note-index">
-          {page.visible.map((note) => {
+          {page.visible.map((group) => {
             const lesson = data.lessons.find(
-              (item) => item.id === note.lessonId,
+              (item) => item.id === group.lessonId,
             );
             return (
               <button
                 type="button"
-                key={note.id}
-                onClick={() => setSelected(note)}
+                key={group.lessonId}
+                onClick={() => setSelectedLessonId(group.lessonId)}
               >
                 <CalendarDays />
                 <span>
@@ -1114,7 +1154,8 @@ function StudentNotes({ data }: { data: Snapshot }) {
                       : "General note"}
                   </strong>
                   <small>
-                    {lesson?.topic || note.title} · {note.title}
+                    {lesson?.topic || "General coaching"} · {group.notes.length}{" "}
+                    {group.notes.length === 1 ? "note" : "notes"}
                   </small>
                 </span>
                 <Status tone="good">published</Status>
@@ -1130,24 +1171,38 @@ function StudentNotes({ data }: { data: Snapshot }) {
         </div>
         {selected && (
           <Dialog
-            title={selected.title}
+            title={
+              data.lessons.find((item) => item.id === selected.lessonId)
+                ?.topic || "Coaching notes"
+            }
             description={
               selected.lessonId
-                ? `${new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()} · ${data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Lesson"}`
+                ? new Date(
+                    data.lessons.find(
+                      (item) => item.id === selected.lessonId,
+                    )?.startsAt || selected.updatedAt,
+                  ).toLocaleString()
                 : "General coaching note"
             }
-            onClose={() => setSelected(undefined)}
+            onClose={() => setSelectedLessonId(undefined)}
           >
-            {selected.bodyHtml ? (
-              <div
-                className="published-note-body"
-                dangerouslySetInnerHTML={{
-                  __html: DOMPurify.sanitize(selected.bodyHtml),
-                }}
-              />
-            ) : (
-              <p>{selected.body}</p>
-            )}
+            <div className="lesson-note-stack">
+              {selected.notes.map((note) => (
+                <article key={note.id}>
+                  <strong>{note.title}</strong>
+                  {note.bodyHtml ? (
+                    <div
+                      className="published-note-body"
+                      dangerouslySetInnerHTML={{
+                        __html: DOMPurify.sanitize(note.bodyHtml),
+                      }}
+                    />
+                  ) : (
+                    <p>{note.body}</p>
+                  )}
+                </article>
+              ))}
+            </div>
             <div className="form-actions">
               {selected.lessonId && (
                 <Link
@@ -1157,7 +1212,10 @@ function StudentNotes({ data }: { data: Snapshot }) {
                   Open lesson workspace
                 </Link>
               )}
-              <button type="button" onClick={() => setSelected(undefined)}>
+              <button
+                type="button"
+                onClick={() => setSelectedLessonId(undefined)}
+              >
                 Close
               </button>
             </div>
@@ -1175,7 +1233,32 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const queryClient = useQueryClient();
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [assignmentBusy, setAssignmentBusy] = useState("");
   const [notice, setNotice] = useState("");
+  const [delivery, setDelivery] = useState<{
+    calendar?: { status: string; lastError?: string };
+    email?: { status: string; event_key: string }[];
+    correlationId?: string;
+  }>();
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      const { supabase } = await import("../../lib/supabase");
+      const token = (await supabase?.auth.getSession())?.data.session?.access_token;
+      if (!token) return;
+      const response = await fetch(
+        `/api/v2/portal/lessons/${encodeURIComponent(lessonId)}/delivery`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      );
+      if (response.ok && active) setDelivery(await response.json());
+    };
+    void load();
+    const timer = window.setInterval(() => void load(), 5000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [lessonId]);
   if (!lesson) return <Navigate to="/portal/bookings" replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
   const assignments = data.assignments.filter(
@@ -1231,6 +1314,47 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       setBusy(false);
     }
   };
+  const updateAssignment = async (
+    assignment: Snapshot["assignments"][number],
+    command: "complete" | "help",
+  ) => {
+    if (assignmentBusy) return;
+    setAssignmentBusy(assignment.id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.assignments.find(
+            (item) => item.id === assignment.id,
+          );
+          if (!current) return;
+          if (command === "complete") current.status = "completed";
+          else current.helpRequested = true;
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("work", {
+          command,
+          entityId: assignment.id,
+          expectedVersion: assignment.version,
+          reason:
+            command === "complete"
+              ? "Student completed lesson practice"
+              : "Student requested help from lesson workspace",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice(
+        command === "complete"
+          ? "Assignment completed and moved to your archive."
+          : "Your coach will see this help request in Today.",
+      );
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Assignment could not be updated.");
+    } finally {
+      setAssignmentBusy("");
+    }
+  };
   return (
     <div className="student-page lesson-hub">
       <header className="student-header lesson-hub-header">
@@ -1244,7 +1368,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             {lesson.locationLabel}
           </p>
         </div>
-        {lesson.joinUrl && (
+        {lesson.joinUrl && isJoinableLesson(lesson) && (
           <a
             className="button-link primary"
             href={lesson.joinUrl}
@@ -1261,6 +1385,23 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           {notice}
         </p>
       )}
+      {delivery &&
+        (delivery.calendar?.status !== "not_required" ||
+          Boolean(delivery.email?.length)) && (
+          <div className="lesson-delivery-receipt" role="status">
+            <ShieldCheck />
+            <div>
+              <strong>Schedule confirmation</strong>
+              <small>
+                Calendar: {delivery.calendar?.status?.replaceAll("_", " ") || "not required"}
+                {delivery.email?.length
+                  ? ` · Email: ${delivery.email[0].status.replaceAll("_", " ")}`
+                  : ""}
+                {delivery.correlationId ? ` · ${delivery.correlationId}` : ""}
+              </small>
+            </div>
+          </div>
+        )}
       {offering && (
         <Section title="Class or course information" marked>
           <p>
@@ -1357,6 +1498,22 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                 <Status tone={item.status === "completed" ? "good" : "neutral"}>
                   {item.status.replaceAll("_", " ")}
                 </Status>
+                {item.status !== "completed" && (
+                  <button
+                    disabled={assignmentBusy === item.id}
+                    onClick={() => void updateAssignment(item, "complete")}
+                  >
+                    Complete
+                  </button>
+                )}
+                {item.status !== "completed" && (
+                  <button
+                    disabled={item.helpRequested || assignmentBusy === item.id}
+                    onClick={() => void updateAssignment(item, "help")}
+                  >
+                    {item.helpRequested ? "Help requested" : "Ask coach"}
+                  </button>
+                )}
               </article>
             ))}
             {!assignments.length && (
@@ -1451,7 +1608,9 @@ function Practice({
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState("");
-  const assignmentPage = usePagedList(data.assignments);
+  const [showCompleted, setShowCompleted] = useState(false);
+  const assignments = sortAssignments(data.assignments);
+  const assignmentPage = usePagedList(assignments.active);
   const change = async (id: string, command: "complete" | "help") => {
     if (busyId) return;
     const assignment = data.assignments.find((item) => item.id === id);
@@ -1500,7 +1659,7 @@ function Practice({
         </header>
       )}
       {notice && <p className="portal-notice">{notice}</p>}
-      <Section title="Assignments" marked>
+      <Section title="Next practice" marked>
         <ListControls
           page={assignmentPage.page}
           pageCount={assignmentPage.pageCount}
@@ -1508,7 +1667,7 @@ function Practice({
           total={assignmentPage.total}
           onPage={assignmentPage.setPage}
           onPageSize={assignmentPage.setPageSize}
-          label="assignments"
+          label="active assignments"
         />
         <div className="table-list">
           {assignmentPage.visible.map((item) => (
@@ -1516,7 +1675,14 @@ function Practice({
               <CheckSquare />
               <div>
                 <strong>{item.title}</strong>
-                <small>{item.details}</small>
+                <p>{item.details}</p>
+                <small>
+                  {item.dueAt
+                    ? `Due ${new Date(item.dueAt).toLocaleString()}`
+                    : "No due date"}
+                  {item.lessonId &&
+                    ` · ${data.lessons.find((lesson) => lesson.id === item.lessonId)?.topic || "Lesson"}`}
+                </small>
               </div>
               <Status tone={item.status === "completed" ? "good" : "neutral"}>
                 {item.status.replaceAll("_", " ")}
@@ -1541,7 +1707,37 @@ function Practice({
               </button>
             </article>
           ))}
+          {!assignmentPage.total && (
+            <EmptyState
+              title="You’re caught up"
+              detail="Completed work moves to the archive so the next useful assignment stays clear."
+            />
+          )}
         </div>
+        {assignments.completed.length > 0 && (
+          <div className="completed-work-archive">
+            <button
+              type="button"
+              onClick={() => setShowCompleted((value) => !value)}
+            >
+              {showCompleted ? "Hide" : "Show"} completed work ({assignments.completed.length})
+            </button>
+            {showCompleted && (
+              <div className="table-list">
+                {assignments.completed.map((item) => (
+                  <article key={item.id}>
+                    <CheckSquare />
+                    <div>
+                      <strong>{item.title}</strong>
+                      <small>Completed {new Date(item.updatedAt).toLocaleDateString()}</small>
+                    </div>
+                    <Status tone="good">completed</Status>
+                  </article>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </Section>
     </div>
   );
@@ -1565,20 +1761,37 @@ function Materials({
   const materialPage = usePagedList(
     actorOnly
       ? data.materials.filter((item) => item.role === "actor_material")
-      : data.materials,
+      : embedded
+        ? data.materials.filter(
+            (item) =>
+              item.role === "lesson_material" || item.role === "library",
+          )
+        : data.materials.filter((item) => item.role !== "actor_material"),
   );
   const add = async (
     title: string,
     category: string,
     url: string,
     role: "current_script" | "actor_material" | "lesson_material" | "library",
+    lessonId?: string,
     file?: File,
   ) => {
     const studentId = data.students[0]?.id;
     if (!studentId) return;
     try {
       if (isDemo)
-        store.transact((draft) =>
+        store.transact((draft) => {
+          if (role === "current_script")
+            draft.materials
+              .filter(
+                (item) =>
+                  item.studentId === studentId &&
+                  item.role === "current_script" &&
+                  item.status === "active",
+              )
+              .forEach((item) => {
+                item.status = "archived";
+              });
           draft.materials.push({
             id: `material-${crypto.randomUUID()}`,
             studentId,
@@ -1586,12 +1799,14 @@ function Materials({
             category,
             externalUrl: url,
             role,
+            lessonId: role === "lesson_material" ? lessonId : undefined,
             status: "active",
-            approvalStatus: "pending_review",
+            approvalStatus:
+              role === "actor_material" ? "pending_review" : "not_public",
             version: 1,
             updatedAt: new Date().toISOString(),
-          }),
-        );
+          });
+        });
       else {
         let storage: Awaited<ReturnType<typeof uploadStudioFile>> | undefined;
         if (file)
@@ -1625,7 +1840,10 @@ function Materials({
             role,
             publicEmbed: false,
           },
-          reason: "Student submitted actor material",
+          reason:
+            role === "actor_material"
+              ? "Student submitted actor material"
+              : "Student added current work material",
         });
       }
       void queryClient.invalidateQueries({ queryKey: ["studio"] });
@@ -1795,6 +2013,7 @@ function Materials({
         <MaterialSubmission
           onClose={() => setAdding(false)}
           onSave={add}
+          lessons={data.lessons}
           fixedRole={actorOnly ? "actor_material" : undefined}
         />
       )}
@@ -1805,6 +2024,7 @@ function MaterialSubmission({
   onClose,
   onSave,
   fixedRole,
+  lessons,
 }: {
   onClose: () => void;
   onSave: (
@@ -1812,16 +2032,19 @@ function MaterialSubmission({
     category: string,
     url: string,
     role: "current_script" | "actor_material" | "lesson_material" | "library",
+    lessonId?: string,
     file?: File,
   ) => void;
   fixedRole?: "actor_material";
+  lessons: Snapshot["lessons"];
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Reel"),
     [url, setUrl] = useState(""),
     [role, setRole] = useState<
       "current_script" | "actor_material" | "lesson_material" | "library"
-    >(fixedRole || "actor_material"),
+    >(fixedRole || "current_script"),
+    [lessonId, setLessonId] = useState(""),
     [file, setFile] = useState<File>();
   return (
     <Dialog
@@ -1833,7 +2056,7 @@ function MaterialSubmission({
         className="workflow-form"
         onSubmit={(event) => {
           event.preventDefault();
-          onSave(title, category, url, role, file);
+          onSave(title, category, url, role, lessonId || undefined, file);
         }}
       >
         <label>
@@ -1871,6 +2094,25 @@ function MaterialSubmission({
             </select>
           </label>
         )}
+        {role === "lesson_material" && (
+          <label className="full">
+            Related lesson
+            <select
+              required
+              value={lessonId}
+              onChange={(event) => setLessonId(event.target.value)}
+            >
+              <option value="" disabled>Select a lesson</option>
+              {[...lessons]
+                .sort((a, b) => b.startsAt.localeCompare(a.startsAt))
+                .map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lessonDateLabel(lesson)} · {lesson.topic}
+                  </option>
+                ))}
+            </select>
+          </label>
+        )}
         <label className="full">
           Share link
           <input
@@ -1900,7 +2142,10 @@ function MaterialSubmission({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!url && !file}>
+          <button
+            className="primary"
+            disabled={(!url && !file) || (role === "lesson_material" && !lessonId)}
+          >
             {role === "current_script"
               ? "Set as current script"
               : role === "actor_material"
@@ -1915,6 +2160,9 @@ function MaterialSubmission({
 function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const student = data.students[0];
   const [notice, setNotice] = useState("");
+  const [packageBusy, setPackageBusy] = useState("");
+  const store = useStudioStore();
+  const queryClient = useQueryClient();
   const purchase = async (id: string) => {
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
@@ -1934,6 +2182,43 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           ? reason.message
           : "Checkout could not be opened.",
       );
+    }
+  };
+  const toggleAutoApply = async (pkg: Snapshot["packages"][number]) => {
+    if (packageBusy) return;
+    setPackageBusy(pkg.id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.packages.find((item) => item.id === pkg.id);
+          if (!current) return;
+          current.autoApply = !pkg.autoApply;
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        const result = await studioCommand("packages", {
+          command: "toggle_auto_apply",
+          entityId: pkg.id,
+          expectedVersion: pkg.version,
+          payload: { enabled: !pkg.autoApply },
+          reason: "Student changed automatic credit preference",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        setNotice(
+          !pkg.autoApply
+            ? `Automatic credits enabled${result.resource.applied ? `; ${result.resource.applied} upcoming lesson${result.resource.applied === 1 ? "" : "s"} updated` : ""}.`
+            : "Automatic credits disabled. Existing lesson allocations are unchanged.",
+        );
+      }
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "The package preference could not be saved.",
+      );
+    } finally {
+      setPackageBusy("");
     }
   };
   return (
@@ -1984,19 +2269,34 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       )}
       <Section title="Packages" marked>
         <div className="table-list">
-          {data.packages.map((pkg) => (
-            <article key={pkg.id}>
+          {data.packages.map((pkg) => {
+            const expired = Boolean(
+              pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
+            );
+            return <article key={pkg.id}>
               <CircleDollarSign />
               <div>
                 <strong>{pkg.name}</strong>
                 <small>
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
                   credits · {formatMoney(pkg.priceMinor, pkg.currency)}
+                  {pkg.expiresAt &&
+                    ` · ${expired ? "expired" : "expires"} ${new Date(pkg.expiresAt).toLocaleDateString()}`}
                 </small>
               </div>
-              <Status tone="good">active</Status>
-            </article>
-          ))}
+              <Status tone={expired ? "danger" : "good"}>
+                {expired ? "expired" : "active"}
+              </Status>
+              {!expired && packageSummary(pkg, data.creditEntries).remainingCredits > 0 && (
+                <Toggle
+                  checked={Boolean(pkg.autoApply)}
+                  label="Auto-apply"
+                  detail="Use this package for eligible upcoming lessons."
+                  onChange={() => void toggleAutoApply(pkg)}
+                />
+              )}
+            </article>;
+          })}
         </div>
       </Section>
       <Section title="Receipts & adjustments">

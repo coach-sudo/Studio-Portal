@@ -2,6 +2,7 @@ import type { Config } from "@netlify/functions";
 import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { zonedDateTimeToUtc } from "./_shared/timezone";
+import { queueLessonChangeEmails } from "./_shared/booking-email";
 
 type StudentRow = {
   id: string;
@@ -269,16 +270,21 @@ async function importCalendar(
           lesson &&
           !["cancelled", "late_cancelled"].includes(lesson.status)
         ) {
+          const correlation = `calendar-cancel:${event.id}:${event.updated || "unknown"}`;
+          const { error: changeError } = await db.rpc(
+            "command_change_lesson_state",
+            {
+              p_lesson_id: lesson.id,
+              p_expected_version: lesson.version,
+              p_action: "cancel",
+              p_starts_at: null,
+              p_ends_at: null,
+              p_queue_calendar: false,
+            },
+          );
+          if (changeError) throw changeError;
+          await queueLessonChangeEmails(db, lesson.id, "cancelled", correlation);
           await Promise.all([
-            db
-              .from("lessons")
-              .update({
-                status: "cancelled",
-                version: lesson.version + 1,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", lesson.id)
-              .eq("version", lesson.version),
             db
               .from("calendar_projections")
               .update({
@@ -294,7 +300,7 @@ async function importCalendar(
               entity_id: lesson.id,
               action: "lesson.cancelled_from_calendar",
               reason: "Google Calendar event was cancelled",
-              correlation_id: `calendar-cancel:${event.id}:${event.updated || "unknown"}`,
+              correlation_id: correlation,
               source: "provider_intake",
               before_state: { status: lesson.status },
               after_state: { status: "cancelled" },
@@ -640,28 +646,36 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             : undefined;
       if (target) {
         lessonId = target.id;
+        const correlation = `gmail-change:${item.id}`;
         if (isCancellation) {
-          await db
-            .from("lessons")
-            .update({
-              status: "cancelled",
-              version: target.version + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", target.id)
-            .eq("version", target.version);
+          const { error: changeError } = await db.rpc(
+            "command_change_lesson_state",
+            {
+              p_lesson_id: target.id,
+              p_expected_version: target.version,
+              p_action: "cancel",
+              p_starts_at: null,
+              p_ends_at: null,
+              p_queue_calendar: true,
+            },
+          );
+          if (changeError) throw changeError;
+          await queueLessonChangeEmails(db, target.id, "cancelled", correlation);
         } else if (candidate) {
-          await db
-            .from("lessons")
-            .update({
-              starts_at: candidate.startsAt,
-              ends_at: candidate.endsAt,
-              topic: candidate.topic,
-              version: target.version + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", target.id)
-            .eq("version", target.version);
+          const { error: changeError } = await db.rpc(
+            "command_change_lesson_state",
+            {
+              p_lesson_id: target.id,
+              p_expected_version: target.version,
+              p_action: "reschedule",
+              p_starts_at: candidate.startsAt,
+              p_ends_at: candidate.endsAt,
+              p_queue_calendar: true,
+            },
+          );
+          if (changeError) throw changeError;
+          await db.from("lessons").update({ topic: candidate.topic }).eq("id", target.id);
+          await queueLessonChangeEmails(db, target.id, "rescheduled", correlation);
         }
         await db.from("audit_events").insert({
           studio_id: studio.id,
@@ -671,7 +685,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             ? "lesson.cancelled_from_email"
             : "lesson.rescheduled_from_email",
           reason: `${displayProvider(detected)} email update`,
-          correlation_id: `gmail-change:${item.id}`,
+          correlation_id: correlation,
           source: "provider_intake",
           before_state: target,
           after_state: isCancellation ? { status: "cancelled" } : candidate,

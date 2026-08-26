@@ -6,6 +6,7 @@ import { userClient } from "./_shared/supabase";
 import { serviceClient } from "./_shared/supabase";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { mapStudentChanges } from "./_shared/student-updates";
+import { queueLessonChangeEmails } from "./_shared/booking-email";
 
 const domains = new Set([
   "students",
@@ -864,7 +865,7 @@ export default async (request: Request, context: Context) => {
         .update({ status: "resolved", updated_at: new Date().toISOString() })
         .eq("entity_type", "lesson")
         .eq("entity_id", lessonId)
-        .eq("reason_code", "lesson_note_missing");
+        .in("reason_code", ["lesson_note_missing", "lesson_note_due_48h"]);
       return json({
         resource: data,
         recommendations: [],
@@ -872,8 +873,69 @@ export default async (request: Request, context: Context) => {
           studioId,
           "note",
           data.id,
-          "note.published",
+          status === "published" ? "note.published" : "note.drafted",
           null,
+          data,
+        ),
+        queuedSideEffects: [],
+      });
+    }
+    if (domain === "notes" && input.command === "update" && input.entityId) {
+      const studioId = await requireCoach();
+      const { data: before, error: readError } = await db
+        .from("notes")
+        .select("*,students!inner(studio_id)")
+        .eq("id", input.entityId)
+        .single();
+      if (readError || !before || before.students.studio_id !== studioId)
+        throw new Error("FORBIDDEN");
+      const status = ["draft", "published", "archived"].includes(
+        String(input.payload.status),
+      )
+        ? String(input.payload.status)
+        : before.status;
+      const changes = {
+        title: String(input.payload.title ?? before.title).trim(),
+        body: String(input.payload.body ?? before.body).trim(),
+        body_html: String(input.payload.bodyHtml ?? before.body_html ?? before.body),
+        rich_content: input.payload.richContent ?? before.rich_content,
+        category: String(input.payload.category ?? before.category),
+        tags: input.payload.tags ?? before.tags,
+        pinned: Boolean(input.payload.pinned ?? before.pinned),
+        status,
+        published_at:
+          status === "published"
+            ? before.published_at || new Date().toISOString()
+            : null,
+        version: input.expectedVersion + 1,
+        updated_at: new Date().toISOString(),
+      };
+      if (!changes.title || !changes.body) throw new Error("VALIDATION_FAILED");
+      const { data, error } = await serviceClient()
+        .from("notes")
+        .update(changes)
+        .eq("id", before.id)
+        .eq("version", input.expectedVersion)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      if (status === "published")
+        await serviceClient()
+          .from("recommendations")
+          .update({ status: "resolved", updated_at: new Date().toISOString() })
+          .eq("entity_type", "lesson")
+          .eq("entity_id", before.lesson_id)
+          .in("reason_code", ["lesson_note_missing", "lesson_note_due_48h"]);
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "note",
+          data.id,
+          "note.updated",
+          before,
           data,
         ),
         queuedSideEffects: [],
@@ -1900,6 +1962,65 @@ export default async (request: Request, context: Context) => {
           : [],
       });
     }
+    if (
+      domain === "packages" &&
+      input.command === "toggle_auto_apply" &&
+      input.entityId
+    ) {
+      const { data: before, error: readError } = await db
+        .from("packages")
+        .select("*,students!inner(studio_id)")
+        .eq("id", input.entityId)
+        .single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      const enabled = Boolean(input.payload.enabled);
+      const service = serviceClient();
+      const { data, error } = await service
+        .from("packages")
+        .update({
+          auto_apply: enabled,
+          version: input.expectedVersion + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", before.id)
+        .eq("version", input.expectedVersion)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      let applied = 0;
+      if (enabled) {
+        const { data: lessons } = await service
+          .from("lessons")
+          .select("id")
+          .eq("student_id", before.student_id)
+          .eq("status", "scheduled")
+          .is("package_id", null)
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at")
+          .limit(50);
+        for (const lesson of lessons || []) {
+          const { data: packageId } = await service.rpc(
+            "reserve_package_credit_for_lesson",
+            { p_lesson_id: lesson.id, p_package_id: before.id },
+          );
+          if (packageId) applied += 1;
+        }
+      }
+      return json({
+        resource: { ...data, applied },
+        recommendations: [],
+        auditEventId: await audit(
+          before.students.studio_id,
+          "package",
+          before.id,
+          enabled ? "package.auto_apply_enabled" : "package.auto_apply_disabled",
+          before,
+          data,
+        ),
+        queuedSideEffects: applied ? [`credits_applied:${applied}`] : [],
+      });
+    }
     if (domain === "credits" && input.command === "grant") {
       const studioId = await requireCoach(),
         studentId = String(input.payload.studentId || ""),
@@ -2327,6 +2448,49 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
+    if (domain === "lessons" && input.command === "prepare" && input.entityId) {
+      const studioId = await requireCoach();
+      const preparation = {
+        planned: Boolean((input.payload.preparation as any)?.planned),
+        setupReady: Boolean((input.payload.preparation as any)?.setupReady),
+        materialsReady: Boolean(
+          (input.payload.preparation as any)?.materialsReady,
+        ),
+      };
+      const { data: before, error: readError } = await db
+        .from("lessons")
+        .select("*")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      const { data, error } = await serviceClient()
+        .from("lessons")
+        .update({
+          preparation,
+          version: input.expectedVersion + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", input.entityId)
+        .eq("version", input.expectedVersion)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "lesson",
+          data.id,
+          "lesson.preparation_updated",
+          before.preparation,
+          data.preparation,
+        ),
+        queuedSideEffects: [],
+      });
+    }
     if (domain === "lessons" && input.command === "complete") {
       const { data, error } = await db.rpc("command_complete_lesson", {
         lesson_id: input.entityId,
@@ -2347,33 +2511,43 @@ export default async (request: Request, context: Context) => {
           .eq("studio_id", studioId)
           .single();
       if (readError || !before) throw new Error("FORBIDDEN");
-      const { data, error } = await serviceClient()
-        .from("lessons")
-        .update({
-          status: "cancelled",
-          version: input.expectedVersion + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", before.id)
-        .eq("version", input.expectedVersion)
-        .select()
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
       const service = serviceClient();
-      const [{ error: projectionError }, auditEventId] = await Promise.all([
-        service
-          .from("calendar_projections")
-          .update({ status: "queued", last_error: null })
-          .eq("lesson_id", before.id),
-        audit(studioId, "lesson", before.id, "lesson.cancelled", before, data),
-      ]);
-      if (projectionError) throw projectionError;
+      const { data: changed, error } = await service.rpc(
+        "command_change_lesson_state",
+        {
+          p_lesson_id: before.id,
+          p_expected_version: input.expectedVersion,
+          p_action: "cancel",
+          p_starts_at: null,
+          p_ends_at: null,
+          p_queue_calendar: true,
+        },
+      );
+      if (error) throw error;
+      const data = changed.lesson;
+      const emails = await queueLessonChangeEmails(
+        service,
+        before.id,
+        "cancelled",
+        id,
+      );
+      const auditEventId = await audit(
+        studioId,
+        "lesson",
+        before.id,
+        "lesson.cancelled",
+        before,
+        data,
+      );
       return json({
         resource: data,
         recommendations: [],
         auditEventId,
-        queuedSideEffects: ["calendar_projection"],
+        queuedSideEffects: [
+          "calendar_projection",
+          ...emails.map((message: any) => `email:${message.id}`),
+        ],
+        correlationId: id,
       });
     }
     if (
@@ -2406,44 +2580,43 @@ export default async (request: Request, context: Context) => {
       const token = await googleAccessToken();
       if ((await googleFreeBusy(token, startsAt, endsAt)).length)
         throw new Error("SLOT_UNAVAILABLE");
-      const { data, error } = await service
-        .from("lessons")
-        .update({
-          starts_at: startsAt,
-          ends_at: endsAt,
-          version: input.expectedVersion + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", input.entityId)
-        .eq("studio_id", studioId)
-        .eq("version", input.expectedVersion)
-        .select()
-        .maybeSingle();
+      const { data: changed, error } = await service.rpc(
+        "command_change_lesson_state",
+        {
+          p_lesson_id: input.entityId,
+          p_expected_version: input.expectedVersion,
+          p_action: "reschedule",
+          p_starts_at: startsAt,
+          p_ends_at: endsAt,
+          p_queue_calendar: true,
+        },
+      );
       if (error?.code === "23P01") throw new Error("SLOT_UNAVAILABLE");
       if (error) throw error;
-      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      const [{ error: projectionError }, auditEventId] = await Promise.all([
-        service
-          .from("calendar_projections")
-          .upsert(
-            { lesson_id: input.entityId, status: "queued", last_error: null },
-            { onConflict: "lesson_id" },
-          ),
-        audit(
-          studioId,
-          "lesson",
-          data.id,
-          "lesson.rescheduled",
-          before,
-          { starts_at: startsAt, ends_at: endsAt, version: data.version },
-        ),
-      ]);
-      if (projectionError) throw projectionError;
+      const data = changed.lesson;
+      const emails = await queueLessonChangeEmails(
+        service,
+        input.entityId,
+        "rescheduled",
+        id,
+      );
+      const auditEventId = await audit(
+        studioId,
+        "lesson",
+        data.id,
+        "lesson.rescheduled",
+        before,
+        { starts_at: startsAt, ends_at: endsAt, version: data.version },
+      );
       return json({
         resource: data,
         recommendations: [],
         auditEventId,
-        queuedSideEffects: ["calendar_projection"],
+        queuedSideEffects: [
+          "calendar_projection",
+          ...emails.map((message: any) => `email:${message.id}`),
+        ],
+        correlationId: id,
       });
     }
     if (domain === "outbox" && input.command === "approve") {

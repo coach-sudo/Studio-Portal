@@ -72,7 +72,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
           ? "audio"
           : "document");
   return (
-    <article className="actor-media-card">
+    <article className={`actor-media-card actor-media-${kind}`}>
       {kind === "image" ? (
         <img src={item.url} alt={item.caption || item.title} />
       ) : kind === "video" ? (
@@ -91,6 +91,14 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
           allow="fullscreen; picture-in-picture"
           allowFullScreen
         />
+      ) : item.mime_type === "application/pdf" || /\.pdf(?:$|\?)/i.test(item.url) ? (
+        <div className="actor-document-preview">
+          <iframe src={`${item.url}#toolbar=0&navpanes=0`} title={`${item.title} preview`} />
+          <a href={item.url} target="_blank" rel="noreferrer">
+            <FileText />
+            View or download résumé
+          </a>
+        </div>
       ) : (
         <a href={item.url} target="_blank" rel="noreferrer">
           <FileText />
@@ -184,15 +192,16 @@ export function PublicActorPage() {
   const documents = actor.materials.filter((item) => item.id !== headshot?.id && !gallery.some((photo) => photo.id === item.id) && !reel.some((video) => video.id === item.id));
   return (
     <main className="actor-public">
-      <header><span>Actor portfolio</span></header>
-      <article>
+      <header className="actor-public-kicker"><span>{actor.displayName} · Actor</span></header>
+      <article className="actor-public-hero">
         {headshot ? <img className="actor-headshot" src={headshot.url} alt={`${actor.displayName} headshot`} /> : <div className="actor-monogram">
           {actor.displayName
             .split(" ")
             .map((part) => part[0])
             .join("")}
         </div>}
-        <div>
+        <div className="actor-public-intro">
+          <span className="actor-eyebrow">Actor · Storyteller</span>
           <h1>{actor.displayName}</h1>
           {actor.headline && <h2>{actor.headline}</h2>}
           {(actor.showPhone || actor.showEmail) && <div className="actor-contact-actions">{actor.showPhone && actor.contactPhone && <a href={`tel:${actor.contactPhone}`}><Phone />Call</a>}{actor.showEmail && actor.contactEmail && <a href={`mailto:${actor.contactEmail}`}><Mail />Email</a>}</div>}
@@ -207,9 +216,9 @@ export function PublicActorPage() {
           {actor.website && <a className="actor-website" href={actor.website} target="_blank" rel="noreferrer">Official website</a>}
         </div>
       </article>
-      {gallery.length > 0 && <section><h2>Gallery</h2><div className="actor-media-grid actor-gallery">{gallery.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
-      {reel.length > 0 && <section><h2>Reel & performance</h2><div className="actor-media-grid">{reel.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
-      {documents.length > 0 && <section><h2>Résumé & selected work</h2><div className="actor-media-grid">{documents.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {gallery.length > 0 && <section className="actor-public-section"><div className="actor-section-heading"><span>01</span><h2>Gallery</h2></div><div className="actor-media-grid actor-gallery">{gallery.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {reel.length > 0 && <section className="actor-public-section actor-reel-section"><div className="actor-section-heading"><span>02</span><h2>Reel & performance</h2></div><div className="actor-media-grid">{reel.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
+      {documents.length > 0 && <section className="actor-public-section"><div className="actor-section-heading"><span>03</span><h2>Résumé & selected work</h2></div><div className="actor-media-grid actor-documents">{documents.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
       {!actor.materials.length && <section><h2>Selected work</h2><p>Selected work is being prepared.</p></section>}
       <footer className="actor-footer">{actor.studio.branding.logoUrl ? <img className="booking-logo" src={actor.studio.branding.logoUrl} alt={actor.studio.name} /> : <div className="wordmark">{actor.studio.name}</div>}{actor.studio.websiteUrl && <a href={actor.studio.websiteUrl} target="_blank" rel="noreferrer">Visit {actor.studio.name}</a>}</footer>
     </main>

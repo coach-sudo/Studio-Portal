@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
@@ -36,6 +37,7 @@ import type {
 } from "../../domain/model";
 import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
+import { LessonsView } from "./StudioOperations";
 
 type Tab =
   | "overview"
@@ -68,7 +70,10 @@ export function BookingCenter() {
   const { data, isLoading, isDemo } = useStudio();
   const store = useStudioStore();
   const queryClient = useQueryClient();
-  const [tab, setTab] = useState<Tab>("overview");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState<Tab>(
+    searchParams.get("view") === "calendar" ? "calendar" : "overview",
+  );
   const [dialog, setDialog] = useState<{ type: string; item?: any }>();
   const [notice, setNotice] = useState("");
   const [health, setHealth] = useState<PlatformHealth>({
@@ -176,10 +181,7 @@ export function BookingCenter() {
         />
       )}
       {tab === "calendar" && (
-        <CalendarView
-          data={data}
-          onBooking={(item) => setDialog({ type: "booking", item })}
-        />
+        <LessonsView data={data} isDemo={isDemo} />
       )}
       {tab === "services" && (
         <Services
@@ -597,92 +599,6 @@ function BookingRow({
   );
 }
 
-function CalendarView({
-  data,
-  onBooking,
-}: {
-  data: StudioSnapshot;
-  onBooking: (item: Booking) => void;
-}) {
-  const [offset, setOffset] = useState(0);
-  const days = useMemo(
-    () =>
-      Array.from({ length: 7 }, (_, index) => {
-        const date = new Date();
-        date.setHours(0, 0, 0, 0);
-        date.setDate(date.getDate() - date.getDay() + index + offset * 7);
-        return date;
-      }),
-    [offset],
-  );
-  return (
-    <CoachPanel
-      title={`${days[0].toLocaleDateString([], { month: "short", day: "numeric" })} – ${days[6].toLocaleDateString([], { month: "short", day: "numeric" })}`}
-      aside={
-        <div className="calendar-controls">
-          <button onClick={() => setOffset(0)}>Today</button>
-          <button
-            aria-label="Previous week"
-            onClick={() => setOffset((value) => value - 1)}
-          >
-            ‹
-          </button>
-          <button
-            aria-label="Next week"
-            onClick={() => setOffset((value) => value + 1)}
-          >
-            ›
-          </button>
-        </div>
-      }
-    >
-      <div className="week-calendar">
-        {days.map((day) => (
-          <section key={day.toISOString()}>
-            <header>
-              <span>{day.toLocaleDateString([], { weekday: "short" })}</span>
-              <strong>{day.getDate()}</strong>
-            </header>
-            <div>
-              {data.lessons
-                .filter(
-                  (lesson) =>
-                    new Date(lesson.startsAt).toDateString() ===
-                    day.toDateString(),
-                )
-                .map((lesson) => {
-                  const booking = data.bookings.find((item) =>
-                    data.lessonParticipants.some(
-                      (part) =>
-                        part.lessonId === lesson.id &&
-                        part.bookingId === item.id,
-                    ),
-                  );
-                  return (
-                    <button
-                      key={lesson.id}
-                      onClick={() => booking && onBooking(booking)}
-                    >
-                      <article>
-                        <time>
-                          {new Date(lesson.startsAt).toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                          })}
-                        </time>
-                        <strong>{lesson.topic}</strong>
-                        <small>{lesson.locationLabel}</small>
-                      </article>
-                    </button>
-                  );
-                })}
-            </div>
-          </section>
-        ))}
-      </div>
-    </CoachPanel>
-  );
-}
 
 function ManualBookingDialog({
   data,

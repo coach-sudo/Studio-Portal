@@ -68,7 +68,8 @@ export function TodayView({
     [notice, setNotice] = useState(""),
     [reviewing, setReviewing] = useState<IntegrationImport>(),
     [rescheduling, setRescheduling] = useState<Lesson>(),
-    [rescheduleBusy, setRescheduleBusy] = useState(false);
+    [rescheduleBusy, setRescheduleBusy] = useState(false),
+    [prepBusy, setPrepBusy] = useState("");
   const today = new Date().toDateString();
   const lessons = data.lessons
     .filter(
@@ -82,6 +83,7 @@ export function TodayView({
       const ended = new Date(lesson.endsAt).getTime();
       return (
         ended <= Date.now() &&
+        ended >= Date.now() - 8 * 86400000 &&
         !["cancelled", "late_cancelled"].includes(lesson.status) &&
         !data.notes.some(
           (note) => note.lessonId === lesson.id && note.status === "published",
@@ -100,6 +102,16 @@ export function TodayView({
       }, {}),
   );
   const importPage = usePagedList(reviewGroups);
+  const pendingMaterials = data.materials.filter(
+    (item) => item.approvalStatus === "pending_review",
+  );
+  const pendingActorPages = data.actorProfiles.filter(
+    (item) => item.status === "review_requested",
+  );
+  const helpRequests = data.assignments.filter((item) => item.helpRequested);
+  const bookingAttention = data.bookings.filter(
+    (item) => item.status === "needs_attention",
+  );
   const complete = async (lesson: Lesson) => {
     try {
       if (isDemo)
@@ -167,6 +179,47 @@ export function TodayView({
       setRescheduleBusy(false);
     }
   };
+  const togglePreparation = async (
+    lesson: Lesson,
+    key: "planned" | "setupReady" | "materialsReady",
+  ) => {
+    if (prepBusy) return;
+    const preparation = {
+      planned: Boolean(lesson.preparation?.planned),
+      setupReady: Boolean(lesson.preparation?.setupReady),
+      materialsReady: Boolean(lesson.preparation?.materialsReady),
+      [key]: !lesson.preparation?.[key],
+    };
+    setPrepBusy(`${lesson.id}:${key}`);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.lessons.find((item) => item.id === lesson.id);
+          if (!current) return;
+          current.preparation = preparation;
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "prepare",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          payload: { preparation },
+          reason: "Coach updated today's lesson preparation",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Preparation could not be saved.",
+      );
+    } finally {
+      setPrepBusy("");
+    }
+  };
   return (
     <>
       <Section title="Today’s teaching flow" marked>
@@ -199,6 +252,47 @@ export function TodayView({
           )}
         </div>
       </Section>
+      {lessons.length > 0 && (
+        <Section title="Ready to teach" marked>
+          <p className="section-intro">
+            Three quick checks for today only. Lesson follow-up stays in the
+            lesson workspace after teaching.
+          </p>
+          <div className="lesson-prep-list">
+            {lessons.map((lesson) => (
+              <article key={`prep-${lesson.id}`}>
+                <div>
+                  <strong>
+                    {new Date(lesson.startsAt).toLocaleTimeString([], {
+                      hour: "numeric",
+                      minute: "2-digit",
+                    })}{" "}
+                    · {studentName(data, lesson.studentId)}
+                  </strong>
+                  <small>{lesson.topic}</small>
+                </div>
+                {(
+                  [
+                    ["planned", "Plan"],
+                    ["setupReady", "Setup"],
+                    ["materialsReady", "Materials"],
+                  ] as const
+                ).map(([key, label]) => (
+                  <label key={key} className="compact-check">
+                    <input
+                      type="checkbox"
+                      checked={Boolean(lesson.preparation?.[key])}
+                      disabled={Boolean(prepBusy)}
+                      onChange={() => void togglePreparation(lesson, key)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </article>
+            ))}
+          </div>
+        </Section>
+      )}
       <Section title="Notes due within 48 hours" marked>
         <div className="workflow-list">
           {notePage.visible.map((lesson) => {
@@ -306,6 +400,69 @@ export function TodayView({
             />
           </Section>
         </div>
+      )}
+      {(pendingMaterials.length > 0 ||
+        pendingActorPages.length > 0 ||
+        helpRequests.length > 0 ||
+        bookingAttention.length > 0) && (
+        <Section title="Approve & resolve" marked>
+          <p className="section-intro">
+            Everything waiting for a coach decision is collected here; the
+            full record remains in its natural workspace.
+          </p>
+          <div className="table-list">
+            {pendingMaterials.map((item) => (
+              <article key={`material-${item.id}`}>
+                <FolderOpen />
+                <div>
+                  <strong>Review {item.title}</strong>
+                  <small>{studentName(data, item.studentId)} · actor material</small>
+                </div>
+                <Status tone="warn">approval</Status>
+                <button onClick={() => navigate("/coach/materials")}>Review</button>
+              </article>
+            ))}
+            {pendingActorPages.map((item) => (
+              <article key={`actor-${item.id}`}>
+                <UserRound />
+                <div>
+                  <strong>Review {item.displayName}’s actor page</strong>
+                  <small>Requested by the student</small>
+                </div>
+                <Status tone="warn">approval</Status>
+                <button onClick={() => navigate("/coach/actor-pages")}>Review</button>
+              </article>
+            ))}
+            {helpRequests.map((item) => (
+              <article key={`help-${item.id}`}>
+                <CheckCircle2 />
+                <div>
+                  <strong>{studentName(data, item.studentId)} asked for help</strong>
+                  <small>{item.title}</small>
+                </div>
+                <Status tone="warn">reply</Status>
+                <button
+                  onClick={() =>
+                    navigate(`/coach/students/${item.studentId}/work`)
+                  }
+                >
+                  Open work
+                </button>
+              </article>
+            ))}
+            {bookingAttention.map((item) => (
+              <article key={`booking-${item.id}`}>
+                <CalendarDays />
+                <div>
+                  <strong>{item.guestName} · {item.reference}</strong>
+                  <small>Booking or integration delivery needs attention</small>
+                </div>
+                <Status tone="warn">resolve</Status>
+                <button onClick={() => navigate("/coach/bookings")}>Open</button>
+              </article>
+            ))}
+          </div>
+        </Section>
       )}
       {reviewing && (
         <ImportReviewDialog

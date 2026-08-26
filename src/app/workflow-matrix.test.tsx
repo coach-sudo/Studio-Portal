@@ -302,7 +302,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("19 completes practice", async () => {
       const user = userEvent.setup();
-      renderApp("/portal/practice");
+      renderApp("/portal/work");
       await user.click(await screen.findByRole("button", { name: "Complete" }));
       expect(
         await screen.findByText("Practice marked complete."),
@@ -310,7 +310,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("20 asks the coach for help", async () => {
       const user = userEvent.setup();
-      renderApp("/portal/practice");
+      renderApp("/portal/work");
       await user.click(
         await screen.findByRole("button", { name: "Ask coach" }),
       );
@@ -320,7 +320,7 @@ describe("30 start-to-finish studio workflows", () => {
     });
     it("21 submits actor material", async () => {
       const user = userEvent.setup();
-      renderApp("/portal/materials");
+      renderApp("/portal/actor-page");
       await user.click(
         await screen.findByRole("button", { name: "Submit material" }),
       );

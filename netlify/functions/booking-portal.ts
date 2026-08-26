@@ -3,6 +3,7 @@ import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { serviceClient, userClient } from "./_shared/supabase";
+import { queueLessonChangeEmails } from "./_shared/booking-email";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -60,8 +61,13 @@ export default async (request: Request, context: Context) => {
       }
       const { data, error } = await db.from("bookings").update({ status, payment_status: paymentStatus, version: booking.version + 1, updated_at: new Date().toISOString() }).eq("id", booking.id).eq("version", booking.version).select().single();
       if (error) throw error;
+      const queued = [];
+      for (const lessonId of lessonIds)
+        queued.push(
+          ...(await queueLessonChangeEmails(db, lessonId, "cancelled", id)),
+        );
       await db.from("audit_events").insert({studio_id:booking.studio_id,entity_type:"booking",entity_id:booking.id,action:"booking.self_cancelled",reason:late?"Late self-service cancellation":"Permitted self-service cancellation",correlation_id:id,source:"booking_portal",before_state:booking,after_state:data});
-      return json({ booking: data });
+      return json({ booking: data, correlationId: id, queuedSideEffects: ["calendar_projection", ...queued.map((item:any)=>`email:${item.id}`)] });
     }
 
     if (action === "reschedule" && body.startsAt && body.endsAt) {
@@ -82,7 +88,9 @@ export default async (request: Request, context: Context) => {
       const { data, error } = await db.rpc("reschedule_booking_occurrences",{target_booking:booking.id,expected_version:booking.version,next_start:body.startsAt,next_end:body.endsAt,change_scope:body.scope||"occurrence"});
       if (error){await db.from("booking_holds").update({status:"expired"}).eq("id",hold.id);throw error;}
       await db.from("booking_holds").update({ status: "converted" }).eq("id", hold.id);
-      return json({ booking: data });
+      const queued=[];
+      for(const target of targets)queued.push(...(await queueLessonChangeEmails(db,target.id,"rescheduled",id)));
+      return json({ booking: data, correlationId:id, queuedSideEffects:["calendar_projection",...queued.map((item:any)=>`email:${item.id}`)] });
     }
 
     if (action === "cancel-series" && booking.series_id) {

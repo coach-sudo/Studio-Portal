@@ -32,6 +32,8 @@ function AppRoutes() {
       <Route index element={<CoachHome />} />
       <Route path="bookings" element={<BookingCenter />} />
       <Route path="students/:studentId/*" element={<StudentWorkspace />} />
+      <Route path="lessons" element={<Navigate to="/coach/bookings?view=calendar" replace />} />
+      <Route path="notes" element={<Navigate to="/coach/today" replace />} />
       <Route path=":section" element={<CoachSection />} />
     </Route>
     <Route path="/" element={<RoleLanding />} />

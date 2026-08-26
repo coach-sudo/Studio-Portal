@@ -171,17 +171,28 @@ export function scopeStudioSnapshot(
         )),
   );
   const bookingIds = new Set(bookings.map((row) => row.id));
+  const participantLessonIds = new Set(
+    snapshot.lessonParticipants
+      .filter(
+        (row) =>
+          (Boolean(row.studentId) && studentIds.includes(row.studentId!)) ||
+          Boolean(row.bookingId && bookingIds.has(row.bookingId)),
+      )
+      .map((row) => row.lessonId),
+  );
+  const scopedLessons = snapshot.lessons.filter(
+    (row) =>
+      studentIds.includes(row.studentId) || participantLessonIds.has(row.id),
+  );
   return {
     ...snapshot,
     role,
     displayName:
       role === "guardian"
         ? (student?.guardianName ?? "Guardian")
-        : (student?.fullName.split(" ")[0] ?? "Student"),
+        : (student?.preferredName || student?.fullName || "Student"),
     students: snapshot.students.filter((row) => studentIds.includes(row.id)),
-    lessons: snapshot.lessons.filter((row) =>
-      studentIds.includes(row.studentId),
-    ),
+    lessons: scopedLessons,
     notes: snapshot.notes.filter(
       (row) => studentIds.includes(row.studentId) && row.status === "published",
     ),
@@ -216,7 +227,7 @@ export function scopeStudioSnapshot(
       studentIds.includes(row.studentId),
     ),
     lessonWhiteboards: snapshot.lessonWhiteboards.filter((row) =>
-      snapshot.lessons.some((lesson) => lesson.id === row.lessonId && studentIds.includes(lesson.studentId)),
+      scopedLessons.some((lesson) => lesson.id === row.lessonId),
     ),
     integrationImports: [],
     discountCodes: [],

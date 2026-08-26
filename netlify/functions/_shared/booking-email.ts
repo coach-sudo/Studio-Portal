@@ -39,3 +39,139 @@ export async function queuePaymentFailedEmail(db:SupabaseClient,bookingId:string
   const {error:insertError}=await db.from("outbox_messages").insert({studio_id:booking.studio_id,student_id:booking.student_id,booking_id:booking.id,channel:"email",recipient:booking.guardian_email||booking.guest_email,subject:render(automation.paymentFailedSubject||"Payment needs attention for {{studioName}}",values),body:render(automation.paymentFailedBody||"We could not collect your scheduled payment. Please update your payment method within seven days.",values),status:"queued",send_at:new Date().toISOString(),event_key:"payment.failed.student",dedupe_key:dedupeKey});
   if(insertError)throw insertError;
 }
+
+export async function queueLessonChangeEmails(
+  db: SupabaseClient,
+  lessonId: string,
+  kind: "rescheduled" | "cancelled",
+  correlationId: string,
+) {
+  const { data: lesson, error: lessonError } = await db
+    .from("lessons")
+    .select("id,studio_id,student_id,topic,starts_at,ends_at,location_label,version")
+    .eq("id", lessonId)
+    .single();
+  if (lessonError || !lesson) throw lessonError || new Error("Lesson not found");
+  const [{ data: studio }, { data: student }, { data: participants }] =
+    await Promise.all([
+      db.from("studios").select("name,settings").eq("id", lesson.studio_id).single(),
+      db.from("students").select("full_name,preferred_name,email,guardian_email,is_minor").eq("id", lesson.student_id).single(),
+      db.from("lesson_participants").select("booking_id,email,status").eq("lesson_id", lesson.id),
+    ]);
+  if (!studio) return [];
+  const automation = { ...defaults, ...((studio.settings?.emailAutomations || {}) as AutomationSettings) };
+  if (!automation.enabled) return [];
+  const bookingId = participants?.find((item) => item.booking_id)?.booking_id || null;
+  const recipients = new Set<string>();
+  for (const participant of participants || [])
+    if (participant.email) recipients.add(String(participant.email).trim().toLowerCase());
+  const primaryEmail = student?.is_minor
+    ? student.guardian_email || student.email
+    : student?.email || student?.guardian_email;
+  if (primaryEmail) recipients.add(String(primaryEmail).trim().toLowerCase());
+  const studentName = student?.preferred_name || student?.full_name || "Student";
+  const timezone = studio.settings?.timezone || "America/New_York";
+  const startsAt = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    dateStyle: "full",
+    timeStyle: "short",
+  }).format(new Date(lesson.starts_at));
+  await db
+    .from("outbox_messages")
+    .update({ status: "cancelled", updated_at: new Date().toISOString() })
+    .in("status", ["draft", "approved", "queued", "failed"])
+    .eq("event_key", "booking.reminder.student")
+    .or(`lesson_id.eq.${lesson.id}${bookingId ? `,booking_id.eq.${bookingId}` : ""}`);
+  const subject =
+    kind === "rescheduled"
+      ? `${lesson.topic} rescheduled - ${startsAt}`
+      : `${lesson.topic} cancelled`;
+  const body =
+    kind === "rescheduled"
+      ? `Hi ${studentName},\n\nYour ${lesson.topic} lesson has been rescheduled to ${startsAt}. Your calendar invitation is being updated automatically.\n\nLocation: ${lesson.location_label}\n\nYou can see the confirmed time in your studio portal.`
+      : `Hi ${studentName},\n\nYour ${lesson.topic} lesson scheduled for ${startsAt} has been cancelled. Your calendar invitation and studio schedule are being updated automatically.\n\nYou can see the change in your studio portal.`;
+  const messages: Record<string, unknown>[] = [...recipients].map((recipient) => ({
+    studio_id: lesson.studio_id,
+    student_id: lesson.student_id,
+    lesson_id: lesson.id,
+    booking_id: bookingId,
+    correlation_id: correlationId,
+    channel: "email",
+    recipient,
+    subject,
+    body,
+    status: "queued",
+    send_at: new Date().toISOString(),
+    event_key: `lesson.${kind}.student`,
+    dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}:student:${recipient}`,
+  }));
+  if (studio.settings?.contactEmail)
+    messages.push({
+      studio_id: lesson.studio_id,
+      student_id: lesson.student_id,
+      lesson_id: lesson.id,
+      booking_id: bookingId,
+      correlation_id: correlationId,
+      channel: "email",
+      recipient: studio.settings.contactEmail,
+      subject: `${studentName}: ${subject}`,
+      body: `${studentName}'s ${body.slice(body.indexOf("Your"))}`,
+      status: "queued",
+      send_at: new Date().toISOString(),
+      event_key: `lesson.${kind}.coach`,
+      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}:coach`,
+    });
+  if (kind === "rescheduled" && automation.reminders) {
+    for (const recipient of recipients) {
+      for (const rawHours of studio.settings?.reminderHours || [24, 2]) {
+        const hours = Number(rawHours);
+        const sendAt = new Date(new Date(lesson.starts_at).getTime() - hours * 3_600_000);
+        if (!Number.isFinite(hours) || hours <= 0 || sendAt <= new Date()) continue;
+        messages.push({
+          studio_id: lesson.studio_id,
+          student_id: lesson.student_id,
+          lesson_id: lesson.id,
+          booking_id: bookingId,
+          correlation_id: correlationId,
+          channel: "email",
+          recipient,
+          subject: render(automation.reminderSubject, {
+            studioName: studio.name,
+            studentName,
+            serviceName: lesson.topic,
+            startsAt,
+            location: lesson.location_label,
+            reference: "",
+            manageUrl: "Sign in to your student workspace.",
+            hours: String(hours),
+            meetingDetails: lesson.location_label,
+          }),
+          body: render(automation.reminderBody, {
+            studioName: studio.name,
+            studentName,
+            serviceName: lesson.topic,
+            startsAt,
+            location: lesson.location_label,
+            reference: "",
+            manageUrl: "Sign in to your student workspace.",
+            hours: String(hours),
+            meetingDetails: lesson.location_label,
+          }),
+          status: "queued",
+          send_at: sendAt.toISOString(),
+          event_key: "booking.reminder.student",
+          dedupe_key: `lesson:${lesson.id}:${lesson.version}:reminder:${hours}:${recipient}`,
+        });
+      }
+    }
+  }
+  if (messages.length) {
+    const { data, error } = await db
+      .from("outbox_messages")
+      .upsert(messages, { onConflict: "dedupe_key", ignoreDuplicates: true })
+      .select("id,status,event_key");
+    if (error) throw error;
+    return data || [];
+  }
+  return [];
+}

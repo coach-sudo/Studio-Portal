@@ -389,8 +389,8 @@ export function PublicBooking() {
   const [catalogError, setCatalogError] = useState("");
   const [booker, setBooker] = useState<AuthenticatedBooker>();
   const [studio, setStudio] = useState<PublicStudio>({
-    name: store.snapshot.settings.studioName,
-    coachName: store.snapshot.settings.coachName,
+    name: isDemoMode ? store.snapshot.settings.studioName : "Studio Portal",
+    coachName: isDemoMode ? store.snapshot.settings.coachName : "",
     branding: store.snapshot.settings.branding,
     bookingCopy: store.snapshot.settings.bookingCopy,
     bookingPage: store.snapshot.settings.bookingPage,
@@ -497,8 +497,10 @@ export function PublicBooking() {
     applyStudioBranding(studio.branding);
   }, [studio.branding]);
   useEffect(() => {
-    document.title = `${studio.name} — ${slug ? "Book a session" : "Booking"}`;
-  }, [slug, studio.name]);
+    document.title = catalogLoading
+      ? "Booking"
+      : `${studio.name} — ${slug ? "Book a session" : "Booking"}`;
+  }, [catalogLoading, slug, studio.name]);
   if (token)
     return (
       <>
@@ -515,7 +517,12 @@ export function PublicBooking() {
   const selected = services.find((service) => service.slug === slug);
   return (
     <main className="booking-public">
-      <BookingHeader back={Boolean(selected)} studio={studio} booker={booker} />
+      <BookingHeader
+        back={Boolean(selected)}
+        studio={studio}
+        booker={booker}
+        loading={catalogLoading}
+      />
       {!liveCatalog && isDemoMode && (
         <div className="demo-banner">
           <TriangleAlert />
@@ -572,10 +579,12 @@ function BookingHeader({
   back,
   studio,
   booker,
+  loading = false,
 }: {
   back: boolean;
   studio: PublicStudio;
   booker?: AuthenticatedBooker;
+  loading?: boolean;
 }) {
   return (
     <header className="booking-topbar">
@@ -585,6 +594,8 @@ function BookingHeader({
       >
         {back ? (
           <ArrowLeft />
+        ) : loading ? (
+          <span className="wordmark" aria-hidden="true">Booking</span>
         ) : studio.branding.logoUrl ? (
           <img
             src={studio.branding.logoUrl}
