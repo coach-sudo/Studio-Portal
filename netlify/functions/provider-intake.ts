@@ -42,6 +42,16 @@ type CalendarProjection = {
   external_version?: string | null;
   projected_version: number;
 };
+type GmailLessonCandidate = ReturnType<typeof gmailCandidate>;
+type ExistingLessonCandidate = {
+  id: string;
+  student_id?: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  source_provider?: string | null;
+  topic?: string | null;
+};
 const normalize = (value?: string | null) =>
   (value || "")
     .normalize("NFKD")
@@ -85,6 +95,68 @@ export const gmailChangeType = (text: string) =>
     : /\b(rescheduled|reschedule|new (?:date|time))\b/i.test(text)
       ? "reschedule"
       : "confirmation";
+export function gmailProviderMessageKind(
+  text: string,
+  candidate?: GmailLessonCandidate,
+) {
+  const hasLessonContext =
+      /\b(lesson|session|class|coaching|appointment|booking)\b/i.test(text),
+    cancellation =
+      /\b(?:lesson|session|class|appointment|booking)\s+(?:(?:was|has been|is)\s+)?(?:cancelled|canceled)\b|\b(?:cancelled|canceled)\s*:\s*(?:lesson|session|class|appointment|booking)\b|\b(?:lesson|session|class|appointment|booking)\s+cancellation\b(?!\s+policy)/i.test(
+        text,
+      ),
+    reschedule =
+      /\b(?:lesson|session|class|appointment|booking)\s+(?:(?:was|has been|is)\s+)?rescheduled\b|\brescheduled\s*:\s*(?:lesson|session|class|appointment|booking)\b|\bnew (?:date|time) for (?:your |the )?(?:lesson|session|class|appointment|booking)\b/i.test(
+        text,
+      ),
+    explicitBooking =
+      /\b(booked|booking (?:confirmed|confirmation)|confirmed|scheduled|upcoming|new (?:lesson|session|booking|appointment)|(?:lesson|session) (?:request )?accepted|reservation|lesson reminder|session reminder|starts? (?:soon|in))\b/i.test(
+        text,
+      ),
+    nonBooking =
+      /\b(newsletter|digest|inquiry|new message|unread message|review request|profile|billing|payment|payout|receipt|invoice|promotion|special offer)\b/i.test(
+        text,
+      );
+  if (!hasLessonContext) return undefined;
+  if (cancellation) return "cancellation" as const;
+  if (reschedule) return "reschedule" as const;
+  if (
+    !candidate ||
+    !explicitBooking ||
+    (nonBooking &&
+      !/\b(booked|booking (?:confirmed|confirmation)|confirmed|scheduled|new (?:lesson|session|booking|appointment))\b/i.test(text))
+  )
+    return undefined;
+  return "confirmation" as const;
+}
+
+export function isSameScheduledLesson(
+  candidate: NonNullable<GmailLessonCandidate>,
+  lesson: ExistingLessonCandidate,
+  detectedProvider: string,
+  matchedStudentId?: string,
+) {
+  if (["cancelled", "late_cancelled"].includes(lesson.status)) return false;
+  const startDelta = Math.abs(
+      new Date(lesson.starts_at).getTime() -
+        new Date(candidate.startsAt).getTime(),
+    ),
+    endDelta = Math.abs(
+      new Date(lesson.ends_at).getTime() - new Date(candidate.endsAt).getTime(),
+    ),
+    identityMatches = Boolean(
+      matchedStudentId && lesson.student_id === matchedStudentId,
+    ),
+    providerMatches = lesson.source_provider === detectedProvider,
+    topicMatches = normalize(lesson.topic).includes(
+      normalize(displayProvider(detectedProvider)),
+    );
+  return (
+    startDelta <= 5 * 60000 &&
+    endDelta <= 5 * 60000 &&
+    (identityMatches || providerMatches || topicMatches)
+  );
+}
 export function managedCalendarChange(
   event: CalendarEvent,
   lesson: Pick<ManagedLesson, "starts_at" | "ends_at" | "status">,
@@ -852,10 +924,8 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         body,
         headers,
         studio.timezone || "America/New_York",
-      );
-    const changeType = gmailChangeType(text);
-    const isCancellation = changeType === "cancellation";
-    const isReschedule = changeType === "reschedule";
+      ),
+      messageKind = gmailProviderMessageKind(text, candidate);
     const { data: prior } = await db
       .from("integration_imports")
       .select("id,lesson_id,status")
@@ -863,6 +933,23 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       .eq("provider", "gmail")
       .eq("external_id", item.id)
       .maybeSingle();
+    if (!messageKind) {
+      if (prior?.status === "needs_review")
+        await db
+          .from("integration_imports")
+          .update({
+            status: "ignored",
+            confidence: 0,
+            matched_by: "Filtered: not a booking or lesson change",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", prior.id);
+      continue;
+    }
+    const changeType = messageKind;
+    const isCancellation = changeType === "cancellation";
+    const isReschedule = changeType === "reschedule";
+    if (prior?.status === "ignored") continue;
     if (
       prior?.status === "imported" &&
       prior.lesson_id &&
@@ -965,72 +1052,81 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       }
     }
     let createdFromGmail = false;
-    if (match && candidate && !lessonId) {
-      const { data: existing } = await db
+    if (candidate && !lessonId && !isCancellation && !isReschedule) {
+      const { data: possible, error: possibleError } = await db
         .from("lessons")
-        .select("id,starts_at")
+        .select(
+          "id,student_id,starts_at,ends_at,status,source_provider,topic",
+        )
         .eq("studio_id", studio.id)
-        .eq("student_id", match.student.id)
         .gte(
           "starts_at",
           new Date(
-            new Date(candidate.startsAt).getTime() - 15 * 60000,
+            new Date(candidate.startsAt).getTime() - 5 * 60000,
           ).toISOString(),
         )
         .lte(
           "starts_at",
           new Date(
-            new Date(candidate.startsAt).getTime() + 15 * 60000,
+            new Date(candidate.startsAt).getTime() + 5 * 60000,
           ).toISOString(),
         )
-        .limit(1)
-        .maybeSingle();
-      if (existing) lessonId = existing.id;
-      else {
-        const created = await db
-          .from("lessons")
+        .limit(5);
+      if (possibleError) throw possibleError;
+      const duplicates = (possible || []).filter((lesson: ExistingLessonCandidate) =>
+        isSameScheduledLesson(
+          candidate,
+          lesson,
+          detected,
+          match?.student.id,
+        ),
+      );
+      if (duplicates.length === 1) lessonId = duplicates[0].id;
+    }
+    if (match && candidate && !lessonId) {
+      const created = await db
+        .from("lessons")
+        .insert({
+          studio_id: studio.id,
+          student_id: match.student.id,
+          topic: candidate.topic,
+          starts_at: candidate.startsAt,
+          ends_at: candidate.endsAt,
+          status:
+            new Date(candidate.endsAt) < new Date()
+              ? "completed"
+              : "scheduled",
+          location_type: candidate.joinUrl ? "virtual" : "in_person",
+          location_label: candidate.locationLabel,
+          join_url: candidate.joinUrl || null,
+          // Preserve a provider's own classroom URL. Only native Meet URLs
+          // should ask the Calendar worker to provision a Google conference.
+          meeting_provider: candidate.joinUrl
+            ? /meet\.google\.com/i.test(candidate.joinUrl)
+              ? "google_meet"
+              : null
+            : "in_person",
+          source_provider: detected,
+          source_external_id: item.id,
+          source_confidence: match.confidence,
+          imported_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (!created.error && created.data) {
+        lessonId = created.data.id;
+        createdFromGmail = true;
+        const { error: participantError } = await db
+          .from("lesson_participants")
           .insert({
-            studio_id: studio.id,
+            lesson_id: lessonId,
             student_id: match.student.id,
-            topic: candidate.topic,
-            starts_at: candidate.startsAt,
-            ends_at: candidate.endsAt,
-            status:
-              new Date(candidate.endsAt) < new Date()
-                ? "completed"
-                : "scheduled",
-            location_type: candidate.joinUrl ? "virtual" : "in_person",
-            location_label: candidate.locationLabel,
-            join_url: candidate.joinUrl || null,
-            // Preserve a provider's own classroom URL. Only native Meet URLs
-            // should ask the Calendar worker to provision a Google conference.
-            meeting_provider: candidate.joinUrl
-              ? /meet\.google\.com/i.test(candidate.joinUrl)
-                ? "google_meet"
-                : null
-              : "in_person",
-            source_provider: detected,
-            source_external_id: item.id,
-            source_confidence: match.confidence,
-            imported_at: new Date().toISOString(),
-          })
-          .select("id")
-          .single();
-        if (!created.error && created.data) {
-          lessonId = created.data.id;
-          createdFromGmail = true;
-          const { error: participantError } = await db
-            .from("lesson_participants")
-            .insert({
-              lesson_id: lessonId,
-              student_id: match.student.id,
-              display_name:
-                match.student.preferred_name || match.student.full_name,
-              email: match.student.email || emails[0] || "",
-              status: "confirmed",
-            });
-          if (participantError) throw participantError;
-        }
+            display_name:
+              match.student.preferred_name || match.student.full_name,
+            email: match.student.email || emails[0] || "",
+            status: "confirmed",
+          });
+        if (participantError) throw participantError;
       }
     }
     if (

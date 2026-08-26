@@ -3,6 +3,8 @@ import fs from "node:fs";
 import {
   gmailCandidate,
   gmailChangeType,
+  gmailProviderMessageKind,
+  isSameScheduledLesson,
   managedCalendarChange,
 } from "../../netlify/functions/provider-intake";
 
@@ -57,6 +59,100 @@ describe("Gmail provider lesson parsing", () => {
         "America/New_York",
       ),
     ).toBeUndefined();
+  });
+
+  it("ignores Lessonface mail that is not a booking event", () => {
+    const candidate = gmailCandidate(
+      "A Lessonface newsletter mentions a class on Tuesday, August 25, 2026 at 3:15 PM ET.",
+      { subject: "Lessonface weekly digest" },
+      "America/New_York",
+    );
+    expect(
+      gmailProviderMessageKind(
+        "Lessonface weekly digest newsletter about classes and special offers",
+        candidate,
+      ),
+    ).toBeUndefined();
+    expect(
+      gmailProviderMessageKind(
+        "You have a new message and payment receipt from a Lessonface student",
+      ),
+    ).toBeUndefined();
+    expect(
+      gmailProviderMessageKind(
+        "A student sent a Lessonface inquiry about acting lessons",
+      ),
+    ).toBeUndefined();
+    expect(
+      gmailProviderMessageKind(
+        "Read our Lessonface lesson cancellation policy before booking",
+      ),
+    ).toBeUndefined();
+  });
+
+  it("accepts only concrete Lessonface bookings and lesson changes", () => {
+    const candidate = gmailCandidate(
+      "Your Lessonface lesson is scheduled Tuesday, August 25, 2026 at 3:15 PM ET for 45 minutes.",
+      { subject: "Lessonface booking confirmed" },
+      "America/New_York",
+    );
+    expect(
+      gmailProviderMessageKind(
+        "Lessonface booking confirmed for your acting lesson",
+        candidate,
+      ),
+    ).toBe("confirmation");
+    expect(
+      gmailProviderMessageKind(
+        "Your Lessonface lesson was rescheduled to a new time",
+      ),
+    ).toBe("reschedule");
+    expect(
+      gmailProviderMessageKind("Your Lessonface lesson was cancelled"),
+    ).toBe("cancellation");
+  });
+
+  it("recognizes a provider email as the lesson already in the studio", () => {
+    const candidate = {
+      startsAt: "2026-08-25T19:15:00.000Z",
+      endsAt: "2026-08-25T20:00:00.000Z",
+      topic: "Lessonface booking confirmed",
+      locationLabel: "Lessonface",
+      joinUrl: undefined,
+      timeZone: "America/New_York",
+    };
+    expect(
+      isSameScheduledLesson(
+        candidate,
+        {
+          id: "lesson-1",
+          student_id: "student-1",
+          starts_at: "2026-08-25T19:15:00.000Z",
+          ends_at: "2026-08-25T20:00:00.000Z",
+          status: "scheduled",
+          source_provider: "google_calendar",
+          topic: "Acting coaching",
+        },
+        "lessonface",
+        "student-1",
+      ),
+    ).toBe(true);
+    expect(
+      isSameScheduledLesson(
+        candidate,
+        {
+          id: "lesson-2",
+          student_id: "student-2",
+          starts_at: "2026-08-25T19:45:00.000Z",
+          ends_at: "2026-08-25T20:30:00.000Z",
+          status: "scheduled",
+          source_provider: "studio",
+          topic: "Scene study",
+        },
+        "lessonface",
+        "student-1",
+      ),
+    ).toBe(false);
   });
 
   it("classifies provider reschedules and cancellations before reconciliation", () => {
