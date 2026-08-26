@@ -1015,6 +1015,7 @@ function BookingFlow({
         service={service}
         slot={confirmed.startsAt}
         name={name}
+        forMinor={forMinor}
         result={confirmed}
         message={studio.bookingDefaults.confirmationMessage}
       />
@@ -1354,7 +1355,7 @@ function BookingFlow({
                 <span>
                   <strong>Create a studio portal profile</strong>
                   <small>
-                    After this booking is confirmed, we’ll email the {forMinor ? "guardian" : "student"} a generated username and one-time password. They’ll create their own private password at first sign-in.
+                    After this booking is confirmed, we’ll email {forMinor ? "separate student and guardian logins" : "the student login"}, each with a generated username and one-time password. Each person creates a private password at first sign-in.
                   </small>
                 </span>
               </label>
@@ -1495,12 +1496,14 @@ function Confirmation({
   service,
   slot,
   name,
+  forMinor,
   result,
   message,
 }: {
   service: BookingService;
   slot: string;
   name: string;
+  forMinor: boolean;
   result: {
     reference: string;
     manageUrl?: string;
@@ -1526,7 +1529,9 @@ function Confirmation({
       </p>
       {result.portalRequested && (
         <p className="portal-notice">
-          Your portal invitation is being prepared separately. It includes a generated username, a one-time password, and clear first-login instructions.
+          {forMinor
+            ? "Separate student and guardian portal invitations are being prepared. Each includes a generated username, a one-time password, and clear first-login instructions."
+            : "Your portal invitation is being prepared separately. It includes a generated username, a one-time password, and clear first-login instructions."}
         </p>
       )}
       <article>

@@ -298,10 +298,23 @@ export async function ensureBookingPortalAccess(
     throw error || new Error("Booking has no linked student.");
   if (!booking.portal_requested)
     return { skipped: true, instructionsQueued: false };
-  return provisionPortalAccount(db, {
+  const studentAccount = await provisionPortalAccount(db, {
     studioId: booking.studio_id,
     studentId: booking.student_id,
-    accountType: booking.for_minor ? "guardian" : "student",
+    accountType: "student",
     resetExisting: false,
   });
+  if (!booking.for_minor) return studentAccount;
+  const guardianAccount = await provisionPortalAccount(db, {
+    studioId: booking.studio_id,
+    studentId: booking.student_id,
+    accountType: "guardian",
+    resetExisting: false,
+  });
+  return {
+    accountType: "minor_household",
+    instructionsQueued:
+      studentAccount.instructionsQueued || guardianAccount.instructionsQueued,
+    accounts: [studentAccount, guardianAccount],
+  };
 }

@@ -29,6 +29,10 @@ const publicBooking = fs.readFileSync(
   "netlify/functions/public-booking.ts",
   "utf8",
 );
+const portalAccess = fs.readFileSync(
+  "netlify/functions/_shared/portal-access.ts",
+  "utf8",
+);
 const bookingCancellation = fs.readFileSync(
   "netlify/functions/_shared/booking-cancellation.ts",
   "utf8",
@@ -235,5 +239,8 @@ describe("database contracts", () => {
     expect(publicBooking).toContain("portal_requested: input.createPortalProfile");
     expect(studentWorkspace).not.toContain("Temporary password");
     expect(studentWorkspace).not.toContain('command: "set_credentials"');
+    expect(portalAccess).toContain('accountType: "student"');
+    expect(portalAccess).toContain('accountType: "guardian"');
+    expect(portalAccess).toContain('accountType: "minor_household"');
   });
 });
