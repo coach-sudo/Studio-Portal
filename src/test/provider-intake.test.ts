@@ -3,6 +3,7 @@ import fs from "node:fs";
 import {
   gmailCandidate,
   gmailChangeType,
+  managedCalendarChange,
 } from "../../netlify/functions/provider-intake";
 
 describe("Gmail provider lesson parsing", () => {
@@ -35,6 +36,19 @@ describe("Gmail provider lesson parsing", () => {
     });
   });
 
+  it("parses abbreviated Lessonface dates from Gmail", () => {
+    const candidate = gmailCandidate(
+      "Your Lessonface booking is Tue, Aug 25, 2026 at 3:15 PM ET for 45 minutes.",
+      { subject: "Lessonface lesson confirmed" },
+      "America/New_York",
+    );
+
+    expect(candidate).toMatchObject({
+      startsAt: "2026-08-25T19:15:00.000Z",
+      endsAt: "2026-08-25T20:00:00.000Z",
+    });
+  });
+
   it("does not invent a lesson when an email has no scheduled time", () => {
     expect(
       gmailCandidate(
@@ -60,6 +74,47 @@ describe("Gmail provider lesson parsing", () => {
   it("requests deleted Calendar events so cancellations can remove app lessons", () => {
     expect(
       fs.readFileSync("netlify/functions/provider-intake.ts", "utf8"),
-    ).toContain("showDeleted=true");
+    ).toContain('showDeleted: "true"');
+  });
+
+  it("detects external changes to an app-managed Calendar event without echoing unchanged events", () => {
+    const lesson = {
+      starts_at: "2026-08-25T17:00:00.000Z",
+      ends_at: "2026-08-25T18:00:00.000Z",
+      status: "scheduled",
+    };
+    expect(
+      managedCalendarChange(
+        {
+          id: "event-1",
+          start: { dateTime: lesson.starts_at },
+          end: { dateTime: lesson.ends_at },
+        },
+        lesson,
+      ),
+    ).toBeUndefined();
+    expect(
+      managedCalendarChange(
+        {
+          id: "event-1",
+          start: { dateTime: "2026-08-25T18:00:00.000Z" },
+          end: { dateTime: "2026-08-25T19:00:00.000Z" },
+        },
+        lesson,
+      ),
+    ).toBe("reschedule");
+    expect(
+      managedCalendarChange({ id: "event-1", status: "cancelled" }, lesson),
+    ).toBe("cancellation");
+    expect(
+      managedCalendarChange(
+        {
+          id: "event-1",
+          start: { dateTime: "2026-08-25T18:00:00.000Z" },
+          end: { dateTime: "2026-08-25T19:00:00.000Z" },
+        },
+        { ...lesson, status: "completed" },
+      ),
+    ).toBeUndefined();
   });
 });

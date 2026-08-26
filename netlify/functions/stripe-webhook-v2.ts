@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
 import { serviceClient } from "./_shared/supabase";
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
-import { queueBookingEmails, queuePaymentFailedEmail } from "./_shared/booking-email";
+import { queueBookingEmails, queueLessonChangeEmails, queuePaymentFailedEmail } from "./_shared/booking-email";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -27,6 +27,9 @@ export default async (request: Request, context: Context) => {
     const done = async (payload: Record<string, unknown> = {}) => { await db.from("webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error: null }).eq("id", event.id); return json({ ok: true, ...payload }); };
 
     if (event.type === "checkout.session.completed") {
+      // Payment-method Checkout sessions are completed by the subsequent
+      // setup_intent event; they are never package purchases.
+      if (object.mode === "setup") return done({ setup: true });
       const bookingId = object.metadata?.booking_id, holdId = object.metadata?.hold_id;
       if (bookingId && holdId) {
         const amount = object.mode === "subscription" ? 0 : object.amount_total || 0;
@@ -64,6 +67,8 @@ export default async (request: Request, context: Context) => {
         if (current && current.status !== "confirmed") {
           const { error } = await db.rpc("confirm_booking", { target_booking: bookingId, target_hold: metadata.hold_id, amount_paid: object.amount_paid || 0, provider_reference: object.id });
           if (error) throw error;
+          await queueBookingEmails(db, bookingId, metadata.manage_token, new URL(request.url).origin);
+          await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);
         }
       }
       if (subscriptionId) {
@@ -87,7 +92,7 @@ export default async (request: Request, context: Context) => {
               if(linked.installment_count&&paidCount===linked.installment_count-1&&linked.installment_remainder_minor>0&&object.customer)await stripe.invoiceItems.create({customer:String(object.customer),subscription:subscriptionId,amount:linked.installment_remainder_minor,currency:String(object.currency||linked.currency).toLowerCase(),description:"Final installment rounding adjustment"});
               if (linked.installment_count && paidCount >= linked.installment_count) await stripe.subscriptions.cancel(subscriptionId);
             } else await db.from("bookings").update({ payment_status: "paid", status: "confirmed", paid_minor: amount, updated_at: new Date().toISOString() }).eq("id", linked.id);
-            if (linked.student_id && amount > 0) await db.from("payment_entries").insert({ student_id: linked.student_id, kind: "payment", amount_minor: amount, currency: String(object.currency || linked.currency).toUpperCase(), external_reference: object.id, reason: linked.payment_policy === "installments" ? "Booking installment" : "Subscription payment" });
+            if (linked.student_id && amount > 0) await db.from("payment_entries").upsert({ student_id: linked.student_id, kind: "payment", amount_minor: amount, currency: String(object.currency || linked.currency).toUpperCase(), external_reference: object.id, reason: linked.payment_policy === "installments" ? "Booking installment" : "Subscription payment" }, { onConflict: "external_reference", ignoreDuplicates: true });
           }
         }
       }
@@ -103,8 +108,19 @@ export default async (request: Request, context: Context) => {
       const customerId=typeof object.customer==="string"?object.customer:object.customer?.id,paymentMethodId=typeof object.payment_method==="string"?object.payment_method:object.payment_method?.id;if(customerId&&paymentMethodId){const method=await stripe.paymentMethods.retrieve(paymentMethodId),card=method.card,summary=card?{label:`${card.brand.toUpperCase()} ending in ${card.last4}`,brand:card.brand,last4:card.last4,expires:`${card.exp_month}/${card.exp_year}`}:{label:"Payment method saved"};const {error:updateError}=await db.from("students").update({payment_method_summary:summary,updated_at:new Date().toISOString()}).eq("stripe_customer_id",customerId);if(updateError)throw updateError;}return done();
     }
     if (event.type === "customer.subscription.deleted") {
-      await db.from("recurring_series").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("stripe_subscription_id", String(object.id));
-      return done();
+      const subscriptionId = String(object.id);
+      const { data: linked } = await db.from("bookings").select("id,payment_policy,installments_paid,installment_count").eq("stripe_subscription_id", subscriptionId).maybeSingle();
+      const installmentsComplete = Boolean(linked?.payment_policy === "installments" && linked.installment_count && linked.installments_paid >= linked.installment_count);
+      const cutoffSeconds = Number(object.ended_at || object.cancel_at || object.items?.data?.[0]?.current_period_end || Math.floor(Date.now() / 1000));
+      const { data: termination, error: terminationError } = await db.rpc("finalize_subscription_termination", {
+        subscription_id: subscriptionId,
+        cutoff: new Date(cutoffSeconds * 1000).toISOString(),
+        installments_complete: installmentsComplete,
+      });
+      if (terminationError) throw terminationError;
+      for (const lessonId of Array.isArray(termination?.lessonIds) ? termination.lessonIds : [])
+        await queueLessonChangeEmails(db, lessonId, "cancelled", id);
+      return done({ installmentsComplete });
     }
     if (event.type === "checkout.session.expired") {
       const {data:expiredBooking}=await db.from("bookings").select("hold_ids").eq("stripe_checkout_session_id",object.id).maybeSingle();if(expiredBooking?.hold_ids?.length)await db.from("booking_holds").update({status:"expired"}).in("id",expiredBooking.hold_ids);else await db.from("booking_holds").update({ status: "expired" }).eq("checkout_session_id", object.id);
@@ -116,7 +132,7 @@ export default async (request: Request, context: Context) => {
       const bookingId = refund?.metadata?.booking_id;
       if (bookingId && (!refund.status || refund.status === "succeeded")) {
         const { data: booking } = await db.from("bookings").update({ payment_status: "refunded", updated_at: new Date().toISOString() }).eq("id", bookingId).select("student_id,currency,reference").maybeSingle();
-        if (booking?.student_id) await db.from("payment_entries").insert({ student_id: booking.student_id, kind: "refund", amount_minor: Number(refund.amount || object.amount_refunded || 0), currency: String(refund.currency || object.currency || booking.currency).toUpperCase(), external_reference: refund.id, reason: `Stripe refund ${booking.reference}` });
+        if (booking?.student_id) await db.from("payment_entries").upsert({ student_id: booking.student_id, kind: "refund", amount_minor: Number(refund.amount || object.amount_refunded || 0), currency: String(refund.currency || object.currency || booking.currency).toUpperCase(), external_reference: refund.id, reason: `Stripe refund ${booking.reference}` }, { onConflict: "external_reference", ignoreDuplicates: true });
       }
       return done();
     }

@@ -7,6 +7,7 @@ import { serviceClient } from "./_shared/supabase";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { mapStudentChanges } from "./_shared/student-updates";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
+import { findAuthUserByEmail } from "./_shared/auth-users";
 
 const domains = new Set([
   "students",
@@ -302,14 +303,7 @@ export default async (request: Request, context: Context) => {
         }),
         user = invited.data.user;
       if (invited.error) {
-        const existing = await service.auth.admin.listUsers({
-          page: 1,
-          perPage: 1000,
-        });
-        user =
-          existing.data.users.find(
-            (item) => item.email?.toLowerCase() === email,
-          ) ?? null;
+        user = (await findAuthUserByEmail(service, email)) ?? null;
         if (!user) throw invited.error;
       }
       if (student.is_minor)
@@ -420,17 +414,7 @@ export default async (request: Request, context: Context) => {
         if (existingRelationship?.user_id)
           authUser = { id: existingRelationship.user_id };
       }
-      for (let page = 1; page <= 10 && !authUser; page += 1) {
-        const listed = await service.auth.admin.listUsers({
-          page,
-          perPage: 1000,
-        });
-        if (listed.error) throw listed.error;
-        authUser = listed.data.users.find(
-          (item) => item.email?.toLowerCase() === email,
-        );
-        if (listed.data.users.length < 1000) break;
-      }
+      if (!authUser) authUser = await findAuthUserByEmail(service, email);
       if (authUser) {
         const updatedAuth = await service.auth.admin.updateUserById(
           authUser.id,
@@ -616,58 +600,17 @@ export default async (request: Request, context: Context) => {
       if (before.version !== input.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
       const { data: authData } = await db.auth.getUser();
-      const removedAt = new Date().toISOString();
-      const { data: removed, error: removeError } = await service
-        .from("students")
-        .update({
-          deleted_at: removedAt,
-          deleted_by: authData.user?.id || null,
-          status: "inactive",
-          portal_enabled: false,
-          portal_username: null,
-          user_id: null,
-          version: before.version + 1,
-          updated_at: removedAt,
-        })
-        .eq("id", before.id)
-        .eq("version", before.version)
-        .select()
-        .maybeSingle();
-      if (removeError) throw removeError;
-      if (!removed)
-        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      const { data: futureLessons, error: lessonsError } = await service
-        .from("lessons")
-        .update({ status: "cancelled", updated_at: removedAt })
-        .eq("student_id", before.id)
-        .eq("status", "scheduled")
-        .gte("starts_at", removedAt)
-        .select("id");
-      if (lessonsError) throw lessonsError;
-      const futureLessonIds = (futureLessons || []).map((lesson) => lesson.id);
-      await Promise.all([
-        service
-          .from("student_relationships")
-          .delete()
-          .eq("student_id", before.id),
-        service
-          .from("recurring_series")
-          .update({ status: "cancelled", updated_at: removedAt })
-          .eq("student_id", before.id)
-          .in("status", ["active", "paused", "cancel_at_period_end"]),
-        futureLessonIds.length
-          ? service
-              .from("calendar_projections")
-              .update({ status: "queued", last_error: null })
-              .in("lesson_id", futureLessonIds)
-          : Promise.resolve({ error: null }),
-      ]);
-      return json({
-        resource: {
-          id: before.id,
-          removedAt,
-          cancelledLessons: futureLessonIds.length,
+      const { data: removed, error: removeError } = await service.rpc(
+        "command_remove_student",
+        {
+          target_student: before.id,
+          expected_version: input.expectedVersion,
+          removed_by: authData.user?.id || null,
         },
+      );
+      if (removeError) throw removeError;
+      return json({
+        resource: removed,
         recommendations: [],
         auditEventId: await audit(
           studioId,
@@ -675,9 +618,9 @@ export default async (request: Request, context: Context) => {
           before.id,
           "student.removed",
           before,
-          { removed_at: removedAt, cancelled_lessons: futureLessonIds.length },
+          removed,
         ),
-        queuedSideEffects: futureLessonIds.length
+        queuedSideEffects: Number(removed?.cancelledLessons || 0)
           ? ["calendar_projection"]
           : [],
       });
@@ -694,65 +637,37 @@ export default async (request: Request, context: Context) => {
         new Date(endsAt) <= new Date(startsAt)
       )
         throw new Error("VALIDATION_FAILED");
-      const { data, error } = await db
-        .from("lessons")
-        .insert({
-          studio_id: studioId,
-          student_id: studentId,
+      const cadence = String(input.payload.recurrence || "none");
+      const occurrenceCount = Number(input.payload.occurrenceCount || 1);
+      const { data, error } = await serviceClient().rpc(
+        "command_create_lesson",
+        {
+          target_studio: studioId,
+          target_student: studentId,
           topic: String(input.payload.topic || "Private coaching"),
           starts_at: startsAt,
           ends_at: endsAt,
-          status: "scheduled",
           location_type:
             input.payload.locationType === "in_person"
               ? "in_person"
               : "virtual",
           location_label: String(input.payload.locationLabel || "Google Meet"),
-          meeting_provider:
-            input.payload.locationType === "in_person"
-              ? "in_person"
-              : "google_meet",
-        })
-        .select()
-        .single();
+          student_name: String(input.payload.studentName || "Student"),
+          student_email: String(input.payload.studentEmail || ""),
+          recurrence: cadence,
+          occurrence_count: occurrenceCount,
+          timezone: String(input.payload.timezone || "America/New_York"),
+        },
+      );
       if (error) throw error;
-      await serviceClient()
-        .from("lesson_participants")
-        .insert({
-          lesson_id: data.id,
-          student_id: studentId,
-          display_name: String(input.payload.studentName || "Student"),
-          email: String(input.payload.studentEmail || ""),
-        });
-      await serviceClient().from("calendar_projections").insert({
-        lesson_id: data.id,
-        status: "queued",
-      });
-      const cadence = String(input.payload.recurrence || "none");
-      const occurrenceCount = Number(input.payload.occurrenceCount || 1);
-      if (["weekly", "biweekly"].includes(cadence) && occurrenceCount > 1) {
-        const repeated = await serviceClient().rpc(
-          "command_make_lesson_recurring",
-          {
-            p_lesson_id: data.id,
-            p_expected_version: data.version,
-            p_cadence: cadence,
-            p_occurrence_count: occurrenceCount,
-            p_timezone: String(input.payload.timezone || "America/New_York"),
-          },
-        );
-        if (repeated.error) {
-          await serviceClient().from("lessons").delete().eq("id", data.id);
-          throw repeated.error;
-        }
-      }
+      const lesson = data.lesson;
       return json({
-        resource: data,
+        resource: lesson,
         recommendations: [],
         auditEventId: await audit(
           studioId,
           "lesson",
-          data.id,
+          lesson.id,
           "lesson.created",
           null,
           data,
@@ -1207,6 +1122,13 @@ export default async (request: Request, context: Context) => {
           .from("studio-materials")
           .remove([before.storage_path]);
         storageWarning = Boolean(storageResult.error);
+        if (!storageWarning) {
+          const { error: assetDeleteError } = await service
+            .from("file_assets")
+            .delete()
+            .eq("storage_path", before.storage_path);
+          if (assetDeleteError) storageWarning = true;
+        }
       }
       return json({
         resource: { id: before.id, deleted: true, storageWarning },
@@ -2127,96 +2049,20 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "INVALID_TRANSITION: A cancelled lesson cannot use a credit.",
         );
-      const existing = await service
-        .from("package_credit_entries")
-        .select("id")
-        .eq("lesson_id", lesson.id)
-        .in("kind", ["reservation", "consumption"])
-        .limit(1)
-        .maybeSingle();
-      if (existing.data)
-        throw new Error(
-          "INVALID_TRANSITION: This lesson is already paid by credit.",
-        );
-      const { data: packages, error: packageError } = await service
-        .from("packages")
-        .select("id,name,expires_at,package_credit_entries(quantity)")
-        .eq("student_id", lesson.student_id);
-      if (packageError) throw packageError;
       const requestedPackage = String(input.payload.packageId || "");
-      const available = (packages || [])
-        .filter(
-          (item: any) =>
-            !item.expires_at || new Date(item.expires_at) > new Date(),
-        )
-        .map((item: any) => ({
-          ...item,
-          balance: (item.package_credit_entries || []).reduce(
-            (sum: number, entry: any) => sum + Number(entry.quantity),
-            0,
-          ),
-        }))
-        .find(
-          (item: any) =>
-            (!requestedPackage || item.id === requestedPackage) &&
-            item.balance > 0,
-        );
-      if (!available)
-        throw new Error(
-          "VALIDATION_FAILED: This student does not have an available lesson credit.",
-        );
-      const { data: entry, error: entryError } = await service
-        .from("package_credit_entries")
-        .insert({
-          package_id: available.id,
-          lesson_id: lesson.id,
-          kind: "consumption",
-          quantity: -1,
-          reason: String(
+      const { data: applied, error: applyError } = await service.rpc(
+        "command_apply_lesson_credit",
+        {
+          target_lesson: lesson.id,
+          requested_package: requestedPackage || null,
+          entry_reason: String(
             input.payload.reason || `Credit used for ${lesson.topic}`,
           ),
-          idempotency_key: `lesson-credit:${lesson.id}`,
-        })
-        .select()
-        .single();
-      if (entryError) throw entryError;
-      await Promise.all([
-        service
-          .from("lessons")
-          .update({
-            package_id: available.id,
-            version: lesson.version + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", lesson.id)
-          .eq("version", lesson.version),
-        service.from("payment_entries").insert({
-          student_id: lesson.student_id,
-          package_id: available.id,
-          kind: "adjustment",
-          amount_minor: 0,
-          currency: "USD",
-          external_reference: `credit:${lesson.id}`,
-          reason: `Paid by lesson credit: ${lesson.topic}`,
-        }),
-      ]);
-      const { data: participants } = await service
-        .from("lesson_participants")
-        .select("booking_id")
-        .eq("lesson_id", lesson.id)
-        .not("booking_id", "is", null);
-      const bookingIds = (participants || [])
-        .map((item: any) => item.booking_id)
-        .filter(Boolean);
-      if (bookingIds.length)
-        await service
-          .from("bookings")
-          .update({
-            payment_status: "paid",
-            paid_minor: 0,
-            updated_at: new Date().toISOString(),
-          })
-          .in("id", bookingIds);
+          entry_idempotency_key: `lesson-credit:${lesson.id}`,
+        },
+      );
+      if (applyError) throw applyError;
+      const entry = applied.entry;
       return json({
         resource: entry,
         recommendations: [],
@@ -2226,7 +2072,7 @@ export default async (request: Request, context: Context) => {
           lesson.id,
           "lesson.paid_by_credit",
           lesson,
-          { package_id: available.id, credit_entry_id: entry.id },
+          { package_id: entry.package_id, credit_entry_id: entry.id },
         ),
         queuedSideEffects: [],
       });
@@ -2489,6 +2335,45 @@ export default async (request: Request, context: Context) => {
           data.preparation,
         ),
         queuedSideEffects: [],
+      });
+    }
+    if (
+      domain === "lessons" &&
+      input.command === "update_details" &&
+      input.entityId
+    ) {
+      const studioId = await requireCoach();
+      const { data: before, error: readError } = await db
+        .from("lessons")
+        .select("*")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      const { data, error } = await db.rpc("command_update_lesson_details", {
+        target_lesson: before.id,
+        expected_version: input.expectedVersion,
+        next_topic: String(input.payload.topic || before.topic),
+        next_location_type: before.location_type,
+        next_location_label: String(
+          input.payload.locationLabel || before.location_label,
+        ),
+        next_join_url:
+          input.payload.joinUrl == null ? null : String(input.payload.joinUrl),
+      });
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          studioId,
+          "lesson",
+          before.id,
+          "lesson.details_updated",
+          before,
+          data,
+        ),
+        queuedSideEffects: ["calendar_projection"],
       });
     }
     if (domain === "lessons" && input.command === "complete") {

@@ -1,5 +1,9 @@
 import type { Config } from "@netlify/functions";
 import { serviceClient } from "./_shared/supabase";
+import { queueLessonChangeEmails } from "./_shared/booking-email";
+
+const render = (template: string, values: Record<string, string>) =>
+  template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
 
 export default async () => {
   const db = serviceClient();
@@ -23,29 +27,34 @@ export default async () => {
   const grace = new Date(Date.now() - 7 * 86400000).toISOString(), now = new Date().toISOString();
   const { data: delinquent } = await db.from("bookings").select("id,series_id,offering_id").eq("payment_status", "past_due").lte("updated_at", grace);
   if (delinquent?.length) {
-    await db.from("bookings").update({ status: "cancelled", updated_at: now }).in("id", delinquent.map((item) => item.id));
-    const seriesIds = delinquent.map((item) => item.series_id).filter(Boolean);
-    if (seriesIds.length) {
-      const { data: lessons } = await db.from("lessons").select("id").in("series_id", seriesIds).gte("starts_at", now).eq("status", "scheduled"), lessonIds = (lessons ?? []).map((item) => item.id);
-      if (lessonIds.length) await Promise.all([db.from("lessons").update({ status: "cancelled", updated_at: now }).in("id", lessonIds), db.from("calendar_projections").update({ status: "queued", last_error: null }).in("lesson_id", lessonIds)]);
-      await db.from("recurring_series").update({ status: "cancelled", updated_at: now }).in("id", seriesIds);
-    }
-    for (const booking of delinquent.filter((item) => item.offering_id)) {
-      const { data: participants } = await db.from("lesson_participants").update({ status: "cancelled" }).eq("booking_id", booking.id).select("lesson_id"), lessonIds = (participants || []).map((item) => item.lesson_id);
-      if (lessonIds.length) await db.from("calendar_projections").update({ status: "queued", last_error: null }).in("lesson_id", lessonIds);
-      await db.rpc("release_offering_seat", { target_offering: booking.offering_id });
+    for (const booking of delinquent) {
+      const { data: expiredBooking, error: delinquentError } = await db.rpc(
+        "expire_delinquent_booking",
+        { target_booking: booking.id },
+      );
+      if (delinquentError) throw delinquentError;
+      for (const lessonId of Array.isArray(expiredBooking?.lessonIds) ? expiredBooking.lessonIds : [])
+        await queueLessonChangeEmails(db, lessonId, "cancelled", `delinquent:${booking.id}`);
     }
   }
 
   const notePriorityStart = new Date(Date.now() - 8 * 86400000).toISOString();
-  await db.from("recommendations").update({ status: "resolved", updated_at: now }).eq("reason_code", "lesson_note_due_48h").lt("created_at", notePriorityStart).eq("status", "open");
+  const [{ data: staleLessons }, { data: studios }] = await Promise.all([
+    db.from("lessons").select("id").lt("ends_at", notePriorityStart),
+    db.from("studios").select("id,name,timezone,settings"),
+  ]);
+  const staleLessonIds = (staleLessons || []).map((lesson) => lesson.id);
+  if (staleLessonIds.length)
+    await db.from("recommendations").update({ status: "resolved", updated_at: now }).eq("reason_code", "lesson_note_due_48h").eq("status", "open").in("entity_id", staleLessonIds);
+  const studioSettings = new Map((studios || []).map((studio) => [studio.id, studio]));
   const { data: recentLessons } = await db.from("lessons").select("id,studio_id,student_id,topic,ends_at,status").lte("ends_at", now).not("status", "in", '(cancelled,late_cancelled)').gte("ends_at", notePriorityStart);
   let noteReminders = 0;
   for (const lesson of recentLessons || []) {
     const { count } = await db.from("notes").select("id", { count: "exact", head: true }).eq("lesson_id", lesson.id).eq("status", "published");
     if (count) { await db.from("recommendations").update({ status: "resolved", updated_at: now }).eq("dedupe_key", `lesson:${lesson.id}:note-48h`); continue; }
     const dueAt = new Date(new Date(lesson.ends_at).getTime() + 48 * 3_600_000).toISOString();
-    await db.from("recommendations").upsert({ studio_id: lesson.studio_id, student_id: lesson.student_id, entity_type: "lesson", entity_id: lesson.id, reason_code: "lesson_note_due_48h", title: `Write follow-up for ${lesson.topic}`, explanation: "Lesson notes are due within 48 hours of the lesson ending.", evidence: [`Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone: "America/New_York" })}`, `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone: "America/New_York" })}`], urgency: new Date(dueAt) <= new Date() ? 5 : 4, due_at: dueAt, suggested_action: "write_note", requires_confirmation: false, status: "open", dedupe_key: `lesson:${lesson.id}:note-48h`, updated_at: now }, { onConflict: "dedupe_key" });
+    const timeZone = studioSettings.get(lesson.studio_id)?.timezone || "America/New_York";
+    await db.from("recommendations").upsert({ studio_id: lesson.studio_id, student_id: lesson.student_id, entity_type: "lesson", entity_id: lesson.id, reason_code: "lesson_note_due_48h", title: `Write follow-up for ${lesson.topic}`, explanation: "Lesson notes are due within 48 hours of the lesson ending.", evidence: [`Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone })}`, `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone })}`], urgency: new Date(dueAt) <= new Date() ? 5 : 4, due_at: dueAt, suggested_action: "write_note", requires_confirmation: false, status: "open", dedupe_key: `lesson:${lesson.id}:note-48h`, updated_at: now }, { onConflict: "dedupe_key" });
     noteReminders++;
   }
 
@@ -95,6 +104,8 @@ export default async () => {
     const student = Array.isArray(pkg.students) ? pkg.students[0] : pkg.students;
     if (!student) continue;
     const studentName = student.preferred_name || student.full_name;
+    const studio = studioSettings.get(student.studio_id);
+    const timeZone = studio?.timezone || "America/New_York";
     const recipient = student.is_minor
       ? student.guardian_email || student.email
       : student.email || student.guardian_email;
@@ -108,7 +119,7 @@ export default async () => {
         reason_code: "package_expiring",
         title: `${studentName}'s ${pkg.name} expires soon`,
         explanation: `${balance} lesson credit${balance === 1 ? "" : "s"} expire${balance === 1 ? "s" : ""} in ${days} day${days === 1 ? "" : "s"}.`,
-        evidence: [`Expires ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone: "America/New_York" })}`, `${balance} credits remaining`],
+        evidence: [`Expires ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone })}`, `${balance} credits remaining`],
         urgency: days <= 7 ? 5 : days <= 14 ? 4 : 3,
         due_at: pkg.expires_at,
         suggested_action: "review_package",
@@ -120,14 +131,25 @@ export default async () => {
       { onConflict: "dedupe_key" },
     );
     if (recipient) {
+      const automation = studio?.settings?.emailAutomations || {};
+      if (automation.enabled === false) continue;
+      const expiresAt = new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone });
+      const templateValues = {
+        studioName: String(studio?.name || "Studio"),
+        studentName,
+        packageName: pkg.name,
+        days: String(days),
+        credits: String(balance),
+        expiresAt,
+      };
       const { error: emailError } = await db.from("outbox_messages").upsert(
         {
           studio_id: student.studio_id,
           student_id: pkg.student_id,
           channel: "email",
           recipient,
-          subject: `${pkg.name} expires in ${days} days`,
-          body: `Hi ${studentName},\n\nYour ${pkg.name} has ${balance} lesson credit${balance === 1 ? "" : "s"} remaining and expires on ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone: "America/New_York" })}. You can book or review your package from your studio portal.`,
+          subject: render(automation.packageExpirySubject || "{{packageName}} expires in {{days}} days", templateValues),
+          body: render(automation.packageExpiryBody || "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can book or review your package from your studio portal.", templateValues),
           status: "queued",
           send_at: now,
           event_key: "package.expiring.student",

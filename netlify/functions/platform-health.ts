@@ -58,6 +58,10 @@ export default async () => {
           scopes.has("https://www.googleapis.com/auth/calendar.events"),
         canSendGmail =
           scopes.has("https://www.googleapis.com/auth/gmail.send") ||
+          scopes.has("https://mail.google.com/"),
+        canReadGmail =
+          scopes.has("https://www.googleapis.com/auth/gmail.readonly") ||
+          scopes.has("https://www.googleapis.com/auth/gmail.modify") ||
           scopes.has("https://mail.google.com/");
       if (!canWriteCalendar) {
         googleCalendar = false;
@@ -80,6 +84,12 @@ export default async () => {
         gmail = false;
         issues.push(
           "Gmail: reconnect with Gmail send permission so confirmations and reminders can be delivered.",
+        );
+      }
+      if (!canReadGmail) {
+        gmail = false;
+        issues.push(
+          "Gmail: reconnect with read-only Gmail permission so confirmed, rescheduled, and cancelled provider lessons can be reconciled.",
         );
       }
     } catch (error) {

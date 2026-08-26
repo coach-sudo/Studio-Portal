@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { findAuthUserByEmail } from "./auth-users";
 
 export async function ensureBookingPortalAccess(db: SupabaseClient, bookingId: string, origin: string) {
   const { data: booking, error } = await db.from("bookings").select("id,studio_id,student_id,guest_email,guardian_email,for_minor").eq("id", bookingId).single();
@@ -13,9 +14,7 @@ export async function ensureBookingPortalAccess(db: SupabaseClient, bookingId: s
     userId = invite.user?.id;
     if (inviteError && !String(inviteError.message).toLowerCase().includes("already")) throw inviteError;
     if (!userId) {
-      const { data: users, error: usersError } = await db.auth.admin.listUsers({ page: 1, perPage: 1000 });
-      if (usersError) throw usersError;
-      userId = users.users.find((user) => user.email?.toLowerCase() === email)?.id;
+      userId = (await findAuthUserByEmail(db, email))?.id;
     }
   }
   if (!userId) throw new Error("Portal identity could not be linked.");

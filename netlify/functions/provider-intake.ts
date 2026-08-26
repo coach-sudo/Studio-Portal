@@ -14,6 +14,7 @@ type StudentRow = {
 };
 type CalendarEvent = {
   id: string;
+  etag?: string;
   status?: string;
   summary?: string;
   description?: string;
@@ -25,6 +26,21 @@ type CalendarEvent = {
   start?: { dateTime?: string };
   end?: { dateTime?: string };
   updated?: string;
+};
+type ManagedLesson = {
+  id: string;
+  studio_id: string;
+  student_id?: string | null;
+  starts_at: string;
+  ends_at: string;
+  status: string;
+  version: number;
+};
+type CalendarProjection = {
+  lesson_id: string;
+  external_event_id: string;
+  external_version?: string | null;
+  projected_version: number;
 };
 const normalize = (value?: string | null) =>
   (value || "")
@@ -69,6 +85,27 @@ export const gmailChangeType = (text: string) =>
     : /\b(rescheduled|reschedule|new (?:date|time))\b/i.test(text)
       ? "reschedule"
       : "confirmation";
+export function managedCalendarChange(
+  event: CalendarEvent,
+  lesson: Pick<ManagedLesson, "starts_at" | "ends_at" | "status">,
+) {
+  if (event.status === "cancelled")
+    return ["cancelled", "late_cancelled"].includes(lesson.status)
+      ? undefined
+      : "cancellation";
+  if (
+    !event.start?.dateTime ||
+    !event.end?.dateTime ||
+    lesson.status !== "scheduled"
+  )
+    return undefined;
+  return new Date(event.start.dateTime).getTime() !==
+    new Date(lesson.starts_at).getTime() ||
+    new Date(event.end.dateTime).getTime() !==
+      new Date(lesson.ends_at).getTime()
+    ? "reschedule"
+    : undefined;
+}
 const coachEmailKeys = (studio: any) =>
   [
     ...(studio.settings?.coachEmails || []),
@@ -168,34 +205,34 @@ export function gmailCandidate(
     /20\d{2}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?(?:Z|[+-]\d{2}:?\d{2})/i,
   )?.[0];
   const natural = text.match(
-    /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)?,?\s*(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}\s+(?:at\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s+(?:EST|EDT|CST|CDT|MST|MDT|PST|PDT))?/i,
+    /(?:Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday|Mon|Tue|Tues|Wed|Thu|Thur|Fri|Sat|Sun)?,?\s*(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2}(?:st|nd|rd|th)?,?\s+20\d{2}\s+(?:at\s+)?\d{1,2}:\d{2}\s*(?:AM|PM)(?:\s+(?:ET|EST|EDT|CT|CST|CDT|MT|MST|MDT|PT|PST|PDT))?/i,
   )?.[0];
   let start = iso ? new Date(iso) : undefined;
   if (!start && natural) {
     const parsed = natural.match(
-      /(January|February|March|April|May|June|July|August|September|October|November|December)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(AM|PM)/i,
+      /(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(20\d{2})\s+(?:at\s+)?(\d{1,2}):(\d{2})\s*(AM|PM)/i,
     );
     if (parsed) {
       const months = [
-          "january",
-          "february",
-          "march",
-          "april",
+          "jan",
+          "feb",
+          "mar",
+          "apr",
           "may",
-          "june",
-          "july",
-          "august",
-          "september",
-          "october",
-          "november",
-          "december",
+          "jun",
+          "jul",
+          "aug",
+          "sep",
+          "oct",
+          "nov",
+          "dec",
         ],
         hour12 = Number(parsed[4]),
         hour = (hour12 % 12) + (parsed[6].toLowerCase() === "pm" ? 12 : 0);
       start = zonedDateTimeToUtc(
         {
           year: Number(parsed[3]),
-          month: months.indexOf(parsed[1].toLowerCase()) + 1,
+          month: months.indexOf(parsed[1].toLowerCase().slice(0, 3)) + 1,
           day: Number(parsed[2]),
           hour,
           minute: Number(parsed[5]),
@@ -225,6 +262,227 @@ export function gmailCandidate(
   };
 }
 
+const slicesOf = <T>(items: T[], size = 100) => {
+  const result: T[][] = [];
+  for (let index = 0; index < items.length; index += size)
+    result.push(items.slice(index, index + size));
+  return result;
+};
+
+async function listCalendarEvents(
+  token: string,
+  calendar: string,
+  from: string,
+  to: string,
+) {
+  const events: CalendarEvent[] = [];
+  let pageToken: string | undefined;
+  do {
+    const params = new URLSearchParams({
+        singleEvents: "true",
+        showDeleted: "true",
+        orderBy: "startTime",
+        timeMin: from,
+        timeMax: to,
+        maxResults: "250",
+      }),
+      suffix = pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : "";
+    const response = await fetch(
+        `https://www.googleapis.com/calendar/v3/calendars/${calendar}/events?${params.toString()}${suffix}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+      payload = (await response.json()) as {
+        items?: CalendarEvent[];
+        nextPageToken?: string;
+        error?: unknown;
+      };
+    if (!response.ok)
+      throw new Error(
+        `Calendar intake failed: ${JSON.stringify(payload.error || payload)}`,
+      );
+    events.push(...(payload.items || []));
+    pageToken = payload.nextPageToken;
+  } while (pageToken);
+  return events;
+}
+
+async function managedCalendarRows(db: any, events: CalendarEvent[]) {
+  const externalIds = events.map((event) => event.id).filter(Boolean),
+    projections: CalendarProjection[] = [];
+  for (const ids of slicesOf(externalIds)) {
+    const { data, error } = await db
+      .from("calendar_projections")
+      .select(
+        "lesson_id,external_event_id,external_version,projected_version",
+      )
+      .in("external_event_id", ids);
+    if (error) throw error;
+    projections.push(...(data || []));
+  }
+  const lessons: ManagedLesson[] = [];
+  for (const ids of slicesOf([
+    ...new Set(projections.map((projection) => projection.lesson_id)),
+  ])) {
+    const { data, error } = await db
+      .from("lessons")
+      .select("id,studio_id,student_id,starts_at,ends_at,status,version")
+      .in("id", ids);
+    if (error) throw error;
+    lessons.push(...(data || []));
+  }
+  return {
+    projections: new Map(
+      projections.map((projection) => [projection.external_event_id, projection]),
+    ),
+    lessons: new Map(lessons.map((lesson) => [lesson.id, lesson])),
+  };
+}
+
+async function reconcileManagedCalendarEvent(
+  db: any,
+  studio: any,
+  event: CalendarEvent,
+  projection: CalendarProjection,
+  lesson: ManagedLesson,
+) {
+  const change = managedCalendarChange(event, lesson),
+    externalVersion = event.etag || event.updated || null;
+  if (!change) {
+    if (externalVersion && externalVersion !== projection.external_version)
+      await db
+        .from("calendar_projections")
+        .update({ external_version: externalVersion })
+        .eq("lesson_id", lesson.id);
+    return false;
+  }
+  const correlation = `calendar-${change}:${event.id}:${event.updated || event.etag || "unknown"}`,
+    { error: changeError } = await db.rpc("command_change_lesson_state", {
+      p_lesson_id: lesson.id,
+      p_expected_version: lesson.version,
+      p_action: change === "cancellation" ? "cancel" : "reschedule",
+      p_starts_at: change === "reschedule" ? event.start?.dateTime : null,
+      p_ends_at: change === "reschedule" ? event.end?.dateTime : null,
+      // Google is the source of this mutation. Re-projecting it would create a loop.
+      p_queue_calendar: false,
+    });
+  if (changeError) {
+    await Promise.all([
+      db.from("sync_conflicts").insert({
+        studio_id: studio.id,
+        entity_type: "lesson",
+        entity_id: lesson.id,
+        source: "google_calendar",
+        internal_version: lesson.version,
+        external_payload: event,
+        status: "open",
+      }),
+      db.from("recommendations").upsert(
+        {
+          studio_id: studio.id,
+          student_id: lesson.student_id || null,
+          entity_type: "lesson",
+          entity_id: lesson.id,
+          reason_code: "calendar_change_needs_review",
+          title: "Review a Calendar lesson change",
+          explanation:
+            "Google Calendar changed this lesson while the portal record was also changing. Review it before applying either version.",
+          evidence: [String(changeError)],
+          urgency: 4,
+          suggested_action: "review_calendar_change",
+          requires_confirmation: true,
+          status: "open",
+          dedupe_key: `lesson:${lesson.id}:calendar-conflict:${event.updated || event.etag || "unknown"}`,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "dedupe_key" },
+      ),
+    ]);
+    return false;
+  }
+  const { data: updatedLesson, error: refreshError } = await db
+    .from("lessons")
+    .select("version,status,starts_at,ends_at")
+    .eq("id", lesson.id)
+    .single();
+  if (refreshError) throw refreshError;
+  const emailAction = change === "cancellation" ? "cancelled" : "rescheduled";
+  await queueLessonChangeEmails(db, lesson.id, emailAction, correlation);
+  await Promise.all([
+    db
+      .from("calendar_projections")
+      .update({
+        status: "projected",
+        external_version: externalVersion,
+        projected_version: updatedLesson.version,
+        last_projected_at: new Date().toISOString(),
+        last_error: null,
+      })
+      .eq("lesson_id", lesson.id),
+    db.from("integration_imports").upsert(
+      {
+        studio_id: studio.id,
+        provider: "google_calendar",
+        external_id: event.id,
+        detected_source: "studio_calendar",
+        student_id: lesson.student_id || null,
+        lesson_id: lesson.id,
+        status: "imported",
+        confidence: 1,
+        matched_by: "calendar projection",
+        payload: event,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "studio_id,provider,external_id" },
+    ),
+    db.from("recommendations").upsert(
+      {
+        studio_id: studio.id,
+        student_id: lesson.student_id || null,
+        entity_type: "lesson",
+        entity_id: lesson.id,
+        reason_code: `calendar_${change}_applied`,
+        title:
+          change === "cancellation"
+            ? "Calendar cancellation applied"
+            : "Calendar reschedule applied",
+        explanation:
+          change === "cancellation"
+            ? "A cancellation made in Google Calendar was applied to the portal lesson."
+            : "A new time from Google Calendar was applied to the portal lesson.",
+        evidence:
+          change === "cancellation"
+            ? ["The linked Google Calendar event was cancelled."]
+            : [
+                `New start: ${event.start?.dateTime}`,
+                `New end: ${event.end?.dateTime}`,
+              ],
+        urgency: 2,
+        suggested_action: "view_lesson",
+        requires_confirmation: false,
+        status: "open",
+        dedupe_key: `lesson:${lesson.id}:calendar-${change}:${event.updated || event.etag || "unknown"}`,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "dedupe_key" },
+    ),
+    db.from("audit_events").insert({
+      studio_id: studio.id,
+      entity_type: "lesson",
+      entity_id: lesson.id,
+      action:
+        change === "cancellation"
+          ? "lesson.cancelled_from_calendar"
+          : "lesson.rescheduled_from_calendar",
+      reason: `Linked Google Calendar event was ${emailAction}`,
+      correlation_id: correlation,
+      source: "provider_intake",
+      before_state: lesson,
+      after_state: updatedLesson,
+    }),
+  ]);
+  return true;
+}
+
 async function importCalendar(
   token: string,
   studio: any,
@@ -236,22 +494,29 @@ async function importCalendar(
     ),
     from = new Date(Date.now() - 14 * 86400000).toISOString(),
     to = new Date(Date.now() + 90 * 86400000).toISOString();
-  const response = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${calendar}/events?singleEvents=true&showDeleted=true&orderBy=startTime&timeMin=${encodeURIComponent(from)}&timeMax=${encodeURIComponent(to)}&maxResults=250`,
-    { headers: { Authorization: `Bearer ${token}` } },
-  );
-  const payload = (await response.json()) as {
-    items?: CalendarEvent[];
-    error?: unknown;
-  };
-  if (!response.ok)
-    throw new Error(
-      `Calendar intake failed: ${JSON.stringify(payload.error || payload)}`,
-    );
+  const events = await listCalendarEvents(token, calendar, from, to),
+    managed = await managedCalendarRows(db, events);
   let imported = 0,
     review = 0;
-  for (const event of payload.items || []) {
+  for (const event of events) {
     if (!event.id) continue;
+    const projection = managed.projections.get(event.id),
+      managedLesson = projection
+        ? managed.lessons.get(projection.lesson_id)
+        : undefined;
+    if (projection && managedLesson) {
+      if (
+        await reconcileManagedCalendarEvent(
+          db,
+          studio,
+          event,
+          projection,
+          managedLesson,
+        )
+      )
+        imported++;
+      continue;
+    }
     if (event.status === "cancelled") {
       const { data: prior } = await db
         .from("integration_imports")
@@ -289,7 +554,7 @@ async function importCalendar(
               .from("calendar_projections")
               .update({
                 status: "projected",
-                external_version: event.updated || null,
+                external_version: event.etag || event.updated || null,
                 last_projected_at: new Date().toISOString(),
                 last_error: null,
               })
@@ -474,7 +739,7 @@ async function importCalendar(
             {
               lesson_id: lesson.id,
               external_event_id: event.id,
-              external_version: event.updated,
+              external_version: event.etag || event.updated,
               projected_version: lesson.version,
               status: "projected",
               last_projected_at: new Date().toISOString(),
@@ -521,37 +786,44 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
     query = encodeURIComponent(
       'newer_than:90d {lessonface wyzant "lessons.com" acuity "squarespace scheduling"}',
     ),
-    list = await fetch(
-      `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=200`,
-      { headers: { Authorization: `Bearer ${token}` } },
-    ),
-    payload = (await list.json()) as {
-      messages?: Array<{ id: string }>;
-      error?: any;
-    };
-  if (!list.ok) {
-    await db.from("recommendations").upsert(
-      {
-        studio_id: studio.id,
-        entity_type: "integration",
-        reason_code: "gmail_read_scope_required",
-        title: "Reconnect Google to import booking emails",
-        explanation:
-          "Sending email works, but smart booking intake also needs read-only Gmail permission.",
-        evidence: [payload.error?.message || "Gmail read unavailable"],
-        urgency: 3,
-        suggested_action: "open_integrations",
-        requires_confirmation: false,
-        status: "open",
-        dedupe_key: `studio:${studio.id}:gmail-read`,
-      },
-      { onConflict: "dedupe_key" },
-    );
-    return { review: 0, imported: 0, scope: false };
-  }
+    messageIds: Array<{ id: string }> = [];
+  let pageToken: string | undefined;
+  do {
+    const list = await fetch(
+        `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=200${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`,
+        { headers: { Authorization: `Bearer ${token}` } },
+      ),
+      payload = (await list.json()) as {
+        messages?: Array<{ id: string }>;
+        nextPageToken?: string;
+        error?: any;
+      };
+    if (!list.ok) {
+      await db.from("recommendations").upsert(
+        {
+          studio_id: studio.id,
+          entity_type: "integration",
+          reason_code: "gmail_read_scope_required",
+          title: "Reconnect Google to import booking emails",
+          explanation:
+            "Sending email works, but smart booking intake also needs read-only Gmail permission.",
+          evidence: [payload.error?.message || "Gmail read unavailable"],
+          urgency: 3,
+          suggested_action: "open_integrations",
+          requires_confirmation: false,
+          status: "open",
+          dedupe_key: `studio:${studio.id}:gmail-read`,
+        },
+        { onConflict: "dedupe_key" },
+      );
+      return { review: 0, imported: 0, scope: false };
+    }
+    messageIds.push(...(payload.messages || []));
+    pageToken = payload.nextPageToken;
+  } while (pageToken);
   let review = 0,
     imported = 0;
-  for (const item of payload.messages || []) {
+  for (const item of messageIds) {
     const response = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=full`,
         { headers: { Authorization: `Bearer ${token}` } },
@@ -692,6 +964,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         });
       }
     }
+    let createdFromGmail = false;
     if (match && candidate && !lessonId) {
       const { data: existing } = await db
         .from("lessons")
@@ -729,7 +1002,13 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             location_type: candidate.joinUrl ? "virtual" : "in_person",
             location_label: candidate.locationLabel,
             join_url: candidate.joinUrl || null,
-            meeting_provider: candidate.joinUrl ? "google_meet" : "in_person",
+            // Preserve a provider's own classroom URL. Only native Meet URLs
+            // should ask the Calendar worker to provision a Google conference.
+            meeting_provider: candidate.joinUrl
+              ? /meet\.google\.com/i.test(candidate.joinUrl)
+                ? "google_meet"
+                : null
+              : "in_person",
             source_provider: detected,
             source_external_id: item.id,
             source_confidence: match.confidence,
@@ -739,16 +1018,34 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
           .single();
         if (!created.error && created.data) {
           lessonId = created.data.id;
-          await db.from("lesson_participants").insert({
-            lesson_id: lessonId,
-            student_id: match.student.id,
-            display_name:
-              match.student.preferred_name || match.student.full_name,
-            email: match.student.email || emails[0] || "",
-            status: "confirmed",
-          });
+          createdFromGmail = true;
+          const { error: participantError } = await db
+            .from("lesson_participants")
+            .insert({
+              lesson_id: lessonId,
+              student_id: match.student.id,
+              display_name:
+                match.student.preferred_name || match.student.full_name,
+              email: match.student.email || emails[0] || "",
+              status: "confirmed",
+            });
+          if (participantError) throw participantError;
         }
       }
+    }
+    if (
+      createdFromGmail &&
+      lessonId &&
+      candidate &&
+      new Date(candidate.endsAt).getTime() > Date.now()
+    ) {
+      const { error: projectionError } = await db
+        .from("calendar_projections")
+        .upsert(
+          { lesson_id: lessonId, status: "queued", last_error: null },
+          { onConflict: "lesson_id" },
+        );
+      if (projectionError) throw projectionError;
     }
     const status = lessonId ? "imported" : "needs_review";
     await db.from("integration_imports").upsert(

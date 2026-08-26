@@ -611,6 +611,12 @@ export interface StudioSettings {
     coachBody: string;
     reminderSubject: string;
     reminderBody: string;
+    rescheduleSubject: string;
+    rescheduleBody: string;
+    cancellationSubject: string;
+    cancellationBody: string;
+    packageExpirySubject: string;
+    packageExpiryBody: string;
     paymentFailedSubject: string;
     paymentFailedBody: string;
   };

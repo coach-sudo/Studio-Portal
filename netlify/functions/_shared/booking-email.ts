@@ -1,7 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
-type AutomationSettings={enabled?:boolean;coachNewBooking?:boolean;studentConfirmation?:boolean;reminders?:boolean;confirmationSubject?:string;confirmationBody?:string;coachSubject?:string;coachBody?:string;reminderSubject?:string;reminderBody?:string};
-const defaults:Required<AutomationSettings>={enabled:true,coachNewBooking:true,studentConfirmation:true,reminders:true,confirmationSubject:"Your {{studioName}} booking is confirmed",confirmationBody:"Hi {{studentName}},\n\nYour {{serviceName}} booking is confirmed for {{startsAt}}.\n\nManage your booking: {{manageUrl}}",coachSubject:"New booking: {{studentName}} — {{serviceName}}",coachBody:"{{studentName}} booked {{serviceName}} for {{startsAt}} ({{location}}). Reference: {{reference}}.",reminderSubject:"Reminder: {{serviceName}} in {{hours}} hours",reminderBody:"Hi {{studentName}},\n\nYour {{serviceName}} session starts at {{startsAt}}. {{meetingDetails}}"};
+type AutomationSettings={enabled?:boolean;coachNewBooking?:boolean;studentConfirmation?:boolean;reminders?:boolean;confirmationSubject?:string;confirmationBody?:string;coachSubject?:string;coachBody?:string;reminderSubject?:string;reminderBody?:string;rescheduleSubject?:string;rescheduleBody?:string;cancellationSubject?:string;cancellationBody?:string;packageExpirySubject?:string;packageExpiryBody?:string;paymentFailedSubject?:string;paymentFailedBody?:string};
+const defaults:Required<AutomationSettings>={enabled:true,coachNewBooking:true,studentConfirmation:true,reminders:true,confirmationSubject:"Your {{studioName}} booking is confirmed",confirmationBody:"Hi {{studentName}},\n\nYour {{serviceName}} booking is confirmed for {{startsAt}}.\n\nManage your booking: {{manageUrl}}",coachSubject:"New booking: {{studentName}} — {{serviceName}}",coachBody:"{{studentName}} booked {{serviceName}} for {{startsAt}} ({{location}}). Reference: {{reference}}.",reminderSubject:"Reminder: {{serviceName}} in {{hours}} hours",reminderBody:"Hi {{studentName}},\n\nYour {{serviceName}} session starts at {{startsAt}}. {{meetingDetails}}",rescheduleSubject:"{{serviceName}} rescheduled — {{startsAt}}",rescheduleBody:"Hi {{studentName}},\n\nYour {{serviceName}} lesson has been rescheduled to {{startsAt}}. Your calendar invitation is being updated automatically.\n\nLocation: {{location}}",cancellationSubject:"{{serviceName}} cancelled",cancellationBody:"Hi {{studentName}},\n\nYour {{serviceName}} lesson scheduled for {{startsAt}} has been cancelled. Your calendar invitation and studio schedule are being updated automatically.",packageExpirySubject:"{{packageName}} expires in {{days}} days",packageExpiryBody:"Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can book or review your package from your studio portal.",paymentFailedSubject:"Payment needs attention for {{studioName}}",paymentFailedBody:"We could not collect your scheduled payment. Please update your payment method within seven days."};
 const render=(template:string,values:Record<string,string>)=>template.replace(/{{([a-zA-Z]+)}}/g,(_,key:string)=>values[key]??"");
 
 export async function queueBookingEmails(db:SupabaseClient,bookingId:string,manageToken?:string,origin?:string){
@@ -82,14 +82,9 @@ export async function queueLessonChangeEmails(
     .in("status", ["draft", "approved", "queued", "failed"])
     .eq("event_key", "booking.reminder.student")
     .or(`lesson_id.eq.${lesson.id}${bookingId ? `,booking_id.eq.${bookingId}` : ""}`);
-  const subject =
-    kind === "rescheduled"
-      ? `${lesson.topic} rescheduled - ${startsAt}`
-      : `${lesson.topic} cancelled`;
-  const body =
-    kind === "rescheduled"
-      ? `Hi ${studentName},\n\nYour ${lesson.topic} lesson has been rescheduled to ${startsAt}. Your calendar invitation is being updated automatically.\n\nLocation: ${lesson.location_label}\n\nYou can see the confirmed time in your studio portal.`
-      : `Hi ${studentName},\n\nYour ${lesson.topic} lesson scheduled for ${startsAt} has been cancelled. Your calendar invitation and studio schedule are being updated automatically.\n\nYou can see the change in your studio portal.`;
+  const values={studioName:studio.name,studentName,serviceName:lesson.topic,startsAt,location:lesson.location_label,reference:"",manageUrl:"Sign in to your student workspace.",hours:"",meetingDetails:lesson.location_label,packageName:"",days:"",credits:"",expiresAt:""};
+  const subject = render(kind === "rescheduled" ? automation.rescheduleSubject : automation.cancellationSubject, values);
+  const body = render(kind === "rescheduled" ? automation.rescheduleBody : automation.cancellationBody, values);
   const messages: Record<string, unknown>[] = [...recipients].map((recipient) => ({
     studio_id: lesson.studio_id,
     student_id: lesson.student_id,

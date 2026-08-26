@@ -4,6 +4,7 @@ import { apiError, correlationId, json } from "./_shared/http";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
+import { cancelConfirmedBooking } from "./_shared/booking-cancellation";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -26,48 +27,13 @@ export default async (request: Request, context: Context) => {
     const db = serviceClient();
 
     if (action === "cancel") {
-      if(booking.status!=="confirmed")throw new Error("INVALID_TRANSITION");
-      const late = new Date(booking.starts_at).getTime() - Date.now() < Number(booking.policy_snapshot.cancellationWindowHours) * 3_600_000;
-      if (late) throw new Error(`VALIDATION_FAILED: Online cancellation closes ${booking.policy_snapshot.cancellationWindowHours} hours before the lesson. Contact the studio if you need help.`);
-      const status = late ? "late_cancelled" : "cancelled";
-      const { data: participants } = await db.from("lesson_participants").select("lesson_id").eq("booking_id", booking.id);
-      const lessonIds = (participants ?? []).map((item) => item.lesson_id);
-      if (lessonIds.length) {
-        await Promise.all([
-          db.from("lessons").update({ status, updated_at: new Date().toISOString() }).in("id", lessonIds),
-          db.from("lesson_participants").update({ status: "cancelled" }).eq("booking_id", booking.id),
-          db.from("calendar_projections").update({ status: "queued", last_error: null }).in("lesson_id", lessonIds),
-        ]);
-      }
-      if(booking.offering_id)await db.rpc("release_offering_seat",{target_offering:booking.offering_id});
-      let paymentStatus = booking.payment_status;
-      if(!late&&booking.payment_policy==="credits"){
-        const {data:reservations}=await db.from("package_credit_entries").select("id,package_id,quantity").eq("idempotency_key",`booking-credit:${booking.id}`);
-        for(const reservation of reservations||[])await db.from("package_credit_entries").insert({package_id:reservation.package_id,kind:"release",quantity:Math.abs(reservation.quantity),reason:`Booking cancellation ${booking.reference}`,idempotency_key:`booking-credit-release:${booking.id}:${reservation.id}`});
-        paymentStatus="refunded";
-      }
-      if(!late&&booking.policy_snapshot.settlement==="studio_credit"&&booking.paid_minor>0&&booking.student_id){await db.from("payment_entries").insert({student_id:booking.student_id,kind:"refund",amount_minor:booking.paid_minor,currency:booking.currency,external_reference:`studio-credit:${booking.id}:${booking.version}`,reason:`Studio account credit for ${booking.reference}`});paymentStatus="refunded";}
-      if (!late && booking.policy_snapshot.settlement === "original_payment" && booking.paid_minor > 0 && booking.stripe_checkout_session_id) {
-        const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
-        if (!stripeKey) throw new Error("Stripe is not configured.");
-        const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
-        const session = await stripe.checkout.sessions.retrieve(booking.stripe_checkout_session_id);
-        const paymentIntent = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-        if (paymentIntent) {
-          const refund = await stripe.refunds.create({ payment_intent: paymentIntent, amount: booking.paid_minor, metadata: { booking_id: booking.id } }, { idempotencyKey: `self-cancel:${booking.id}:${booking.version}` });
-          if (booking.student_id) await db.from("payment_entries").insert({ student_id: booking.student_id, kind: "refund", amount_minor: booking.paid_minor, currency: booking.currency, external_reference: refund.id, reason: `Booking cancellation ${booking.reference}` });
-          paymentStatus = "refunded";
-        }
-      }
-      const { data, error } = await db.from("bookings").update({ status, payment_status: paymentStatus, version: booking.version + 1, updated_at: new Date().toISOString() }).eq("id", booking.id).eq("version", booking.version).select().single();
-      if (error) throw error;
-      const queued = [];
-      for (const lessonId of lessonIds)
-        queued.push(
-          ...(await queueLessonChangeEmails(db, lessonId, "cancelled", id)),
-        );
-      await db.from("audit_events").insert({studio_id:booking.studio_id,entity_type:"booking",entity_id:booking.id,action:"booking.self_cancelled",reason:late?"Late self-service cancellation":"Permitted self-service cancellation",correlation_id:id,source:"booking_portal",before_state:booking,after_state:data});
-      return json({ booking: data, correlationId: id, queuedSideEffects: ["calendar_projection", ...queued.map((item:any)=>`email:${item.id}`)] });
+      const result = await cancelConfirmedBooking({
+        db,
+        booking,
+        correlationId: id,
+        stripeIdempotencyPrefix: "self-cancel",
+      });
+      return json({ ...result, correlationId: id });
     }
 
     if (action === "reschedule" && body.startsAt && body.endsAt) {

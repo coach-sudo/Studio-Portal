@@ -53,9 +53,16 @@ import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import { LessonWhiteboard } from "../../components/LessonWhiteboard";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
+const belongsToStudent = (data: Data, lesson: Lesson, studentId: string) =>
+  lesson.studentId === studentId ||
+  data.lessonParticipants.some(
+    (participant) =>
+      participant.lessonId === lesson.id && participant.studentId === studentId,
+  );
 
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
@@ -85,15 +92,7 @@ export function StudentWorkspace() {
 
   const base = `/coach/students/${student.id}`;
   const studentLessons = data.lessons
-    .filter(
-      (item) =>
-        item.studentId === student.id ||
-        data.lessonParticipants.some(
-          (participant) =>
-            participant.lessonId === item.id &&
-            participant.studentId === student.id,
-        ),
-    )
+    .filter((item) => belongsToStudent(data, item, student.id))
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
   const tabs = [
     ["", "Overview"],
@@ -730,7 +729,10 @@ function Overview({
 }) {
   const upcoming = data.lessons
     .filter(
-      (item) => item.studentId === student.id && item.status === "scheduled",
+      (item) =>
+        belongsToStudent(data, item, student.id) &&
+        item.status === "scheduled" &&
+        new Date(item.startsAt).getTime() >= Date.now(),
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
   const assignment = data.assignments.find(
@@ -879,48 +881,96 @@ function RecordCard({
   );
 }
 function Lessons({ data, student }: { data: Data; student: Student }) {
-  const lessons = data.lessons
-    .filter((item) => item.studentId === student.id)
+  const currentTime = Date.now();
+  const lessons = data.lessons.filter((item) =>
+    belongsToStudent(data, item, student.id),
+  );
+  const upcoming = lessons
+    .filter(
+      (lesson) =>
+        lesson.status === "scheduled" &&
+        new Date(lesson.startsAt).getTime() >= currentTime,
+    )
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const history = lessons
+    .filter((lesson) => !upcoming.some((item) => item.id === lesson.id))
     .sort((a, b) => b.startsAt.localeCompare(a.startsAt));
+  const upcomingPage = usePagedList(upcoming);
+  const historyPage = usePagedList(history);
+  const renderLesson = (lesson: Lesson) => (
+    <Link
+      className="student-roster-row"
+      key={lesson.id}
+      to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+    >
+      <CalendarDays />
+      <div>
+        <strong>{lesson.topic}</strong>
+        <small>
+          {new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}
+        </small>
+      </div>
+      <Status
+        tone={
+          lesson.status === "completed"
+            ? "good"
+            : lesson.status === "scheduled"
+              ? "neutral"
+              : "warn"
+        }
+      >
+        {lesson.status}
+      </Status>
+      <span className="open-label">Open</span>
+    </Link>
+  );
   return (
-    <Section title="Lesson history" marked>
-      <div className="table-list">
-        {lessons.map((lesson) => (
-          <Link
-            className="student-roster-row"
-            key={lesson.id}
-            to={`/coach/students/${student.id}/lessons/${lesson.id}`}
-          >
-            <CalendarDays />
-            <div>
-              <strong>{lesson.topic}</strong>
-              <small>
-                {new Date(lesson.startsAt).toLocaleString()} ·{" "}
-                {lesson.locationLabel}
-              </small>
-            </div>
-            <Status
-              tone={
-                lesson.status === "completed"
-                  ? "good"
-                  : lesson.status === "scheduled"
-                    ? "neutral"
-                    : "warn"
-              }
-            >
-              {lesson.status}
-            </Status>
-            <span className="open-label">Open</span>
-          </Link>
-        ))}
-        {!lessons.length && (
-          <EmptyState
-            title="No lessons yet"
-            detail="Add the first lesson from the student header."
+    <div>
+      <Section title="Upcoming lessons" marked>
+        {upcomingPage.total > 10 && (
+          <ListControls
+            page={upcomingPage.page}
+            pageCount={upcomingPage.pageCount}
+            pageSize={upcomingPage.pageSize}
+            total={upcomingPage.total}
+            onPage={upcomingPage.setPage}
+            onPageSize={upcomingPage.setPageSize}
+            label="upcoming lessons"
           />
         )}
-      </div>
-    </Section>
+        <div className="table-list">
+          {upcomingPage.visible.map(renderLesson)}
+          {!upcoming.length && (
+            <EmptyState
+              title="Nothing upcoming"
+              detail="Add a lesson from the student header when the next date is ready."
+            />
+          )}
+        </div>
+      </Section>
+      <Section title="Lesson history" aside={<span className="count">{history.length}</span>}>
+        {historyPage.total > 10 && (
+          <ListControls
+            page={historyPage.page}
+            pageCount={historyPage.pageCount}
+            pageSize={historyPage.pageSize}
+            total={historyPage.total}
+            onPage={historyPage.setPage}
+            onPageSize={historyPage.setPageSize}
+            label="past lessons"
+          />
+        )}
+        <div className="table-list">
+          {historyPage.visible.map(renderLesson)}
+          {!history.length && (
+            <EmptyState
+              title="No lesson history"
+              detail="Completed and cancelled lessons will be kept here."
+            />
+          )}
+        </div>
+      </Section>
+    </div>
   );
 }
 function CoachLessonHub({
@@ -941,7 +991,9 @@ function CoachLessonHub({
   const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [cancelling, setCancelling] = useState(false);
-  const [lessonAction, setLessonAction] = useState<"reschedule" | "credits" | null>(null);
+  const [lessonAction, setLessonAction] = useState<
+    "details" | "reschedule" | "credits" | null
+  >(null);
   const [actionBusy, setActionBusy] = useState("");
   const [creditQuantity, setCreditQuantity] = useState(1);
   const [creditReason, setCreditReason] = useState("Lesson-specific credit");
@@ -1066,6 +1118,44 @@ function CoachLessonHub({
       setActionBusy("");
     }
   };
+  const updateLessonDetails = async (
+    topic: string,
+    locationLabel: string,
+    joinUrl: string,
+  ) => {
+    if (actionBusy) return;
+    setActionBusy("details");
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.lessons.find((item) => item.id === lesson.id);
+          if (!current) return;
+          current.topic = topic;
+          current.locationLabel = locationLabel;
+          current.joinUrl = joinUrl || undefined;
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "update_details",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          payload: { topic, locationLabel, joinUrl: joinUrl || null },
+          reason: "Coach updated lesson details from student workspace",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setLessonAction(null);
+      setNotice("Lesson details saved. Calendar and student updates are queued.");
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error ? reason.message : "Lesson details could not be saved.",
+      );
+    } finally {
+      setActionBusy("");
+    }
+  };
   const adjustCredit = async () => {
     if (actionBusy || !creditQuantity || creditReason.trim().length < 3) return;
     setActionBusy("credit");
@@ -1134,6 +1224,7 @@ function CoachLessonHub({
               Open Google Meet
             </a>
           )}
+          <button onClick={() => setLessonAction("details")}>Edit lesson info</button>
           {lesson.status === "scheduled" && (
             <button className="primary-button" onClick={() => setLessonAction("reschedule")}>
               <CalendarDays /> Reschedule
@@ -1166,6 +1257,20 @@ function CoachLessonHub({
         <p className="portal-notice" role="status">
           {notice}
         </p>
+      )}
+      {lessonAction === "details" && (
+        <Dialog
+          title="Edit lesson information"
+          description="Update the topic, confirmed location, or joining link."
+          onClose={() => !actionBusy && setLessonAction(null)}
+        >
+          <LessonDetailsForm
+            lesson={lesson}
+            busy={actionBusy === "details"}
+            onCancel={() => setLessonAction(null)}
+            onSave={updateLessonDetails}
+          />
+        </Dialog>
       )}
       {lessonAction === "reschedule" && (
         <Dialog
@@ -1345,6 +1450,59 @@ function CoachLessonHub({
         </Section>
       </div>
     </div>
+  );
+}
+
+function LessonDetailsForm({
+  lesson,
+  busy,
+  onCancel,
+  onSave,
+}: {
+  lesson: Lesson;
+  busy: boolean;
+  onCancel: () => void;
+  onSave: (topic: string, locationLabel: string, joinUrl: string) => void;
+}) {
+  const [topic, setTopic] = useState(lesson.topic);
+  const [locationLabel, setLocationLabel] = useState(lesson.locationLabel);
+  const [joinUrl, setJoinUrl] = useState(lesson.joinUrl || "");
+  const submit = (event: FormEvent) => {
+    event.preventDefault();
+    if (!topic.trim() || !locationLabel.trim() || busy) return;
+    onSave(topic.trim(), locationLabel.trim(), joinUrl.trim());
+  };
+  return (
+    <form className="workflow-form" onSubmit={submit}>
+      <label className="full">
+        Lesson topic
+        <input value={topic} onChange={(event) => setTopic(event.target.value)} required />
+      </label>
+      <label className="full">
+        Location or delivery label
+        <input
+          value={locationLabel}
+          onChange={(event) => setLocationLabel(event.target.value)}
+          placeholder="Google Meet or confirmed studio address"
+          required
+        />
+      </label>
+      <label className="full">
+        Join link (optional)
+        <input
+          type="url"
+          value={joinUrl}
+          onChange={(event) => setJoinUrl(event.target.value)}
+          placeholder="https://meet.google.com/…"
+        />
+      </label>
+      <div className="form-actions full">
+        <button type="button" disabled={busy} onClick={onCancel}>Cancel</button>
+        <button className="primary-button" disabled={busy || !topic.trim() || !locationLabel.trim()}>
+          {busy ? "Saving…" : "Save lesson information"}
+        </button>
+      </div>
+    </form>
   );
 }
 function Work({
@@ -2061,6 +2219,7 @@ function ActorPage({
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const profile = data.actorProfiles.find((i) => i.studentId === student.id);
+  const [previewing, setPreviewing] = useState(false);
   const create = async () => {
     if (isDemo)
       store.transact((draft) => {
@@ -2116,6 +2275,9 @@ function ActorPage({
               {profile.status.replaceAll("_", " ")}
             </Status>
             <Link to="/coach/actor-pages">Open publishing workflow</Link>
+            <button className="text-button" onClick={() => setPreviewing(true)}>
+              Preview draft
+            </button>
             {profile.status === "published" && (
               <a
                 href={`/actors/${profile.slug}`}
@@ -2177,6 +2339,20 @@ function ActorPage({
           )}
         </div>
       </Section>
+      {previewing && profile && (
+        <Dialog
+          title="Private actor-page preview"
+          description="This uses the current draft and is not a public link."
+          onClose={() => setPreviewing(false)}
+        >
+          <ActorProfilePreview
+            profile={profile}
+            materials={actorMaterials}
+            studioName={data.settings.studioName}
+            logoUrl={data.settings.branding.logoUrl}
+          />
+        </Dialog>
+      )}
     </div>
   );
 }

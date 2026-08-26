@@ -58,6 +58,7 @@ import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
 import { LessonWhiteboard } from "../../components/LessonWhiteboard";
+import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 import {
   isJoinableLesson,
   lessonDateLabel,
@@ -2671,6 +2672,7 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const queryClient = useQueryClient();
   const profile = data.actorProfiles[0];
   const [editing, setEditing] = useState(false);
+  const [previewing, setPreviewing] = useState(false);
   const [notice, setNotice] = useState("");
   if (!profile)
     return (
@@ -2749,6 +2751,7 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
               {profile.status.replaceAll("_", " ")}
             </Status>
             <button onClick={() => setEditing(true)}>Edit</button>
+            <button onClick={() => setPreviewing(true)}>Preview draft</button>
             {profile.status === "published" && (
               <a
                 className="button-link"
@@ -2768,6 +2771,20 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         before it appears publicly.
       </p>
       <Materials data={data} isDemo={isDemo} embedded actorOnly />
+      {previewing && (
+        <Dialog
+          title="Private actor-page preview"
+          description="Preview the current draft before sending it for review."
+          onClose={() => setPreviewing(false)}
+        >
+          <ActorProfilePreview
+            profile={profile}
+            materials={data.materials.filter((item) => item.role === "actor_material")}
+            studioName={data.settings.studioName}
+            logoUrl={data.settings.branding.logoUrl}
+          />
+        </Dialog>
+      )}
       {editing && (
         <ActorDialog
           profile={profile}

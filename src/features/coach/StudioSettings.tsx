@@ -836,6 +836,30 @@ function EmailAutomationForm({
           />
         </label>
         <label>
+          Reschedule subject
+          <input value={form.rescheduleSubject} onChange={(event) => setForm({ ...form, rescheduleSubject: event.target.value })} />
+        </label>
+        <label className="full">
+          Reschedule body
+          <textarea rows={4} value={form.rescheduleBody} onChange={(event) => setForm({ ...form, rescheduleBody: event.target.value })} />
+        </label>
+        <label>
+          Cancellation subject
+          <input value={form.cancellationSubject} onChange={(event) => setForm({ ...form, cancellationSubject: event.target.value })} />
+        </label>
+        <label className="full">
+          Cancellation body
+          <textarea rows={4} value={form.cancellationBody} onChange={(event) => setForm({ ...form, cancellationBody: event.target.value })} />
+        </label>
+        <label>
+          Package-expiry subject
+          <input value={form.packageExpirySubject} onChange={(event) => setForm({ ...form, packageExpirySubject: event.target.value })} />
+        </label>
+        <label className="full">
+          Package-expiry body
+          <textarea rows={4} value={form.packageExpiryBody} onChange={(event) => setForm({ ...form, packageExpiryBody: event.target.value })} />
+        </label>
+        <label>
           Failed-payment subject
           <input
             value={form.paymentFailedSubject}
@@ -855,7 +879,7 @@ function EmailAutomationForm({
           />
           <small>
             {
-              "Available tokens: {{studioName}}, {{studentName}}, {{serviceName}}, {{startsAt}}, {{location}}, {{reference}}, {{manageUrl}}, {{hours}}, {{meetingDetails}}."
+              "Available tokens: {{studioName}}, {{studentName}}, {{serviceName}}, {{startsAt}}, {{location}}, {{reference}}, {{manageUrl}}, {{hours}}, {{meetingDetails}}, {{packageName}}, {{days}}, {{credits}}, {{expiresAt}}."
             }
           </small>
         </label>

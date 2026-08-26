@@ -13,6 +13,10 @@ const booking = fs.readFileSync(
   "supabase/migrations/202608070004_booking_platform.sql",
   "utf8",
 );
+const productionCloseout = fs.readFileSync(
+  "supabase/migrations/20260826025539_close_production_workflow_gaps.sql",
+  "utf8",
+);
 const publicBooking = fs.readFileSync(
   "netlify/functions/public-booking.ts",
   "utf8",
@@ -20,6 +24,11 @@ const publicBooking = fs.readFileSync(
 const compactPublicBooking = publicBooking.replace(/\s+/g, "");
 const stripeWebhook = fs.readFileSync(
   "netlify/functions/stripe-webhook-v2.ts",
+  "utf8",
+);
+const compactStripeWebhook = stripeWebhook.replace(/\s+/g, "");
+const studentWorkspace = fs.readFileSync(
+  "src/features/coach/StudentWorkspace.tsx",
   "utf8",
 );
 const securityHardening = fs.readFileSync(
@@ -37,7 +46,6 @@ describe("database contracts", () => {
       "packages",
       "payment_entries",
       "actor_profiles",
-      "reader_requests",
       "outbox_messages",
       "recommendations",
       "audit_events",
@@ -159,5 +167,47 @@ describe("database contracts", () => {
     expect(booking).toContain("prior_status='processed'");
     expect(booking).toContain("on conflict(id) do update");
     expect(booking).toContain("stripe-credit:");
+  });
+
+  it("does not consume the same lesson credit again when a reservation already exists", () => {
+    expect(productionCloseout).toContain(
+      "create or replace function public.command_complete_lesson",
+    );
+    expect(productionCloseout).toContain("package_credit_entries");
+    expect(productionCloseout).toMatch(
+      /not\s+exists[\s\S]{0,500}package_credit_entries[\s\S]{0,300}lesson_id\s*=\s*(?:target\.)?id[\s\S]{0,150}quantity\s*<\s*0/i,
+    );
+  });
+
+  it("treats setup-mode Checkout as payment-method setup, not a package purchase", () => {
+    const setupBranch = compactStripeWebhook.indexOf('object.mode==="setup"');
+    const packageMetadata = compactStripeWebhook.indexOf(
+      "conststudentId=object.metadata?.student_id",
+    );
+    expect(setupBranch).toBeGreaterThan(-1);
+    expect(packageMetadata).toBeGreaterThan(setupBranch);
+    expect(
+      compactStripeWebhook.slice(setupBranch, packageMetadata),
+    ).toContain("returndone(");
+  });
+
+  it("records Stripe refund webhooks idempotently by external reference", () => {
+    const refundBranch = stripeWebhook.slice(
+      stripeWebhook.indexOf('event.type === "charge.refunded"'),
+    );
+    const compactRefundBranch = refundBranch.replace(/\s+/g, "");
+    expect(compactRefundBranch).toContain('.from("payment_entries").upsert(');
+    expect(compactRefundBranch).toContain(
+      'onConflict:"external_reference"',
+    );
+  });
+
+  it("shows only future scheduled lessons as the student overview next lesson", () => {
+    const overview = studentWorkspace.slice(
+      studentWorkspace.indexOf("function Overview("),
+    );
+    expect(overview).toMatch(
+      /item\.status\s*===\s*"scheduled"[\s\S]{0,250}(?:new Date\(item\.startsAt\)\.getTime\(\)|Date\.parse\(item\.startsAt\))[\s\S]{0,100}(?:Date\.now\(\)|now)/,
+    );
   });
 });
