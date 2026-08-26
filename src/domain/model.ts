@@ -275,6 +275,7 @@ export interface Booking extends Versioned {
   guardianName?: string;
   guardianEmail?: string;
   forMinor: boolean;
+  portalRequested?: boolean;
   startsAt: string;
   endsAt: string;
   timezone: string;

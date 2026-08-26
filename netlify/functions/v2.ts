@@ -7,7 +7,7 @@ import { serviceClient } from "./_shared/supabase";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { mapStudentChanges } from "./_shared/student-updates";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
-import { findAuthUserByEmail } from "./_shared/auth-users";
+import { provisionPortalAccount } from "./_shared/portal-access";
 
 const domains = new Set([
   "students",
@@ -281,289 +281,62 @@ export default async (request: Request, context: Context) => {
       );
     }
     if (domain === "students" && input.command === "invite" && input.entityId) {
-      const studioId = await requireCoach(),
-        { data: student, error } = await db
-          .from("students")
-          .select("*")
-          .eq("id", input.entityId)
-          .eq("studio_id", studioId)
-          .single();
-      if (error || !student) throw new Error("FORBIDDEN");
-      const email = String(
-        student.is_minor ? student.guardian_email : student.email || "",
-      ).toLowerCase();
-      if (!email)
-        throw new Error(
-          "VALIDATION_FAILED: An adult student email or minor guardian email is required.",
-        );
-      const service = serviceClient();
-      let invited = await service.auth.admin.inviteUserByEmail(email, {
-          redirectTo: `${new URL(request.url).origin}/login`,
-        }),
-        user = invited.data.user;
-      if (invited.error) {
-        user = (await findAuthUserByEmail(service, email)) ?? null;
-        if (!user) throw invited.error;
-      }
-      if (student.is_minor)
-        await service.from("student_relationships").upsert(
-          {
-            student_id: student.id,
-            user_id: user!.id,
-            relationship: "guardian",
-            can_view_finance: true,
-            can_manage_profile: true,
-          },
-          { onConflict: "student_id,user_id" },
-        );
-      else
-        await service
-          .from("students")
-          .update({ user_id: user!.id })
-          .eq("id", student.id);
-      const { data: updated, error: updateError } = await service
-        .from("students")
-        .update({
-          portal_enabled: true,
-          version: student.version + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", student.id)
-        .eq("version", student.version)
-        .select()
-        .single();
-      if (updateError) throw updateError;
+      const studioId = await requireCoach();
+      const result = await provisionPortalAccount(serviceClient(), {
+        studioId,
+        studentId: input.entityId,
+        accountType:
+          input.payload.accountType === "guardian" ? "guardian" : "student",
+        resetExisting: true,
+        expectedVersion: input.expectedVersion,
+      });
       return json({
-        resource: updated,
+        resource: result.student,
         recommendations: [],
         auditEventId: await audit(
           studioId,
           "student",
-          student.id,
+          input.entityId,
           "portal.invited",
-          student,
-          updated,
+          null,
+          {
+            accountType: result.accountType,
+            recipient: result.recipient,
+            username: result.username,
+          },
         ),
-        queuedSideEffects: ["supabase_invitation"],
+        queuedSideEffects: ["outbox_worker"],
       });
     }
     if (
       domain === "students" &&
-      input.command === "set_credentials" &&
+      ["set_credentials", "send_login_instructions"].includes(input.command) &&
       input.entityId
     ) {
       const studioId = await requireCoach();
-      const username = String(input.payload.username || "")
-        .trim()
-        .toLowerCase();
-      const password = String(input.payload.password || "");
-      const accountType = input.payload.accountType === "guardian" ? "guardian" : "student";
-      if (!/^[a-z][a-z0-9._-]{2,31}$/.test(username))
-        throw new Error(
-          "VALIDATION_FAILED: Username must be 3–32 characters and begin with a letter.",
-        );
-      if (
-        password.length < 12 ||
-        !/[a-z]/.test(password) ||
-        !/[A-Z]/.test(password) ||
-        !/\d/.test(password) ||
-        !/[^A-Za-z0-9]/.test(password)
-      )
-        throw new Error(
-          "VALIDATION_FAILED: Temporary password must be 12+ characters with upper/lowercase letters, a number, and a symbol.",
-        );
-      const service = serviceClient();
-      const { data: student, error: studentError } = await service
-        .from("students")
-        .select("*")
-        .eq("id", input.entityId)
-        .eq("studio_id", studioId)
-        .single();
-      if (studentError || !student) throw new Error("FORBIDDEN");
-      if (student.version !== input.expectedVersion)
-        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      if (accountType === "guardian" && !student.is_minor)
-        throw new Error("VALIDATION_FAILED: Guardian access is only available for a minor student.");
-      const email = String(
-        accountType === "guardian" ? student.guardian_email : student.email || "",
-      )
-        .trim()
-        .toLowerCase();
-      if (!email.includes("@"))
-        throw new Error(
-          `VALIDATION_FAILED: Add the ${accountType} email first.`,
-        );
-      const { data: duplicate } = await service
-        .from("portal_accounts")
-        .select("id")
-        .ilike("username", username)
-        .maybeSingle();
-      const { data: currentAccount } = await service
-        .from("portal_accounts")
-        .select("id,user_id,username")
-        .eq("student_id", student.id)
-        .eq("account_type", accountType)
-        .maybeSingle();
-      if (duplicate && duplicate.id !== currentAccount?.id)
-        throw new Error("VALIDATION_FAILED: That username is already in use.");
-      let authUser: { id: string } | undefined = currentAccount?.user_id
-        ? { id: currentAccount.user_id }
-        : accountType === "student" && student.user_id
-          ? { id: student.user_id }
-        : undefined;
-      if (!authUser && accountType === "guardian") {
-        const { data: existingRelationship } = await service
-          .from("student_relationships")
-          .select("user_id")
-          .eq("student_id", student.id)
-          .eq("relationship", "guardian")
-          .limit(1)
-          .maybeSingle();
-        if (existingRelationship?.user_id)
-          authUser = { id: existingRelationship.user_id };
-      }
-      if (!authUser) authUser = await findAuthUserByEmail(service, email);
-      if (authUser) {
-        const updatedAuth = await service.auth.admin.updateUserById(
-          authUser.id,
-          {
-            password,
-            email_confirm: true,
-            user_metadata: {
-              portal_role: accountType,
-              must_change_password: true,
-              student_id: student.id,
-            },
-          },
-        );
-        if (updatedAuth.error) throw updatedAuth.error;
-      } else {
-        const createdAuth = await service.auth.admin.createUser({
-          email,
-          password,
-          email_confirm: true,
-          user_metadata: {
-            portal_role: accountType,
-            must_change_password: true,
-            student_id: student.id,
-          },
-        });
-        if (createdAuth.error || !createdAuth.data.user)
-          throw (
-            createdAuth.error ||
-            new Error("Portal identity could not be created.")
-          );
-        authUser = createdAuth.data.user;
-      }
-      if (accountType === "guardian") {
-        const { error: relationshipError } = await service
-          .from("student_relationships")
-          .upsert(
-            {
-              student_id: student.id,
-              user_id: authUser.id,
-              relationship: "guardian",
-              can_view_finance: true,
-              can_manage_profile: true,
-            },
-            { onConflict: "student_id,user_id" },
-          );
-        if (relationshipError) throw relationshipError;
-      }
-      const { error: accountWriteError } = await service
-        .from("portal_accounts")
-        .upsert(
-          {
-            studio_id: studioId,
-            student_id: student.id,
-            user_id: authUser.id,
-            account_type: accountType,
-            username,
-            email,
-            must_change_password: true,
-            instructions_sent_at: null,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "student_id,account_type" },
-        );
-      if (accountWriteError) throw accountWriteError;
-      const { data: updated, error: updateError } = await service
-        .from("students")
-        .update({
-          user_id: accountType === "student" ? authUser.id : student.user_id,
-          portal_username: accountType === "student" ? username : student.portal_username,
-          portal_enabled: true,
-          version: student.version + 1,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", student.id)
-        .eq("version", student.version)
-        .select()
-        .single();
-      if (updateError) throw updateError;
+      const result = await provisionPortalAccount(serviceClient(), {
+        studioId,
+        studentId: input.entityId,
+        accountType:
+          input.payload.accountType === "guardian" ? "guardian" : "student",
+        resetExisting: true,
+        expectedVersion: input.expectedVersion,
+      });
       return json({
-        resource: updated,
+        resource: result.student,
         recommendations: [],
         auditEventId: await audit(
           studioId,
           "student",
-          student.id,
-          "portal.credentials_set",
-          { account_type: accountType, username: currentAccount?.username || null },
-          { account_type: accountType, username },
+          input.entityId,
+          "portal.invited",
+          null,
+          {
+            accountType: result.accountType,
+            recipient: result.recipient,
+            username: result.username,
+          },
         ),
-        queuedSideEffects: [],
-      });
-    }
-    if (
-      domain === "students" &&
-      input.command === "send_login_instructions" &&
-      input.entityId
-    ) {
-      const studioId = await requireCoach();
-      const accountType = input.payload.accountType === "guardian" ? "guardian" : "student";
-      const temporaryPassword = String(input.payload.temporaryPassword || "");
-      if (temporaryPassword.length < 12)
-        throw new Error("VALIDATION_FAILED: Enter the temporary password you just created.");
-      const service = serviceClient();
-      const [{ data: student }, { data: studio }, { data: account }] = await Promise.all([
-        service.from("students").select("id,full_name,preferred_name").eq("id", input.entityId).eq("studio_id", studioId).single(),
-        service.from("studios").select("name").eq("id", studioId).single(),
-        service.from("portal_accounts").select("id,email,username,account_type").eq("student_id", input.entityId).eq("account_type", accountType).single(),
-      ]);
-      if (!student || !studio || !account) throw new Error("VALIDATION_FAILED: Create the temporary login first.");
-      const loginUrl = `${Netlify.env.get("URL") || "https://portal.d-a-j.com"}/login`;
-      const subject = `Your ${studio.name} portal login`;
-      const body = [
-        `Hello,`,
-        ``,
-        `Your ${accountType} portal for ${student.preferred_name || student.full_name} is ready.`,
-        ``,
-        `Sign in: ${loginUrl}`,
-        `Username: ${account.username}`,
-        `Temporary password: ${temporaryPassword}`,
-        ``,
-        `The first time you sign in, you will be required to create a private password. Your coach cannot see the new password.`,
-        `If the temporary password does not work, contact the studio instead of forwarding this message.`,
-      ].join("\n");
-      const { error: queueError } = await service.from("outbox_messages").insert({
-        studio_id: studioId,
-        student_id: student.id,
-        channel: "email",
-        recipient: account.email,
-        subject,
-        body,
-        status: "queued",
-        send_at: new Date().toISOString(),
-        event_key: "portal.credentials",
-        dedupe_key: `portal-credentials:${account.id}:${Date.now()}`,
-      });
-      if (queueError) throw queueError;
-      await service.from("portal_accounts").update({ instructions_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", account.id);
-      return json({
-        resource: { accountType, recipient: account.email, instructionsQueued: true },
-        recommendations: [],
-        auditEventId: await audit(studioId, "student", student.id, "portal.instructions_queued", null, { accountType, recipient: account.email }),
         queuedSideEffects: ["outbox_worker"],
       });
     }

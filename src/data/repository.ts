@@ -515,6 +515,7 @@ export async function loadStudioSnapshot(
       guardianName: r.guardian_name,
       guardianEmail: r.guardian_email,
       forMinor: r.for_minor,
+      portalRequested: r.portal_requested,
       startsAt: r.starts_at,
       endsAt: r.ends_at,
       timezone: r.timezone,

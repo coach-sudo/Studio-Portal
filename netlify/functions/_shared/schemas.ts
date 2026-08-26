@@ -36,6 +36,7 @@ export const publicBookingSchema = z
     forMinor: z.boolean().default(false),
     guardianName: z.string().trim().min(2).max(120).optional(),
     guardianEmail: z.string().email().optional(),
+    createPortalProfile: z.boolean().default(false),
     timezone: z.string().min(3).max(80),
     occurrenceCount: z.number().int().min(2).max(52).optional(),
     discountCode: z.string().trim().min(3).max(40).optional(),

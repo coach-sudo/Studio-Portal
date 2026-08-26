@@ -677,6 +677,7 @@ async function createBooking(request: Request) {
         guardian_name: input.guardianName || null,
         guardian_email: input.guardianEmail || null,
         for_minor: input.forMinor,
+        portal_requested: input.createPortalProfile,
         starts_at: input.startsAt,
         ends_at: input.endsAt,
         timezone: bookingTimezone,

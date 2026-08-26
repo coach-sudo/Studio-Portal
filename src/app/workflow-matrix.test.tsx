@@ -438,12 +438,18 @@ describe("30 start-to-finish studio workflows", () => {
         screen.getByLabelText("Student email"),
         "taylor@example.com",
       );
+      await user.click(
+        screen.getByRole("checkbox", { name: /create a studio portal profile/i }),
+      );
       await user.click(screen.getByRole("button", { name: /Review payment/i }));
       await user.click(screen.getByRole("checkbox", { name: /terms and conditions/i }));
       await user.click(
         screen.getByRole("button", { name: /Confirm booking/i }),
       );
       expect(await screen.findByText(/booking confirmed/i)).toBeInTheDocument();
+      expect(
+        screen.getByText(/portal invitation is being prepared separately/i),
+      ).toBeInTheDocument();
     });
     it("29 completes guardian contact details for a minor", async () => {
       const user = userEvent.setup();

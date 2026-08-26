@@ -131,6 +131,7 @@ interface DemoBookingInput {
   forMinor: boolean;
   guardianName?: string;
   guardianEmail?: string;
+  createPortalProfile: boolean;
   timezone: string;
 }
 
@@ -149,13 +150,14 @@ function createDemoBooking(draft: StudioSnapshot, input: DemoBookingInput) {
       isMinor: input.forMinor,
       guardianName: input.guardianName,
       guardianEmail: input.guardianEmail,
-      portalEnabled: true,
+      portalEnabled: input.createPortalProfile,
       actorPageEligible: false,
       version: 1,
       updatedAt: now,
     };
     draft.students.push(student);
   }
+  if (input.createPortalProfile) student.portalEnabled = true;
   const occurrenceCount = input.offering
     ? Math.max(1, input.offering.lessonIds.length)
     : input.recurrence === "none"
@@ -784,6 +786,7 @@ function BookingFlow({
   const [guardianEmail, setGuardianEmail] = useState(
     booker?.guardianEmail || "",
   );
+  const [createPortalProfile, setCreatePortalProfile] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
   const [discountCode, setDiscountCode] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -793,6 +796,7 @@ function BookingFlow({
     manageUrl?: string;
     demo: boolean;
     startsAt: string;
+    portalRequested: boolean;
   }>();
   useEffect(() => {
     if (!validPayments.includes(payment)) setPayment(validPayments[0]);
@@ -924,6 +928,7 @@ function BookingFlow({
             forMinor,
             guardianName: guardian || undefined,
             guardianEmail: guardianEmail || undefined,
+            createPortalProfile,
             timezone,
           }),
         );
@@ -932,6 +937,7 @@ function BookingFlow({
           manageUrl: `/booking/${booking.manageToken}`,
           demo: true,
           startsAt: chosen.startsAt,
+          portalRequested: createPortalProfile,
         });
         setStep("done");
         return;
@@ -967,6 +973,7 @@ function BookingFlow({
           forMinor,
           guardianName: guardian || undefined,
           guardianEmail: guardianEmail || undefined,
+          createPortalProfile,
           timezone,
           occurrenceCount: recurrence === "none" ? undefined : 6,
           termsAccepted: true,
@@ -988,6 +995,7 @@ function BookingFlow({
         manageUrl: result.manageUrl,
         demo: false,
         startsAt: chosen.startsAt,
+        portalRequested: createPortalProfile,
       });
       setStep("done");
     } catch (reason) {
@@ -1334,6 +1342,23 @@ function BookingFlow({
                 </label>
               </>
             )}
+            {!booker && (
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={createPortalProfile}
+                  onChange={(event) =>
+                    setCreatePortalProfile(event.target.checked)
+                  }
+                />
+                <span>
+                  <strong>Create a studio portal profile</strong>
+                  <small>
+                    After this booking is confirmed, we’ll email the {forMinor ? "guardian" : "student"} a generated username and one-time password. They’ll create their own private password at first sign-in.
+                  </small>
+                </span>
+              </label>
+            )}
             <div className="step-actions">
               <button type="button" onClick={() => setStep("time")}>
                 Back
@@ -1476,7 +1501,12 @@ function Confirmation({
   service: BookingService;
   slot: string;
   name: string;
-  result: { reference: string; manageUrl?: string; demo: boolean };
+  result: {
+    reference: string;
+    manageUrl?: string;
+    demo: boolean;
+    portalRequested: boolean;
+  };
   message?: string;
 }) {
   return (
@@ -1494,6 +1524,11 @@ function Confirmation({
           : message ||
             "We sent your confirmation and secure management link. Google Meet details will appear as soon as the calendar invitation is ready."}
       </p>
+      {result.portalRequested && (
+        <p className="portal-notice">
+          Your portal invitation is being prepared separately. It includes a generated username, a one-time password, and clear first-login instructions.
+        </p>
+      )}
       <article>
         <strong>{service.name}</strong>
         <span>{formatDate(slot, { hour: "numeric", minute: "2-digit" })}</span>

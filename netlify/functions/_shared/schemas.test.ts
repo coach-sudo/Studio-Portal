@@ -42,13 +42,24 @@ describe("public booking terms", () => {
   } as const;
 
   it("requires the current terms version and affirmative acceptance", () => {
-    expect(
-      publicBookingSchema.parse({
+    const parsed = publicBookingSchema.parse({
         ...booking,
         termsAccepted: true,
         termsVersion: "2026-08-20",
-      }).termsAccepted,
-    ).toBe(true);
+      });
+    expect(parsed.termsAccepted).toBe(true);
+    expect(parsed.createPortalProfile).toBe(false);
     expect(() => publicBookingSchema.parse(booking)).toThrow();
+  });
+
+  it("records an explicit optional portal-profile request", () => {
+    expect(
+      publicBookingSchema.parse({
+        ...booking,
+        createPortalProfile: true,
+        termsAccepted: true,
+        termsVersion: "2026-08-20",
+      }).createPortalProfile,
+    ).toBe(true);
   });
 });

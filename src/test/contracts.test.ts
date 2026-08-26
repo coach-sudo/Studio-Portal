@@ -21,6 +21,10 @@ const portalAccountHardening = fs.readFileSync(
   "supabase/migrations/20260826073351_portal_account_grants_and_whiteboard_removal.sql",
   "utf8",
 );
+const optionalBookingPortalInvites = fs.readFileSync(
+  "supabase/migrations/20260826190425_optional_booking_portal_invites.sql",
+  "utf8",
+);
 const publicBooking = fs.readFileSync(
   "netlify/functions/public-booking.ts",
   "utf8",
@@ -227,5 +231,9 @@ describe("database contracts", () => {
     expect(portalAccountHardening).toContain("revoke all on table public.portal_accounts from anon");
     expect(portalAccountHardening).toContain("grant select on table public.portal_accounts to authenticated");
     expect(portalAccountHardening).toContain("drop table if exists public.lesson_whiteboards cascade");
+    expect(optionalBookingPortalInvites).toContain("portal_requested boolean not null default false");
+    expect(publicBooking).toContain("portal_requested: input.createPortalProfile");
+    expect(studentWorkspace).not.toContain("Temporary password");
+    expect(studentWorkspace).not.toContain('command: "set_credentials"');
   });
 });

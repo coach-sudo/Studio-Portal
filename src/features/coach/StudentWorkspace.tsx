@@ -136,59 +136,41 @@ export function StudentWorkspace() {
       setSavingStudent(false);
     }
   };
-  const setPortalCredentials = async (accountType: "student" | "guardian", username: string, password: string) => {
+  const sendPortalInvite = async (accountType: "student" | "guardian") => {
     if (settingCredentials) return;
     setSettingCredentials(true);
-    setNotice("Creating secure portal credentials…");
+    setNotice("Generating a secure one-time login and queueing the invitation…");
     try {
       if (isDemo) {
         store.transact((draft) => {
           const item = draft.students.find((row) => row.id === student.id)!;
-          item.portalUsername = username;
+          item.portalUsername ||= item.fullName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, ".")
+            .replace(/^\.|\.$/g, "");
           item.portalEnabled = true;
           item.version += 1;
           item.updatedAt = now();
         });
       } else {
         await studioCommand("students", {
-          command: "set_credentials",
+          command: "invite",
           entityId: student.id,
           expectedVersion: student.version,
-          payload: { accountType, username, password },
-          reason: "Coach created or reset portal credentials",
+          payload: { accountType },
+          reason: `Coach granted ${accountType} portal access and sent the invitation`,
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
-      setNotice(`${accountType === "guardian" ? "Guardian" : "Student"} login is ready. You can now send the instructions.`);
+      setNotice(
+        `${accountType === "guardian" ? "Guardian" : "Student"} invitation is queued. The email includes a generated username, one-time password, and first-login instructions.`,
+      );
     } catch (reason) {
       setNotice(
         reason instanceof Error
           ? reason.message
-          : "Portal credentials could not be created.",
+          : "The portal invitation could not be sent.",
       );
-      throw reason;
-    } finally {
-      setSettingCredentials(false);
-    }
-  };
-  const sendPortalInstructions = async (accountType: "student" | "guardian", temporaryPassword: string) => {
-    if (settingCredentials) return;
-    setSettingCredentials(true);
-    setNotice("Queueing clear sign-in instructions…");
-    try {
-      if (!isDemo) {
-        await studioCommand("students", {
-          command: "send_login_instructions",
-          entityId: student.id,
-          expectedVersion: student.version,
-          payload: { accountType, temporaryPassword },
-          reason: "Coach sent temporary portal login instructions",
-        });
-      }
-      setNotice(`${accountType === "guardian" ? "Guardian" : "Student"} sign-in instructions are queued for email.`);
-    } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Instructions could not be sent.");
-      throw reason;
     } finally {
       setSettingCredentials(false);
     }
@@ -592,8 +574,7 @@ export function StudentWorkspace() {
             <Account
               student={student}
               onSave={saveStudent}
-              onSetCredentials={setPortalCredentials}
-              onSendInstructions={sendPortalInstructions}
+              onInvite={sendPortalInvite}
               settingCredentials={settingCredentials}
             />
           }
@@ -1742,118 +1723,60 @@ function Notes({
     </Section>
   );
 }
-function CredentialForm({
+function PortalInvite({
   accountType,
   label,
   email,
-  defaultUsername,
+  username,
   busy,
-  onSet,
-  onSend,
+  onInvite,
 }: {
   accountType: "student" | "guardian";
   label: string;
   email?: string;
-  defaultUsername: string;
+  username?: string;
   busy: boolean;
-  onSet: (accountType: "student" | "guardian", username: string, password: string) => Promise<void>;
-  onSend: (accountType: "student" | "guardian", temporaryPassword: string) => Promise<void>;
+  onInvite: (accountType: "student" | "guardian") => Promise<void>;
 }) {
-  const [username, setUsername] = useState(defaultUsername);
-  const [password, setPassword] = useState("");
-  const [readyToSend, setReadyToSend] = useState(false);
   return (
-    <form
-      className="credential-form"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void onSet(accountType, username, password)
-          .then(() => setReadyToSend(true))
-          .catch(() => undefined);
-      }}
-    >
+    <div className="credential-form">
       <div>
         <strong>{label}</strong>
         <small>
-          {email || `Add a ${accountType} email in Edit details first.`}
-          {" "}Create the temporary login, then send the instructions. The first sign-in requires a new private password.
+          {email || `Add a ${accountType} email in Edit details first.`}{" "}
+          {username ? `Current username: ${username}. ` : ""}
+          Sending an invite generates the username and one-time password automatically. The recipient creates a private password at first sign-in.
         </small>
       </div>
-      <label>
-        Username
-        <input
-          required
-          minLength={3}
-          maxLength={32}
-          pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
-          autoComplete="off"
-          value={username}
-          onChange={(event) => {
-            setUsername(event.target.value.toLowerCase());
-            setReadyToSend(false);
-          }}
-        />
-      </label>
-      <label>
-        Temporary password
-        <input
-          required
-          minLength={12}
-          type="password"
-          autoComplete="new-password"
-          value={password}
-          onChange={(event) => {
-            setPassword(event.target.value);
-            setReadyToSend(false);
-          }}
-        />
-      </label>
       <div className="form-actions">
-        <button className="primary" disabled={busy || !email}>
-          {busy ? "Working…" : "1. Set temporary login"}
-        </button>
         <button
           type="button"
-          disabled={busy || !readyToSend || !password}
-          onClick={() =>
-            void onSend(accountType, password)
-              .then(() => {
-                setPassword("");
-                setReadyToSend(false);
-              })
-              .catch(() => undefined)
-          }
+          className="primary"
+          disabled={busy || !email}
+          onClick={() => void onInvite(accountType)}
         >
-          2. Send instructions
+          {busy
+            ? "Sending…"
+            : username
+              ? `Send new ${accountType} invite`
+              : `Send ${accountType} invite`}
         </button>
       </div>
-    </form>
+    </div>
   );
 }
 
 function Account({
   student,
   onSave,
-  onSetCredentials,
-  onSendInstructions,
+  onInvite,
   settingCredentials,
 }: {
   student: Student;
   onSave: (updates: Partial<Student>) => void;
-  onSetCredentials: (accountType: "student" | "guardian", username: string, password: string) => Promise<void>;
-  onSendInstructions: (accountType: "student" | "guardian", temporaryPassword: string) => Promise<void>;
+  onInvite: (accountType: "student" | "guardian") => Promise<void>;
   settingCredentials: boolean;
 }) {
-  const usernameBase = student.fullName
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.|\.$/g, "");
-  const defaultUsername =
-    student.portalUsername ||
-    (/^[a-z]/.test(usernameBase)
-      ? usernameBase
-      : `actor.${usernameBase}`
-    ).slice(0, 32);
   const toggle = (field: "portalEnabled" | "actorPageEligible") =>
     onSave({ [field]: !student[field] });
   return (
@@ -1872,24 +1795,21 @@ function Account({
             checked={student.actorPageEligible}
             onChange={() => toggle("actorPageEligible")}
           />
-          <CredentialForm
+          <PortalInvite
             accountType="student"
             label="Student login"
             email={student.email}
-            defaultUsername={defaultUsername}
+            username={student.portalUsername}
             busy={settingCredentials}
-            onSet={onSetCredentials}
-            onSend={onSendInstructions}
+            onInvite={onInvite}
           />
           {student.isMinor && (
-            <CredentialForm
+            <PortalInvite
               accountType="guardian"
               label="Guardian login"
               email={student.guardianEmail}
-              defaultUsername={`${defaultUsername}.guardian`.slice(0, 32)}
               busy={settingCredentials}
-              onSet={onSetCredentials}
-              onSend={onSendInstructions}
+              onInvite={onInvite}
             />
           )}
         </div>
