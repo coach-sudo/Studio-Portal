@@ -388,7 +388,6 @@ const base: StudioSnapshot = {
       status: "draft",
     },
   ],
-  lessonWhiteboards: [],
   discountCodes: [],
   outbox: [],
   recommendations: [],

@@ -29,7 +29,6 @@ const CORE_KEYS = [
   "assignments",
   "materials",
   "actorProfiles",
-  "lessonWhiteboards",
   "discountCodes",
   "settings",
 ] as const;
@@ -225,9 +224,6 @@ export function scopeStudioSnapshot(
     ),
     lessonMessages: snapshot.lessonMessages.filter((row) =>
       studentIds.includes(row.studentId),
-    ),
-    lessonWhiteboards: snapshot.lessonWhiteboards.filter((row) =>
-      scopedLessons.some((lesson) => lesson.id === row.lessonId),
     ),
     integrationImports: [],
     discountCodes: [],

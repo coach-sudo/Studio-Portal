@@ -24,6 +24,15 @@ export default async () => {
   ]);
   if (error || extendError || cleanupError)
     throw error || extendError || cleanupError;
+  if (runDailyStorageCleanup) {
+    const credentialRetention = new Date(Date.now() - 7 * 86400000).toISOString();
+    await db
+      .from("outbox_messages")
+      .update({ body: "Temporary portal credentials removed after delivery retention period." })
+      .eq("event_key", "portal.credentials")
+      .eq("status", "sent")
+      .lt("updated_at", credentialRetention);
+  }
   const grace = new Date(Date.now() - 7 * 86400000).toISOString(), now = new Date().toISOString();
   const { data: delinquent } = await db.from("bookings").select("id,series_id,offering_id").eq("payment_status", "past_due").lte("updated_at", grace);
   if (delinquent?.length) {

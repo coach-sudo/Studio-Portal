@@ -43,7 +43,6 @@ export async function loadStudioSnapshot(
     lessonParticipants,
     lessonMessages,
     integrationImports,
-    lessonWhiteboards,
     discountCodes,
   ] = await Promise.all([
     supabase
@@ -89,7 +88,6 @@ export async function loadStudioSnapshot(
       .from("integration_imports")
       .select("*")
       .order("created_at", { ascending: false }),
-    supabase.from("lesson_whiteboards").select("*"),
     supabase
       .from("discount_codes")
       .select("*")
@@ -121,7 +119,6 @@ export async function loadStudioSnapshot(
     lessonParticipants,
     lessonMessages,
     integrationImports,
-    lessonWhiteboards,
     discountCodes,
   ].find((result) => result.error);
   if (failed?.error) throw failed.error;
@@ -261,6 +258,11 @@ export async function loadStudioSnapshot(
       dueAt: r.due_at,
       status: r.status,
       helpRequested: r.help_requested,
+      activityType: r.activity_type,
+      activityConfig: r.activity_config,
+      responses: r.responses,
+      progress: r.progress,
+      studentResponse: r.student_response,
       version: r.version,
       updatedAt: r.updated_at,
     })),
@@ -568,14 +570,6 @@ export async function loadStudioSnapshot(
       verificationNote: r.verification_note,
       payload: r.payload ?? {},
       createdAt: r.created_at,
-      updatedAt: r.updated_at,
-    })),
-    lessonWhiteboards: (lessonWhiteboards.data ?? []).map((r: any) => ({
-      id: r.id,
-      studioId: r.studio_id,
-      lessonId: r.lesson_id,
-      document: r.document ?? { version: 1, elements: [] },
-      version: r.version,
       updatedAt: r.updated_at,
     })),
     discountCodes: (discountCodes.data ?? []).map((r: any) => ({

@@ -326,55 +326,6 @@ export interface LessonMessage {
   body: string;
   createdAt: string;
 }
-export type WhiteboardElement =
-  | {
-      id: UUID;
-      type: "path";
-      points: { x: number; y: number }[];
-      color: string;
-      width: number;
-      highlighted?: boolean;
-    }
-  | {
-      id: UUID;
-      type: "text";
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      text: string;
-      color: string;
-      fontSize: number;
-      fontFamily: string;
-      underline?: boolean;
-      highlighted?: boolean;
-    }
-  | {
-      id: UUID;
-      type: "table";
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      rows: number;
-      columns: number;
-      cells: string[];
-    }
-  | {
-      id: UUID;
-      type: "pdf";
-      x: number;
-      y: number;
-      width: number;
-      height: number;
-      materialId: UUID;
-      page?: number;
-    };
-export interface LessonWhiteboard extends Versioned {
-  studioId: UUID;
-  lessonId: UUID;
-  document: { version: number; elements: WhiteboardElement[] };
-}
 export interface Note extends Versioned {
   lessonId: UUID;
   studentId: UUID;
@@ -395,6 +346,11 @@ export interface Assignment extends Versioned {
   dueAt?: string;
   status: AssignmentStatus;
   helpRequested: boolean;
+  activityType?: "instruction" | "qa" | "journal" | "multiple_choice" | "checklist";
+  activityConfig?: { prompts?: string[]; options?: string[]; items?: string[] };
+  responses?: Record<string, unknown>;
+  progress?: number;
+  studentResponse?: string;
 }
 export interface Material extends Versioned {
   studentId: UUID;
@@ -652,7 +608,6 @@ export interface StudioSnapshot {
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];
   lessonMessages: LessonMessage[];
-  lessonWhiteboards: LessonWhiteboard[];
   integrationImports: IntegrationImport[];
   discountCodes: DiscountCode[];
 }

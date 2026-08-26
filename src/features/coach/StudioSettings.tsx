@@ -19,6 +19,7 @@ import {
   Status,
   usePagedList,
 } from "../../components/Primitives";
+import { TimezoneSelect } from "../../components/TimezoneSelect";
 import {
   loadPlatformHealth,
   loadStorageHealth,
@@ -107,7 +108,7 @@ export function StudioSettings({
   ] = [
     ["studio", "Studio", Palette, "Name, contact, timezone"],
     ["portal", "Student workspace", Users, "Visibility and welcome"],
-    ["pricing", "Pricing & reminders", CircleDollarSign, "Rates and defaults"],
+    ["pricing", "Rates & reminders", CircleDollarSign, "Lesson rates and timing"],
     ["email", "Email automations", Send, "Confirmations and reminders"],
     ["integrations", "Connections", Settings2, "Calendar, email, payments"],
     ["data", "Data & recovery", Database, "Saved data and delivery queue"],
@@ -160,7 +161,7 @@ export function StudioSettings({
           <PricingForm
             value={data.settings}
             onSave={(value) =>
-              void save(value, "Pricing and reminder defaults saved.")
+              void save(value, "Lesson rates and reminder timing saved.")
             }
           />
         )}{" "}
@@ -222,7 +223,17 @@ function StudioForm({
           logoUrl: uploaded.signedUrl,
         };
       }
-      onSave({ ...form, branding });
+      onSave({
+        studioName: form.studioName,
+        studioTagline: form.studioTagline,
+        coachName: form.coachName,
+        coachTitle: form.coachTitle,
+        contactEmail: form.contactEmail,
+        contactPhone: form.contactPhone,
+        timezone: form.timezone,
+        currency: form.currency,
+        branding,
+      });
     } finally {
       setUploading(false);
     }
@@ -280,15 +291,10 @@ function StudioForm({
         </label>
         <label>
           Timezone
-          <select
+          <TimezoneSelect
             value={form.timezone}
-            onChange={(e) => setForm({ ...form, timezone: e.target.value })}
-          >
-            <option>America/New_York</option>
-            <option>America/Chicago</option>
-            <option>America/Denver</option>
-            <option>America/Los_Angeles</option>
-          </select>
+            onChange={(timezone) => setForm({ ...form, timezone })}
+          />
         </label>
         <label>
           Currency
@@ -364,7 +370,12 @@ function PortalForm({
         className="settings-form"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave(form);
+          onSave({
+            portalLabel: form.portalLabel,
+            welcomeMessage: form.welcomeMessage,
+            showContactButtons: form.showContactButtons,
+            showDriveFolder: form.showDriveFolder,
+          });
         }}
       >
         <label>
@@ -372,13 +383,6 @@ function PortalForm({
           <input
             value={form.portalLabel}
             onChange={(e) => setForm({ ...form, portalLabel: e.target.value })}
-          />
-        </label>
-        <label>
-          Booking link
-          <input
-            value={form.bookingUrl}
-            onChange={(e) => setForm({ ...form, bookingUrl: e.target.value })}
           />
         </label>
         <label className="full">
@@ -390,212 +394,13 @@ function PortalForm({
             }
           />
         </label>
-        <label className="full">
-          Booking page headline
-          <input
-            value={form.bookingCopy.headline}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, headline: e.target.value },
-              })
-            }
-          />
-        </label>
-        <label>
-          Booking page eyebrow
-          <input
-            value={form.bookingCopy.eyebrow}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, eyebrow: e.target.value },
-              })
-            }
-          />
-        </label>
-        <label className="full">
-          Booking page introduction
-          <textarea
-            value={form.bookingCopy.intro}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, intro: e.target.value },
-              })
-            }
-          />
-        </label>
-        <label>
-          Booking button label
-          <input
-            value={form.bookingDefaults.bookingButtonLabel}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  bookingButtonLabel: event.target.value,
-                },
-              })
-            }
-            placeholder="View times"
-          />
-        </label>
-        <label className="full">
-          Confirmation message
-          <textarea
-            value={form.bookingDefaults.confirmationMessage}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  confirmationMessage: event.target.value,
-                },
-              })
-            }
-          />
-          <small>
-            Shown immediately after a successful non-Stripe booking
-            confirmation.
-          </small>
-        </label>
-        <label>
-          Footer website URL
-          <input
-            type="url"
-            value={form.bookingPage.footerWebsiteUrl}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bookingPage: {
-                  ...form.bookingPage,
-                  footerWebsiteUrl: e.target.value,
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Footer link label
-          <input
-            value={form.bookingPage.footerWebsiteLabel}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                bookingPage: {
-                  ...form.bookingPage,
-                  footerWebsiteLabel: e.target.value,
-                },
-              })
-            }
-          />
-        </label>
         <div className="settings-list full">
-          <Toggle
-            title="Show coach name"
-            detail="Identify the coach beneath the booking-page introduction."
-            checked={form.bookingPage.showCoachName}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showCoachName: checked },
-              })
-            }
-          />
-          <Toggle
-            title="Trust and security row"
-            detail="Show secure checkout, live availability, and delivery assurances."
-            checked={form.bookingPage.showTrustRow}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showTrustRow: checked },
-              })
-            }
-          />
-          <Toggle
-            title="Booking policies"
-            detail="Show cancellation and rescheduling terms throughout checkout."
-            checked={form.bookingPage.showPolicies}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showPolicies: checked },
-              })
-            }
-          />
-          <Toggle
-            title="Show prices"
-            detail="Display prices in the public service catalog and checkout."
-            checked={form.bookingDefaults.showPrices}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  showPrices: checked,
-                },
-              })
-            }
-          />
-          <Toggle
-            title="Require a phone number"
-            detail="Require a reachable phone number before checkout."
-            checked={form.bookingDefaults.requirePhone}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  requirePhone: checked,
-                },
-              })
-            }
-          />
-          <Toggle
-            title="Allow recurring booking"
-            detail="Let clients choose weekly or biweekly options offered by a service."
-            checked={form.bookingDefaults.allowRecurring}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  allowRecurring: checked,
-                },
-              })
-            }
-          />
-          <Toggle
-            title="Allow pay later"
-            detail="Offer pay-later only when the selected service also supports it."
-            checked={form.bookingDefaults.allowPayLater}
-            onChange={(checked) =>
-              setForm({
-                ...form,
-                bookingDefaults: {
-                  ...form.bookingDefaults,
-                  allowPayLater: checked,
-                },
-              })
-            }
-          />
           <Toggle
             title="Contact coach buttons"
             detail="Show email and text actions to students."
             checked={form.showContactButtons}
             onChange={(checked) =>
               setForm({ ...form, showContactButtons: checked })
-            }
-          />
-          <Toggle
-            title="Book a lesson"
-            detail="Show the public booking button in the workspace."
-            checked={form.showBookingButton}
-            onChange={(checked) =>
-              setForm({ ...form, showBookingButton: checked })
             }
           />
           <Toggle
@@ -622,14 +427,10 @@ function PricingForm({
   onSave: (v: Partial<Settings>) => void;
 }) {
   const [rates, setRates] = useState(value.lessonRatesMinor),
-    [reminders, setReminders] = useState(value.reminderHours.join(", ")),
-    [defaults, setDefaults] = useState(value.bookingDefaults),
-    [inPersonUpcharge, setInPersonUpcharge] = useState(
-      value.bookingDefaults.inPersonUpchargeMinor / 100,
-    );
+    [reminders, setReminders] = useState(value.reminderHours.join(", "));
   const dollars = (minor: number) => minor / 100;
   return (
-    <Section title="Pricing & reminders" marked>
+    <Section title="Rates & reminders" marked>
       <form
         className="settings-form"
         onSubmit={(e) => {
@@ -640,10 +441,6 @@ function PricingForm({
               .split(",")
               .map(Number)
               .filter((v) => Number.isFinite(v) && v > 0),
-            bookingDefaults: {
-              ...defaults,
-              inPersonUpchargeMinor: Math.round(Number(inPersonUpcharge) * 100),
-            },
           });
         }}
       >
@@ -688,44 +485,8 @@ function PricingForm({
           />
           <small>Separate multiple reminders with commas.</small>
         </label>
-        {(
-          [
-            ["minimumNoticeHours", "Default minimum notice (hours)"],
-            ["bookingHorizonDays", "Default booking horizon (days)"],
-            ["cancellationWindowHours", "Default cancellation notice (hours)"],
-            ["bufferBeforeMinutes", "Default buffer before (minutes)"],
-            ["bufferAfterMinutes", "Default buffer after (minutes)"],
-            ["recurringHorizonWeeks", "Ongoing-series horizon (weeks)"],
-          ] as const
-        ).map(([key, label]) => (
-          <label key={key}>
-            {label}
-            <input
-              type="number"
-              min="0"
-              value={defaults[key]}
-              onChange={(event) =>
-                setDefaults({ ...defaults, [key]: Number(event.target.value) })
-              }
-            />
-          </label>
-        ))}
-        <label>
-          In-person upcharge (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={inPersonUpcharge}
-            onChange={(e) => setInPersonUpcharge(Number(e.target.value))}
-          />
-          <small>
-            Added to the service price for in-person bookings unless that
-            service has its own override.
-          </small>
-        </label>
         <div className="form-actions full">
-          <button className="primary">Save defaults</button>
+          <button className="primary">Save rates and reminders</button>
         </div>
       </form>
     </Section>
@@ -773,7 +534,7 @@ function EmailAutomationForm({
           />
           <Toggle
             title="Lesson reminders"
-            detail="Use the reminder hours configured under Pricing & reminders."
+            detail="Use the reminder timing configured under Rates & reminders."
             checked={form.reminders}
             onChange={(reminders) => setForm({ ...form, reminders })}
           />

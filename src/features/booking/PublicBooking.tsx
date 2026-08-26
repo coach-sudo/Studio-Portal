@@ -498,8 +498,8 @@ export function PublicBooking() {
   }, [studio.branding]);
   useEffect(() => {
     document.title = catalogLoading
-      ? "Booking"
-      : `${studio.name} — ${slug ? "Book a session" : "Booking"}`;
+      ? "Booking · Coach’D"
+      : `${studio.name} — ${slug ? "Book a session" : "Booking"} · Coach’D`;
   }, [catalogLoading, slug, studio.name]);
   if (token)
     return (

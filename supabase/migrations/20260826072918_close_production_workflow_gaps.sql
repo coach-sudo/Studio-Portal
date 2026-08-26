@@ -1,6 +1,54 @@
 -- Close production workflow gaps found during the end-to-end audit.
 -- All authoritative multi-table mutations are transaction-bound in Postgres.
 
+-- A student and guardian are separate people and may both need portal access.
+-- Passwords remain exclusively in Supabase Auth; this table stores routing and
+-- forced-password-change state only.
+create table if not exists public.portal_accounts (
+  id uuid primary key default gen_random_uuid(),
+  studio_id uuid not null references public.studios(id) on delete cascade,
+  student_id uuid not null references public.students(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  account_type text not null check(account_type in ('student','guardian')),
+  username text not null check(username ~ '^[a-z][a-z0-9._-]{2,31}$'),
+  email text not null,
+  must_change_password boolean not null default true,
+  instructions_sent_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(student_id,account_type),
+  unique(user_id,student_id,account_type)
+);
+create unique index if not exists portal_accounts_username_unique
+  on public.portal_accounts(lower(username));
+create index if not exists portal_accounts_user_idx on public.portal_accounts(user_id);
+alter table public.portal_accounts enable row level security;
+drop policy if exists portal_accounts_read on public.portal_accounts;
+create policy portal_accounts_read on public.portal_accounts for select to authenticated
+using(user_id=(select auth.uid()) or public.is_studio_coach(studio_id));
+
+-- Existing portal identities remain usable after the account split.
+insert into public.portal_accounts(studio_id,student_id,user_id,account_type,username,email,must_change_password)
+select s.studio_id,s.id,s.user_id,'student',lower(s.portal_username),lower(s.email),false
+from public.students s
+where s.user_id is not null and s.portal_username is not null and s.email is not null and not s.is_minor
+on conflict(student_id,account_type) do nothing;
+insert into public.portal_accounts(studio_id,student_id,user_id,account_type,username,email,must_change_password)
+select s.studio_id,s.id,r.user_id,'guardian',lower(s.portal_username),lower(s.guardian_email),false
+from public.students s join public.student_relationships r on r.student_id=s.id and r.relationship='guardian'
+where s.portal_username is not null and s.guardian_email is not null and s.is_minor
+on conflict(student_id,account_type) do nothing;
+
+-- Assignments can now carry a compact interactive activity without creating a
+-- separate row for every answer or checklist item.
+alter table public.assignments
+  add column if not exists activity_type text not null default 'instruction',
+  add column if not exists activity_config jsonb not null default '{}'::jsonb,
+  add column if not exists responses jsonb not null default '{}'::jsonb;
+alter table public.assignments drop constraint if exists assignments_activity_type_check;
+alter table public.assignments add constraint assignments_activity_type_check
+  check(activity_type in ('instruction','qa','journal','multiple_choice','checklist'));
+
 create or replace function public.command_complete_lesson(
   lesson_id uuid, expected_version integer, reason text, idempotency_key text, correlation_id text
 ) returns jsonb language plpgsql security definer set search_path='' as $$

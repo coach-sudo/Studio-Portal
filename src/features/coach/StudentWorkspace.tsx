@@ -12,7 +12,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import DOMPurify from "dompurify";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -51,7 +51,6 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
-import { LessonWhiteboard } from "../../components/LessonWhiteboard";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 
@@ -82,7 +81,6 @@ export function StudentWorkspace() {
   const [editingNote, setEditingNote] = useState<Note>();
   const [notice, setNotice] = useState("");
   const [savingStudent, setSavingStudent] = useState(false);
-  const [invitingStudent, setInvitingStudent] = useState(false);
   const [settingCredentials, setSettingCredentials] = useState(false);
   const [removingStudent, setRemovingStudent] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -138,41 +136,7 @@ export function StudentWorkspace() {
       setSavingStudent(false);
     }
   };
-  const inviteStudent = async () => {
-    if (invitingStudent) return;
-    setInvitingStudent(true);
-    setNotice("Sending the portal invitation…");
-    try {
-      if (isDemo)
-        store.transact((draft) => {
-          const item = draft.students.find((row) => row.id === student.id)!;
-          item.portalEnabled = true;
-          item.version += 1;
-          item.updatedAt = now();
-        });
-      else {
-        await studioCommand("students", {
-          command: "invite",
-          entityId: student.id,
-          expectedVersion: student.version,
-          reason: "Coach sent student portal invitation",
-        });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setNotice(
-        `Portal invitation sent to ${student.isMinor ? student.guardianEmail : student.email}.`,
-      );
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Portal invitation could not be sent.",
-      );
-    } finally {
-      setInvitingStudent(false);
-    }
-  };
-  const setPortalCredentials = async (username: string, password: string) => {
+  const setPortalCredentials = async (accountType: "student" | "guardian", username: string, password: string) => {
     if (settingCredentials) return;
     setSettingCredentials(true);
     setNotice("Creating secure portal credentials…");
@@ -190,18 +154,40 @@ export function StudentWorkspace() {
           command: "set_credentials",
           entityId: student.id,
           expectedVersion: student.version,
-          payload: { username, password },
+          payload: { accountType, username, password },
           reason: "Coach created or reset portal credentials",
         });
         void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
-      setNotice(`Portal login is ready for username ${username}.`);
+      setNotice(`${accountType === "guardian" ? "Guardian" : "Student"} login is ready. You can now send the instructions.`);
     } catch (reason) {
       setNotice(
         reason instanceof Error
           ? reason.message
           : "Portal credentials could not be created.",
       );
+      throw reason;
+    } finally {
+      setSettingCredentials(false);
+    }
+  };
+  const sendPortalInstructions = async (accountType: "student" | "guardian", temporaryPassword: string) => {
+    if (settingCredentials) return;
+    setSettingCredentials(true);
+    setNotice("Queueing clear sign-in instructions…");
+    try {
+      if (!isDemo) {
+        await studioCommand("students", {
+          command: "send_login_instructions",
+          entityId: student.id,
+          expectedVersion: student.version,
+          payload: { accountType, temporaryPassword },
+          reason: "Coach sent temporary portal login instructions",
+        });
+      }
+      setNotice(`${accountType === "guardian" ? "Guardian" : "Student"} sign-in instructions are queued for email.`);
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Instructions could not be sent.");
       throw reason;
     } finally {
       setSettingCredentials(false);
@@ -258,6 +244,8 @@ export function StudentWorkspace() {
             title: assignment.title,
             details: assignment.details,
             dueAt: assignment.dueAt,
+            activityType: assignment.activityType,
+            activityConfig: assignment.activityConfig,
           },
           reason: "Coach assigned practice",
         });
@@ -604,9 +592,8 @@ export function StudentWorkspace() {
             <Account
               student={student}
               onSave={saveStudent}
-              onInvite={inviteStudent}
-              inviting={invitingStudent}
               onSetCredentials={setPortalCredentials}
+              onSendInstructions={sendPortalInstructions}
               settingCredentials={settingCredentials}
             />
           }
@@ -1318,21 +1305,6 @@ function CoachLessonHub({
           </div>
         </Dialog>
       )}
-      <LessonWhiteboard
-        data={data}
-        lesson={lesson}
-        student={student}
-        isDemo={isDemo}
-        onDemoChange={(board) =>
-          store.transact((draft) => {
-            const current = draft.lessonWhiteboards.find(
-              (item) => item.lessonId === lesson.id,
-            );
-            if (current) Object.assign(current, board);
-            else draft.lessonWhiteboards.push(board);
-          })
-        }
-      />
       <div className="lesson-hub-grid">
         <Section title="Notes">
           <div className="note-cards">
@@ -1770,19 +1742,106 @@ function Notes({
     </Section>
   );
 }
+function CredentialForm({
+  accountType,
+  label,
+  email,
+  defaultUsername,
+  busy,
+  onSet,
+  onSend,
+}: {
+  accountType: "student" | "guardian";
+  label: string;
+  email?: string;
+  defaultUsername: string;
+  busy: boolean;
+  onSet: (accountType: "student" | "guardian", username: string, password: string) => Promise<void>;
+  onSend: (accountType: "student" | "guardian", temporaryPassword: string) => Promise<void>;
+}) {
+  const [username, setUsername] = useState(defaultUsername);
+  const [password, setPassword] = useState("");
+  const [readyToSend, setReadyToSend] = useState(false);
+  return (
+    <form
+      className="credential-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void onSet(accountType, username, password)
+          .then(() => setReadyToSend(true))
+          .catch(() => undefined);
+      }}
+    >
+      <div>
+        <strong>{label}</strong>
+        <small>
+          {email || `Add a ${accountType} email in Edit details first.`}
+          {" "}Create the temporary login, then send the instructions. The first sign-in requires a new private password.
+        </small>
+      </div>
+      <label>
+        Username
+        <input
+          required
+          minLength={3}
+          maxLength={32}
+          pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
+          autoComplete="off"
+          value={username}
+          onChange={(event) => {
+            setUsername(event.target.value.toLowerCase());
+            setReadyToSend(false);
+          }}
+        />
+      </label>
+      <label>
+        Temporary password
+        <input
+          required
+          minLength={12}
+          type="password"
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => {
+            setPassword(event.target.value);
+            setReadyToSend(false);
+          }}
+        />
+      </label>
+      <div className="form-actions">
+        <button className="primary" disabled={busy || !email}>
+          {busy ? "Working…" : "1. Set temporary login"}
+        </button>
+        <button
+          type="button"
+          disabled={busy || !readyToSend || !password}
+          onClick={() =>
+            void onSend(accountType, password)
+              .then(() => {
+                setPassword("");
+                setReadyToSend(false);
+              })
+              .catch(() => undefined)
+          }
+        >
+          2. Send instructions
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function Account({
   student,
   onSave,
-  onInvite,
-  inviting,
   onSetCredentials,
+  onSendInstructions,
   settingCredentials,
 }: {
   student: Student;
   onSave: (updates: Partial<Student>) => void;
-  onInvite: () => Promise<void>;
-  inviting: boolean;
-  onSetCredentials: (username: string, password: string) => Promise<void>;
+  onSetCredentials: (accountType: "student" | "guardian", username: string, password: string) => Promise<void>;
+  onSendInstructions: (accountType: "student" | "guardian", temporaryPassword: string) => Promise<void>;
   settingCredentials: boolean;
 }) {
   const usernameBase = student.fullName
@@ -1795,8 +1854,6 @@ function Account({
       ? usernameBase
       : `actor.${usernameBase}`
     ).slice(0, 32);
-  const [username, setUsername] = useState(defaultUsername);
-  const [password, setPassword] = useState("");
   const toggle = (field: "portalEnabled" | "actorPageEligible") =>
     onSave({ [field]: !student[field] });
   return (
@@ -1815,76 +1872,26 @@ function Account({
             checked={student.actorPageEligible}
             onChange={() => toggle("actorPageEligible")}
           />
-          <div className="setting-toggle">
-            <span>
-              <strong>Portal invitation</strong>
-              <small>
-                Send a secure Supabase invitation to the student or guardian
-                email on file.
-              </small>
-            </span>
-            <button
-              type="button"
-              disabled={inviting}
-              onClick={() => void onInvite()}
-            >
-              {inviting
-                ? "Sending…"
-                : student.portalEnabled
-                  ? "Resend invite"
-                  : "Send invite"}
-            </button>
-          </div>
-          <form
-            className="credential-form"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void onSetCredentials(username, password)
-                .then(() => setPassword(""))
-                .catch(() => undefined);
-            }}
-          >
-            <div>
-              <strong>Username &amp; password</strong>
-              <small>
-                Create or reset a reliable login. Use 12+ characters with
-                upper/lowercase letters, a number, and a symbol. Share it
-                securely; it is never stored by the studio.
-              </small>
-            </div>
-            <label>
-              Username
-              <input
-                required
-                minLength={3}
-                maxLength={32}
-                pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
-                autoComplete="off"
-                value={username}
-                onChange={(event) =>
-                  setUsername(event.target.value.toLowerCase())
-                }
-              />
-            </label>
-            <label>
-              Temporary password
-              <input
-                required
-                minLength={12}
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-              />
-            </label>
-            <button className="primary" disabled={settingCredentials}>
-              {settingCredentials
-                ? "Creating login…"
-                : student.portalUsername
-                  ? "Reset login"
-                  : "Create login"}
-            </button>
-          </form>
+          <CredentialForm
+            accountType="student"
+            label="Student login"
+            email={student.email}
+            defaultUsername={defaultUsername}
+            busy={settingCredentials}
+            onSet={onSetCredentials}
+            onSend={onSendInstructions}
+          />
+          {student.isMinor && (
+            <CredentialForm
+              accountType="guardian"
+              label="Guardian login"
+              email={student.guardianEmail}
+              defaultUsername={`${defaultUsername}.guardian`.slice(0, 32)}
+              busy={settingCredentials}
+              onSet={onSetCredentials}
+              onSend={onSendInstructions}
+            />
+          )}
         </div>
       </Section>
       <Section title="Studio details">
@@ -1944,9 +1951,46 @@ function Payments({
       data.packageDefinitions.find((item) => item.active)?.id ?? "",
     ),
     [crediting, setCrediting] = useState(false),
+    [adjustingBalance, setAdjustingBalance] = useState(false),
+    [balanceAmount, setBalanceAmount] = useState("0.00"),
+    [balanceReason, setBalanceReason] = useState("Studio account credit"),
     [creditQuantity, setCreditQuantity] = useState(1),
     [creditReason, setCreditReason] = useState("Courtesy lesson credit"),
     [notice, setNotice] = useState("");
+  const adjustBalance = async (event: FormEvent) => {
+    event.preventDefault();
+    const amountMinor = Math.round(Number(balanceAmount) * 100);
+    if (!amountMinor || balanceReason.trim().length < 3) return;
+    try {
+      if (isDemo) {
+        store.transact((draft) => {
+          draft.payments.push({
+            id: uid("payment"),
+            studentId: student.id,
+            kind: amountMinor > 0 ? "refund" : "adjustment",
+            amountMinor: Math.abs(amountMinor),
+            currency: "USD",
+            reason: balanceReason.trim(),
+            createdAt: now(),
+          });
+        });
+      } else {
+        await studioCommand("finance", {
+          command: "adjust_account_credit",
+          entityId: student.id,
+          expectedVersion: 0,
+          payload: { amountMinor, currency: "USD", reason: balanceReason.trim() },
+          reason: "Coach adjusted student dollar balance",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setAdjustingBalance(false);
+      setBalanceAmount("0.00");
+      setNotice(`${amountMinor > 0 ? "Added" : "Removed"} ${formatMoney(Math.abs(amountMinor))} ${amountMinor > 0 ? "of account credit" : "from the account balance"}.`);
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "The account balance could not be adjusted.");
+    }
+  };
   const grantCredit = async (event: FormEvent) => {
     event.preventDefault();
     try {
@@ -2073,6 +2117,7 @@ function Payments({
           aside={
             <div className="header-actions">
               <button onClick={() => setCrediting(true)}>Adjust credits</button>
+              <button onClick={() => setAdjustingBalance(true)}>Adjust dollar balance</button>
               <button
                 disabled={!data.packageDefinitions.some((item) => item.active)}
                 onClick={() => setAssigning(true)}
@@ -2105,6 +2150,10 @@ function Payments({
           </div>
         </Section>
         <Section title="Payments & adjustments">
+          <div className="metric-strip compact-metrics">
+            <div><small>Available studio balance</small><strong>{formatMoney(Math.max(0, studentBalanceMinor(student.id, data.payments)))}</strong></div>
+            <div><small>Lesson credits</small><strong>{pkgs.reduce((total, pkg) => total + packageSummary(pkg, data.creditEntries).remainingCredits, 0)}</strong></div>
+          </div>
           <div className="table-list">
             {payments.map((p) => (
               <article key={p.id}>
@@ -2198,6 +2247,29 @@ function Payments({
               >
                 Save credit adjustment
               </button>
+            </div>
+          </form>
+        </Dialog>
+      )}
+      {adjustingBalance && (
+        <Dialog
+          title="Adjust dollar balance"
+          description="This is money on the account, separate from lesson credits. Positive amounts add studio credit; negative amounts correct or remove it."
+          onClose={() => setAdjustingBalance(false)}
+        >
+          <form className="workflow-form" onSubmit={adjustBalance}>
+            <label>
+              Amount (USD)
+              <input required type="number" step="0.01" min="-10000" max="10000" value={balanceAmount} onChange={(event) => setBalanceAmount(event.target.value)} />
+              <small>Examples: 25.00 adds $25; -10.00 removes $10.</small>
+            </label>
+            <label className="full">
+              Reason
+              <input required minLength={3} value={balanceReason} onChange={(event) => setBalanceReason(event.target.value)} />
+            </label>
+            <div className="form-actions full">
+              <button type="button" onClick={() => setAdjustingBalance(false)}>Cancel</button>
+              <button className="primary" disabled={!Number(balanceAmount) || balanceReason.trim().length < 3}>Save dollar adjustment</button>
             </div>
           </form>
         </Dialog>
@@ -2744,6 +2816,8 @@ function AssignmentForm({
   const [title, setTitle] = useState(""),
     [details, setDetails] = useState(""),
     [dueAt, setDueAt] = useState(""),
+    [activityType, setActivityType] = useState<NonNullable<Assignment["activityType"]>>("instruction"),
+    [activityItems, setActivityItems] = useState(""),
     [lessonId, setLessonId] = useState(lessons[0]?.id ?? "");
   return (
     <Dialog
@@ -2764,6 +2838,16 @@ function AssignmentForm({
             dueAt: dueAt ? new Date(dueAt).toISOString() : undefined,
             status: "assigned",
             helpRequested: false,
+            activityType,
+            activityConfig:
+              activityType === "qa"
+                ? { prompts: activityItems.split("\n").map((item) => item.trim()).filter(Boolean) }
+                : activityType === "multiple_choice"
+                  ? { options: activityItems.split("\n").map((item) => item.trim()).filter(Boolean) }
+                  : activityType === "checklist"
+                    ? { items: activityItems.split("\n").map((item) => item.trim()).filter(Boolean) }
+                    : {},
+            responses: {},
             version: 1,
             updatedAt: now(),
           });
@@ -2805,6 +2889,28 @@ function AssignmentForm({
             onChange={(e) => setDetails(e.target.value)}
           />
         </label>
+        <label>
+          Activity format
+          <select value={activityType} onChange={(event) => setActivityType(event.target.value as NonNullable<Assignment["activityType"]>)}>
+            <option value="instruction">Action or reading</option>
+            <option value="qa">Questions &amp; answers</option>
+            <option value="journal">Journal prompt</option>
+            <option value="multiple_choice">Multiple choice</option>
+            <option value="checklist">Action checklist</option>
+          </select>
+        </label>
+        {(["qa", "multiple_choice", "checklist"] as const).includes(activityType as "qa" | "multiple_choice" | "checklist") && (
+          <label className="full">
+            {activityType === "qa" ? "Questions" : activityType === "multiple_choice" ? "Choices" : "Checklist items"}
+            <textarea
+              required
+              value={activityItems}
+              onChange={(event) => setActivityItems(event.target.value)}
+              placeholder="Enter one item per line"
+            />
+            <small>One per line. Students can save their progress and return later.</small>
+          </label>
+        )}
         <label>
           Due date
           <input
@@ -3008,6 +3114,12 @@ function NoteForm({
     [published, setPublished] = useState(note?.status === "published"),
     [lessonId, setLessonId] = useState(note?.lessonId || lessons[0]?.id || "");
   const editorRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!editorRef.current) return;
+    editorRef.current.innerHTML = DOMPurify.sanitize(
+      note?.bodyHtml || note?.body || "",
+    );
+  }, [note?.id]);
   const format = (command: string, value?: string) => {
     editorRef.current?.focus();
     document.execCommand(command, false, value);
@@ -3141,7 +3253,6 @@ function NoteForm({
             aria-label="Note"
             aria-multiline="true"
             data-placeholder="Write coaching notes…"
-            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(body) }}
             onInput={(event) => setBody(event.currentTarget.innerHTML)}
           />
         </div>

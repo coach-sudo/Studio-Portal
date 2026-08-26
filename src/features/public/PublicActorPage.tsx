@@ -168,7 +168,7 @@ export function PublicActorPage() {
     if (!actor) return;
     const b = actor.studio.branding,
       root = document.documentElement;
-    document.title = `${actor.displayName} — ${actor.studio.name}`;
+    document.title = `${actor.displayName} — ${actor.studio.name} · Coach’D`;
     applyStudioBranding(b);
     if (actor.accentColor) root.style.setProperty("--actor-accent", actor.accentColor);
   }, [actor]);

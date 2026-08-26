@@ -22,7 +22,7 @@ export function TermsPage() {
       })
       .catch(() => undefined);
   }, []);
-  useEffect(() => { document.title = `${studio.name} — Terms and Conditions`; }, [studio.name]);
+  useEffect(() => { document.title = `${studio.name} — Terms · Coach’D`; }, [studio.name]);
   const blocks = useMemo(() => terms.split(/\r?\n/), []);
   return (
     <main className="legal-page">

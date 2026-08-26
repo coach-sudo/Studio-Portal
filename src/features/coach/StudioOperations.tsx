@@ -1,9 +1,15 @@
 import {
+  BookOpen,
   CalendarDays,
   CheckCircle2,
   CircleDollarSign,
+  Clapperboard,
+  ExternalLink,
   FileText,
   FolderOpen,
+  Images,
+  LibraryBig,
+  MoreHorizontal,
   Search,
   Trash2,
   UserRound,
@@ -1491,7 +1497,73 @@ export function MaterialsView({
     store = useStudioStore(),
     queryClient = useQueryClient(),
     [notice, setNotice] = useState(""),
-    [deleting, setDeleting] = useState("");
+    [deleting, setDeleting] = useState(""),
+    [query, setQuery] = useState(""),
+    [role, setRole] = useState<
+      "all" | "current_script" | "lesson_material" | "library" | "actor_material"
+    >("all"),
+    [status, setStatus] = useState<
+      "all" | "active" | "archived" | "vaulted" | "pending_review"
+    >("all");
+  const roleOptions = [
+    {
+      value: "current_script" as const,
+      label: "Current scripts",
+      detail: "The scripts students are actively preparing",
+      icon: Clapperboard,
+    },
+    {
+      value: "lesson_material" as const,
+      label: "Lesson resources",
+      detail: "Files attached to a specific lesson",
+      icon: BookOpen,
+    },
+    {
+      value: "library" as const,
+      label: "Shared library",
+      detail: "Reusable resources that are not lesson-specific",
+      icon: LibraryBig,
+    },
+    {
+      value: "actor_material" as const,
+      label: "Actor-page media",
+      detail: "Headshots, reels, resumes, and profile files",
+      icon: Images,
+    },
+  ];
+  const normalizedQuery = query.trim().toLocaleLowerCase();
+  const filtered = data.materials
+    .filter((item) => role === "all" || item.role === role)
+    .filter((item) => {
+      if (status === "all") return true;
+      if (status === "pending_review")
+        return item.approvalStatus === "pending_review";
+      return item.status === status;
+    })
+    .filter((item) => {
+      if (!normalizedQuery) return true;
+      const student = studentName(data, item.studentId);
+      const lesson = item.lessonId
+        ? data.lessons.find((row) => row.id === item.lessonId)
+        : undefined;
+      return [
+        item.title,
+        item.category,
+        item.caption,
+        student,
+        lesson?.topic,
+      ].some((value) => value?.toLocaleLowerCase().includes(normalizedQuery));
+    })
+    .sort((a, b) => {
+      const reviewOrder =
+        Number(b.approvalStatus === "pending_review") -
+        Number(a.approvalStatus === "pending_review");
+      if (reviewOrder) return reviewOrder;
+      const activeOrder =
+        Number(b.status === "active") - Number(a.status === "active");
+      return activeOrder || a.title.localeCompare(b.title);
+    });
+  const paged = usePagedList(filtered, 10);
   const archive = async (id: string) => {
     const current = data.materials.find((item) => item.id === id)!;
     try {
@@ -1588,65 +1660,209 @@ export function MaterialsView({
       setDeleting("");
     }
   };
+  const resetFilters = () => {
+    setQuery("");
+    setRole("all");
+    setStatus("all");
+  };
   return (
-    <Section title="Material library" marked>
-      {notice && <p className="portal-notice">{notice}</p>}
-      <div className="table-list">
-        {data.materials.map((item) => (
-          <article key={item.id}>
-            <FolderOpen />
-            <div>
-              <strong>{item.title}</strong>
-              <small>
-                {studentName(data, item.studentId)} · {item.category} ·{" "}
-                {item.role.replaceAll("_", " ")}
-              </small>
-            </div>
-            <Status
-              tone={
-                item.approvalStatus === "approved"
-                  ? "good"
-                  : item.approvalStatus === "pending_review"
-                    ? "warn"
-                    : "neutral"
-              }
-            >
-              {item.status}
-            </Status>
+    <Section
+      title="Material library"
+      marked
+      aside={
+        <button type="button" onClick={() => navigate("/coach/students")}>
+          <UserRound />
+          Choose a student to add material
+        </button>
+      }
+    >
+      <p className="section-intro material-library-intro">
+        Find active scripts, lesson attachments, reusable resources, and actor-page
+        media without mixing their different jobs together.
+      </p>
+      {notice && <p className="portal-notice" role="status">{notice}</p>}
+      <div className="material-bucket-grid" aria-label="Material categories">
+        {roleOptions.map((option) => {
+          const Icon = option.icon;
+          const count = data.materials.filter(
+            (item) => item.role === option.value,
+          ).length;
+          return (
             <button
-              onClick={() =>
-                navigate(
-                  `/coach/students/${item.studentId}/${item.role === "actor_material" ? "actor-page" : "work"}`,
-                )
-              }
+              type="button"
+              key={option.value}
+              className={role === option.value ? "selected" : ""}
+              aria-pressed={role === option.value}
+              onClick={() => setRole(role === option.value ? "all" : option.value)}
             >
-              Student
+              <Icon />
+              <span>
+                <strong>{option.label}</strong>
+                <small>{option.detail}</small>
+              </span>
+              <b>{count}</b>
             </button>
-            {item.approvalStatus === "pending_review" && (
-              <>
-                <button onClick={() => void review(item.id, "approved")}>
-                  Approve for actor page
-                </button>
-                <button
-                  onClick={() => void review(item.id, "changes_requested")}
-                >
-                  Request changes
-                </button>
-              </>
-            )}
-            <button onClick={() => void archive(item.id)}>
-              {item.status === "active" ? "Archive" : "Restore"}
-            </button>
-            <button
-              className="danger-button"
-              disabled={deleting === item.id}
-              onClick={() => void remove(item.id)}
-            >
-              <Trash2 />
-              {deleting === item.id ? "Deleting…" : "Delete"}
-            </button>
-          </article>
-        ))}
+          );
+        })}
+      </div>
+      <div className="library-toolbar material-library-toolbar">
+        <label>
+          <Search />
+          <input
+            type="search"
+            aria-label="Search materials"
+            value={query}
+            placeholder="Search title, student, lesson, or category"
+            onChange={(event) => {
+              setQuery(event.target.value);
+              paged.setPage(1);
+            }}
+          />
+        </label>
+        <select
+          aria-label="Material category"
+          value={role}
+          onChange={(event) => {
+            setRole(event.target.value as typeof role);
+            paged.setPage(1);
+          }}
+        >
+          <option value="all">All material types</option>
+          {roleOptions.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <select
+          aria-label="Material status"
+          value={status}
+          onChange={(event) => {
+            setStatus(event.target.value as typeof status);
+            paged.setPage(1);
+          }}
+        >
+          <option value="all">Any status</option>
+          <option value="active">Active</option>
+          <option value="pending_review">Needs review</option>
+          <option value="archived">Archived</option>
+          <option value="vaulted">Vaulted</option>
+        </select>
+      </div>
+      <ListControls
+        page={paged.page}
+        pageCount={paged.pageCount}
+        pageSize={paged.pageSize}
+        total={paged.total}
+        onPage={paged.setPage}
+        onPageSize={paged.setPageSize}
+        label="materials"
+      />
+      <div className="material-library-list">
+        {paged.visible.map((item) => {
+          const lesson = item.lessonId
+            ? data.lessons.find((row) => row.id === item.lessonId)
+            : undefined;
+          const roleOption = roleOptions.find(
+            (option) => option.value === item.role,
+          );
+          const Icon = roleOption?.icon || FolderOpen;
+          return (
+            <article key={item.id}>
+              <span className="material-kind-icon" aria-hidden="true"><Icon /></span>
+              <div className="material-library-copy">
+                <strong>{item.title}</strong>
+                <small>
+                  {studentName(data, item.studentId)} · {item.category} ·{" "}
+                  {roleOption?.label || item.role.replaceAll("_", " ")}
+                  {lesson ? ` · ${lesson.topic}` : ""}
+                </small>
+                {item.caption && <p>{item.caption}</p>}
+              </div>
+              <div className="material-library-state">
+                {item.approvalStatus === "pending_review" && (
+                  <Status tone="warn">Needs review</Status>
+                )}
+                <Status tone={item.status === "active" ? "good" : "neutral"}>
+                  {item.status}
+                </Status>
+              </div>
+              <div className="material-primary-actions">
+                {item.externalUrl && (
+                  <a
+                    className="button-link"
+                    href={item.externalUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <ExternalLink />
+                    Open
+                  </a>
+                )}
+                {item.approvalStatus === "pending_review" && (
+                  <button
+                    type="button"
+                    className="material-approve"
+                    onClick={() => void review(item.id, "approved")}
+                  >
+                    Approve
+                  </button>
+                )}
+                <details className="material-action-menu">
+                  <summary aria-label={`More actions for ${item.title}`}>
+                    <MoreHorizontal />
+                    <span>Actions</span>
+                  </summary>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/coach/students/${item.studentId}/${item.role === "actor_material" ? "actor-page" : "work"}`,
+                        )
+                      }
+                    >
+                      Open student workspace
+                    </button>
+                    {item.approvalStatus === "pending_review" && (
+                      <button
+                        type="button"
+                        onClick={() => void review(item.id, "changes_requested")}
+                      >
+                        Request changes
+                      </button>
+                    )}
+                    <button type="button" onClick={() => void archive(item.id)}>
+                      {item.status === "active" ? "Archive" : "Restore"}
+                    </button>
+                    <button
+                      type="button"
+                      className="danger-button"
+                      disabled={deleting === item.id}
+                      onClick={() => void remove(item.id)}
+                    >
+                      <Trash2 />
+                      {deleting === item.id ? "Deleting…" : "Delete permanently"}
+                    </button>
+                  </div>
+                </details>
+              </div>
+            </article>
+          );
+        })}
+        {!paged.total && (
+          <EmptyState
+            title={data.materials.length ? "No materials match these filters" : "No materials yet"}
+            detail={
+              data.materials.length
+                ? "Clear the filters or choose another material category."
+                : "Choose a student above, then add a script, lesson resource, library file, or actor-page asset."
+            }
+          />
+        )}
+        {!paged.total && data.materials.length > 0 && (
+          <button type="button" className="text-button material-filter-reset" onClick={resetFilters}>
+            Clear all filters
+          </button>
+        )}
       </div>
     </Section>
   );

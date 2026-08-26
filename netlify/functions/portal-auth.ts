@@ -2,7 +2,7 @@ import type { Config, Context } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { apiError, correlationId, json } from "./_shared/http";
-import { serviceClient } from "./_shared/supabase";
+import { serviceClient, userClient } from "./_shared/supabase";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -24,6 +24,17 @@ async function rateLimit(request: Request) {
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
   try {
+    if (context.params.action === "password-changed" && request.method === "POST") {
+      const db = userClient(request);
+      const { data: authData, error: authError } = await db.auth.getUser();
+      if (authError || !authData.user) throw new Error("FORBIDDEN");
+      const { error } = await serviceClient()
+        .from("portal_accounts")
+        .update({ must_change_password: false, updated_at: new Date().toISOString() })
+        .eq("user_id", authData.user.id);
+      if (error) throw error;
+      return json({ ok: true });
+    }
     if (context.params.action !== "login" || request.method !== "POST")
       return json(
         {
@@ -44,16 +55,14 @@ export default async (request: Request, context: Context) => {
     if (!/^[a-z][a-z0-9._-]{2,31}$/.test(username) || password.length < 8)
       throw new Error("FORBIDDEN");
     const service = serviceClient();
-    const { data: student } = await service
-      .from("students")
-      .select("id,is_minor,email,guardian_email,portal_enabled")
-      .ilike("portal_username", username)
-      .eq("portal_enabled", true)
+    const { data: account, error: accountError } = await service
+      .from("portal_accounts")
+      .select("id,email,account_type,must_change_password,students!inner(portal_enabled)")
+      .ilike("username", username)
+      .eq("students.portal_enabled", true)
       .maybeSingle();
-    if (!student) throw new Error("FORBIDDEN");
-    const email = String(student.is_minor ? student.guardian_email : student.email)
-      .trim()
-      .toLowerCase();
+    if (accountError || !account) throw new Error("FORBIDDEN");
+    const email = String(account.email).trim().toLowerCase();
     const url = Netlify.env.get("SUPABASE_URL");
     const key = Netlify.env.get("SUPABASE_ANON_KEY");
     if (!url || !key) throw new Error("Supabase is not configured.");
@@ -66,7 +75,9 @@ export default async (request: Request, context: Context) => {
       accessToken: data.session.access_token,
       refreshToken: data.session.refresh_token,
       expiresAt: data.session.expires_at,
-      destination: "/portal",
+      accountType: account.account_type,
+      mustChangePassword: account.must_change_password,
+      destination: account.must_change_password ? "/change-password" : "/portal",
     });
   } catch (error) {
     return apiError(error, id);

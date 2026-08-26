@@ -47,7 +47,7 @@ export function AppShell() {
   }, [data?.settings.branding]);
   useEffect(() => {
     if (data?.settings.studioName)
-      document.title = `${data.settings.studioName} — Coach workspace`;
+      document.title = `${data.settings.studioName} — Coach’D`;
   }, [data?.settings.studioName]);
   return (
     <div className="app-shell">

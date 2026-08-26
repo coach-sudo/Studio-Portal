@@ -185,6 +185,9 @@ describe("30 start-to-finish studio workflows", () => {
         within(dialog).getByLabelText("Note"),
         "Private coaching observation.",
       );
+      expect(within(dialog).getByLabelText("Note")).toHaveTextContent(
+        "Private coaching observation.",
+      );
       await user.click(
         within(dialog).getByRole("button", { name: "Save note" }),
       );
@@ -259,18 +262,20 @@ describe("30 start-to-finish studio workflows", () => {
         await screen.findByText(/workspace preferences saved/i),
       ).toBeInTheDocument();
     });
-    it("15 updates pricing defaults", async () => {
+    it("15 updates lesson rates", async () => {
       const user = userEvent.setup();
       renderApp("/coach/settings");
       await user.click(
-        await screen.findByRole("button", { name: /Pricing & reminders/i }),
+        await screen.findByRole("button", { name: /Rates & reminders/i }),
       );
       const rate = screen.getByLabelText("60-minute lesson");
       await user.clear(rate);
       await user.type(rate, "135");
-      await user.click(screen.getByRole("button", { name: "Save defaults" }));
+      await user.click(
+        screen.getByRole("button", { name: "Save rates and reminders" }),
+      );
       expect(
-        await screen.findByText(/Pricing and reminder defaults saved/i),
+        await screen.findByText(/Lesson rates and reminder timing saved/i),
       ).toBeInTheDocument();
     });
   });
@@ -303,7 +308,7 @@ describe("30 start-to-finish studio workflows", () => {
     it("19 completes practice", async () => {
       const user = userEvent.setup();
       renderApp("/portal/work");
-      await user.click(await screen.findByRole("button", { name: "Complete" }));
+      await user.click(await screen.findByRole("button", { name: "Complete & archive" }));
       expect(
         await screen.findByText("Practice marked complete."),
       ).toBeInTheDocument();

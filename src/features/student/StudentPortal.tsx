@@ -38,6 +38,7 @@ import {
   Toggle,
   usePagedList,
 } from "../../components/Primitives";
+import { TimezoneSelect } from "../../components/TimezoneSelect";
 import {
   portalBookingCommand,
   studioCommand,
@@ -57,8 +58,8 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
-import { LessonWhiteboard } from "../../components/LessonWhiteboard";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
+import { AssignmentActivity } from "../../components/AssignmentActivity";
 import {
   isJoinableLesson,
   lessonDateLabel,
@@ -76,8 +77,11 @@ const studentTabs = [
 ] as const;
 const guardianTabs = [
   ["", "Overview", Home],
-  ["bookings", "Bookings", CalendarDays],
+  ["work", "Current Work", BookOpen],
+  ["bookings", "Schedule", CalendarDays],
   ["payments", "Payments", CircleDollarSign],
+  ["actor-page", "Actor Page", UserRound],
+  ["settings", "Settings", Settings],
 ] as const;
 
 export function StudentPortal({
@@ -88,12 +92,11 @@ export function StudentPortal({
   const studentId = role === "guardian" ? "student-sarah" : "student-maya";
   const { data, isLoading, isDemo } = useStudio(role, studentId);
   const base = "/portal";
-  const tabs = role === "guardian" ? guardianTabs : studentTabs;
   const navigatePortal = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   useEffect(() => {
     if (data?.settings.studioName)
-      document.title = `${data.settings.studioName} — ${role === "guardian" ? "Guardian" : "Student"} workspace`;
+      document.title = `${data.settings.studioName} — ${role === "guardian" ? "Guardian" : "Student"} · Coach’D`;
   }, [data?.settings.studioName, role]);
   useEffect(
     () => applyStudioBranding(data?.settings.branding),
@@ -102,6 +105,11 @@ export function StudentPortal({
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
+  const tabs = role === "guardian"
+    ? guardianTabs
+    : person?.isMinor
+      ? studentTabs.filter(([to]) => to !== "payments")
+      : studentTabs;
   const studentDisplayName =
     person?.preferredName || person?.fullName || "Student";
   const initials =
@@ -186,7 +194,7 @@ export function StudentPortal({
           />
           <Route
             path="payments"
-            element={<Payments data={data} isDemo={isDemo} />}
+            element={role === "guardian" || !person?.isMinor ? <Payments data={data} isDemo={isDemo} /> : <Navigate to={base} replace />}
           />
           <Route
             path="actor-page"
@@ -194,7 +202,7 @@ export function StudentPortal({
           />
           <Route
             path="settings"
-            element={<StudentSettings data={data} isDemo={isDemo} />}
+            element={<StudentSettings data={data} isDemo={isDemo} role={role} />}
           />
           <Route path="*" element={<Navigate to={base} replace />} />
         </Routes>
@@ -206,7 +214,7 @@ export function StudentPortal({
             <span>{label}</span>
           </NavLink>
         ))}
-        {role === "student" && (
+        {tabs.length > 4 && (
           <button type="button" onClick={() => setMobileMenuOpen(true)}>
             <Menu />
             <span>More</span>
@@ -512,17 +520,33 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       <Section title="Active script" marked>
         <div className="table-list">
           {work.map((item) => (
-            <article key={item.id}>
-              <FileText />
-              <div>
-                <strong>{item.title}</strong>
-                <small>{item.category}</small>
-              </div>
-              <Status tone="good">{item.status}</Status>
+            <article key={item.id} className="current-script-card">
+              <header>
+                <FileText />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>{item.category}</small>
+                </div>
+                <Status tone="good">current</Status>
+              </header>
               {item.externalUrl && (
-                <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                  Open script
-                </a>
+                <details className="material-preview">
+                  <summary>Read or view here</summary>
+                  {item.mediaKind === "image" ? (
+                    <img src={item.externalUrl} alt={item.title} />
+                  ) : item.mediaKind === "video" ? (
+                    <video src={item.externalUrl} controls />
+                  ) : item.mediaKind === "audio" ? (
+                    <audio src={item.externalUrl} controls />
+                  ) : (
+                    <object data={item.externalUrl} title={item.title}>
+                      <p>This file cannot be previewed in this browser.</p>
+                    </object>
+                  )}
+                  <a className="button-link" href={item.externalUrl} target="_blank" rel="noreferrer">
+                    Open full size
+                  </a>
+                </details>
               )}
             </article>
           ))}
@@ -1356,6 +1380,41 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       setAssignmentBusy("");
     }
   };
+  const saveLessonAssignment = async (
+    assignment: Snapshot["assignments"][number],
+    responses: Record<string, unknown>,
+  ) => {
+    if (assignmentBusy) return;
+    setAssignmentBusy(assignment.id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.assignments.find((item) => item.id === assignment.id);
+          if (!current) return;
+          current.responses = responses;
+          current.status = current.status === "assigned" ? "in_progress" : current.status;
+          current.progress = Math.max(current.progress || 0, 25);
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("work", {
+          command: "save_response",
+          entityId: assignment.id,
+          expectedVersion: assignment.version,
+          payload: { responses, progress: Math.max(assignment.progress || 0, 25) },
+          reason: "Student saved lesson assignment progress",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Assignment progress saved.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Assignment progress could not be saved.");
+      throw reason;
+    } finally {
+      setAssignmentBusy("");
+    }
+  };
   return (
     <div className="student-page lesson-hub">
       <header className="student-header lesson-hub-header">
@@ -1436,23 +1495,6 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           </div>
         </Section>
       )}
-      {student && (
-        <LessonWhiteboard
-          data={data}
-          lesson={lesson}
-          student={student}
-          isDemo={isDemo}
-          onDemoChange={(board) =>
-            store.transact((draft) => {
-              const current = draft.lessonWhiteboards.find(
-                (item) => item.lessonId === lesson.id,
-              );
-              if (current) Object.assign(current, board);
-              else draft.lessonWhiteboards.push(board);
-            })
-          }
-        />
-      )}
       <div className="lesson-hub-grid">
         <Section title="Coach notes" marked>
           <div className="note-cards">
@@ -1485,36 +1527,22 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         <Section title="Practice & assignments">
           <div className="table-list">
             {assignments.map((item) => (
-              <article key={item.id}>
-                <CheckSquare />
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.details}
-                    {item.dueAt
-                      ? ` · due ${new Date(item.dueAt).toLocaleDateString()}`
-                      : ""}
-                  </small>
-                </div>
-                <Status tone={item.status === "completed" ? "good" : "neutral"}>
-                  {item.status.replaceAll("_", " ")}
-                </Status>
-                {item.status !== "completed" && (
-                  <button
-                    disabled={assignmentBusy === item.id}
-                    onClick={() => void updateAssignment(item, "complete")}
-                  >
-                    Complete
-                  </button>
-                )}
-                {item.status !== "completed" && (
-                  <button
-                    disabled={item.helpRequested || assignmentBusy === item.id}
-                    onClick={() => void updateAssignment(item, "help")}
-                  >
-                    {item.helpRequested ? "Help requested" : "Ask coach"}
-                  </button>
-                )}
+              <article key={item.id} className="assignment-card">
+                <header>
+                  <CheckSquare />
+                  <div>
+                    <strong>{item.title}</strong>
+                    <small>{item.dueAt ? `Due ${new Date(item.dueAt).toLocaleDateString()}` : "Attached to this lesson"}</small>
+                  </div>
+                  <Status tone={item.status === "completed" ? "good" : "neutral"}>{item.status.replaceAll("_", " ")}</Status>
+                </header>
+                <AssignmentActivity
+                  assignment={item}
+                  busy={assignmentBusy === item.id}
+                  onSave={(responses) => saveLessonAssignment(item, responses)}
+                  onComplete={() => void updateAssignment(item, "complete")}
+                  onHelp={() => void updateAssignment(item, "help")}
+                />
               </article>
             ))}
             {!assignments.length && (
@@ -1651,6 +1679,40 @@ function Practice({
       setBusyId("");
     }
   };
+  const saveResponse = async (
+    assignment: Snapshot["assignments"][number],
+    responses: Record<string, unknown>,
+  ) => {
+    if (busyId) return;
+    setBusyId(assignment.id);
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.assignments.find((row) => row.id === assignment.id)!;
+          item.responses = responses;
+          item.status = item.status === "assigned" ? "in_progress" : item.status;
+          item.progress = Math.max(item.progress || 0, 25);
+          item.version += 1;
+          item.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("work", {
+          command: "save_response",
+          entityId: assignment.id,
+          expectedVersion: assignment.version,
+          payload: { responses, progress: Math.max(assignment.progress || 0, 25) },
+          reason: "Student saved assignment progress",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      }
+      setNotice("Progress saved.");
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Progress could not be saved.");
+      throw reason;
+    } finally {
+      setBusyId("");
+    }
+  };
   return (
     <div className={compact ? "current-work-practice" : "student-page"}>
       {!compact && (
@@ -1672,40 +1734,25 @@ function Practice({
         />
         <div className="table-list">
           {assignmentPage.visible.map((item) => (
-            <article key={item.id}>
-              <CheckSquare />
-              <div>
-                <strong>{item.title}</strong>
-                <p>{item.details}</p>
-                <small>
-                  {item.dueAt
-                    ? `Due ${new Date(item.dueAt).toLocaleString()}`
-                    : "No due date"}
-                  {item.lessonId &&
-                    ` · ${data.lessons.find((lesson) => lesson.id === item.lessonId)?.topic || "Lesson"}`}
-                </small>
-              </div>
-              <Status tone={item.status === "completed" ? "good" : "neutral"}>
-                {item.status.replaceAll("_", " ")}
-              </Status>
-              {item.status !== "completed" && (
-                <button
-                  disabled={busyId === item.id}
-                  onClick={() => void change(item.id, "complete")}
-                >
-                  {busyId === item.id ? "Saving…" : "Complete"}
-                </button>
-              )}
-              <button
-                disabled={item.helpRequested || busyId === item.id}
-                onClick={() => void change(item.id, "help")}
-              >
-                {item.helpRequested
-                  ? "Help requested"
-                  : busyId === item.id
-                    ? "Sending…"
-                    : "Ask coach"}
-              </button>
+            <article key={item.id} className="assignment-card">
+              <header>
+                <CheckSquare />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.dueAt ? `Due ${new Date(item.dueAt).toLocaleString()}` : "No due date"}
+                    {item.lessonId && ` · ${data.lessons.find((lesson) => lesson.id === item.lessonId)?.topic || "Lesson"}`}
+                  </small>
+                </div>
+                <Status tone="neutral">{(item.activityType || "instruction").replaceAll("_", " ")}</Status>
+              </header>
+              <AssignmentActivity
+                assignment={item}
+                busy={busyId === item.id}
+                onSave={(responses) => saveResponse(item, responses)}
+                onComplete={() => void change(item.id, "complete")}
+                onHelp={() => void change(item.id, "help")}
+              />
             </article>
           ))}
           {!assignmentPage.total && (
@@ -2334,9 +2381,11 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
 function StudentSettings({
   data,
   isDemo,
+  role,
 }: {
   data: Snapshot;
   isDemo: boolean;
+  role: Extract<Role, "student" | "guardian">;
 }) {
   const student = data.students[0],
     store = useStudioStore(),
@@ -2357,10 +2406,7 @@ function StudentSettings({
     }),
     [notice, setNotice] = useState(""),
     [saving, setSaving] = useState(false),
-    [loginForm, setLoginForm] = useState({
-      username: student?.portalUsername || "",
-      password: "",
-    }),
+    [loginPassword, setLoginPassword] = useState(""),
     [loginBusy, setLoginBusy] = useState(false),
     [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
       "",
@@ -2450,39 +2496,31 @@ function StudentSettings({
     try {
       if (isDemo) {
         store.transact((draft) => {
-          draft.students[0].portalUsername = loginForm.username;
           draft.students[0].version += 1;
         });
       } else {
         const { supabase } = await import("../../lib/supabase");
         if (!supabase) throw new Error("Secure login is unavailable.");
-        await studioCommand("students", {
-          command: "update_self",
-          entityId: student.id,
-          expectedVersion: student.version,
-          payload: { portalUsername: loginForm.username },
-          reason: "Student updated portal username",
-        });
-        if (loginForm.password) {
+        if (loginPassword) {
           if (
-            loginForm.password.length < 12 ||
-            !/[a-z]/.test(loginForm.password) ||
-            !/[A-Z]/.test(loginForm.password) ||
-            !/\d/.test(loginForm.password) ||
-            !/[^A-Za-z0-9]/.test(loginForm.password)
+            loginPassword.length < 12 ||
+            !/[a-z]/.test(loginPassword) ||
+            !/[A-Z]/.test(loginPassword) ||
+            !/\d/.test(loginPassword) ||
+            !/[^A-Za-z0-9]/.test(loginPassword)
           )
             throw new Error(
               "Password must be 12+ characters with upper/lowercase letters, a number, and a symbol.",
             );
           const { error } = await supabase.auth.updateUser({
-            password: loginForm.password,
+            password: loginPassword,
           });
           if (error) throw error;
         }
         void queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
-      setLoginForm((value) => ({ ...value, password: "" }));
-      setNotice("Your username and password are ready for future sign-ins.");
+      setLoginPassword("");
+      setNotice("Your private password was updated.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -2546,17 +2584,10 @@ function StudentSettings({
           </label>
           <label>
             Timezone
-            <select
+            <TimezoneSelect
               value={form.timezone}
-              onChange={(event) =>
-                setForm({ ...form, timezone: event.target.value })
-              }
-            >
-              <option>America/New_York</option>
-              <option>America/Chicago</option>
-              <option>America/Denver</option>
-              <option>America/Los_Angeles</option>
-            </select>
+              onChange={(timezone) => setForm({ ...form, timezone })}
+            />
           </label>
           <div className="settings-list full">
             <Toggle
@@ -2587,36 +2618,17 @@ function StudentSettings({
           </div>
         </form>
       </Section>
-      <Section title="Login & security">
+      <Section title="Password & security">
         <form className="settings-form" onSubmit={saveLogin}>
-          <label>
-            Username
-            <input
-              required
-              minLength={3}
-              maxLength={32}
-              pattern="[A-Za-z][A-Za-z0-9._-]{2,31}"
-              autoComplete="username"
-              value={loginForm.username}
-              onChange={(event) =>
-                setLoginForm({
-                  ...loginForm,
-                  username: event.target.value.toLowerCase(),
-                })
-              }
-            />
-          </label>
           <label>
             New password
             <input
               type="password"
               minLength={12}
               autoComplete="new-password"
-              value={loginForm.password}
-              onChange={(event) =>
-                setLoginForm({ ...loginForm, password: event.target.value })
-              }
-              placeholder="Leave blank to keep your password"
+              required
+              value={loginPassword}
+              onChange={(event) => setLoginPassword(event.target.value)}
             />
             <small>
               Use 12+ characters with upper/lowercase letters, a number, and a
@@ -2630,7 +2642,7 @@ function StudentSettings({
           </div>
         </form>
       </Section>
-      <Section title="Payment method">
+      {(role === "guardian" || !student.isMinor) && <Section title="Payment method">
         <div className="data-summary">
           <CreditCard />
           <div>
@@ -2662,7 +2674,7 @@ function StudentSettings({
             </button>
           )}
         </div>
-      </Section>
+      </Section>}
     </div>
   );
 }

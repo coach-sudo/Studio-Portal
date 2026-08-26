@@ -20,7 +20,6 @@ const domains = new Set([
   "packages",
   "credits",
   "discounts",
-  "whiteboards",
   "actor-pages",
   "outbox",
   "integrations",
@@ -358,6 +357,7 @@ export default async (request: Request, context: Context) => {
         .trim()
         .toLowerCase();
       const password = String(input.payload.password || "");
+      const accountType = input.payload.accountType === "guardian" ? "guardian" : "student";
       if (!/^[a-z][a-z0-9._-]{2,31}$/.test(username))
         throw new Error(
           "VALIDATION_FAILED: Username must be 3–32 characters and begin with a letter.",
@@ -382,28 +382,36 @@ export default async (request: Request, context: Context) => {
       if (studentError || !student) throw new Error("FORBIDDEN");
       if (student.version !== input.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      if (accountType === "guardian" && !student.is_minor)
+        throw new Error("VALIDATION_FAILED: Guardian access is only available for a minor student.");
       const email = String(
-        student.is_minor ? student.guardian_email : student.email || "",
+        accountType === "guardian" ? student.guardian_email : student.email || "",
       )
         .trim()
         .toLowerCase();
       if (!email.includes("@"))
         throw new Error(
-          "VALIDATION_FAILED: Add an adult student email or minor guardian email first.",
+          `VALIDATION_FAILED: Add the ${accountType} email first.`,
         );
       const { data: duplicate } = await service
-        .from("students")
+        .from("portal_accounts")
         .select("id")
-        .eq("studio_id", studioId)
-        .ilike("portal_username", username)
-        .neq("id", student.id)
+        .ilike("username", username)
         .maybeSingle();
-      if (duplicate)
+      const { data: currentAccount } = await service
+        .from("portal_accounts")
+        .select("id,user_id,username")
+        .eq("student_id", student.id)
+        .eq("account_type", accountType)
+        .maybeSingle();
+      if (duplicate && duplicate.id !== currentAccount?.id)
         throw new Error("VALIDATION_FAILED: That username is already in use.");
-      let authUser: { id: string } | undefined = student.user_id
-        ? { id: student.user_id }
+      let authUser: { id: string } | undefined = currentAccount?.user_id
+        ? { id: currentAccount.user_id }
+        : accountType === "student" && student.user_id
+          ? { id: student.user_id }
         : undefined;
-      if (!authUser && student.is_minor) {
+      if (!authUser && accountType === "guardian") {
         const { data: existingRelationship } = await service
           .from("student_relationships")
           .select("user_id")
@@ -422,7 +430,9 @@ export default async (request: Request, context: Context) => {
             password,
             email_confirm: true,
             user_metadata: {
-              portal_role: student.is_minor ? "guardian" : "student",
+              portal_role: accountType,
+              must_change_password: true,
+              student_id: student.id,
             },
           },
         );
@@ -433,7 +443,9 @@ export default async (request: Request, context: Context) => {
           password,
           email_confirm: true,
           user_metadata: {
-            portal_role: student.is_minor ? "guardian" : "student",
+            portal_role: accountType,
+            must_change_password: true,
+            student_id: student.id,
           },
         });
         if (createdAuth.error || !createdAuth.data.user)
@@ -443,7 +455,7 @@ export default async (request: Request, context: Context) => {
           );
         authUser = createdAuth.data.user;
       }
-      if (student.is_minor) {
+      if (accountType === "guardian") {
         const { error: relationshipError } = await service
           .from("student_relationships")
           .upsert(
@@ -458,11 +470,28 @@ export default async (request: Request, context: Context) => {
           );
         if (relationshipError) throw relationshipError;
       }
+      const { error: accountWriteError } = await service
+        .from("portal_accounts")
+        .upsert(
+          {
+            studio_id: studioId,
+            student_id: student.id,
+            user_id: authUser.id,
+            account_type: accountType,
+            username,
+            email,
+            must_change_password: true,
+            instructions_sent_at: null,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "student_id,account_type" },
+        );
+      if (accountWriteError) throw accountWriteError;
       const { data: updated, error: updateError } = await service
         .from("students")
         .update({
-          user_id: student.is_minor ? student.user_id : authUser.id,
-          portal_username: username,
+          user_id: accountType === "student" ? authUser.id : student.user_id,
+          portal_username: accountType === "student" ? username : student.portal_username,
           portal_enabled: true,
           version: student.version + 1,
           updated_at: new Date().toISOString(),
@@ -480,10 +509,62 @@ export default async (request: Request, context: Context) => {
           "student",
           student.id,
           "portal.credentials_set",
-          { portal_username: student.portal_username || null },
-          { portal_username: username },
+          { account_type: accountType, username: currentAccount?.username || null },
+          { account_type: accountType, username },
         ),
         queuedSideEffects: [],
+      });
+    }
+    if (
+      domain === "students" &&
+      input.command === "send_login_instructions" &&
+      input.entityId
+    ) {
+      const studioId = await requireCoach();
+      const accountType = input.payload.accountType === "guardian" ? "guardian" : "student";
+      const temporaryPassword = String(input.payload.temporaryPassword || "");
+      if (temporaryPassword.length < 12)
+        throw new Error("VALIDATION_FAILED: Enter the temporary password you just created.");
+      const service = serviceClient();
+      const [{ data: student }, { data: studio }, { data: account }] = await Promise.all([
+        service.from("students").select("id,full_name,preferred_name").eq("id", input.entityId).eq("studio_id", studioId).single(),
+        service.from("studios").select("name").eq("id", studioId).single(),
+        service.from("portal_accounts").select("id,email,username,account_type").eq("student_id", input.entityId).eq("account_type", accountType).single(),
+      ]);
+      if (!student || !studio || !account) throw new Error("VALIDATION_FAILED: Create the temporary login first.");
+      const loginUrl = `${Netlify.env.get("URL") || "https://portal.d-a-j.com"}/login`;
+      const subject = `Your ${studio.name} portal login`;
+      const body = [
+        `Hello,`,
+        ``,
+        `Your ${accountType} portal for ${student.preferred_name || student.full_name} is ready.`,
+        ``,
+        `Sign in: ${loginUrl}`,
+        `Username: ${account.username}`,
+        `Temporary password: ${temporaryPassword}`,
+        ``,
+        `The first time you sign in, you will be required to create a private password. Your coach cannot see the new password.`,
+        `If the temporary password does not work, contact the studio instead of forwarding this message.`,
+      ].join("\n");
+      const { error: queueError } = await service.from("outbox_messages").insert({
+        studio_id: studioId,
+        student_id: student.id,
+        channel: "email",
+        recipient: account.email,
+        subject,
+        body,
+        status: "queued",
+        send_at: new Date().toISOString(),
+        event_key: "portal.credentials",
+        dedupe_key: `portal-credentials:${account.id}:${Date.now()}`,
+      });
+      if (queueError) throw queueError;
+      await service.from("portal_accounts").update({ instructions_sent_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", account.id);
+      return json({
+        resource: { accountType, recipient: account.email, instructionsQueued: true },
+        recommendations: [],
+        auditEventId: await audit(studioId, "student", student.id, "portal.instructions_queued", null, { accountType, recipient: account.email }),
+        queuedSideEffects: ["outbox_worker"],
       });
     }
     if (
@@ -728,6 +809,9 @@ export default async (request: Request, context: Context) => {
           status: "assigned",
           category: String(input.payload.category || "practice"),
           priority: Number(input.payload.priority || 2),
+          activity_type: String(input.payload.activityType || "instruction"),
+          activity_config: input.payload.activityConfig || {},
+          responses: {},
         })
         .select("*,students!inner(studio_id)")
         .single();
@@ -958,69 +1042,6 @@ export default async (request: Request, context: Context) => {
       });
     }
     if (
-      domain === "whiteboards" &&
-      input.command === "save" &&
-      input.entityId
-    ) {
-      const { data: lesson, error: lessonError } = await db
-        .from("lessons")
-        .select("id,studio_id,student_id")
-        .eq("id", input.entityId)
-        .single();
-      if (lessonError || !lesson) throw new Error("FORBIDDEN");
-      const elements = Array.isArray((input.payload.document as any)?.elements)
-        ? (input.payload.document as any).elements
-        : [];
-      if (elements.length > 500)
-        throw new Error(
-          "VALIDATION_FAILED: A whiteboard can contain up to 500 items.",
-        );
-      const document = { version: 1, elements };
-      const service = serviceClient();
-      const { data: before } = await service
-        .from("lesson_whiteboards")
-        .select("*")
-        .eq("lesson_id", lesson.id)
-        .maybeSingle();
-      if (before && before.version !== input.expectedVersion)
-        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      const { data, error } = before
-        ? await service
-            .from("lesson_whiteboards")
-            .update({
-              document,
-              version: before.version + 1,
-              updated_at: new Date().toISOString(),
-            })
-            .eq("id", before.id)
-            .eq("version", before.version)
-            .select()
-            .single()
-        : await service
-            .from("lesson_whiteboards")
-            .insert({
-              studio_id: lesson.studio_id,
-              lesson_id: lesson.id,
-              document,
-            })
-            .select()
-            .single();
-      if (error) throw error;
-      return json({
-        resource: data,
-        recommendations: [],
-        auditEventId: await audit(
-          lesson.studio_id,
-          "lesson_whiteboard",
-          data.id,
-          "lesson_whiteboard.saved",
-          before,
-          data,
-        ),
-        queuedSideEffects: [],
-      });
-    }
-    if (
       domain === "materials" &&
       input.command === "approve" &&
       input.entityId
@@ -1196,7 +1217,7 @@ export default async (request: Request, context: Context) => {
     }
     if (
       domain === "work" &&
-      ["complete", "help"].includes(input.command) &&
+      ["complete", "help", "save_response"].includes(input.command) &&
       input.entityId
     ) {
       const { data: before, error: readError } = await db
@@ -1212,8 +1233,14 @@ export default async (request: Request, context: Context) => {
               version: input.expectedVersion + 1,
               updated_at: new Date().toISOString(),
             }
-          : {
+          : input.command === "help" ? {
               help_requested: true,
+              version: input.expectedVersion + 1,
+              updated_at: new Date().toISOString(),
+            } : {
+              responses: input.payload.responses || {},
+              progress: Math.max(0, Math.min(100, Number(input.payload.progress || 25))),
+              status: before.status === "assigned" ? "in_progress" : before.status,
               version: input.expectedVersion + 1,
               updated_at: new Date().toISOString(),
             };
@@ -2596,6 +2623,41 @@ export default async (request: Request, context: Context) => {
         await service.from("packages").delete().eq("id", pkg.id);
         throw error;
       }
+    }
+    if (domain === "finance" && input.command === "adjust_account_credit" && input.entityId) {
+      const studioId = await requireCoach();
+      const amountMinor = Math.round(Number(input.payload.amountMinor || 0));
+      const reason = String(input.payload.reason || "").trim();
+      if (!Number.isSafeInteger(amountMinor) || amountMinor === 0 || reason.length < 3)
+        throw new Error("VALIDATION_FAILED: Enter a non-zero amount and a reason.");
+      const service = serviceClient();
+      const { data: student, error: studentError } = await service
+        .from("students")
+        .select("id")
+        .eq("id", input.entityId)
+        .eq("studio_id", studioId)
+        .single();
+      if (studentError || !student) throw new Error("FORBIDDEN");
+      const reference = `account-credit:${student.id}:${crypto.randomUUID()}`;
+      const { data, error } = await service
+        .from("payment_entries")
+        .insert({
+          student_id: student.id,
+          kind: amountMinor > 0 ? "refund" : "adjustment",
+          amount_minor: Math.abs(amountMinor),
+          currency: String(input.payload.currency || "USD").toUpperCase(),
+          external_reference: reference,
+          reason,
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(studioId, "student", student.id, "finance.account_credit_adjusted", null, { amountMinor, reason }),
+        queuedSideEffects: [],
+      });
     }
     if (domain === "finance" && input.command === "checkout") {
       const packageId = String(input.payload.packageId || "");

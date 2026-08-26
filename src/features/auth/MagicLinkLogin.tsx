@@ -38,7 +38,7 @@ export function MagicLinkLogin() {
   }, []);
   useEffect(() => applyStudioBranding(studio.branding), [studio.branding]);
   useEffect(() => {
-    document.title = `${studio.name} — Sign in`;
+    document.title = `${studio.name} — Sign in · Coach’D`;
   }, [studio.name]);
 
   const safeReturn = (fallback: string) => {

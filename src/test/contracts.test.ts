@@ -14,11 +14,19 @@ const booking = fs.readFileSync(
   "utf8",
 );
 const productionCloseout = fs.readFileSync(
-  "supabase/migrations/20260826025539_close_production_workflow_gaps.sql",
+  "supabase/migrations/20260826072918_close_production_workflow_gaps.sql",
+  "utf8",
+);
+const portalAccountHardening = fs.readFileSync(
+  "supabase/migrations/20260826073351_portal_account_grants_and_whiteboard_removal.sql",
   "utf8",
 );
 const publicBooking = fs.readFileSync(
   "netlify/functions/public-booking.ts",
+  "utf8",
+);
+const bookingCancellation = fs.readFileSync(
+  "netlify/functions/_shared/booking-cancellation.ts",
   "utf8",
 );
 const compactPublicBooking = publicBooking.replace(/\s+/g, "");
@@ -98,8 +106,9 @@ describe("database contracts", () => {
   });
   it("releases class capacity and supports idempotent credit restoration", () => {
     expect(booking).toContain("release_offering_seat");
-    expect(publicBooking).toContain("booking-credit-release:");
-    expect(publicBooking).toContain("public-cancel:");
+    expect(productionCloseout).toContain("booking-credit-release:");
+    expect(bookingCancellation).toContain("stripeIdempotencyPrefix");
+    expect(publicBooking).toContain('stripeIdempotencyPrefix: "public-cancel"');
   });
   it("backfills participants and rolls ongoing series forward", () => {
     expect(booking).toContain("insert into public.lesson_participants");
@@ -209,5 +218,14 @@ describe("database contracts", () => {
     expect(overview).toMatch(
       /item\.status\s*===\s*"scheduled"[\s\S]{0,250}(?:new Date\(item\.startsAt\)\.getTime\(\)|Date\.parse\(item\.startsAt\))[\s\S]{0,100}(?:Date\.now\(\)|now)/,
     );
+  });
+
+  it("keeps portal credentials server-managed and removes obsolete whiteboards", () => {
+    expect(productionCloseout).toContain("create table if not exists public.portal_accounts");
+    expect(productionCloseout).toContain("must_change_password");
+    expect(productionCloseout).toContain("activity_type");
+    expect(portalAccountHardening).toContain("revoke all on table public.portal_accounts from anon");
+    expect(portalAccountHardening).toContain("grant select on table public.portal_accounts to authenticated");
+    expect(portalAccountHardening).toContain("drop table if exists public.lesson_whiteboards cascade");
   });
 });

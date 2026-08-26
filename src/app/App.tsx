@@ -8,6 +8,7 @@ const CoachSection=lazy(()=>import("../features/coach/CoachSection").then(module
 const StudentPortal=lazy(()=>import("../features/student/StudentPortal").then(module=>({default:module.StudentPortal})));
 const PublicActorPage=lazy(()=>import("../features/public/PublicActorPage").then(module=>({default:module.PublicActorPage})));
 const MagicLinkLogin=lazy(()=>import("../features/auth/MagicLinkLogin").then(module=>({default:module.MagicLinkLogin})));
+const ChangeTemporaryPassword=lazy(()=>import("../features/auth/ChangeTemporaryPassword").then(module=>({default:module.ChangeTemporaryPassword})));
 const PublicBooking=lazy(()=>import("../features/booking/PublicBooking").then(module=>({default:module.PublicBooking})));
 const BookingCenter=lazy(()=>import("../features/coach/BookingCenter").then(module=>({default:module.BookingCenter})));
 const StudentWorkspace=lazy(()=>import("../features/coach/StudentWorkspace").then(module=>({default:module.StudentWorkspace})));
@@ -20,8 +21,9 @@ export function App() {
 function AppRoutes() {
   return <Suspense fallback={<div className="loading">Opening the studio…</div>}><Routes>
     <Route path="/login" element={<MagicLinkLogin />} />
+    <Route path="/change-password" element={<AuthGate role="portal"><ChangeTemporaryPassword /></AuthGate>} />
     <Route path="/terms" element={<TermsPage />} />
-    <Route path="/portal/*" element={<AuthGate role="portal"><StudentPortal /></AuthGate>} />
+    <Route path="/portal/*" element={<AuthGate role="portal"><PortalRole /></AuthGate>} />
     <Route path="/student/*" element={<LegacyPortalRedirect legacyPrefix="student" />} />
     <Route path="/guardian/*" element={<LegacyPortalRedirect legacyPrefix="guardian" />} />
     <Route path="/actors/:slug" element={<PublicActorPage />} />
@@ -50,6 +52,19 @@ function RoleLanding(){
   const [destination,setDestination]=useState<string>(),location=useLocation();
   useEffect(()=>{let active=true;const resolve=async()=>{if(!isSupabaseConfigured||!supabase){if(active)setDestination(isDemoMode?"/coach":"/login");return;}const {data:{session}}=await supabase.auth.getSession();if(!session){if(active)setDestination("/login");return;}const [{data:coach},{data:student},{data:guardian}]=await Promise.all([supabase.from("memberships").select("id").eq("role","coach").limit(1),supabase.from("students").select("id").eq("user_id",session.user.id).limit(1),supabase.from("student_relationships").select("id").eq("user_id",session.user.id).limit(1)]);if(active)setDestination(coach?.length?"/coach":student?.length||guardian?.length?"/portal":"/login");};void resolve();return()=>{active=false;};},[location.key]);
   return destination?<Navigate to={destination} replace/>:<div className="loading">Opening your workspace…</div>;
+}
+
+function PortalRole(){
+  const [role,setRole]=useState<"student"|"guardian">();
+  useEffect(()=>{let active=true;const resolve=async()=>{
+    if(!supabase){if(active)setRole("student");return;}
+    const {data:{session}}=await supabase.auth.getSession();
+    if(!session)return;
+    const metadataRole=session.user.user_metadata?.portal_role;
+    const {data:account}=await supabase.from("portal_accounts").select("account_type").eq("user_id",session.user.id).limit(1).maybeSingle();
+    if(active)setRole(account?.account_type==="guardian"||metadataRole==="guardian"?"guardian":"student");
+  };void resolve();return()=>{active=false;};},[]);
+  return role?<StudentPortal role={role}/>:<div className="loading">Opening the right workspace…</div>;
 }
 
 function AuthGate({role,children}:{role:"coach"|"portal";children:ReactNode}){
