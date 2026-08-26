@@ -17,3 +17,113 @@
 @media(max-width:900px){.material-bucket-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.material-bucket-grid>button{min-height:100px}.material-library-list>article{grid-template-columns:42px minmax(160px,1fr) auto}.material-library-state{grid-column:2;justify-content:flex-start}.material-primary-actions{grid-column:3;grid-row:1/3}}
 @media(max-width:650px){.material-bucket-grid{grid-template-columns:1fr}.material-bucket-grid>button{min-height:82px}.material-library-list>article{grid-template-columns:42px minmax(0,1fr);align-items:start}.material-library-state{grid-column:2}.material-primary-actions{grid-column:1/-1;grid-row:auto;justify-content:flex-start;padding-left:54px}.material-primary-actions>.button-link,.material-approve,.material-action-menu>summary{min-height:38px}.material-action-menu>div{left:0;right:auto}.material-library-copy strong,.material-library-copy small{white-space:normal}.material-filter-reset{margin-left:0}}
 @media(max-width:390px){.material-primary-actions{padding-left:0}.material-primary-actions>.button-link,.material-approve{flex:1}.material-action-menu{flex:1}.material-action-menu>summary{justify-content:center}.material-action-menu>summary span{display:none}.material-action-menu>div{right:0;left:auto}}
+
+/* Mobile layout closeout: keep actions in flow, preserve touch targets, and avoid collisions. */
+.booking-footer>a{overflow-wrap:anywhere;text-underline-offset:3px}
+.profile-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap}.profile-actions>button{min-height:40px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:white;font-size:11px;font-weight:800}.profile-actions>.button-link{white-space:nowrap}
+@media(max-width:768px){
+  .page-header,.student-header{display:flex;flex-direction:column;align-items:stretch;gap:14px}
+  .page-header>div,.student-header>div{min-width:0}
+  .page-header h1,.student-header h1,.section h2{overflow-wrap:anywhere}
+  .page-header .primary-button,.page-header>.primary-button,.header-actions .primary-button,.workflow-dialog .primary-button{position:static!important;inset:auto!important}
+  .page-header>.header-actions,.page-header>.primary-button{align-self:flex-start}
+  .header-actions{width:100%;margin-top:0;align-items:stretch;justify-content:flex-start}
+  .header-actions>button,.header-actions>.button-link{min-width:0;min-height:44px;white-space:normal;line-height:1.25}
+  .section>header{min-height:auto;gap:10px}
+  .section>header>.count{flex:0 0 auto;align-self:flex-start}
+  .mobile-nav a,.mobile-nav button{min-width:0;padding:4px 2px;line-height:1.15;text-align:center}
+  .table-list article>div,.workflow-list article>div{min-width:0!important}
+  .table-list article button,.table-list article a,.workflow-list article button,.workflow-list article a{max-width:100%}
+  .student-booking-actions,.record-actions,.row-actions,.manage-actions,.assignment-actions{flex-wrap:wrap}
+  .student-booking-actions>button,.student-booking-actions>a,.record-actions>button,.row-actions>button,.manage-actions>button,.assignment-actions>button{min-height:44px}
+  .list-controls{align-items:stretch}
+  .list-controls label,.list-controls>div{min-height:38px}
+  .subnav,.record-tabs{scrollbar-width:none;scroll-snap-type:x proximity;overscroll-behavior-inline:contain}
+  .subnav::-webkit-scrollbar,.record-tabs::-webkit-scrollbar{display:none}
+  .subnav>*,.record-tabs>*{scroll-snap-align:start}
+  .workflow-form .check-row input[type="checkbox"]{width:18px!important;height:18px;min-height:18px!important;padding:0!important;margin:2px 0 0;accent-color:var(--forest)}
+}
+@media(max-width:600px){
+  .page,.student-page{padding-top:18px}
+  .page-header,.student-header{padding-bottom:18px}
+  .page-header h1,.student-header h1{font-size:clamp(28px,9vw,33px)}
+  .page-header>.header-actions,.page-header>.primary-button{width:100%}
+  .page-header>.primary-button{justify-content:center}
+  .header-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .header-actions>button,.header-actions>.button-link{width:100%;justify-content:center}
+  .section{padding-top:22px}
+  .section>header{padding-bottom:11px}
+  .table-list article,.workflow-list article{gap:10px;padding-block:12px}
+  .table-list article>svg,.workflow-list article>svg{flex:0 0 auto}
+  .settings-layout{gap:18px;margin-top:18px}
+  .settings-nav{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;overflow:visible}
+  .settings-nav button{min-width:0;min-height:66px;padding:10px;align-items:flex-start}
+  .settings-nav button span{min-width:0}
+  .settings-nav strong,.settings-nav small{white-space:normal;overflow-wrap:anywhere;line-height:1.25}
+  .roster-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;overflow:visible;padding-block:13px}
+  .roster-summary button{min-width:0;padding:9px 7px}
+  .roster-summary strong{font-size:16px}
+  .settings-form{grid-template-columns:1fr}
+  .settings-form>*{grid-column:1!important;min-width:0}
+  .setting-toggle{align-items:flex-start}
+  .setting-toggle>span{min-width:0}
+  .student-booking-actions,.row-actions,.manage-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));width:100%}
+  .student-booking-actions>button,.student-booking-actions>a,.row-actions>button,.manage-actions>button{width:100%;justify-content:center;white-space:normal;line-height:1.2}
+  .form-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .form-actions>button{width:100%;min-width:0;min-height:44px;height:auto;padding-block:8px;white-space:normal;line-height:1.2}
+  .list-controls{display:grid;grid-template-columns:1fr auto;gap:8px 10px}
+  .list-controls>span{align-self:center;text-align:right}
+  .list-controls>div{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr}
+  .list-controls button{min-height:40px}
+  .booking-footer{display:grid;grid-template-columns:1fr;align-items:start;gap:14px;padding:30px 20px}
+  .booking-footer>div{min-width:0}
+  .booking-footer p{margin:8px 0 0;overflow-wrap:anywhere}
+  .booking-footer>a{display:block;width:fit-content;max-width:100%;margin:0;line-height:1.35}
+  .booking-hero h1,.catalog-heading h2,.step-panel h2,.manage-page h1{overflow-wrap:anywhere}
+  .booking-summary{padding:28px 20px}
+  .booking-summary h1{margin:12px 0 8px;font-size:clamp(32px,10vw,42px)}
+  .booking-summary>p{margin-block:8px;font-size:13px;line-height:1.45}
+  .booking-summary dl{margin-top:18px;grid-template-columns:1fr}
+  .booking-summary dl div{padding:9px 0}
+  .policy-note{margin-top:18px;padding:12px}
+  .profile-actions{grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));flex:0 0 100%!important;width:100%}
+  .profile-actions>button,.profile-actions>.button-link{width:100%;min-width:0;min-height:44px;justify-content:center;text-align:center;white-space:normal;line-height:1.2}
+  .assignment-card>header strong{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;line-height:1.3}
+  .service-card-top{gap:12px}
+  .service-card-top>*{min-width:0}
+  .service-card-top strong{text-align:right}
+  .portal-notice{margin-top:12px;padding:10px 11px;line-height:1.4}
+  .portal-notice+.section{padding-top:16px}
+}
+@media(max-width:420px){
+  .page,.student-page{padding-top:15px!important;padding-bottom:82px!important}
+  .header-actions,.student-booking-actions,.row-actions,.manage-actions,.form-actions{grid-template-columns:1fr}
+  .header-actions>button,.header-actions>.button-link{min-height:44px}
+  .workflow-dialog>header{align-items:flex-start}
+  .workflow-dialog>header>div{min-width:0}
+  .workflow-dialog>header>button{flex:0 0 44px;min-height:44px}
+  .workflow-form,.workflow-content{padding-top:16px;padding-bottom:20px}
+  .workflow-dialog .form-actions{position:sticky;z-index:4;bottom:0;margin-inline:-16px;padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:#fffdf8;box-shadow:0 -8px 18px #17211d12}
+  .record-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .record-actions>button,.record-actions>.button-link{width:100%;min-width:0;justify-content:center;white-space:normal;line-height:1.2}
+  .explanation-dialog>div{display:grid;grid-template-columns:1fr}
+  .explanation-dialog button{min-height:44px}
+  .booking-topbar{gap:10px}
+  .booking-topbar{grid-template-columns:minmax(0,1fr) auto}
+  .booking-topbar>a:last-child{text-align:right;line-height:1.25}
+  .booking-hero{padding-inline:17px}
+  .booking-hero h1{font-size:clamp(38px,13vw,44px);overflow-wrap:normal;word-break:normal}
+  .service-catalog{width:calc(100% - 26px)}
+  .service-card{padding:20px}
+  .login-page{place-items:start center;padding:12px;overflow:auto}
+  .login-page>.wordmark{position:static;justify-self:start;margin:8px 4px 4px}
+  .login-card{margin-block:8px;padding:22px}
+  .login-page h1{font-size:28px}
+  .actor-public h1{font-size:clamp(44px,15vw,60px);overflow-wrap:anywhere}
+  .actor-public .actor-headshot{box-shadow:10px 10px 0 color-mix(in srgb,var(--actor-accent,var(--gold)),transparent 12%)}
+  .profile-actions{grid-template-columns:1fr}
+  .material-primary-actions{display:flex!important;justify-content:flex-end;padding-left:0}
+  .material-primary-actions>.button-link,.material-primary-actions>.material-approve{flex:1 1 0;justify-content:center}
+  .material-action-menu{flex:0 0 44px}
+  .material-action-menu>summary{width:44px;min-height:40px;justify-content:center;padding:0}
+}

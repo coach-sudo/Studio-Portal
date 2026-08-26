@@ -2762,18 +2762,20 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             <Status tone={profile.status === "published" ? "good" : "warn"}>
               {profile.status.replaceAll("_", " ")}
             </Status>
-            <button onClick={() => setEditing(true)}>Edit</button>
-            <button onClick={() => setPreviewing(true)}>Preview draft</button>
-            {profile.status === "published" && (
-              <a
-                className="button-link"
-                href={`/actors/${profile.slug}`}
-                target="_blank"
-                rel="noreferrer"
-              >
-                View live page
-              </a>
-            )}
+            <div className="profile-actions">
+              <button onClick={() => setEditing(true)}>Edit</button>
+              <button onClick={() => setPreviewing(true)}>Preview draft</button>
+              {profile.status === "published" && (
+                <a
+                  className="button-link"
+                  href={`/actors/${profile.slug}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View live page
+                </a>
+              )}
+            </div>
           </article>
         </div>
       </Section>
