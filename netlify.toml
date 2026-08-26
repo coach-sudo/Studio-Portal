@@ -3,6 +3,14 @@
   publish = "dist"
   functions = "netlify/functions"
 
+# GitHub Actions is the verification gate. Skip automatic preview and branch
+# builds so dependency-bot PRs do not consume the studio's Netlify credits.
+[context.deploy-preview]
+  ignore = "exit 0"
+
+[context.branch-deploy]
+  ignore = "exit 0"
+
 [[headers]]
   for = "/*.html"
   [headers.values]
