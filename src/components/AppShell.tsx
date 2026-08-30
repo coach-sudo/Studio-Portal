@@ -14,6 +14,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudio } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
+import { ActivityCenter } from "./ActivityCenter";
 
 const nav = [
   ["/coach", "Home", Home],
@@ -81,6 +82,7 @@ export function AppShell() {
       <main className="main">
         <Outlet />
       </main>
+      {data && <ActivityCenter data={data} audience="coach" />}
       <nav className="mobile-nav" aria-label="Mobile navigation">
         {nav.slice(0, 4).map(([to, label, Icon]) => (
           <NavLink key={to} to={to} end={to === "/coach"}>

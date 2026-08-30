@@ -33,6 +33,12 @@ export async function bookingAdminCommand(
   return payload.resource;
 }
 
+export interface SchedulingConflict { id: string; summary: string; start: string; end: string; source: "google" | "studio" }
+export async function checkSchedulingConflicts(startsAt: string, endsAt: string, lessonId?: string) {
+  const result = await bookingAdminCommand("bookings", { command: "check_conflicts", payload: { starts_at: startsAt, ends_at: endsAt, lesson_id: lessonId } });
+  return (result?.conflicts || []) as SchedulingConflict[];
+}
+
 export async function portalBookingCommand(
   bookingId: string,
   command: "cancel" | "reschedule",

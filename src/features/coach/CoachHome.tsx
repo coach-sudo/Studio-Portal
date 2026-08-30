@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { EmptyState, PageHeader, Section } from "../../components/Primitives";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import { useStudio } from "../../hooks/useStudio";
+import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 
 export function CoachHome() {
   const { data, isLoading, error } = useStudio();
@@ -20,6 +21,7 @@ export function CoachHome() {
   const outstanding = data.students.reduce((total,student)=>total + Math.max(0,studentBalanceMinor(student.id,data.payments)),0);
   return <div className="page home-page">
     <PageHeader title={`${greeting}, ${data.displayName}`} action={<div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/coach/students?new=1")}><Plus />Add student</button></div>}>A clear view of the studio—not a second to-do list.</PageHeader>
+    <JoinLessonBanner lessons={data.lessons} label={(lesson) => `${data.students.find((item) => item.id === lesson.studentId)?.preferredName || data.students.find((item) => item.id === lesson.studentId)?.fullName || "Student"} · ${lesson.topic}`} />
     <div className="studio-pulse-grid" aria-label="Studio overview">
       <button onClick={()=>navigate("/coach/students?status=active")}><UserRound/><span><strong>{activeStudents}</strong><small>active students</small></span></button>
       <button onClick={()=>navigate("/coach/bookings?view=calendar")}><CalendarDays/><span><strong>{upcoming.length}</strong><small>lessons in 7 days</small></span></button>

@@ -424,3 +424,14 @@
     width: 100%;
   }
 }
+
+@media (max-width: 760px) {
+  .calendar-view-switcher button{min-height:44px;padding:8px 5px}
+  .calendar-search{min-width:0}.calendar-search input{min-height:44px}.calendar-cancelled{min-height:44px}
+  .calendar-navigation button{min-width:44px;min-height:44px}
+  .calendar-day{min-height:78px}.calendar-date{width:32px;height:32px}
+  .calendar-month-grid .calendar-event{min-height:19px;padding:2px 3px;border-left-width:2px}
+  .calendar-month-grid .calendar-event strong{display:none}.calendar-month-grid .calendar-event time{font-size:8px}
+  .calendar-week-grid{overflow-x:auto;grid-template-columns:repeat(7,minmax(120px,1fr))}
+  .calendar-agenda .calendar-event{min-height:52px}
+}

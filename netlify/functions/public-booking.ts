@@ -58,7 +58,7 @@ async function publicStudioId(db: ReturnType<typeof serviceClient>) {
   return data.id as string;
 }
 
-async function publicServices() {
+async function publicServices(request: Request) {
   const db = serviceClient();
   const studioId = await publicStudioId(db),
     [
@@ -87,16 +87,36 @@ async function publicServices() {
     ]);
   if (studioError || error || offeringError)
     throw studioError || error || offeringError;
-  const normalizedServices = (services || []).map((item) => ({
+  let personalizedStudentId: string | undefined;
+  let pricingRules: any[] = [];
+  try {
+    const userDb = userClient(request);
+    const { data: auth } = await userDb.auth.getUser();
+    if (auth.user) {
+      const { data: visibleStudents } = await userDb.from("students").select("id,special_pricing_enabled").eq("studio_id", studioId).eq("special_pricing_enabled", true).limit(1);
+      personalizedStudentId = visibleStudents?.[0]?.id;
+      if (personalizedStudentId) {
+        const { data: rows } = await userDb.from("student_pricing_rules").select("*").eq("student_id", personalizedStudentId).eq("active", true).lte("starts_at", new Date().toISOString()).or(`ends_at.is.null,ends_at.gte.${new Date().toISOString()}`);
+        pricingRules = rows || [];
+      }
+    }
+  } catch { /* Anonymous catalog remains public; personalized prices require a signed-in portal. */ }
+  const normalizedServices = (services || []).map((item) => {
+    const rate = pricingRules.find((row) => row.service_id === item.id);
+    return ({
       ...item,
+      price_minor: Number(rate?.price_minor ?? item.price_minor),
+      deposit_minor: Number(rate?.deposit_minor ?? item.deposit_minor),
       location_price_adjustments: {
         google_meet: 0,
         in_person: Number(
           studio.settings?.bookingDefaults?.inPersonUpchargeMinor || 0,
         ),
         ...(item.location_price_adjustments || {}),
+        ...(rate?.location_price_adjustments || {}),
       },
-    })),
+      personalized: Boolean(rate),
+    }); }),
     branding = { ...(studio.settings?.branding || {}) };
   if (branding.logoStoragePath) {
     const { data: signed } = await db.storage
@@ -325,6 +345,19 @@ async function createBooking(request: Request) {
       .single();
     if (studioError || !studio)
       throw studioError || new Error("SERVICE_NOT_FOUND");
+    let authenticatedStudent: any = null, pricingRule: any = null;
+    try {
+      const userDb = userClient(request), { data: auth } = await userDb.auth.getUser();
+      if (auth.user) {
+        const { data: visible } = await userDb.from("students").select("id,email,guardian_email,special_pricing_enabled").eq("studio_id", studioId);
+        const normalizedEmail = input.guestEmail.trim().toLowerCase(), normalizedGuardian = input.guardianEmail?.trim().toLowerCase();
+        authenticatedStudent = (visible || []).find((row) => [row.email, row.guardian_email].filter(Boolean).map((value: string) => value.toLowerCase()).some((value: string) => value === normalizedEmail || value === normalizedGuardian)) || null;
+        if (authenticatedStudent?.special_pricing_enabled) {
+          const { data: rule } = await userDb.from("student_pricing_rules").select("*").eq("student_id", authenticatedStudent.id).eq("service_id", service.id).eq("active", true).lte("starts_at", new Date().toISOString()).or(`ends_at.is.null,ends_at.gte.${new Date().toISOString()}`).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+          pricingRule = rule;
+        }
+      }
+    } catch { /* Booking remains available at public pricing. */ }
     const bookingTimezone = studio.timezone || "America/New_York";
     const preferences = studio.settings?.bookingDefaults || {};
     if (preferences.requirePhone && !input.guestPhone)
@@ -580,13 +613,13 @@ async function createBooking(request: Request) {
       createdSeriesId = series.id;
     }
     const locationUpcharge = Number(
-        service.location_price_adjustments?.[input.location] ??
+        pricingRule?.location_price_adjustments?.[input.location] ?? service.location_price_adjustments?.[input.location] ??
           (input.location === "in_person"
             ? studio.settings?.bookingDefaults?.inPersonUpchargeMinor
             : 0) ??
           0,
       ),
-      unitPrice = Number(service.price_minor) + locationUpcharge,
+      unitPrice = Number(pricingRule?.price_minor ?? service.price_minor) + locationUpcharge,
       subtotalMinor =
         service.category === "private" &&
         input.recurrence !== "none" &&
@@ -634,7 +667,7 @@ async function createBooking(request: Request) {
             ? Math.round(
                 (totalMinor * Number(service.deposit_percentage || 0)) / 100,
               )
-            : Number(service.deposit_minor),
+            : Number(pricingRule?.deposit_minor ?? service.deposit_minor),
       ),
       manageToken = randomBytes(32).toString("base64url"),
       bookingReference = reference(),
@@ -669,6 +702,7 @@ async function createBooking(request: Request) {
         studio_id: service.studio_id,
         reference: bookingReference,
         service_id: service.id,
+        student_id: authenticatedStudent?.id || null,
         offering_id: input.offeringId || null,
         series_id: seriesId,
         guest_name: input.guestName,
@@ -695,7 +729,7 @@ async function createBooking(request: Request) {
           policyVersion: service.policy_version,
         },
         pricing_snapshot: {
-          basePriceMinor: Number(service.price_minor),
+          basePriceMinor: Number(pricingRule?.price_minor ?? service.price_minor),
           locationUpchargeMinor: locationUpcharge,
           unitPriceMinor: unitPrice,
           subtotalMinor,
@@ -704,6 +738,7 @@ async function createBooking(request: Request) {
           depositType: service.deposit_type,
           depositAmountMinor: depositAmount,
           balanceDueTiming: service.balance_due_timing,
+          studentPricingRuleId: pricingRule?.id || null,
         },
         balance_due_at: balanceDueAt,
         auto_charge_balance: Boolean(service.auto_charge_balance),
@@ -1058,7 +1093,7 @@ export default async (request: Request, context: Context) => {
       url = new URL(request.url);
     await rateLimit(request, action);
     if (action === "services" && request.method === "GET")
-      return json(await publicServices(), 200, {
+      return json(await publicServices(request), 200, {
         "Cache-Control": "no-store",
         "Netlify-CDN-Cache-Control":
           "public, max-age=15, stale-while-revalidate=60",

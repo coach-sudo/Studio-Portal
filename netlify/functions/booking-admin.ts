@@ -5,6 +5,7 @@ import { apiError, correlationId, json } from "./_shared/http";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { queueBookingEmails } from "./_shared/booking-email";
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
+import { googleAccessToken, googleCalendarConflicts } from "./_shared/google";
 
 const resources: Record<string, string> = {
   services: "booking_services",
@@ -59,6 +60,22 @@ export default async (request: Request, context: Context) => {
     if (!body.command)
       throw new Error("VALIDATION_FAILED: command is required.");
 
+    if (resource === "bookings" && body.command === "check_conflicts" && body.payload) {
+      const { data: membership, error: membershipError } = await db.from("memberships").select("studio_id").eq("role", "coach").limit(1).single();
+      if (membershipError || !membership) throw new Error("FORBIDDEN");
+      const startsAt = new Date(String(body.payload.starts_at || ""));
+      const endsAt = new Date(String(body.payload.ends_at || ""));
+      if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt)
+        throw new Error("VALIDATION_FAILED: Choose a valid start and end time.");
+      const { data: localRows, error: localError } = await db.from("lessons").select("id,topic,starts_at,ends_at").eq("studio_id", membership.studio_id).in("status", ["draft", "scheduled"]).lt("starts_at", endsAt.toISOString()).gt("ends_at", startsAt.toISOString());
+      if (localError) throw localError;
+      const local = (localRows || []).filter((item) => item.id !== body.payload?.lesson_id).map((item) => ({ id: item.id, summary: item.topic || "Studio lesson", start: item.starts_at, end: item.ends_at, source: "studio" }));
+      const google = (await googleCalendarConflicts(await googleAccessToken(), startsAt.toISOString(), endsAt.toISOString())).map((item) => ({ ...item, source: "google" }));
+      const seen = new Set<string>();
+      const conflicts = [...local, ...google].filter((item) => { const key = `${item.summary}|${item.start}|${item.end}`; if (seen.has(key)) return false; seen.add(key); return true; });
+      return json({ resource: { conflicts } });
+    }
+
     if (
       resource === "bookings" &&
       body.command === "create_manual" &&
@@ -102,12 +119,22 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "VALIDATION_FAILED: Choose a future time and supported meeting format.",
         );
+      if (!body.payload.allow_conflict) {
+        const conflicts = await googleCalendarConflicts(await googleAccessToken(), startsAt.toISOString(), endsAt.toISOString());
+        const { count: localCount, error: conflictError } = await db.from("lessons").select("id", { count: "exact", head: true }).eq("studio_id", membership.studio_id).in("status", ["draft", "scheduled"]).lt("starts_at", endsAt.toISOString()).gt("ends_at", startsAt.toISOString());
+        if (conflictError) throw conflictError;
+        if (conflicts.length || Number(localCount || 0) > 0) throw new Error("CALENDAR_CONFLICT: Review the conflicting calendar event before scheduling, or choose Schedule anyway.");
+      }
       const upcharge = Number(
           serviceRow.location_price_adjustments?.[location] || 0,
         ),
+        { data: pricingRule } = student.special_pricing_enabled
+          ? await serviceClient().from("student_pricing_rules").select("*").eq("student_id", student.id).eq("service_id", serviceRow.id).eq("active", true).lte("starts_at", startsAt.toISOString()).or(`ends_at.is.null,ends_at.gte.${startsAt.toISOString()}`).order("updated_at", { ascending: false }).limit(1).maybeSingle()
+          : { data: null },
+        personalizedUpcharge = Number(pricingRule?.location_price_adjustments?.[location] ?? upcharge),
         totalMinor =
           body.payload.price_minor == null
-            ? Number(serviceRow.price_minor) + upcharge
+            ? Number(pricingRule?.price_minor ?? serviceRow.price_minor) + personalizedUpcharge
             : Number(body.payload.price_minor),
         paidMinor = body.payload.mark_paid ? totalMinor : 0,
         token = randomBytes(32).toString("base64url"),
@@ -145,8 +172,9 @@ export default async (request: Request, context: Context) => {
             },
             pricing_snapshot: {
               basePriceMinor: Number(serviceRow.price_minor),
-              locationUpchargeMinor: upcharge,
+              locationUpchargeMinor: personalizedUpcharge,
               unitPriceMinor: totalMinor,
+              studentPricingRuleId: pricingRule?.id || null,
               adminOverride: true,
             },
             admin_override: {

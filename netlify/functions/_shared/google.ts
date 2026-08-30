@@ -103,3 +103,22 @@ export async function googleFreeBusy(
     );
   return payload.calendars?.[calendarId]?.busy ?? [];
 }
+
+export interface GoogleCalendarConflict {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+}
+export async function googleCalendarConflicts(token: string, timeMin: string, timeMax: string) {
+  const calendarId = Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary";
+  const query = new URLSearchParams({ timeMin, timeMax, singleEvents: "true", orderBy: "startTime", maxResults: "20" });
+  const response = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${query}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  const payload = await response.json() as { error?: { message?: string }; items?: Array<{ id?: string; summary?: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string } }> };
+  if (!response.ok) throw new Error(`CALENDAR_UNAVAILABLE (${response.status}: ${payload.error?.message || "provider error"})`);
+  return (payload.items || [])
+    .filter((item) => item.status !== "cancelled" && item.transparency !== "transparent" && item.start && item.end)
+    .map((item) => ({ id: item.id || "calendar-event", summary: item.summary || "Busy calendar event", start: item.start?.dateTime || item.start?.date || timeMin, end: item.end?.dateTime || item.end?.date || timeMax }));
+}

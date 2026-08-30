@@ -42,7 +42,7 @@ import type {
   StudioSnapshot,
 } from "../../domain/model";
 import { useStudioStore } from "../../state/StudioStore";
-import { studioCommand } from "../../data/bookingCommands";
+import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
 
 const studentName = (data: StudioSnapshot, id: string) =>
   data.students.find((item) => item.id === id)?.fullName || "Student";
@@ -154,7 +154,7 @@ export function TodayView({
       "The provider signal was reviewed and the student record was updated.",
     );
   };
-  const reschedule = async (startsAt: string, endsAt: string) => {
+  const reschedule = async (startsAt: string, endsAt: string, allowConflict = false) => {
     if (!rescheduling || rescheduleBusy) return;
     setRescheduleBusy(true);
     try {
@@ -172,7 +172,7 @@ export function TodayView({
           command: "reschedule",
           entityId: rescheduling.id,
           expectedVersion: rescheduling.version,
-          payload: { startsAt, endsAt },
+          payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson from Today",
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
@@ -495,6 +495,7 @@ export function TodayView({
             timezone={data.settings.timezone}
             cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
             busy={rescheduleBusy}
+            onCheckConflicts={(startsAt, endsAt) => isDemo ? Promise.resolve(data.lessons.filter((lesson) => lesson.id !== rescheduling.id && lesson.status === "scheduled" && lesson.startsAt < endsAt && lesson.endsAt > startsAt).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))) : checkSchedulingConflicts(startsAt, endsAt, rescheduling.id)}
             onCancel={() => setRescheduling(undefined)}
             onSubmit={reschedule}
           />
@@ -799,11 +800,17 @@ export function LessonsView({
     [cadence, setCadence] = useState<"weekly" | "biweekly">("weekly"),
     [occurrences, setOccurrences] = useState(6),
     [creditQuantity, setCreditQuantity] = useState(1),
-    [creditReason, setCreditReason] = useState("Lesson-specific credit");
+    [creditReason, setCreditReason] = useState("Lesson-specific credit"),
+    [paymentStatus, setPaymentStatus] = useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
+    [lessonPrice, setLessonPrice] = useState(""),
+    [lessonPaid, setLessonPaid] = useState("");
   const openLesson = (lesson: Lesson) => {
     setSelected(lesson);
     setPanel("details");
     setConfirmCancel(false);
+    setPaymentStatus(lesson.paymentStatus || "untracked");
+    setLessonPrice(lesson.priceMinor == null ? "" : String(lesson.priceMinor / 100));
+    setLessonPaid(String((lesson.paidMinor || 0) / 100));
   };
   const update = async (status: "completed" | "cancelled") => {
     if (!selected || busy) return;
@@ -841,7 +848,7 @@ export function LessonsView({
       setBusy("");
     }
   };
-  const move = async (startsAt: string, endsAt: string) => {
+  const move = async (startsAt: string, endsAt: string, allowConflict = false) => {
     if (!selected || busy) return;
     setBusy("reschedule");
     try {
@@ -857,7 +864,7 @@ export function LessonsView({
           command: "reschedule",
           entityId: selected.id,
           expectedVersion: selected.version,
-          payload: { startsAt, endsAt },
+          payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson",
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
@@ -1036,6 +1043,18 @@ export function LessonsView({
       setBusy("");
     }
   };
+  const savePaymentStatus = async () => {
+    if (!selected || busy) return;
+    setBusy("payment");
+    const priceMinor = lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
+    const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
+    try {
+      if (isDemo) store.transact((draft) => { const item = draft.lessons.find((row) => row.id === selected.id); if (item) { item.paymentStatus = paymentStatus; item.priceMinor = priceMinor; item.paidMinor = paidMinor; item.version += 1; item.updatedAt = new Date().toISOString(); } });
+      else { await studioCommand("lessons", { command: "set_payment_status", entityId: selected.id, expectedVersion: selected.version, payload: { paymentStatus, priceMinor, paidMinor }, reason: "Coach updated lesson payment status" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
+      setNotice("Lesson payment status saved."); setSelected(undefined);
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Payment status could not be saved."); }
+    finally { setBusy(""); }
+  };
   const selectedStudent = selected
     ? data.students.find((student) => student.id === selected.studentId)
     : undefined;
@@ -1100,6 +1119,7 @@ export function LessonsView({
               timezone={data.settings.timezone}
               cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
               busy={busy === "reschedule"}
+              onCheckConflicts={(startsAt, endsAt) => isDemo ? Promise.resolve(data.lessons.filter((lesson) => lesson.id !== selected.id && lesson.status === "scheduled" && lesson.startsAt < endsAt && lesson.endsAt > startsAt).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))) : checkSchedulingConflicts(startsAt, endsAt, selected.id)}
               onCancel={() => setPanel("details")}
               onSubmit={move}
             />
@@ -1177,7 +1197,7 @@ export function LessonsView({
                 </div>
                 <div>
                   <small>Payment</small>
-                  <strong>{paidByCredit ? "Paid with lesson credit" : selected.packageId ? "Package attached" : "No credit applied"}</strong>
+                  <strong>{paidByCredit ? "Paid with lesson credit" : (selected.paymentStatus || "untracked").replaceAll("_", " ")}{selected.priceMinor != null ? ` · ${formatMoney(selected.priceMinor)}` : ""}</strong>
                 </div>
               </section>
             )}
@@ -1271,6 +1291,12 @@ export function LessonsView({
                       : "No credit available"}
                 </button>
               )}
+              <div className="inline-command payment-status-command">
+                <label>Status<select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as typeof paymentStatus)}><option value="untracked">Not tracked</option><option value="due">Due</option><option value="partially_paid">Partially paid</option><option value="paid">Paid</option><option value="waived">Waived</option><option value="refunded">Refunded</option></select></label>
+                <label>Lesson price (USD)<input type="number" min="0" step="0.01" value={lessonPrice} onChange={(event) => setLessonPrice(event.target.value)} /></label>
+                <label>Amount paid (USD)<input type="number" min="0" step="0.01" value={lessonPaid} onChange={(event) => setLessonPaid(event.target.value)} /></label>
+                <button disabled={Boolean(busy)} onClick={() => void savePaymentStatus()}>{busy === "payment" ? "Saving…" : "Save payment status"}</button>
+              </div>
             </section>}
             {panel === "details" && selected.status === "scheduled" && (
               <div className="form-actions lesson-final-actions">

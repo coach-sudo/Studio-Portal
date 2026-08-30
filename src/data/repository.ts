@@ -194,6 +194,7 @@ export async function loadStudioSnapshot(
       timezone: r.timezone,
       privateNotes: r.internal_notes,
       defaultRateMinor: r.default_rate_minor,
+      specialPricingEnabled: Boolean(r.special_pricing_enabled),
       portalPreferences: r.portal_preferences,
       stripeCustomerId: r.stripe_customer_id,
       paymentMethodSummary:
@@ -226,6 +227,9 @@ export async function loadStudioSnapshot(
       sourceConfidence:
         r.source_confidence == null ? undefined : Number(r.source_confidence),
       importedAt: r.imported_at,
+      paymentStatus: r.payment_status,
+      priceMinor: r.price_minor == null ? undefined : Number(r.price_minor),
+      paidMinor: Number(r.paid_minor || 0),
       preparation: r.preparation ?? {
         planned: false,
         setupReady: false,
@@ -320,6 +324,8 @@ export async function loadStudioSnapshot(
       visibility: r.visibility,
       directPurchase: r.direct_purchase,
       active: r.active,
+      locationPriceAdjustments: r.location_price_adjustments ?? {},
+      depositMinor: r.deposit_minor == null ? undefined : Number(r.deposit_minor),
       version: r.version,
       updatedAt: r.updated_at,
     })),

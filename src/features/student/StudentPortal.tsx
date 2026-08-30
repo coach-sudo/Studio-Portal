@@ -60,6 +60,8 @@ import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 import { AssignmentActivity } from "../../components/AssignmentActivity";
+import { ActivityCenter } from "../../components/ActivityCenter";
+import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import {
   isJoinableLesson,
   lessonDateLabel,
@@ -207,6 +209,7 @@ export function StudentPortal({
           <Route path="*" element={<Navigate to={base} replace />} />
         </Routes>
       </main>
+      <ActivityCenter data={data} audience={role} />
       <nav className="mobile-nav student-mobile">
         {tabs.slice(0, 4).map(([to, label, Icon]) => (
           <NavLink key={to} to={`${base}/${to}`} end={!to}>
@@ -307,9 +310,6 @@ function PortalRow({
 function StudentHome({ data, base }: { data: Snapshot; base: string }) {
   const navigate = useNavigate();
   const lesson = splitLessons(data.lessons).active[0];
-  const joinable = splitLessons(data.lessons).active.find((item) =>
-    isJoinableLesson(item),
-  );
   const work = data.materials
     .filter(
       (item) => item.role === "current_script" && item.status === "active",
@@ -326,18 +326,8 @@ function StudentHome({ data, base }: { data: Snapshot; base: string }) {
   return (
     <div className="student-page">
       <Header data={data} />
+      <JoinLessonBanner lessons={data.lessons} />
       <div className="student-quick-actions">
-        {joinable?.joinUrl && (
-          <a
-            className="join-button"
-            href={joinable.joinUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Video />
-            Join lesson
-          </a>
-        )}
         {data.settings.showBookingButton && (
           <a href={data.settings.bookingUrl}>
             <CalendarDays />
@@ -459,6 +449,7 @@ function GuardianHome({ data }: { data: Snapshot }) {
   return (
     <div className="student-page">
       <Header data={data} />
+      <JoinLessonBanner lessons={data.lessons} />
       <Section
         title={`For ${student?.preferredName || student?.fullName || "your student"}`}
         marked

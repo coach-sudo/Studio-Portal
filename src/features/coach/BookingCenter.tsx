@@ -22,6 +22,7 @@ import {
 } from "../../components/Primitives";
 import {
   bookingAdminCommand,
+  checkSchedulingConflicts,
   loadPlatformHealth,
   studioCommand,
   type BookingAdminResource,
@@ -267,6 +268,7 @@ export function BookingCenter() {
       {dialog?.type === "manual" && (
         <ManualBookingDialog
           data={data}
+          isDemo={isDemo}
           onClose={() => setDialog(undefined)}
           onSave={(payload) =>
             run("bookings", "create_manual", payload, undefined, (draft) =>
@@ -795,7 +797,7 @@ function Overview({
         />
       </section>
       <CoachPanel
-        title="Booking activity"
+        title="Recent bookings"
         aside={<button onClick={onViewAll}>View calendar</button>}
       >
         <div className="booking-table">
@@ -807,7 +809,7 @@ function Overview({
             <span>Status</span>
             <span />
           </div>
-          {data.bookings.map((booking) => (
+          {[...data.bookings].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5).map((booking) => (
             <BookingRow
               key={booking.id}
               booking={booking}
@@ -917,12 +919,14 @@ function BookingRow({
 
 function ManualBookingDialog({
   data,
+  isDemo,
   onClose,
   onSave,
 }: {
   data: StudioSnapshot;
+  isDemo: boolean;
   onClose: () => void;
-  onSave: (payload: Record<string, unknown>) => void;
+  onSave: (payload: Record<string, unknown>) => Promise<void> | void;
 }) {
   const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
     [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
@@ -938,7 +942,10 @@ function ManualBookingDialog({
     [customPrice, setCustomPrice] = useState(""),
     [markPaid, setMarkPaid] = useState(false),
     [reason, setReason] = useState("Coach-created booking"),
-    [dateError, setDateError] = useState("");
+    [dateError, setDateError] = useState(""),
+    [conflicts, setConflicts] = useState<Array<{ id: string; summary: string; start: string; end: string }>>([]),
+    [approvedTime, setApprovedTime] = useState(""),
+    [checking, setChecking] = useState(false);
   const service = data.bookingServices.find((item) => item.id === serviceId);
   useEffect(() => {
     if (service && !service.locationOptions.includes(location))
@@ -952,7 +959,7 @@ function ManualBookingDialog({
     >
       <form
         className="workflow-form"
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault();
           const parsedStart = new Date(startsAt);
           if (!startsAt || Number.isNaN(parsedStart.getTime())) {
@@ -960,7 +967,22 @@ function ManualBookingDialog({
             return;
           }
           setDateError("");
-          onSave({
+          const endsAt = new Date(parsedStart.getTime() + Number(service?.durationMinutes || 60) * 60_000);
+          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}`;
+          if (approvedTime !== timeKey) {
+            setChecking(true);
+            try {
+              const found = isDemo
+                ? data.lessons.filter((lesson) => lesson.status === "scheduled" && new Date(lesson.startsAt) < endsAt && new Date(lesson.endsAt) > parsedStart).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))
+                : await checkSchedulingConflicts(parsedStart.toISOString(), endsAt.toISOString());
+              setConflicts(found);
+              if (found.length) { setApprovedTime(timeKey); return; }
+            } catch (reason) {
+              setDateError(reason instanceof Error ? reason.message : "Calendar could not be checked. Nothing was scheduled.");
+              return;
+            } finally { setChecking(false); }
+          }
+          await onSave({
             student_id: studentId,
             service_id: serviceId,
             starts_at: parsedStart.toISOString(),
@@ -970,6 +992,7 @@ function ManualBookingDialog({
               customPrice === "" ? null : Math.round(Number(customPrice) * 100),
             mark_paid: markPaid,
             reason,
+            allow_conflict: approvedTime === timeKey,
           });
         }}
       >
@@ -1028,6 +1051,8 @@ function ManualBookingDialog({
             onChange={(event) => {
               setStartsAt(event.target.value);
               setDateError("");
+              setConflicts([]);
+              setApprovedTime("");
             }}
           />
           {dateError && <small className="inline-error" role="alert">{dateError}</small>}
@@ -1093,12 +1118,17 @@ function ManualBookingDialog({
             onChange={(event) => setReason(event.target.value)}
           />
         </label>
+        {conflicts.length > 0 && <div className="calendar-conflict full" role="alert">
+          <strong>Calendar conflict</strong>
+          {conflicts.map((item) => <p key={`${item.id}-${item.start}`}>You have “{item.summary}” from {new Date(item.start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} that day. Do you still want to schedule for this time?</p>)}
+          <small>Submit again to schedule anyway, or choose another time.</small>
+        </div>}
         <div className="form-actions full">
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!studentId || !serviceId}>
-            Create booking
+          <button className="primary" disabled={!studentId || !serviceId || checking}>
+            {checking ? "Checking calendar…" : conflicts.length ? "Schedule anyway" : "Create booking"}
           </button>
         </div>
       </form>

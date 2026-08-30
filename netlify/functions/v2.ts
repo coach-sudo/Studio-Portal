@@ -377,6 +377,7 @@ export default async (request: Request, context: Context) => {
             "portalEnabled",
             "timezone",
             "defaultRateMinor",
+            "specialPricingEnabled",
             "portalUsername",
           ]
         : [
@@ -413,6 +414,7 @@ export default async (request: Request, context: Context) => {
         portalEnabled: "portal_enabled",
         timezone: "timezone",
         defaultRateMinor: "default_rate_minor",
+        specialPricingEnabled: "special_pricing_enabled",
         portalUsername: "portal_username",
         portalPreferences: "portal_preferences",
       };
@@ -439,6 +441,31 @@ export default async (request: Request, context: Context) => {
         ),
         queuedSideEffects: [],
       });
+    }
+    if (domain === "pricing" && input.command === "upsert_student_rate") {
+      const studioId = await requireCoach();
+      const studentId = String(input.payload.studentId || ""), serviceId = String(input.payload.serviceId || "");
+      const priceMinor = Math.max(0, Math.round(Number(input.payload.priceMinor)));
+      if (!studentId || !serviceId || !Number.isFinite(priceMinor)) throw new Error("VALIDATION_FAILED: Student, service, and price are required.");
+      const service = serviceClient();
+      const [{ data: student }, { data: bookingService }] = await Promise.all([
+        service.from("students").select("id").eq("id", studentId).eq("studio_id", studioId).single(),
+        service.from("booking_services").select("id").eq("id", serviceId).eq("studio_id", studioId).single(),
+      ]);
+      if (!student || !bookingService) throw new Error("FORBIDDEN");
+      const { data: existing } = await service.from("student_pricing_rules").select("*").eq("student_id", studentId).eq("service_id", serviceId).eq("active", true).order("updated_at", { ascending: false }).limit(1).maybeSingle();
+      const row = { studio_id: studioId, student_id: studentId, service_id: serviceId, price_minor: priceMinor, deposit_minor: input.payload.depositMinor == null ? null : Math.max(0, Math.round(Number(input.payload.depositMinor))), location_price_adjustments: input.payload.locationPriceAdjustments || {}, reason: String(input.payload.reason || "Student-specific pricing"), starts_at: existing?.starts_at || new Date().toISOString(), active: true, updated_at: new Date().toISOString() };
+      const query = existing ? service.from("student_pricing_rules").update({ ...row, version: Number(existing.version) + 1 }).eq("id", existing.id).eq("version", existing.version) : service.from("student_pricing_rules").insert(row);
+      const { data, error } = await query.select().single();
+      if (error) throw error;
+      return json({ resource: data, auditEventId: await audit(studioId, "student_pricing_rule", data.id, existing ? "student_pricing.updated" : "student_pricing.created", existing, data), correlationId: id });
+    }
+    if (domain === "pricing" && input.command === "delete_student_rate" && input.entityId) {
+      const studioId = await requireCoach(); const service = serviceClient();
+      const { data: before } = await service.from("student_pricing_rules").select("*").eq("id", input.entityId).eq("studio_id", studioId).single();
+      if (!before) throw new Error("FORBIDDEN");
+      const { error } = await service.from("student_pricing_rules").delete().eq("id", before.id); if (error) throw error;
+      return json({ resource: { id: before.id, deleted: true }, auditEventId: await audit(studioId, "student_pricing_rule", before.id, "student_pricing.deleted", before, null), correlationId: id });
     }
     if (domain === "students" && input.command === "remove" && input.entityId) {
       const studioId = await requireCoach();
@@ -2235,6 +2262,28 @@ export default async (request: Request, context: Context) => {
         correlationId: id,
       });
     }
+    if (domain === "lessons" && input.command === "set_payment_status" && input.entityId) {
+      const studioId = await requireCoach();
+      const allowed = new Set(["untracked", "due", "partially_paid", "paid", "paid_by_credit", "waived", "refunded"]);
+      const paymentStatus = String(input.payload.paymentStatus || "");
+      const priceMinor = input.payload.priceMinor == null ? null : Math.max(0, Math.round(Number(input.payload.priceMinor)));
+      const paidMinor = Math.max(0, Math.round(Number(input.payload.paidMinor || 0)));
+      if (!allowed.has(paymentStatus) || (priceMinor != null && paidMinor > priceMinor))
+        throw new Error("VALIDATION_FAILED: Choose a valid payment status and amounts.");
+      const service = serviceClient();
+      const { data: before, error: readError } = await service.from("lessons").select("*").eq("id", input.entityId).eq("studio_id", studioId).single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      if (Number(before.version) !== Number(input.expectedVersion)) throw new Error("VERSION_CONFLICT");
+      const { data, error } = await service.from("lessons").update({ payment_status: paymentStatus, price_minor: priceMinor, paid_minor: paidMinor, version: Number(before.version) + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().single();
+      if (error) throw error;
+      const { data: participant } = await service.from("lesson_participants").select("booking_id").eq("lesson_id", before.id).not("booking_id", "is", null).limit(1).maybeSingle();
+      if (participant?.booking_id) {
+        const bookingStatus = paymentStatus === "paid_by_credit" || paymentStatus === "waived" ? "paid" : paymentStatus === "untracked" ? "due" : paymentStatus;
+        await service.from("bookings").update({ payment_status: bookingStatus, ...(priceMinor == null ? {} : { total_minor: priceMinor }), paid_minor: paidMinor, updated_at: new Date().toISOString() }).eq("id", participant.booking_id);
+      }
+      const auditEventId = await audit(studioId, "lesson", before.id, "lesson.payment_status_changed", before, data);
+      return json({ resource: data, auditEventId, correlationId: id });
+    }
     if (
       domain === "lessons" &&
       input.command === "reschedule" &&
@@ -2263,7 +2312,7 @@ export default async (request: Request, context: Context) => {
       if (before.status !== "scheduled")
         throw new Error("VALIDATION_FAILED: Only scheduled lessons can be rescheduled.");
       const token = await googleAccessToken();
-      if ((await googleFreeBusy(token, startsAt, endsAt)).length)
+      if ((await googleFreeBusy(token, startsAt, endsAt)).length && !input.payload.allowConflict)
         throw new Error("SLOT_UNAVAILABLE");
       const { data: changed, error } = await service.rpc(
         "command_change_lesson_state",

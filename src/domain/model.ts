@@ -108,6 +108,7 @@ export interface Student extends Versioned {
   stripeCustomerId?: string;
   paymentMethodSummary?: string;
   defaultRateMinor?: number;
+  specialPricingEnabled?: boolean;
   tags?: string[];
   lastContactAt?: string;
   deletedAt?: string;
@@ -140,6 +141,9 @@ export interface Lesson extends Versioned {
   sourceExternalId?: string;
   sourceConfidence?: number;
   importedAt?: string;
+  paymentStatus?: "untracked" | "due" | "partially_paid" | "paid" | "paid_by_credit" | "waived" | "refunded";
+  priceMinor?: number;
+  paidMinor?: number;
   preparation?: {
     planned: boolean;
     setupReady: boolean;
@@ -418,6 +422,8 @@ export interface StudentPricingRule extends Versioned {
   startsAt: string;
   endsAt?: string;
   active: boolean;
+  locationPriceAdjustments?: Partial<Record<MeetingProvider, number>>;
+  depositMinor?: number;
 }
 export interface CreditEntry {
   id: UUID;

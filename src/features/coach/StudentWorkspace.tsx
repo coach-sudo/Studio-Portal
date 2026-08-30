@@ -49,7 +49,7 @@ import type {
 } from "../../domain/model";
 import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
-import { studioCommand } from "../../data/bookingCommands";
+import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
@@ -572,7 +572,9 @@ export function StudentWorkspace() {
           path="account"
           element={
             <Account
+              data={data}
               student={student}
+              isDemo={isDemo}
               onSave={saveStudent}
               onInvite={sendPortalInvite}
               settingCredentials={settingCredentials}
@@ -965,6 +967,9 @@ function CoachLessonHub({
   const [actionBusy, setActionBusy] = useState("");
   const [creditQuantity, setCreditQuantity] = useState(1);
   const [creditReason, setCreditReason] = useState("Lesson-specific credit");
+  const [paymentStatus, setPaymentStatus] = useState<NonNullable<Lesson["paymentStatus"]>>(lesson?.paymentStatus || "untracked");
+  const [lessonPrice, setLessonPrice] = useState(lesson?.priceMinor == null ? "" : String(lesson.priceMinor / 100));
+  const [lessonPaid, setLessonPaid] = useState(String((lesson?.paidMinor || 0) / 100));
   if (!lesson)
     return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
@@ -1055,7 +1060,7 @@ function CoachLessonHub({
       setCancelling(false);
     }
   };
-  const rescheduleLesson = async (startsAt: string, endsAt: string) => {
+  const rescheduleLesson = async (startsAt: string, endsAt: string, allowConflict = false) => {
     if (actionBusy) return;
     setActionBusy("reschedule");
     try {
@@ -1073,7 +1078,7 @@ function CoachLessonHub({
           command: "reschedule",
           entityId: lesson.id,
           expectedVersion: lesson.version,
-          payload: { startsAt, endsAt },
+          payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson from student workspace",
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
@@ -1168,6 +1173,18 @@ function CoachLessonHub({
       setActionBusy("");
     }
   };
+  const savePaymentStatus = async () => {
+    if (actionBusy) return;
+    setActionBusy("payment");
+    const priceMinor = lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
+    const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
+    try {
+      if (isDemo) store.transact((draft) => { const item = draft.lessons.find((row) => row.id === lesson.id); if (item) { item.paymentStatus = paymentStatus; item.priceMinor = priceMinor; item.paidMinor = paidMinor; item.version += 1; item.updatedAt = new Date().toISOString(); } });
+      else { await studioCommand("lessons", { command: "set_payment_status", entityId: lesson.id, expectedVersion: lesson.version, payload: { paymentStatus, priceMinor, paidMinor }, reason: "Coach updated lesson payment status" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
+      setLessonAction(null); setNotice("Lesson payment status saved.");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Payment status could not be saved."); }
+    finally { setActionBusy(""); }
+  };
   return (
     <div>
       <Link
@@ -1218,7 +1235,7 @@ function CoachLessonHub({
           <div><small>Delivery</small><strong>{lesson.locationLabel}</strong></div>
           <div><small>Source</small><strong>{lesson.sourceProvider?.replaceAll("_", " ") || "Studio"}</strong></div>
           <div><small>Lesson work</small><strong>{notes.length} notes · {assignments.length} practice · {materials.length} files</strong></div>
-          <div><small>Payment</small><strong>{paidByCredit ? "Paid with lesson credit" : `${availableCredits} credits available`}</strong></div>
+          <div><small>Payment</small><strong>{paidByCredit ? "Paid with lesson credit" : (lesson.paymentStatus || "untracked").replaceAll("_", " ")}{lesson.priceMinor != null ? ` · ${formatMoney(lesson.priceMinor)}` : ""}</strong></div>
         </section>
       </Section>
       {notice && (
@@ -1252,6 +1269,7 @@ function CoachLessonHub({
             timezone={data.settings.timezone}
             cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
             busy={actionBusy === "reschedule"}
+            onCheckConflicts={(startsAt, endsAt) => isDemo ? Promise.resolve(data.lessons.filter((item) => item.id !== lesson.id && item.status === "scheduled" && item.startsAt < endsAt && item.endsAt > startsAt).map((item) => ({ id: item.id, summary: item.topic, start: item.startsAt, end: item.endsAt }))) : checkSchedulingConflicts(startsAt, endsAt, lesson.id)}
             onCancel={() => setLessonAction(null)}
             onSubmit={rescheduleLesson}
           />
@@ -1283,6 +1301,15 @@ function CoachLessonHub({
                 {actionBusy === "use-credit" ? "Applying…" : availableCredits ? "Use 1 credit for this lesson" : "No credit available"}
               </button>
             )}
+            <section className="lesson-command-section">
+              <h3>Payment status</h3>
+              <div className="inline-command payment-status-command">
+                <label>Status<select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as typeof paymentStatus)}><option value="untracked">Not tracked</option><option value="due">Due</option><option value="partially_paid">Partially paid</option><option value="paid">Paid</option><option value="waived">Waived</option><option value="refunded">Refunded</option></select></label>
+                <label>Lesson price (USD)<input type="number" min="0" step="0.01" value={lessonPrice} onChange={(event) => setLessonPrice(event.target.value)} /></label>
+                <label>Amount paid (USD)<input type="number" min="0" step="0.01" value={lessonPaid} onChange={(event) => setLessonPaid(event.target.value)} /></label>
+                <button disabled={Boolean(actionBusy)} onClick={() => void savePaymentStatus()}>{actionBusy === "payment" ? "Saving…" : "Save payment status"}</button>
+              </div>
+            </section>
           </div>
         </Dialog>
       )}
@@ -1767,18 +1794,39 @@ function PortalInvite({
 }
 
 function Account({
+  data,
   student,
+  isDemo,
   onSave,
   onInvite,
   settingCredentials,
 }: {
+  data: Data;
   student: Student;
-  onSave: (updates: Partial<Student>) => void;
+  isDemo: boolean;
+  onSave: (updates: Partial<Student>) => Promise<void> | void;
   onInvite: (accountType: "student" | "guardian") => Promise<void>;
   settingCredentials: boolean;
 }) {
+  const store = useStudioStore();
+  const queryClient = useQueryClient();
+  const [savingRate, setSavingRate] = useState("");
+  const [rateNotice, setRateNotice] = useState("");
   const toggle = (field: "portalEnabled" | "actorPageEligible") =>
     onSave({ [field]: !student[field] });
+  const saveRate = async (serviceId: string, form: HTMLFormElement) => {
+    const values = new FormData(form), service = data.bookingServices.find((item) => item.id === serviceId);
+    if (!service) return;
+    const priceMinor = Math.round(Number(values.get("price")) * 100), depositMinor = Math.round(Number(values.get("deposit") || 0) * 100);
+    const locationPriceAdjustments = Object.fromEntries(service.locationOptions.map((location) => [location, Math.round(Number(values.get(`location-${location}`) || 0) * 100)]));
+    setSavingRate(serviceId); setRateNotice("");
+    try {
+      if (isDemo) store.transact((draft) => { const existing = draft.studentPricingRules.find((row) => row.studentId === student.id && row.serviceId === serviceId); if (existing) Object.assign(existing, { priceMinor, depositMinor, locationPriceAdjustments, version: existing.version + 1, updatedAt: now() }); else draft.studentPricingRules.push({ id: uid("rate"), studioId: draft.studioId, studentId: student.id, serviceId, priceMinor, depositMinor, locationPriceAdjustments, reason: "Student-specific pricing", startsAt: now(), active: true, version: 1, updatedAt: now() }); });
+      else { await studioCommand("pricing", { command: "upsert_student_rate", expectedVersion: 0, payload: { studentId: student.id, serviceId, priceMinor, depositMinor, locationPriceAdjustments, reason: "Student-specific pricing" }, reason: "Coach saved student-specific pricing" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
+      setRateNotice(`${service.name} pricing saved.`);
+    } catch (reason) { setRateNotice(reason instanceof Error ? reason.message : "Special pricing could not be saved."); }
+    finally { setSavingRate(""); }
+  };
   return (
     <div className="two-section-grid">
       <Section title="Access & visibility" marked>
@@ -1803,6 +1851,12 @@ function Account({
             busy={settingCredentials}
             onInvite={onInvite}
           />
+          <SettingToggle
+            title="Special pricing"
+            detail="Use student-specific prices and delivery add-ons when this student books while signed in."
+            checked={Boolean(student.specialPricingEnabled)}
+            onChange={() => void onSave({ specialPricingEnabled: !student.specialPricingEnabled })}
+          />
           {student.isMinor && (
             <PortalInvite
               accountType="guardian"
@@ -1814,6 +1868,21 @@ function Account({
           )}
         </div>
       </Section>
+      {student.specialPricingEnabled && <Section title="Student-specific pricing" marked>
+        <p className="section-intro">Only services you customize are overridden. Everything else continues to use the public booking price.</p>
+        {rateNotice && <p className="portal-notice" role="status">{rateNotice}</p>}
+        <div className="special-pricing-list">
+          {data.bookingServices.map((service) => { const rule = data.studentPricingRules.find((item) => item.studentId === student.id && item.serviceId === service.id && item.active); return <details key={service.id}>
+            <summary><span><strong>{service.name}</strong><small>{rule ? `${formatMoney(rule.priceMinor)} custom base price` : `${formatMoney(service.priceMinor)} studio price`}</small></span><span>{rule ? "Customized" : "Use studio price"}</span></summary>
+            <form onSubmit={(event) => { event.preventDefault(); void saveRate(service.id, event.currentTarget); }} className="pricing-rule-form">
+              <label>Base price (USD)<input name="price" type="number" min="0" step="0.01" defaultValue={(rule?.priceMinor ?? service.priceMinor) / 100} /></label>
+              <label>Deposit (USD)<input name="deposit" type="number" min="0" step="0.01" defaultValue={(rule?.depositMinor ?? service.depositMinor) / 100} /></label>
+              {service.locationOptions.map((location) => <label key={location}>{location.replaceAll("_", " ")} add-on (USD)<input name={`location-${location}`} type="number" step="0.01" defaultValue={Number(rule?.locationPriceAdjustments?.[location] ?? service.locationPriceAdjustments[location] ?? 0) / 100} /></label>)}
+              <button className="primary-button" disabled={Boolean(savingRate)}>{savingRate === service.id ? "Saving…" : `Save ${service.name} pricing`}</button>
+            </form>
+          </details>; })}
+        </div>
+      </Section>}
       <Section title="Studio details">
         <dl className="detail-list">
           <div>

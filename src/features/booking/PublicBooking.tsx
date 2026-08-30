@@ -455,7 +455,8 @@ export function PublicBooking() {
     let active = true;
     const controller = new AbortController(),
       timeout = window.setTimeout(() => controller.abort(), 12000);
-    fetch("/api/v2/public/booking/services", { signal: controller.signal })
+    const sessionRequest = supabase ? supabase.auth.getSession() : Promise.resolve({ data: { session: null } } as any);
+    sessionRequest.then(({ data }) => fetch("/api/v2/public/booking/services", { signal: controller.signal, headers: data.session ? { Authorization: `Bearer ${data.session.access_token}` } : undefined }))
       .then((response) => (response.ok ? response.json() : Promise.reject()))
       .then(
         (payload: {
