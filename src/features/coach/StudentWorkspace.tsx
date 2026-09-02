@@ -140,7 +140,7 @@ export function StudentWorkspace() {
       );
     }
   };
-  const sendPortalInvite = async (accountType: "student" | "guardian") => {
+  const sendPortalInvite = async (accountType: "student" | "guardian", linkedContactId?: string) => {
     if (settingCredentials) return;
     setSettingCredentials(true);
     setNotice("Generating a secure one-time login and queueing the invitation…");
@@ -161,13 +161,13 @@ export function StudentWorkspace() {
           command: "invite",
           entityId: student.id,
           expectedVersion: student.version,
-          payload: { accountType },
+          payload: { accountType, linkedContactId },
           reason: `Coach granted ${accountType} portal access and sent the invitation`,
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(
-        `${accountType === "guardian" ? "Guardian" : "Student"} invitation is queued. The email includes a generated username, one-time password, and first-login instructions.`,
+        `${accountType === "guardian" ? "Linked-contact" : "Student"} invitation is sending now. The audited queue remains available as automatic retry protection.`,
       );
     } catch (reason) {
       setNotice(
@@ -1779,7 +1779,7 @@ function PortalInvite({
   email?: string;
   username?: string;
   busy: boolean;
-  onInvite: (accountType: "student" | "guardian") => Promise<void>;
+  onInvite: (accountType: "student" | "guardian", linkedContactId?: string) => Promise<void>;
 }) {
   return (
     <div className="credential-form">
@@ -1809,6 +1809,83 @@ function PortalInvite({
   );
 }
 
+const notificationLabels = {
+  lessonReminders: "Lesson reminders",
+  scheduleChanges: "Reschedules and cancellations",
+  lessonContent: "Notes and lesson materials",
+  assignments: "Assignments and practice",
+  packageBalance: "Package balance and expiration",
+  payments: "Payments and receipts",
+  accountAccess: "Account access",
+} as const;
+
+function LinkedContacts({ data, student, busy, onInvite }: {
+  data: Data;
+  student: Student;
+  busy: boolean;
+  onInvite: (accountType: "student" | "guardian", linkedContactId?: string) => Promise<void>;
+}) {
+  const queryClient = useQueryClient();
+  const [editing, setEditing] = useState<Data["linkedContacts"][number]>();
+  const [adding, setAdding] = useState(false);
+  const [notice, setNotice] = useState("");
+  const contacts = data.linkedContacts.filter((contact) => contact.studentId === student.id && contact.portalEnabled);
+  const save = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const values = new FormData(event.currentTarget);
+    const preferences = Object.fromEntries(Object.keys(notificationLabels).map((key) => [key, values.get(`notify-${key}`) === "on"]));
+    setNotice("Saving linked contact…");
+    try {
+      await studioCommand("students", {
+        command: "save_linked_contact",
+        entityId: student.id,
+        expectedVersion: editing?.version || 0,
+        payload: {
+          contactId: editing?.id,
+          fullName: values.get("fullName"),
+          email: values.get("email"),
+          relationshipType: values.get("relationshipType"),
+          relationshipLabel: values.get("relationshipLabel"),
+          canViewSchedule: values.get("canViewSchedule") === "on",
+          canManageLessons: values.get("canManageLessons") === "on",
+          canViewWork: values.get("canViewWork") === "on",
+          canManageProfile: values.get("canManageProfile") === "on",
+          canViewFinance: values.get("canViewFinance") === "on",
+          canReceiveNotifications: values.get("canReceiveNotifications") === "on",
+          notificationPreferences: preferences,
+        },
+        reason: "Coach configured linked household access",
+      });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setAdding(false); setEditing(undefined); setNotice("Linked contact saved.");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Linked contact could not be saved."); }
+  };
+  const disable = async (contact: Data["linkedContacts"][number]) => {
+    setNotice("Removing access…");
+    try {
+      await studioCommand("students", { command:"remove_linked_contact", entityId:student.id, expectedVersion:contact.version, payload:{ contactId:contact.id }, reason:"Coach removed linked household access" });
+      await queryClient.invalidateQueries({ queryKey:["studio"] });
+      setNotice("Linked contact access and optional notifications were disabled.");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Access could not be removed."); }
+  };
+  const invitation = (contact: Data["linkedContacts"][number]) => data.outbox
+    .filter((item) => item.studentId === student.id && item.recipient.toLowerCase() === contact.email.toLowerCase() && item.subject.toLowerCase().includes("portal login"))
+    .sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
+  return <Section title="Household access" marked aside={<button type="button" onClick={()=>{setEditing(undefined);setAdding(true);}}>Add contact</button>}>
+    <p className="section-intro">Add guardians for minors or support people for students of any age. Each person gets only the schedule, work, profile, payment, and notification access you choose.</p>
+    {notice && <p className="portal-notice" role="status">{notice}</p>}
+    <div className="table-list">{contacts.map((contact)=>{const delivery=invitation(contact); return <article key={contact.id}><UserRound/><div><strong>{contact.fullName}</strong><small>{contact.relationshipLabel || contact.relationshipType.replaceAll("_"," ")} · {contact.email}</small></div><Status tone={delivery?.status === "failed" ? "danger" : delivery?.status === "sent" ? "good" : "warn"}>{delivery?.status === "failed" ? "Needs retry" : delivery?.status === "sent" ? "Sent" : delivery ? "Sending" : "Not invited"}</Status><button onClick={()=>setEditing(contact)}>Edit access</button><button className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{delivery?.status === "failed" ? "Retry invite" : "Send invite"}</button><button className="danger-button" onClick={()=>void disable(contact)}>Remove</button></article>;})}</div>
+    {!contacts.length && !adding && <EmptyState title="No linked contacts" detail="Adult students can have support people too; access is never limited to minor guardians."/>}
+    {(adding || editing) && <Dialog title={editing ? `Edit ${editing.fullName}` : "Add linked contact"} description="Access and optional email preferences can be changed at any time." onClose={()=>{setAdding(false);setEditing(undefined);}}><form className="workflow-form" onSubmit={save}>
+      <label>Name<input name="fullName" required defaultValue={editing?.fullName}/></label><label>Email<input name="email" type="email" required defaultValue={editing?.email}/></label>
+      <label>Relationship<select name="relationshipType" defaultValue={editing?.relationshipType || (student.isMinor ? "guardian" : "support_person")}><option value="guardian">Guardian</option><option value="support_person">Support person</option><option value="other">Other</option></select></label><label>Custom relationship label<input name="relationshipLabel" defaultValue={editing?.relationshipLabel} placeholder="Parent, manager, spouse…"/></label>
+      <fieldset className="full option-fieldset"><legend>Portal permissions</legend>{[["canViewSchedule","View schedule",true],["canManageLessons","Manage or reschedule lessons",false],["canViewWork","View work and notes",true],["canManageProfile","Manage profile",false],["canViewFinance","View payments",student.isMinor]].map(([name,label,fallback])=><label className="check-row" key={String(name)}><input name={String(name)} type="checkbox" defaultChecked={editing ? Boolean(editing[name as keyof typeof editing]) : Boolean(fallback)}/>{String(label)}</label>)}</fieldset>
+      <fieldset className="full option-fieldset"><legend>Notifications</legend><label className="check-row"><input name="canReceiveNotifications" type="checkbox" defaultChecked={editing?.canReceiveNotifications ?? true}/>Receive optional notifications</label>{Object.entries(notificationLabels).map(([key,label])=><label className="check-row" key={key}><input name={`notify-${key}`} type="checkbox" defaultChecked={editing?.notificationPreferences?.[key as keyof typeof editing.notificationPreferences] ?? (key !== "payments" && key !== "packageBalance" || student.isMinor)}/>{label}{["accountAccess","scheduleChanges","payments"].includes(key)&&<small>Critical messages cannot be disabled when applicable.</small>}</label>)}</fieldset>
+      <div className="form-actions full"><button type="button" onClick={()=>{setAdding(false);setEditing(undefined);}}>Cancel</button><button className="primary">Save contact</button></div>
+    </form></Dialog>}
+  </Section>;
+}
+
 function Account({
   data,
   student,
@@ -1821,13 +1898,14 @@ function Account({
   student: Student;
   isDemo: boolean;
   onSave: (updates: Partial<Student>) => Promise<void> | void;
-  onInvite: (accountType: "student" | "guardian") => Promise<void>;
+  onInvite: (accountType: "student" | "guardian", linkedContactId?: string) => Promise<void>;
   settingCredentials: boolean;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [savingRate, setSavingRate] = useState("");
   const [rateNotice, setRateNotice] = useState("");
+  const [profileBusy,setProfileBusy]=useState(false);
   const toggle = (field: "portalEnabled" | "actorPageEligible") =>
     onSave({ [field]: !student[field] });
   const saveRate = async (serviceId: string, form: HTMLFormElement) => {
@@ -1843,10 +1921,25 @@ function Account({
     } catch (reason) { setRateNotice(reason instanceof Error ? reason.message : "Special pricing could not be saved."); }
     finally { setSavingRate(""); }
   };
+  const updateProfilePhoto = async (file?: File) => {
+    if (!file || profileBusy) return;
+    setProfileBusy(true); setRateNotice("Uploading profile photo…");
+    try {
+      if (!file.type.startsWith("image/") || file.size > 5*1024*1024) throw new Error("Choose a JPG, PNG, or WebP image smaller than 5 MB.");
+      if (isDemo) setRateNotice("Profile-photo upload is available in production mode.");
+      else {
+        const uploaded=await uploadStudioFile({studioId:data.studioId,studentId:student.id,entityType:"student",entityId:student.id,file,visibility:"private"});
+        await onSave({profilePhotoAssetId:uploaded.id,profilePhotoPosition:{x:50,y:50}});
+        setRateNotice("Student profile photo saved.");
+      }
+    } catch(reason){setRateNotice(reason instanceof Error?reason.message:"Profile photo could not be saved.");}
+    finally{setProfileBusy(false);}
+  };
   return (
     <div className="two-section-grid">
       <Section title="Access & visibility" marked>
         <div className="settings-list">
+          <div className="profile-identity-card"><span>{student.profilePhotoUrl?<img src={student.profilePhotoUrl} alt=""/>:student.fullName.split(" ").map((part)=>part[0]).join("").slice(0,2)}</span><div><strong>Portal profile photo</strong><small>Private identity photo. Actor-page headshots stay separate.</small><label className="button-link">{profileBusy?"Uploading…":"Upload photo"}<input hidden disabled={profileBusy} type="file" accept="image/jpeg,image/png,image/webp" onChange={(event)=>void updateProfilePhoto(event.target.files?.[0])}/></label>{student.profilePhotoAssetId&&<button type="button" className="text-button" onClick={()=>void onSave({profilePhotoAssetId:undefined})}>Remove photo</button>}</div></div>
           <SettingToggle
             title="Student workspace"
             detail="Allow this student or guardian to access shared lessons, practice, and materials."
@@ -1873,17 +1966,9 @@ function Account({
             checked={Boolean(student.specialPricingEnabled)}
             onChange={() => void onSave({ specialPricingEnabled: !student.specialPricingEnabled })}
           />
-          {student.isMinor && (
-            <PortalInvite
-              accountType="guardian"
-              label="Guardian login"
-              email={student.guardianEmail}
-              busy={settingCredentials}
-              onInvite={onInvite}
-            />
-          )}
         </div>
       </Section>
+      <LinkedContacts data={data} student={student} busy={settingCredentials} onInvite={onInvite} />
       {student.specialPricingEnabled && <Section title="Student-specific pricing" marked>
         <p className="section-intro">Only services you customize are overridden. Everything else continues to use the public booking price.</p>
         {rateNotice && <p className="portal-notice" role="status">{rateNotice}</p>}

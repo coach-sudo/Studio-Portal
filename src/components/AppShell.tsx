@@ -45,8 +45,8 @@ export function AppShell() {
           ))}
         </nav>
         <div className="identity">
-          <span>
-            {(data?.settings.coachName ?? "Darius A. Journigan")
+          <span className={data?.settings.branding.coachProfilePhotoUrl ? "has-photo" : ""}>
+            {data?.settings.branding.coachProfilePhotoUrl ? <img src={data.settings.branding.coachProfilePhotoUrl} alt="" style={{objectPosition:`${data.settings.branding.coachProfilePhotoPosition?.x ?? 50}% ${data.settings.branding.coachProfilePhotoPosition?.y ?? 50}%`}}/> : (data?.settings.coachName ?? "Darius A. Journigan")
               .split(" ")
               .map((part) => part[0])
               .join("")

@@ -36,6 +36,9 @@ describe("ActivityCenter", () => {
     expect(screen.getByLabelText("current route")).toHaveTextContent("/coach/bookings?view=overview");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "0 unread notifications" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "0 unread notifications" }));
+    expect(screen.queryByRole("button", { name: /booking confirmed\. notification student/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
   });
 
   it("navigates lesson activity directly to the exact student lesson workspace", () => {

@@ -15,6 +15,20 @@ type StudentIdentity = {
   portal_username?: string | null;
   version: number;
 };
+type LinkedIdentity = {
+  id: string;
+  user_id?: string | null;
+  full_name: string;
+  email: string;
+  relationship_type: "guardian" | "support_person" | "other";
+  relationship_label?: string | null;
+  can_view_schedule: boolean;
+  can_manage_lessons: boolean;
+  can_view_work: boolean;
+  can_manage_profile: boolean;
+  can_view_finance: boolean;
+  can_receive_notifications: boolean;
+};
 
 const usernameBase = (name: string, accountType: AccountType) => {
   const normalized = name
@@ -60,6 +74,7 @@ export async function provisionPortalAccount(
     accountType: AccountType;
     resetExisting: boolean;
     expectedVersion?: number;
+    linkedContactId?: string;
   },
 ) {
   const [{ data: student, error: studentError }, { data: studio }] =
@@ -82,13 +97,21 @@ export async function provisionPortalAccount(
     identity.version !== options.expectedVersion
   )
     throw new Error(`VERSION_CONFLICT:${options.expectedVersion}`);
-  if (options.accountType === "guardian" && !identity.is_minor)
-    throw new Error(
-      "VALIDATION_FAILED: Guardian access is only available for a minor student.",
-    );
+  let linkedContact: LinkedIdentity | null = null;
+  if (options.accountType === "guardian" && options.linkedContactId) {
+    const { data, error } = await db
+      .from("linked_contacts")
+      .select("*")
+      .eq("id", options.linkedContactId)
+      .eq("student_id", identity.id)
+      .eq("studio_id", options.studioId)
+      .single();
+    if (error || !data) throw error || new Error("Linked contact not found.");
+    linkedContact = data as LinkedIdentity;
+  }
   const email = String(
     options.accountType === "guardian"
-      ? identity.guardian_email
+      ? linkedContact?.email || identity.guardian_email
       : identity.email,
   )
     .trim()
@@ -98,12 +121,15 @@ export async function provisionPortalAccount(
       `VALIDATION_FAILED: Add the ${options.accountType} email first.`,
     );
 
-  const { data: currentAccount, error: accountReadError } = await db
+  let accountQuery = db
     .from("portal_accounts")
-    .select("id,user_id,username,email")
+    .select("id,user_id,username,email,linked_contact_id")
     .eq("student_id", identity.id)
-    .eq("account_type", options.accountType)
-    .maybeSingle();
+    .eq("account_type", options.accountType);
+  accountQuery = options.accountType === "guardian" && linkedContact
+    ? accountQuery.eq("linked_contact_id", linkedContact.id)
+    : accountQuery.is("linked_contact_id", null);
+  const { data: currentAccount, error: accountReadError } = await accountQuery.maybeSingle();
   if (accountReadError) throw accountReadError;
   if (currentAccount && !options.resetExisting)
     return {
@@ -123,7 +149,11 @@ export async function provisionPortalAccount(
       : undefined;
   if (options.accountType === "student" && identity.user_id)
     linkedToStudent = true;
-  if (!authUser && options.accountType === "guardian") {
+  if (!authUser && linkedContact?.user_id) {
+    authUser = { id: linkedContact.user_id };
+    linkedToStudent = true;
+  }
+  if (!authUser && options.accountType === "guardian" && !linkedContact) {
     const { data: relationship, error: relationshipReadError } = await db
       .from("student_relationships")
       .select("user_id")
@@ -160,6 +190,8 @@ export async function provisionPortalAccount(
     portal_role: options.accountType,
     must_change_password: true,
     student_id: identity.id,
+    linked_contact_id: linkedContact?.id,
+    relationship_type: linkedContact?.relationship_type,
   };
   if (authUser) {
     const { error } = await db.auth.admin.updateUserById(authUser.id, {
@@ -196,32 +228,43 @@ export async function provisionPortalAccount(
       {
         student_id: identity.id,
         user_id: authUser.id,
-        relationship: "guardian",
-        can_view_finance: true,
-        can_manage_profile: true,
+        relationship: linkedContact?.relationship_type || "guardian",
+        linked_contact_id: linkedContact?.id || null,
+        can_view_schedule: linkedContact?.can_view_schedule ?? true,
+        can_manage_lessons: linkedContact?.can_manage_lessons ?? true,
+        can_view_work: linkedContact?.can_view_work ?? true,
+        can_view_finance: linkedContact?.can_view_finance ?? true,
+        can_manage_profile: linkedContact?.can_manage_profile ?? true,
       },
       { onConflict: "student_id,user_id" },
     );
     if (error) throw error;
+    if (linkedContact) {
+      const { error: linkError } = await db.from("linked_contacts").update({
+        user_id: authUser.id,
+        updated_at: new Date().toISOString(),
+      }).eq("id", linkedContact.id);
+      if (linkError) throw linkError;
+    }
   }
 
   const queuedAt = new Date().toISOString();
-  const { data: account, error: accountWriteError } = await db
-    .from("portal_accounts")
-    .upsert(
-      {
+  const accountValues = {
         studio_id: options.studioId,
         student_id: identity.id,
         user_id: authUser.id,
         account_type: options.accountType,
+        linked_contact_id: linkedContact?.id || null,
         username,
         email,
         must_change_password: true,
         instructions_sent_at: queuedAt,
         updated_at: queuedAt,
-      },
-      { onConflict: "student_id,account_type" },
-    )
+  };
+  const accountWrite = currentAccount
+    ? db.from("portal_accounts").update(accountValues).eq("id", currentAccount.id)
+    : db.from("portal_accounts").insert(accountValues);
+  const { data: account, error: accountWriteError } = await accountWrite
     .select("id")
     .single();
   if (accountWriteError || !account)
@@ -248,7 +291,10 @@ export async function provisionPortalAccount(
 
   const loginUrl = `${Netlify.env.get("URL") || "https://portal.d-a-j.com"}/login`;
   const studioName = studio?.name || "Coach'D";
-  const { error: queueError } = await db.from("outbox_messages").insert({
+  const relationshipLabel = linkedContact
+    ? linkedContact.relationship_label || (linkedContact.relationship_type === "support_person" ? "support person" : linkedContact.relationship_type)
+    : options.accountType;
+  const { data: outbox, error: queueError } = await db.from("outbox_messages").insert({
     studio_id: options.studioId,
     student_id: identity.id,
     channel: "email",
@@ -257,7 +303,7 @@ export async function provisionPortalAccount(
     body: [
       "Hello,",
       "",
-      `Your ${options.accountType} portal for ${identity.preferred_name || identity.full_name} is ready.`,
+      `Your ${relationshipLabel} portal for ${identity.preferred_name || identity.full_name} is ready.`,
       "",
       `Sign in: ${loginUrl}`,
       `Username: ${username}`,
@@ -271,7 +317,8 @@ export async function provisionPortalAccount(
     send_at: queuedAt,
     event_key: "portal.credentials",
     dedupe_key: `portal-credentials:${account.id}:${Date.now()}`,
-  });
+    priority: 100,
+  }).select("id,status,created_at").single();
   if (queueError) throw queueError;
 
   return {
@@ -279,6 +326,9 @@ export async function provisionPortalAccount(
     recipient: email,
     username,
     instructionsQueued: true,
+    outboxMessageId: outbox?.id,
+    deliveryStatus: outbox?.status || "queued",
+    queuedAt: outbox?.created_at || queuedAt,
     alreadyExisted: Boolean(currentAccount),
     student: updatedStudent,
   };

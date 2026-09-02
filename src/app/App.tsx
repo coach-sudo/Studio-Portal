@@ -3,6 +3,7 @@ import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { StudioStoreProvider } from "../state/StudioStore";
 import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
+import { InstallPrompt } from "../components/InstallPrompt";
 const CoachHome=lazy(()=>import("../features/coach/CoachHome").then(module=>({default:module.CoachHome})));
 const CoachSection=lazy(()=>import("../features/coach/CoachSection").then(module=>({default:module.CoachSection})));
 const StudentPortal=lazy(()=>import("../features/student/StudentPortal").then(module=>({default:module.StudentPortal})));
@@ -13,9 +14,10 @@ const PublicBooking=lazy(()=>import("../features/booking/PublicBooking").then(mo
 const BookingCenter=lazy(()=>import("../features/coach/BookingCenter").then(module=>({default:module.BookingCenter})));
 const StudentWorkspace=lazy(()=>import("../features/coach/StudentWorkspace").then(module=>({default:module.StudentWorkspace})));
 const TermsPage=lazy(()=>import("../features/public/TermsPage").then(module=>({default:module.TermsPage})));
+const PackageGift=lazy(()=>import("../features/public/PackageGift"));
 
 export function App() {
-  return <StudioStoreProvider><AppRoutes /></StudioStoreProvider>;
+  return <StudioStoreProvider><AppRoutes /><InstallPrompt /></StudioStoreProvider>;
 }
 
 function AppRoutes() {
@@ -23,6 +25,9 @@ function AppRoutes() {
     <Route path="/login" element={<MagicLinkLogin />} />
     <Route path="/change-password" element={<AuthGate role="portal"><ChangeTemporaryPassword /></AuthGate>} />
     <Route path="/terms" element={<TermsPage />} />
+    <Route path="/gift/thanks" element={<main className="gift-page"><section className="gift-card gift-success"><h1>Your gift purchase is confirmed</h1><p>Delivery is being prepared for the recipient. You will also receive a Stripe receipt.</p><a className="button-link primary" href="/book">Return to booking</a></section></main>} />
+    <Route path="/gift/claim/:token" element={<PackageGift />} />
+    <Route path="/gift/:definitionId" element={<PackageGift />} />
     <Route path="/portal/*" element={<AuthGate role="portal"><PortalRole /></AuthGate>} />
     <Route path="/student/*" element={<LegacyPortalRedirect legacyPrefix="student" />} />
     <Route path="/guardian/*" element={<LegacyPortalRedirect legacyPrefix="guardian" />} />

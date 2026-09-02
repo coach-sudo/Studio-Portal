@@ -8,6 +8,8 @@ import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { mapStudentChanges } from "./_shared/student-updates";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
 import { provisionPortalAccount } from "./_shared/portal-access";
+import { derivePackageValues } from "./_shared/package-pricing";
+import { dispatchOutbox } from "./_shared/outbox-dispatch";
 
 const domains = new Set([
   "students",
@@ -25,6 +27,7 @@ const domains = new Set([
   "integrations",
   "recommendations",
   "settings",
+  "pricing",
 ]);
 const sourceLabelServer = (value: string) =>
   (
@@ -289,7 +292,10 @@ export default async (request: Request, context: Context) => {
           input.payload.accountType === "guardian" ? "guardian" : "student",
         resetExisting: true,
         expectedVersion: input.expectedVersion,
+        linkedContactId: String(input.payload.linkedContactId || "") || undefined,
       });
+      if (result.outboxMessageId)
+        context.waitUntil(dispatchOutbox({ ids: [result.outboxMessageId] }));
       return json({
         resource: result.student,
         recommendations: [],
@@ -305,7 +311,7 @@ export default async (request: Request, context: Context) => {
             username: result.username,
           },
         ),
-        queuedSideEffects: ["outbox_worker"],
+        queuedSideEffects: result.outboxMessageId ? ["credential_email_immediate", "outbox_worker_fallback"] : [],
       });
     }
     if (
@@ -321,7 +327,10 @@ export default async (request: Request, context: Context) => {
           input.payload.accountType === "guardian" ? "guardian" : "student",
         resetExisting: true,
         expectedVersion: input.expectedVersion,
+        linkedContactId: String(input.payload.linkedContactId || "") || undefined,
       });
+      if (result.outboxMessageId)
+        context.waitUntil(dispatchOutbox({ ids: [result.outboxMessageId] }));
       return json({
         resource: result.student,
         recommendations: [],
@@ -337,8 +346,60 @@ export default async (request: Request, context: Context) => {
             username: result.username,
           },
         ),
-        queuedSideEffects: ["outbox_worker"],
+        queuedSideEffects: result.outboxMessageId ? ["credential_email_immediate", "outbox_worker_fallback"] : [],
       });
+    }
+    if (domain === "students" && input.command === "save_linked_contact" && input.entityId) {
+      const studioId = await requireCoach();
+      const service = serviceClient();
+      const { data: student } = await service.from("students").select("id").eq("id", input.entityId).eq("studio_id", studioId).single();
+      if (!student) throw new Error("FORBIDDEN");
+      const fullName = String(input.payload.fullName || "").trim();
+      const email = String(input.payload.email || "").trim().toLowerCase();
+      if (fullName.length < 2 || !email.includes("@")) throw new Error("VALIDATION_FAILED: Add a name and valid email.");
+      const relationshipType = ["guardian", "support_person", "other"].includes(String(input.payload.relationshipType))
+        ? String(input.payload.relationshipType)
+        : "support_person";
+      const values = {
+        studio_id: studioId,
+        student_id: student.id,
+        full_name: fullName,
+        email,
+        relationship_type: relationshipType,
+        relationship_label: String(input.payload.relationshipLabel || "").trim(),
+        can_view_schedule: input.payload.canViewSchedule !== false,
+        can_manage_lessons: Boolean(input.payload.canManageLessons),
+        can_view_work: input.payload.canViewWork !== false,
+        can_manage_profile: Boolean(input.payload.canManageProfile),
+        can_view_finance: Boolean(input.payload.canViewFinance),
+        can_receive_notifications: input.payload.canReceiveNotifications !== false,
+        notification_preferences: input.payload.notificationPreferences || {},
+        portal_enabled: input.payload.portalEnabled !== false,
+        updated_at: new Date().toISOString(),
+      };
+      const contactId = String(input.payload.contactId || "");
+      const query = contactId
+        ? service.from("linked_contacts").update({ ...values, version: Number(input.expectedVersion || 0) + 1 }).eq("id", contactId).eq("student_id", student.id).eq("version", input.expectedVersion)
+        : service.from("linked_contacts").insert(values);
+      const { data, error } = await query.select().maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(studioId, "linked_contact", data.id, contactId ? "linked_contact.updated" : "linked_contact.created", null, data),
+        queuedSideEffects: [],
+      });
+    }
+    if (domain === "students" && input.command === "remove_linked_contact" && input.entityId) {
+      const studioId = await requireCoach();
+      const service = serviceClient();
+      const contactId = String(input.payload.contactId || "");
+      const { data: before, error: readError } = await service.from("linked_contacts").select("*").eq("id", contactId).eq("student_id", input.entityId).eq("studio_id", studioId).single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      const { data, error } = await service.from("linked_contacts").update({ portal_enabled: false, can_receive_notifications: false, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", before.version).select().single();
+      if (error) throw error;
+      return json({ resource: data, recommendations: [], auditEventId: await audit(studioId, "linked_contact", before.id, "linked_contact.disabled", before, data), queuedSideEffects: [] });
     }
     if (
       domain === "students" &&
@@ -355,6 +416,14 @@ export default async (request: Request, context: Context) => {
       if (isCoach) {
         const studioId = await requireCoach();
         if (studioId !== before.studio_id) throw new Error("FORBIDDEN");
+      }
+      if (!isCoach) {
+        const { data: authData } = await db.auth.getUser();
+        if (!authData.user) throw new Error("FORBIDDEN");
+        if (before.user_id !== authData.user.id) {
+          const { data: relationship } = await serviceClient().from("student_relationships").select("can_manage_profile").eq("student_id", before.id).eq("user_id", authData.user.id).maybeSingle();
+          if (!relationship?.can_manage_profile) throw new Error("FORBIDDEN");
+        }
       }
       const allowed = isCoach
         ? [
@@ -379,6 +448,9 @@ export default async (request: Request, context: Context) => {
             "defaultRateMinor",
             "specialPricingEnabled",
             "portalUsername",
+            "notificationPreferences",
+            "profilePhotoAssetId",
+            "profilePhotoPosition",
           ]
         : [
             "preferredName",
@@ -388,6 +460,9 @@ export default async (request: Request, context: Context) => {
             "timezone",
             "portalPreferences",
             "portalUsername",
+            "notificationPreferences",
+            "profilePhotoAssetId",
+            "profilePhotoPosition",
           ];
       const payload = input.payload as Record<string, unknown>,
         changes: Record<string, unknown> = {
@@ -417,6 +492,9 @@ export default async (request: Request, context: Context) => {
         specialPricingEnabled: "special_pricing_enabled",
         portalUsername: "portal_username",
         portalPreferences: "portal_preferences",
+        notificationPreferences: "notification_preferences",
+        profilePhotoAssetId: "profile_photo_asset_id",
+        profilePhotoPosition: "profile_photo_position",
       };
       Object.assign(changes, mapStudentChanges(payload, allowed, columns));
       const { data, error } = await serviceClient()
@@ -1589,127 +1667,87 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
-    if (domain === "packages" && ["create", "update"].includes(input.command)) {
+    if (domain === "packages" && ["create", "update", "recalculate", "bulk_create"].includes(input.command)) {
       const studioId = await requireCoach();
-      const payload = input.payload as Record<string, any>;
       const service = serviceClient();
-      const values: Record<string, unknown> = {
-        studio_id: studioId,
-        name: String(payload.name || "").trim(),
-        description: String(payload.description || ""),
-        session_count: Number(payload.sessionCount),
-        session_duration_minutes: Number(payload.sessionDurationMinutes),
-        price_minor: Number(payload.priceMinor),
-        discount_minor: Number(payload.discountMinor || 0),
-        currency: String(payload.currency || "USD"),
-        expiration_days: payload.expirationDays
-          ? Number(payload.expirationDays)
-          : null,
-        eligible_service_ids: Array.isArray(payload.eligibleServiceIds)
-          ? payload.eligibleServiceIds
-          : [],
-        meeting_providers:
-          Array.isArray(payload.meetingProviders) &&
-          payload.meetingProviders.length
-            ? payload.meetingProviders
-            : ["google_meet", "in_person"],
-        recurring_eligible: Boolean(payload.recurringEligible),
-        visibility: payload.visibility === "public" ? "public" : "private",
-        direct_purchase: Boolean(payload.directPurchase),
-        active: payload.active !== false,
-      };
-      if (
-        !values.name ||
-        Number(values.session_count) <= 0 ||
-        Number(values.session_duration_minutes) < 15 ||
-        Number(values.price_minor) < 0
-      )
-        throw new Error(
-          "VALIDATION_FAILED: Package name, sessions, duration, and price are required.",
-        );
-      let before: any = null;
-      if (input.command === "update") {
-        const read = await db
-          .from("package_definitions")
-          .select("*")
-          .eq("id", input.entityId)
-          .eq("studio_id", studioId)
-          .single();
-        if (read.error || !read.data) throw new Error("FORBIDDEN");
-        before = read.data;
-        if (before.version !== input.expectedVersion)
-          throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      }
-      if (values.direct_purchase) {
-        const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
-        if (!stripeKey) throw new Error("Stripe is not configured.");
-        const stripe = new Stripe(stripeKey, {
-          apiVersion: "2026-07-29.dahlia",
-        });
-        let productId: string | undefined;
-        if (before?.stripe_price_id) {
-          try {
-            const oldPrice = await stripe.prices.retrieve(
-              before.stripe_price_id,
-            );
-            productId =
-              typeof oldPrice.product === "string"
-                ? oldPrice.product
-                : oldPrice.product?.id;
-          } catch {
-            /* create a replacement product */
+      const createOne = async (payload: Record<string, any>, existingId?: string, existingVersion = 0) => {
+        const { values } = await derivePackageValues(service, studioId, payload, payload.studentId ? String(payload.studentId) : undefined);
+        const renewalModes = [...new Set((Array.isArray(payload.renewalModes) ? payload.renewalModes : ["one_time"]).filter((mode) => ["one_time", "weekly", "biweekly", "monthly", "balance_threshold"].includes(String(mode))).map(String))];
+        if (!renewalModes.length) renewalModes.push("one_time");
+        let before: any = null;
+        if (existingId) {
+          const read = await service.from("package_definitions").select("*").eq("id", existingId).eq("studio_id", studioId).single();
+          if (read.error || !read.data) throw new Error("FORBIDDEN");
+          before = read.data;
+          if (before.version !== existingVersion) throw new Error(`VERSION_CONFLICT:${existingVersion}`);
+        }
+        const requiresStripe = Boolean(values.direct_purchase) || renewalModes.some((mode) => mode !== "one_time");
+        const definitionId = existingId || crypto.randomUUID();
+        const saveValues = { ...values, pricing_status: requiresStripe ? "syncing" : "current" } as Record<string, unknown>;
+        const save = existingId
+          ? service.from("package_definitions").update({ ...saveValues, version: existingVersion + 1, updated_at: new Date().toISOString() }).eq("id", existingId).eq("version", existingVersion)
+          : service.from("package_definitions").insert({ id: definitionId, ...saveValues });
+        const { data: definition, error: saveError } = await save.select().maybeSingle();
+        if (saveError) throw saveError;
+        if (!definition) throw new Error(`VERSION_CONFLICT:${existingVersion}`);
+        let oneTimePriceId: string | null = null;
+        try {
+          let productId: string | undefined;
+          if (requiresStripe) {
+            const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
+            if (!stripeKey) throw new Error("Stripe is not configured.");
+            const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
+            if (before?.stripe_price_id) {
+              try {
+                const old = await stripe.prices.retrieve(before.stripe_price_id);
+                productId = typeof old.product === "string" ? old.product : old.product?.id;
+              } catch { /* create a replacement product */ }
+            }
+            if (!productId) {
+              const product = await stripe.products.create({ name: String(values.name), description: String(values.description) || undefined, metadata: { studio_id: studioId, package_definition_id: definitionId, kind: "lesson_package" } });
+              productId = product.id;
+            } else await stripe.products.update(productId, { name: String(values.name), description: String(values.description) || undefined });
+            await service.from("package_billing_options").update({ active: false, updated_at: new Date().toISOString() }).eq("definition_id", definitionId);
+            for (const mode of renewalModes) {
+              const recurring = mode === "weekly" ? { interval: "week" as const, interval_count: 1 }
+                : mode === "biweekly" ? { interval: "week" as const, interval_count: 2 }
+                  : mode === "monthly" ? { interval: "month" as const, interval_count: 1 } : undefined;
+              const price = await stripe.prices.create({
+                product: productId,
+                unit_amount: Number(values.price_minor),
+                currency: String(values.currency).toLowerCase(),
+                ...(recurring ? { recurring } : {}),
+                metadata: { studio_id: studioId, package_definition_id: definitionId, billing_kind: "package_subscription", renewal_mode: mode, session_count: String(values.session_count) },
+              });
+              if (mode === "one_time") oneTimePriceId = price.id;
+              await service.from("package_billing_options").upsert({ studio_id: studioId, definition_id: definitionId, renewal_mode: mode, balance_threshold: mode === "balance_threshold" ? Math.max(0, Number(payload.balanceThreshold ?? 1)) : null, stripe_price_id: price.id, active: true, updated_at: new Date().toISOString() }, { onConflict: "definition_id,renewal_mode" });
+            }
+          } else {
+            await service.from("package_billing_options").upsert({ studio_id: studioId, definition_id: definitionId, renewal_mode: "one_time", stripe_price_id: null, active: true, updated_at: new Date().toISOString() }, { onConflict: "definition_id,renewal_mode" });
           }
+          const { data: current, error: currentError } = await service.from("package_definitions").update({ stripe_price_id: oneTimePriceId, pricing_status: "current", updated_at: new Date().toISOString() }).eq("id", definitionId).select().single();
+          if (currentError) throw currentError;
+          return { before, definition: current };
+        } catch (error) {
+          await service.from("package_definitions").update({ pricing_status: "failed", updated_at: new Date().toISOString() }).eq("id", definitionId);
+          throw error;
         }
-        if (!productId) {
-          const product = await stripe.products.create({
-            name: String(values.name),
-            description: String(values.description) || undefined,
-            metadata: { studio_id: studioId, kind: "lesson_package" },
-          });
-          productId = product.id;
-        }
-        const price = await stripe.prices.create({
-          product: productId,
-          unit_amount: Number(values.price_minor),
-          currency: String(values.currency).toLowerCase(),
-          metadata: {
-            studio_id: studioId,
-            session_count: String(values.session_count),
-            duration_minutes: String(values.session_duration_minutes),
-          },
-        });
-        values.stripe_price_id = price.id;
+      };
+      if (input.command === "bulk_create") {
+        const payload = input.payload as Record<string, any>;
+        const serviceIds = Array.isArray(payload.serviceIds) ? payload.serviceIds.map(String) : [];
+        const sessionCounts = Array.isArray(payload.sessionCounts) ? payload.sessionCounts.map(Number) : [];
+        const deliveryFormats = Array.isArray(payload.deliveryFormats) ? payload.deliveryFormats.map(String) : ["google_meet"];
+        const combinations = serviceIds.flatMap((pricingServiceId) => sessionCounts.flatMap((sessionCount) => deliveryFormats.map((deliveryFormat) => ({ ...payload, pricingServiceId, sessionCount, deliveryFormat }))));
+        if (!combinations.length || combinations.length > 36) throw new Error("VALIDATION_FAILED: Create between 1 and 36 package combinations at a time.");
+        const created = [];
+        for (const combination of combinations) created.push((await createOne(combination)).definition);
+        return json({ resource: created, recommendations: [], auditEventId: await audit(studioId, "package_definition", studioId, "package_definition.bulk_created", null, { count: created.length }), queuedSideEffects: created.some((item) => item.stripe_price_id) ? ["stripe_prices_created"] : [] });
       }
-      const query =
-        input.command === "create"
-          ? service.from("package_definitions").insert(values)
-          : service
-              .from("package_definitions")
-              .update({
-                ...values,
-                version: input.expectedVersion + 1,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("id", input.entityId)
-              .eq("version", input.expectedVersion);
-      const { data, error } = await query.select().maybeSingle();
-      if (error) throw error;
-      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      return json({
-        resource: data,
-        recommendations: [],
-        auditEventId: await audit(
-          studioId,
-          "package_definition",
-          data.id,
-          `package_definition.${input.command}d`,
-          before,
-          data,
-        ),
-        queuedSideEffects: values.direct_purchase
-          ? ["stripe_price_created"]
-          : [],
-      });
+      const payload = input.payload as Record<string, any>;
+      const existingId = input.command === "create" ? undefined : String(input.entityId || "");
+      const result = await createOne(payload, existingId, input.expectedVersion);
+      return json({ resource: result.definition, recommendations: [], auditEventId: await audit(studioId, "package_definition", result.definition.id, `package_definition.${input.command}`, result.before, result.definition), queuedSideEffects: result.definition.stripe_price_id ? ["stripe_price_created"] : [] });
     }
     if (
       domain === "packages" &&
@@ -1769,6 +1807,20 @@ export default async (request: Request, context: Context) => {
         ),
         queuedSideEffects: applied ? [`credits_applied:${applied}`] : [],
       });
+    }
+    if (domain === "students" && input.command === "update_linked_contact_self" && input.entityId) {
+      const { data: authData } = await db.auth.getUser();
+      if (!authData.user) throw new Error("FORBIDDEN");
+      const service = serviceClient();
+      const { data: before, error: readError } = await service.from("linked_contacts").select("*").eq("id", input.entityId).eq("user_id", authData.user.id).single();
+      if (readError || !before) throw new Error("FORBIDDEN");
+      const email = String(input.payload.email || before.email).trim().toLowerCase();
+      const fullName = String(input.payload.fullName || before.full_name).trim();
+      if (!email.includes("@") || fullName.length < 2) throw new Error("VALIDATION_FAILED: Add a name and valid email.");
+      const { data, error } = await service.from("linked_contacts").update({ full_name: fullName, email, notification_preferences: input.payload.notificationPreferences || before.notification_preferences, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      return json({ resource: data, recommendations: [], auditEventId: await audit(before.studio_id, "linked_contact", before.id, "linked_contact.self_updated", before, data), queuedSideEffects: [] });
     }
     if (domain === "credits" && input.command === "grant") {
       const studioId = await requireCoach(),
@@ -2366,11 +2418,14 @@ export default async (request: Request, context: Context) => {
     }
     if (domain === "finance" && input.command === "checkout_definition") {
       const definitionId = String(input.payload.packageDefinitionId || "");
+      const requestedMode = String(input.payload.renewalMode || "one_time");
+      const autoApply = Boolean(input.payload.autoApply);
       const [
         { data: student, error: studentError },
         { data: definition, error: definitionError },
+        { data: billingOption, error: optionError },
       ] = await Promise.all([
-        db.from("students").select("id,studio_id").limit(1).single(),
+        db.from("students").select("id,studio_id,stripe_customer_id").limit(1).single(),
         db
           .from("package_definitions")
           .select("*")
@@ -2379,6 +2434,7 @@ export default async (request: Request, context: Context) => {
           .eq("visibility", "public")
           .eq("direct_purchase", true)
           .single(),
+        db.from("package_billing_options").select("*").eq("definition_id", definitionId).eq("renewal_mode", requestedMode).eq("active", true).maybeSingle(),
       ]);
       if (
         studentError ||
@@ -2386,7 +2442,8 @@ export default async (request: Request, context: Context) => {
         !student ||
         !definition ||
         student.studio_id !== definition.studio_id ||
-        !definition.stripe_price_id
+        optionError ||
+        !billingOption?.stripe_price_id
       )
         throw new Error(
           "VALIDATION_FAILED: This package is not available for direct purchase.",
@@ -2408,10 +2465,12 @@ export default async (request: Request, context: Context) => {
           expires_at: expiresAt,
           stripe_price_id: definition.stripe_price_id,
           credit_quantity: definition.session_count,
+          auto_apply: autoApply,
         })
         .select()
         .single();
       if (packageError) throw packageError;
+      let packageSubscriptionId: string | undefined;
       try {
         const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
         if (!stripeKey) throw new Error("Stripe is not configured.");
@@ -2419,17 +2478,32 @@ export default async (request: Request, context: Context) => {
           apiVersion: "2026-07-29.dahlia",
         });
         const origin = new URL(request.url).origin;
+        const scheduled = ["weekly", "biweekly", "monthly"].includes(requestedMode);
+        if (requestedMode !== "one_time") {
+          const { data: subscription, error: subscriptionError } = await service.from("package_subscriptions").insert({ studio_id: student.studio_id, student_id: student.id, definition_id: definition.id, billing_option_id: billingOption.id, package_id: pkg.id, stripe_customer_id: student.stripe_customer_id, renewal_mode: requestedMode, balance_threshold: requestedMode === "balance_threshold" ? Number(billingOption.balance_threshold ?? 1) : null, auto_apply: autoApply, status: "pending" }).select("id").single();
+          if (subscriptionError) throw subscriptionError;
+          packageSubscriptionId = subscription.id;
+        }
+        const integrationIdentifier = `coachd_pkg_${Array.from(crypto.getRandomValues(new Uint8Array(8)), (value) => String.fromCharCode(97 + value % 26)).join("")}`;
         const checkout = await stripe.checkout.sessions.create(
           {
-            mode: "payment",
-            line_items: [{ price: definition.stripe_price_id, quantity: 1 }],
+            mode: scheduled ? "subscription" : "payment",
+            integration_identifier: integrationIdentifier,
+            line_items: [{ price: billingOption.stripe_price_id, quantity: 1 }],
             client_reference_id: `${student.id}:${pkg.id}`,
             success_url: `${origin}/portal/payments?checkout=processing`,
             cancel_url: `${origin}/portal/payments?checkout=cancelled`,
+            ...(student.stripe_customer_id ? { customer: student.stripe_customer_id } : {}),
+            ...(!scheduled && requestedMode === "balance_threshold" ? { payment_intent_data: { setup_future_usage: "off_session" as const } } : {}),
+            ...(scheduled ? { subscription_data: { metadata: { billing_kind: "package_subscription", package_subscription_id: packageSubscriptionId!, package_definition_id: definition.id, package_id: pkg.id, student_id: student.id } } } : {}),
             metadata: {
               student_id: student.id,
               package_id: pkg.id,
               package_definition_id: definition.id,
+              package_subscription_id: packageSubscriptionId || "",
+              billing_kind: requestedMode === "one_time" ? "package_purchase" : "package_subscription",
+              renewal_mode: requestedMode,
+              auto_apply: String(autoApply),
               idempotency_key: input.idempotencyKey,
             },
           },
@@ -2442,6 +2516,8 @@ export default async (request: Request, context: Context) => {
           queuedSideEffects: ["stripe_webhook"],
         });
       } catch (error) {
+        if (packageSubscriptionId)
+          await service.from("package_subscriptions").delete().eq("id", packageSubscriptionId);
         await service.from("packages").delete().eq("id", pkg.id);
         throw error;
       }

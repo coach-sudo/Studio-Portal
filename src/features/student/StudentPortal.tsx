@@ -73,6 +73,16 @@ import {
 } from "../../domain/presentation";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
 
+const portalNotificationLabels = {
+  lessonReminders: "Lesson reminders",
+  scheduleChanges: "Reschedules and cancellations",
+  lessonContent: "Notes and lesson materials",
+  assignments: "Assignments and practice",
+  packageBalance: "Package balance and expiration",
+  payments: "Payments and receipts",
+  accountAccess: "Account access",
+} as const;
+
 export function StudentPortal({
   role = "student",
 }: {
@@ -94,15 +104,22 @@ export function StudentPortal({
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
-  const tabs = portalNavigation(role, Boolean(person?.isMinor));
+  const linkedAccess = role === "guardian" ? data.linkedContacts.find((contact)=>contact.id===data.currentLinkedContactId) : undefined;
+  const guardianFinance = linkedAccess?.canViewFinance ?? Boolean(person?.isMinor);
+  const guardianSchedule = linkedAccess?.canViewSchedule ?? true;
+  const guardianWork = linkedAccess?.canViewWork ?? true;
+  const guardianProfile = linkedAccess?.canManageProfile ?? true;
+  const guardianManageLessons = linkedAccess?.canManageLessons ?? true;
+  const tabs = portalNavigation(role, Boolean(person?.isMinor), linkedAccess);
   const studentDisplayName =
     person?.preferredName || person?.fullName || "Student";
   const initials =
-    (role === "guardian" ? person?.guardianName : studentDisplayName)
+    (role === "guardian" ? data.displayName : studentDisplayName)
       ?.split(" ")
       .map((part) => part[0])
       .join("")
       .slice(0, 2) || "SS";
+  const identityPhoto = role === "student" ? person?.profilePhotoUrl : undefined;
   return (
     <div className="student-shell">
       <aside>
@@ -121,16 +138,16 @@ export function StudentPortal({
           ))}
         </nav>
         <div className="identity">
-          <span>{initials}</span>
+          <span className={identityPhoto ? "has-photo" : ""}>{identityPhoto ? <img src={identityPhoto} alt="" style={{objectPosition:`${person?.profilePhotoPosition?.x ?? 50}% ${person?.profilePhotoPosition?.y ?? 50}%`}}/> : initials}</span>
           <div>
             <strong>
               {role === "guardian"
-                ? (person?.guardianName ?? "Guardian")
+                ? data.displayName
                 : studentDisplayName}
             </strong>
             <small>
               {role === "guardian"
-                ? `Guardian for ${person?.fullName ?? "student"}`
+                ? `${linkedAccess?.relationshipLabel || linkedAccess?.relationshipType?.replaceAll("_"," ") || (person?.isMinor ? "Guardian" : "Support person")} for ${person?.fullName ?? "student"}`
                 : "Student"}
             </small>
           </div>
@@ -155,10 +172,10 @@ export function StudentPortal({
               )
             }
           />
-          <Route path="work" element={<Work data={data} isDemo={isDemo} />} />
+          <Route path="work" element={role === "guardian" && !guardianWork ? <Navigate to={base} replace/> : <Work data={data} isDemo={isDemo} />} />
           <Route
             path="bookings"
-            element={<StudentBookings data={data} isDemo={isDemo} />}
+            element={role === "guardian" && !guardianSchedule ? <Navigate to={base} replace/> : <StudentBookings data={data} isDemo={isDemo} canManageLessons={role !== "guardian" || guardianManageLessons} />}
           />
           <Route
             path="lessons"
@@ -170,7 +187,7 @@ export function StudentPortal({
               <LessonHub
                 data={data}
                 isDemo={isDemo}
-                showFinance={role === "guardian" || !person?.isMinor}
+                showFinance={role === "guardian" ? guardianFinance : !person?.isMinor}
               />
             }
           />
@@ -185,11 +202,11 @@ export function StudentPortal({
           />
           <Route
             path="payments"
-            element={role === "guardian" || !person?.isMinor ? <Payments data={data} isDemo={isDemo} /> : <Navigate to={base} replace />}
+            element={(role === "guardian" ? guardianFinance : !person?.isMinor) ? <Payments data={data} isDemo={isDemo} /> : <Navigate to={base} replace />}
           />
           <Route
             path="actor-page"
-            element={<ActorPage data={data} isDemo={isDemo} />}
+            element={role === "guardian" && !guardianProfile ? <Navigate to={base} replace/> : <ActorPage data={data} isDemo={isDemo} />}
           />
           <Route
             path="settings"
@@ -263,10 +280,7 @@ type ActorPortfolioDraft = NonNullable<
 >;
 function Header({ data }: { data: Snapshot }) {
   return (
-    <header className="student-header">
-      <h1>Welcome back, {data.displayName}</h1>
-      <p>{data.settings.welcomeMessage}</p>
-    </header>
+    <header className="creative-welcome student-welcome"><div><small>{formatStudioDate(new Date(),data.settings.timezone,{weekday:"long"})}</small><h1>Welcome back, {data.displayName}</h1><p>{data.settings.welcomeMessage}</p></div><i/><b/></header>
   );
 }
 function PortalRow({
@@ -371,7 +385,7 @@ function HomePriorities({
   const pkg = data.packages[0];
   const student = data.students[0];
   return (
-    <div className="portal-priority-stack">
+    <div className="portal-home-grid"><div className="portal-priority-stack">
       <Section title="Next lesson" marked>
         {lesson ? (
           <PortalRow
@@ -426,6 +440,7 @@ function HomePriorities({
           />
         </details>
       )}
+      </div><aside className="dashboard-rail portal-rail"><header><small>Your next steps</small><strong>{formatStudioDate(new Date(),data.settings.timezone,{weekday:"long",month:"short"})}</strong></header>{lesson&&<button onClick={()=>navigate(`${base}/lessons/${lesson.id}`)}><CalendarDays/><span><strong>{formatStudioTime(lesson.startsAt,data.settings.timezone)}</strong><small>Next lesson</small></span></button>}{practice&&<button onClick={()=>navigate(`${base}/work`)}><CheckSquare/><span><strong>{practice.title}</strong><small>Next practice</small></span></button>}{showAccount&&pkg&&<button onClick={()=>navigate(`${base}/payments`)}><CircleDollarSign/><span><strong>{packageSummary(pkg,data.creditEntries).remainingCredits} credits</strong><small>Package balance</small></span></button>}</aside>
     </div>
   );
 }
@@ -531,9 +546,11 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
 function StudentBookings({
   data,
   isDemo,
+  canManageLessons = true,
 }: {
   data: Snapshot;
   isDemo: boolean;
+  canManageLessons?: boolean;
 }) {
   const navigate = useNavigate();
   const store = useStudioStore();
@@ -819,7 +836,7 @@ function StudentBookings({
                         Meet pending
                       </button>
                     ))}
-                  {booking?.status === "confirmed" && (
+                  {canManageLessons && booking?.status === "confirmed" && (
                     <button
                       disabled={isLateChange(
                         booking.startsAt,
@@ -841,7 +858,7 @@ function StudentBookings({
                       Reschedule
                     </button>
                   )}
-                  {booking && (
+                  {canManageLessons && booking && (
                     <button
                       onClick={() => {
                         setSelected(booking);
@@ -886,7 +903,7 @@ function StudentBookings({
               <Status tone={series.status === "active" ? "good" : "warn"}>
                 {series.status.replaceAll("_", " ")}
               </Status>
-              {series.status === "active" && (
+              {series.status === "active" && canManageLessons && (
                 <button onClick={() => cancelSeries(series.id)}>
                   End plan
                 </button>
@@ -2197,6 +2214,9 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const student = data.students[0];
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
+  const [purchaseDefinition, setPurchaseDefinition] = useState<Snapshot["packageDefinitions"][number]>();
+  const [renewalMode, setRenewalMode] = useState("one_time");
+  const [purchaseAutoApply, setPurchaseAutoApply] = useState(false);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const purchase = async (id: string) => {
@@ -2208,7 +2228,7 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       const result = await studioCommand("finance", {
         command: "checkout_definition",
         expectedVersion: 0,
-        payload: { packageDefinitionId: id },
+        payload: { packageDefinitionId: id, renewalMode, autoApply: purchaseAutoApply },
         reason: "Student started package checkout",
       });
       window.location.assign(result.resource.url);
@@ -2295,8 +2315,8 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                       {formatMoney(definition.priceMinor, definition.currency)}
                     </small>
                   </div>
-                  <button onClick={() => void purchase(definition.id)}>
-                    Buy package
+                  <button onClick={() => { setPurchaseDefinition(definition); setRenewalMode("one_time"); setPurchaseAutoApply(false); }}>
+                    Choose package
                   </button>
                 </article>
               ))}
@@ -2363,6 +2383,16 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           )}
         </p>
       )}
+      {purchaseDefinition && <Dialog title={purchaseDefinition.name} description="Choose how this package should renew and whether its credits should cover eligible upcoming lessons automatically." onClose={()=>setPurchaseDefinition(undefined)}>
+        <div className="package-purchase-summary"><strong>{formatMoney(purchaseDefinition.priceMinor,purchaseDefinition.currency)}</strong><span>{purchaseDefinition.sessionCount} lesson credits</span></div>
+        <label>Purchase option<select value={renewalMode} onChange={(event)=>setRenewalMode(event.target.value)}>
+          {data.packageBillingOptions.filter((option)=>option.definitionId===purchaseDefinition.id&&option.active).map((option)=><option key={option.id} value={option.renewalMode}>{option.renewalMode === "one_time" ? "One-time purchase" : option.renewalMode === "biweekly" ? "Renew every two weeks" : option.renewalMode === "balance_threshold" ? `Renew when ${option.balanceThreshold ?? 1} credit remains` : `Renew ${option.renewalMode}`}</option>)}
+        </select></label>
+        <Toggle checked={purchaseAutoApply} label="Apply to upcoming lessons" detail="After payment, use credits only for eligible unpaid lessons. Paid, cancelled, and incompatible lessons are skipped." onChange={()=>setPurchaseAutoApply((current)=>!current)}/>
+        {renewalMode === "balance_threshold" && <p className="portal-notice">By continuing, you authorize Coach’D to charge the saved payment method only when your balance reaches the displayed threshold. You can turn this off later.</p>}
+        <div className="form-actions"><button onClick={()=>setPurchaseDefinition(undefined)}>Cancel</button><button className="primary" onClick={()=>void purchase(purchaseDefinition.id)}>Continue to secure checkout</button></div>
+        {purchaseDefinition.giftable&&<Link className="button-link" to={`/gift/${purchaseDefinition.id}`}>Purchase this package as a gift</Link>}
+      </Dialog>}
     </div>
   );
 }
@@ -2376,13 +2406,14 @@ function StudentSettings({
   role: Extract<Role, "student" | "guardian">;
 }) {
   const student = data.students[0],
+    linkedContact = role === "guardian" ? data.linkedContacts.find((contact)=>contact.id===data.currentLinkedContactId) : undefined,
     store = useStudioStore(),
     queryClient = useQueryClient();
   const settingsMutation = useStudioMutation();
   const [form, setForm] = useState({
-      preferredName: student?.preferredName || "",
+      preferredName: role === "guardian" ? linkedContact?.fullName || "" : student?.preferredName || "",
       pronouns: student?.pronouns || "",
-      email: student?.email || "",
+      email: role === "guardian" ? linkedContact?.email || "" : student?.email || "",
       phone: student?.phone || "",
       timezone: student?.timezone || data.settings.timezone,
       compactView:
@@ -2392,19 +2423,29 @@ function StudentSettings({
         student?.portalPreferences?.showProgress ??
         data.settings.portalDefaults.showProgress,
       emailReminders: student?.portalPreferences?.emailReminders ?? true,
+      notificationPreferences: structuredClone((role === "guardian" ? linkedContact?.notificationPreferences : student?.notificationPreferences) || {
+        lessonReminders:true,scheduleChanges:true,lessonContent:true,assignments:true,packageBalance:role === "guardian",payments:role === "guardian",accountAccess:true,
+      }),
     }),
     [notice, setNotice] = useState(""),
     [loginPassword, setLoginPassword] = useState(""),
     [loginBusy, setLoginBusy] = useState(false),
     [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
       "",
-    );
+    ), [profilePhoto, setProfilePhoto] = useState<File>(), [removePhoto,setRemovePhoto]=useState(false);
   if (!student) return <div className="loading">Opening settings…</div>;
   const save = async (event: FormEvent) => {
     event.preventDefault();
     if (settingsMutation.isPending()) return;
     setNotice("Saving your settings…");
     try {
+      let profilePhotoAssetId = student.profilePhotoAssetId;
+      if (removePhoto) profilePhotoAssetId = undefined;
+      if (profilePhoto && role === "student" && !isDemo) {
+        if (!profilePhoto.type.startsWith("image/") || profilePhoto.size > 5 * 1024 * 1024) throw new Error("Choose a JPG, PNG, or WebP image smaller than 5 MB.");
+        const uploaded = await uploadStudioFile({ studioId:data.studioId, studentId:student.id, entityType:"student", entityId:student.id, file:profilePhoto, visibility:"private" });
+        profilePhotoAssetId = uploaded.id;
+      }
       const updates = {
         preferredName: form.preferredName,
         pronouns: form.pronouns,
@@ -2416,6 +2457,9 @@ function StudentSettings({
           showProgress: form.showProgress,
           emailReminders: form.emailReminders,
         },
+        notificationPreferences: form.notificationPreferences,
+        profilePhotoAssetId,
+        profilePhotoPosition: { x:50, y:50 },
       };
       await settingsMutation.run("portal-settings", async () => {
         if (isDemo)
@@ -2426,13 +2470,8 @@ function StudentSettings({
             }),
           );
         else {
-          await studioCommand("students", {
-            command: "update_self",
-            entityId: student.id,
-            expectedVersion: student.version,
-            payload: updates,
-            reason: "Student updated portal settings",
-          });
+          if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, notificationPreferences:form.notificationPreferences }, reason:"Linked contact updated portal settings" });
+          else await studioCommand("students", { command: "update_self", entityId: student.id, expectedVersion: student.version, payload: updates, reason: "Student updated portal settings" });
           await queryClient.invalidateQueries({ queryKey: ["studio"] });
         }
       });
@@ -2534,7 +2573,7 @@ function StudentSettings({
       <Section title="Contact & portal" marked>
         <form className="settings-form" onSubmit={save}>
           <label>
-            Preferred name
+            {role === "guardian" ? "Your name" : "Preferred name"}
             <input
               value={form.preferredName}
               onChange={(event) =>
@@ -2542,7 +2581,7 @@ function StudentSettings({
               }
             />
           </label>
-          <label>
+          {role === "student" && <label>
             Pronouns
             <input
               value={form.pronouns}
@@ -2550,7 +2589,7 @@ function StudentSettings({
                 setForm({ ...form, pronouns: event.target.value })
               }
             />
-          </label>
+          </label>}
           <label>
             Email
             <input
@@ -2562,7 +2601,7 @@ function StudentSettings({
               }
             />
           </label>
-          <label>
+          {role === "student" && <label>
             Phone
             <input
               value={form.phone}
@@ -2570,7 +2609,8 @@ function StudentSettings({
                 setForm({ ...form, phone: event.target.value })
               }
             />
-          </label>
+          </label>}
+          {role === "student" && <label className="full profile-photo-field">Profile photo<input type="file" accept="image/jpeg,image/png,image/webp" onChange={(event)=>{setProfilePhoto(event.target.files?.[0]);setRemovePhoto(false);}}/><small>Optional. Shown only in portal identity areas; actor-page headshots remain separate.</small>{student.profilePhotoUrl && !removePhoto && <span className="profile-photo-preview"><img src={student.profilePhotoUrl} alt="Current profile"/>Current photo <button type="button" className="text-button" onClick={()=>{setRemovePhoto(true);setProfilePhoto(undefined);}}>Remove</button></span>}{removePhoto&&<small>Photo will be removed when you save.</small>}</label>}
           <label>
             Timezone
             <TimezoneSelect
@@ -2607,6 +2647,10 @@ function StudentSettings({
           </div>
         </form>
       </Section>
+      <Section title="Notifications">
+        <p className="section-intro">Choose optional updates. Security messages, credentials, receipts, cancellations, and critical payment failures are always sent to the responsible recipient.</p>
+        <div className="settings-list">{Object.entries(portalNotificationLabels).map(([key,label])=><Toggle key={key} checked={Boolean(form.notificationPreferences[key as keyof typeof form.notificationPreferences])} label={label} detail={key === "lessonReminders" ? "Students receive lesson reminders by default." : "Email and in-app updates when applicable."} onChange={(checked)=>setForm({...form,notificationPreferences:{...form.notificationPreferences,[key]:checked}})}/>)}</div>
+      </Section>
       <Section title="Password & security">
         <form className="settings-form" onSubmit={saveLogin}>
           <label>
@@ -2631,7 +2675,7 @@ function StudentSettings({
           </div>
         </form>
       </Section>
-      {(role === "guardian" || !student.isMinor) && <Section title="Payment method">
+      {(role === "guardian" ? (linkedContact?.canViewFinance ?? student.isMinor) : !student.isMinor) && <Section title="Payment method">
         <div className="data-summary">
           <CreditCard />
           <div>

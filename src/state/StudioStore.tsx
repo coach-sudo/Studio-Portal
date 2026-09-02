@@ -202,6 +202,15 @@ export function scopeStudioSnapshot(
     packages: snapshot.packages.filter((row) =>
       studentIds.includes(row.studentId),
     ),
+    packageSubscriptions: snapshot.packageSubscriptions.filter((row) =>
+      studentIds.includes(row.studentId),
+    ),
+    packageGifts: snapshot.packageGifts.filter(
+      (row) => !row.claimedStudentId || studentIds.includes(row.claimedStudentId),
+    ),
+    linkedContacts: snapshot.linkedContacts.filter((row) =>
+      studentIds.includes(row.studentId),
+    ),
     creditEntries: snapshot.creditEntries.filter((row) =>
       packageIds.includes(row.packageId),
     ),

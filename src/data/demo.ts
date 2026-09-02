@@ -329,6 +329,10 @@ const base: StudioSnapshot = {
     },
   ],
   packageDefinitions: [],
+  packageBillingOptions: [],
+  packageSubscriptions: [],
+  packageGifts: [],
+  linkedContacts: [],
   studentPricingRules: [],
   creditEntries: [
     {

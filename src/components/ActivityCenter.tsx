@@ -31,6 +31,7 @@ export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audie
   }, []);
 
   const unread = feed.filter((item) => !read.has(item.key)).length;
+  const visibleFeed = feed.filter((item) => !read.has(item.key));
   async function markRead(item: ActivityItem) {
     setRead((current) => new Set(current).add(item.key));
     if (!supabase) return;
@@ -51,10 +52,10 @@ export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audie
     {open && <section className="activity-menu" aria-label="Recent activity">
       <header><div><strong>Recent activity</strong><small>Updates from the last 30 days</small></div><button aria-label="Close notifications" onClick={() => setOpen(false)}><X /></button></header>
       <div className="activity-list">
-        {feed.map((item) => { const Icon = icons[item.kind]; return <button key={item.key} className={`${read.has(item.key) ? "read" : "unread"} ${item.priority}`} aria-label={`${item.title}. ${item.detail}`} onClick={() => { void markRead(item); setOpen(false); navigate(item.route); }}>
+        {visibleFeed.map((item) => { const Icon = icons[item.kind]; return <button key={item.key} className={`unread ${item.priority}`} aria-label={`${item.title}. ${item.detail}`} onClick={() => { void markRead(item); setOpen(false); navigate(item.route); }}>
           <Icon /><span><strong>{item.title}</strong><small>{item.detail}</small><time>{formatStudioDateTime(item.occurredAt, data.settings.timezone)}</time></span>
         </button>; })}
-        {!feed.length && <p>Nothing new. Recent bookings and studio work will appear here.</p>}
+        {!visibleFeed.length && <p>You’re all caught up. New bookings and studio work will appear here.</p>}
       </div>
     </section>}
   </div>;

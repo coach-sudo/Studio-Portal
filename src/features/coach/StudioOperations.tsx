@@ -49,6 +49,7 @@ import {
 } from "../../domain/presentation";
 import { useStudioStore } from "../../state/StudioStore";
 import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
+import { calculatePackagePrice, packagePricingChanged } from "../../domain/packagePricing";
 
 const studentName = (data: StudioSnapshot, id: string) =>
   data.students.find((item) => item.id === id)?.fullName || "Student";
@@ -1899,6 +1900,25 @@ export function MaterialsView({
     </Section>
   );
 }
+type PackageBuilderPayload = {
+  id?: string;
+  serviceIds: string[];
+  sessionCounts: number[];
+  deliveryFormats: ("google_meet" | "in_person")[];
+  name?: string;
+  description: string;
+  expirationDays?: number;
+  discountType: "none" | "fixed" | "percent";
+  discountMinor: number;
+  discountBasisPoints: number;
+  visibility: "private" | "public";
+  directPurchase: boolean;
+  giftable: boolean;
+  renewalModes: ("one_time" | "weekly" | "biweekly" | "monthly" | "balance_threshold")[];
+  balanceThreshold: number;
+  active: boolean;
+};
+
 export function FinanceView({
   data,
   isDemo,
@@ -1952,38 +1972,36 @@ export function FinanceView({
       );
     }
   };
-  const save = async (value: PackageDefinition) => {
+  const save = async (value: PackageBuilderPayload) => {
     try {
-      if (isDemo)
-        store.transact((draft) => {
-          const existing = draft.packageDefinitions.find(
-            (item) => item.id === value.id,
-          );
-          if (existing)
-            Object.assign(existing, value, {
-              version: existing.version + 1,
-              updatedAt: new Date().toISOString(),
-            });
-          else draft.packageDefinitions.push(value);
+      if (isDemo) {
+        store.transact((draft)=>{
+          for(const serviceId of value.serviceIds)for(const sessionCount of value.sessionCounts)for(const deliveryFormat of value.deliveryFormats){
+            const service=draft.bookingServices.find((item)=>item.id===serviceId);if(!service)continue;
+            const unitPrice=service.priceMinor+(deliveryFormat==="in_person"?draft.settings.bookingDefaults.inPersonUpchargeMinor:0);
+            const price=calculatePackagePrice({unitPriceMinor:unitPrice,sessionCount,discountType:value.discountType,discountMinor:value.discountMinor,discountBasisPoints:value.discountBasisPoints});
+            const definition:PackageDefinition={id:value.id||`package-definition-${crypto.randomUUID()}`,studioId:draft.studioId,name:value.name||`${service.name} — ${sessionCount} lesson${sessionCount===1?"":"s"}`,description:value.description,sessionCount,sessionDurationMinutes:service.durationMinutes,priceMinor:price.priceMinor,basePriceMinor:price.basePriceMinor,discountMinor:price.discountMinor,discountType:value.discountType,discountBasisPoints:value.discountBasisPoints,currency:service.currency,expirationDays:value.expirationDays,eligibleServiceIds:[service.id],meetingProviders:[deliveryFormat],deliveryFormat,recurringEligible:value.renewalModes.some((mode)=>mode!=="one_time"),visibility:value.visibility,directPurchase:value.directPurchase,giftable:value.giftable,active:value.active,pricingServiceId:service.id,pricingServiceVersion:service.version,pricingStatus:"current",version:1,updatedAt:new Date().toISOString()};
+            const current=draft.packageDefinitions.find((item)=>item.id===definition.id);if(current)Object.assign(current,definition,{version:current.version+1});else draft.packageDefinitions.push(definition);
+          }
         });
+        setNotice("Package catalog saved.");
+      }
       else {
+        const existing = value.id ? data.packageDefinitions.find((item) => item.id === value.id) : undefined;
+        const commandPayload = existing
+          ? { ...value, pricingServiceId: value.serviceIds[0], sessionCount: value.sessionCounts[0], deliveryFormat: value.deliveryFormats[0] }
+          : value;
         await studioCommand("packages", {
-          command: data.packageDefinitions.some((item) => item.id === value.id)
-            ? "update"
-            : "create",
-          entityId: data.packageDefinitions.some((item) => item.id === value.id)
-            ? value.id
-            : undefined,
-          expectedVersion:
-            data.packageDefinitions.find((item) => item.id === value.id)
-              ?.version ?? 0,
-          payload: value as unknown as Record<string, unknown>,
+          command: existing ? "update" : "bulk_create",
+          entityId: existing?.id,
+          expectedVersion: existing?.version ?? 0,
+          payload: commandPayload as unknown as Record<string, unknown>,
           reason: "Coach configured lesson package",
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setDialog(undefined);
-      setNotice("Package catalog saved.");
+      if (!isDemo) setNotice(value.id ? "Package recalculated and saved." : "Package combinations created with server-calculated prices.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -2028,6 +2046,10 @@ export function FinanceView({
                 >
                   {definition.active ? definition.visibility : "archived"}
                 </Status>
+                {packagePricingChanged(definition, data.bookingServices.find((service) => service.id === definition.pricingServiceId)) && (
+                  <Status tone="warn">Pricing changed</Status>
+                )}
+                {definition.giftable && definition.visibility === "public" && <a className="button-link" href={`/gift/${definition.id}`} target="_blank" rel="noreferrer">Gift link</a>}
                 <button onClick={() => setDialog(definition)}>Edit</button>
               </article>
             ))}
@@ -2339,101 +2361,63 @@ function PackageDefinitionDialog({
   value?: PackageDefinition;
   data: StudioSnapshot;
   onClose: () => void;
-  onSave: (value: PackageDefinition) => void;
+  onSave: (value: PackageBuilderPayload) => void;
 }) {
-  const [form, setForm] = useState<PackageDefinition>(() =>
-      value
-        ? structuredClone(value)
-        : {
-            id: `package-definition-${crypto.randomUUID()}`,
-            studioId: data.studioId,
-            name: "",
-            description: "",
-            sessionCount: 4,
-            sessionDurationMinutes: 60,
-            priceMinor: 0,
-            discountMinor: 0,
-            currency: "USD",
-            expirationDays: 180,
-            eligibleServiceIds: [],
-            meetingProviders: ["google_meet", "in_person"],
-            recurringEligible: true,
-            visibility: "private",
-            directPurchase: false,
-            active: true,
-            version: 1,
-            updatedAt: new Date().toISOString(),
-          },
-    ),
-    toggle = (items: string[], item: string, checked: boolean) =>
-      checked
-        ? [...new Set([...items, item])]
-        : items.filter((current) => current !== item);
+  const [form, setForm] = useState<PackageBuilderPayload>(() => ({
+    id: value?.id,
+    serviceIds: value?.pricingServiceId ? [value.pricingServiceId] : value?.eligibleServiceIds.slice(0, 1) || [],
+    sessionCounts: [value?.sessionCount || 4],
+    deliveryFormats: [(value?.deliveryFormat || value?.meetingProviders[0] || "google_meet") as "google_meet" | "in_person"],
+    name: value?.name || "",
+    description: value?.description || "",
+    expirationDays: value?.expirationDays || 180,
+    discountType: value?.discountType || "none",
+    discountMinor: value?.discountMinor || 0,
+    discountBasisPoints: value?.discountBasisPoints || 0,
+    visibility: value?.visibility || "private",
+    directPurchase: value?.directPurchase ?? true,
+    giftable: value?.giftable ?? true,
+    renewalModes: ["one_time"],
+    balanceThreshold: 1,
+    active: value?.active ?? true,
+  }));
+  const toggle = <T extends string>(items: T[], item: T, checked: boolean) => checked ? [...new Set([...items, item])] : items.filter((current) => current !== item);
+  const toggleCount = (count: number, checked: boolean) => checked ? [...new Set([...form.sessionCounts, count])] : form.sessionCounts.filter((current) => current !== count);
+  const previewService = data.bookingServices.find((service) => service.id === form.serviceIds[0]);
+  const previewCount = form.sessionCounts[0] || 1;
+  const previewUnit = (previewService?.priceMinor || 0) + (form.deliveryFormats[0] === "in_person" ? data.settings.bookingDefaults.inPersonUpchargeMinor : 0);
+  const preview = calculatePackagePrice({ unitPriceMinor: previewUnit, sessionCount: previewCount, discountType: form.discountType, discountMinor: form.discountMinor, discountBasisPoints: form.discountBasisPoints });
+  const combinationCount = form.serviceIds.length * form.sessionCounts.length * form.deliveryFormats.length;
   return (
     <Dialog
-      title={value ? "Edit package" : "Add package"}
-      description="Package pricing is independent from single-session pricing. Stripe prices are created automatically for direct-purchase packages."
+      title={value ? "Edit and recalculate package" : "Create packages"}
+      description="Choose services, lesson counts, and formats. Coach’D calculates every price from your current service catalog—there is no editable price field."
       onClose={onClose}
     >
       <form
         className="workflow-form"
         onSubmit={(event) => {
           event.preventDefault();
+          if (!form.serviceIds.length || !form.sessionCounts.length || !form.deliveryFormats.length) return;
           onSave(form);
         }}
       >
-        <label>
-          Name
-          <input
-            required
-            value={form.name}
-            onChange={(event) => setForm({ ...form, name: event.target.value })}
-          />
-        </label>
-        <label>
-          Sessions
-          <input
-            required
-            type="number"
-            min="1"
-            value={form.sessionCount}
-            onChange={(event) =>
-              setForm({ ...form, sessionCount: Number(event.target.value) })
-            }
-          />
-        </label>
-        <label>
-          Session duration
-          <input
-            required
-            type="number"
-            min="15"
-            step="15"
-            value={form.sessionDurationMinutes}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                sessionDurationMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Package price (USD)
-          <input
-            required
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.priceMinor / 100}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                priceMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-        </label>
+        <fieldset className="full option-fieldset"><legend>Services</legend>
+          {data.bookingServices.filter((service) => service.published).map((service) => <label className="check-row" key={service.id}><input type="checkbox" disabled={Boolean(value)} checked={form.serviceIds.includes(service.id)} onChange={(event) => setForm({ ...form, serviceIds: toggle(form.serviceIds, service.id, event.target.checked) })}/><span><strong>{service.name}</strong><small>{formatMoney(service.priceMinor, service.currency)} per lesson</small></span></label>)}
+          {!data.bookingServices.some((service) => service.published) && <small>Publish a booking service before creating a package.</small>}
+        </fieldset>
+        <fieldset className="full option-fieldset"><legend>Lesson counts</legend>
+          <div className="package-choice-grid">{[1,4,6,8,10,12].map((count) => <label className="choice-chip" key={count}><input type="checkbox" disabled={Boolean(value)} checked={form.sessionCounts.includes(count)} onChange={(event) => setForm({ ...form, sessionCounts: toggleCount(count, event.target.checked) })}/>{count}</label>)}</div>
+          {!value && <label>Custom count<input type="number" min="1" max="100" placeholder="e.g. 16" onBlur={(event) => { const count=Number(event.target.value); if(count>0)setForm({ ...form, sessionCounts:[...new Set([...form.sessionCounts,count])] }); }}/></label>}
+        </fieldset>
+        <fieldset className="full option-fieldset"><legend>Delivery formats</legend>
+          {(["google_meet","in_person"] as const).map((format) => <label className="check-row" key={format}><input type="checkbox" disabled={Boolean(value)} checked={form.deliveryFormats.includes(format)} onChange={(event) => setForm({ ...form, deliveryFormats: toggle(form.deliveryFormats, format, event.target.checked) })}/><span><strong>{format === "google_meet" ? "Google Meet" : "In person"}</strong>{format === "in_person" && data.settings.bookingDefaults.inPersonUpchargeMinor > 0 && <small>{formatMoney(data.settings.bookingDefaults.inPersonUpchargeMinor)} upcharge per lesson</small>}</span></label>)}
+        </fieldset>
+        <label>Discount type<select value={form.discountType} onChange={(event) => setForm({ ...form, discountType:event.target.value as PackageBuilderPayload["discountType"] })}><option value="none">No discount</option><option value="percent">Percentage</option><option value="fixed">Fixed amount</option></select></label>
+        {form.discountType === "percent" && <label>Discount percentage<input type="number" min="0" max="100" value={form.discountBasisPoints/100} onChange={(event) => setForm({ ...form, discountBasisPoints:Math.round(Number(event.target.value)*100) })}/></label>}
+        {form.discountType === "fixed" && <label>Discount amount<input type="number" min="0" step="0.01" value={form.discountMinor/100} onChange={(event) => setForm({ ...form, discountMinor:Math.round(Number(event.target.value)*100) })}/></label>}
+        <div className="full package-price-preview" role="status"><div><small>Example base price</small><strong>{formatMoney(preview.basePriceMinor)}</strong></div><div><small>Savings</small><strong>{formatMoney(preview.discountMinor)}</strong></div><div><small>Calculated total</small><strong>{formatMoney(preview.priceMinor)}</strong></div><p>{combinationCount || 0} package{combinationCount === 1 ? "" : "s"} will be {value ? "recalculated" : "created"}. Final prices are verified on the server.</p></div>
+        <label>Name override<input value={form.name || ""} onChange={(event) => setForm({ ...form, name:event.target.value })} placeholder="Leave blank for automatic names"/><small>For bulk creation, automatic names keep every combination clear.</small></label>
         <label>
           Expires after days
           <input
@@ -2468,67 +2452,16 @@ function PackageDefinitionDialog({
         </label>
         <label className="full">
           Description
-          <textarea
-            value={form.description}
+          <textarea value={form.description}
             onChange={(event) =>
               setForm({ ...form, description: event.target.value })
             }
           />
         </label>
-        <fieldset className="full option-fieldset">
-          <legend>Eligible services</legend>
-          {data.bookingServices.map((service) => (
-            <label className="check-row" key={service.id}>
-              <input
-                type="checkbox"
-                checked={form.eligibleServiceIds.includes(service.id)}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    eligibleServiceIds: toggle(
-                      form.eligibleServiceIds,
-                      service.id,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {service.name}
-            </label>
-          ))}
+        <fieldset className="full option-fieldset"><legend>Purchase and renewal choices</legend>
+          {([['one_time','One-time purchase'],['weekly','Every week'],['biweekly','Every two weeks'],['monthly','Monthly'],['balance_threshold','When credits run low']] as const).map(([mode,label]) => <label className="check-row" key={mode}><input type="checkbox" checked={form.renewalModes.includes(mode)} onChange={(event) => setForm({ ...form, renewalModes:toggle(form.renewalModes,mode,event.target.checked) })}/>{label}</label>)}
+          {form.renewalModes.includes("balance_threshold") && <label>Renew at this balance<input type="number" min="0" max="20" value={form.balanceThreshold} onChange={(event)=>setForm({...form,balanceThreshold:Number(event.target.value)})}/></label>}
         </fieldset>
-        <fieldset className="full option-fieldset">
-          <legend>Meeting formats</legend>
-          {(["google_meet", "in_person"] as const).map((provider) => (
-            <label className="check-row" key={provider}>
-              <input
-                type="checkbox"
-                checked={form.meetingProviders.includes(provider)}
-                onChange={(event) =>
-                  setForm({
-                    ...form,
-                    meetingProviders: toggle(
-                      form.meetingProviders,
-                      provider,
-                      event.target.checked,
-                    ) as PackageDefinition["meetingProviders"],
-                  })
-                }
-              />
-              {provider.replaceAll("_", " ")}
-            </label>
-          ))}
-        </fieldset>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={form.recurringEligible}
-            onChange={(event) =>
-              setForm({ ...form, recurringEligible: event.target.checked })
-            }
-          />
-          Allow recurring lessons
-        </label>
         <label className="check-row">
           <input
             type="checkbox"
@@ -2539,6 +2472,7 @@ function PackageDefinitionDialog({
           />
           Student can buy directly
         </label>
+        <label className="check-row"><input type="checkbox" checked={form.giftable} onChange={(event)=>setForm({...form,giftable:event.target.checked})}/>Can be purchased as a gift</label>
         <label className="check-row full">
           <input
             type="checkbox"
@@ -2553,7 +2487,7 @@ function PackageDefinitionDialog({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary">Save package</button>
+          <button className="primary" disabled={!combinationCount}>{value ? "Recalculate package" : `Create ${combinationCount || ""} package${combinationCount === 1 ? "" : "s"}`}</button>
         </div>
       </form>
     </Dialog>

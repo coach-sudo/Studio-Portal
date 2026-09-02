@@ -128,18 +128,11 @@ describe("interactive booking flows", () => {
     await user.click(
       await screen.findByRole("button", { name: "Add package" }),
     );
-    const dialog = screen.getByRole("dialog", { name: "Add package" });
-    await user.type(
-      within(dialog).getByLabelText("Name"),
-      "Four 60-minute sessions",
-    );
-    await user.clear(within(dialog).getByLabelText("Package price (USD)"));
-    await user.type(
-      within(dialog).getByLabelText("Package price (USD)"),
-      "190",
-    );
+    const dialog = screen.getByRole("dialog", { name: "Create packages" });
+    await user.click(within(dialog).getByRole("checkbox", { name: /Private Acting Coaching/i }));
+    await user.type(within(dialog).getByPlaceholderText("Leave blank for automatic names"), "Four 60-minute sessions");
     await user.click(
-      within(dialog).getByRole("button", { name: "Save package" }),
+      within(dialog).getByRole("button", { name: "Create 1 package" }),
     );
     expect(
       await screen.findByText("Package catalog saved."),

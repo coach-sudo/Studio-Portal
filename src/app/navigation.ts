@@ -38,12 +38,19 @@ const studentNavigation: NavigationItem[] = [
   { to: "settings", label: "Settings", icon: Settings },
 ];
 
-export function portalNavigation(role: "student" | "guardian", isMinor: boolean) {
+export function portalNavigation(role: "student" | "guardian", isMinor: boolean, permissions?: { canViewSchedule?: boolean; canViewWork?: boolean; canViewFinance?: boolean; canManageProfile?: boolean }) {
   return studentNavigation
     .map((item) =>
       role === "guardian" && item.to === ""
         ? { ...item, label: "Overview" }
         : item,
     )
-    .filter((item) => role === "guardian" || !isMinor || item.to !== "payments");
+    .filter((item) => {
+      if (item.to === "payments") return role === "guardian" ? permissions?.canViewFinance !== false : !isMinor;
+      if (role !== "guardian") return true;
+      if (item.to === "bookings") return permissions?.canViewSchedule !== false;
+      if (item.to === "work") return permissions?.canViewWork !== false;
+      if (item.to === "actor-page") return permissions?.canManageProfile !== false;
+      return true;
+    });
 }
