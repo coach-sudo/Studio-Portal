@@ -34,6 +34,7 @@ import type {
 } from "../../domain/model";
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
+import { useStudioMutation } from "../../hooks/useStudioMutation";
 
 type Panel =
   "studio" | "portal" | "pricing" | "email" | "integrations" | "data";
@@ -46,6 +47,7 @@ export function StudioSettings({
 }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
+    settingsMutation = useStudioMutation(),
     [panel, setPanel] = useState<Panel>("studio"),
     [notice, setNotice] = useState(""),
     [health, setHealth] = useState<PlatformHealth>({
@@ -65,34 +67,37 @@ export function StudioSettings({
     return next;
   };
   const save = async (updates: Partial<Settings>, message: string) => {
+    if (settingsMutation.isPending()) return;
     try {
-      if (isDemo)
-        store.transact((draft) => {
-          draft.settings = { ...draft.settings, ...updates };
-          draft.displayName =
-            draft.settings.coachName.split(" ")[0] || draft.displayName;
-        });
-      else {
-        await studioCommand("settings", {
-          command: "update",
-          expectedVersion: 1,
-          payload: { settings: updates },
-          reason: "Coach updated studio settings",
-        });
-        queryClient.setQueryData<StudioSnapshot>(
-          ["studio", "coach", undefined],
-          (current) =>
-            current
-              ? {
-                  ...current,
-                  displayName:
-                    updates.coachName?.split(" ")[0] || current.displayName,
-                  settings: { ...current.settings, ...updates },
-                }
-              : current,
-        );
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
+      await settingsMutation.run(`settings-${panel}`, async () => {
+        if (isDemo)
+          store.transact((draft) => {
+            draft.settings = { ...draft.settings, ...updates };
+            draft.displayName =
+              draft.settings.coachName.split(" ")[0] || draft.displayName;
+          });
+        else {
+          await studioCommand("settings", {
+            command: "update",
+            expectedVersion: 1,
+            payload: { settings: updates },
+            reason: "Coach updated studio settings",
+          });
+          queryClient.setQueryData<StudioSnapshot>(
+            ["studio", "coach", undefined],
+            (current) =>
+              current
+                ? {
+                    ...current,
+                    displayName:
+                      updates.coachName?.split(" ")[0] || current.displayName,
+                    settings: { ...current.settings, ...updates },
+                  }
+                : current,
+          );
+          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        }
+      });
       setNotice(message);
     } catch (reason) {
       setNotice(

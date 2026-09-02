@@ -3,6 +3,12 @@ import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { zonedDateTimeToUtc } from "./_shared/timezone";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
+import {
+  classifyProviderIntake,
+  matchStudentIdentity,
+  providerFromText,
+  type IntakeChangeType,
+} from "./_shared/provider-classification";
 
 type StudentRow = {
   id: string;
@@ -64,16 +70,7 @@ const personKey = (value?: string | null) =>
     .split(" ")
     .filter((part) => part.length > 1)
     .join(" ");
-const provider = (text: string) =>
-  /lessonface/i.test(text)
-    ? "lessonface"
-    : /wyzant/i.test(text)
-      ? "wyzant"
-      : /lessons\.com/i.test(text)
-        ? "lessons_com"
-        : /(acuity|squarespace scheduling)/i.test(text)
-          ? "acuity"
-          : undefined;
+const provider = providerFromText;
 const displayProvider = (value: string) =>
   (
     ({
@@ -85,10 +82,6 @@ const displayProvider = (value: string) =>
       gmail: "Gmail",
     }) as Record<string, string>
   )[value] || value;
-const looksLikeLesson = (text: string) =>
-  /(lesson|coaching|acting|audition|session|class|consultation|rehearsal)/i.test(
-    text,
-  );
 export const gmailChangeType = (text: string) =>
   /\b(cancelled|canceled|cancellation)\b/i.test(text)
     ? "cancellation"
@@ -216,33 +209,6 @@ function titleIdentity(summary: string) {
   return fullName &&
     !/^(acting|lesson|session|coaching|private)$/i.test(fullName)
     ? { fullName, preferred }
-    : undefined;
-}
-
-function matchStudent(students: StudentRow[], text: string, emails: string[]) {
-  const normalizedEmails = emails.map((value) => normalize(value));
-  const byEmail = students.find((student) =>
-    [student.email, student.guardian_email].some(
-      (value) => value && normalizedEmails.includes(normalize(value)),
-    ),
-  );
-  if (byEmail)
-    return { student: byEmail, matchedBy: "email", confidence: 0.99 };
-  const haystack = ` ${normalize(text)} `;
-  const byName = students.find((student) =>
-    [student.full_name, student.preferred_name, student.guardian_name]
-      .filter(Boolean)
-      .some((value) => {
-        const name = normalize(value);
-        return name.length >= 4 && haystack.includes(` ${name} `);
-      }),
-  );
-  return byName
-    ? {
-        student: byName,
-        matchedBy: "student or guardian name",
-        confidence: 0.91,
-      }
     : undefined;
 }
 
@@ -693,10 +659,8 @@ async function importCalendar(
             (value) => value && coachEmails.includes(normalize(value)),
           ),
       ),
-      match = matchStudent(candidates, matchText, emails),
+      match = matchStudentIdentity(candidates, matchText, emails),
       identity = titleIdentity(event.summary || "");
-    if (!detected && !match && !identity) continue;
-    if (!looksLikeLesson(text) && !detected) continue;
     const source = detected || "google_calendar";
     const { data: prior } = await db
       .from("integration_imports")
@@ -705,6 +669,58 @@ async function importCalendar(
       .eq("provider", "google_calendar")
       .eq("external_id", event.id)
       .maybeSingle();
+    if (prior?.status === "ignored") continue;
+    const intakeDecision = classifyProviderIntake({
+      source: "google_calendar",
+      text,
+      provider: detected || "google_calendar",
+      parsedOccurrence: {
+        startsAt: event.start.dateTime,
+        endsAt: event.end.dateTime,
+      },
+      matchContext: {
+        studentId: match?.student.id,
+        matchedBy: match?.matchedBy,
+        confidence: match?.confidence,
+        identityEvidence: Boolean(
+          (identity?.fullName && emails[0]) || (detected && emails[0]),
+        ),
+      },
+    });
+    if (intakeDecision.disposition === "ignore") {
+      if (prior)
+        await db
+          .from("integration_imports")
+          .update({
+            status: "ignored",
+            confidence: intakeDecision.confidence,
+            matched_by: `classifier:${intakeDecision.reasonCode}`,
+            payload: event,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", prior.id);
+      continue;
+    }
+    if (intakeDecision.disposition === "needs_review") {
+      await db.from("integration_imports").upsert(
+        {
+          studio_id: studio.id,
+          provider: "google_calendar",
+          external_id: event.id,
+          detected_source: source,
+          student_id: match?.student.id || null,
+          lesson_id: prior?.lesson_id || null,
+          status: "needs_review",
+          confidence: intakeDecision.confidence,
+          matched_by: `classifier:${intakeDecision.reasonCode}`,
+          payload: event,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "studio_id,provider,external_id" },
+      );
+      review++;
+      continue;
+    }
     let student = match?.student;
     if (!student && identity) {
       student = candidates.find(
@@ -760,9 +776,11 @@ async function importCalendar(
         students.push(created);
       }
     }
-    const confidence =
+    const confidence = Math.max(
+      intakeDecision.confidence,
       match?.confidence ||
-      (student && identity?.fullName ? 0.88 : detected?.length ? 0.7 : 0.5);
+        (student && identity?.fullName ? 0.88 : detected?.length ? 0.7 : 0.5),
+    );
     let lessonId: string | undefined;
     if (student) {
       const { data: lesson, error } = await db
@@ -843,7 +861,9 @@ async function importCalendar(
         confidence,
         matched_by:
           match?.matchedBy ||
-          (student && identity ? "calendar event title" : null),
+          (student && identity
+            ? "calendar event title"
+            : `classifier:${intakeDecision.reasonCode}`),
         payload: event,
         updated_at: new Date().toISOString(),
       },
@@ -919,7 +939,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       ).filter(
         (value: string) => !coachEmailKeys(studio).includes(normalize(value)),
       ),
-      match = matchStudent(eligibleStudents(studio, students), text, emails),
+      match = matchStudentIdentity(eligibleStudents(studio, students), text, emails),
       candidate = gmailCandidate(
         body,
         headers,
@@ -933,20 +953,63 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       .eq("provider", "gmail")
       .eq("external_id", item.id)
       .maybeSingle();
-    if (!messageKind) {
+    const changeType: IntakeChangeType =
+        messageKind || gmailChangeType(text),
+      intakeDecision = classifyProviderIntake({
+        source: "gmail",
+        text,
+        provider: detected,
+        changeType,
+        parsedOccurrence: candidate
+          ? { startsAt: candidate.startsAt, endsAt: candidate.endsAt }
+          : undefined,
+        matchContext: {
+          studentId: match?.student.id,
+          lessonId: prior?.lesson_id || undefined,
+          matchedBy: match?.matchedBy,
+          confidence: match?.confidence,
+        },
+      });
+    if (prior?.status === "ignored") continue;
+    if (intakeDecision.disposition === "ignore") {
       if (prior?.status === "needs_review")
         await db
           .from("integration_imports")
           .update({
             status: "ignored",
-            confidence: 0,
-            matched_by: "Filtered: not a booking or lesson change",
+            confidence: intakeDecision.confidence,
+            matched_by: `classifier:${intakeDecision.reasonCode}`,
             updated_at: new Date().toISOString(),
           })
           .eq("id", prior.id);
       continue;
     }
-    const changeType = messageKind;
+    if (intakeDecision.disposition === "needs_review") {
+      await db.from("integration_imports").upsert(
+        {
+          studio_id: studio.id,
+          provider: "gmail",
+          external_id: item.id,
+          detected_source: detected,
+          student_id: match?.student.id || null,
+          lesson_id: prior?.lesson_id || null,
+          status: "needs_review",
+          confidence: intakeDecision.confidence,
+          matched_by: `classifier:${intakeDecision.reasonCode}`,
+          payload: {
+            headers,
+            snippet: message.snippet,
+            threadId: message.threadId,
+            candidate,
+            changeType,
+          },
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "studio_id,provider,external_id" },
+      );
+      review++;
+      continue;
+    }
     const isCancellation = changeType === "cancellation";
     const isReschedule = changeType === "reschedule";
     if (prior?.status === "ignored") continue;
@@ -1081,7 +1144,48 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
           match?.student.id,
         ),
       );
-      if (duplicates.length === 1) lessonId = duplicates[0].id;
+      if (duplicates.length === 1) {
+        const duplicateDecision = classifyProviderIntake({
+          source: "gmail",
+          text,
+          provider: detected,
+          changeType,
+          parsedOccurrence: {
+            startsAt: candidate.startsAt,
+            endsAt: candidate.endsAt,
+          },
+          matchContext: {
+            studentId: match?.student.id,
+            lessonId: duplicates[0].id,
+            matchedBy: match?.matchedBy,
+            confidence: match?.confidence,
+          },
+          duplicate: true,
+        });
+        await db.from("integration_imports").upsert(
+          {
+            studio_id: studio.id,
+            provider: "gmail",
+            external_id: item.id,
+            detected_source: detected,
+            student_id: match?.student.id || duplicates[0].student_id || null,
+            lesson_id: duplicates[0].id,
+            status: "ignored",
+            confidence: duplicateDecision.confidence,
+            matched_by: `classifier:${duplicateDecision.reasonCode}`,
+            payload: {
+              headers,
+              snippet: message.snippet,
+              threadId: message.threadId,
+              candidate,
+              changeType,
+            },
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "studio_id,provider,external_id" },
+        );
+        continue;
+      }
     }
     if (match && candidate && !lessonId) {
       const created = await db
@@ -1153,10 +1257,13 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         student_id: match?.student.id || null,
         lesson_id: lessonId || null,
         status,
-        confidence: match?.confidence || 0.65,
+        confidence: Math.max(
+          intakeDecision.confidence,
+          match?.confidence || 0.65,
+        ),
         matched_by: lessonId
-          ? `${match?.matchedBy || "provider message"}; Gmail lesson parsed`
-          : match?.matchedBy || null,
+          ? `${match?.matchedBy || "provider message"}; classifier:${intakeDecision.reasonCode}`
+          : `classifier:${intakeDecision.reasonCode}`,
         payload: {
           headers,
           snippet: message.snippet,

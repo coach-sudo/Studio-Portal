@@ -22,6 +22,14 @@ import {
   seriesDates,
 } from "../../domain/booking";
 import { formatMoney } from "../../domain/finance";
+import {
+  formatCalendarDateKey,
+  formatStudioDate,
+  formatStudioDateTime,
+  formatStudioTime,
+  safeStudioTimezone,
+  studioDateKey,
+} from "../../domain/presentation";
 import type {
   Booking,
   BookingService,
@@ -34,13 +42,24 @@ import type {
 import { isDemoMode, isSupabaseConfigured, supabase } from "../../lib/supabase";
 import { useStudioStore } from "../../state/StudioStore";
 
-const formatDate = (value: string, options: Intl.DateTimeFormatOptions = {}) =>
-  new Intl.DateTimeFormat(undefined, {
-    weekday: "short",
-    month: "short",
-    day: "numeric",
+const visitorTimezone = () =>
+  safeStudioTimezone(Intl.DateTimeFormat().resolvedOptions().timeZone);
+const formatDate = (
+  value: string,
+  options: Intl.DateTimeFormatOptions = {},
+  timezone = visitorTimezone(),
+) => {
+  const dateOptions = {
+    weekday: "short" as const,
+    month: "short" as const,
+    day: "numeric" as const,
+    year: undefined,
     ...options,
-  }).format(new Date(value));
+  };
+  return options.hour || options.minute
+    ? formatStudioDateTime(value, timezone, dateOptions)
+    : formatStudioDate(value, timezone, dateOptions);
+};
 const locationLabel = (value: MeetingProvider) =>
   value === "google_meet" ? "Google Meet" : "In person";
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -834,7 +853,7 @@ function BookingFlow({
                 new Date(offering.startsAt).getTime() +
                   service.durationMinutes * 60_000,
               ).toISOString(),
-              label: `${new Date(offering.startsAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} · ${remainingCapacity(offering.capacity, offering.enrolled)} spots`,
+              label: `${formatStudioTime(offering.startsAt, visitorTimezone())} · ${remainingCapacity(offering.capacity, offering.enrolled)} spots`,
             })),
     [
       offerings,
@@ -862,10 +881,7 @@ function BookingFlow({
         setSlots(
           payload.slots.map((item) => ({
             ...item,
-            label: new Date(item.startsAt).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            }),
+            label: formatStudioTime(item.startsAt, visitorTimezone()),
           })),
         ),
       )
@@ -875,10 +891,9 @@ function BookingFlow({
         ),
       );
   }, [demoSlots, live, service.category, service.id]);
-  const dayKey = (value: string | Date) => {
-    const date = value instanceof Date ? value : new Date(value);
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  };
+  const bookingTimezone = visitorTimezone();
+  const dayKey = (value: string | Date) =>
+    studioDateKey(value, bookingTimezone);
   const [selectedDay, setSelectedDay] = useState("");
   useEffect(() => {
     const availableDays = [
@@ -911,7 +926,7 @@ function BookingFlow({
     if (!chosen) return;
     setError("");
     setStatus("saving");
-    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const timezone = bookingTimezone;
     try {
       if (!live) {
         const booking = store.transact((draft) =>
@@ -1144,9 +1159,7 @@ function BookingFlow({
             <h2>Pick your first session</h2>
             <p className="step-copy">
               Times shown in{" "}
-              {Intl.DateTimeFormat()
-                .resolvedOptions()
-                .timeZone.replaceAll("_", " ")}
+              {bookingTimezone.replaceAll("_", " ")}
               .
             </p>
             {error && (
@@ -1184,12 +1197,18 @@ function BookingFlow({
                         setSelectedDay(key);
                         setSlot(undefined);
                       }}
-                      aria-label={`${day.toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })}${count ? `, ${count} times available` : ", unavailable"}`}
+                      aria-label={`${formatCalendarDateKey(key, { weekday: "long", month: "long", day: "numeric", year: undefined })}${count ? `, ${count} times available` : ", unavailable"}`}
                     >
                       <small>
-                        {day.toLocaleDateString([], { month: "short" })}
+                        {formatCalendarDateKey(key, { month: "short", day: undefined, year: undefined })}
                       </small>
-                      <strong>{day.getDate()}</strong>
+                      <strong>
+                        {formatCalendarDateKey(key, {
+                          day: "numeric",
+                          month: undefined,
+                          year: undefined,
+                        })}
+                      </strong>
                       {count > 0 && <i>{count}</i>}
                     </button>
                   );
@@ -1198,10 +1217,11 @@ function BookingFlow({
             </div>
             {selectedDay && (
               <h3>
-                {new Date(`${selectedDay}T12:00:00`).toLocaleDateString([], {
+                {formatCalendarDateKey(selectedDay, {
                   weekday: "long",
                   month: "long",
                   day: "numeric",
+                  year: undefined,
                 })}
               </h3>
             )}
@@ -1675,10 +1695,7 @@ function ManageBooking({
         setSlots(
           payload.slots.slice(0, 8).map((item) => ({
             ...item,
-            label: new Date(item.startsAt).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            }),
+            label: formatStudioTime(item.startsAt, visitorTimezone()),
           })),
         ),
       )

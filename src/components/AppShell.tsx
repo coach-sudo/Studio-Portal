@@ -1,31 +1,10 @@
-import {
-  CalendarCheck2,
-  CalendarDays,
-  Clapperboard,
-  FolderOpen,
-  Home,
-  Menu,
-  Search,
-  Settings,
-  Users,
-  WalletCards,
-} from "lucide-react";
+import { Menu, Search } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudio } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
-
-const nav = [
-  ["/coach", "Home", Home],
-  ["/coach/today", "Today", CalendarDays],
-  ["/coach/bookings", "Bookings", CalendarCheck2],
-  ["/coach/students", "Students", Users],
-  ["/coach/materials", "Materials", FolderOpen],
-  ["/coach/finance", "Payments", WalletCards],
-  ["/coach/actor-pages", "Actor Pages", Clapperboard],
-  ["/coach/settings", "Settings", Settings],
-] as const;
+import { coachNavigation } from "../app/navigation";
 
 export function AppShell() {
   const { data } = useStudio();
@@ -55,10 +34,10 @@ export function AppShell() {
       <aside className="sidebar">
         <div className="shell-brand">
           {data?.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
-          <div className="wordmark">{data?.settings.studioName ?? "Studio"}</div>
+          <div className="wordmark">{data?.settings.studioName ?? "Coach’D"}</div>
         </div>
         <nav aria-label="Coach navigation">
-          {nav.map(([to, label, Icon]) => (
+          {coachNavigation.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/coach"}>
               <Icon aria-hidden="true" />
               <span>{label}</span>
@@ -84,7 +63,7 @@ export function AppShell() {
       </main>
       {data && <ActivityCenter data={data} audience="coach" />}
       <nav className="mobile-nav" aria-label="Mobile navigation">
-        {nav.slice(0, 4).map(([to, label, Icon]) => (
+        {coachNavigation.slice(0, 4).map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={to} end={to === "/coach"}>
             <Icon />
             <span>{label}</span>
@@ -115,20 +94,20 @@ export function AppShell() {
                 placeholder="Find a workflow…"
                 aria-label="Find a workflow"
                 onKeyDown={(event) => {
-                  const match = nav.find(
-                    ([, label]) =>
+                  const match = coachNavigation.find(
+                    ({ label }) =>
                       label.toLowerCase() ===
                       event.currentTarget.value.toLowerCase(),
                   );
                   if (event.key === "Enter" && match) {
-                    navigate(match[0]);
+                    navigate(match.to);
                     setSearchOpen(false);
                   }
                   if (event.key === "Escape") setSearchOpen(false);
                 }}
               />
             </header>
-            {nav.map(([to, label, Icon]) => (
+            {coachNavigation.map(({ to, label, icon: Icon }) => (
               <button
                 key={to}
                 onClick={() => {

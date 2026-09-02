@@ -30,6 +30,11 @@ import {
 } from "../../data/bookingCommands";
 import { cancelDemoBooking, remainingCapacity } from "../../domain/booking";
 import { formatMoney } from "../../domain/finance";
+import {
+  formatStudioDate,
+  formatStudioDateTime,
+  formatStudioTime,
+} from "../../domain/presentation";
 import type {
   AvailabilityRule,
   Booking,
@@ -53,9 +58,9 @@ type Tab =
   | "classes"
   | "series";
 const tabs: readonly [Tab, string][] = [
+  ["calendar", "Calendar"],
   ["overview", "Overview"],
   ["setup", "Booking setup"],
-  ["calendar", "Calendar"],
   ["services", "Services"],
   ["availability", "Availability"],
   ["classes", "Classes & courses"],
@@ -78,8 +83,11 @@ export function BookingCenter() {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
-  const [tab, setTab] = useState<Tab>(
-    searchParams.get("view") === "calendar" ? "calendar" : "overview",
+  const requestedView = searchParams.get("view");
+  const [tab, setTab] = useState<Tab>(() =>
+    tabs.some(([id]) => id === requestedView)
+      ? (requestedView as Tab)
+      : "calendar",
   );
   const [dialog, setDialog] = useState<{ type: string; item?: any }>();
   const [notice, setNotice] = useState("");
@@ -766,6 +774,14 @@ function Overview({
     health.googleCalendar,
     health.gmail,
   ].filter(Boolean).length;
+  const recentBookings = [...data.bookings]
+    .filter(
+      (item) =>
+        !["expired", "cancelled", "late_cancelled"].includes(item.status),
+    )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+    .slice(0, 3);
+  const integrationsReady = readyCount === 4;
   return (
     <>
       <section className="metric-grid">
@@ -785,16 +801,18 @@ function Overview({
           value={String(seats)}
           detail="remaining across offerings"
         />
-        <Metric
-          label="Integration health"
-          value={`${readyCount}/4`}
-          detail={
-            health.mode === "live"
-              ? "live services ready"
-              : "demo configuration"
-          }
-          tone={readyCount === 4 ? "green" : "gold"}
-        />
+        {!integrationsReady && (
+          <Metric
+            label="Integration health"
+            value={`${readyCount}/4`}
+            detail={
+              health.mode === "live"
+                ? "services ready"
+                : "demo configuration"
+            }
+            tone="gold"
+          />
+        )}
       </section>
       <CoachPanel
         title="Recent bookings"
@@ -809,7 +827,7 @@ function Overview({
             <span>Status</span>
             <span />
           </div>
-          {[...data.bookings].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 5).map((booking) => (
+          {recentBookings.map((booking) => (
             <BookingRow
               key={booking.id}
               booking={booking}
@@ -817,9 +835,15 @@ function Overview({
               onOpen={() => onBooking(booking)}
             />
           ))}
+          {!recentBookings.length && (
+            <EmptyState
+              title="No active bookings yet"
+              detail="Confirmed and in-progress bookings will appear here."
+            />
+          )}
         </div>
       </CoachPanel>
-      <div className="coach-two-column">
+      <div className={`coach-two-column${integrationsReady ? " single" : ""}`}>
         <CoachPanel title="Needs attention">
           <div className="attention-card">
             <RefreshCw />
@@ -847,16 +871,18 @@ function Overview({
             </Status>
           </div>
         </CoachPanel>
-        <CoachPanel title="Integration setup">
-          <div className="setup-list">
-            <HealthLine ready={health.supabase}>Supabase database</HealthLine>
-            <HealthLine ready={health.googleCalendar}>
-              Google Calendar &amp; Meet
-            </HealthLine>
-            <HealthLine ready={health.stripe}>Stripe payments</HealthLine>
-            <HealthLine ready={health.gmail}>Gmail delivery</HealthLine>
-          </div>
-        </CoachPanel>
+        {!integrationsReady && (
+          <CoachPanel title="Integration setup">
+            <div className="setup-list">
+              <HealthLine ready={health.supabase}>Supabase database</HealthLine>
+              <HealthLine ready={health.googleCalendar}>
+                Google Calendar &amp; Meet
+              </HealthLine>
+              <HealthLine ready={health.stripe}>Stripe payments</HealthLine>
+              <HealthLine ready={health.gmail}>Gmail delivery</HealthLine>
+            </div>
+          </CoachPanel>
+        )}
       </div>
     </>
   );
@@ -898,7 +924,7 @@ function BookingRow({
       </div>
       <span>{serviceName(data, booking.serviceId)}</span>
       <span>
-        {new Date(booking.startsAt).toLocaleString([], {
+        {formatStudioDateTime(booking.startsAt, data.settings.timezone, {
           month: "short",
           day: "numeric",
           hour: "numeric",
@@ -1120,7 +1146,7 @@ function ManualBookingDialog({
         </label>
         {conflicts.length > 0 && <div className="calendar-conflict full" role="alert">
           <strong>Calendar conflict</strong>
-          {conflicts.map((item) => <p key={`${item.id}-${item.start}`}>You have “{item.summary}” from {new Date(item.start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} that day. Do you still want to schedule for this time?</p>)}
+          {conflicts.map((item) => <p key={`${item.id}-${item.start}`}>You have “{item.summary}” from {formatStudioTime(item.start, data.settings.timezone)}–{formatStudioTime(item.end, data.settings.timezone)} that day. Do you still want to schedule for this time?</p>)}
           <small>Submit again to schedule anyway, or choose another time.</small>
         </div>}
         <div className="form-actions full">
@@ -1295,8 +1321,8 @@ function Availability({
               <div>
                 <strong>{item.label}</strong>
                 <small>
-                  {new Date(item.startsAt).toLocaleDateString()} –{" "}
-                  {new Date(item.endsAt).toLocaleDateString()}
+                  {formatStudioDate(item.startsAt, data.settings.timezone)} –{" "}
+                  {formatStudioDate(item.endsAt, data.settings.timezone)}
                 </small>
               </div>
               <Status tone={item.kind === "unavailable" ? "warn" : "good"}>
@@ -1354,11 +1380,11 @@ function Classes({
             <article key={offering.id}>
               <div className="offering-date">
                 <span>
-                  {new Date(offering.startsAt).toLocaleDateString([], {
+                  {formatStudioDate(offering.startsAt, data.settings.timezone, {
                     month: "short",
                   })}
                 </span>
-                <strong>{new Date(offering.startsAt).getDate()}</strong>
+                <strong>{formatStudioDate(offering.startsAt, data.settings.timezone, { day: "numeric", month: undefined, year: undefined })}</strong>
               </div>
               <div>
                 <span className="eyebrow">
@@ -1366,8 +1392,11 @@ function Classes({
                 </span>
                 <h3>{offering.title}</h3>
                 <p>
-                  {new Date(offering.startsAt).toLocaleString([], {
+                  {formatStudioDateTime(offering.startsAt, data.settings.timezone, {
                     weekday: "long",
+                    month: undefined,
+                    day: undefined,
+                    year: undefined,
                     hour: "numeric",
                     minute: "2-digit",
                   })}{" "}
@@ -1429,7 +1458,7 @@ function Series({
               <div>
                 <strong>
                   {series.nextBillingAt
-                    ? new Date(series.nextBillingAt).toLocaleDateString()
+                    ? formatStudioDate(series.nextBillingAt, data.settings.timezone)
                     : "Paid upfront"}
                 </strong>
                 <small>next billing</small>
@@ -2329,7 +2358,7 @@ function BookingDialog({
             <div>
               <strong>Schedule</strong>
               <small>
-                {new Date(booking.startsAt).toLocaleString()} ·{" "}
+                {formatStudioDateTime(booking.startsAt, data.settings.timezone)} ·{" "}
                 {booking.location.replaceAll("_", " ")}
                 {booking.inPersonLocation
                   ? ` · ${booking.inPersonLocation}`

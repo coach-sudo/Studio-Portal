@@ -53,6 +53,11 @@ import { checkSchedulingConflicts, studioCommand } from "../../data/bookingComma
 import { uploadStudioFile } from "../../data/uploads";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
+import {
+  formatStudioDate,
+  formatStudioDateTime,
+} from "../../domain/presentation";
+import { useStudioMutation } from "../../hooks/useStudioMutation";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -80,7 +85,7 @@ export function StudentWorkspace() {
   >(null);
   const [editingNote, setEditingNote] = useState<Note>();
   const [notice, setNotice] = useState("");
-  const [savingStudent, setSavingStudent] = useState(false);
+  const studentMutation = useStudioMutation();
   const [settingCredentials, setSettingCredentials] = useState(false);
   const [removingStudent, setRemovingStudent] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
@@ -102,28 +107,29 @@ export function StudentWorkspace() {
     ["actor-page", "Actor page"],
   ] as const;
   const saveStudent = async (updates: Partial<Student>) => {
-    if (savingStudent) return;
-    setSavingStudent(true);
+    if (studentMutation.isPending()) return;
     setNotice("Saving student details…");
     try {
-      if (isDemo)
-        store.transact((draft) =>
-          Object.assign(
-            draft.students.find((item) => item.id === student.id)!,
-            updates,
-            { version: student.version + 1, updatedAt: now() },
-          ),
-        );
-      else {
-        await studioCommand("students", {
-          command: "update",
-          entityId: student.id,
-          expectedVersion: student.version,
-          payload: updates as Record<string, unknown>,
-          reason: "Coach updated student record",
-        });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
+      await studentMutation.run("student-details", async () => {
+        if (isDemo)
+          store.transact((draft) =>
+            Object.assign(
+              draft.students.find((item) => item.id === student.id)!,
+              updates,
+              { version: student.version + 1, updatedAt: now() },
+            ),
+          );
+        else {
+          await studioCommand("students", {
+            command: "update",
+            entityId: student.id,
+            expectedVersion: student.version,
+            payload: updates as Record<string, unknown>,
+            reason: "Coach updated student record",
+          });
+          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        }
+      });
       setDialog(null);
       setNotice("Student details saved.");
     } catch (reason) {
@@ -132,8 +138,6 @@ export function StudentWorkspace() {
           ? reason.message
           : "Student details could not be saved.",
       );
-    } finally {
-      setSavingStudent(false);
     }
   };
   const sendPortalInvite = async (accountType: "student" | "guardian") => {
@@ -601,7 +605,7 @@ export function StudentWorkspace() {
       {dialog === "edit" && (
         <StudentEditor
           student={student}
-          saving={savingStudent}
+          saving={studentMutation.isPending("student-details")}
           onClose={() => setDialog(null)}
           onSave={saveStudent}
         />
@@ -646,6 +650,7 @@ export function StudentWorkspace() {
         <AssignmentForm
           student={student}
           lessons={studentLessons}
+          timezone={data.settings.timezone}
           onClose={() => setDialog(null)}
           onSave={addAssignment}
         />
@@ -654,6 +659,7 @@ export function StudentWorkspace() {
         <MaterialForm
           student={student}
           lessons={studentLessons}
+          timezone={data.settings.timezone}
           isDemo={isDemo}
           onClose={() => setDialog(null)}
           onSave={addMaterial}
@@ -663,6 +669,7 @@ export function StudentWorkspace() {
         <MaterialForm
           student={student}
           lessons={studentLessons}
+          timezone={data.settings.timezone}
           isDemo={isDemo}
           fixedRole="actor_material"
           onClose={() => setDialog(null)}
@@ -673,6 +680,7 @@ export function StudentWorkspace() {
         <NoteForm
           student={student}
           lessons={studentLessons}
+          timezone={data.settings.timezone}
           note={editingNote}
           onClose={() => {
             setDialog(null);
@@ -725,7 +733,7 @@ function Overview({
               label="Next lesson"
               value={
                 upcoming
-                  ? new Date(upcoming.startsAt).toLocaleString()
+                  ? formatStudioDateTime(upcoming.startsAt, data.settings.timezone)
                   : "Nothing scheduled"
               }
               detail={upcoming?.topic || "Add a lesson when ready"}
@@ -806,7 +814,7 @@ function Overview({
               <dt>Last contact</dt>
               <dd>
                 {student.lastContactAt
-                  ? new Date(student.lastContactAt).toLocaleDateString()
+                  ? formatStudioDate(student.lastContactAt, data.settings.timezone)
                   : "—"}
               </dd>
             </div>
@@ -877,7 +885,7 @@ function Lessons({ data, student }: { data: Data; student: Student }) {
       <div>
         <strong>{lesson.topic}</strong>
         <small>
-          {new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}
+          {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} · {lesson.locationLabel}
         </small>
       </div>
       <Status
@@ -1195,10 +1203,10 @@ function CoachLessonHub({
       </Link>
       <Section title={lesson.topic} marked>
         <p className="section-intro">
-          {new Date(lesson.startsAt).toLocaleString()} · {lesson.locationLabel}{" "}
+          {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} · {lesson.locationLabel}{" "}
           · {lesson.status}
         </p>
-        <div className="form-actions">
+        <div className="form-actions lesson-primary-actions">
           {lesson.joinUrl && (
             <a
               className="button-link"
@@ -1209,34 +1217,41 @@ function CoachLessonHub({
               Open Google Meet
             </a>
           )}
-          <button onClick={() => setLessonAction("details")}>Edit lesson info</button>
           {lesson.status === "scheduled" && (
             <button className="primary-button" onClick={() => setLessonAction("reschedule")}>
               <CalendarDays /> Reschedule
             </button>
           )}
-          <button className="primary-button" onClick={() => setLessonAction("credits")}>
-            <CircleDollarSign /> Credits & payment
-          </button>
-          {lesson.status === "scheduled" && (
-            <button
-              className="danger-button"
-              disabled={cancelling}
-              onClick={() => void cancelLesson()}
-            >
-              <Trash2 />
-              {cancelling ? "Cancelling…" : "Cancel & remove lesson"}
-            </button>
-          )}
         </div>
         <section className="lesson-facts" aria-label="Lesson information">
-          <div><small>Date & time</small><strong>{new Date(lesson.startsAt).toLocaleString()}</strong></div>
+          <div><small>Date & time</small><strong>{formatStudioDateTime(lesson.startsAt, data.settings.timezone)}</strong></div>
           <div><small>Duration</small><strong>{durationMinutes} minutes</strong></div>
           <div><small>Delivery</small><strong>{lesson.locationLabel}</strong></div>
-          <div><small>Source</small><strong>{lesson.sourceProvider?.replaceAll("_", " ") || "Studio"}</strong></div>
           <div><small>Lesson work</small><strong>{notes.length} notes · {assignments.length} practice · {materials.length} files</strong></div>
-          <div><small>Payment</small><strong>{paidByCredit ? "Paid with lesson credit" : (lesson.paymentStatus || "untracked").replaceAll("_", " ")}{lesson.priceMinor != null ? ` · ${formatMoney(lesson.priceMinor)}` : ""}</strong></div>
         </section>
+        <details className="lesson-admin-disclosure">
+          <summary>Payment, credits &amp; lesson administration</summary>
+          <div className="lesson-admin-summary">
+            <div><small>Source</small><strong>{lesson.sourceProvider?.replaceAll("_", " ") || "Studio"}</strong></div>
+            <div><small>Payment</small><strong>{paidByCredit ? "Paid with lesson credit" : (lesson.paymentStatus || "untracked").replaceAll("_", " ")}{lesson.priceMinor != null ? ` · ${formatMoney(lesson.priceMinor)}` : ""}</strong></div>
+          </div>
+          <div className="form-actions">
+            <button onClick={() => setLessonAction("details")}>Edit lesson information</button>
+            <button onClick={() => setLessonAction("credits")}>
+              <CircleDollarSign /> Credits &amp; payment
+            </button>
+            {lesson.status === "scheduled" && (
+              <button
+                className="danger-button"
+                disabled={cancelling}
+                onClick={() => void cancelLesson()}
+              >
+                <Trash2 />
+                {cancelling ? "Cancelling…" : "Cancel lesson"}
+              </button>
+            )}
+          </div>
+        </details>
       </Section>
       {notice && (
         <p className="portal-notice" role="status">
@@ -1405,7 +1420,7 @@ function CoachLessonHub({
                       ? "Coach"
                       : student.preferredName || student.fullName}
                   </strong>
-                  <small>{new Date(item.createdAt).toLocaleString()}</small>
+                  <small>{formatStudioDateTime(item.createdAt, data.settings.timezone)}</small>
                 </header>
                 <p>{item.body}</p>
               </article>
@@ -1526,7 +1541,7 @@ function Work({
                 <small>
                   {item.details}
                   {item.dueAt
-                    ? ` · due ${new Date(item.dueAt).toLocaleDateString()}`
+                    ? ` · due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
                     : ""}
                 </small>
               </div>
@@ -1691,10 +1706,11 @@ function Notes({
             <span>
               <strong>
                 {group.lessonId
-                  ? new Date(
+                  ? formatStudioDate(
                       data.lessons.find((item) => item.id === group.lessonId)
                         ?.startsAt || group.updatedAt,
-                    ).toLocaleDateString()
+                      data.settings.timezone,
+                    )
                   : "General note"}
               </strong>
               <small>
@@ -1720,7 +1736,7 @@ function Notes({
           title={data.lessons.find((item) => item.id === selected.lessonId)?.topic || "Coaching notes"}
           description={
               selected.lessonId
-              ? new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString()
+              ? formatStudioDateTime(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt, data.settings.timezone)
               : "General coaching note"
           }
           onClose={() => setSelectedLessonId("")}
@@ -2149,7 +2165,7 @@ function Payments({
                 <CircleDollarSign />
                 <div>
                   <strong>{p.reason}</strong>
-                  <small>{new Date(p.createdAt).toLocaleDateString()}</small>
+                  <small>{formatStudioDate(p.createdAt, data.settings.timezone)}</small>
                 </div>
                 <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
               </article>
@@ -2792,12 +2808,14 @@ function LessonForm({
 function AssignmentForm({
   student,
   lessons,
+  timezone,
   note,
   onClose,
   onSave,
 }: {
   student: Student;
   lessons: Lesson[];
+  timezone: string;
   note?: Note;
   onClose: () => void;
   onSave: (a: Assignment) => void;
@@ -2854,7 +2872,7 @@ function AssignmentForm({
             </option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
-                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+                {formatStudioDateTime(lesson.startsAt, timezone)} · {lesson.topic}
               </option>
             ))}
           </select>
@@ -2923,6 +2941,7 @@ function AssignmentForm({
 function MaterialForm({
   student,
   lessons,
+  timezone,
   isDemo,
   onClose,
   onSave,
@@ -2930,6 +2949,7 @@ function MaterialForm({
 }: {
   student: Student;
   lessons: Lesson[];
+  timezone: string;
   isDemo: boolean;
   onClose: () => void;
   onSave: (m: Material) => void;
@@ -3010,7 +3030,7 @@ function MaterialForm({
               </option>
               {lessons.map((lesson) => (
                 <option key={lesson.id} value={lesson.id}>
-                  {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+                  {formatStudioDateTime(lesson.startsAt, timezone)} · {lesson.topic}
                 </option>
               ))}
             </select>
@@ -3088,12 +3108,14 @@ function MaterialForm({
 function NoteForm({
   student,
   lessons,
+  timezone,
   note,
   onClose,
   onSave,
 }: {
   student: Student;
   lessons: Lesson[];
+  timezone: string;
   note?: Note;
   onClose: () => void;
   onSave: (n: Note) => void;
@@ -3166,7 +3188,7 @@ function NoteForm({
             </option>
             {lessons.map((lesson) => (
               <option key={lesson.id} value={lesson.id}>
-                {new Date(lesson.startsAt).toLocaleString()} · {lesson.topic}
+                {formatStudioDateTime(lesson.startsAt, timezone)} · {lesson.topic}
               </option>
             ))}
           </select>

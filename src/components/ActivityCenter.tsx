@@ -1,12 +1,13 @@
-import { Bell, CalendarCheck2, CheckSquare, FileText, FolderOpen, Waypoints, X } from "lucide-react";
+import { Bell, CalendarCheck2, CheckSquare, FileText, FolderOpen, GraduationCap, Waypoints, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { StudioSnapshot } from "../domain/model";
 import { buildActivityFeed, type ActivityItem } from "../domain/activityFeed";
 import { supabase } from "../lib/supabase";
+import { formatStudioDateTime } from "../domain/presentation";
 import "./ActivityCenter.css";
 
-const icons = { booking: CalendarCheck2, material: FolderOpen, assignment: CheckSquare, note: FileText, import: Waypoints };
+const icons = { booking: CalendarCheck2, lesson: GraduationCap, material: FolderOpen, assignment: CheckSquare, note: FileText, import: Waypoints };
 
 export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audience: "coach" | "student" | "guardian" }) {
   const navigate = useNavigate();
@@ -14,7 +15,6 @@ export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audie
   const feed = useMemo(() => buildActivityFeed(data, audience), [data, audience]);
   const [read, setRead] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
-  const [selected, setSelected] = useState<ActivityItem>();
 
   useEffect(() => {
     if (!supabase) return;
@@ -51,18 +51,11 @@ export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audie
     {open && <section className="activity-menu" aria-label="Recent activity">
       <header><div><strong>Recent activity</strong><small>Updates from the last 30 days</small></div><button aria-label="Close notifications" onClick={() => setOpen(false)}><X /></button></header>
       <div className="activity-list">
-        {feed.map((item) => { const Icon = icons[item.kind]; return <button key={item.key} className={read.has(item.key) ? "read" : "unread"} onClick={() => { void markRead(item); setSelected(item); setOpen(false); }}>
-          <Icon /><span><strong>{item.title}</strong><small>{item.detail}</small><time>{new Date(item.occurredAt).toLocaleString()}</time></span>
+        {feed.map((item) => { const Icon = icons[item.kind]; return <button key={item.key} className={`${read.has(item.key) ? "read" : "unread"} ${item.priority}`} aria-label={`${item.title}. ${item.detail}`} onClick={() => { void markRead(item); setOpen(false); navigate(item.route); }}>
+          <Icon /><span><strong>{item.title}</strong><small>{item.detail}</small><time>{formatStudioDateTime(item.occurredAt, data.settings.timezone)}</time></span>
         </button>; })}
         {!feed.length && <p>Nothing new. Recent bookings and studio work will appear here.</p>}
       </div>
     </section>}
-    {selected && <div className="dialog-backdrop activity-detail-backdrop" onMouseDown={(event) => event.target === event.currentTarget && setSelected(undefined)}>
-      <section className="activity-detail" role="dialog" aria-modal="true" aria-label={selected.title}>
-        <button className="dialog-close" aria-label="Close" onClick={() => setSelected(undefined)}><X /></button>
-        <small>{new Date(selected.occurredAt).toLocaleString()}</small><h2>{selected.title}</h2><p>{selected.detail}</p>
-        <div className="form-actions"><button onClick={() => setSelected(undefined)}>Close</button><button className="primary-button" onClick={() => { const route = selected.route; setSelected(undefined); navigate(route); }}>Open details</button></div>
-      </section>
-    </div>}
   </div>;
 }

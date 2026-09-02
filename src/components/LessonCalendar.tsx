@@ -1,12 +1,18 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import type { Lesson } from "../domain/model";
+import {
+  calendarDateKey,
+  formatCalendarDateKey,
+  formatStudioDateTime,
+  formatStudioTime,
+  studioCalendarDate,
+  studioDateKey,
+} from "../domain/presentation";
 import "./LessonCalendar.css";
 
 export type CalendarView = "day" | "week" | "month" | "year";
 
-const dateKey = (date: Date) =>
-  `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const addDays = (date: Date, days: number) => {
   const next = new Date(date);
   next.setDate(next.getDate() + days);
@@ -33,7 +39,7 @@ export function LessonCalendar({
   onOpen: (lesson: Lesson) => void;
 }) {
   const [view, setView] = useState<CalendarView>("month");
-  const [anchor, setAnchor] = useState(new Date());
+  const [anchor, setAnchor] = useState(() => studioCalendarDate(new Date(), timezone));
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
   const visible = useMemo(() => {
@@ -63,11 +69,11 @@ export function LessonCalendar({
   const byDay = useMemo(() => {
     const groups = new Map<string, Lesson[]>();
     for (const lesson of visible) {
-      const key = dateKey(new Date(lesson.startsAt));
+      const key = studioDateKey(lesson.startsAt, timezone);
       groups.set(key, [...(groups.get(key) || []), lesson]);
     }
     return groups;
-  }, [visible]);
+  }, [timezone, visible]);
 
   const move = (amount: number) => {
     const next = new Date(anchor);
@@ -79,26 +85,20 @@ export function LessonCalendar({
   };
   const title =
     view === "day"
-      ? anchor.toLocaleDateString(undefined, {
+      ? formatCalendarDateKey(calendarDateKey(anchor), {
           weekday: "long",
           month: "long",
           day: "numeric",
           year: "numeric",
         })
       : view === "week"
-        ? `${startOfWeek(anchor).toLocaleDateString(undefined, { month: "short", day: "numeric" })} – ${addDays(startOfWeek(anchor), 6).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}`
+        ? `${formatCalendarDateKey(calendarDateKey(startOfWeek(anchor)), { month: "short", day: "numeric" })} – ${formatCalendarDateKey(calendarDateKey(addDays(startOfWeek(anchor), 6)), { month: "short", day: "numeric", year: "numeric" })}`
         : view === "month"
-          ? anchor.toLocaleDateString(undefined, {
+          ? formatCalendarDateKey(calendarDateKey(anchor), {
               month: "long",
               year: "numeric",
             })
           : String(anchor.getFullYear());
-  const formatTime = (lesson: Lesson) =>
-    new Date(lesson.startsAt).toLocaleTimeString(undefined, {
-      hour: "numeric",
-      minute: "2-digit",
-      timeZone: timezone,
-    });
   const eventButton = (lesson: Lesson) => (
     <button
       key={lesson.id}
@@ -106,17 +106,18 @@ export function LessonCalendar({
       className={`calendar-event ${lesson.status}`}
       onClick={() => onOpen(lesson)}
     >
-      <time>{formatTime(lesson)}</time>
+      <time>{formatStudioTime(lesson.startsAt, timezone)}</time>
       <strong>{studentName(lesson.studentId)}</strong>
       <span>{lesson.topic}</span>
     </button>
   );
   const dayCell = (day: Date, muted = false) => {
-    const events = byDay.get(dateKey(day)) || [];
+    const key = calendarDateKey(day);
+    const events = byDay.get(key) || [];
     return (
       <section
-        key={dateKey(day)}
-        className={`calendar-day ${muted ? "muted" : ""} ${dateKey(day) === dateKey(new Date()) ? "today" : ""}`}
+        key={key}
+        className={`calendar-day ${muted ? "muted" : ""} ${key === studioDateKey(new Date(), timezone) ? "today" : ""}`}
       >
         <button
           type="button"
@@ -125,9 +126,13 @@ export function LessonCalendar({
             setAnchor(day);
             setView("day");
           }}
-          aria-label={`Open ${day.toLocaleDateString()}`}
+          aria-label={`Open ${formatCalendarDateKey(key, { weekday: "long", month: "long", day: "numeric", year: "numeric" })}`}
         >
-          {day.getDate()}
+          {formatCalendarDateKey(key, {
+            day: "numeric",
+            month: undefined,
+            year: undefined,
+          })}
         </button>
         <div className="calendar-events">
           {events.slice(0, 4).map(eventButton)}
@@ -191,7 +196,7 @@ export function LessonCalendar({
               type="button"
               key={lesson.id}
               onClick={() => {
-                setAnchor(new Date(lesson.startsAt));
+                setAnchor(studioCalendarDate(lesson.startsAt, timezone));
                 onOpen(lesson);
               }}
             >
@@ -199,7 +204,7 @@ export function LessonCalendar({
               <span>
                 {studentName(lesson.studentId)} · {lesson.topic}
                 <small>
-                  {new Date(lesson.startsAt).toLocaleString()} ·{" "}
+                  {formatStudioDateTime(lesson.startsAt, timezone)} ·{" "}
                   {sourceName(lesson.sourceProvider)}
                 </small>
               </span>
@@ -216,7 +221,7 @@ export function LessonCalendar({
           >
             <ChevronLeft />
           </button>
-          <button type="button" onClick={() => setAnchor(new Date())}>
+          <button type="button" onClick={() => setAnchor(studioCalendarDate(new Date(), timezone))}>
             Today
           </button>
           <button
@@ -251,8 +256,8 @@ export function LessonCalendar({
             {Array.from({ length: 7 }, (_, index) =>
               addDays(startOfWeek(anchor), index),
             ).map((day) => (
-              <span key={dateKey(day)}>
-                {day.toLocaleDateString(undefined, {
+              <span key={calendarDateKey(day)}>
+                {formatCalendarDateKey(calendarDateKey(day), {
                   weekday: "short",
                   month: "short",
                   day: "numeric",
@@ -269,8 +274,8 @@ export function LessonCalendar({
       )}
       {view === "day" && (
         <div className="calendar-agenda">
-          {(byDay.get(dateKey(anchor)) || []).map(eventButton)}
-          {!(byDay.get(dateKey(anchor)) || []).length && (
+          {(byDay.get(calendarDateKey(anchor)) || []).map(eventButton)}
+          {!(byDay.get(calendarDateKey(anchor)) || []).length && (
             <p>No lessons on this day.</p>
           )}
         </div>
@@ -280,11 +285,11 @@ export function LessonCalendar({
           {Array.from({ length: 12 }, (_, month) => {
             const date = new Date(anchor.getFullYear(), month, 1);
             const events = visible.filter((lesson) => {
-              const when = new Date(lesson.startsAt);
-              return (
-                when.getFullYear() === date.getFullYear() &&
-                when.getMonth() === month
-              );
+              const [eventYear, eventMonth] = studioDateKey(
+                lesson.startsAt,
+                timezone,
+              ).split("-").map(Number);
+              return eventYear === date.getFullYear() && eventMonth === month + 1;
             });
             return (
               <button
@@ -296,7 +301,7 @@ export function LessonCalendar({
                 }}
               >
                 <strong>
-                  {date.toLocaleDateString(undefined, { month: "long" })}
+                  {formatCalendarDateKey(calendarDateKey(date), { month: "long" })}
                 </strong>
                 <span>
                   {events.length} lesson{events.length === 1 ? "" : "s"}

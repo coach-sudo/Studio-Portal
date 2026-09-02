@@ -55,7 +55,12 @@ describe("LessonCalendar", () => {
     ).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "year" }));
     expect(
-      screen.getByText(now.toLocaleDateString(undefined, { month: "long" })),
+      screen.getByText(
+        new RegExp(
+          now.toLocaleDateString(undefined, { month: "long" }),
+          "i",
+        ),
+      ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Show cancelled"));
     await userEvent.type(screen.getByLabelText("Search lessons"), "cancelled");

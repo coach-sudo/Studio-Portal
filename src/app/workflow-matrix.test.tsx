@@ -1,9 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { describe, expect, it } from "vitest";
 import { App } from "./App";
+import { StudentPortal } from "../features/student/StudentPortal";
+import { StudioStoreProvider } from "../state/StudioStore";
 const renderApp = (path: string) =>
   render(
     <QueryClientProvider
@@ -16,9 +18,23 @@ const renderApp = (path: string) =>
       </MemoryRouter>
     </QueryClientProvider>,
   );
+const renderGuardian = (path: string) =>
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <StudioStoreProvider>
+        <MemoryRouter initialEntries={[path]}>
+          <Routes>
+            <Route path="/portal/*" element={<StudentPortal role="guardian" />} />
+          </Routes>
+        </MemoryRouter>
+      </StudioStoreProvider>
+    </QueryClientProvider>,
+  );
 
-describe("30 start-to-finish studio workflows", () => {
-  describe("coach — 15 workflows", () => {
+describe("50 start-to-finish studio workflows", () => {
+  describe("coach — 20 workflows", () => {
     it("01 opens a full student record from the roster", async () => {
       const user = userEvent.setup();
       renderApp("/coach/students");
@@ -278,9 +294,42 @@ describe("30 start-to-finish studio workflows", () => {
         await screen.findByText(/Lesson rates and reminder timing saved/i),
       ).toBeInTheDocument();
     });
+    it("16 keeps Home oriented around the week and one Today action", async () => {
+      renderApp("/coach");
+      expect((await screen.findAllByText("Open Today")).length).toBeGreaterThan(0);
+      expect(screen.getByText("Coming up this week")).toBeInTheDocument();
+      expect(screen.queryByText("Run today")).not.toBeInTheDocument();
+    });
+    it("17 keeps Today as the preparation and action queue", async () => {
+      renderApp("/coach/today");
+      expect(await screen.findByText("Today’s lessons")).toBeInTheDocument();
+      expect(screen.getAllByLabelText(/Preparation for/i).length).toBeGreaterThan(0);
+      expect(screen.getByText("Notes due within 48 hours")).toBeInTheDocument();
+    });
+    it("18 opens Bookings on the calendar", async () => {
+      renderApp("/coach/bookings");
+      const calendar = await screen.findByRole("button", { name: "Calendar" });
+      expect(calendar).toHaveClass("active");
+      expect(screen.getByRole("button", { name: "Overview" })).not.toHaveClass("active");
+    });
+    it("19 filters the material index by its role", async () => {
+      const user = userEvent.setup();
+      renderApp("/coach/materials");
+      const scripts = await screen.findByRole("button", { name: /Current scripts/i });
+      await user.click(scripts);
+      expect(scripts).toHaveAttribute("aria-pressed", "true");
+      expect(screen.getByRole("button", { name: /Actor-page media/i })).toBeInTheDocument();
+    });
+    it("20 explains booking limits in plain language", async () => {
+      const user = userEvent.setup();
+      renderApp("/coach/bookings");
+      await user.click(await screen.findByRole("button", { name: "Booking setup" }));
+      expect(screen.getByLabelText("How far ahead people can book (days)")).toBeInTheDocument();
+      expect(screen.queryByText(/^Booking horizon$/i)).not.toBeInTheDocument();
+    });
   });
 
-  describe("current student — 10 workflows", () => {
+  describe("current student — 15 workflows", () => {
     it("16 sees next work, lesson, and contact actions", async () => {
       renderApp("/portal");
       expect(
@@ -399,9 +448,45 @@ describe("30 start-to-finish studio workflows", () => {
       ).toBeInTheDocument();
       expect(screen.getByText(/Current balance/i)).toBeInTheDocument();
     });
+    it("26 sees only the three immediate priorities on Home", async () => {
+      renderApp("/portal");
+      expect(await screen.findByRole("heading", { name: "Next lesson" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Current work" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Next practice" })).toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Materials" })).not.toBeInTheDocument();
+    });
+    it("27 opens a lesson as one connected workspace", async () => {
+      const user = userEvent.setup();
+      renderApp("/portal/bookings");
+      await user.click((await screen.findAllByRole("link", { name: "Details" }))[0]);
+      expect(await screen.findByText("Lesson work")).toBeInTheDocument();
+      expect(screen.getByText("Administrative details")).toBeInTheDocument();
+    });
+    it("28 browses published notes by lesson", async () => {
+      renderApp("/portal/notes");
+      expect(await screen.findByRole("heading", { name: "Notes" })).toBeInTheDocument();
+      expect(screen.getByText("Lesson notes")).toBeInTheDocument();
+      expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
+    });
+    it("29 updates portal timezone without losing the form", async () => {
+      const user = userEvent.setup();
+      renderApp("/portal/settings");
+      await screen.findByRole("heading", { name: "Settings" });
+      await user.clear(screen.getByLabelText("Timezone"));
+      await user.type(screen.getByLabelText("Timezone"), "Europe/London");
+      await user.click(screen.getByRole("button", { name: /Save settings/i }));
+      expect(await screen.findByText(/settings.*saved/i)).toBeInTheDocument();
+    });
+    it("30 keeps completed practice out of the active queue", async () => {
+      const user = userEvent.setup();
+      renderApp("/portal/work");
+      await user.click(await screen.findByRole("button", { name: "Complete & archive" }));
+      expect(await screen.findByText("Practice marked complete.")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Show completed work/i })).toBeInTheDocument();
+    });
   });
 
-  describe("interested student — 5 workflows", () => {
+  describe("public and interested student — 10 workflows", () => {
     it("26 browses the service catalog", async () => {
       renderApp("/book");
       expect(
@@ -480,6 +565,65 @@ describe("30 start-to-finish studio workflows", () => {
         screen.getByRole("button", { name: "Confirm cancellation" }),
       );
       expect(await screen.findByText(/Booking cancelled/i)).toBeInTheDocument();
+    });
+    it("31 shows one clear shared sign-in destination", async () => {
+      renderApp("/login");
+      expect(await screen.findByRole("heading", { name: /Sign in to/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Continue with Google/i })).toBeInTheDocument();
+      expect(screen.getByLabelText("Username")).toBeInTheDocument();
+    });
+    it("32 shows service price, delivery, and policy before availability", async () => {
+      renderApp("/book/private-acting-coaching");
+      expect(await screen.findByRole("heading", { name: "Private Acting Coaching" })).toBeInTheDocument();
+      expect(screen.getByText(/self-service reschedule/i)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /Choose a time/i })).toBeInTheDocument();
+    });
+    it("33 presents availability as a calendar before time choices", async () => {
+      const user = userEvent.setup();
+      renderApp("/book/audition-tune-up");
+      await user.click(await screen.findByRole("button", { name: /Google Meet/i }));
+      await user.click(screen.getByRole("button", { name: /Choose a time/i }));
+      expect(await screen.findByLabelText("Available dates")).toBeInTheDocument();
+    });
+    it("34 exposes terms from a stable public route", async () => {
+      renderApp("/terms");
+      expect(await screen.findByRole("heading", { name: /Terms and Conditions/i })).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: /Return to booking/i })).toHaveAttribute("href", "/book");
+    });
+    it("35 preserves the legacy student URL by redirecting to the portal", async () => {
+      renderApp("/student/work");
+      expect(await screen.findByRole("heading", { name: "Current Work" })).toBeInTheDocument();
+      expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
+    });
+  });
+
+  describe("guardian — 5 role-specific workflows", () => {
+    it("G1 opens the linked student overview", async () => {
+      renderGuardian("/portal");
+      expect(await screen.findByText(/Guardian for/i)).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Next lesson" })).toBeInTheDocument();
+    });
+    it("G2 opens the linked student schedule", async () => {
+      renderGuardian("/portal/bookings");
+      expect(await screen.findByRole("heading", { name: "Schedule" })).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Upcoming" })).toBeInTheDocument();
+    });
+    it("G3 can access guardian-only payment information", async () => {
+      renderGuardian("/portal/payments");
+      expect(await screen.findByRole("heading", { name: "Payments" })).toBeInTheDocument();
+      expect(screen.getByText(/Current balance/i)).toBeInTheDocument();
+    });
+    it("G4 can open the linked actor-page workspace", async () => {
+      renderGuardian("/portal/actor-page");
+      expect(
+        (await screen.findAllByRole("heading", { name: "Actor Page" })).length,
+      ).toBeGreaterThan(0);
+    });
+    it("G5 can manage contact, timezone, and billing settings", async () => {
+      renderGuardian("/portal/settings");
+      expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+      expect(screen.getByLabelText("Timezone")).toBeInTheDocument();
+      expect(screen.getByRole("heading", { name: "Payment method" })).toBeInTheDocument();
     });
   });
 });

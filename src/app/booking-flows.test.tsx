@@ -119,7 +119,7 @@ describe("interactive booking flows", () => {
     expect(
       await screen.findByText(/booking workspace has been updated/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Maya Kim")).toBeInTheDocument();
+    expect(screen.getAllByText("Maya Kim").length).toBeGreaterThan(0);
   });
 
   it("creates an editable lesson package product", async () => {

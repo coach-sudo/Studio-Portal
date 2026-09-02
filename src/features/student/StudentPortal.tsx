@@ -1,17 +1,14 @@
 import {
-  BookOpen,
   CalendarDays,
   CheckSquare,
   CircleDollarSign,
   CreditCard,
   FileText,
   FolderOpen,
-  Home,
   Mail,
   Menu,
   MessageSquare,
   Repeat2,
-  Settings,
   ShieldCheck,
   Trash2,
   UserRound,
@@ -68,23 +65,13 @@ import {
   sortAssignments,
   splitLessons,
 } from "../../domain/lessonExperience";
-
-const studentTabs = [
-  ["", "Home", Home],
-  ["work", "Current Work", BookOpen],
-  ["bookings", "Schedule", CalendarDays],
-  ["payments", "Payments", CircleDollarSign],
-  ["actor-page", "Actor Page", UserRound],
-  ["settings", "Settings", Settings],
-] as const;
-const guardianTabs = [
-  ["", "Overview", Home],
-  ["work", "Current Work", BookOpen],
-  ["bookings", "Schedule", CalendarDays],
-  ["payments", "Payments", CircleDollarSign],
-  ["actor-page", "Actor Page", UserRound],
-  ["settings", "Settings", Settings],
-] as const;
+import { portalNavigation } from "../../app/navigation";
+import {
+  formatStudioDate,
+  formatStudioDateTime,
+  formatStudioTime,
+} from "../../domain/presentation";
+import { useStudioMutation } from "../../hooks/useStudioMutation";
 
 export function StudentPortal({
   role = "student",
@@ -107,11 +94,7 @@ export function StudentPortal({
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
-  const tabs = role === "guardian"
-    ? guardianTabs
-    : person?.isMinor
-      ? studentTabs.filter(([to]) => to !== "payments")
-      : studentTabs;
+  const tabs = portalNavigation(role, Boolean(person?.isMinor));
   const studentDisplayName =
     person?.preferredName || person?.fullName || "Student";
   const initials =
@@ -130,7 +113,7 @@ export function StudentPortal({
           <div className="wordmark">{data.settings.studioName}</div>
         </div>
         <nav>
-          {tabs.map(([to, label, Icon]) => (
+          {tabs.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={`${base}/${to}`} end={!to}>
               <Icon />
               <span>{label}</span>
@@ -166,7 +149,7 @@ export function StudentPortal({
             index
             element={
               role === "guardian" ? (
-                <GuardianHome data={data} />
+                <GuardianHome data={data} base={base} />
               ) : (
                 <StudentHome data={data} base={base} />
               )
@@ -183,7 +166,13 @@ export function StudentPortal({
           />
           <Route
             path="lessons/:lessonId"
-            element={<LessonHub data={data} isDemo={isDemo} />}
+            element={
+              <LessonHub
+                data={data}
+                isDemo={isDemo}
+                showFinance={role === "guardian" || !person?.isMinor}
+              />
+            }
           />
           <Route path="notes" element={<StudentNotes data={data} />} />
           <Route
@@ -211,7 +200,7 @@ export function StudentPortal({
       </main>
       <ActivityCenter data={data} audience={role} />
       <nav className="mobile-nav student-mobile">
-        {tabs.slice(0, 4).map(([to, label, Icon]) => (
+        {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={`${base}/${to}`} end={!to}>
             <Icon />
             <span>{label}</span>
@@ -248,7 +237,7 @@ export function StudentPortal({
                 ×
               </button>
             </header>
-            {tabs.map(([to, label, Icon]) => (
+            {tabs.map(({ to, label, icon: Icon }) => (
               <button
                 type="button"
                 key={to}
@@ -308,21 +297,6 @@ function PortalRow({
   );
 }
 function StudentHome({ data, base }: { data: Snapshot; base: string }) {
-  const navigate = useNavigate();
-  const lesson = splitLessons(data.lessons).active[0];
-  const work = data.materials
-    .filter(
-      (item) => item.role === "current_script" && item.status === "active",
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-  const practice = sortAssignments(data.assignments).active[0];
-  const material = data.materials.find(
-    (item) =>
-      item.role !== "current_script" &&
-      item.role !== "actor_material" &&
-      item.status === "active",
-  );
-  const pkg = data.packages[0];
   return (
     <div className="student-page">
       <Header data={data} />
@@ -357,138 +331,101 @@ function StudentHome({ data, base }: { data: Snapshot; base: string }) {
           </a>
         )}
       </div>
-      <Section title="Continue your work" marked>
-        {work ? (
-          <PortalRow
-            icon={FileText}
-            title={work.title}
-            detail="Pick up where you left off."
-            action="Open script"
-            onClick={() =>
-              work.externalUrl
-                ? window.open(work.externalUrl, "_blank", "noopener,noreferrer")
-                : navigate(`${base}/work`)
-            }
-          />
-        ) : (
-          <EmptyState
-            title="No current work yet"
-            detail="Your coach will place your active script here."
-          />
-        )}
-      </Section>
-      <Section title="Next lesson">
-        {lesson ? (
-          <PortalRow
-            icon={CalendarDays}
-            title={lesson.topic}
-            detail={`${lessonDateLabel(lesson)} · ${lesson.locationLabel}`}
-            action={isJoinableLesson(lesson) ? "Open lesson" : "View lesson"}
-            onClick={() => navigate(`${base}/lessons/${lesson.id}`)}
-          />
-        ) : (
-          <EmptyState
-            title="No lesson scheduled"
-            detail="Book a service when you are ready."
-          />
-        )}
-      </Section>
-      <Section title="Your practice" marked>
-        {practice ? (
-          <PortalRow
-            icon={CheckSquare}
-            title={practice.title}
-            detail={practice.details}
-            action="Open"
-            onClick={() => navigate(`${base}/practice`)}
-          />
-        ) : (
-          <EmptyState
-            title="Practice is complete"
-            detail="New assignments will appear after your coach publishes them."
-          />
-        )}
-      </Section>
-      <Section title="Your materials" marked>
-        {material ? (
-          <PortalRow
-            icon={FolderOpen}
-            title={material.title}
-            detail={material.category}
-            action="View"
-            onClick={() => navigate(`${base}/materials`)}
-          />
-        ) : (
-          <EmptyState
-            title="No shared materials"
-            detail="Nothing is missing on your side."
-          />
-        )}
-      </Section>
-      {pkg && (
-        <Section title="Your package" marked>
-          <PortalRow
-            icon={CircleDollarSign}
-            title={pkg.name}
-            detail={`${packageSummary(pkg, data.creditEntries).remainingCredits} sessions remaining`}
-            action={formatMoney(
-              Math.max(
-                0,
-                studentBalanceMinor(data.students[0].id, data.payments),
-              ),
-            )}
-            onClick={() => navigate(`${base}/payments`)}
-          />
-        </Section>
-      )}
+      <HomePriorities
+        data={data}
+        base={base}
+        showAccount={!data.students[0]?.isMinor}
+      />
     </div>
   );
 }
-function GuardianHome({ data }: { data: Snapshot }) {
+function GuardianHome({ data, base }: { data: Snapshot; base: string }) {
   const student = data.students[0];
   return (
     <div className="student-page">
       <Header data={data} />
       <JoinLessonBanner lessons={data.lessons} />
-      <Section
-        title={`For ${student?.preferredName || student?.fullName || "your student"}`}
-        marked
-      >
-        <div className="table-list">
-          <article>
-            <CalendarDays />
-            <div>
-              <strong>
-                {
-                  data.bookings.filter((item) => item.status === "confirmed")
-                    .length
-                }{" "}
-                upcoming bookings
-              </strong>
-              <small>Schedule changes use the accepted booking policy.</small>
-            </div>
-          </article>
-          <article>
-            <CircleDollarSign />
-            <div>
-              <strong>
-                {formatMoney(
-                  Math.max(
-                    0,
-                    student
-                      ? studentBalanceMinor(student.id, data.payments)
-                      : 0,
-                  ),
-                )}{" "}
-                balance
-              </strong>
-              <small>
-                Payments and receipts are visible only to linked guardians.
-              </small>
-            </div>
-          </article>
-        </div>
+      <p className="portal-context-line">
+        For {student?.preferredName || student?.fullName || "your student"}
+      </p>
+      <HomePriorities data={data} base={base} showAccount />
+    </div>
+  );
+}
+
+function HomePriorities({
+  data,
+  base,
+  showAccount,
+}: {
+  data: Snapshot;
+  base: string;
+  showAccount: boolean;
+}) {
+  const navigate = useNavigate();
+  const lesson = splitLessons(data.lessons).active[0];
+  const work = data.materials
+    .filter((item) => item.role === "current_script" && item.status === "active")
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  const practice = sortAssignments(data.assignments).active[0];
+  const pkg = data.packages[0];
+  const student = data.students[0];
+  return (
+    <div className="portal-priority-stack">
+      <Section title="Next lesson" marked>
+        {lesson ? (
+          <PortalRow
+            icon={CalendarDays}
+            title={lesson.topic}
+            detail={`${formatStudioDateTime(lesson.startsAt, data.settings.timezone)} · ${lesson.locationLabel}`}
+            action={isJoinableLesson(lesson) ? "Open lesson" : "View lesson"}
+            onClick={() => navigate(`${base}/lessons/${lesson.id}`)}
+          />
+        ) : (
+          <EmptyState title="No lesson scheduled" detail="Book a service when you are ready." />
+        )}
       </Section>
+      <Section title="Current work">
+        {work ? (
+          <PortalRow
+            icon={FileText}
+            title={work.title}
+            detail="Your active script and lesson materials."
+            action="Open work"
+            onClick={() => navigate(`${base}/work`)}
+          />
+        ) : (
+          <EmptyState title="No current work" detail="Nothing needs your attention here yet." />
+        )}
+      </Section>
+      <Section title="Next practice">
+        {practice ? (
+          <PortalRow
+            icon={CheckSquare}
+            title={practice.title}
+            detail={practice.details}
+            action="Open practice"
+            onClick={() => navigate(`${base}/work`)}
+          />
+        ) : (
+          <EmptyState title="Practice is complete" detail="You are caught up." />
+        )}
+      </Section>
+      {showAccount && pkg && student && (
+        <details className="portal-account-summary">
+          <summary>
+            <span>Your package</span>
+            <strong>{packageSummary(pkg, data.creditEntries).remainingCredits} sessions remaining</strong>
+          </summary>
+          <PortalRow
+            icon={CircleDollarSign}
+            title={pkg.name}
+            detail={`${formatMoney(Math.max(0, studentBalanceMinor(student.id, data.payments)))} open balance`}
+            action="View payments"
+            onClick={() => navigate(`${base}/payments`)}
+          />
+        </details>
+      )}
     </div>
   );
 }
@@ -569,7 +506,7 @@ function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                 <strong>{item.title}</strong>
                 <small>
                   {item.category} · archived{" "}
-                  {new Date(item.updatedAt).toLocaleDateString()}
+                  {formatStudioDate(item.updatedAt, data.settings.timezone)}
                 </small>
               </div>
               {item.externalUrl && (
@@ -645,10 +582,7 @@ function StudentBookings({
         setSlots(
           payload.slots.slice(0, 8).map((item) => ({
             ...item,
-            label: new Date(item.startsAt).toLocaleTimeString([], {
-              hour: "numeric",
-              minute: "2-digit",
-            }),
+            label: formatStudioTime(item.startsAt, data.settings.timezone),
           })),
         ),
       )
@@ -808,19 +742,26 @@ function StudentBookings({
               <article key={lesson.id}>
                 <div className="booking-date">
                   <span>
-                    {new Date(lesson.startsAt).toLocaleDateString([], {
+                    {formatStudioDate(lesson.startsAt, data.settings.timezone, {
                       month: "short",
                     })}
                   </span>
-                  <strong>{new Date(lesson.startsAt).getDate()}</strong>
+                  <strong>
+                    {formatStudioDate(lesson.startsAt, data.settings.timezone, {
+                      day: "numeric",
+                      month: undefined,
+                      year: undefined,
+                    })}
+                  </strong>
                 </div>
                 <div>
                   <strong>{itemService?.name || lesson.topic}</strong>
                   <small>
-                    {new Date(lesson.startsAt).toLocaleString([], {
+                    {formatStudioDateTime(lesson.startsAt, data.settings.timezone, {
                       weekday: "long",
-                      hour: "numeric",
-                      minute: "2-digit",
+                      month: undefined,
+                      day: undefined,
+                      year: undefined,
                     })}{" "}
                     ·{" "}
                     {lesson.meetingProvider === "google_meet" ||
@@ -966,7 +907,7 @@ function StudentBookings({
                 <div>
                   <strong>{lesson.topic}</strong>
                   <small>
-                    {new Date(lesson.startsAt).toLocaleString()} ·{" "}
+                    {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}
                     {lesson.locationLabel}
                   </small>
                 </div>
@@ -991,7 +932,7 @@ function StudentBookings({
           title={
             mode === "reschedule" ? "Reschedule booking" : selected.reference
           }
-          description={`${service?.name ?? "Booking"} · ${new Date(selected.startsAt).toLocaleString()}`}
+          description={`${service?.name ?? "Booking"} · ${formatStudioDateTime(selected.startsAt, data.settings.timezone)}`}
           onClose={() => setSelected(undefined)}
         >
           {mode === "reschedule" ? (
@@ -1004,9 +945,10 @@ function StudentBookings({
                     onClick={() => setNextStart(slot.startsAt)}
                   >
                     <span>
-                      {new Date(slot.startsAt).toLocaleDateString([], {
+                      {formatStudioDate(slot.startsAt, data.settings.timezone, {
                         month: "short",
                         day: "numeric",
+                        year: undefined,
                       })}
                     </span>
                     <strong>{slot.label}</strong>
@@ -1166,7 +1108,7 @@ function StudentNotes({ data }: { data: Snapshot }) {
                 <span>
                   <strong>
                     {lesson
-                      ? new Date(lesson.startsAt).toLocaleDateString()
+                      ? formatStudioDate(lesson.startsAt, data.settings.timezone)
                       : "General note"}
                   </strong>
                   <small>
@@ -1193,11 +1135,12 @@ function StudentNotes({ data }: { data: Snapshot }) {
             }
             description={
               selected.lessonId
-                ? new Date(
+                ? formatStudioDateTime(
                     data.lessons.find(
                       (item) => item.id === selected.lessonId,
                     )?.startsAt || selected.updatedAt,
-                  ).toLocaleString()
+                    data.settings.timezone,
+                  )
                 : "General coaching note"
             }
             onClose={() => setSelectedLessonId(undefined)}
@@ -1242,7 +1185,15 @@ function StudentNotes({ data }: { data: Snapshot }) {
   );
 }
 
-function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+function LessonHub({
+  data,
+  isDemo,
+  showFinance,
+}: {
+  data: Snapshot;
+  isDemo: boolean;
+  showFinance: boolean;
+}) {
   const { lessonId = "" } = useParams();
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const store = useStudioStore();
@@ -1288,6 +1239,12 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   );
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
+  );
+  const participant = data.lessonParticipants.find(
+    (item) => item.lessonId === lesson.id && item.bookingId,
+  );
+  const booking = data.bookings.find(
+    (item) => item.id === participant?.bookingId,
   );
   const student =
     data.students.find((item) => item.id === lesson.studentId) ??
@@ -1415,21 +1372,27 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           </Link>
           <h1>{lesson.topic}</h1>
           <p>
-            {new Date(lesson.startsAt).toLocaleString()} ·{" "}
+            {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}
             {lesson.locationLabel}
           </p>
         </div>
-        {lesson.joinUrl && isJoinableLesson(lesson) && (
-          <a
-            className="button-link primary"
-            href={lesson.joinUrl}
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Video />
-            Join Google Meet
-          </a>
-        )}
+        <div className="lesson-immediate-actions">
+          {lesson.joinUrl && isJoinableLesson(lesson) && (
+            <a
+              className="button-link primary"
+              href={lesson.joinUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Video />
+              Join Google Meet
+            </a>
+          )}
+          <Link className="button-link" to="/portal/bookings">
+            <CalendarDays />
+            Manage schedule
+          </Link>
+        </div>
       </header>
       {notice && (
         <p className="portal-notice" role="status">
@@ -1439,10 +1402,12 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       {delivery &&
         (delivery.calendar?.status !== "not_required" ||
           Boolean(delivery.email?.length)) && (
-          <div className="lesson-delivery-receipt" role="status">
-            <ShieldCheck />
-            <div>
+          <details className="lesson-delivery-receipt" role="status">
+            <summary>
+              <ShieldCheck />
               <strong>Schedule confirmation</strong>
+            </summary>
+            <div>
               <small>
                 Calendar: {delivery.calendar?.status?.replaceAll("_", " ") || "not required"}
                 {delivery.email?.length
@@ -1451,7 +1416,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                 {delivery.correlationId ? ` · ${delivery.correlationId}` : ""}
               </small>
             </div>
-          </div>
+          </details>
         )}
       {offering && (
         <Section title="Class or course information" marked>
@@ -1486,7 +1451,9 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           </div>
         </Section>
       )}
-      <div className="lesson-hub-grid">
+      <section className="lesson-work-surface" aria-labelledby="lesson-work-title">
+        <h2 id="lesson-work-title">Lesson work</h2>
+        <div className="lesson-hub-grid">
         <Section title="Coach notes" marked>
           <div className="note-cards">
             {notes.map((note) => (
@@ -1523,7 +1490,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                   <CheckSquare />
                   <div>
                     <strong>{item.title}</strong>
-                    <small>{item.dueAt ? `Due ${new Date(item.dueAt).toLocaleDateString()}` : "Attached to this lesson"}</small>
+                    <small>{item.dueAt ? `Due ${formatStudioDate(item.dueAt, data.settings.timezone)}` : "Attached to this lesson"}</small>
                   </div>
                   <Status tone={item.status === "completed" ? "good" : "neutral"}>{item.status.replaceAll("_", " ")}</Status>
                 </header>
@@ -1585,7 +1552,7 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                     : student?.preferredName || student?.fullName}
                 </strong>
                 <p>{item.body}</p>
-                <small>{new Date(item.createdAt).toLocaleString()}</small>
+                <small>{formatStudioDateTime(item.createdAt, data.settings.timezone)}</small>
               </article>
             ))}
             {!messages.length && (
@@ -1610,7 +1577,37 @@ function LessonHub({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             </button>
           </form>
         </Section>
-      </div>
+        </div>
+      </section>
+      <details className="lesson-admin-details">
+        <summary>Administrative details</summary>
+        <dl>
+          <div>
+            <dt>Status</dt>
+            <dd>{lesson.status.replaceAll("_", " ")}</dd>
+          </div>
+          <div>
+            <dt>Source</dt>
+            <dd>{(lesson.sourceProvider || "studio").replaceAll("_", " ")}</dd>
+          </div>
+          <div>
+            <dt>Recurrence</dt>
+            <dd>{lesson.seriesId ? "Recurring lesson" : "One-time lesson"}</dd>
+          </div>
+          {showFinance && booking && (
+            <>
+              <div>
+                <dt>Payment</dt>
+                <dd>{booking.paymentStatus.replaceAll("_", " ")}</dd>
+              </div>
+              <div>
+                <dt>Lesson price</dt>
+                <dd>{formatMoney(booking.totalMinor, booking.currency)}</dd>
+              </div>
+            </>
+          )}
+        </dl>
+      </details>
     </div>
   );
 }
@@ -1731,7 +1728,7 @@ function Practice({
                 <div>
                   <strong>{item.title}</strong>
                   <small>
-                    {item.dueAt ? `Due ${new Date(item.dueAt).toLocaleString()}` : "No due date"}
+                    {item.dueAt ? `Due ${formatStudioDateTime(item.dueAt, data.settings.timezone)}` : "No due date"}
                     {item.lessonId && ` · ${data.lessons.find((lesson) => lesson.id === item.lessonId)?.topic || "Lesson"}`}
                   </small>
                 </div>
@@ -1768,7 +1765,7 @@ function Practice({
                     <CheckSquare />
                     <div>
                       <strong>{item.title}</strong>
-                      <small>Completed {new Date(item.updatedAt).toLocaleDateString()}</small>
+                      <small>Completed {formatStudioDate(item.updatedAt, data.settings.timezone)}</small>
                     </div>
                     <Status tone="good">completed</Status>
                   </article>
@@ -2320,7 +2317,7 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
                   credits · {formatMoney(pkg.priceMinor, pkg.currency)}
                   {pkg.expiresAt &&
-                    ` · ${expired ? "expired" : "expires"} ${new Date(pkg.expiresAt).toLocaleDateString()}`}
+                    ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
                 </small>
               </div>
               <Status tone={expired ? "danger" : "good"}>
@@ -2346,7 +2343,7 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
               <div>
                 <strong>{entry.reason}</strong>
                 <small>
-                  {new Date(entry.createdAt).toLocaleDateString()} ·{" "}
+                  {formatStudioDate(entry.createdAt, data.settings.timezone)} ·{" "}
                   {entry.externalReference ?? "Studio ledger"}
                 </small>
               </div>
@@ -2381,6 +2378,7 @@ function StudentSettings({
   const student = data.students[0],
     store = useStudioStore(),
     queryClient = useQueryClient();
+  const settingsMutation = useStudioMutation();
   const [form, setForm] = useState({
       preferredName: student?.preferredName || "",
       pronouns: student?.pronouns || "",
@@ -2396,7 +2394,6 @@ function StudentSettings({
       emailReminders: student?.portalPreferences?.emailReminders ?? true,
     }),
     [notice, setNotice] = useState(""),
-    [saving, setSaving] = useState(false),
     [loginPassword, setLoginPassword] = useState(""),
     [loginBusy, setLoginBusy] = useState(false),
     [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
@@ -2405,7 +2402,8 @@ function StudentSettings({
   if (!student) return <div className="loading">Opening settings…</div>;
   const save = async (event: FormEvent) => {
     event.preventDefault();
-    setSaving(true);
+    if (settingsMutation.isPending()) return;
+    setNotice("Saving your settings…");
     try {
       const updates = {
         preferredName: form.preferredName,
@@ -2419,23 +2417,25 @@ function StudentSettings({
           emailReminders: form.emailReminders,
         },
       };
-      if (isDemo)
-        store.transact((draft) =>
-          Object.assign(draft.students[0], updates, {
-            version: student.version + 1,
-            updatedAt: new Date().toISOString(),
-          }),
-        );
-      else {
-        await studioCommand("students", {
-          command: "update_self",
-          entityId: student.id,
-          expectedVersion: student.version,
-          payload: updates,
-          reason: "Student updated portal settings",
-        });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
+      await settingsMutation.run("portal-settings", async () => {
+        if (isDemo)
+          store.transact((draft) =>
+            Object.assign(draft.students[0], updates, {
+              version: student.version + 1,
+              updatedAt: new Date().toISOString(),
+            }),
+          );
+        else {
+          await studioCommand("students", {
+            command: "update_self",
+            entityId: student.id,
+            expectedVersion: student.version,
+            payload: updates,
+            reason: "Student updated portal settings",
+          });
+          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        }
+      });
       setNotice("Your settings were saved.");
     } catch (reason) {
       setNotice(
@@ -2443,8 +2443,6 @@ function StudentSettings({
           ? reason.message
           : "Settings could not be saved.",
       );
-    } finally {
-      setSaving(false);
     }
   };
   const stripeAction = async (action: "payment-method" | "billing") => {
@@ -2603,8 +2601,8 @@ function StudentSettings({
             />
           </div>
           <div className="form-actions full">
-            <button className="primary" disabled={saving}>
-              {saving ? "Saving…" : "Save settings"}
+            <button className="primary" disabled={settingsMutation.isPending("portal-settings")}>
+              {settingsMutation.isPending("portal-settings") ? "Saving…" : "Save settings"}
             </button>
           </div>
         </form>

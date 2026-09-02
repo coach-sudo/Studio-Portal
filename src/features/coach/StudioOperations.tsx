@@ -41,6 +41,12 @@ import type {
   PackageDefinition,
   StudioSnapshot,
 } from "../../domain/model";
+import {
+  formatStudioDateTime,
+  formatStudioTime,
+  materialDisplayKind,
+  studioDateKey,
+} from "../../domain/presentation";
 import { useStudioStore } from "../../state/StudioStore";
 import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
 
@@ -76,14 +82,22 @@ export function TodayView({
     [rescheduling, setRescheduling] = useState<Lesson>(),
     [rescheduleBusy, setRescheduleBusy] = useState(false),
     [prepBusy, setPrepBusy] = useState("");
-  const today = new Date().toDateString();
+  const today = studioDateKey(new Date(), data.settings.timezone);
   const lessons = data.lessons
     .filter(
       (i) =>
         i.status === "scheduled" &&
-        new Date(i.startsAt).toDateString() === today,
+        studioDateKey(i.startsAt, data.settings.timezone) === today,
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
+  const now = Date.now();
+  const featuredLessonId =
+    lessons.find(
+      (lesson) =>
+        new Date(lesson.startsAt).getTime() <= now &&
+        new Date(lesson.endsAt).getTime() >= now,
+    )?.id ||
+    lessons.find((lesson) => new Date(lesson.startsAt).getTime() >= now)?.id;
   const noteFollowups = data.lessons
     .filter((lesson) => {
       const ended = new Date(lesson.endsAt).getTime();
@@ -228,28 +242,60 @@ export function TodayView({
   };
   return (
     <>
-      <Section title="Today’s teaching flow" marked>
+      <Section title="Today’s lessons" marked>
         {notice && <p className="portal-notice">{notice}</p>}
         <div className="workflow-list">
-          {lessons.map((lesson, index) => (
-            <article key={lesson.id}>
+          {lessons.map((lesson, index) => {
+            const isActive =
+              new Date(lesson.startsAt).getTime() <= now &&
+              new Date(lesson.endsAt).getTime() >= now;
+            const isFeatured = lesson.id === featuredLessonId;
+            return (
+            <article
+              key={lesson.id}
+              className={`today-lesson-row${isFeatured ? " featured" : ""}`}
+            >
               <span>{index + 1}</span>
-              <div>
+              <div className="today-lesson-copy">
                 <strong>
                   {studentName(data, lesson.studentId)} · {lesson.topic}
                 </strong>
                 <small>
-                  {new Date(lesson.startsAt).toLocaleString()} ·{" "}
+                  {formatStudioTime(lesson.startsAt, data.settings.timezone)} ·{" "}
                   {lesson.locationLabel} · {sourceLabel(lesson.sourceProvider)}
                 </small>
+                <div
+                  className="today-prep-checks"
+                  aria-label={`Preparation for ${studentName(data, lesson.studentId)}`}
+                >
+                  {(
+                    [
+                      ["planned", "Plan"],
+                      ["setupReady", "Setup"],
+                      ["materialsReady", "Materials"],
+                    ] as const
+                  ).map(([key, label]) => (
+                    <label key={key} className="compact-check">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(lesson.preparation?.[key])}
+                        disabled={Boolean(prepBusy)}
+                        onChange={() => void togglePreparation(lesson, key)}
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
-              <Status tone="good">scheduled</Status>
+              <Status tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}>
+                {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
+              </Status>
               <div className="row-actions">
                 <button onClick={() => setRescheduling(lesson)}>Reschedule</button>
                 <button onClick={() => void complete(lesson)}>Complete</button>
               </div>
             </article>
-          ))}
+          );})}
           {!lessons.length && (
             <EmptyState
               title="The rest of today is clear"
@@ -258,47 +304,6 @@ export function TodayView({
           )}
         </div>
       </Section>
-      {lessons.length > 0 && (
-        <Section title="Ready to teach" marked>
-          <p className="section-intro">
-            Three quick checks for today only. Lesson follow-up stays in the
-            lesson workspace after teaching.
-          </p>
-          <div className="lesson-prep-list">
-            {lessons.map((lesson) => (
-              <article key={`prep-${lesson.id}`}>
-                <div>
-                  <strong>
-                    {new Date(lesson.startsAt).toLocaleTimeString([], {
-                      hour: "numeric",
-                      minute: "2-digit",
-                    })}{" "}
-                    · {studentName(data, lesson.studentId)}
-                  </strong>
-                  <small>{lesson.topic}</small>
-                </div>
-                {(
-                  [
-                    ["planned", "Plan"],
-                    ["setupReady", "Setup"],
-                    ["materialsReady", "Materials"],
-                  ] as const
-                ).map(([key, label]) => (
-                  <label key={key} className="compact-check">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(lesson.preparation?.[key])}
-                      disabled={Boolean(prepBusy)}
-                      onChange={() => void togglePreparation(lesson, key)}
-                    />
-                    <span>{label}</span>
-                  </label>
-                ))}
-              </article>
-            ))}
-          </div>
-        </Section>
-      )}
       <Section title="Notes due within 48 hours" marked>
         <div className="workflow-list">
           {notePage.visible.map((lesson) => {
@@ -316,7 +321,7 @@ export function TodayView({
                   <small>
                     {remaining > 0
                       ? `${Math.max(1, Math.ceil(remaining / 3_600_000))} hours remaining`
-                      : `Overdue since ${due.toLocaleString()}`}
+                      : `Overdue since ${formatStudioDateTime(due, data.settings.timezone)}`}
                   </small>
                 </div>
                 <Status
@@ -646,12 +651,9 @@ function ImportReviewDialog({
           <div className="import-evidence full">
             <strong>Lesson detected</strong>
             <span>
-              {new Date(candidate.startsAt).toLocaleString()} –{" "}
+              {formatStudioDateTime(candidate.startsAt, data.settings.timezone)} –{" "}
               {candidate.endsAt
-                ? new Date(candidate.endsAt).toLocaleTimeString([], {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })
+                ? formatStudioTime(candidate.endsAt, data.settings.timezone)
                 : "end time unavailable"}
             </span>
             <small>
@@ -1109,7 +1111,7 @@ export function LessonsView({
                 ? "Lesson credits"
                 : selected.topic
           }
-          description={`${studentName(data, selected.studentId)} · ${new Date(selected.startsAt).toLocaleString()} · ${sourceLabel(selected.sourceProvider)}`}
+          description={`${studentName(data, selected.studentId)} · ${formatStudioDateTime(selected.startsAt, data.settings.timezone)} · ${sourceLabel(selected.sourceProvider)}`}
           onClose={() => setSelected(undefined)}
         >
           {panel === "reschedule" ? (
@@ -1186,7 +1188,7 @@ export function LessonsView({
               <section className="lesson-facts" aria-label="Lesson information">
                 <div>
                   <small>Date & time</small>
-                  <strong>{new Date(selected.startsAt).toLocaleString()}</strong>
+                  <strong>{formatStudioDateTime(selected.startsAt, data.settings.timezone)}</strong>
                 </div>
                 <div><small>Duration</small><strong>{selectedDuration} minutes</strong></div>
                 <div><small>Delivery</small><strong>{selected.locationLabel}</strong></div>
@@ -1443,10 +1445,11 @@ export function NotesView({
             <span>
               <strong>
                 {note.lessonId
-                  ? new Date(
+                  ? formatStudioDateTime(
                       data.lessons.find((item) => item.id === note.lessonId)
                         ?.startsAt || note.updatedAt,
-                    ).toLocaleDateString()
+                      data.settings.timezone,
+                    )
                   : "General note"}
               </strong>
               <small>
@@ -1471,7 +1474,7 @@ export function NotesView({
       {selected && (
         <Dialog
           title={selected.title}
-          description={`${studentName(data, selected.studentId)} · ${selected.lessonId ? new Date(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt).toLocaleString() : "General note"}`}
+          description={`${studentName(data, selected.studentId)} · ${selected.lessonId ? formatStudioDateTime(data.lessons.find((item) => item.id === selected.lessonId)?.startsAt || selected.updatedAt, data.settings.timezone) : "General note"}`}
           onClose={() => setSelected(undefined)}
         >
           {selected.bodyHtml ? (
@@ -1790,6 +1793,7 @@ export function MaterialsView({
           const roleOption = roleOptions.find(
             (option) => option.value === item.role,
           );
+          const displayLabel = materialDisplayKind(item);
           const Icon = roleOption?.icon || FolderOpen;
           return (
             <article key={item.id}>
@@ -1797,8 +1801,10 @@ export function MaterialsView({
               <div className="material-library-copy">
                 <strong>{item.title}</strong>
                 <small>
-                  {studentName(data, item.studentId)} · {item.category} ·{" "}
-                  {roleOption?.label || item.role.replaceAll("_", " ")}
+                  {studentName(data, item.studentId)} · {displayLabel}
+                  {item.role !== "actor_material" && item.category
+                    ? ` · ${item.category}`
+                    : ""}
                   {lesson ? ` · ${lesson.topic}` : ""}
                 </small>
                 {item.caption && <p>{item.caption}</p>}

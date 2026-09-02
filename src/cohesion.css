@@ -133,3 +133,247 @@
 @media(max-width:768px){html,body,#root{max-width:100%;overflow-x:hidden}button,a,input,select,textarea{touch-action:manipulation}.main,.student-shell>main{min-width:0;width:100%}.page,.student-page{max-width:100%}.page-header,.student-header{padding-right:52px}.subnav,.record-tabs{display:flex!important;width:calc(100% + 26px);margin-inline:-13px;padding-inline:13px;overflow-x:auto;gap:5px}.subnav>button,.record-tabs>a{flex:0 0 auto;min-height:44px;padding:0 13px;display:flex;align-items:center}.metric-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.metric-card{min-height:92px;padding:12px}.metric-card strong{font-size:20px}.booking-table-head{display:none!important}.booking-table-row{position:relative;grid-template-columns:minmax(0,1fr) auto!important;gap:6px 12px!important;padding:13px 52px 13px 12px!important}.booking-table-row>div:first-child{grid-column:1}.booking-table-row>span{grid-column:1;font-size:11px}.booking-table-row>.status{grid-column:2;grid-row:1}.booking-table-row>button{position:absolute;right:4px;top:50%;width:44px;height:44px;transform:translateY(-50%);display:grid;place-items:center}.join-lesson-banner{grid-template-columns:24px minmax(0,1fr)}.join-lesson-banner>a{grid-column:1/-1;justify-content:center}.record-actions{width:100%}.record-actions>*{min-height:44px!important}.lesson-command-summary{gap:5px}.lesson-command-summary>span{max-width:100%;overflow-wrap:anywhere}.pricing-rule-form{grid-template-columns:1fr}.special-pricing-list summary{align-items:flex-start}.special-pricing-list summary>span:last-child{text-align:right}.student-quick-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.student-quick-actions>a{min-width:0;min-height:48px;padding:8px;white-space:normal;text-align:center;justify-content:center}.portal-row{grid-template-columns:25px minmax(0,1fr)!important}.portal-row>button{grid-column:1/-1;width:100%;min-height:44px;justify-content:space-between}.mobile-nav{height:calc(66px + env(safe-area-inset-bottom));padding-bottom:env(safe-area-inset-bottom)}.mobile-nav a,.mobile-nav button{min-height:58px}.workflow-dialog{max-width:100%;max-height:calc(100dvh - 12px)}}
 @media(max-width:420px){.metric-grid{grid-template-columns:1fr 1fr}.metric-card{min-height:84px}.student-quick-actions{grid-template-columns:1fr}.page-header h1,.student-header h1{line-height:1.05}.student-record-identity{grid-template-columns:52px minmax(0,1fr)!important}.student-record-identity>.status{grid-column:1/-1;justify-self:start}.student-record-identity h1{overflow-wrap:anywhere}.record-actions{grid-template-columns:1fr}.join-lesson-banner{padding:12px}}
 @media(max-width:600px){.booking-table-row>span:nth-of-type(1),.booking-table-row>span:nth-of-type(2){display:block!important}.booking-table-row>button{display:grid!important}}
+
+/* Coach workspace hierarchy: compact orientation, lesson-first action queue, and calendar-first booking administration */
+.home-today-link{width:100%;min-height:64px;margin-top:18px;padding:11px 14px;border:1px solid color-mix(in srgb,var(--sage),var(--line) 55%);border-radius:10px;background:color-mix(in srgb,var(--wash),white 45%);display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:11px;text-align:left}.home-today-link>svg{width:21px;color:var(--sage)}.home-today-link>span{min-width:0;display:grid;gap:2px}.home-today-link strong{font-size:12px}.home-today-link small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px}.home-today-link b{min-height:40px;padding:0 12px;border-radius:7px;background:var(--forest);color:white;display:flex;align-items:center;font-size:10px}.home-dashboard-single{grid-template-columns:1fr}.today-lesson-row{display:grid!important;grid-template-columns:28px minmax(240px,1fr) auto auto;align-items:center}.today-lesson-row.featured{margin-inline:-10px;padding-inline:14px;border:1px solid color-mix(in srgb,var(--sage),var(--line) 55%);border-radius:10px;background:color-mix(in srgb,var(--wash),white 52%)}.today-lesson-copy{min-width:0;display:grid;gap:4px}.today-prep-checks{display:flex;align-items:center;gap:6px;flex-wrap:wrap;padding-top:4px}.today-prep-checks .compact-check{min-height:30px;padding:0 8px;border:1px solid var(--line);border-radius:99px;background:white}.today-lesson-row .row-actions{display:flex;gap:3px}.today-lesson-row .row-actions>button{min-height:40px;padding:0 9px;border-radius:7px;color:var(--burgundy);font-size:11px;font-weight:750}.booking-center .metric-grid{grid-template-columns:repeat(auto-fit,minmax(170px,1fr))}.coach-two-column.single{grid-template-columns:1fr}.booking-center .subnav button,.material-bucket-grid>button,.material-primary-actions button,.material-primary-actions a{touch-action:manipulation}
+@media(max-width:700px){.home-today-link{grid-template-columns:22px minmax(0,1fr)}.home-today-link b{grid-column:1/-1;justify-content:center}.home-today-link small{white-space:normal}.today-lesson-row{grid-template-columns:28px minmax(0,1fr)!important;align-items:start!important}.today-lesson-row>.status{grid-column:1;grid-row:2;justify-self:start;margin-top:8px}.today-lesson-row .row-actions{grid-column:2;width:100%;display:grid;grid-template-columns:1fr 1fr}.today-lesson-row .row-actions>button,.today-prep-checks .compact-check{min-height:44px}.today-prep-checks{padding-top:7px}.today-prep-checks .compact-check{flex:1 1 82px;justify-content:center}.booking-center .metric-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.material-primary-actions>.button-link,.material-primary-actions>.material-approve,.material-action-menu>summary{min-height:44px}}
+@media(max-width:390px){.today-lesson-row.featured{margin-inline:-4px;padding-inline:8px}.today-lesson-row .row-actions{grid-column:1/-1}.booking-center .metric-grid{grid-template-columns:1fr 1fr}.booking-center .booking-metric{min-width:0;padding:12px}.booking-center .booking-metric strong{overflow-wrap:anywhere}.material-bucket-grid>button{grid-template-columns:22px minmax(0,1fr) auto}}
+
+:root {
+  --space-page: clamp(16px, 3vw, 38px);
+  --space-section: clamp(14px, 2vw, 24px);
+  --control-height: 44px;
+  --content-reading-width: 760px;
+}
+
+.portal-priority-stack {
+  display: grid;
+  gap: 12px;
+}
+
+.portal-priority-stack .section {
+  margin: 0;
+}
+
+.portal-context-line {
+  width: fit-content;
+  margin: 0 0 12px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--wash);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.portal-account-summary,
+.lesson-admin-disclosure {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--wash), white 60%);
+}
+
+.portal-account-summary > summary,
+.lesson-admin-disclosure > summary,
+.lesson-delivery-receipt > summary {
+  min-height: var(--control-height);
+  padding: 10px 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.portal-account-summary .portal-row {
+  margin: 0 10px 10px;
+}
+
+.lesson-primary-actions {
+  margin-bottom: 14px;
+}
+
+.lesson-admin-disclosure {
+  margin-top: 14px;
+}
+
+.lesson-admin-disclosure > .form-actions,
+.lesson-admin-summary {
+  margin: 0;
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.lesson-admin-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.lesson-admin-summary > div {
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.lesson-admin-summary small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.lesson-delivery-receipt {
+  display: block;
+}
+
+.lesson-delivery-receipt > summary {
+  justify-content: flex-start;
+}
+
+.lesson-delivery-receipt > summary svg {
+  width: 18px;
+}
+
+.lesson-delivery-receipt > div {
+  padding: 0 14px 12px 44px;
+}
+
+.lesson-immediate-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 10px);
+  align-items: center;
+}
+
+.lesson-work-surface > h2 {
+  margin: 0 0 var(--space-3, 16px);
+}
+
+.lesson-admin-details {
+  margin-top: var(--space-4, 24px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg, 18px);
+  background: var(--surface);
+  padding: 10px 14px;
+}
+
+.lesson-admin-details summary {
+  min-height: var(--control-height);
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.lesson-admin-details dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px 16px;
+  margin: 10px 0 4px;
+}
+
+.lesson-admin-details dt {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lesson-admin-details dd {
+  margin: 3px 0 0;
+  text-transform: capitalize;
+}
+
+.page-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.disclosure-section {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+}
+
+.disclosure-section > summary {
+  min-height: var(--control-height);
+  padding: 10px 13px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.disclosure-section > div {
+  padding: 12px 14px;
+  border-top: 1px solid var(--line);
+}
+
+.inline-notice {
+  min-height: var(--control-height);
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--wash);
+}
+
+.inline-notice > svg {
+  flex: 0 0 18px;
+  width: 18px;
+}
+
+.inline-notice.good { border-color: var(--sage); }
+.inline-notice.warn { border-color: var(--gold); }
+.inline-notice.danger { border-color: var(--coral); }
+
+@media (max-width: 768px) {
+  button,
+  .button-link,
+  input,
+  select {
+    min-height: var(--control-height);
+  }
+
+  .student-quick-actions,
+  .lesson-primary-actions,
+  .lesson-admin-disclosure > .form-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+  }
+
+  .student-quick-actions > *,
+  .lesson-primary-actions > *,
+  .lesson-admin-disclosure > .form-actions > * {
+    min-width: 0;
+    justify-content: center;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
+@media (max-width: 420px) {
+  .student-quick-actions,
+  .lesson-primary-actions,
+  .lesson-admin-disclosure > .form-actions,
+  .lesson-admin-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .portal-account-summary > summary {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+}

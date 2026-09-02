@@ -1,5 +1,69 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from "react";
 import { ChevronRight, CircleCheck, TriangleAlert } from "lucide-react";
+import type { StudioMutationStatus } from "../hooks/useStudioMutation";
+
+export function PageActions({ children }: { children: ReactNode }) {
+  return <div className="page-actions">{children}</div>;
+}
+
+export function DisclosureSection({
+  title,
+  children,
+  open = false,
+}: {
+  title: string;
+  children: ReactNode;
+  open?: boolean;
+}) {
+  return (
+    <details className="disclosure-section" open={open}>
+      <summary>{title}</summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
+export function InlineNotice({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "good" | "warn" | "danger";
+}) {
+  return (
+    <p
+      className={`inline-notice ${tone}`}
+      role={tone === "danger" ? "alert" : "status"}
+    >
+      {tone === "danger" ? <TriangleAlert /> : <CircleCheck />}
+      <span>{children}</span>
+    </p>
+  );
+}
+
+export function MutationButton({
+  status,
+  idleLabel,
+  savingLabel = "Saving…",
+  ...props
+}: {
+  status: StudioMutationStatus;
+  idleLabel: string;
+  savingLabel?: string;
+} & Omit<ButtonHTMLAttributes<HTMLButtonElement>, "children">) {
+  return (
+    <button {...props} disabled={props.disabled || status === "saving"}>
+      {status === "saving" ? savingLabel : idleLabel}
+    </button>
+  );
+}
 
 export function PageHeader({
   title,
