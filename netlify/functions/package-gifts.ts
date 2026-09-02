@@ -43,7 +43,7 @@ export default async (request:Request,context:Context)=>{
       const token=String(body.token||""),email=String(body.email||"").trim().toLowerCase(),fullName=String(body.fullName||"").trim();
       if(token.length<30||!email.includes("@")||fullName.length<2)throw new Error("VALIDATION_FAILED: Complete the claim details.");
       const {data:gift,error}=await db.from("package_gifts").select("*,package_definitions(*)").eq("claim_token_hash",hash(token)).single();
-      if(error||!gift||gift.recipient_email.toLowerCase()!==email||!["purchased","delivered"].includes(gift.status)||new Date(gift.expires_at)<=new Date())throw new Error("FORBIDDEN");
+      if(error||!gift||gift.recipient_email.toLowerCase()!==email||!["purchased","delivered"].includes(gift.status)||new Date(gift.expires_at)<=new Date()||(gift.deliver_at&&new Date(gift.deliver_at)>new Date()))throw new Error("FORBIDDEN");
       let {data:student}=await db.from("students").select("id,version").eq("studio_id",gift.studio_id).ilike("email",email).is("deleted_at",null).limit(1).maybeSingle();
       if(!student){const legacy=await db.from("students").select("id,version").eq("studio_id",gift.studio_id).ilike("guardian_email",email).is("deleted_at",null).limit(1).maybeSingle();student=legacy.data;}
       if(!student){const {data:contact}=await db.from("linked_contacts").select("student_id").eq("studio_id",gift.studio_id).ilike("email",email).eq("portal_enabled",true).limit(1).maybeSingle();if(contact){const linked=await db.from("students").select("id,version").eq("id",contact.student_id).single();student=linked.data;}}

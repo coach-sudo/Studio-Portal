@@ -2277,6 +2277,52 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       setPackageBusy("");
     }
   };
+  const cancelRenewal = async (
+    subscription: Snapshot["packageSubscriptions"][number],
+  ) => {
+    const pendingKey = `subscription:${subscription.id}`;
+    if (packageBusy) return;
+    setPackageBusy(pendingKey);
+    setNotice("Turning off package renewal…");
+    try {
+      if (isDemo)
+        store.transact((draft) => {
+          const current = draft.packageSubscriptions.find(
+            (item) => item.id === subscription.id,
+          );
+          if (!current) return;
+          current.status =
+            current.renewalMode === "balance_threshold"
+              ? "cancelled"
+              : "cancel_at_period_end";
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        const result = await studioCommand("finance", {
+          command: "cancel_package_subscription",
+          entityId: subscription.id,
+          expectedVersion: subscription.version,
+          payload: {},
+          reason: "Student turned off package renewal",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        setNotice(
+          result.resource.status === "cancel_at_period_end"
+            ? "Renewal is off. Your current paid period remains available."
+            : "Automatic package renewal is off.",
+        );
+      }
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Package renewal could not be changed.",
+      );
+    } finally {
+      setPackageBusy("");
+    }
+  };
   return (
     <div className="student-page">
       <header className="student-header">
@@ -2329,6 +2375,15 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             const expired = Boolean(
               pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
             );
+            const subscription = data.packageSubscriptions.find(
+              (item) => item.packageId === pkg.id,
+            );
+            const renewalActive = Boolean(
+              subscription &&
+                ["pending", "active", "past_due"].includes(
+                  subscription.status,
+                ),
+            );
             return <article key={pkg.id}>
               <CircleDollarSign />
               <div>
@@ -2336,9 +2391,11 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                 <small>
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
                   credits · {formatMoney(pkg.priceMinor, pkg.currency)}
-                  {pkg.expiresAt &&
-                    ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
-                </small>
+                   {pkg.expiresAt &&
+                      ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
+                    {subscription &&
+                      ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
+                  </small>
               </div>
               <Status tone={expired ? "danger" : "good"}>
                 {expired ? "expired" : "active"}
@@ -2350,6 +2407,16 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                   detail="Use this package for eligible upcoming lessons."
                   onChange={() => void toggleAutoApply(pkg)}
                 />
+              )}
+              {subscription && renewalActive && (
+                <button
+                  disabled={packageBusy === `subscription:${subscription.id}`}
+                  onClick={() => void cancelRenewal(subscription)}
+                >
+                  {packageBusy === `subscription:${subscription.id}`
+                    ? "Saving…"
+                    : "Turn off renewal"}
+                </button>
               )}
             </article>;
           })}
@@ -2439,8 +2506,9 @@ function StudentSettings({
     if (settingsMutation.isPending()) return;
     setNotice("Saving your settings…");
     try {
-      let profilePhotoAssetId = student.profilePhotoAssetId;
-      if (removePhoto) profilePhotoAssetId = undefined;
+      let profilePhotoAssetId: string | null | undefined =
+        student.profilePhotoAssetId;
+      if (removePhoto) profilePhotoAssetId = null;
       if (profilePhoto && role === "student" && !isDemo) {
         if (!profilePhoto.type.startsWith("image/") || profilePhoto.size > 5 * 1024 * 1024) throw new Error("Choose a JPG, PNG, or WebP image smaller than 5 MB.");
         const uploaded = await uploadStudioFile({ studioId:data.studioId, studentId:student.id, entityType:"student", entityId:student.id, file:profilePhoto, visibility:"private" });

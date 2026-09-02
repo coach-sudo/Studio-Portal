@@ -1,0 +1,327 @@
+/* Coach'D app-wide visual system. Shared primitives keep every role and route
+   visually consistent without coupling the design to individual screens. */
+:root {
+  --app-canvas: color-mix(in srgb, var(--wash), white 34%);
+  --app-surface: #fffefb;
+  --app-surface-soft: color-mix(in srgb, var(--wash), white 58%);
+  --app-border: color-mix(in srgb, var(--forest), transparent 86%);
+  --app-border-strong: color-mix(in srgb, var(--sage), transparent 58%);
+  --app-focus: color-mix(in srgb, var(--gold), transparent 28%);
+  --app-radius-control: 11px;
+  --app-radius-card: 18px;
+  --app-radius-panel: 26px;
+  --app-shadow-card: 0 1px 2px #102c2410, 0 12px 34px #102c240a;
+  --app-shadow-float: 0 24px 70px #102c2424;
+  --app-page-gap: clamp(16px, 2vw, 24px);
+  --app-card-pad: clamp(16px, 2.25vw, 26px);
+}
+
+body {
+  background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 87%), transparent 24rem), var(--app-canvas);
+}
+
+.app-shell-main,
+.student-shell-main { background: transparent; }
+
+.page,
+.student-page {
+  width: min(100%, 1240px);
+  margin-inline: auto;
+  padding: clamp(18px, 2.8vw, 36px);
+}
+
+.page-header,
+.student-header {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 126px;
+  margin: 0 0 var(--app-page-gap);
+  padding: clamp(22px, 3vw, 34px);
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-panel);
+  background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 62%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), color-mix(in srgb, var(--wash), white 48%));
+  box-shadow: var(--app-shadow-card);
+  align-items: center;
+  gap: 18px;
+}
+
+.page-header::after,
+.student-header::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  right: 9%;
+  bottom: -62px;
+  width: 142px;
+  height: 142px;
+  border: 1px solid color-mix(in srgb, var(--coral), transparent 68%);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.page-header > div:first-child,
+.student-header > div:first-child { min-width: 0; }
+.page-header h1,
+.student-header h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.04; letter-spacing: -.035em; }
+.page-header p,
+.student-header p,
+.section-intro { max-width: 760px; color: var(--muted); line-height: 1.55; }
+.page-actions,
+.header-actions,
+.form-actions,
+.student-quick-actions,
+.lesson-primary-actions { gap: 9px; }
+.page-actions { position: relative; z-index: 1; flex-wrap: wrap; justify-content: flex-end; }
+
+.section,
+.disclosure-section,
+.lesson-command-section,
+.settings-card,
+.portal-card,
+.summary-card,
+.metric-card {
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+}
+
+.page > .section,
+.student-page > .section,
+.portal-priority-stack > .section,
+.lesson-hub-grid > .section,
+.two-section-grid > .section,
+.settings-content > .section { margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
+
+.section > header,
+.section-heading,
+.disclosure-section > summary,
+.lesson-command-section > header { gap: 12px; }
+.section > header h2,
+.section-heading h2,
+.disclosure-section > summary strong { letter-spacing: -.015em; }
+
+.disclosure-section { margin-top: 12px; overflow: clip; }
+.disclosure-section > summary { min-height: 54px; padding: 13px 16px; background: var(--app-surface-soft); }
+.disclosure-section > :not(summary) { margin-inline: 16px; }
+
+.subnav,
+.record-tabs,
+.settings-nav {
+  padding: 5px;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--app-surface), transparent 5%);
+  box-shadow: 0 6px 20px #102c2408;
+}
+.subnav button,
+.record-tabs a,
+.record-tabs button,
+.settings-nav button,
+.settings-nav a { min-height: 42px; border-radius: 10px; }
+.subnav button[aria-current="page"],
+.subnav button.active,
+.record-tabs .active,
+.record-tabs [aria-current="page"],
+.settings-nav .active,
+.settings-nav [aria-current="page"] {
+  border-color: transparent;
+  background: var(--forest);
+  color: white;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--forest), transparent 76%);
+}
+
+.settings-layout { gap: var(--app-page-gap); align-items: start; }
+.settings-layout > aside,
+.settings-sidebar {
+  position: sticky;
+  top: 18px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-card);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+}
+.settings-content { min-width: 0; }
+
+.table-list,
+.workflow-list,
+.student-bookings,
+.portal-list,
+.lesson-note-index { display: grid; gap: 10px; }
+.table-list > article,
+.workflow-list > article,
+.student-bookings > article,
+.portal-row,
+.lesson-note-index > button,
+.booking-table-row {
+  min-height: 66px;
+  padding: 13px 15px;
+  border: 1px solid var(--app-border);
+  border-radius: 14px;
+  background: var(--app-surface-soft);
+  transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+.table-list > article:hover,
+.workflow-list > article:hover,
+.student-bookings > article:hover,
+.portal-row:hover,
+.lesson-note-index > button:hover,
+.booking-table-row:hover {
+  border-color: var(--app-border-strong);
+  background: var(--app-surface);
+  box-shadow: 0 9px 24px #102c240c;
+}
+.table-list > article:focus-within,
+.workflow-list > article:focus-within,
+.student-bookings > article:focus-within,
+.portal-row:focus-within,
+.booking-table-row:focus-within { border-color: var(--sage); }
+
+button,
+.button-link,
+.booking-primary,
+input,
+select,
+textarea,
+[contenteditable="true"] { border-radius: var(--app-radius-control); }
+button,
+.button-link,
+.booking-primary { transition: transform 120ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease; }
+button:not(:disabled):active,
+.button-link:active,
+.booking-primary:active { transform: translateY(1px); }
+button:focus-visible,
+.button-link:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+[contenteditable="true"]:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
+input,
+select,
+textarea,
+[contenteditable="true"] { border-color: var(--app-border-strong); background: white; }
+input:hover,
+select:hover,
+textarea:hover,
+[contenteditable="true"]:hover { border-color: color-mix(in srgb, var(--sage), var(--forest) 22%); }
+
+.inline-notice,
+.portal-notice,
+.inline-error,
+.empty-state { border-radius: 14px; }
+.empty-state { min-height: 132px; padding: 24px; border: 1px dashed var(--app-border-strong); background: var(--app-surface-soft); }
+
+.command-dialog,
+.workflow-dialog {
+  width: min(94vw, 760px);
+  max-height: min(88dvh, 920px);
+  padding: 0;
+  border: 1px solid var(--app-border);
+  border-radius: var(--app-radius-panel);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-float);
+}
+.command-dialog::backdrop,
+.workflow-dialog::backdrop { background: color-mix(in srgb, var(--forest), transparent 38%); backdrop-filter: blur(4px); }
+.command-dialog > header,
+.workflow-dialog > header,
+.dialog-header {
+  position: sticky;
+  z-index: 3;
+  top: 0;
+  padding: 18px var(--app-card-pad);
+  border-bottom: 1px solid var(--app-border);
+  background: color-mix(in srgb, var(--app-surface), transparent 4%);
+  backdrop-filter: blur(12px);
+}
+.command-dialog > form,
+.workflow-dialog > form,
+.command-dialog > .dialog-body,
+.workflow-dialog > .dialog-body { padding: var(--app-card-pad); }
+
+.booking-public,
+.legal-page { background-color: var(--app-canvas); }
+.booking-topbar,
+.login-card,
+.booking-flow,
+.booking-confirmation,
+.manage-page > section,
+.legal-page article { border-color: var(--app-border); box-shadow: var(--app-shadow-card); }
+.booking-step,
+.booking-summary,
+.login-card,
+.booking-confirmation { border-radius: var(--app-radius-panel); }
+.actor-public-section,
+.actor-public-hero,
+.actor-footer { border-radius: var(--app-radius-card); }
+
+@media (max-width: 900px) {
+  .page,
+  .student-page { padding: 20px; }
+  .settings-layout { grid-template-columns: 1fr; }
+  .settings-layout > aside,
+  .settings-sidebar { position: static; }
+  .settings-nav,
+  .subnav,
+  .record-tabs { display: flex; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+  .settings-nav > *,
+  .subnav > *,
+  .record-tabs > * { flex: 0 0 auto; }
+}
+
+@media (max-width: 700px) {
+  .page,
+  .student-page { width: 100%; padding: 14px 12px calc(86px + env(safe-area-inset-bottom)); overflow-x: clip; }
+  .page-header,
+  .student-header { min-height: 0; padding: 20px 17px; border-radius: 18px; align-items: flex-start; }
+  .page-header h1,
+  .student-header h1 { font-size: clamp(28px, 9vw, 38px); }
+  .page-actions,
+  .header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; justify-content: stretch; }
+  .page-actions > *,
+  .header-actions > * { min-width: 0; min-height: 44px; justify-content: center; white-space: normal; text-align: center; }
+  .page > .section,
+  .student-page > .section,
+  .portal-priority-stack > .section,
+  .lesson-hub-grid > .section,
+  .two-section-grid > .section,
+  .settings-content > .section { padding: 16px 14px; border-radius: 15px; }
+  .table-list > article,
+  .workflow-list > article,
+  .student-bookings > article,
+  .portal-row,
+  .lesson-note-index > button,
+  .booking-table-row { padding: 12px; }
+  .form-actions,
+  .student-booking-actions,
+  .lesson-primary-actions { width: 100%; }
+  .form-actions > button,
+  .form-actions > .button-link,
+  .student-booking-actions > button,
+  .student-booking-actions > .button-link,
+  .lesson-primary-actions > button,
+  .lesson-primary-actions > .button-link { min-height: 44px; }
+  .command-dialog,
+  .workflow-dialog { width: 100vw; max-width: none; max-height: calc(94dvh - env(safe-area-inset-top)); margin: auto 0 0; border-radius: 22px 22px 0 0; }
+  .booking-flow,
+  .booking-step,
+  .booking-summary,
+  .login-card,
+  .booking-confirmation { border-radius: 18px; }
+}
+
+@media (max-width: 430px) {
+  .page-actions,
+  .header-actions { grid-template-columns: 1fr; }
+  .page-header::after,
+  .student-header::after { right: -45px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}

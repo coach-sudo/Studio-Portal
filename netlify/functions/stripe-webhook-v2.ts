@@ -40,9 +40,10 @@ export default async (request: Request, context: Context) => {
         if(!recipient){const legacy=await db.from("students").select("id").eq("studio_id",gift.studio_id).ilike("guardian_email",gift.recipient_email).is("deleted_at",null).limit(1).maybeSingle();recipient=legacy.data;}
         if(!recipient){const {data:contact}=await db.from("linked_contacts").select("student_id").eq("studio_id",gift.studio_id).ilike("email",gift.recipient_email).eq("portal_enabled",true).limit(1).maybeSingle();if(contact)recipient={id:contact.student_id};}
         await db.from("package_gifts").update({status:"purchased",updated_at:new Date().toISOString()}).eq("id",gift.id).eq("status","pending_payment");
-        if(recipient){const claimed=await db.rpc("claim_package_gift",{target_gift:gift.id,target_student:recipient.id,apply_automatically:false});if(claimed.error)throw claimed.error;}
+        const deliversLater=Boolean(gift.deliver_at&&new Date(gift.deliver_at)>new Date());
+        if(recipient&&!deliversLater){const claimed=await db.rpc("claim_package_gift",{target_gift:gift.id,target_student:recipient.id,apply_automatically:false});if(claimed.error)throw claimed.error;}
         const claimUrl=`${Netlify.env.get("URL")||new URL(request.url).origin}/gift/claim/${object.metadata?.claim_token}`;
-        await db.from("outbox_messages").upsert({studio_id:gift.studio_id,channel:"email",recipient:gift.recipient_email,subject:`${gift.purchaser_name} sent you a Coach'D lesson package`,body:[`Hello ${gift.recipient_name},`,"",`${gift.purchaser_name} sent you ${definition.name}.`,gift.message?`Message: ${gift.message}`:"",recipient?"The credits are already in your portal.":`Claim your gift: ${claimUrl}`,"","Gifts never create recurring charges."].filter(Boolean).join("\n"),status:"queued",send_at:gift.deliver_at||new Date().toISOString(),event_key:"package.gift",dedupe_key:`package-gift:${gift.id}:delivery`,priority:85},{onConflict:"dedupe_key",ignoreDuplicates:true});
+        await db.from("outbox_messages").upsert({studio_id:gift.studio_id,channel:"email",recipient:gift.recipient_email,subject:`${gift.purchaser_name} sent you a Coach'D lesson package`,body:[`Hello ${gift.recipient_name},`,"",`${gift.purchaser_name} sent you ${definition.name}.`,gift.message?`Message: ${gift.message}`:"",recipient?(deliversLater?"The credits will be added to your portal on the delivery date.":"The credits are already in your portal."):`Claim your gift: ${claimUrl}`,"","Gifts never create recurring charges."].filter(Boolean).join("\n"),status:"queued",send_at:gift.deliver_at||new Date().toISOString(),event_key:"package.gift",dedupe_key:`package-gift:${gift.id}:delivery`,priority:85},{onConflict:"dedupe_key",ignoreDuplicates:true});
         return done({packageGift:true});
       }
       const bookingId = object.metadata?.booking_id, holdId = object.metadata?.hold_id;
@@ -99,14 +100,14 @@ export default async (request: Request, context: Context) => {
         const { data: packageSubscription, error: packageSubscriptionError } = await db.from("package_subscriptions").select("*,package_definitions(session_count,currency,name)").eq("id", packageSubscriptionId).single();
         if (packageSubscriptionError || !packageSubscription) throw packageSubscriptionError || new Error("Package subscription not found.");
         if (event.type === "invoice.payment_failed") {
-          await db.from("package_subscriptions").update({ status: "past_due", last_invoice_id: object.id, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
+          await db.from("package_subscriptions").update({ status: "past_due", last_invoice_id: object.id, renewal_in_flight: false, renewal_attempt_key: null, renewal_claimed_at: null, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
           const { data: student } = await db.from("students").select("email,guardian_email,full_name,is_minor").eq("id", packageSubscription.student_id).single();
           const recipient = student?.is_minor ? student.guardian_email || student.email : student?.email || student?.guardian_email;
           if (recipient) await db.from("outbox_messages").upsert({ studio_id: packageSubscription.studio_id, student_id: packageSubscription.student_id, channel: "email", recipient, subject: "Your Coach'D package renewal needs attention", body: "We could not collect your package renewal. Your existing earned lesson credits remain available. Please update your payment method in the portal.", status: "queued", send_at: new Date().toISOString(), event_key: "package.renewal_failed", dedupe_key: `package-subscription:${packageSubscription.id}:invoice:${object.id}:failed`, priority: 90 }, { onConflict: "dedupe_key", ignoreDuplicates: true });
         } else {
           const definition = Array.isArray(packageSubscription.package_definitions) ? packageSubscription.package_definitions[0] : packageSubscription.package_definitions;
           await db.from("package_credit_entries").upsert({ package_id: packageSubscription.package_id, kind: "purchase", quantity: Number(definition?.session_count || 1), reason: `Package renewal · ${object.id}`, idempotency_key: `package-subscription-invoice:${object.id}` }, { onConflict: "idempotency_key", ignoreDuplicates: true });
-          await db.from("package_subscriptions").update({ status: "active", last_invoice_id: object.id, next_billing_at: object.lines?.data?.[0]?.period?.end ? new Date(Number(object.lines.data[0].period.end) * 1000).toISOString() : null, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
+          await db.from("package_subscriptions").update({ status: "active", last_invoice_id: object.id, next_billing_at: object.lines?.data?.[0]?.period?.end ? new Date(Number(object.lines.data[0].period.end) * 1000).toISOString() : null, renewal_in_flight: false, renewal_attempt_key: null, renewal_claimed_at: null, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
           if (Number(object.amount_paid || 0) > 0) await db.from("payment_entries").upsert({ student_id: packageSubscription.student_id, package_id: packageSubscription.package_id, kind: "payment", amount_minor: Number(object.amount_paid), currency: String(object.currency || definition?.currency || "USD").toUpperCase(), external_reference: object.id, reason: "Package subscription renewal" }, { onConflict: "external_reference", ignoreDuplicates: true });
         }
         return done({ packageSubscription: true });
@@ -178,6 +179,13 @@ export default async (request: Request, context: Context) => {
     }
     if (event.type === "checkout.session.expired") {
       if(object.metadata?.package_gift_id){await db.from("package_gifts").update({status:"expired",updated_at:new Date().toISOString()}).eq("id",object.metadata.package_gift_id).eq("status","pending_payment");return done({packageGift:true});}
+      if(object.metadata?.package_id){
+        const packageId=String(object.metadata.package_id),packageSubscriptionId=String(object.metadata.package_subscription_id||"");
+        if(packageSubscriptionId)await db.from("package_subscriptions").delete().eq("id",packageSubscriptionId).eq("status","pending");
+        const {count}=await db.from("package_credit_entries").select("id",{count:"exact",head:true}).eq("package_id",packageId);
+        if(!count)await db.from("packages").delete().eq("id",packageId);
+        return done({packageCheckout:true});
+      }
       const {data:expiredBooking}=await db.from("bookings").select("hold_ids").eq("stripe_checkout_session_id",object.id).maybeSingle();if(expiredBooking?.hold_ids?.length)await db.from("booking_holds").update({status:"expired"}).in("id",expiredBooking.hold_ids);else await db.from("booking_holds").update({ status: "expired" }).eq("checkout_session_id", object.id);
       await db.from("bookings").update({ status: "expired", payment_status: "failed", updated_at: new Date().toISOString() }).eq("stripe_checkout_session_id", object.id);
       return done();

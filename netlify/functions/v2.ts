@@ -2416,6 +2416,107 @@ export default async (request: Request, context: Context) => {
       if (error) throw error;
       return json(data);
     }
+    if (
+      domain === "finance" &&
+      input.command === "cancel_package_subscription" &&
+      input.entityId
+    ) {
+      const service = serviceClient();
+      const [{ data: authData }, { data: before, error: subscriptionError }] =
+        await Promise.all([
+          db.auth.getUser(),
+          service
+            .from("package_subscriptions")
+            .select("*,students!inner(user_id,is_minor)")
+            .eq("id", input.entityId)
+            .single(),
+        ]);
+      if (!authData.user || subscriptionError || !before)
+        throw new Error("FORBIDDEN");
+      const student = Array.isArray(before.students)
+        ? before.students[0]
+        : before.students;
+      const [{ data: coach }, { data: financeContact }] = await Promise.all([
+        service
+          .from("memberships")
+          .select("id")
+          .eq("studio_id", before.studio_id)
+          .eq("user_id", authData.user.id)
+          .eq("role", "coach")
+          .maybeSingle(),
+        service
+          .from("student_relationships")
+          .select("id")
+          .eq("student_id", before.student_id)
+          .eq("user_id", authData.user.id)
+          .eq("can_view_finance", true)
+          .maybeSingle(),
+      ]);
+      const isAdultStudent =
+        student?.user_id === authData.user.id && !student?.is_minor;
+      if (!coach && !financeContact && !isAdultStudent)
+        throw new Error("FORBIDDEN");
+      if (
+        input.expectedVersion != null &&
+        Number(input.expectedVersion) !== Number(before.version)
+      )
+        throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+
+      let nextStatus = "cancelled";
+      if (
+        before.renewal_mode !== "balance_threshold" &&
+        before.stripe_subscription_id
+      ) {
+        const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
+        if (!stripeKey) throw new Error("Stripe is not configured.");
+        const stripe = new Stripe(stripeKey, {
+          apiVersion: "2026-07-29.dahlia",
+        });
+        await stripe.subscriptions.update(before.stripe_subscription_id, {
+          cancel_at_period_end: true,
+        });
+        nextStatus = "cancel_at_period_end";
+      }
+
+      const { data, error } = await service
+        .from("package_subscriptions")
+        .update({
+          status: nextStatus,
+          renewal_in_flight: false,
+          renewal_attempt_key: null,
+          renewal_claimed_at: null,
+          next_billing_at:
+            nextStatus === "cancel_at_period_end"
+              ? before.next_billing_at
+              : null,
+          version: Number(before.version) + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", before.id)
+        .eq("version", before.version)
+        .select()
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(
+          before.studio_id,
+          "package_subscription",
+          before.id,
+          nextStatus === "cancel_at_period_end"
+            ? "package_subscription.cancel_scheduled"
+            : "package_subscription.cancelled",
+          before,
+          data,
+        ),
+        queuedSideEffects:
+          nextStatus === "cancel_at_period_end"
+            ? ["stripe_subscription_updated"]
+            : [],
+      });
+    }
     if (domain === "finance" && input.command === "checkout_definition") {
       const definitionId = String(input.payload.packageDefinitionId || "");
       const requestedMode = String(input.payload.renewalMode || "one_time");

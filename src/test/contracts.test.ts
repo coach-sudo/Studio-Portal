@@ -51,6 +51,23 @@ const securityHardening = fs.readFileSync(
   "supabase/migrations/20260820184240_actor_view_security_invoker.sql",
   "utf8",
 );
+const lessonRlsHotfix = fs.readFileSync(
+  "supabase/migrations/20260902223243_fix_lesson_rls_recursion.sql",
+  "utf8",
+);
+const householdPackageHardening = fs.readFileSync(
+  "supabase/migrations/20260902223544_harden_household_and_package_lifecycle.sql",
+  "utf8",
+);
+const bookingMaintenance = fs.readFileSync(
+  "netlify/functions/booking-maintenance.ts",
+  "utf8",
+);
+const commandFunction = fs.readFileSync("netlify/functions/v2.ts", "utf8");
+const studentPortal = fs.readFileSync(
+  "src/features/student/StudentPortal.tsx",
+  "utf8",
+);
 describe("database contracts", () => {
   it("enables RLS for every private aggregate", () => {
     for (const table of [
@@ -127,6 +144,12 @@ describe("database contracts", () => {
     expect(booking).toContain("drop policy if exists lessons_access");
     expect(booking).toContain("can_access_lesson");
     expect(booking).toContain("security definer");
+    expect(lessonRlsHotfix).toContain(
+      "using (public.can_access_lesson(id, student_id, studio_id))",
+    );
+    expect(lessonRlsHotfix).not.toContain(
+      "select 1 from public.lesson_participants lp",
+    );
   });
   it("serializes confirmed private occurrences and builds course lessons", () => {
     expect(booking).toContain("lessons_private_overlap");
@@ -242,5 +265,49 @@ describe("database contracts", () => {
     expect(portalAccess).toContain('accountType: "student"');
     expect(portalAccess).toContain('accountType: "guardian"');
     expect(portalAccess).toContain('accountType: "minor_household"');
+  });
+
+  it("revokes and synchronizes linked-contact authorization transactionally", () => {
+    expect(householdPackageHardening).toContain(
+      "linked_contact_authorization_sync",
+    );
+    expect(householdPackageHardening).toContain(
+      "delete from public.student_relationships",
+    );
+    expect(householdPackageHardening).toContain(
+      "delete from public.portal_accounts",
+    );
+    expect(householdPackageHardening).toContain(
+      "on conflict (student_id, user_id) do update",
+    );
+  });
+
+  it("keeps balance renewals in flight and uses stable Stripe idempotency", () => {
+    expect(householdPackageHardening).toContain(
+      "renewal_in_flight = true",
+    );
+    expect(householdPackageHardening).not.toContain("interval '15 minutes'");
+    expect(bookingMaintenance).toContain(
+      "package-renewal:${renewal.id}:${attemptKey}:invoice",
+    );
+    expect(stripeWebhook).toContain("renewal_in_flight: false");
+    expect(commandFunction).toContain(
+      'input.command === "cancel_package_subscription"',
+    );
+    expect(studentPortal).toContain("Turn off renewal");
+  });
+
+  it("honors gift delivery dates and removes abandoned package checkouts", () => {
+    expect(householdPackageHardening).toContain("gift.deliver_at > now()");
+    expect(stripeWebhook).toContain("deliversLater");
+    expect(bookingMaintenance).toContain("packageGiftsDelivered");
+    expect(compactStripeWebhook).toContain(
+      '.from("package_subscriptions").delete()',
+    );
+    expect(compactStripeWebhook).toContain('.from("packages").delete()');
+  });
+
+  it("sends an explicit null when a student removes a profile photo", () => {
+    expect(studentPortal).toContain("profilePhotoAssetId = null");
   });
 });
