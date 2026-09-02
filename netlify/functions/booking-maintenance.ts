@@ -89,6 +89,57 @@ export default async () => {
     if (packageId) autoCreditsApplied += 1;
   }
 
+  const { data: dueGifts, error: dueGiftError } = await db
+    .from("package_gifts")
+    .select("id,studio_id,recipient_email")
+    .eq("status", "purchased")
+    .is("package_id", null)
+    .not("deliver_at", "is", null)
+    .lte("deliver_at", now)
+    .limit(25);
+  if (dueGiftError) throw dueGiftError;
+  let packageGiftsDelivered = 0;
+  for (const gift of dueGifts || []) {
+    let { data: recipient } = await db
+      .from("students")
+      .select("id")
+      .eq("studio_id", gift.studio_id)
+      .ilike("email", gift.recipient_email)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (!recipient) {
+      const legacy = await db
+        .from("students")
+        .select("id")
+        .eq("studio_id", gift.studio_id)
+        .ilike("guardian_email", gift.recipient_email)
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      recipient = legacy.data;
+    }
+    if (!recipient) {
+      const { data: contact } = await db
+        .from("linked_contacts")
+        .select("student_id")
+        .eq("studio_id", gift.studio_id)
+        .ilike("email", gift.recipient_email)
+        .eq("portal_enabled", true)
+        .limit(1)
+        .maybeSingle();
+      if (contact) recipient = { id: contact.student_id };
+    }
+    if (!recipient) continue;
+    const { error: claimError } = await db.rpc("claim_package_gift", {
+      target_gift: gift.id,
+      target_student: recipient.id,
+      apply_automatically: false,
+    });
+    if (claimError) throw claimError;
+    packageGiftsDelivered += 1;
+  }
+
   let packageAutoRenewals = 0;
   const { data: dueRenewals, error: renewalClaimError } = await db.rpc("claim_package_auto_renewals", { batch_size: 10 });
   if (renewalClaimError) throw renewalClaimError;
@@ -103,12 +154,19 @@ export default async () => {
           db.from("package_billing_options").select("stripe_price_id").eq("id", renewal.billing_option_id).single(),
         ]);
         if (!definition || !option?.stripe_price_id) throw new Error("Package renewal pricing is unavailable.");
-        await stripe.invoiceItems.create({ customer: renewal.stripe_customer_id, amount: Number(definition.price_minor), currency: String(definition.currency).toLowerCase(), description: `${definition.name} automatic renewal`, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id } });
-        const invoice = await stripe.invoices.create({ customer: renewal.stripe_customer_id, collection_method: "charge_automatically", auto_advance: true, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id } });
+        const attemptKey = String(renewal.renewal_attempt_key || renewal.id);
+        await stripe.invoiceItems.create(
+          { customer: renewal.stripe_customer_id, amount: Number(definition.price_minor), currency: String(definition.currency).toLowerCase(), description: `${definition.name} automatic renewal`, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id, renewal_attempt_key: attemptKey } },
+          { idempotencyKey: `package-renewal:${renewal.id}:${attemptKey}:item` },
+        );
+        const invoice = await stripe.invoices.create(
+          { customer: renewal.stripe_customer_id, collection_method: "charge_automatically", auto_advance: true, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id, renewal_attempt_key: attemptKey } },
+          { idempotencyKey: `package-renewal:${renewal.id}:${attemptKey}:invoice` },
+        );
         await db.from("package_subscriptions").update({ last_invoice_id: invoice.id, updated_at: now }).eq("id", renewal.id);
         packageAutoRenewals += 1;
       } catch (renewalError) {
-        await db.from("package_subscriptions").update({ status: "past_due", next_billing_at: new Date(Date.now() + 86400000).toISOString(), updated_at: now }).eq("id", renewal.id);
+        await db.from("package_subscriptions").update({ status: "past_due", renewal_in_flight: false, next_billing_at: new Date(Date.now() + 86400000).toISOString(), updated_at: now }).eq("id", renewal.id);
         await db.from("recommendations").upsert({ studio_id: renewal.studio_id, student_id: renewal.student_id, entity_type: "package_subscription", entity_id: renewal.id, reason_code: "package_auto_renewal_failed", title: "Package auto-renewal needs attention", explanation: "Stripe could not start the balance-based package renewal.", evidence: [String(renewalError)], urgency: 5, suggested_action: "review_package", requires_confirmation: false, status: "open", dedupe_key: `package-subscription:${renewal.id}:auto-renewal`, updated_at: now }, { onConflict: "dedupe_key" });
       }
     }
@@ -217,7 +275,7 @@ export default async () => {
     for (const recipient of recipients) await db.from("outbox_messages").upsert({ studio_id: student.studio_id, student_id: pkg.student_id, channel: "email", recipient, subject, body, status: "queued", send_at: now, event_key: "package.low_balance.student", dedupe_key: `package:${pkg.id}:purchase:${latestPurchase}:low:${balance}:${recipient}`, priority: 65 }, { onConflict: "dedupe_key", ignoreDuplicates: true });
   }
   const { count: prunedNotificationReceipts } = await db.from("notification_receipts").delete({ count: "exact" }).lt("read_at", new Date(Date.now()-45*86_400_000).toISOString());
-  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, storageCleanupRan: runDailyStorageCleanup, delinquentCancelled: delinquent?.length || 0, noteReminders, autoCreditsApplied, packageAutoRenewals, packageReminders, prunedNotificationReceipts: prunedNotificationReceipts || 0 });
+  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, storageCleanupRan: runDailyStorageCleanup, delinquentCancelled: delinquent?.length || 0, noteReminders, autoCreditsApplied, packageGiftsDelivered, packageAutoRenewals, packageReminders, prunedNotificationReceipts: prunedNotificationReceipts || 0 });
 };
 
 export const config: Config = { schedule: "*/5 * * * *" };
