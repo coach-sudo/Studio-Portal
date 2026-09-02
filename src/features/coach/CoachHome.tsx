@@ -1,6 +1,6 @@
 import { CalendarDays, CircleDollarSign, Plus, Search, UserRound, Waypoints } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { EmptyState, PageHeader, Section } from "../../components/Primitives";
+import { EmptyState, Section } from "../../components/Primitives";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import { useStudio } from "../../hooks/useStudio";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
@@ -24,8 +24,8 @@ export function CoachHome() {
   const reviewCount = data.materials.filter((item)=>item.approvalStatus === "pending_review").length + data.actorProfiles.filter((item)=>item.status === "review_requested").length + data.assignments.filter((item)=>item.helpRequested).length + data.bookings.filter((item)=>item.status === "needs_attention").length;
   const actionCount = todayCount + noteFollowupCount + importReviewCount + reviewCount;
   const outstanding = data.students.reduce((total,student)=>total + Math.max(0,studentBalanceMinor(student.id,data.payments)),0);
-  return <div className="page home-page">
-    <PageHeader title={`${greeting}, ${data.displayName}`} action={<div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/coach/students?new=1")}><Plus />Add student</button></div>}>A clear view of the studio—not a second to-do list.</PageHeader>
+  return <div className="page home-page creative-dashboard">
+    <section className="creative-welcome coach-welcome"><div><small>{formatStudioDate(new Date(now),data.settings.timezone,{weekday:"long"})}</small><h1>{greeting}, {data.displayName}</h1><p>A calm view of what matters in your studio right now.</p><div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/coach/students?new=1")}><Plus />Add student</button></div></div><i/><b/></section>
     <JoinLessonBanner lessons={data.lessons} label={(lesson) => `${data.students.find((item) => item.id === lesson.studentId)?.preferredName || data.students.find((item) => item.id === lesson.studentId)?.fullName || "Student"} · ${lesson.topic}`} />
     <div className="studio-pulse-grid" aria-label="Studio overview">
       <button onClick={()=>navigate("/coach/students?status=active")}><UserRound/><span><strong>{activeStudents}</strong><small>active students</small></span></button>
@@ -41,10 +41,11 @@ export function CoachHome() {
       </span>
       <b>Open Today</b>
     </button>
-    <div className="home-dashboard-grid home-dashboard-single">
+    <div className="home-dashboard-grid creative-home-grid">
       <Section title="Coming up this week" marked aside={<button className="text-button" onClick={()=>navigate("/coach/today")}>Open Today</button>}>
         <div className="timeline">{upcoming.slice(0,6).map((lesson)=>{const student=data.students.find((item)=>item.id===lesson.studentId);return <button key={lesson.id} onClick={()=>navigate(`/coach/students/${lesson.studentId}/lessons/${lesson.id}`)}><time>{formatStudioDate(lesson.startsAt,data.settings.timezone,{weekday:"short",month:undefined,day:undefined,year:undefined})}<br/>{formatStudioTime(lesson.startsAt,data.settings.timezone)}</time><i/><div><strong>{student?.preferredName || student?.fullName || "Student"}</strong><small>{lesson.topic} · {lesson.locationLabel}</small></div></button>;})}{!upcoming.length&&<EmptyState title="The next seven days are clear" detail="New lessons appear here as soon as they are booked or verified."/>}</div>
       </Section>
+      <aside className="dashboard-rail"><header><small>Today at a glance</small><strong>{formatStudioDate(new Date(now),data.settings.timezone,{weekday:"long",month:"short"})}</strong></header><button onClick={()=>navigate("/coach/today")}><CalendarDays/><span><strong>{todayCount} lesson{todayCount===1?"":"s"}</strong><small>Teaching schedule</small></span></button><button onClick={()=>navigate("/coach/today#notes")}><Waypoints/><span><strong>{noteFollowupCount} note{noteFollowupCount===1?"":"s"} due</strong><small>Recent lesson follow-up</small></span></button><button onClick={()=>navigate("/coach/today#approvals")}><UserRound/><span><strong>{reviewCount} approval{reviewCount===1?"":"s"}</strong><small>Waiting for you</small></span></button></aside>
     </div>
   </div>;
 }

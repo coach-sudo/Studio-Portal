@@ -105,6 +105,10 @@ export interface Student extends Versioned {
     showProgress?: boolean;
     emailReminders?: boolean;
   };
+  notificationPreferences?: NotificationPreferences;
+  profilePhotoAssetId?: UUID;
+  profilePhotoUrl?: string;
+  profilePhotoPosition?: { x: number; y: number };
   stripeCustomerId?: string;
   paymentMethodSummary?: string;
   defaultRateMinor?: number;
@@ -398,6 +402,86 @@ export interface PackageDefinition extends Versioned {
   visibility: "public" | "private";
   directPurchase: boolean;
   active: boolean;
+  pricingServiceId?: UUID;
+  pricingServiceVersion?: number;
+  basePriceMinor?: number;
+  discountType?: "none" | "fixed" | "percent";
+  discountBasisPoints?: number;
+  deliveryFormat?: "google_meet" | "in_person";
+  giftable?: boolean;
+  pricingStatus?: "current" | "changed" | "syncing" | "failed" | "legacy";
+}
+export type PackageRenewalMode =
+  | "one_time"
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "balance_threshold";
+export interface PackageBillingOption extends Versioned {
+  studioId: UUID;
+  definitionId: UUID;
+  renewalMode: PackageRenewalMode;
+  balanceThreshold?: number;
+  stripePriceId?: string;
+  active: boolean;
+}
+export interface PackageSubscription extends Versioned {
+  studioId: UUID;
+  studentId: UUID;
+  definitionId: UUID;
+  billingOptionId: UUID;
+  packageId?: UUID;
+  renewalMode: Exclude<PackageRenewalMode, "one_time">;
+  balanceThreshold?: number;
+  autoApply: boolean;
+  status:
+    | "pending"
+    | "active"
+    | "past_due"
+    | "paused"
+    | "cancel_at_period_end"
+    | "cancelled";
+  nextBillingAt?: string;
+}
+export interface PackageGift extends Versioned {
+  studioId: UUID;
+  definitionId: UUID;
+  purchaserName: string;
+  purchaserEmail: string;
+  recipientName: string;
+  recipientEmail: string;
+  message: string;
+  deliverAt?: string;
+  packageId?: UUID;
+  claimedStudentId?: UUID;
+  status: "pending_payment" | "purchased" | "delivered" | "claimed" | "expired" | "refunded";
+  expiresAt: string;
+}
+export interface NotificationPreferences {
+  lessonReminders: boolean;
+  scheduleChanges: boolean;
+  lessonContent: boolean;
+  assignments: boolean;
+  packageBalance: boolean;
+  payments: boolean;
+  accountAccess: boolean;
+}
+export interface LinkedContact extends Versioned {
+  studioId: UUID;
+  studentId: UUID;
+  userId?: UUID;
+  fullName: string;
+  email: string;
+  relationshipType: "guardian" | "support_person" | "other";
+  relationshipLabel?: string;
+  canViewSchedule: boolean;
+  canManageLessons: boolean;
+  canViewWork: boolean;
+  canManageProfile: boolean;
+  canViewFinance: boolean;
+  canReceiveNotifications: boolean;
+  notificationPreferences: NotificationPreferences;
+  portalEnabled: boolean;
 }
 export interface DiscountCode extends Versioned {
   studioId: UUID;
@@ -554,6 +638,9 @@ export interface StudioSettings {
     surfaceColor: string;
     logoUrl?: string;
     logoStoragePath?: string;
+    coachProfilePhotoUrl?: string;
+    coachProfilePhotoStoragePath?: string;
+    coachProfilePhotoPosition?: { x: number; y: number };
   };
   bookingCopy: { eyebrow: string; headline: string; intro: string };
   bookingPage: {
@@ -580,6 +667,8 @@ export interface StudioSettings {
     cancellationBody: string;
     packageExpirySubject: string;
     packageExpiryBody: string;
+    packageLowBalanceSubject?: string;
+    packageLowBalanceBody?: string;
     paymentFailedSubject: string;
     paymentFailedBody: string;
   };
@@ -593,6 +682,7 @@ export interface StudioSnapshot {
   studioId: UUID;
   role: Role;
   displayName: string;
+  currentLinkedContactId?: UUID;
   settings: StudioSettings;
   students: Student[];
   lessons: Lesson[];
@@ -601,6 +691,10 @@ export interface StudioSnapshot {
   materials: Material[];
   packages: PackageAccount[];
   packageDefinitions: PackageDefinition[];
+  packageBillingOptions: PackageBillingOption[];
+  packageSubscriptions: PackageSubscription[];
+  packageGifts: PackageGift[];
+  linkedContacts: LinkedContact[];
   studentPricingRules: StudentPricingRule[];
   creditEntries: CreditEntry[];
   payments: PaymentEntry[];

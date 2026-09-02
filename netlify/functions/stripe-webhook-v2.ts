@@ -4,6 +4,7 @@ import { apiError, correlationId, json } from "./_shared/http";
 import { serviceClient } from "./_shared/supabase";
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
 import { queueBookingEmails, queueLessonChangeEmails, queuePaymentFailedEmail } from "./_shared/booking-email";
+import { dispatchOutbox } from "./_shared/outbox-dispatch";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -30,6 +31,20 @@ export default async (request: Request, context: Context) => {
       // Payment-method Checkout sessions are completed by the subsequent
       // setup_intent event; they are never package purchases.
       if (object.mode === "setup") return done({ setup: true });
+      const giftId=object.metadata?.package_gift_id;
+      if(giftId){
+        const {data:gift,error:giftError}=await db.from("package_gifts").select("*,package_definitions(*)").eq("id",giftId).single();
+        if(giftError||!gift)throw giftError||new Error("Package gift not found.");
+        const definition=Array.isArray(gift.package_definitions)?gift.package_definitions[0]:gift.package_definitions;
+        let {data:recipient}=await db.from("students").select("id").eq("studio_id",gift.studio_id).ilike("email",gift.recipient_email).is("deleted_at",null).limit(1).maybeSingle();
+        if(!recipient){const legacy=await db.from("students").select("id").eq("studio_id",gift.studio_id).ilike("guardian_email",gift.recipient_email).is("deleted_at",null).limit(1).maybeSingle();recipient=legacy.data;}
+        if(!recipient){const {data:contact}=await db.from("linked_contacts").select("student_id").eq("studio_id",gift.studio_id).ilike("email",gift.recipient_email).eq("portal_enabled",true).limit(1).maybeSingle();if(contact)recipient={id:contact.student_id};}
+        await db.from("package_gifts").update({status:"purchased",updated_at:new Date().toISOString()}).eq("id",gift.id).eq("status","pending_payment");
+        if(recipient){const claimed=await db.rpc("claim_package_gift",{target_gift:gift.id,target_student:recipient.id,apply_automatically:false});if(claimed.error)throw claimed.error;}
+        const claimUrl=`${Netlify.env.get("URL")||new URL(request.url).origin}/gift/claim/${object.metadata?.claim_token}`;
+        await db.from("outbox_messages").upsert({studio_id:gift.studio_id,channel:"email",recipient:gift.recipient_email,subject:`${gift.purchaser_name} sent you a Coach'D lesson package`,body:[`Hello ${gift.recipient_name},`,"",`${gift.purchaser_name} sent you ${definition.name}.`,gift.message?`Message: ${gift.message}`:"",recipient?"The credits are already in your portal.":`Claim your gift: ${claimUrl}`,"","Gifts never create recurring charges."].filter(Boolean).join("\n"),status:"queued",send_at:gift.deliver_at||new Date().toISOString(),event_key:"package.gift",dedupe_key:`package-gift:${gift.id}:delivery`,priority:85},{onConflict:"dedupe_key",ignoreDuplicates:true});
+        return done({packageGift:true});
+      }
       const bookingId = object.metadata?.booking_id, holdId = object.metadata?.hold_id;
       if (bookingId && holdId) {
         const amount = object.mode === "subscription" ? 0 : object.amount_total || 0;
@@ -43,24 +58,58 @@ export default async (request: Request, context: Context) => {
         const manageToken = object.metadata?.manage_token;
         if(object.customer){const {data:confirmed}=await db.from("bookings").update({stripe_customer_id:String(object.customer)}).eq("id",bookingId).select("student_id").single();if(confirmed?.student_id)await db.from("students").update({stripe_customer_id:String(object.customer),updated_at:new Date().toISOString()}).eq("id",confirmed.student_id);}
         await queueBookingEmails(db,bookingId,manageToken,new URL(request.url).origin);
-        try { await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin); } catch (inviteError) { await db.from("recommendations").upsert({ studio_id: (await db.from("bookings").select("studio_id").eq("id", bookingId).single()).data?.studio_id, entity_type: "booking", entity_id: bookingId, reason_code: "portal_invitation_failed", title: "Portal invitation needs retry", explanation: "The booking is confirmed, but Supabase could not send or link portal access.", evidence: [String(inviteError)], urgency: 4, suggested_action: "retry_portal_invitation", requires_confirmation: false, status: "open", dedupe_key: `booking:${bookingId}:portal-invite` }, { onConflict: "dedupe_key" }); }
+        try { const access=await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids})); } catch (inviteError) { await db.from("recommendations").upsert({ studio_id: (await db.from("bookings").select("studio_id").eq("id", bookingId).single()).data?.studio_id, entity_type: "booking", entity_id: bookingId, reason_code: "portal_invitation_failed", title: "Portal invitation needs retry", explanation: "The booking is confirmed, but Supabase could not send or link portal access.", evidence: [String(inviteError)], urgency: 4, suggested_action: "retry_portal_invitation", requires_confirmation: false, status: "open", dedupe_key: `booking:${bookingId}:portal-invite` }, { onConflict: "dedupe_key" }); }
         return done(data as Record<string, unknown>);
       }
       const studentId = object.metadata?.student_id, packageId = object.metadata?.package_id;
       if (!studentId || !packageId) throw new Error("VALIDATION_FAILED: Checkout metadata is incomplete.");
-      const { data, error } = await db.rpc("process_stripe_checkout", { event_id: event.id, event_type: event.type, event_payload: event as unknown as Record<string, unknown>, session_id: object.id, student_id: studentId, package_id: packageId, amount_minor: object.amount_total || 0, currency: object.currency || "usd" });
-      if (error) throw error;
+      const packageSubscriptionId = object.metadata?.package_subscription_id;
+      let data: unknown = { subscriptionCheckout: object.mode === "subscription" };
+      if (!(packageSubscriptionId && object.mode === "subscription")) {
+        const processed = await db.rpc("process_stripe_checkout", { event_id: event.id, event_type: event.type, event_payload: event as unknown as Record<string, unknown>, session_id: object.id, student_id: studentId, package_id: packageId, amount_minor: object.amount_total || 0, currency: object.currency || "usd" });
+        if (processed.error) throw processed.error;
+        data = processed.data;
+      }
+      if (packageSubscriptionId) {
+        const stripeSubscriptionId = object.subscription ? String(object.subscription) : null;
+        await db.from("package_subscriptions").update({
+          status: "active",
+          stripe_customer_id: object.customer ? String(object.customer) : null,
+          stripe_subscription_id: stripeSubscriptionId,
+          next_billing_at: stripeSubscriptionId ? new Date(((object.subscription_details?.current_period_end || 0) * 1000) || Date.now()).toISOString() : null,
+          updated_at: new Date().toISOString(),
+        }).eq("id", packageSubscriptionId);
+        if (object.customer)
+          await db.from("students").update({ stripe_customer_id: String(object.customer), updated_at: new Date().toISOString() }).eq("id", studentId);
+      }
       return done(data as Record<string, unknown>);
     }
 
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
       const subscriptionId = String(object.parent?.subscription_details?.subscription || object.subscription || "");
-      const metadata = object.parent?.subscription_details?.metadata ?? {};
+      const metadata = { ...(object.metadata || {}), ...(object.parent?.subscription_details?.metadata || {}) };
       let bookingId = metadata.booking_id as string | undefined;
       if (!bookingId && subscriptionId) {
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
         bookingId = subscription.metadata.booking_id;
         Object.assign(metadata, subscription.metadata);
+      }
+      const packageSubscriptionId = String(metadata.package_subscription_id || "");
+      if (packageSubscriptionId) {
+        const { data: packageSubscription, error: packageSubscriptionError } = await db.from("package_subscriptions").select("*,package_definitions(session_count,currency,name)").eq("id", packageSubscriptionId).single();
+        if (packageSubscriptionError || !packageSubscription) throw packageSubscriptionError || new Error("Package subscription not found.");
+        if (event.type === "invoice.payment_failed") {
+          await db.from("package_subscriptions").update({ status: "past_due", last_invoice_id: object.id, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
+          const { data: student } = await db.from("students").select("email,guardian_email,full_name,is_minor").eq("id", packageSubscription.student_id).single();
+          const recipient = student?.is_minor ? student.guardian_email || student.email : student?.email || student?.guardian_email;
+          if (recipient) await db.from("outbox_messages").upsert({ studio_id: packageSubscription.studio_id, student_id: packageSubscription.student_id, channel: "email", recipient, subject: "Your Coach'D package renewal needs attention", body: "We could not collect your package renewal. Your existing earned lesson credits remain available. Please update your payment method in the portal.", status: "queued", send_at: new Date().toISOString(), event_key: "package.renewal_failed", dedupe_key: `package-subscription:${packageSubscription.id}:invoice:${object.id}:failed`, priority: 90 }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+        } else {
+          const definition = Array.isArray(packageSubscription.package_definitions) ? packageSubscription.package_definitions[0] : packageSubscription.package_definitions;
+          await db.from("package_credit_entries").upsert({ package_id: packageSubscription.package_id, kind: "purchase", quantity: Number(definition?.session_count || 1), reason: `Package renewal · ${object.id}`, idempotency_key: `package-subscription-invoice:${object.id}` }, { onConflict: "idempotency_key", ignoreDuplicates: true });
+          await db.from("package_subscriptions").update({ status: "active", last_invoice_id: object.id, next_billing_at: object.lines?.data?.[0]?.period?.end ? new Date(Number(object.lines.data[0].period.end) * 1000).toISOString() : null, updated_at: new Date().toISOString() }).eq("id", packageSubscription.id);
+          if (Number(object.amount_paid || 0) > 0) await db.from("payment_entries").upsert({ student_id: packageSubscription.student_id, package_id: packageSubscription.package_id, kind: "payment", amount_minor: Number(object.amount_paid), currency: String(object.currency || definition?.currency || "USD").toUpperCase(), external_reference: object.id, reason: "Package subscription renewal" }, { onConflict: "external_reference", ignoreDuplicates: true });
+        }
+        return done({ packageSubscription: true });
       }
       if (event.type === "invoice.paid" && bookingId && metadata.hold_id) {
         const { data: current } = await db.from("bookings").select("status").eq("id", bookingId).maybeSingle();
@@ -68,7 +117,7 @@ export default async (request: Request, context: Context) => {
           const { error } = await db.rpc("confirm_booking", { target_booking: bookingId, target_hold: metadata.hold_id, amount_paid: object.amount_paid || 0, provider_reference: object.id });
           if (error) throw error;
           await queueBookingEmails(db, bookingId, metadata.manage_token, new URL(request.url).origin);
-          await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);
+          const access=await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids}));
         }
       }
       if (subscriptionId) {
@@ -101,7 +150,10 @@ export default async (request: Request, context: Context) => {
 
     if (event.type === "customer.subscription.updated") {
       const status = object.cancel_at_period_end ? "cancel_at_period_end" : object.status === "active" ? "active" : undefined;
-      if (status) await db.from("recurring_series").update({ status, updated_at: new Date().toISOString() }).eq("stripe_subscription_id", String(object.id));
+      if (status) {
+        const { data: packageSubscription } = await db.from("package_subscriptions").update({ status, next_billing_at: object.items?.data?.[0]?.current_period_end ? new Date(Number(object.items.data[0].current_period_end) * 1000).toISOString() : null, updated_at: new Date().toISOString() }).eq("stripe_subscription_id", String(object.id)).select("id").maybeSingle();
+        if (!packageSubscription) await db.from("recurring_series").update({ status, updated_at: new Date().toISOString() }).eq("stripe_subscription_id", String(object.id));
+      }
       return done();
     }
     if(event.type==="setup_intent.succeeded"){
@@ -109,6 +161,8 @@ export default async (request: Request, context: Context) => {
     }
     if (event.type === "customer.subscription.deleted") {
       const subscriptionId = String(object.id);
+      const { data: packageSubscription } = await db.from("package_subscriptions").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("stripe_subscription_id", subscriptionId).select("id").maybeSingle();
+      if (packageSubscription) return done({ packageSubscription: true });
       const { data: linked } = await db.from("bookings").select("id,payment_policy,installments_paid,installment_count").eq("stripe_subscription_id", subscriptionId).maybeSingle();
       const installmentsComplete = Boolean(linked?.payment_policy === "installments" && linked.installment_count && linked.installments_paid >= linked.installment_count);
       const cutoffSeconds = Number(object.ended_at || object.cancel_at || object.items?.data?.[0]?.current_period_end || Math.floor(Date.now() / 1000));
@@ -123,6 +177,7 @@ export default async (request: Request, context: Context) => {
       return done({ installmentsComplete });
     }
     if (event.type === "checkout.session.expired") {
+      if(object.metadata?.package_gift_id){await db.from("package_gifts").update({status:"expired",updated_at:new Date().toISOString()}).eq("id",object.metadata.package_gift_id).eq("status","pending_payment");return done({packageGift:true});}
       const {data:expiredBooking}=await db.from("bookings").select("hold_ids").eq("stripe_checkout_session_id",object.id).maybeSingle();if(expiredBooking?.hold_ids?.length)await db.from("booking_holds").update({status:"expired"}).in("id",expiredBooking.hold_ids);else await db.from("booking_holds").update({ status: "expired" }).eq("checkout_session_id", object.id);
       await db.from("bookings").update({ status: "expired", payment_status: "failed", updated_at: new Date().toISOString() }).eq("stripe_checkout_session_id", object.id);
       return done();
@@ -130,6 +185,8 @@ export default async (request: Request, context: Context) => {
     if (event.type === "charge.refunded" || event.type === "refund.updated") {
       const refund = event.type === "refund.updated" ? object : object.refunds?.data?.find((item: any) => item.status === "succeeded") ?? object.refunds?.data?.[0];
       const bookingId = refund?.metadata?.booking_id;
+      const giftId=refund?.metadata?.package_gift_id||object.metadata?.package_gift_id;
+      if(giftId&&(!refund.status||refund.status==="succeeded")){const reversed=await db.rpc("refund_package_gift",{target_gift:giftId});if(reversed.error)throw reversed.error;return done({packageGift:true});}
       if (bookingId && (!refund.status || refund.status === "succeeded")) {
         const { data: booking } = await db.from("bookings").update({ payment_status: "refunded", updated_at: new Date().toISOString() }).eq("id", bookingId).select("student_id,currency,reference").maybeSingle();
         if (booking?.student_id) await db.from("payment_entries").upsert({ student_id: booking.student_id, kind: "refund", amount_minor: Number(refund.amount || object.amount_refunded || 0), currency: String(refund.currency || object.currency || booking.currency).toUpperCase(), external_reference: refund.id, reason: `Stripe refund ${booking.reference}` }, { onConflict: "external_reference", ignoreDuplicates: true });

@@ -28,6 +28,11 @@ export async function loadStudioSnapshot(
     links,
     packages,
     packageDefinitions,
+    packageBillingOptions,
+    packageSubscriptions,
+    packageGifts,
+    linkedContacts,
+    profileAssets,
     pricingRules,
     credits,
     payments,
@@ -47,7 +52,7 @@ export async function loadStudioSnapshot(
   ] = await Promise.all([
     supabase
       .from("memberships")
-      .select("studio_id,role,display_name")
+      .select("studio_id,role,display_name,profile_photo_asset_id,profile_photo_position")
       .limit(1)
       .maybeSingle(),
     supabase
@@ -63,6 +68,11 @@ export async function loadStudioSnapshot(
     supabase.from("material_links").select("*"),
     supabase.from("packages").select("*"),
     supabase.from("package_definitions").select("*"),
+    supabase.from("package_billing_options").select("*"),
+    supabase.from("package_subscriptions").select("*"),
+    supabase.from("package_gifts").select("*"),
+    supabase.from("linked_contacts").select("*"),
+    supabase.from("file_assets").select("id,storage_path,mime_type"),
     supabase.from("student_pricing_rules").select("*"),
     supabase.from("package_credit_entries").select("*"),
     supabase.from("payment_entries").select("*"),
@@ -104,6 +114,11 @@ export async function loadStudioSnapshot(
     links,
     packages,
     packageDefinitions,
+    packageBillingOptions,
+    packageSubscriptions,
+    packageGifts,
+    linkedContacts,
+    profileAssets,
     pricingRules,
     credits,
     payments,
@@ -123,11 +138,17 @@ export async function loadStudioSnapshot(
   ].find((result) => result.error);
   if (failed?.error) throw failed.error;
   const member = membership.data;
+  const { data: authData } = await supabase.auth.getUser();
+  const currentLinkedContact = (linkedContacts.data ?? []).find((row: any) => row.user_id === authData.user?.id);
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];
-  const storagePaths = (materials.data ?? [])
-    .map((row: any) => row.storage_path)
-    .filter((value: any): value is string => Boolean(value));
+  const storagePaths = [
+    ...(materials.data ?? []).map((row: any) => row.storage_path),
+    ...(profileAssets.data ?? []).map((row: any) => row.storage_path),
+  ].filter((value: any): value is string => Boolean(value));
+  const profileAssetPaths = new Map(
+    (profileAssets.data ?? []).map((row: any) => [row.id, row.storage_path]),
+  );
   const signedMaterialUrls = new Map<string, string>();
   if (storagePaths.length) {
     const { data: signedRows } = await supabase.storage
@@ -144,7 +165,7 @@ export async function loadStudioSnapshot(
     member?.display_name ??
     (role === "student"
       ? currentStudent?.preferred_name || currentStudent?.full_name || "Student"
-      : "Studio");
+      : role === "guardian" ? currentLinkedContact?.full_name || "Support person" : "Studio");
   const raw = (studio.data?.settings ?? {}) as Partial<
     StudioSnapshot["settings"]
   >;
@@ -162,6 +183,16 @@ export async function loadStudioSnapshot(
     if (signed?.signedUrl)
       settings.branding = { ...settings.branding, logoUrl: signed.signedUrl };
   }
+  if (settings.branding?.coachProfilePhotoStoragePath) {
+    const { data: signed } = await supabase.storage
+      .from("studio-materials")
+      .createSignedUrl(settings.branding.coachProfilePhotoStoragePath, 3600);
+    if (signed?.signedUrl)
+      settings.branding = {
+        ...settings.branding,
+        coachProfilePhotoUrl: signed.signedUrl,
+      };
+  }
   return {
     studioId:
       member?.studio_id ??
@@ -170,6 +201,7 @@ export async function loadStudioSnapshot(
       "",
     role: (member?.role as Role) ?? role,
     displayName,
+    currentLinkedContactId: currentLinkedContact?.id,
     settings,
     students: studentRows.map((r: any) => ({
       id: r.id,
@@ -196,6 +228,12 @@ export async function loadStudioSnapshot(
       defaultRateMinor: r.default_rate_minor,
       specialPricingEnabled: Boolean(r.special_pricing_enabled),
       portalPreferences: r.portal_preferences,
+      notificationPreferences: r.notification_preferences,
+      profilePhotoAssetId: r.profile_photo_asset_id,
+      profilePhotoUrl: r.profile_photo_asset_id
+        ? signedMaterialUrls.get(profileAssetPaths.get(r.profile_photo_asset_id) || "")
+        : undefined,
+      profilePhotoPosition: r.profile_photo_position,
       stripeCustomerId: r.stripe_customer_id,
       paymentMethodSummary:
         typeof r.payment_method_summary === "string"
@@ -324,8 +362,80 @@ export async function loadStudioSnapshot(
       visibility: r.visibility,
       directPurchase: r.direct_purchase,
       active: r.active,
+      pricingServiceId: r.pricing_service_id,
+      pricingServiceVersion: r.pricing_service_version,
+      basePriceMinor:
+        r.base_price_minor == null ? undefined : Number(r.base_price_minor),
+      discountType: r.discount_type,
+      discountBasisPoints: Number(r.discount_basis_points || 0),
+      deliveryFormat: r.delivery_format,
+      giftable: Boolean(r.giftable),
+      pricingStatus: r.pricing_status,
       locationPriceAdjustments: r.location_price_adjustments ?? {},
       depositMinor: r.deposit_minor == null ? undefined : Number(r.deposit_minor),
+      version: r.version,
+      updatedAt: r.updated_at,
+    })),
+    packageBillingOptions: (packageBillingOptions.data ?? []).map((r: any) => ({
+      id: r.id,
+      studioId: r.studio_id,
+      definitionId: r.definition_id,
+      renewalMode: r.renewal_mode,
+      balanceThreshold: r.balance_threshold,
+      stripePriceId: r.stripe_price_id,
+      active: r.active,
+      version: r.version,
+      updatedAt: r.updated_at,
+    })),
+    packageSubscriptions: (packageSubscriptions.data ?? []).map((r: any) => ({
+      id: r.id,
+      studioId: r.studio_id,
+      studentId: r.student_id,
+      definitionId: r.definition_id,
+      billingOptionId: r.billing_option_id,
+      packageId: r.package_id,
+      renewalMode: r.renewal_mode,
+      balanceThreshold: r.balance_threshold,
+      autoApply: r.auto_apply,
+      status: r.status,
+      nextBillingAt: r.next_billing_at,
+      version: r.version,
+      updatedAt: r.updated_at,
+    })),
+    packageGifts: (packageGifts.data ?? []).map((r: any) => ({
+      id: r.id,
+      studioId: r.studio_id,
+      definitionId: r.definition_id,
+      purchaserName: r.purchaser_name,
+      purchaserEmail: r.purchaser_email,
+      recipientName: r.recipient_name,
+      recipientEmail: r.recipient_email,
+      message: r.message,
+      deliverAt: r.deliver_at,
+      packageId: r.package_id,
+      claimedStudentId: r.claimed_student_id,
+      status: r.status,
+      expiresAt: r.expires_at,
+      version: 1,
+      updatedAt: r.updated_at,
+    })),
+    linkedContacts: (linkedContacts.data ?? []).map((r: any) => ({
+      id: r.id,
+      studioId: r.studio_id,
+      studentId: r.student_id,
+      userId: r.user_id,
+      fullName: r.full_name,
+      email: r.email,
+      relationshipType: r.relationship_type,
+      relationshipLabel: r.relationship_label,
+      canViewSchedule: r.can_view_schedule,
+      canManageLessons: r.can_manage_lessons,
+      canViewWork: r.can_view_work,
+      canManageProfile: r.can_manage_profile,
+      canViewFinance: r.can_view_finance,
+      canReceiveNotifications: r.can_receive_notifications,
+      notificationPreferences: r.notification_preferences,
+      portalEnabled: r.portal_enabled,
       version: r.version,
       updatedAt: r.updated_at,
     })),

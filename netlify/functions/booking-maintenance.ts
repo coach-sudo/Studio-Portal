@@ -1,6 +1,8 @@
 import type { Config } from "@netlify/functions";
+import Stripe from "stripe";
 import { serviceClient } from "./_shared/supabase";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
+import { resolveNotificationRecipients } from "./_shared/notification-recipients";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
@@ -87,6 +89,31 @@ export default async () => {
     if (packageId) autoCreditsApplied += 1;
   }
 
+  let packageAutoRenewals = 0;
+  const { data: dueRenewals, error: renewalClaimError } = await db.rpc("claim_package_auto_renewals", { batch_size: 10 });
+  if (renewalClaimError) throw renewalClaimError;
+  if (dueRenewals?.length) {
+    const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("Stripe is not configured for package renewal.");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
+    for (const renewal of dueRenewals) {
+      try {
+        const [{ data: definition }, { data: option }] = await Promise.all([
+          db.from("package_definitions").select("name,price_minor,currency").eq("id", renewal.definition_id).single(),
+          db.from("package_billing_options").select("stripe_price_id").eq("id", renewal.billing_option_id).single(),
+        ]);
+        if (!definition || !option?.stripe_price_id) throw new Error("Package renewal pricing is unavailable.");
+        await stripe.invoiceItems.create({ customer: renewal.stripe_customer_id, amount: Number(definition.price_minor), currency: String(definition.currency).toLowerCase(), description: `${definition.name} automatic renewal`, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id } });
+        const invoice = await stripe.invoices.create({ customer: renewal.stripe_customer_id, collection_method: "charge_automatically", auto_advance: true, metadata: { billing_kind: "package_subscription", package_subscription_id: renewal.id } });
+        await db.from("package_subscriptions").update({ last_invoice_id: invoice.id, updated_at: now }).eq("id", renewal.id);
+        packageAutoRenewals += 1;
+      } catch (renewalError) {
+        await db.from("package_subscriptions").update({ status: "past_due", next_billing_at: new Date(Date.now() + 86400000).toISOString(), updated_at: now }).eq("id", renewal.id);
+        await db.from("recommendations").upsert({ studio_id: renewal.studio_id, student_id: renewal.student_id, entity_type: "package_subscription", entity_id: renewal.id, reason_code: "package_auto_renewal_failed", title: "Package auto-renewal needs attention", explanation: "Stripe could not start the balance-based package renewal.", evidence: [String(renewalError)], urgency: 5, suggested_action: "review_package", requires_confirmation: false, status: "open", dedupe_key: `package-subscription:${renewal.id}:auto-renewal`, updated_at: now }, { onConflict: "dedupe_key" });
+      }
+    }
+  }
+
   const expiryLimit = new Date(Date.now() + 30 * 86400000).toISOString();
   const { data: expiringPackages } = await db
     .from("packages")
@@ -170,7 +197,27 @@ export default async () => {
       packageReminders += 1;
     }
   }
-  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, storageCleanupRan: runDailyStorageCleanup, delinquentCancelled: delinquent?.length || 0, noteReminders, autoCreditsApplied, packageReminders });
+  const { data: activePackages } = await db.from("packages").select("id,student_id,name,definition_id,students!inner(studio_id,full_name,preferred_name)").or(`expires_at.is.null,expires_at.gt.${now}`);
+  for (const pkg of activePackages || []) {
+    const { data: entries } = await db.from("package_credit_entries").select("id,kind,quantity,created_at").eq("package_id", pkg.id).order("created_at", { ascending: false });
+    const balance = (entries || []).reduce((total, entry) => total + Number(entry.quantity), 0);
+    if (balance < 0 || balance > 1) continue;
+    const latestPurchase = (entries || []).find((entry) => entry.kind === "purchase" || entry.quantity > 0)?.id || "initial";
+    const student = Array.isArray(pkg.students) ? pkg.students[0] : pkg.students;
+    if (!student) continue;
+    const studio = studioSettings.get(student.studio_id);
+    const automation = studio?.settings?.emailAutomations || {};
+    if (automation.enabled === false) continue;
+    const recipients = await resolveNotificationRecipients(db, pkg.student_id, "packageBalance", { financeOnly: true });
+    const studentName = student.preferred_name || student.full_name;
+    const renewalUrl = `${Netlify.env.get("URL") || "https://portal.d-a-j.com"}/portal/payments`;
+    const values = { studioName: String(studio?.name || "Coach'D"), studentName, packageName: pkg.name, credits: String(balance), renewUrl: renewalUrl };
+    const subject = render(automation.packageLowBalanceSubject || "{{packageName}} has {{credits}} lesson left", values);
+    const body = render(automation.packageLowBalanceBody || "Hi {{studentName}},\n\nYou have {{credits}} lesson left in {{packageName}}. Renew here before you run out: {{renewUrl}}", values);
+    for (const recipient of recipients) await db.from("outbox_messages").upsert({ studio_id: student.studio_id, student_id: pkg.student_id, channel: "email", recipient, subject, body, status: "queued", send_at: now, event_key: "package.low_balance.student", dedupe_key: `package:${pkg.id}:purchase:${latestPurchase}:low:${balance}:${recipient}`, priority: 65 }, { onConflict: "dedupe_key", ignoreDuplicates: true });
+  }
+  const { count: prunedNotificationReceipts } = await db.from("notification_receipts").delete({ count: "exact" }).lt("read_at", new Date(Date.now()-45*86_400_000).toISOString());
+  return Response.json({ ok: true, expiredHolds: expired || 0, extendedOccurrences: extended || 0, transientCleanup: cleaned || {}, storageCleanupRan: runDailyStorageCleanup, delinquentCancelled: delinquent?.length || 0, noteReminders, autoCreditsApplied, packageAutoRenewals, packageReminders, prunedNotificationReceipts: prunedNotificationReceipts || 0 });
 };
 
 export const config: Config = { schedule: "*/5 * * * *" };

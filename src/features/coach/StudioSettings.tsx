@@ -209,6 +209,8 @@ function StudioForm({
 }) {
   const [form, setForm] = useState(value),
     [logo, setLogo] = useState<File>(),
+    [coachPhoto, setCoachPhoto] = useState<File>(),
+    [removeCoachPhoto,setRemoveCoachPhoto]=useState(false),
     [uploading, setUploading] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -227,6 +229,12 @@ function StudioForm({
           logoStoragePath: uploaded.storagePath,
           logoUrl: uploaded.signedUrl,
         };
+      }
+      if (removeCoachPhoto) branding={...branding,coachProfilePhotoStoragePath:undefined,coachProfilePhotoUrl:undefined};
+      if (coachPhoto) {
+        if (!coachPhoto.type.startsWith("image/") || coachPhoto.size > 5*1024*1024) throw new Error("Choose a JPG, PNG, or WebP image smaller than 5 MB.");
+        const uploaded=await uploadStudioFile({studioId,entityType:"studio",file:coachPhoto,visibility:"private"});
+        branding={...branding,coachProfilePhotoStoragePath:uploaded.storagePath,coachProfilePhotoUrl:uploaded.signedUrl,coachProfilePhotoPosition:{x:50,y:50}};
       }
       onSave({
         studioName: form.studioName,
@@ -352,6 +360,7 @@ function StudioForm({
             actor pages.
           </small>
         </label>
+        <label className="full material-upload">Coach profile photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event)=>{setCoachPhoto(event.target.files?.[0]);setRemoveCoachPhoto(false);}}/><small>Optional. Used only in your signed-in identity areas. Coach’D never inserts stock or generated people.</small>{form.branding.coachProfilePhotoUrl&&!removeCoachPhoto&&<span className="profile-photo-preview"><img src={form.branding.coachProfilePhotoUrl} alt="Current coach profile"/>Current photo <button type="button" className="text-button" onClick={()=>{setRemoveCoachPhoto(true);setCoachPhoto(undefined);}}>Remove</button></span>}</label>
         <div className="form-actions full">
           <button className="primary" disabled={uploading}>
             {uploading ? "Uploading…" : "Save studio"}
