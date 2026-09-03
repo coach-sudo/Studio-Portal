@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { applyStudioBranding } from "../../lib/branding";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import {
   buildAvailability,
   cancelDemoBooking,
@@ -396,6 +396,8 @@ function createDemoBooking(draft: StudioSnapshot, input: DemoBookingInput) {
 
 export function PublicBooking() {
   const { slug, token } = useParams();
+  const [searchParams] = useSearchParams();
+  const initialOfferingId = searchParams.get("offering") || undefined;
   const store = useStudioStore();
   const [services, setServices] = useState(
     isDemoMode
@@ -588,6 +590,7 @@ export function PublicBooking() {
         <BookingFlow
           service={selected}
           offerings={offerings}
+          initialOfferingId={initialOfferingId}
           live={liveCatalog}
           studio={studio}
           booker={booker}
@@ -762,18 +765,21 @@ type Step = "format" | "time" | "details" | "payment" | "done";
 function BookingFlow({
   service,
   offerings,
+  initialOfferingId,
   live,
   studio,
   booker,
 }: {
   service: BookingService;
   offerings: ServiceOffering[];
+  initialOfferingId?: string;
   live: boolean;
   studio: PublicStudio;
   booker?: AuthenticatedBooker;
 }) {
   const store = useStudioStore();
-  const [step, setStep] = useState<Step>("format");
+  const initialOffering = offerings.find((item) => item.id === initialOfferingId && item.serviceId === service.id && item.published);
+  const [step, setStep] = useState<Step>(initialOffering ? "time" : "format");
   const [location, setLocation] = useState<MeetingProvider>(
     service.defaultLocation,
   );
@@ -799,7 +805,7 @@ function BookingFlow({
     [recurrence, service.paymentPolicies, studio.bookingDefaults.allowPayLater],
   );
   const [payment, setPayment] = useState<PaymentPolicy>(validPayments[0]);
-  const [slot, setSlot] = useState<string>();
+  const [slot, setSlot] = useState<string | undefined>(initialOffering?.startsAt);
   const [name, setName] = useState(booker?.name || "");
   const [email, setEmail] = useState(booker?.email || "");
   const [phone, setPhone] = useState("");

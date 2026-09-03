@@ -1424,6 +1424,7 @@ function Classes({
               <div className="offering-actions">
                 <button className="primary" onClick={() => onOpen(offering)}>Open class</button>
                 <button onClick={() => onRoster(offering)}>Roster</button>
+                {offering.published && service?.slug && <a className="button-link" href={`/book/${service.slug}?offering=${encodeURIComponent(offering.id)}`} target="_blank" rel="noreferrer">Direct link</a>}
               </div>
             </article>
           );

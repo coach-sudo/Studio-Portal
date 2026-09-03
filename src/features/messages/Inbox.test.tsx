@@ -60,6 +60,9 @@ describe("unified inbox", () => {
     const first = renderApp("/coach/bookings?view=services");
     expect((await screen.findAllByRole("link", { name: "Direct link" }))[0]).toHaveAttribute("href", expect.stringMatching(/^\/book\//));
     first.unmount();
+    const second = renderApp("/coach/bookings?view=classes");
+    expect((await screen.findAllByRole("link", { name: "Direct link" }))[0]).toHaveAttribute("href", expect.stringMatching(/^\/book\/.*\?offering=/));
+    second.unmount();
     renderApp("/coach/finance");
     expect((await screen.findAllByRole("link", { name: "Direct link" }))[0]).toHaveAttribute("href", expect.stringMatching(/^\/package\//));
   });
