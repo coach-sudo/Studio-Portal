@@ -59,6 +59,10 @@ const householdPackageHardening = fs.readFileSync(
   "supabase/migrations/20260902223544_harden_household_and_package_lifecycle.sql",
   "utf8",
 );
+const procedureLintRepair = fs.readFileSync(
+  "supabase/migrations/20260903161123_repair_legacy_procedure_lint.sql",
+  "utf8",
+);
 const bookingMaintenance = fs.readFileSync(
   "netlify/functions/booking-maintenance.ts",
   "utf8",
@@ -69,6 +73,14 @@ const studentPortal = fs.readFileSync(
   "utf8",
 );
 describe("database contracts", () => {
+  it("keeps legacy procedures lint-clean without weakening their signatures or grants", () => {
+    expect(procedureLintRepair).toContain("calendar_projections_lesson_id_key");
+    expect(procedureLintRepair).toContain("lesson_participants_lesson_id_email_key");
+    expect(procedureLintRepair).toContain("private.reader_requests");
+    expect(procedureLintRepair).toContain("extensions.digest");
+    expect(procedureLintRepair).not.toContain("drop function");
+    expect(procedureLintRepair).not.toContain("grant execute");
+  });
   it("enables RLS for every private aggregate", () => {
     for (const table of [
       "students",
