@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
@@ -63,7 +63,7 @@ const tabs: readonly [Tab, string][] = [
   ["setup", "Booking setup"],
   ["services", "Services"],
   ["availability", "Availability"],
-  ["classes", "Classes & courses"],
+  ["classes", "Classes"],
   ["series", "Recurring"],
 ];
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
@@ -82,6 +82,7 @@ export function BookingCenter() {
   const { data, isLoading, isDemo } = useStudio();
   const store = useStudioStore();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useState<Tab>(() =>
@@ -264,6 +265,7 @@ export function BookingCenter() {
         <Classes
           data={data}
           onCreate={() => setDialog({ type: "offering" })}
+          onOpen={(item) => navigate(`/coach/classes/${item.id}`)}
           onRoster={(item) => setDialog({ type: "roster", item })}
         />
       )}
@@ -365,7 +367,7 @@ export function BookingCenter() {
       {dialog?.type === "offering" && (
         <OfferingDialog
           services={data.bookingServices.filter(
-            (item) => item.category !== "private",
+            (item) => item.category === "group_class",
           )}
           onClose={() => setDialog(undefined)}
           onSave={(value) =>
@@ -1351,15 +1353,17 @@ function Availability({
 function Classes({
   data,
   onCreate,
+  onOpen,
   onRoster,
 }: {
   data: StudioSnapshot;
   onCreate: () => void;
+  onOpen: (item: ServiceOffering) => void;
   onRoster: (item: ServiceOffering) => void;
 }) {
   return (
     <CoachPanel
-      title="Published offerings"
+      title="Group classes"
       aside={
         <button className="small-primary" onClick={onCreate}>
           <Plus />
@@ -1368,7 +1372,7 @@ function Classes({
       }
     >
       <div className="offering-grid">
-        {data.serviceOfferings.map((offering) => {
+        {data.serviceOfferings.filter((offering) => data.bookingServices.find((service) => service.id === offering.serviceId)?.category === "group_class").map((offering) => {
           const service = data.bookingServices.find(
             (item) => item.id === offering.serviceId,
           );
@@ -1416,7 +1420,10 @@ function Classes({
                   </span>
                 </div>
               </div>
-              <button onClick={() => onRoster(offering)}>Roster ›</button>
+              <div className="offering-actions">
+                <button className="primary" onClick={() => onOpen(offering)}>Open class</button>
+                <button onClick={() => onRoster(offering)}>Roster</button>
+              </div>
             </article>
           );
         })}
@@ -1606,7 +1613,7 @@ function ServiceDialog({
           >
             <option value="private">Private</option>
             <option value="group_class">Group class</option>
-            <option value="course">Course</option>
+            {service?.category === "course" && <option value="course" disabled>Course (existing only)</option>}
           </select>
         </label>
         <label className="full">
@@ -2115,11 +2122,11 @@ function OfferingDialog({
   const [meetingUrl, setMeetingUrl] = useState("");
   const [resourceText, setResourceText] = useState("");
   const selected = services.find((item) => item.id === serviceId);
-  const count = selected?.category === "course" ? 6 : 1;
+  const count = 1;
   return (
     <Dialog
-      title="Create class or course"
-      description="A course creates every canonical occurrence and reserves one student across the full series."
+      title="Create group class"
+      description="Create one class occurrence with its own page, roster, resources, assignments, and message board."
       onClose={onClose}
     >
       <form
@@ -2203,7 +2210,7 @@ function OfferingDialog({
         </label>
         <label className="full">
           Description
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What students should know about this class or course." />
+          <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What students should know about this class." />
         </label>
         <label className="full">
           Google Meet or class link

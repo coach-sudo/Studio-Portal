@@ -399,7 +399,9 @@ export function PublicBooking() {
   const store = useStudioStore();
   const [services, setServices] = useState(
     isDemoMode
-      ? store.snapshot.bookingServices.filter((service) => service.published)
+      ? store.snapshot.bookingServices.filter(
+          (service) => service.published && service.category !== "course",
+        )
       : [],
   );
   const [offerings, setOfferings] = useState(

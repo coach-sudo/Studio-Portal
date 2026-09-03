@@ -44,13 +44,26 @@ export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audie
       read_at: new Date().toISOString(),
     }, { onConflict: "user_id,event_key" });
   }
+  async function clearAll() {
+    const items = visibleFeed;
+    if (!items.length) return;
+    setRead((current) => new Set([...current, ...items.map((item) => item.key)]));
+    if (!supabase) return;
+    const { data: auth } = await supabase.auth.getUser();
+    if (!auth.user) return;
+    const readAt = new Date().toISOString();
+    await supabase.from("notification_receipts").upsert(
+      items.map((item) => ({ studio_id: data.studioId, user_id: auth.user!.id, event_key: item.key, read_at: readAt })),
+      { onConflict: "user_id,event_key" },
+    );
+  }
 
   return <div className="activity-center" ref={root}>
     <button className="activity-bell" aria-label={`${unread} unread notifications`} aria-expanded={open} onClick={() => setOpen((value) => !value)}>
       <Bell />{unread > 0 && <span>{unread > 9 ? "9+" : unread}</span>}
     </button>
     {open && <section className="activity-menu" aria-label="Recent activity">
-      <header><div><strong>Recent activity</strong><small>Updates from the last 30 days</small></div><button aria-label="Close notifications" onClick={() => setOpen(false)}><X /></button></header>
+      <header><div><strong>Recent activity</strong><small>Updates from the last 30 days</small></div><span>{visibleFeed.length > 0 && <button className="activity-clear" onClick={() => void clearAll()}>Clear all</button>}<button aria-label="Close notifications" onClick={() => setOpen(false)}><X /></button></span></header>
       <div className="activity-list">
         {visibleFeed.map((item) => { const Icon = icons[item.kind]; return <button key={item.key} className={`unread ${item.priority}`} aria-label={`${item.title}. ${item.detail}`} onClick={() => { void markRead(item); setOpen(false); navigate(item.route); }}>
           <Icon /><span><strong>{item.title}</strong><small>{item.detail}</small><time>{formatStudioDateTime(item.occurredAt, data.settings.timezone)}</time></span>

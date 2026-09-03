@@ -100,6 +100,7 @@ export interface Student extends Versioned {
   privateNotes?: string;
   driveFolderUrl?: string;
   timezone?: string;
+  timezoneConfirmed?: boolean;
   portalPreferences?: {
     compactView?: boolean;
     showProgress?: boolean;
@@ -248,6 +249,16 @@ export interface ServiceOffering extends Versioned {
   description?: string;
   meetingUrl?: string;
   resourceLinks?: { label: string; url: string }[];
+}
+export interface OfferingMessage {
+  id: UUID;
+  studioId: UUID;
+  offeringId: UUID;
+  authorUserId?: UUID;
+  authorRole: "coach" | "student" | "guardian";
+  authorName: string;
+  body: string;
+  createdAt: string;
 }
 export interface RecurringSeries extends Versioned {
   studioId: UUID;
@@ -472,6 +483,8 @@ export interface LinkedContact extends Versioned {
   userId?: UUID;
   fullName: string;
   email: string;
+  timezone?: string;
+  timezoneConfirmed?: boolean;
   relationshipType: "guardian" | "support_person" | "other";
   relationshipLabel?: string;
   canViewSchedule: boolean;
@@ -537,6 +550,7 @@ export interface ActorProfile extends Versioned {
   status: ActorProfileStatus;
   publishedRevisionId?: UUID;
   draftContent?: {
+    profileLabel?: string;
     headline?: string;
     unionStatus?: string;
     location?: string;
@@ -705,6 +719,7 @@ export interface StudioSnapshot {
   availabilityRules: AvailabilityRule[];
   availabilityExceptions: AvailabilityException[];
   serviceOfferings: ServiceOffering[];
+  offeringMessages: OfferingMessage[];
   recurringSeries: RecurringSeries[];
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];

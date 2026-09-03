@@ -613,6 +613,7 @@ const base: StudioSnapshot = {
       published: true,
     },
   ],
+  offeringMessages: [],
   recurringSeries: [
     {
       id: "series-maya",

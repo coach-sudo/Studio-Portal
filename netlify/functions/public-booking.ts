@@ -74,6 +74,7 @@ async function publicServices(request: Request) {
         )
         .eq("studio_id", studioId)
         .eq("published", true)
+        .neq("category", "course")
         .order("price_minor"),
       db
         .from("service_offerings")

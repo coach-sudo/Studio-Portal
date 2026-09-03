@@ -1,14 +1,16 @@
-import { Menu, Search } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudio } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
 import { coachNavigation } from "../app/navigation";
+import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
 
 export function AppShell() {
   const { data } = useStudio();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();
   useEffect(() => {
     const open = (event: KeyboardEvent) => {
@@ -30,11 +32,15 @@ export function AppShell() {
       document.title = `${data.settings.studioName} — Coach’D`;
   }, [data?.settings.studioName]);
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside className="sidebar">
         <div className="shell-brand">
           {data?.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
+          {!data?.settings.branding?.logoUrl && <span className="shell-mark" aria-hidden="true">C’D</span>}
           <div className="wordmark">{data?.settings.studioName ?? "Coach’D"}</div>
+          <button type="button" className="sidebar-collapse" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+            {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+          </button>
         </div>
         <nav aria-label="Coach navigation">
           {coachNavigation.map(({ to, label, icon: Icon }) => (

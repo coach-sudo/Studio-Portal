@@ -8,6 +8,8 @@ import {
   Mail,
   Menu,
   MessageSquare,
+  PanelLeftClose,
+  PanelLeftOpen,
   Repeat2,
   ShieldCheck,
   Trash2,
@@ -36,6 +38,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { TimezoneSelect } from "../../components/TimezoneSelect";
+import { observedTimezone } from "../../domain/presentation";
 import {
   portalBookingCommand,
   studioCommand,
@@ -72,6 +75,8 @@ import {
   formatStudioTime,
 } from "../../domain/presentation";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
+import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
+import { PortalClassWorkspace } from "../classes/ClassWorkspace";
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -93,6 +98,7 @@ export function StudentPortal({
   const base = "/portal";
   const navigatePortal = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   useEffect(() => {
     if (data?.settings.studioName)
       document.title = `${data.settings.studioName} — ${role === "guardian" ? "Guardian" : "Student"} · Coach’D`;
@@ -121,13 +127,17 @@ export function StudentPortal({
       .slice(0, 2) || "SS";
   const identityPhoto = role === "student" ? person?.profilePhotoUrl : undefined;
   return (
-    <div className="student-shell">
+    <div className={`student-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <aside>
         <div className="shell-brand">
           {data.settings.branding?.logoUrl && (
             <img src={data.settings.branding.logoUrl} alt="" />
           )}
+          {!data.settings.branding?.logoUrl && <span className="shell-mark" aria-hidden="true">C’D</span>}
           <div className="wordmark">{data.settings.studioName}</div>
+          <button type="button" className="sidebar-collapse" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+            {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
+          </button>
         </div>
         <nav>
           {tabs.map(({ to, label, icon: Icon }) => (
@@ -192,6 +202,7 @@ export function StudentPortal({
             }
           />
           <Route path="notes" element={<StudentNotes data={data} />} />
+          <Route path="classes/:offeringId" element={<PortalClassWorkspace data={data} isDemo={isDemo} role={role} />} />
           <Route
             path="practice"
             element={<Navigate to={`${base}/work`} replace />}
@@ -807,6 +818,11 @@ function StudentBookings({
                   </span>
                 </div>
                 <div className="student-booking-actions">
+                  {lesson.offeringId && (
+                    <Link className="button-link" to={`/portal/classes/${lesson.offeringId}`}>
+                      Class page
+                    </Link>
+                  )}
                   <Link
                     className="button-link"
                     to={`/portal/lessons/${lesson.id}`}
@@ -1436,7 +1452,7 @@ function LessonHub({
           </details>
         )}
       {offering && (
-        <Section title="Class or course information" marked>
+        <Section title="Class information" marked>
           <p>
             {offering.description ||
               "Your enrollment details and shared class resources live here."}
@@ -2482,7 +2498,13 @@ function StudentSettings({
       pronouns: student?.pronouns || "",
       email: role === "guardian" ? linkedContact?.email || "" : student?.email || "",
       phone: student?.phone || "",
-      timezone: student?.timezone || data.settings.timezone,
+      timezone: role === "guardian"
+        ? linkedContact?.timezoneConfirmed
+          ? linkedContact.timezone || observedTimezone()
+          : observedTimezone()
+        : student?.timezoneConfirmed
+          ? student.timezone || observedTimezone()
+          : observedTimezone(),
       compactView:
         student?.portalPreferences?.compactView ??
         data.settings.portalDefaults.compactView,
@@ -2538,7 +2560,7 @@ function StudentSettings({
             }),
           );
         else {
-          if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, notificationPreferences:form.notificationPreferences }, reason:"Linked contact updated portal settings" });
+          if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, timezone:form.timezone, notificationPreferences:form.notificationPreferences }, reason:"Linked contact updated portal settings" });
           else await studioCommand("students", { command: "update_self", entityId: student.id, expectedVersion: student.version, payload: updates, reason: "Student updated portal settings" });
           await queryClient.invalidateQueries({ queryKey: ["studio"] });
         }
@@ -2935,6 +2957,7 @@ function ActorDialog({
   const [name, setName] = useState(profile.displayName);
   const [bio, setBio] = useState(profile.bio);
   const [portfolio, setPortfolio] = useState({
+    profileLabel: profile.draftContent?.profileLabel || "",
     headline: profile.draftContent?.headline || "",
     unionStatus: profile.draftContent?.unionStatus || "Non-union",
     location: profile.draftContent?.location || "",
@@ -2967,6 +2990,18 @@ function ActorDialog({
             value={name}
             onChange={(event) => setName(event.target.value)}
           />
+        </label>
+        <label className="full">
+          Short header label
+          <input
+            value={portfolio.profileLabel}
+            onChange={(event) =>
+              setPortfolio({ ...portfolio, profileLabel: event.target.value })
+            }
+            maxLength={80}
+            placeholder="Optional — e.g. Actor · Voice artist"
+          />
+          <small>Leave blank to show no label above your name.</small>
         </label>
         <label className="full">
           Professional headline

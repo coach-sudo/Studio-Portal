@@ -472,8 +472,7 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/portal/settings");
       await screen.findByRole("heading", { name: "Settings" });
-      await user.clear(screen.getByLabelText("Timezone"));
-      await user.type(screen.getByLabelText("Timezone"), "Europe/London");
+      await user.selectOptions(screen.getByLabelText("Timezone"), "Europe/London");
       await user.click(screen.getByRole("button", { name: /Save settings/i }));
       expect(await screen.findByText(/settings.*saved/i)).toBeInTheDocument();
     });

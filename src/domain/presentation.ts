@@ -4,6 +4,14 @@ const DEFAULT_TIMEZONE = "America/New_York";
 const timezoneCache = new Map<string, string>();
 const formatterCache = new Map<string, Intl.DateTimeFormat>();
 
+export function observedTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 const formatter = (
   locale: string | undefined,
   options: Intl.DateTimeFormatOptions,

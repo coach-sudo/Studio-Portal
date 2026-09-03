@@ -15,6 +15,7 @@ const BookingCenter=lazy(()=>import("../features/coach/BookingCenter").then(modu
 const StudentWorkspace=lazy(()=>import("../features/coach/StudentWorkspace").then(module=>({default:module.StudentWorkspace})));
 const TermsPage=lazy(()=>import("../features/public/TermsPage").then(module=>({default:module.TermsPage})));
 const PackageGift=lazy(()=>import("../features/public/PackageGift"));
+const CoachClassWorkspace=lazy(()=>import("../features/classes/ClassWorkspace").then(module=>({default:module.CoachClassWorkspace})));
 
 export function App() {
   return <StudioStoreProvider><AppRoutes /><InstallPrompt /></StudioStoreProvider>;
@@ -39,6 +40,7 @@ function AppRoutes() {
       <Route index element={<CoachHome />} />
       <Route path="bookings" element={<BookingCenter />} />
       <Route path="students/:studentId/*" element={<StudentWorkspace />} />
+      <Route path="classes/:offeringId" element={<CoachClassWorkspace />} />
       <Route path="lessons" element={<Navigate to="/coach/bookings?view=calendar" replace />} />
       <Route path="notes" element={<Navigate to="/coach/today" replace />} />
       <Route path=":section" element={<CoachSection />} />

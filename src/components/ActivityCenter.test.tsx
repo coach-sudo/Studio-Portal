@@ -67,4 +67,19 @@ describe("ActivityCenter", () => {
 
     expect(screen.getByLabelText("current route")).toHaveTextContent("/coach/students/student-maya/lessons/lesson-notification");
   });
+
+  it("clears every visible notification in one action", () => {
+    const data = structuredClone(demoSnapshot);
+    data.integrationImports = [];
+    render(
+      <MemoryRouter>
+        <ActivityCenter data={data} audience="coach" />
+      </MemoryRouter>,
+    );
+    const trigger = screen.getByRole("button", { name: /unread notifications/ });
+    fireEvent.click(trigger);
+    fireEvent.click(screen.getByRole("button", { name: "Clear all" }));
+    expect(screen.getByText(/all caught up/i)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "0 unread notifications" })).toBeInTheDocument();
+  });
 });

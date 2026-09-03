@@ -234,6 +234,13 @@ export function scopeStudioSnapshot(
     lessonMessages: snapshot.lessonMessages.filter((row) =>
       studentIds.includes(row.studentId),
     ),
+    offeringMessages: snapshot.offeringMessages.filter((row) =>
+      snapshot.serviceOfferings.some(
+        (offering) =>
+          offering.id === row.offeringId &&
+          offering.lessonIds.some((lessonId) => participantLessonIds.has(lessonId)),
+      ),
+    ),
     integrationImports: [],
     discountCodes: [],
   };

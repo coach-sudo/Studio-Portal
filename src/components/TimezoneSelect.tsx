@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
+import { observedTimezone } from "../domain/presentation";
 
 const fallbackTimezones = [
   "Africa/Cairo",
@@ -69,40 +70,28 @@ export function TimezoneSelect({
   id?: string;
   required?: boolean;
 }) {
-  const timezones = useMemo(worldTimezones, []);
-  const listId = `${id || "timezone"}-options`;
+  const detected = useMemo(observedTimezone, []);
+  const timezones = useMemo(
+    () => [...new Set([detected, value, ...worldTimezones()].filter(Boolean))],
+    [detected, value],
+  );
+  useEffect(() => {
+    if (!value) onChange(detected);
+  }, [detected, onChange, value]);
 
   return (
-    <>
-      <input
-        id={id}
-        list={listId}
-        value={value}
-        required={required}
-        autoComplete="off"
-        placeholder="Search city or region"
-        onChange={(event) => {
-          const next = event.target.value;
-          event.target.setCustomValidity(
-            next && !isValidTimezone(next)
-              ? "Choose a valid IANA timezone from the list."
-              : "",
-          );
-          onChange(next);
-        }}
-        onBlur={(event) => {
-          event.currentTarget.setCustomValidity(
-            event.currentTarget.value && !isValidTimezone(event.currentTarget.value)
-              ? "Choose a valid IANA timezone from the list."
-              : "",
-          );
-        }}
-      />
-      <datalist id={listId}>
-        {timezones.map((timezone) => (
-          <option key={timezone} value={timezone} />
-        ))}
-      </datalist>
-    </>
+    <select
+      id={id}
+      value={value || detected}
+      required={required}
+      onChange={(event) => onChange(event.target.value)}
+      aria-label={id ? undefined : "Timezone"}
+    >
+      {timezones.map((timezone) => (
+        <option key={timezone} value={timezone}>
+          {timezone === detected ? `Device timezone — ${timezone}` : timezone.replaceAll("_", " ")}
+        </option>
+      ))}
+    </select>
   );
 }

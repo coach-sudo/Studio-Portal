@@ -51,7 +51,7 @@ export function ActorProfilePreview({
           </div>
         )}
         <div>
-          <span>Actor · Storyteller</span>
+          {portfolio.profileLabel && <span>{portfolio.profileLabel}</span>}
           <h2>{profile.displayName}</h2>
           {portfolio.headline && <h3>{portfolio.headline}</h3>}
           {(portfolio.showPhone || portfolio.showEmail) && (

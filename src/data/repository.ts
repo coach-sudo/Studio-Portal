@@ -2,7 +2,21 @@ import { demoSnapshot } from "./demo";
 import { mergeStudioSettings } from "./settings";
 import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
 import type { Role, StudioSnapshot } from "../domain/model";
+import { observedTimezone } from "../domain/presentation";
 import { scopeStudioSnapshot } from "../state/StudioStore";
+
+export function resolveAccountDisplayName(
+  role: Role,
+  memberDisplayName?: string,
+  student?: { preferred_name?: string | null; full_name?: string | null },
+  linkedContact?: { full_name?: string | null },
+) {
+  if (role === "guardian")
+    return linkedContact?.full_name || memberDisplayName || "Support person";
+  if (role === "student")
+    return student?.preferred_name || student?.full_name || memberDisplayName || "Student";
+  return memberDisplayName || "Studio";
+}
 
 export async function loadStudioSnapshot(
   role: Role = "coach",
@@ -43,6 +57,7 @@ export async function loadStudioSnapshot(
     availabilityRules,
     availabilityExceptions,
     serviceOfferings,
+    offeringMessages,
     recurringSeries,
     bookings,
     lessonParticipants,
@@ -87,6 +102,7 @@ export async function loadStudioSnapshot(
     supabase.from("availability_rules").select("*"),
     supabase.from("availability_exceptions").select("*"),
     supabase.from("service_offerings").select("*"),
+    supabase.from("offering_messages").select("*").order("created_at", { ascending: true }),
     supabase.from("recurring_series").select("*"),
     supabase.from("bookings").select("*"),
     supabase.from("lesson_participants").select("*"),
@@ -129,6 +145,7 @@ export async function loadStudioSnapshot(
     availabilityRules,
     availabilityExceptions,
     serviceOfferings,
+    offeringMessages,
     recurringSeries,
     bookings,
     lessonParticipants,
@@ -161,11 +178,12 @@ export async function loadStudioSnapshot(
   const currentStudent = studentId
     ? (studentRows.find((row: any) => row.id === studentId) ?? studentRows[0])
     : studentRows[0];
-  const displayName =
-    member?.display_name ??
-    (role === "student"
-      ? currentStudent?.preferred_name || currentStudent?.full_name || "Student"
-      : role === "guardian" ? currentLinkedContact?.full_name || "Support person" : "Studio");
+  const displayName = resolveAccountDisplayName(
+    role,
+    member?.display_name,
+    currentStudent,
+    currentLinkedContact,
+  );
   const raw = (studio.data?.settings ?? {}) as Partial<
     StudioSnapshot["settings"]
   >;
@@ -176,6 +194,15 @@ export async function loadStudioSnapshot(
     timezone:
       studio.data?.timezone ?? raw.timezone ?? demoSnapshot.settings.timezone,
   });
+  if (role === "student") {
+    settings.timezone = currentStudent?.timezone_confirmed
+      ? currentStudent.timezone
+      : observedTimezone();
+  } else if (role === "guardian") {
+    settings.timezone = currentLinkedContact?.timezone_confirmed
+      ? currentLinkedContact.timezone
+      : observedTimezone();
+  }
   if (settings.branding?.logoStoragePath) {
     const { data: signed } = await supabase.storage
       .from("studio-materials")
@@ -224,6 +251,7 @@ export async function loadStudioSnapshot(
       tags: r.tags,
       driveFolderUrl: r.drive_folder_url,
       timezone: r.timezone,
+      timezoneConfirmed: Boolean(r.timezone_confirmed),
       privateNotes: r.internal_notes,
       defaultRateMinor: r.default_rate_minor,
       specialPricingEnabled: Boolean(r.special_pricing_enabled),
@@ -426,6 +454,8 @@ export async function loadStudioSnapshot(
       userId: r.user_id,
       fullName: r.full_name,
       email: r.email,
+      timezone: r.timezone,
+      timezoneConfirmed: Boolean(r.timezone_confirmed),
       relationshipType: r.relationship_type,
       relationshipLabel: r.relationship_label,
       canViewSchedule: r.can_view_schedule,
@@ -593,6 +623,16 @@ export async function loadStudioSnapshot(
       description: r.description,
       meetingUrl: r.meeting_url,
       resourceLinks: r.resource_links ?? [],
+    })),
+    offeringMessages: (offeringMessages.data ?? []).map((r: any) => ({
+      id: r.id,
+      studioId: r.studio_id,
+      offeringId: r.offering_id,
+      authorUserId: r.author_user_id,
+      authorRole: r.author_role,
+      authorName: r.author_name,
+      body: r.body,
+      createdAt: r.created_at,
     })),
     recurringSeries: (recurringSeries.data ?? []).map((r: any) => ({
       id: r.id,

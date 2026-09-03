@@ -283,6 +283,77 @@ export default async (request: Request, context: Context) => {
         201,
       );
     }
+    if (domain === "offerings" && input.command === "post_message" && input.entityId) {
+      const body = String(input.payload.body || "").trim();
+      if (!body || body.length > 4000)
+        throw new Error("VALIDATION_FAILED: Write a message between 1 and 4,000 characters.");
+      const { data: offering, error: offeringError } = await db
+        .from("service_offerings")
+        .select("id,studio_id")
+        .eq("id", input.entityId)
+        .single();
+      if (offeringError || !offering) throw new Error("FORBIDDEN");
+      const { data: authData } = await db.auth.getUser();
+      if (!authData.user) throw new Error("FORBIDDEN");
+      const [{ data: coach }, { data: student }, { data: contact }] = await Promise.all([
+        db.from("memberships").select("display_name").eq("studio_id", offering.studio_id).eq("role", "coach").maybeSingle(),
+        db.from("students").select("preferred_name,full_name").eq("studio_id", offering.studio_id).eq("user_id", authData.user.id).maybeSingle(),
+        db.from("linked_contacts").select("full_name").eq("studio_id", offering.studio_id).eq("user_id", authData.user.id).eq("portal_enabled", true).maybeSingle(),
+      ]);
+      const authorRole = coach ? "coach" : contact ? "guardian" : "student";
+      const authorName = coach?.display_name || contact?.full_name || student?.preferred_name || student?.full_name || (authorRole === "guardian" ? "Support person" : "Student");
+      const { data, error } = await serviceClient().from("offering_messages").insert({
+        studio_id: offering.studio_id,
+        offering_id: offering.id,
+        author_user_id: authData.user.id,
+        author_role: authorRole,
+        author_name: authorName,
+        body,
+      }).select().single();
+      if (error) throw error;
+      return json({
+        resource: data,
+        recommendations: [],
+        auditEventId: await audit(offering.studio_id, "offering_message", data.id, "offering_message.created", null, { offering_id: offering.id, author_role: authorRole }),
+        queuedSideEffects: [],
+      }, 201);
+    }
+    if (domain === "offerings" && input.command === "create_assignment" && input.entityId) {
+      const studioId = await requireCoach();
+      const title = String(input.payload.title || "").trim();
+      const details = String(input.payload.details || "").trim();
+      if (!title || !details) throw new Error("VALIDATION_FAILED: Add an assignment title and instructions.");
+      const service = serviceClient();
+      const { data: offering, error: offeringError } = await service.from("service_offerings").select("id,lesson_ids").eq("id", input.entityId).eq("studio_id", studioId).single();
+      if (offeringError || !offering) throw new Error("FORBIDDEN");
+      const { data: participants, error: participantError } = await service.from("lesson_participants").select("student_id").in("lesson_id", offering.lesson_ids || []).not("student_id", "is", null);
+      if (participantError) throw participantError;
+      const studentIds = [...new Set((participants || []).map((item) => item.student_id).filter(Boolean))];
+      if (!studentIds.length) throw new Error("VALIDATION_FAILED: Enroll at least one student before assigning class work.");
+      const groupKey = `class:${offering.id}:${input.idempotencyKey}`;
+      const rows = studentIds.map((studentId) => ({
+        student_id: studentId,
+        lesson_id: offering.lesson_ids?.[0] || null,
+        title,
+        details,
+        due_at: input.payload.dueAt || null,
+        status: "assigned",
+        category: "practice",
+        priority: 2,
+        activity_type: "instruction",
+        activity_config: {},
+        responses: {},
+        group_key: groupKey,
+      }));
+      const { data, error } = await service.from("assignments").upsert(rows, { onConflict: "student_id,group_key", ignoreDuplicates: true }).select();
+      if (error) throw error;
+      return json({
+        resource: data || [],
+        recommendations: [],
+        auditEventId: await audit(studioId, "service_offering", offering.id, "offering.assignment_created", null, { recipients: studentIds.length, title }),
+        queuedSideEffects: [],
+      }, 201);
+    }
     if (domain === "students" && input.command === "invite" && input.entityId) {
       const studioId = await requireCoach();
       const result = await provisionPortalAccount(serviceClient(), {
@@ -496,7 +567,16 @@ export default async (request: Request, context: Context) => {
         profilePhotoAssetId: "profile_photo_asset_id",
         profilePhotoPosition: "profile_photo_position",
       };
+      if (Object.prototype.hasOwnProperty.call(payload, "timezone")) {
+        try {
+          new Intl.DateTimeFormat("en-US", { timeZone: String(payload.timezone) }).format();
+        } catch {
+          throw new Error("VALIDATION_FAILED: Choose a valid timezone.");
+        }
+      }
       Object.assign(changes, mapStudentChanges(payload, allowed, columns));
+      if (Object.prototype.hasOwnProperty.call(payload, "timezone"))
+        changes.timezone_confirmed = true;
       const { data, error } = await serviceClient()
         .from("students")
         .update(changes)
@@ -1817,7 +1897,12 @@ export default async (request: Request, context: Context) => {
       const email = String(input.payload.email || before.email).trim().toLowerCase();
       const fullName = String(input.payload.fullName || before.full_name).trim();
       if (!email.includes("@") || fullName.length < 2) throw new Error("VALIDATION_FAILED: Add a name and valid email.");
-      const { data, error } = await service.from("linked_contacts").update({ full_name: fullName, email, notification_preferences: input.payload.notificationPreferences || before.notification_preferences, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().maybeSingle();
+      const timezone = String(input.payload.timezone || before.timezone || "").trim();
+      if (timezone) {
+        try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(); }
+        catch { throw new Error("VALIDATION_FAILED: Choose a valid timezone."); }
+      }
+      const { data, error } = await service.from("linked_contacts").update({ full_name: fullName, email, timezone: timezone || null, timezone_confirmed: Boolean(timezone), notification_preferences: input.payload.notificationPreferences || before.notification_preferences, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().maybeSingle();
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
       return json({ resource: data, recommendations: [], auditEventId: await audit(before.studio_id, "linked_contact", before.id, "linked_contact.self_updated", before, data), queuedSideEffects: [] });

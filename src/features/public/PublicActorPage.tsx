@@ -28,6 +28,7 @@ interface PublicActor {
   displayName: string;
   bio: string;
   focusArea?: string;
+  profileLabel?: string;
   headline?: string;
   unionStatus?: string;
   location?: string;
@@ -201,7 +202,7 @@ export function PublicActorPage() {
             .join("")}
         </div>}
         <div className="actor-public-intro">
-          <span className="actor-eyebrow">Actor · Storyteller</span>
+          {actor.profileLabel && <span className="actor-eyebrow">{actor.profileLabel}</span>}
           <h1>{actor.displayName}</h1>
           {actor.headline && <h2>{actor.headline}</h2>}
           {(actor.showPhone || actor.showEmail) && <div className="actor-contact-actions">{actor.showPhone && actor.contactPhone && <a href={`tel:${actor.contactPhone}`}><Phone />Call</a>}{actor.showEmail && actor.contactEmail && <a href={`mailto:${actor.contactEmail}`}><Mail />Email</a>}</div>}

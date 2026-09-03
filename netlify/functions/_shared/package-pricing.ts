@@ -30,7 +30,7 @@ export async function derivePackageValues(
   if (!serviceId || !Number.isInteger(sessionCount) || sessionCount < 1 || sessionCount > 100)
     throw new Error("VALIDATION_FAILED: Choose a service and a valid lesson count.");
   const [{ data: service, error: serviceError }, { data: studio, error: studioError }] = await Promise.all([
-    db.from("booking_services").select("id,name,duration_minutes,price_minor,currency,version").eq("id", serviceId).eq("studio_id", studioId).eq("active", true).single(),
+    db.from("booking_services").select("id,name,duration_minutes,price_minor,currency,version,published").eq("id", serviceId).eq("studio_id", studioId).single(),
     db.from("studios").select("settings").eq("id", studioId).single(),
   ]);
   if (serviceError || studioError || !service) throw serviceError || studioError || new Error("Service pricing is unavailable.");
