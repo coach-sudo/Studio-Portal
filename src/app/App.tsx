@@ -15,7 +15,9 @@ const BookingCenter=lazy(()=>import("../features/coach/BookingCenter").then(modu
 const StudentWorkspace=lazy(()=>import("../features/coach/StudentWorkspace").then(module=>({default:module.StudentWorkspace})));
 const TermsPage=lazy(()=>import("../features/public/TermsPage").then(module=>({default:module.TermsPage})));
 const PackageGift=lazy(()=>import("../features/public/PackageGift"));
+const PackageLanding=lazy(()=>import("../features/public/PackageLanding"));
 const CoachClassWorkspace=lazy(()=>import("../features/classes/ClassWorkspace").then(module=>({default:module.CoachClassWorkspace})));
+const CoachInbox=lazy(()=>import("../features/messages/Inbox").then(module=>({default:module.CoachInbox})));
 
 export function App() {
   return <StudioStoreProvider><AppRoutes /><InstallPrompt /></StudioStoreProvider>;
@@ -29,6 +31,7 @@ function AppRoutes() {
     <Route path="/gift/thanks" element={<main className="gift-page"><section className="gift-card gift-success"><h1>Your gift purchase is confirmed</h1><p>Delivery is being prepared for the recipient. You will also receive a Stripe receipt.</p><a className="button-link primary" href="/book">Return to booking</a></section></main>} />
     <Route path="/gift/claim/:token" element={<PackageGift />} />
     <Route path="/gift/:definitionId" element={<PackageGift />} />
+    <Route path="/package/:definitionId" element={<PackageLanding />} />
     <Route path="/portal/*" element={<AuthGate role="portal"><PortalRole /></AuthGate>} />
     <Route path="/student/*" element={<LegacyPortalRedirect legacyPrefix="student" />} />
     <Route path="/guardian/*" element={<LegacyPortalRedirect legacyPrefix="guardian" />} />
@@ -40,13 +43,14 @@ function AppRoutes() {
       <Route index element={<CoachHome />} />
       <Route path="bookings" element={<BookingCenter />} />
       <Route path="students/:studentId/*" element={<StudentWorkspace />} />
+      <Route path="inbox" element={<CoachInbox />} />
       <Route path="classes/:offeringId" element={<CoachClassWorkspace />} />
       <Route path="lessons" element={<Navigate to="/coach/bookings?view=calendar" replace />} />
       <Route path="notes" element={<Navigate to="/coach/today" replace />} />
       <Route path=":section" element={<CoachSection />} />
     </Route>
     <Route path="/" element={<RoleLanding />} />
-    {['today','bookings','students','lessons','notes','materials','finance','actor-pages','settings'].map((section)=><Route key={section} path={`/${section}/*`} element={<LegacyCoachRedirect section={section} />} />)}
+    {['today','bookings','students','inbox','lessons','notes','materials','finance','actor-pages','settings'].map((section)=><Route key={section} path={`/${section}/*`} element={<LegacyCoachRedirect section={section} />} />)}
     <Route path="*" element={<Navigate to="/login" replace />} />
   </Routes></Suspense>;
 }

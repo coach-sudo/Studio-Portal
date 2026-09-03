@@ -17,6 +17,7 @@ const domains = new Set([
   "notes",
   "materials",
   "messages",
+  "offerings",
   "work",
   "finance",
   "packages",
@@ -201,120 +202,130 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
-    if (domain === "messages" && input.command === "create") {
-      const body = String(input.payload.body || "").trim(),
-        studentId = String(input.payload.studentId || ""),
-        lessonId = String(input.entityId || input.payload.lessonId || "");
-      if (!lessonId || !studentId || body.length < 1 || body.length > 4000)
-        throw new Error(
-          "VALIDATION_FAILED: Write a message between 1 and 4,000 characters.",
-        );
-      const [{ data: lesson, error: lessonError }, { data: participant }] =
-        await Promise.all([
-          db
-            .from("lessons")
-            .select("id,studio_id,student_id")
-            .eq("id", lessonId)
-            .single(),
-          db
-            .from("lesson_participants")
-            .select("id")
-            .eq("lesson_id", lessonId)
-            .eq("student_id", studentId)
-            .maybeSingle(),
-        ]);
-      if (
-        lessonError ||
-        !lesson ||
-        (lesson.student_id !== studentId && !participant)
-      )
-        throw new Error("FORBIDDEN");
-      const [{ data: coachMembership }, { data: authData }] = await Promise.all(
-        [
-          db
-            .from("memberships")
-            .select("id")
-            .eq("studio_id", lesson.studio_id)
-            .eq("role", "coach")
-            .maybeSingle(),
-          db.auth.getUser(),
-        ],
-      );
+    if (domain === "messages" && ["send", "undo"].includes(input.command)) {
+      const service = serviceClient();
+      const { data: authData } = await db.auth.getUser();
       const user = authData.user;
       if (!user) throw new Error("FORBIDDEN");
-      let authorRole: "coach" | "student" | "guardian" = coachMembership
-        ? "coach"
-        : "student";
-      if (!coachMembership) {
-        const { data: relationship } = await db
-          .from("student_relationships")
-          .select("id")
-          .eq("student_id", studentId)
-          .eq("user_id", user.id)
-          .maybeSingle();
-        if (relationship) authorRole = "guardian";
-      }
-      const { data, error } = await serviceClient()
-        .from("lesson_messages")
-        .insert({
-          lesson_id: lesson.id,
-          student_id: studentId,
-          author_user_id: user.id,
-          author_role: authorRole,
-          body,
-        })
-        .select()
-        .single();
-      if (error) throw error;
-      return json(
-        {
+
+      if (input.command === "undo") {
+        const messageId = String(input.entityId || "");
+        const { data: before, error: messageError } = await service
+          .from("conversation_messages")
+          .select("*,conversations!inner(studio_id)")
+          .eq("id", messageId)
+          .is("deleted_at", null)
+          .single();
+        if (
+          messageError ||
+          !before ||
+          before.author_user_id !== user.id ||
+          Date.now() - new Date(before.created_at).getTime() > 12_000
+        )
+          throw new Error("VALIDATION_FAILED: This message can no longer be undone.");
+        const { data, error } = await service
+          .from("conversation_messages")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", messageId)
+          .eq("author_user_id", user.id)
+          .is("deleted_at", null)
+          .select()
+          .single();
+        if (error) throw error;
+        const studioId = Array.isArray(before.conversations)
+          ? before.conversations[0]?.studio_id
+          : before.conversations?.studio_id;
+        return json({
           resource: data,
           recommendations: [],
-          auditEventId: await audit(
-            lesson.studio_id,
-            "lesson_message",
-            data.id,
-            "lesson_message.created",
-            null,
-            { lesson_id: lesson.id, author_role: authorRole },
-          ),
+          auditEventId: await audit(studioId, "conversation_message", messageId, "conversation_message.undone", before, data),
           queuedSideEffects: [],
-        },
-        201,
-      );
-    }
-    if (domain === "offerings" && input.command === "post_message" && input.entityId) {
+        });
+      }
+
       const body = String(input.payload.body || "").trim();
-      if (!body || body.length > 4000)
+      const requestedConversationId = String(input.payload.conversationId || "");
+      const studentId = String(input.payload.studentId || "");
+      const offeringId = String(input.payload.offeringId || "");
+      if (!body || body.length > 4000 || (!requestedConversationId && !studentId && !offeringId))
         throw new Error("VALIDATION_FAILED: Write a message between 1 and 4,000 characters.");
-      const { data: offering, error: offeringError } = await db
-        .from("service_offerings")
-        .select("id,studio_id")
-        .eq("id", input.entityId)
-        .single();
-      if (offeringError || !offering) throw new Error("FORBIDDEN");
-      const { data: authData } = await db.auth.getUser();
-      if (!authData.user) throw new Error("FORBIDDEN");
-      const [{ data: coach }, { data: student }, { data: contact }] = await Promise.all([
-        db.from("memberships").select("display_name").eq("studio_id", offering.studio_id).eq("role", "coach").maybeSingle(),
-        db.from("students").select("preferred_name,full_name").eq("studio_id", offering.studio_id).eq("user_id", authData.user.id).maybeSingle(),
-        db.from("linked_contacts").select("full_name").eq("studio_id", offering.studio_id).eq("user_id", authData.user.id).eq("portal_enabled", true).maybeSingle(),
+
+      let conversation: any;
+      if (requestedConversationId) {
+        const result = await db.from("conversations").select("*").eq("id", requestedConversationId).single();
+        if (result.error) throw new Error("FORBIDDEN");
+        conversation = result.data;
+      } else if (studentId) {
+        const { data: student, error: studentError } = await service
+          .from("students")
+          .select("id,studio_id,full_name,preferred_name,user_id")
+          .eq("id", studentId)
+          .is("deleted_at", null)
+          .single();
+        if (studentError || !student) throw new Error("FORBIDDEN");
+        const allowed = await db.from("students").select("id").eq("id", student.id).maybeSingle();
+        if (allowed.error || !allowed.data) throw new Error("FORBIDDEN");
+        const existing = await service.from("conversations").select("*").eq("student_id", student.id).eq("kind", "direct").maybeSingle();
+        if (existing.error) throw existing.error;
+        if (existing.data) conversation = existing.data;
+        else {
+          const created = await service.from("conversations").insert({ studio_id: student.studio_id, kind: "direct", student_id: student.id, title: student.preferred_name || student.full_name }).select().single();
+          if (created.error) {
+            const retry = await service.from("conversations").select("*").eq("student_id", student.id).eq("kind", "direct").single();
+            if (retry.error) throw created.error;
+            conversation = retry.data;
+          } else conversation = created.data;
+        }
+      } else {
+        const { data: offering, error: offeringError } = await service
+          .from("service_offerings")
+          .select("id,studio_id,title")
+          .eq("id", offeringId)
+          .single();
+        if (offeringError || !offering) throw new Error("FORBIDDEN");
+        const allowed = await db.from("service_offerings").select("id").eq("id", offering.id).maybeSingle();
+        if (allowed.error || !allowed.data) throw new Error("FORBIDDEN");
+        const existing = await service.from("conversations").select("*").eq("offering_id", offering.id).eq("kind", "class").maybeSingle();
+        if (existing.error) throw existing.error;
+        if (existing.data) conversation = existing.data;
+        else {
+          const created = await service.from("conversations").insert({ studio_id: offering.studio_id, kind: "class", offering_id: offering.id, title: offering.title }).select().single();
+          if (created.error) {
+            const retry = await service.from("conversations").select("*").eq("offering_id", offering.id).eq("kind", "class").single();
+            if (retry.error) throw created.error;
+            conversation = retry.data;
+          } else conversation = created.data;
+        }
+      }
+
+      const [{ data: coach }, { data: ownedStudent }, { data: linkedContact }] = await Promise.all([
+        service.from("memberships").select("display_name").eq("studio_id", conversation.studio_id).eq("user_id", user.id).eq("role", "coach").maybeSingle(),
+        conversation.student_id
+          ? service.from("students").select("id,preferred_name,full_name").eq("id", conversation.student_id).eq("user_id", user.id).maybeSingle()
+          : service.from("students").select("id,preferred_name,full_name").eq("studio_id", conversation.studio_id).eq("user_id", user.id).limit(1).maybeSingle(),
+        service.from("linked_contacts").select("full_name,student_id").eq("studio_id", conversation.studio_id).eq("user_id", user.id).eq("portal_enabled", true).limit(1).maybeSingle(),
       ]);
-      const authorRole = coach ? "coach" : contact ? "guardian" : "student";
-      const authorName = coach?.display_name || contact?.full_name || student?.preferred_name || student?.full_name || (authorRole === "guardian" ? "Support person" : "Student");
-      const { data, error } = await serviceClient().from("offering_messages").insert({
-        studio_id: offering.studio_id,
-        offering_id: offering.id,
-        author_user_id: authData.user.id,
+      // The user-scoped reads above already enforce the conversation or
+      // offering RLS policy, including enrolled-class access.
+      const classParticipant = conversation.kind === "class";
+      const directAllowed = conversation.kind === "direct" && (ownedStudent || linkedContact?.student_id === conversation.student_id);
+      if (!coach && !directAllowed && !classParticipant) throw new Error("FORBIDDEN");
+      const authorRole = coach ? "coach" : linkedContact ? "guardian" : "student";
+      const authorName = coach?.display_name || linkedContact?.full_name || ownedStudent?.preferred_name || ownedStudent?.full_name || (authorRole === "guardian" ? "Support person" : "Student");
+      const { data, error } = await service.from("conversation_messages").insert({
+        conversation_id: conversation.id,
+        studio_id: conversation.studio_id,
+        author_user_id: user.id,
         author_role: authorRole,
         author_name: authorName,
         body,
       }).select().single();
       if (error) throw error;
+      await service.from("conversations").update({ last_message_at: data.created_at, updated_at: data.created_at, version: conversation.version + 1 }).eq("id", conversation.id);
       return json({
-        resource: data,
+        resource: { ...data, conversation_id: conversation.id },
         recommendations: [],
-        auditEventId: await audit(offering.studio_id, "offering_message", data.id, "offering_message.created", null, { offering_id: offering.id, author_role: authorRole }),
+        auditEventId: await audit(conversation.studio_id, "conversation_message", data.id, "conversation_message.created", null, { conversation_id: conversation.id, author_role: authorRole }),
         queuedSideEffects: [],
       }, 201);
     }
@@ -365,10 +376,16 @@ export default async (request: Request, context: Context) => {
         expectedVersion: input.expectedVersion,
         linkedContactId: String(input.payload.linkedContactId || "") || undefined,
       });
-      if (result.outboxMessageId)
-        context.waitUntil(dispatchOutbox({ ids: [result.outboxMessageId] }));
+      const undoUntil = new Date(Date.now() + 8_000).toISOString();
+      if (result.outboxMessageId) {
+        const { error: deferError } = await serviceClient().from("outbox_messages").update({ send_at: undoUntil, next_attempt_at: undoUntil, event_key: "manual.portal_invite" }).eq("id", result.outboxMessageId).eq("status", "queued");
+        if (deferError) throw deferError;
+        context.waitUntil(new Promise((resolve) => setTimeout(resolve, 8_250)).then(() => dispatchOutbox({ ids: [result.outboxMessageId!] })));
+      }
       return json({
         resource: result.student,
+        outboxMessageId: result.outboxMessageId,
+        undoUntil,
         recommendations: [],
         auditEventId: await audit(
           studioId,
@@ -382,7 +399,7 @@ export default async (request: Request, context: Context) => {
             username: result.username,
           },
         ),
-        queuedSideEffects: result.outboxMessageId ? ["credential_email_immediate", "outbox_worker_fallback"] : [],
+        queuedSideEffects: result.outboxMessageId ? ["credential_email_after_undo_window", "outbox_worker_fallback"] : [],
       });
     }
     if (
@@ -400,10 +417,16 @@ export default async (request: Request, context: Context) => {
         expectedVersion: input.expectedVersion,
         linkedContactId: String(input.payload.linkedContactId || "") || undefined,
       });
-      if (result.outboxMessageId)
-        context.waitUntil(dispatchOutbox({ ids: [result.outboxMessageId] }));
+      const undoUntil = new Date(Date.now() + 8_000).toISOString();
+      if (result.outboxMessageId) {
+        const { error: deferError } = await serviceClient().from("outbox_messages").update({ send_at: undoUntil, next_attempt_at: undoUntil, event_key: "manual.portal_invite" }).eq("id", result.outboxMessageId).eq("status", "queued");
+        if (deferError) throw deferError;
+        context.waitUntil(new Promise((resolve) => setTimeout(resolve, 8_250)).then(() => dispatchOutbox({ ids: [result.outboxMessageId!] })));
+      }
       return json({
         resource: result.student,
+        outboxMessageId: result.outboxMessageId,
+        undoUntil,
         recommendations: [],
         auditEventId: await audit(
           studioId,
@@ -417,7 +440,7 @@ export default async (request: Request, context: Context) => {
             username: result.username,
           },
         ),
-        queuedSideEffects: result.outboxMessageId ? ["credential_email_immediate", "outbox_worker_fallback"] : [],
+        queuedSideEffects: result.outboxMessageId ? ["credential_email_after_undo_window", "outbox_worker_fallback"] : [],
       });
     }
     if (domain === "students" && input.command === "save_linked_contact" && input.entityId) {
@@ -2489,6 +2512,76 @@ export default async (request: Request, context: Context) => {
         ],
         correlationId: id,
       });
+    }
+    if (domain === "outbox" && ["manual_send", "resend", "cancel_manual"].includes(input.command)) {
+      const studioId = await requireCoach();
+      const service = serviceClient();
+      if (input.command === "cancel_manual") {
+        const { data: before, error: beforeError } = await service
+          .from("outbox_messages")
+          .select("*")
+          .eq("id", input.entityId)
+          .eq("studio_id", studioId)
+          .eq("status", "queued")
+          .like("event_key", "manual.%")
+          .single();
+        if (beforeError || !before) throw new Error("VALIDATION_FAILED: This email has already started sending and can no longer be undone.");
+        const { data, error } = await service
+          .from("outbox_messages")
+          .update({ status: "cancelled", updated_at: new Date().toISOString(), version: Number(before.version || 1) + 1 })
+          .eq("id", before.id)
+          .eq("status", "queued")
+          .select()
+          .single();
+        if (error) throw new Error("VALIDATION_FAILED: This email has already started sending and can no longer be undone.");
+        return json({ resource: data, recommendations: [], auditEventId: await audit(studioId, "outbox_message", data.id, "outbox.manual_send_undone", before, data), queuedSideEffects: [] });
+      }
+
+      let recipient = String(input.payload.recipient || "").trim().toLowerCase();
+      let subject = String(input.payload.subject || "").trim();
+      let body = String(input.payload.body || "").trim();
+      let studentId = String(input.payload.studentId || "") || null;
+      let lessonId = String(input.payload.lessonId || "") || null;
+      if (input.command === "resend") {
+        const { data: source, error: sourceError } = await service.from("outbox_messages").select("*").eq("id", input.entityId).eq("studio_id", studioId).single();
+        if (sourceError || !source) throw new Error("VALIDATION_FAILED: The original email could not be found.");
+        recipient = source.recipient;
+        subject = source.subject;
+        body = source.body;
+        studentId = source.student_id;
+        lessonId = source.lesson_id;
+      }
+      if (!recipient.includes("@") || subject.length < 2 || body.length < 2)
+        throw new Error("VALIDATION_FAILED: Add a recipient, subject, and message.");
+      const sendAt = new Date(Date.now() + 8_000).toISOString();
+      const { data, error } = await service.from("outbox_messages").insert({
+        studio_id: studioId,
+        student_id: studentId,
+        lesson_id: lessonId,
+        channel: "email",
+        recipient,
+        subject,
+        body,
+        status: "queued",
+        send_at: sendAt,
+        next_attempt_at: sendAt,
+        event_key: input.command === "resend" ? "manual.resend" : "manual.email",
+        dedupe_key: `manual:${input.idempotencyKey}`,
+        priority: 100,
+      }).select().single();
+      if (error) throw error;
+      context.waitUntil(
+        new Promise((resolve) => setTimeout(resolve, 8_250)).then(() =>
+          dispatchOutbox({ ids: [data.id] }),
+        ),
+      );
+      return json({
+        resource: data,
+        undoUntil: sendAt,
+        recommendations: [],
+        auditEventId: await audit(studioId, "outbox_message", data.id, input.command === "resend" ? "outbox.resent_manually" : "outbox.manual_send_queued", null, data),
+        queuedSideEffects: ["email_after_undo_window", "outbox_worker_fallback"],
+      }, 201);
     }
     if (domain === "outbox" && input.command === "approve") {
       const { data, error } = await db.rpc("command_approve_outbox", {

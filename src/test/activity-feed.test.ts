@@ -13,6 +13,8 @@ function activitySnapshot() {
   data.assignments = [];
   data.notes = [];
   data.integrationImports = [];
+  data.conversations = [];
+  data.conversationMessages = [];
   return data;
 }
 

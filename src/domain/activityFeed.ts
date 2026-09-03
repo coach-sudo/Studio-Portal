@@ -1,7 +1,7 @@
 import type { StudioSnapshot } from "./model";
 import { formatStudioDateTime } from "./presentation";
 
-export type ActivityKind = "booking" | "lesson" | "material" | "assignment" | "note" | "import";
+export type ActivityKind = "booking" | "lesson" | "material" | "assignment" | "note" | "import" | "message";
 export type ActivityPriority = "action" | "update";
 export interface ActivityItem {
   key: string;
@@ -74,6 +74,25 @@ export function buildActivityFeed(
     return item?.preferredName || item?.fullName || "Student";
   };
   const items: ActivityItem[] = [];
+  for (const message of data.conversationMessages) {
+    if (!withinRetention(message.createdAt, now)) continue;
+    const incoming = audience === "coach"
+      ? message.authorRole !== "coach"
+      : message.authorRole === "coach";
+    if (!incoming) continue;
+    const conversation = data.conversations.find((item) => item.id === message.conversationId);
+    if (!conversation) continue;
+    items.push({
+      key: `message:${message.id}`,
+      entityKey: `conversation:${conversation.id}`,
+      kind: "message",
+      priority: "action",
+      title: conversation.kind === "class" ? `New class message` : `New message from ${message.authorName}`,
+      detail: `${conversation.title} · ${message.body}`,
+      occurredAt: message.createdAt,
+      route: `${audience === "coach" ? "/coach" : "/portal"}/inbox?conversation=${encodeURIComponent(conversation.id)}`,
+    });
+  }
   for (const booking of data.bookings) {
     if (!withinRetention(booking.updatedAt, now)) continue;
     const participant = data.lessonParticipants.find((item) => item.bookingId === booking.id);

@@ -25,8 +25,6 @@ function ClassWorkspace({ data, isDemo, role, offeringId }: { data: StudioSnapsh
   const offering = data.serviceOfferings.find((item) => item.id === offeringId)!;
   const queryClient = useQueryClient();
   const store = useStudioStore();
-  const [message, setMessage] = useState("");
-  const [messageBusy, setMessageBusy] = useState(false);
   const [assignmentOpen, setAssignmentOpen] = useState(false);
   const [assignment, setAssignment] = useState({ title: "", details: "", dueAt: "" });
   const [assignmentBusy, setAssignmentBusy] = useState(false);
@@ -38,29 +36,7 @@ function ClassWorkspace({ data, isDemo, role, offeringId }: { data: StudioSnapsh
   const participants = [...new Map(data.lessonParticipants.filter((item) => offering.lessonIds.includes(item.lessonId)).map((item) => [item.studentId || item.email, item])).values()];
   const assignments = data.assignments.filter((item) => item.lessonId && offering.lessonIds.includes(item.lessonId));
   const assignmentGroups = [...new Map(assignments.map((item) => [`${item.title}:${item.details}:${item.dueAt || ""}`, item])).values()];
-  const messages = data.offeringMessages.filter((item) => item.offeringId === offering.id);
   const joinUrl = offering.meetingUrl || lessons.find((item) => item.joinUrl)?.joinUrl;
-
-  async function postMessage(event: FormEvent) {
-    event.preventDefault();
-    const body = message.trim();
-    if (!body || messageBusy) return;
-    setMessageBusy(true);
-    setNotice("");
-    try {
-      if (isDemo) {
-        store.transact((draft) => draft.offeringMessages.push({ id: `offering-message-${crypto.randomUUID()}`, studioId: offering.studioId, offeringId: offering.id, authorRole: coach ? "coach" : role as "student" | "guardian", authorName: data.displayName, body, createdAt: new Date().toISOString() }));
-      } else {
-        await studioCommand("offerings", { command: "post_message", entityId: offering.id, expectedVersion: offering.version, payload: { body }, reason: "Class message posted" });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setMessage("");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "The class message could not be posted.");
-    } finally {
-      setMessageBusy(false);
-    }
-  }
 
   async function createAssignment(event: FormEvent) {
     event.preventDefault();
@@ -102,9 +78,9 @@ function ClassWorkspace({ data, isDemo, role, offeringId }: { data: StudioSnapsh
         {assignmentOpen && <form className="class-assignment-form" onSubmit={createAssignment}><label>Title<input required value={assignment.title} onChange={(event) => setAssignment({ ...assignment, title: event.target.value })}/></label><label>Due date<input type="datetime-local" value={assignment.dueAt} onChange={(event) => setAssignment({ ...assignment, dueAt: event.target.value })}/></label><label className="full">Instructions<textarea required value={assignment.details} onChange={(event) => setAssignment({ ...assignment, details: event.target.value })}/></label><button className="primary full" disabled={assignmentBusy}>{assignmentBusy ? "Sharing…" : "Share with class"}</button></form>}
         <div className="table-list">{assignmentGroups.map((item) => <article key={item.id}><CheckSquare/><div><strong>{item.title}</strong><small>{item.details}{item.dueAt ? ` · Due ${formatStudioDateTime(item.dueAt, data.settings.timezone)}` : ""}</small></div><Status tone={item.status === "completed" ? "good" : "neutral"}>{item.status}</Status></article>)}{!assignmentGroups.length && <EmptyState title="No class assignments" detail="Class work shared by the coach will stay connected to this class."/>}</div>
       </Section>
-      <Section title="Class board" marked>
-        <div className="class-message-list">{messages.map((item) => <article key={item.id}><header><strong>{item.authorName}</strong><Status tone={item.authorRole === "coach" ? "good" : "neutral"}>{item.authorRole}</Status></header><p>{item.body}</p><small>{formatStudioDateTime(item.createdAt, data.settings.timezone)}</small></article>)}{!messages.length && <EmptyState title="No class messages" detail="Updates and class questions will stay together here."/>}</div>
-        <form className="lesson-message-form" onSubmit={postMessage}><label htmlFor="class-message"><MessageSquare/>Post to the class</label><textarea id="class-message" required maxLength={4000} value={message} onChange={(event) => setMessage(event.target.value)} placeholder="Share an update or ask a class question…"/><button className="primary" disabled={messageBusy || !message.trim()}>{messageBusy ? "Posting…" : "Post message"}</button></form>
+      <Section title="Class conversation" marked>
+        <p className="section-intro">Questions and announcements live in the shared inbox, alongside private studio conversations.</p>
+        <Link className="button-link primary" to={`${coach ? "/coach" : "/portal"}/inbox?offering=${encodeURIComponent(offering.id)}`}><MessageSquare/>Open class inbox</Link>
       </Section>
     </div>
     {coach && <Section title="Students"><div className="table-list">{participants.map((participant) => <article key={participant.id}><Users/><div><strong>{participant.displayName}</strong><small>{participant.email}</small></div><Status tone={participant.status === "confirmed" ? "good" : "neutral"}>{participant.status}</Status></article>)}{!participants.length && <EmptyState title="No students enrolled" detail="Confirmed class bookings will appear here."/>}</div></Section>}

@@ -2050,6 +2050,7 @@ export function FinanceView({
                   <Status tone="warn">Pricing changed</Status>
                 )}
                 {definition.giftable && definition.visibility === "public" && <a className="button-link" href={`/gift/${definition.id}`} target="_blank" rel="noreferrer">Gift link</a>}
+                {definition.visibility === "public" && definition.directPurchase && <a className="button-link" href={`/package/${definition.id}`} target="_blank" rel="noreferrer">Direct link</a>}
                 <button onClick={() => setDialog(definition)}>Edit</button>
               </article>
             ))}

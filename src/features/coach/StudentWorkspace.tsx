@@ -8,6 +8,7 @@ import {
   Mail,
   MessageSquare,
   Plus,
+  RotateCcw,
   Search,
   Trash2,
   UserRound,
@@ -87,6 +88,7 @@ export function StudentWorkspace() {
   const [notice, setNotice] = useState("");
   const studentMutation = useStudioMutation();
   const [settingCredentials, setSettingCredentials] = useState(false);
+  const [undoInvite, setUndoInvite] = useState<string>();
   const [removingStudent, setRemovingStudent] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const student = data?.students.find((item) => item.id === studentId);
@@ -157,13 +159,17 @@ export function StudentWorkspace() {
           item.updatedAt = now();
         });
       } else {
-        await studioCommand("students", {
+        const result = await studioCommand("students", {
           command: "invite",
           entityId: student.id,
           expectedVersion: student.version,
           payload: { accountType, linkedContactId },
           reason: `Coach granted ${accountType} portal access and sent the invitation`,
         });
+        if (result.outboxMessageId) {
+          setUndoInvite(result.outboxMessageId);
+          window.setTimeout(() => setUndoInvite((current) => current === result.outboxMessageId ? undefined : current), 8_000);
+        }
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
       }
       setNotice(
@@ -178,6 +184,16 @@ export function StudentWorkspace() {
     } finally {
       setSettingCredentials(false);
     }
+  };
+  const undoPortalInvite = async () => {
+    if (!undoInvite) return;
+    const messageId = undoInvite;
+    setUndoInvite(undefined);
+    try {
+      await studioCommand("outbox", { command: "cancel_manual", entityId: messageId, expectedVersion: 1, reason: "Coach undid portal invitation email" });
+      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      setNotice("Invitation email send undone. Portal access remains available.");
+    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "The invitation has already started sending."); }
   };
   const addLesson = async (
     lesson: Lesson,
@@ -492,10 +508,16 @@ export function StudentWorkspace() {
             Add lesson
           </button>
           {student.email && (
-            <a className="button-link primary" href={`mailto:${student.email}`}>
+            <Link className="button-link" to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}>
+              <MessageSquare />
+              Message
+            </Link>
+          )}
+          {student.email && (
+            <Link className="button-link primary" to={`/coach/inbox?student=${encodeURIComponent(student.id)}&email=1`}>
               <Mail />
               Email
-            </a>
+            </Link>
           )}
           <button
             className="danger-button"
@@ -511,6 +533,7 @@ export function StudentWorkspace() {
           {notice}
         </p>
       )}
+      {undoInvite && <div className="undo-send" role="status"><span>Invitation email queued</span><button onClick={() => void undoPortalInvite()}><RotateCcw />Undo</button></div>}
       <nav className="record-tabs" aria-label={`${student.fullName} sections`}>
         {tabs.map(([path, label]) => (
           <NavLink
@@ -585,6 +608,7 @@ export function StudentWorkspace() {
             />
           }
         />
+        <Route path="contacts/:contactId" element={<HouseholdContactProfile data={data} student={student} />} />
         <Route
           path="payments"
           element={<Payments data={data} student={student} isDemo={isDemo} />}
@@ -965,8 +989,6 @@ function CoachLessonHub({
   const navigate = useNavigate();
   const store = useStudioStore();
   const lesson = data.lessons.find((item) => item.id === lessonId);
-  const [message, setMessage] = useState("");
-  const [sending, setSending] = useState(false);
   const [notice, setNotice] = useState("");
   const [cancelling, setCancelling] = useState(false);
   const [lessonAction, setLessonAction] = useState<
@@ -987,9 +1009,6 @@ function CoachLessonHub({
   const materials = data.materials.filter(
     (item) => item.lessonId === lesson.id,
   );
-  const messages = data.lessonMessages.filter(
-    (item) => item.lessonId === lesson.id,
-  );
   const availableCredits = data.packages
     .filter((item) => item.studentId === student.id)
     .reduce(
@@ -1004,32 +1023,6 @@ function CoachLessonHub({
   const durationMinutes = Math.round(
     (new Date(lesson.endsAt).getTime() - new Date(lesson.startsAt).getTime()) / 60_000,
   );
-  const send = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!message.trim() || sending) return;
-    setSending(true);
-    try {
-      await studioCommand("messages", {
-        command: "create",
-        expectedVersion: 0,
-        payload: {
-          lessonId: lesson.id,
-          studentId: student.id,
-          body: message.trim(),
-        },
-        reason: "Coach sent a lesson message",
-      });
-      setMessage("");
-      setNotice("Message shared in the student lesson workspace.");
-      void queryClient.invalidateQueries({ queryKey: ["studio"] });
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error ? reason.message : "Message could not be sent.",
-      );
-    } finally {
-      setSending(false);
-    }
-  };
   const cancelLesson = async () => {
     if (
       cancelling ||
@@ -1411,37 +1404,8 @@ function CoachLessonHub({
           </div>
         </Section>
         <Section title="Conversation">
-          <div className="note-cards">
-            {messages.map((item) => (
-              <article key={item.id}>
-                <header>
-                  <strong>
-                    {item.authorRole === "coach"
-                      ? "Coach"
-                      : student.preferredName || student.fullName}
-                  </strong>
-                  <small>{formatStudioDateTime(item.createdAt, data.settings.timezone)}</small>
-                </header>
-                <p>{item.body}</p>
-              </article>
-            ))}
-          </div>
-          <form className="credential-form" onSubmit={send}>
-            <label>
-              Message
-              <textarea
-                value={message}
-                onChange={(event) => setMessage(event.target.value)}
-                placeholder="Follow up about this lesson…"
-              />
-            </label>
-            <button
-              className="primary-button"
-              disabled={sending || !message.trim()}
-            >
-              {sending ? "Sending…" : "Send to student"}
-            </button>
-          </form>
+          <p className="section-intro">Keep lesson follow-up in the student’s private studio conversation.</p>
+          <Link className="button-link primary" to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}><MessageSquare />Open conversation</Link>
         </Section>
       </div>
     </div>
@@ -1874,7 +1838,7 @@ function LinkedContacts({ data, student, busy, onInvite }: {
   return <Section title="Household access" marked aside={<button type="button" onClick={()=>{setEditing(undefined);setAdding(true);}}>Add contact</button>}>
     <p className="section-intro">Add guardians for minors or support people for students of any age. Each person gets only the schedule, work, profile, payment, and notification access you choose.</p>
     {notice && <p className="portal-notice" role="status">{notice}</p>}
-    <div className="table-list">{contacts.map((contact)=>{const delivery=invitation(contact); return <article key={contact.id}><UserRound/><div><strong>{contact.fullName}</strong><small>{contact.relationshipLabel || contact.relationshipType.replaceAll("_"," ")} · {contact.email}</small></div><Status tone={delivery?.status === "failed" ? "danger" : delivery?.status === "sent" ? "good" : "warn"}>{delivery?.status === "failed" ? "Needs retry" : delivery?.status === "sent" ? "Sent" : delivery ? "Sending" : "Not invited"}</Status><button onClick={()=>setEditing(contact)}>Edit access</button><button className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{delivery?.status === "failed" ? "Retry invite" : "Send invite"}</button><button className="danger-button" onClick={()=>void disable(contact)}>Remove</button></article>;})}</div>
+    <div className="table-list">{contacts.map((contact)=>{const delivery=invitation(contact); return <article key={contact.id}><UserRound/><div><strong>{contact.fullName}</strong><small>{contact.relationshipLabel || contact.relationshipType.replaceAll("_"," ")} · {contact.email}</small></div><Status tone={delivery?.status === "failed" ? "danger" : delivery?.status === "sent" ? "good" : "warn"}>{delivery?.status === "failed" ? "Needs retry" : delivery?.status === "sent" ? "Sent" : delivery ? "Sending" : "Not invited"}</Status><Link className="button-link" to={`/coach/students/${student.id}/contacts/${contact.id}`}>Open profile</Link><button onClick={()=>setEditing(contact)}>Edit access</button><button className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{delivery?.status === "failed" ? "Retry invite" : "Send invite"}</button><button className="danger-button" onClick={()=>void disable(contact)}>Remove</button></article>;})}</div>
     {!contacts.length && !adding && <EmptyState title="No linked contacts" detail="Adult students can have support people too; access is never limited to minor guardians."/>}
     {(adding || editing) && <Dialog title={editing ? `Edit ${editing.fullName}` : "Add linked contact"} description="Access and optional email preferences can be changed at any time." onClose={()=>{setAdding(false);setEditing(undefined);}}><form className="workflow-form" onSubmit={save}>
       <label>Name<input name="fullName" required defaultValue={editing?.fullName}/></label><label>Email<input name="email" type="email" required defaultValue={editing?.email}/></label>
@@ -1884,6 +1848,31 @@ function LinkedContacts({ data, student, busy, onInvite }: {
       <div className="form-actions full"><button type="button" onClick={()=>{setAdding(false);setEditing(undefined);}}>Cancel</button><button className="primary">Save contact</button></div>
     </form></Dialog>}
   </Section>;
+}
+
+function HouseholdContactProfile({ data, student }: { data: Data; student: Student }) {
+  const { contactId = "" } = useParams();
+  const contact = data.linkedContacts.find((item) => item.id === contactId && item.studentId === student.id);
+  if (!contact) return <Navigate to={`/coach/students/${student.id}/account`} replace />;
+  const access = [
+    ["Schedule", contact.canViewSchedule],
+    ["Manage lessons", contact.canManageLessons],
+    ["Work and notes", contact.canViewWork],
+    ["Manage profile", contact.canManageProfile],
+    ["Payments", contact.canViewFinance],
+  ] as const;
+  return <div className="two-section-grid household-profile">
+    <Section title={contact.fullName} marked>
+      <p className="section-intro">{contact.relationshipLabel || contact.relationshipType.replaceAll("_", " ")} for {student.preferredName || student.fullName}</p>
+      <dl className="profile-grid"><div><dt>Email</dt><dd>{contact.email}</dd></div><div><dt>Timezone</dt><dd>{contact.timezone || "Uses device timezone"}</dd></div><div><dt>Portal access</dt><dd>{contact.portalEnabled ? "Enabled" : "Disabled"}</dd></div><div><dt>Notifications</dt><dd>{contact.canReceiveNotifications ? "Enabled" : "Optional messages off"}</dd></div></dl>
+      <div className="form-actions"><Link className="button-link primary" to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}><MessageSquare />Message household</Link><Link className="button-link" to={`/coach/inbox?student=${encodeURIComponent(student.id)}&recipient=${encodeURIComponent(contact.email)}&email=1`}><Mail />Email {contact.fullName.split(" ")[0]}</Link><Link className="button-link" to={`/coach/students/${student.id}/account`}>Edit access</Link></div>
+    </Section>
+    <Section title="Access & notifications">
+      <div className="permission-summary">{access.map(([label, enabled]) => <div key={label}><span>{label}</span><Status tone={enabled ? "good" : "neutral"}>{enabled ? "Allowed" : "Hidden"}</Status></div>)}</div>
+      <h3>Receives</h3>
+      <div className="policy-chips">{Object.entries(notificationLabels).filter(([key]) => contact.notificationPreferences?.[key as keyof typeof contact.notificationPreferences]).map(([key, label]) => <span key={key}>{label}</span>)}</div>
+    </Section>
+  </div>;
 }
 
 function Account({

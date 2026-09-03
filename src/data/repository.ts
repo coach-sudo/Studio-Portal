@@ -57,11 +57,11 @@ export async function loadStudioSnapshot(
     availabilityRules,
     availabilityExceptions,
     serviceOfferings,
-    offeringMessages,
+    conversations,
+    conversationMessages,
     recurringSeries,
     bookings,
     lessonParticipants,
-    lessonMessages,
     integrationImports,
     discountCodes,
   ] = await Promise.all([
@@ -102,14 +102,11 @@ export async function loadStudioSnapshot(
     supabase.from("availability_rules").select("*"),
     supabase.from("availability_exceptions").select("*"),
     supabase.from("service_offerings").select("*"),
-    supabase.from("offering_messages").select("*").order("created_at", { ascending: true }),
+    supabase.from("conversations").select("*").order("last_message_at", { ascending: false }),
+    supabase.from("conversation_messages").select("*").is("deleted_at", null).order("created_at", { ascending: true }),
     supabase.from("recurring_series").select("*"),
     supabase.from("bookings").select("*"),
     supabase.from("lesson_participants").select("*"),
-    supabase
-      .from("lesson_messages")
-      .select("*")
-      .order("created_at", { ascending: true }),
     supabase
       .from("integration_imports")
       .select("*")
@@ -145,11 +142,11 @@ export async function loadStudioSnapshot(
     availabilityRules,
     availabilityExceptions,
     serviceOfferings,
-    offeringMessages,
+    conversations,
+    conversationMessages,
     recurringSeries,
     bookings,
     lessonParticipants,
-    lessonMessages,
     integrationImports,
     discountCodes,
   ].find((result) => result.error);
@@ -526,6 +523,8 @@ export async function loadStudioSnapshot(
       status: r.status,
       attempts: r.attempts,
       lastError: r.last_error,
+      sendAt: r.send_at,
+      eventKey: r.event_key,
       version: r.version,
       updatedAt: r.updated_at,
     })),
@@ -624,10 +623,21 @@ export async function loadStudioSnapshot(
       meetingUrl: r.meeting_url,
       resourceLinks: r.resource_links ?? [],
     })),
-    offeringMessages: (offeringMessages.data ?? []).map((r: any) => ({
+    conversations: (conversations.data ?? []).map((r: any) => ({
       id: r.id,
       studioId: r.studio_id,
+      kind: r.kind,
+      studentId: r.student_id,
       offeringId: r.offering_id,
+      title: r.title,
+      lastMessageAt: r.last_message_at,
+      version: r.version,
+      updatedAt: r.updated_at,
+    })),
+    conversationMessages: (conversationMessages.data ?? []).map((r: any) => ({
+      id: r.id,
+      conversationId: r.conversation_id,
+      studioId: r.studio_id,
       authorUserId: r.author_user_id,
       authorRole: r.author_role,
       authorName: r.author_name,
@@ -701,15 +711,6 @@ export async function loadStudioSnapshot(
       displayName: r.display_name,
       email: r.email,
       status: r.status,
-    })),
-    lessonMessages: (lessonMessages.data ?? []).map((r: any) => ({
-      id: r.id,
-      lessonId: r.lesson_id,
-      studentId: r.student_id,
-      authorUserId: r.author_user_id,
-      authorRole: r.author_role,
-      body: r.body,
-      createdAt: r.created_at,
     })),
     integrationImports: (integrationImports.data ?? []).map((r: any) => ({
       id: r.id,

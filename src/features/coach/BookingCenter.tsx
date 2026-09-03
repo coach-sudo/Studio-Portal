@@ -1206,6 +1206,7 @@ function Services({
               <span>{service.paymentPolicies.length} payment options</span>
             </div>
             <footer>
+              {service.published && <a className="button-link" href={`/book/${service.slug}`} target="_blank" rel="noreferrer">Direct link</a>}
               <button onClick={() => onEdit(service)}>
                 <Edit3 />
                 Edit
@@ -2126,7 +2127,7 @@ function OfferingDialog({
   return (
     <Dialog
       title="Create group class"
-      description="Create one class occurrence with its own page, roster, resources, assignments, and message board."
+      description="Create one class occurrence with its own page, roster, resources, assignments, and shared inbox."
       onClose={onClose}
     >
       <form

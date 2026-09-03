@@ -183,6 +183,9 @@ export function scopeStudioSnapshot(
     (row) =>
       studentIds.includes(row.studentId) || participantLessonIds.has(row.id),
   );
+  const scopedOfferings = snapshot.serviceOfferings.filter((offering) =>
+    offering.lessonIds.some((lessonId) => participantLessonIds.has(lessonId)),
+  );
   return {
     ...snapshot,
     role,
@@ -231,14 +234,33 @@ export function scopeStudioSnapshot(
         (Boolean(row.studentId) && studentIds.includes(row.studentId!)) ||
         Boolean(row.bookingId && bookingIds.has(row.bookingId)),
     ),
-    lessonMessages: snapshot.lessonMessages.filter((row) =>
-      studentIds.includes(row.studentId),
+    serviceOfferings: scopedOfferings,
+    conversations: snapshot.conversations.filter(
+      (row) =>
+        (Boolean(row.studentId) && studentIds.includes(row.studentId!)) ||
+        (Boolean(row.offeringId) &&
+          snapshot.serviceOfferings.some(
+            (offering) =>
+              offering.id === row.offeringId &&
+              offering.lessonIds.some((lessonId) =>
+                participantLessonIds.has(lessonId),
+              ),
+          )),
     ),
-    offeringMessages: snapshot.offeringMessages.filter((row) =>
-      snapshot.serviceOfferings.some(
-        (offering) =>
-          offering.id === row.offeringId &&
-          offering.lessonIds.some((lessonId) => participantLessonIds.has(lessonId)),
+    conversationMessages: snapshot.conversationMessages.filter((row) =>
+      snapshot.conversations.some(
+        (conversation) =>
+          conversation.id === row.conversationId &&
+          ((Boolean(conversation.studentId) &&
+            studentIds.includes(conversation.studentId!)) ||
+            (Boolean(conversation.offeringId) &&
+              snapshot.serviceOfferings.some(
+                (offering) =>
+                  offering.id === conversation.offeringId &&
+                  offering.lessonIds.some((lessonId) =>
+                    participantLessonIds.has(lessonId),
+                  ),
+              ))),
       ),
     ),
     integrationImports: [],

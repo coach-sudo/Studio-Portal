@@ -7,7 +7,7 @@ import { supabase } from "../lib/supabase";
 import { formatStudioDateTime } from "../domain/presentation";
 import "./ActivityCenter.css";
 
-const icons = { booking: CalendarCheck2, lesson: GraduationCap, material: FolderOpen, assignment: CheckSquare, note: FileText, import: Waypoints };
+const icons = { booking: CalendarCheck2, lesson: GraduationCap, material: FolderOpen, assignment: CheckSquare, note: FileText, import: Waypoints, message: Bell };
 
 export function ActivityCenter({ data, audience }: { data: StudioSnapshot; audience: "coach" | "student" | "guardian" }) {
   const navigate = useNavigate();

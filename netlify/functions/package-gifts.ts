@@ -19,9 +19,9 @@ export default async (request:Request,context:Context)=>{
     const action=context.params.action||"catalog",db=serviceClient();
     if(request.method==="GET"&&action==="catalog"){
       const definitionId=new URL(request.url).searchParams.get("definitionId")||"";
-      const {data,error}=await db.from("package_definitions").select("id,studio_id,name,description,session_count,session_duration_minutes,price_minor,currency,expiration_days,pricing_service_id,delivery_format,giftable,active,visibility,direct_purchase,studios(name,settings)").eq("id",definitionId).eq("giftable",true).eq("active",true).eq("visibility","public").eq("direct_purchase",true).single();
+      const {data,error}=await db.from("package_definitions").select("id,studio_id,name,description,session_count,session_duration_minutes,price_minor,currency,expiration_days,pricing_service_id,delivery_format,giftable,active,visibility,direct_purchase,studios(name,settings)").eq("id",definitionId).eq("active",true).eq("visibility","public").eq("direct_purchase",true).single();
       if(error||!data)throw new Error("SERVICE_NOT_FOUND");
-      return json({package:{id:data.id,name:data.name,description:data.description,sessionCount:data.session_count,sessionDurationMinutes:data.session_duration_minutes,priceMinor:Number(data.price_minor),currency:data.currency,deliveryFormat:data.delivery_format},studio:Array.isArray(data.studios)?data.studios[0]:data.studios});
+      return json({package:{id:data.id,name:data.name,description:data.description,sessionCount:data.session_count,sessionDurationMinutes:data.session_duration_minutes,priceMinor:Number(data.price_minor),currency:data.currency,deliveryFormat:data.delivery_format,giftable:Boolean(data.giftable)},studio:Array.isArray(data.studios)?data.studios[0]:data.studios});
     }
     if(request.method!=="POST")return json({code:"METHOD_NOT_ALLOWED",message:"Method not allowed.",retryable:false,correlationId:id},405);
     await rateLimit(request,action);

@@ -26,6 +26,7 @@ import {
   Routes,
   useNavigate,
   useParams,
+  useSearchParams,
 } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -77,6 +78,7 @@ import {
 import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
 import { PortalClassWorkspace } from "../classes/ClassWorkspace";
+import { PortalInbox } from "../messages/Inbox";
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -203,6 +205,7 @@ export function StudentPortal({
           />
           <Route path="notes" element={<StudentNotes data={data} />} />
           <Route path="classes/:offeringId" element={<PortalClassWorkspace data={data} isDemo={isDemo} role={role} />} />
+          <Route path="inbox" element={<PortalInbox data={data} isDemo={isDemo} role={role} />} />
           <Route
             path="practice"
             element={<Navigate to={`${base}/work`} replace />}
@@ -339,11 +342,11 @@ function StudentHome({ data, base }: { data: Snapshot; base: string }) {
             Email coach
           </a>
         )}
-        {data.settings.showContactButtons && data.settings.contactPhone && (
-          <a href={`sms:${data.settings.contactPhone.replace(/[^+\d]/g, "")}`}>
+        {data.settings.showContactButtons && (
+          <Link to={`${base}/inbox`}>
             <MessageSquare />
-            Text coach
-          </a>
+            Message coach
+          </Link>
         )}
         {data.settings.showDriveFolder && data.students[0]?.driveFolderUrl && (
           <a
@@ -1231,8 +1234,6 @@ function LessonHub({
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const store = useStudioStore();
   const queryClient = useQueryClient();
-  const [message, setMessage] = useState("");
-  const [busy, setBusy] = useState(false);
   const [assignmentBusy, setAssignmentBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [delivery, setDelivery] = useState<{
@@ -1267,9 +1268,6 @@ function LessonHub({
   const materials = data.materials.filter(
     (item) => item.lessonId === lesson.id,
   );
-  const messages = data.lessonMessages.filter(
-    (item) => item.lessonId === lesson.id,
-  );
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
   );
@@ -1282,44 +1280,6 @@ function LessonHub({
   const student =
     data.students.find((item) => item.id === lesson.studentId) ??
     data.students[0];
-  const sendMessage = async (event: FormEvent) => {
-    event.preventDefault();
-    const body = message.trim();
-    if (!body || !student || busy) return;
-    setBusy(true);
-    setNotice("");
-    try {
-      if (isDemo)
-        store.transact((draft) =>
-          draft.lessonMessages.push({
-            id: `message-${crypto.randomUUID()}`,
-            lessonId: lesson.id,
-            studentId: student.id,
-            authorRole: "student",
-            body,
-            createdAt: new Date().toISOString(),
-          }),
-        );
-      else {
-        await studioCommand("messages", {
-          command: "create",
-          entityId: lesson.id,
-          expectedVersion: 0,
-          payload: { studentId: student.id, body },
-          reason: "Student sent a lesson message",
-        });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
-      }
-      setMessage("");
-      setNotice("Message sent to your coach.");
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error ? reason.message : "Message could not be sent.",
-      );
-    } finally {
-      setBusy(false);
-    }
-  };
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
@@ -1569,46 +1529,8 @@ function LessonHub({
           </div>
         </Section>
         <Section title="Conversation" marked>
-          <div className="lesson-conversation">
-            {messages.map((item) => (
-              <article
-                key={item.id}
-                className={
-                  item.authorRole === "coach"
-                    ? "coach-message"
-                    : "student-message"
-                }
-              >
-                <strong>
-                  {item.authorRole === "coach"
-                    ? data.settings.coachName
-                    : student?.preferredName || student?.fullName}
-                </strong>
-                <p>{item.body}</p>
-                <small>{formatStudioDateTime(item.createdAt, data.settings.timezone)}</small>
-              </article>
-            ))}
-            {!messages.length && (
-              <EmptyState
-                title="No messages yet"
-                detail="Ask a lesson-specific question without losing the context."
-              />
-            )}
-          </div>
-          <form className="lesson-message-form" onSubmit={sendMessage}>
-            <label htmlFor="lesson-message">Message your coach</label>
-            <textarea
-              id="lesson-message"
-              required
-              maxLength={4000}
-              value={message}
-              onChange={(event) => setMessage(event.target.value)}
-              placeholder="Ask about this lesson, assignment, or material…"
-            />
-            <button className="primary" disabled={busy || !message.trim()}>
-              {busy ? "Sending…" : "Send message"}
-            </button>
-          </form>
+          <p className="section-intro">Continue privately with your coach without leaving the studio.</p>
+          <Link className="button-link primary" to="/portal/inbox"><MessageSquare />Message coach</Link>
         </Section>
         </div>
       </section>
@@ -2228,6 +2150,7 @@ function MaterialSubmission({
 }
 function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const student = data.students[0];
+  const [params] = useSearchParams();
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
   const [purchaseDefinition, setPurchaseDefinition] = useState<Snapshot["packageDefinitions"][number]>();
@@ -2235,6 +2158,13 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const [purchaseAutoApply, setPurchaseAutoApply] = useState(false);
   const store = useStudioStore();
   const queryClient = useQueryClient();
+  useEffect(() => {
+    const definitionId = params.get("package");
+    const definition = data.packageDefinitions.find(
+      (item) => item.id === definitionId && item.active && item.directPurchase,
+    );
+    if (definition) setPurchaseDefinition(definition);
+  }, [data.packageDefinitions, params]);
   const purchase = async (id: string) => {
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");

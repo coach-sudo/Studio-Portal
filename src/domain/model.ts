@@ -250,10 +250,18 @@ export interface ServiceOffering extends Versioned {
   meetingUrl?: string;
   resourceLinks?: { label: string; url: string }[];
 }
-export interface OfferingMessage {
-  id: UUID;
+export interface Conversation extends Versioned {
   studioId: UUID;
-  offeringId: UUID;
+  kind: "direct" | "class";
+  studentId?: UUID;
+  offeringId?: UUID;
+  title: string;
+  lastMessageAt: string;
+}
+export interface ConversationMessage {
+  id: UUID;
+  conversationId: UUID;
+  studioId: UUID;
   authorUserId?: UUID;
   authorRole: "coach" | "student" | "guardian";
   authorName: string;
@@ -336,15 +344,6 @@ export interface LessonParticipant {
   displayName: string;
   email: string;
   status: ParticipantStatus;
-}
-export interface LessonMessage {
-  id: UUID;
-  lessonId: UUID;
-  studentId: UUID;
-  authorUserId?: UUID;
-  authorRole: Role;
-  body: string;
-  createdAt: string;
 }
 export interface Note extends Versioned {
   lessonId: UUID;
@@ -579,6 +578,8 @@ export interface OutboxMessage extends Versioned {
   status: DeliveryStatus;
   attempts: number;
   lastError?: string;
+  sendAt?: string;
+  eventKey?: string;
 }
 export interface Recommendation {
   id: UUID;
@@ -719,11 +720,11 @@ export interface StudioSnapshot {
   availabilityRules: AvailabilityRule[];
   availabilityExceptions: AvailabilityException[];
   serviceOfferings: ServiceOffering[];
-  offeringMessages: OfferingMessage[];
+  conversations: Conversation[];
+  conversationMessages: ConversationMessage[];
   recurringSeries: RecurringSeries[];
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];
-  lessonMessages: LessonMessage[];
   integrationImports: IntegrationImport[];
   discountCodes: DiscountCode[];
 }
