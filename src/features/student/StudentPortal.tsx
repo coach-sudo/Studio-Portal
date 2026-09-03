@@ -134,7 +134,7 @@ export function StudentPortal({
             <img src={data.settings.branding.logoUrl} alt="" />
           )}
           {!data.settings.branding?.logoUrl && <span className="shell-mark" aria-hidden="true">C’D</span>}
-          <div className="wordmark">{data.settings.studioName}</div>
+          <div className="wordmark">Coach'D</div>
           <button type="button" className="sidebar-collapse" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
             {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
           </button>

@@ -335,6 +335,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: /Welcome back/i }),
       ).toBeInTheDocument();
+      expect(screen.getByText("Coach'D")).toBeInTheDocument();
       expect(
         screen.getByRole("link", { name: /Book a lesson/i }),
       ).toBeInTheDocument();
@@ -600,6 +601,8 @@ describe("50 start-to-finish studio workflows", () => {
     it("G1 opens the linked student overview", async () => {
       renderGuardian("/portal");
       expect(await screen.findByText(/Guardian for/i)).toBeInTheDocument();
+      expect(screen.getByText("Coach'D")).toBeInTheDocument();
+      expect(screen.getByText("Dana Patterson")).toBeInTheDocument();
       expect(screen.getByRole("heading", { name: "Next lesson" })).toBeInTheDocument();
     });
     it("G2 opens the linked student schedule", async () => {
