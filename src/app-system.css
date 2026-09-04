@@ -314,6 +314,9 @@ textarea:hover,
 .inbox-threads > header { padding: 8px 8px 12px; display: flex; align-items: end; justify-content: space-between; gap: 8px; }
 .inbox-threads > header strong { font-size: 16px; }
 .inbox-threads > header small { color: var(--muted); }
+.inbox-filters { padding: 0 5px 8px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+.inbox-filters button { min-width: 0; min-height: 32px; padding: 0 5px; border-radius: 8px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: capitalize; }
+.inbox-filters button.active { background: var(--app-surface); color: var(--ink); box-shadow: 0 2px 8px #102c2410; }
 .inbox-threads > button { width: 100%; min-width: 0; min-height: 58px; padding: 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 9px; text-align: left; }
 .inbox-threads > button:hover,
 .inbox-threads > button.active { border-color: var(--app-border); background: var(--app-surface); box-shadow: 0 5px 16px rgba(14, 49, 40, .06); }
@@ -323,6 +326,8 @@ textarea:hover,
 .inbox-threads button strong,
 .inbox-threads button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inbox-threads button small { color: var(--muted); font-size: 10px; }
+.inbox-threads > button.unread strong { display: flex; align-items: center; gap: 6px; }
+.inbox-threads > button.unread strong i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--coral); }
 .inbox-conversation { min-width: 0; min-height: 560px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .inbox-conversation > header { min-height: 68px; padding: 13px 18px; border-bottom: 1px solid var(--app-border); display: flex; align-items: center; gap: 10px; }
 .inbox-conversation > header > div { min-width: 0; flex: 1; display: grid; gap: 2px; }
@@ -350,6 +355,16 @@ textarea:hover,
 .permission-summary > div > span:first-child { min-width: 0; overflow-wrap: anywhere; }
 .undo-send { position: fixed; z-index: 90; right: 24px; bottom: 24px; min-width: 270px; padding: 12px 14px; border: 1px solid var(--gold); border-radius: 14px; background: var(--forest); color: white; box-shadow: var(--app-shadow-dialog); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 .undo-send button { min-height: 38px; border-color: var(--gold); background: var(--gold); color: var(--forest); }
+.recipient-picker { padding: 18px 22px 22px; }
+.recipient-picker > label { min-height: 48px; padding: 0 12px; border: 1px solid var(--app-border-strong); border-radius: 11px; background: var(--app-surface); display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 9px; color: var(--muted); font-size: 0; }
+.recipient-picker > label svg { width: 18px; }
+.recipient-picker > label input { min-width: 0; width: 100%; border: 0; outline: 0; background: transparent; color: var(--ink); font-size: 12px; }
+.recipient-picker > div { max-height: 50vh; margin-top: 10px; overflow-y: auto; }
+.recipient-picker > div > button { width: 100%; min-height: 58px; padding: 9px 6px; border-bottom: 1px solid var(--app-border); display: flex; align-items: center; gap: 10px; text-align: left; }
+.recipient-picker > div > button > span { min-width: 0; flex: 1; display: grid; gap: 3px; }
+.recipient-picker > div > button strong,.recipient-picker > div > button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recipient-picker > div > button small { color: var(--muted); font-size: 10px; }
+.recipient-picker > div > button svg { width: 17px; color: var(--sage); }
 
 @media (max-width: 900px) {
   .page,
@@ -541,3 +556,41 @@ textarea:hover,
   *::before,
   *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
+
+/* Account-level portal appearance. Public and coach pages keep the studio's
+   configured canvas; this preference follows the signed-in student/support
+   account and is stored in Supabase. */
+:root[data-portal-theme="dark"] {
+  color-scheme: dark;
+  --ink: #f3f5f1;
+  --muted: #aebbb4;
+  --line: #34463f;
+  --wash: #22312b;
+  --app-canvas: #111c18;
+  --app-surface: #17251f;
+  --app-surface-soft: #1d2d26;
+  --app-border: #34463f;
+  --app-border-strong: #52675e;
+}
+:root[data-portal-theme="dark"] body { background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 90%), transparent 24rem), var(--app-canvas); color: var(--ink); }
+:root[data-portal-theme="dark"] .student-shell main,
+:root[data-portal-theme="dark"] .student-page,
+:root[data-portal-theme="dark"] .section,
+:root[data-portal-theme="dark"] .record-card,
+:root[data-portal-theme="dark"] .table-list > article,
+:root[data-portal-theme="dark"] .portal-row,
+:root[data-portal-theme="dark"] .assignment-card,
+:root[data-portal-theme="dark"] .current-script-card,
+:root[data-portal-theme="dark"] .settings-form input,
+:root[data-portal-theme="dark"] .settings-form select,
+:root[data-portal-theme="dark"] .settings-form textarea,
+:root[data-portal-theme="dark"] .workflow-form input,
+:root[data-portal-theme="dark"] .workflow-form select,
+:root[data-portal-theme="dark"] .workflow-form textarea,
+:root[data-portal-theme="dark"] .setting-toggle,
+:root[data-portal-theme="dark"] .workflow-dialog,
+:root[data-portal-theme="dark"] .inbox-conversation,
+:root[data-portal-theme="dark"] .inbox-composer textarea { background-color: var(--app-surface); color: var(--ink); border-color: var(--app-border); }
+:root[data-portal-theme="dark"] .page-header,
+:root[data-portal-theme="dark"] .student-header { background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 76%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), var(--app-surface-soft)); }
+.disabled-row { opacity: .72; }

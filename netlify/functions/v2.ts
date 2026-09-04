@@ -202,11 +202,31 @@ export default async (request: Request, context: Context) => {
         queuedSideEffects: [],
       });
     }
-    if (domain === "messages" && ["send", "undo"].includes(input.command)) {
+    if (domain === "messages" && ["send", "undo", "mark_read", "save_draft"].includes(input.command)) {
       const service = serviceClient();
       const { data: authData } = await db.auth.getUser();
       const user = authData.user;
       if (!user) throw new Error("FORBIDDEN");
+
+      if (["mark_read", "save_draft"].includes(input.command)) {
+        const conversationId = String(input.entityId || input.payload.conversationId || "");
+        const { data: conversation, error: conversationError } = await db
+          .from("conversations")
+          .select("id,studio_id")
+          .eq("id", conversationId)
+          .single();
+        if (conversationError || !conversation) throw new Error("FORBIDDEN");
+        const draftBody = input.command === "save_draft" ? String(input.payload.body || "").slice(0, 4000) : undefined;
+        const state: Record<string, unknown> = {
+          conversation_id: conversation.id,
+          user_id: user.id,
+          ...(input.command === "mark_read" ? { last_read_at: new Date().toISOString() } : { draft_body: draftBody }),
+          updated_at: new Date().toISOString(),
+        };
+        const { data, error } = await service.from("conversation_states").upsert(state, { onConflict: "conversation_id,user_id" }).select().single();
+        if (error) throw error;
+        return json({ resource: data, recommendations: [], queuedSideEffects: [] });
+      }
 
       if (input.command === "undo") {
         const messageId = String(input.entityId || "");
@@ -322,6 +342,7 @@ export default async (request: Request, context: Context) => {
       }).select().single();
       if (error) throw error;
       await service.from("conversations").update({ last_message_at: data.created_at, updated_at: data.created_at, version: conversation.version + 1 }).eq("id", conversation.id);
+      await service.from("conversation_states").upsert({ conversation_id: conversation.id, user_id: user.id, last_read_at: data.created_at, draft_body: "", updated_at: data.created_at }, { onConflict: "conversation_id,user_id" });
       return json({
         resource: { ...data, conversation_id: conversation.id },
         recommendations: [],
@@ -446,7 +467,7 @@ export default async (request: Request, context: Context) => {
     if (domain === "students" && input.command === "save_linked_contact" && input.entityId) {
       const studioId = await requireCoach();
       const service = serviceClient();
-      const { data: student } = await service.from("students").select("id").eq("id", input.entityId).eq("studio_id", studioId).single();
+      const { data: student } = await service.from("students").select("*").eq("id", input.entityId).eq("studio_id", studioId).single();
       if (!student) throw new Error("FORBIDDEN");
       const fullName = String(input.payload.fullName || "").trim();
       const email = String(input.payload.email || "").trim().toLowerCase();
@@ -471,18 +492,43 @@ export default async (request: Request, context: Context) => {
         portal_enabled: input.payload.portalEnabled !== false,
         updated_at: new Date().toISOString(),
       };
-      const contactId = String(input.payload.contactId || "");
+      let contactId = String(input.payload.contactId || "");
+      let before: any = null;
+      if (contactId) {
+        const found = await service.from("linked_contacts").select("*").eq("id", contactId).eq("student_id", student.id).maybeSingle();
+        if (found.error || !found.data) throw new Error("FORBIDDEN");
+        before = found.data;
+        const duplicate = await service.from("linked_contacts").select("id").eq("student_id", student.id).ilike("email", email).neq("id", contactId).maybeSingle();
+        if (duplicate.data) throw new Error("VALIDATION_FAILED: That email is already linked to this student. Open that household profile instead.");
+      } else {
+        const found = await service.from("linked_contacts").select("*").eq("student_id", student.id).ilike("email", email).maybeSingle();
+        if (found.error) throw found.error;
+        if (found.data) { before = found.data; contactId = found.data.id; }
+      }
       const query = contactId
-        ? service.from("linked_contacts").update({ ...values, version: Number(input.expectedVersion || 0) + 1 }).eq("id", contactId).eq("student_id", student.id).eq("version", input.expectedVersion)
+        ? service.from("linked_contacts").update({ ...values, version: Number(before.version) + 1 }).eq("id", contactId).eq("student_id", student.id).eq("version", before.version)
         : service.from("linked_contacts").insert(values);
       const { data, error } = await query.select().maybeSingle();
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      if (relationshipType === "guardian" && (!student.guardian_email || !before || String(student.guardian_email).toLowerCase() === String(before.email).toLowerCase())) {
+        await service.from("students").update({ guardian_name: fullName, guardian_email: email, version: student.version + 1, updated_at: new Date().toISOString() }).eq("id", student.id).eq("version", student.version);
+      }
+      const { data: queuedCalendarUpdates } = await service.rpc("sync_future_contact_details", {
+        p_student_id: student.id,
+        p_old_email: before?.email || email,
+        p_new_email: email,
+        p_old_name: before?.full_name || fullName,
+        p_new_name: fullName,
+        p_old_phone: null,
+        p_new_phone: null,
+        p_contact_kind: "household",
+      });
       return json({
         resource: data,
         recommendations: [],
-        auditEventId: await audit(studioId, "linked_contact", data.id, contactId ? "linked_contact.updated" : "linked_contact.created", null, data),
-        queuedSideEffects: [],
+        auditEventId: await audit(studioId, "linked_contact", data.id, before ? (before.portal_enabled ? "linked_contact.updated" : "linked_contact.restored") : "linked_contact.created", before, data),
+        queuedSideEffects: Number(queuedCalendarUpdates || 0) ? [`calendar_attendees_queued:${queuedCalendarUpdates}`] : [],
       });
     }
     if (domain === "students" && input.command === "remove_linked_contact" && input.entityId) {
@@ -609,6 +655,64 @@ export default async (request: Request, context: Context) => {
         .maybeSingle();
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      const service = serviceClient();
+      let queuedCalendarUpdates = 0;
+      const studentIdentityChanged = ["fullName", "preferredName", "email", "phone"].some((key) => Object.prototype.hasOwnProperty.call(payload, key));
+      if (studentIdentityChanged) {
+        const { data: queued } = await service.rpc("sync_future_contact_details", {
+          p_student_id: before.id,
+          p_old_email: before.email || "",
+          p_new_email: data.email || "",
+          p_old_name: before.preferred_name || before.full_name,
+          p_new_name: data.preferred_name || data.full_name,
+          p_old_phone: before.phone || null,
+          p_new_phone: data.phone || null,
+          p_contact_kind: "student",
+        });
+        queuedCalendarUpdates = Math.max(queuedCalendarUpdates, Number(queued || 0));
+      }
+      if (isCoach && Object.prototype.hasOwnProperty.call(payload, "guardianEmail") && data.guardian_email) {
+        const oldGuardianEmail = String(before.guardian_email || "").toLowerCase();
+        const newGuardianEmail = String(data.guardian_email).trim().toLowerCase();
+        const newGuardianName = String(data.guardian_name || "Guardian").trim();
+        let { data: household } = await service.from("linked_contacts").select("*").eq("student_id", before.id).ilike("email", newGuardianEmail).maybeSingle();
+        if (!household && oldGuardianEmail) {
+          const found = await service.from("linked_contacts").select("*").eq("student_id", before.id).ilike("email", oldGuardianEmail).maybeSingle();
+          household = found.data;
+        }
+        const householdValues = {
+          studio_id: before.studio_id,
+          student_id: before.id,
+          full_name: newGuardianName,
+          email: newGuardianEmail,
+          relationship_type: "guardian",
+          relationship_label: household?.relationship_label || "Parent or guardian",
+          can_view_schedule: household?.can_view_schedule ?? true,
+          can_manage_lessons: household?.can_manage_lessons ?? true,
+          can_view_work: household?.can_view_work ?? true,
+          can_manage_profile: household?.can_manage_profile ?? true,
+          can_view_finance: household?.can_view_finance ?? true,
+          can_receive_notifications: household?.can_receive_notifications ?? true,
+          notification_preferences: household?.notification_preferences || data.notification_preferences || {},
+          portal_enabled: household?.portal_enabled ?? false,
+          updated_at: new Date().toISOString(),
+        };
+        const savedHousehold = household
+          ? await service.from("linked_contacts").update({ ...householdValues, version: household.version + 1 }).eq("id", household.id).eq("version", household.version)
+          : await service.from("linked_contacts").insert(householdValues);
+        if (savedHousehold.error) throw savedHousehold.error;
+        const { data: queued } = await service.rpc("sync_future_contact_details", {
+          p_student_id: before.id,
+          p_old_email: household?.email || oldGuardianEmail || newGuardianEmail,
+          p_new_email: newGuardianEmail,
+          p_old_name: household?.full_name || before.guardian_name || newGuardianName,
+          p_new_name: newGuardianName,
+          p_old_phone: null,
+          p_new_phone: null,
+          p_contact_kind: "household",
+        });
+        queuedCalendarUpdates = Math.max(queuedCalendarUpdates, Number(queued || 0));
+      }
       return json({
         resource: data,
         recommendations: [],
@@ -620,7 +724,7 @@ export default async (request: Request, context: Context) => {
           before,
           data,
         ),
-        queuedSideEffects: [],
+        queuedSideEffects: queuedCalendarUpdates ? [`calendar_attendees_queued:${queuedCalendarUpdates}`] : [],
       });
     }
     if (domain === "pricing" && input.command === "upsert_student_rate") {
@@ -1925,10 +2029,11 @@ export default async (request: Request, context: Context) => {
         try { new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(); }
         catch { throw new Error("VALIDATION_FAILED: Choose a valid timezone."); }
       }
-      const { data, error } = await service.from("linked_contacts").update({ full_name: fullName, email, timezone: timezone || null, timezone_confirmed: Boolean(timezone), notification_preferences: input.payload.notificationPreferences || before.notification_preferences, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().maybeSingle();
+      const { data, error } = await service.from("linked_contacts").update({ full_name: fullName, email, timezone: timezone || null, timezone_confirmed: Boolean(timezone), notification_preferences: input.payload.notificationPreferences || before.notification_preferences, portal_preferences: input.payload.portalPreferences || before.portal_preferences || {}, version: before.version + 1, updated_at: new Date().toISOString() }).eq("id", before.id).eq("version", input.expectedVersion).select().maybeSingle();
       if (error) throw error;
       if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-      return json({ resource: data, recommendations: [], auditEventId: await audit(before.studio_id, "linked_contact", before.id, "linked_contact.self_updated", before, data), queuedSideEffects: [] });
+      const { data: queued } = await service.rpc("sync_future_contact_details", { p_student_id: before.student_id, p_old_email: before.email || "", p_new_email: data.email || "", p_old_name: before.full_name, p_new_name: data.full_name, p_old_phone: null, p_new_phone: null, p_contact_kind: "household" });
+      return json({ resource: data, recommendations: [], auditEventId: await audit(before.studio_id, "linked_contact", before.id, "linked_contact.self_updated", before, data), queuedSideEffects: Number(queued || 0) ? [`calendar_attendees_queued:${queued}`] : [] });
     }
     if (domain === "credits" && input.command === "grant") {
       const studioId = await requireCoach(),

@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail, MessageSquare, RotateCcw, Send, Users } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Plus, RotateCcw, Search, Send, Users } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Dialog, EmptyState, PageHeader, Status } from "../../components/Primitives";
@@ -9,7 +9,7 @@ import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
 
-type Thread = Conversation & { subtitle: string };
+type Thread = Conversation & { subtitle: string; unread?: boolean; draftBody?: string };
 
 export function CoachInbox() {
   const { data, isLoading, isDemo } = useStudio();
@@ -25,9 +25,13 @@ function threadCandidates(data: StudioSnapshot, role: Role): Thread[] {
   const known = new Map<string, Thread>();
   for (const conversation of data.conversations) {
     const student = data.students.find((item) => item.id === conversation.studentId);
+    const state = data.conversationStates.find((item) => item.conversationId === conversation.id);
+    const latest = [...data.conversationMessages].reverse().find((item) => item.conversationId === conversation.id);
     known.set(conversation.kind === "direct" ? `student:${conversation.studentId}` : `offering:${conversation.offeringId}`, {
       ...conversation,
       subtitle: conversation.kind === "class" ? "Group class" : student?.email || "Private conversation",
+      unread: Boolean(latest && latest.authorRole !== role && (!state?.lastReadAt || latest.createdAt > state.lastReadAt)),
+      draftBody: state?.draftBody || "",
     });
   }
   const students = role === "coach" ? data.students.filter((item) => !item.deletedAt) : data.students;
@@ -76,6 +80,9 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
   const queryClient = useQueryClient();
   const store = useStudioStore();
   const threads = useMemo(() => threadCandidates(data, role), [data, role]);
+  const [threadFilter, setThreadFilter] = useState<"recent" | "unread" | "drafts">("recent");
+  const [newMessageOpen, setNewMessageOpen] = useState(false);
+  const [recipientSearch, setRecipientSearch] = useState("");
   const requested = params.get("conversation");
   const requestedStudent = params.get("student");
   const requestedOffering = params.get("offering");
@@ -94,6 +101,21 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
   const [emailTemplate, setEmailTemplate] = useState<keyof typeof emailTemplates>("custom");
   const selectedStudent = data.students.find((item) => item.id === selected?.studentId);
   const [email, setEmail] = useState({ recipient: params.get("recipient") || selectedStudent?.email || "", subject: "", body: "" });
+  const visibleThreads = useMemo(() => {
+    const recentCutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
+    return threads.filter((thread) => threadFilter === "unread" ? thread.unread : threadFilter === "drafts" ? Boolean(thread.draftBody) : thread.unread || Boolean(thread.draftBody) || (Boolean(thread.lastMessageAt) && new Date(thread.lastMessageAt).getTime() >= recentCutoff) || (role !== "coach" && !thread.lastMessageAt)).slice(0, 30);
+  }, [threads, threadFilter, role]);
+  const recipients = useMemo(() => {
+    const query = recipientSearch.trim().toLowerCase();
+    const students = data.students.filter((student) => !student.deletedAt).map((student) => {
+      const household = data.linkedContacts.filter((contact) => contact.studentId === student.id && contact.portalEnabled);
+      const searchText = [student.fullName, student.preferredName, student.email, ...household.flatMap((contact) => [contact.fullName, contact.email, contact.relationshipLabel])].filter(Boolean).join(" ").toLowerCase();
+      const thread = threads.find((item) => item.studentId === student.id) || { id:`student:${student.id}`, studioId:data.studioId, kind:"direct" as const, studentId:student.id, title:student.preferredName || student.fullName, subtitle:student.email || "Private conversation", lastMessageAt:"", version:0, updatedAt:"" };
+      return { key:`student:${student.id}`, title:student.preferredName || student.fullName, subtitle:[student.email, household.length ? `${household.length} household contact${household.length === 1 ? "" : "s"}` : ""].filter(Boolean).join(" · "), searchText, thread };
+    });
+    const classes = data.serviceOfferings.filter((item)=>item.published).map((offering)=>({ key:`offering:${offering.id}`, title:offering.title, subtitle:"Group class", searchText:`${offering.title} group class`.toLowerCase(), thread:threads.find((item)=>item.offeringId===offering.id) || { id:`offering:${offering.id}`, studioId:data.studioId, kind:"class" as const, offeringId:offering.id, title:offering.title, subtitle:"Group class", lastMessageAt:"", version:0, updatedAt:"" } }));
+    return [...students, ...classes].filter((item)=>!query || item.searchText.includes(query)).slice(0,40);
+  }, [data, recipientSearch, threads]);
 
   useEffect(() => {
     if (!undoMessage && !undoEmail) return;
@@ -113,7 +135,33 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
     setSelectedKey(thread.id);
     setParams({ conversation: thread.id });
     setNotice("");
+    setBody(thread.draftBody || "");
+    setNewMessageOpen(false);
   };
+
+  useEffect(() => {
+    setBody(selected?.draftBody || "");
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected || selected.id.startsWith("student:") || selected.id.startsWith("offering:")) return;
+    if (isDemo) {
+      store.transact((draft) => {
+        const state = draft.conversationStates.find((item) => item.conversationId === selected.id);
+        if (state) { state.lastReadAt = new Date().toISOString(); state.updatedAt = new Date().toISOString(); }
+        else draft.conversationStates.push({ conversationId:selected.id, userId:"demo-user", lastReadAt:new Date().toISOString(), draftBody:selected.draftBody || "", updatedAt:new Date().toISOString() });
+      });
+    } else void studioCommand("messages", { command:"mark_read", entityId:selected.id, expectedVersion:0, payload:{}, reason:"Opened inbox conversation" }).then(()=>queryClient.invalidateQueries({queryKey:["studio"]})).catch(()=>undefined);
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected || selected.id.startsWith("student:") || selected.id.startsWith("offering:") || body === (selected.draftBody || "")) return;
+    const timer = window.setTimeout(() => {
+      if (isDemo) store.transact((draft)=>{const state=draft.conversationStates.find((item)=>item.conversationId===selected.id);if(state){state.draftBody=body;state.updatedAt=new Date().toISOString();}else draft.conversationStates.push({conversationId:selected.id,userId:"demo-user",draftBody:body,updatedAt:new Date().toISOString()});});
+      else void studioCommand("messages", {command:"save_draft",entityId:selected.id,expectedVersion:0,payload:{body},reason:"Saved inbox draft"}).catch(()=>undefined);
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [body, selected?.id, isDemo]);
 
   const sendMessage = async (event: FormEvent) => {
     event.preventDefault();
@@ -241,16 +289,17 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
 
   const history = role === "coach" ? [...data.outbox].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)).slice(0, 8) : [];
   return <div className={role === "coach" ? "page inbox-page" : "student-page inbox-page"}>
-    <PageHeader title="Inbox" action={role === "coach" ? <button className="primary-button" onClick={() => openEmail()}><Mail />Send email</button> : undefined}>
+    <PageHeader title="Inbox" action={role === "coach" ? <div className="header-actions"><button onClick={() => setNewMessageOpen(true)}><Plus />New message</button><button className="primary-button" onClick={() => openEmail()}><Mail />Send email</button></div> : undefined}>
       Private conversations and group-class messages in one place.
     </PageHeader>
     {notice && <p className="portal-notice" role="status">{notice}</p>}
     {(undoMessage || undoEmail) && <div className="undo-send" role="status"><span>{undoEmail ? "Email queued" : "Message sent"}</span><button onClick={() => void (undoEmail ? undoLastEmail() : undoLastMessage())}><RotateCcw />Undo ({Math.max(1, Math.ceil(((undoEmail || undoMessage)!.until - clock) / 1000))}s)</button></div>}
     <div className={`inbox-layout ${selected ? "has-selection" : ""}`}>
       <aside className="inbox-threads" aria-label="Conversations">
-        <header><strong>Conversations</strong><small>{threads.length} total</small></header>
-        {threads.map((thread) => <button key={thread.id} className={selected?.id === thread.id ? "active" : ""} onClick={() => choose(thread)}><span>{thread.kind === "class" ? <Users /> : <MessageSquare />}</span><div><strong>{thread.title}</strong><small>{thread.subtitle}</small></div></button>)}
-        {!threads.length && <EmptyState title="No conversations yet" detail="Messages will appear here when a student or class conversation begins." />}
+        <header><strong>Conversations</strong><small>{threads.filter((thread)=>thread.unread).length} unread</small></header>
+        <div className="inbox-filters">{(["recent","unread","drafts"] as const).map((filter)=><button key={filter} className={threadFilter===filter?"active":""} onClick={()=>setThreadFilter(filter)}>{filter}</button>)}</div>
+        {visibleThreads.map((thread) => <button key={thread.id} className={`${selected?.id === thread.id ? "active" : ""} ${thread.unread ? "unread" : ""}`} onClick={() => choose(thread)}><span>{thread.kind === "class" ? <Users /> : <MessageSquare />}</span><div><strong>{thread.title}{thread.unread&&<i aria-label="Unread"/>}</strong><small>{thread.draftBody ? `Draft: ${thread.draftBody}` : thread.subtitle}</small></div></button>)}
+        {!visibleThreads.length && <EmptyState title={threadFilter === "unread" ? "No unread messages" : threadFilter === "drafts" ? "No saved drafts" : "No recent conversations"} detail="Use New message to find any student, household, or group class." />}
       </aside>
       <section className="inbox-conversation">
         {selected ? <>
@@ -264,6 +313,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
       </section>
     </div>
     {role === "coach" && <section className="inbox-email-history"><header><div><strong>Recent email</strong><small>Any recorded email can be sent again manually.</small></div></header><div className="table-list">{history.map((item) => <article key={item.id}><Mail /><div><strong>{item.subject}</strong><small>{item.recipient} · {item.status}</small></div><Status tone={item.status === "sent" ? "good" : item.status === "failed" ? "danger" : "neutral"}>{item.status}</Status><button disabled={busy} onClick={() => void resendEmail(item)}>Send again</button></article>)}{!history.length && <EmptyState title="No email history" detail="Manually sent and automated email will appear here." />}</div></section>}
+    {newMessageOpen && <Dialog title="New message" description="Search by student, guardian, support person, email, or group class. Household messages stay together in one private thread." onClose={()=>setNewMessageOpen(false)}><div className="recipient-picker"><label><Search/>Find a person or class<input autoFocus value={recipientSearch} onChange={(event)=>setRecipientSearch(event.target.value)} placeholder="Start typing a name or email…"/></label><div>{recipients.map((recipient)=><button key={recipient.key} onClick={()=>choose(recipient.thread)}><span><strong>{recipient.title}</strong><small>{recipient.subtitle}</small></span><MessageSquare/></button>)}{!recipients.length&&<EmptyState title="No match" detail="Try a different name or email address."/>}</div></div></Dialog>}
     {emailOpen && <Dialog title="Send email" description="The email waits eight seconds before delivery so you can undo an accidental send." onClose={() => !busy && setEmailOpen(false)}><form className="workflow-form" onSubmit={sendEmail}><label>Template<select value={emailTemplate} onChange={(event) => chooseEmailTemplate(event.target.value as keyof typeof emailTemplates)}>{Object.entries(emailTemplates).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label><label>Recipient<input type="email" required value={email.recipient} onChange={(event) => setEmail({ ...email, recipient: event.target.value })} /></label><label className="full">Subject<input required value={email.subject} onChange={(event) => setEmail({ ...email, subject: event.target.value })} /></label><label className="full">Message<textarea rows={8} required value={email.body} onChange={(event) => setEmail({ ...email, body: event.target.value })} /></label><div className="form-actions full"><button type="button" onClick={() => setEmailOpen(false)}>Cancel</button><button className="primary" disabled={busy}>{busy ? "Queuing…" : "Queue email"}</button></div></form></Dialog>}
   </div>;
 }

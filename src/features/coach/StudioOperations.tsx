@@ -1184,6 +1184,7 @@ export function LessonsView({
               >
                 Student history
               </button>
+              {data.lessonParticipants.some((part)=>part.lessonId===selected.id&&part.bookingId) && <button className="text-button" onClick={()=>navigate(`/coach/bookings?view=calendar&lesson=${selected.id}`)}>Open booking record</button>}
             </div>
             {panel === "details" && (
               <section className="lesson-facts" aria-label="Lesson information">

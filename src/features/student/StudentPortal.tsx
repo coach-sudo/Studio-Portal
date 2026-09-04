@@ -79,6 +79,7 @@ import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
 import { PortalClassWorkspace } from "../classes/ClassWorkspace";
 import { PortalInbox } from "../messages/Inbox";
+import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -109,6 +110,13 @@ export function StudentPortal({
     () => applyStudioBranding(data?.settings.branding),
     [data?.settings.branding],
   );
+  const portalAppearance = role === "guardian"
+    ? data?.linkedContacts.find((contact) => contact.id === data.currentLinkedContactId)?.portalPreferences?.appearance || "light"
+    : data?.students[0]?.portalPreferences?.appearance || data?.settings.portalDefaults.appearance || "light";
+  useEffect(() => {
+    document.documentElement.dataset.portalTheme = portalAppearance;
+    return () => { delete document.documentElement.dataset.portalTheme; };
+  }, [portalAppearance]);
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
@@ -2150,6 +2158,8 @@ function MaterialSubmission({
 }
 function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const student = data.students[0];
+  const preferredDuration = student ? recentLessonDuration(data.lessons, student.id) : undefined;
+  const availableDefinitions = sortPackageDefinitions(data.packageDefinitions.filter((item)=>item.active && item.visibility === "public" && item.directPurchase), preferredDuration);
   const [params] = useSearchParams();
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
@@ -2289,19 +2299,14 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       ) && (
         <Section title="Available packages" marked>
           <div className="table-list">
-            {data.packageDefinitions
-              .filter(
-                (item) =>
-                  item.active &&
-                  item.visibility === "public" &&
-                  item.directPurchase,
-              )
+            {availableDefinitions
               .map((definition) => (
                 <article key={definition.id}>
                   <CircleDollarSign />
                   <div>
                     <strong>{definition.name}</strong>
                     <small>
+                      {definition.sessionDurationMinutes === preferredDuration ? "Matches your latest lesson · " : ""}
                       {definition.sessionCount} sessions ·{" "}
                       {definition.sessionDurationMinutes} minutes each ·{" "}
                       {formatMoney(definition.priceMinor, definition.currency)}
@@ -2435,9 +2440,9 @@ function StudentSettings({
         : student?.timezoneConfirmed
           ? student.timezone || observedTimezone()
           : observedTimezone(),
-      compactView:
-        student?.portalPreferences?.compactView ??
-        data.settings.portalDefaults.compactView,
+      appearance:
+        (role === "guardian" ? linkedContact?.portalPreferences?.appearance : student?.portalPreferences?.appearance) ??
+        data.settings.portalDefaults.appearance ?? "light",
       showProgress:
         student?.portalPreferences?.showProgress ??
         data.settings.portalDefaults.showProgress,
@@ -2452,6 +2457,9 @@ function StudentSettings({
     [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
       "",
     ), [profilePhoto, setProfilePhoto] = useState<File>(), [removePhoto,setRemovePhoto]=useState(false);
+  useEffect(() => {
+    document.documentElement.dataset.portalTheme = form.appearance;
+  }, [form.appearance]);
   if (!student) return <div className="loading">Opening settings…</div>;
   const save = async (event: FormEvent) => {
     event.preventDefault();
@@ -2473,7 +2481,7 @@ function StudentSettings({
         phone: form.phone,
         timezone: form.timezone,
         portalPreferences: {
-          compactView: form.compactView,
+          appearance: form.appearance as "light" | "dark",
           showProgress: form.showProgress,
           emailReminders: form.emailReminders,
         },
@@ -2483,14 +2491,14 @@ function StudentSettings({
       };
       await settingsMutation.run("portal-settings", async () => {
         if (isDemo)
-          store.transact((draft) =>
-            Object.assign(draft.students[0], updates, {
-              version: student.version + 1,
-              updatedAt: new Date().toISOString(),
-            }),
-          );
+          store.transact((draft) => {
+            if (role === "guardian" && linkedContact) {
+              const contact = draft.linkedContacts.find((item) => item.id === linkedContact.id);
+              if (contact) Object.assign(contact, { fullName:form.preferredName, email:form.email, timezone:form.timezone, timezoneConfirmed:true, notificationPreferences:form.notificationPreferences, portalPreferences:{ appearance:form.appearance }, version:contact.version + 1, updatedAt:new Date().toISOString() });
+            } else Object.assign(draft.students[0], updates, { version: student.version + 1, updatedAt: new Date().toISOString() });
+          });
         else {
-          if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, timezone:form.timezone, notificationPreferences:form.notificationPreferences }, reason:"Linked contact updated portal settings" });
+          if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, timezone:form.timezone, notificationPreferences:form.notificationPreferences, portalPreferences:{ appearance:form.appearance } }, reason:"Linked contact updated portal settings" });
           else await studioCommand("students", { command: "update_self", entityId: student.id, expectedVersion: student.version, payload: updates, reason: "Student updated portal settings" });
           await queryClient.invalidateQueries({ queryKey: ["studio"] });
         }
@@ -2640,10 +2648,10 @@ function StudentSettings({
           </label>
           <div className="settings-list full">
             <Toggle
-              checked={form.compactView}
-              label="Compact view"
-              detail="Fit more work on each screen."
-              onChange={(compactView) => setForm({ ...form, compactView })}
+              checked={form.appearance === "dark"}
+              label="Dark mode"
+              detail="Use a lower-glare dark workspace on this account."
+              onChange={(darkMode) => setForm({ ...form, appearance: darkMode ? "dark" : "light" })}
             />
             <Toggle
               checked={form.showProgress}

@@ -59,6 +59,7 @@ import {
   formatStudioDateTime,
 } from "../../domain/presentation";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
+import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 
 const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 const now = () => new Date().toISOString();
@@ -1783,31 +1784,29 @@ const notificationLabels = {
   accountAccess: "Account access",
 } as const;
 
-function LinkedContacts({ data, student, busy, onInvite }: {
+function LinkedContacts({ data, student, busy, onInvite, isDemo }: {
   data: Data;
   student: Student;
   busy: boolean;
+  isDemo: boolean;
   onInvite: (accountType: "student" | "guardian", linkedContactId?: string) => Promise<void>;
 }) {
   const queryClient = useQueryClient();
+  const store = useStudioStore();
   const [editing, setEditing] = useState<Data["linkedContacts"][number]>();
   const [adding, setAdding] = useState(false);
   const [notice, setNotice] = useState("");
-  const contacts = data.linkedContacts.filter((contact) => contact.studentId === student.id && contact.portalEnabled);
+  const contacts = data.linkedContacts.filter((contact) => contact.studentId === student.id);
   const save = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const values = new FormData(event.currentTarget);
     const preferences = Object.fromEntries(Object.keys(notificationLabels).map((key) => [key, values.get(`notify-${key}`) === "on"]));
     setNotice("Saving linked contact…");
     try {
-      await studioCommand("students", {
-        command: "save_linked_contact",
-        entityId: student.id,
-        expectedVersion: editing?.version || 0,
-        payload: {
+      const payload = {
           contactId: editing?.id,
-          fullName: values.get("fullName"),
-          email: values.get("email"),
+          fullName: String(values.get("fullName") || ""),
+          email: String(values.get("email") || "").toLowerCase(),
           relationshipType: values.get("relationshipType"),
           relationshipLabel: values.get("relationshipLabel"),
           canViewSchedule: values.get("canViewSchedule") === "on",
@@ -1817,18 +1816,30 @@ function LinkedContacts({ data, student, busy, onInvite }: {
           canViewFinance: values.get("canViewFinance") === "on",
           canReceiveNotifications: values.get("canReceiveNotifications") === "on",
           notificationPreferences: preferences,
-        },
+          portalEnabled: values.get("portalEnabled") === "on",
+      };
+      if (isDemo) store.transact((draft) => {
+        const match = draft.linkedContacts.find((item) => item.id === editing?.id || (item.studentId === student.id && item.email.toLowerCase() === payload.email));
+        const mapped = { fullName: payload.fullName, email: payload.email, relationshipType: payload.relationshipType as "guardian" | "support_person" | "other", relationshipLabel: String(payload.relationshipLabel || ""), canViewSchedule: payload.canViewSchedule, canManageLessons: payload.canManageLessons, canViewWork: payload.canViewWork, canManageProfile: payload.canManageProfile, canViewFinance: payload.canViewFinance, canReceiveNotifications: payload.canReceiveNotifications, notificationPreferences: preferences as unknown as Data["linkedContacts"][number]["notificationPreferences"], portalEnabled: payload.portalEnabled, updatedAt: now() };
+        if (match) Object.assign(match, mapped, { version: match.version + 1 });
+        else draft.linkedContacts.push({ id:uid("contact"), studioId:draft.studioId, studentId:student.id, userId:undefined, ...mapped, version:1 });
+      });
+      else await studioCommand("students", {
+        command: "save_linked_contact",
+        entityId: student.id,
+        expectedVersion: editing?.version || 0,
+        payload,
         reason: "Coach configured linked household access",
       });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      if (!isDemo) await queryClient.invalidateQueries({ queryKey: ["studio"] });
       setAdding(false); setEditing(undefined); setNotice("Linked contact saved.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Linked contact could not be saved."); }
   };
   const disable = async (contact: Data["linkedContacts"][number]) => {
     setNotice("Removing access…");
     try {
-      await studioCommand("students", { command:"remove_linked_contact", entityId:student.id, expectedVersion:contact.version, payload:{ contactId:contact.id }, reason:"Coach removed linked household access" });
-      await queryClient.invalidateQueries({ queryKey:["studio"] });
+      if (isDemo) store.transact((draft)=>{const match=draft.linkedContacts.find((item)=>item.id===contact.id);if(match)Object.assign(match,{portalEnabled:false,canReceiveNotifications:false,version:match.version+1,updatedAt:now()});});
+      else { await studioCommand("students", { command:"remove_linked_contact", entityId:student.id, expectedVersion:contact.version, payload:{ contactId:contact.id }, reason:"Coach removed linked household access" }); await queryClient.invalidateQueries({ queryKey:["studio"] }); }
       setNotice("Linked contact access and optional notifications were disabled.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Access could not be removed."); }
   };
@@ -1838,11 +1849,12 @@ function LinkedContacts({ data, student, busy, onInvite }: {
   return <Section title="Household access" marked aside={<button type="button" onClick={()=>{setEditing(undefined);setAdding(true);}}>Add contact</button>}>
     <p className="section-intro">Add guardians for minors or support people for students of any age. Each person gets only the schedule, work, profile, payment, and notification access you choose.</p>
     {notice && <p className="portal-notice" role="status">{notice}</p>}
-    <div className="table-list">{contacts.map((contact)=>{const delivery=invitation(contact); return <article key={contact.id}><UserRound/><div><strong>{contact.fullName}</strong><small>{contact.relationshipLabel || contact.relationshipType.replaceAll("_"," ")} · {contact.email}</small></div><Status tone={delivery?.status === "failed" ? "danger" : delivery?.status === "sent" ? "good" : "warn"}>{delivery?.status === "failed" ? "Needs retry" : delivery?.status === "sent" ? "Sent" : delivery ? "Sending" : "Not invited"}</Status><Link className="button-link" to={`/coach/students/${student.id}/contacts/${contact.id}`}>Open profile</Link><button onClick={()=>setEditing(contact)}>Edit access</button><button className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{delivery?.status === "failed" ? "Retry invite" : "Send invite"}</button><button className="danger-button" onClick={()=>void disable(contact)}>Remove</button></article>;})}</div>
+    <div className="table-list">{contacts.map((contact)=>{const delivery=invitation(contact); return <article key={contact.id} className={!contact.portalEnabled ? "disabled-row" : ""}><UserRound/><div><strong>{contact.fullName}</strong><small>{contact.relationshipLabel || contact.relationshipType.replaceAll("_"," ")} · {contact.email}</small></div><Status tone={!contact.portalEnabled ? "neutral" : delivery?.status === "failed" ? "danger" : delivery?.status === "sent" ? "good" : "warn"}>{!contact.portalEnabled ? "Access off" : delivery?.status === "failed" ? "Needs retry" : delivery?.status === "sent" ? "Sent" : delivery ? "Sending" : "Not invited"}</Status><Link className="button-link" to={`/coach/students/${student.id}/contacts/${contact.id}`}>Open profile</Link><button onClick={()=>setEditing(contact)}>{contact.portalEnabled ? "Edit access" : "Restore access"}</button>{contact.portalEnabled&&<button className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{delivery?.status === "failed" ? "Retry invite" : "Send invite"}</button>}{contact.portalEnabled&&<button className="danger-button" onClick={()=>void disable(contact)}>Remove</button>}</article>;})}</div>
     {!contacts.length && !adding && <EmptyState title="No linked contacts" detail="Adult students can have support people too; access is never limited to minor guardians."/>}
     {(adding || editing) && <Dialog title={editing ? `Edit ${editing.fullName}` : "Add linked contact"} description="Access and optional email preferences can be changed at any time." onClose={()=>{setAdding(false);setEditing(undefined);}}><form className="workflow-form" onSubmit={save}>
       <label>Name<input name="fullName" required defaultValue={editing?.fullName}/></label><label>Email<input name="email" type="email" required defaultValue={editing?.email}/></label>
       <label>Relationship<select name="relationshipType" defaultValue={editing?.relationshipType || (student.isMinor ? "guardian" : "support_person")}><option value="guardian">Guardian</option><option value="support_person">Support person</option><option value="other">Other</option></select></label><label>Custom relationship label<input name="relationshipLabel" defaultValue={editing?.relationshipLabel} placeholder="Parent, manager, spouse…"/></label>
+      <label className="check-row full"><input name="portalEnabled" type="checkbox" defaultChecked={editing?.portalEnabled ?? true}/>Allow this person to use the portal</label>
       <fieldset className="full option-fieldset"><legend>Portal permissions</legend>{[["canViewSchedule","View schedule",true],["canManageLessons","Manage or reschedule lessons",false],["canViewWork","View work and notes",true],["canManageProfile","Manage profile",false],["canViewFinance","View payments",student.isMinor]].map(([name,label,fallback])=><label className="check-row" key={String(name)}><input name={String(name)} type="checkbox" defaultChecked={editing ? Boolean(editing[name as keyof typeof editing]) : Boolean(fallback)}/>{String(label)}</label>)}</fieldset>
       <fieldset className="full option-fieldset"><legend>Notifications</legend><label className="check-row"><input name="canReceiveNotifications" type="checkbox" defaultChecked={editing?.canReceiveNotifications ?? true}/>Receive optional notifications</label>{Object.entries(notificationLabels).map(([key,label])=><label className="check-row" key={key}><input name={`notify-${key}`} type="checkbox" defaultChecked={editing?.notificationPreferences?.[key as keyof typeof editing.notificationPreferences] ?? (key !== "payments" && key !== "packageBalance" || student.isMinor)}/>{label}{["accountAccess","scheduleChanges","payments"].includes(key)&&<small>Critical messages cannot be disabled when applicable.</small>}</label>)}</fieldset>
       <div className="form-actions full"><button type="button" onClick={()=>{setAdding(false);setEditing(undefined);}}>Cancel</button><button className="primary">Save contact</button></div>
@@ -1957,7 +1969,7 @@ function Account({
           />
         </div>
       </Section>
-      <LinkedContacts data={data} student={student} busy={settingCredentials} onInvite={onInvite} />
+      <LinkedContacts data={data} student={student} busy={settingCredentials} onInvite={onInvite} isDemo={isDemo} />
       {student.specialPricingEnabled && <Section title="Student-specific pricing" marked>
         <p className="section-intro">Only services you customize are overridden. Everything else continues to use the public booking price.</p>
         {rateNotice && <p className="portal-notice" role="status">{rateNotice}</p>}
@@ -2022,12 +2034,14 @@ function Payments({
   isDemo: boolean;
 }) {
   const pkgs = data.packages.filter((i) => i.studentId === student.id),
-    payments = data.payments.filter((i) => i.studentId === student.id);
+    payments = data.payments.filter((i) => i.studentId === student.id),
+    preferredDuration = recentLessonDuration(data.lessons, student.id),
+    availableDefinitions = sortPackageDefinitions(data.packageDefinitions.filter((item)=>item.active), preferredDuration);
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     [assigning, setAssigning] = useState(false),
     [definitionId, setDefinitionId] = useState(
-      data.packageDefinitions.find((item) => item.active)?.id ?? "",
+      availableDefinitions[0]?.id ?? "",
     ),
     [crediting, setCrediting] = useState(false),
     [adjustingBalance, setAdjustingBalance] = useState(false),
@@ -2267,11 +2281,10 @@ function Payments({
                 value={definitionId}
                 onChange={(event) => setDefinitionId(event.target.value)}
               >
-                {data.packageDefinitions
-                  .filter((item) => item.active)
+                {availableDefinitions
                   .map((definition) => (
                     <option key={definition.id} value={definition.id}>
-                      {definition.name} · {definition.sessionCount} sessions
+                      {definition.sessionDurationMinutes === preferredDuration ? "Recommended from last lesson · " : ""}{definition.sessionDurationMinutes} min · {definition.name} · {definition.sessionCount} sessions
                     </option>
                   ))}
               </select>

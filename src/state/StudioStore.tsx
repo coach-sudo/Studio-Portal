@@ -263,6 +263,9 @@ export function scopeStudioSnapshot(
               ))),
       ),
     ),
+    conversationStates: snapshot.conversationStates.filter((row) =>
+      snapshot.conversations.some((conversation) => conversation.id === row.conversationId),
+    ),
     integrationImports: [],
     discountCodes: [],
   };

@@ -99,7 +99,7 @@ const base: StudioSnapshot = {
         "We could not collect your scheduled payment. Please update your payment method within seven days.",
     },
     portalDefaults: {
-      compactView: false,
+      appearance: "light",
       showProgress: true,
       showActorPage: true,
     },
@@ -704,6 +704,7 @@ const base: StudioSnapshot = {
       createdAt: at(-1, 16),
     },
   ],
+  conversationStates: [],
   recurringSeries: [
     {
       id: "series-maya",

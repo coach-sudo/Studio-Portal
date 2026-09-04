@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
@@ -84,6 +84,7 @@ export function BookingCenter() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const requestedRecord = searchParams.toString();
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useState<Tab>(() =>
     tabs.some(([id]) => id === requestedView)
@@ -103,6 +104,13 @@ export function BookingCenter() {
   useEffect(() => {
     void loadPlatformHealth().then(setHealth);
   }, []);
+  useEffect(() => {
+    if (!data) return;
+    const bookingId = searchParams.get("booking");
+    const lessonId = searchParams.get("lesson");
+    const booking = data.bookings.find((item)=>item.id===bookingId) || data.bookings.find((item)=>data.lessonParticipants.some((part)=>part.lessonId===lessonId&&part.bookingId===item.id));
+    if (booking) setDialog({type:"booking",item:booking});
+  }, [data, requestedRecord]);
   if (isLoading || !data)
     return <div className="loading">Opening booking center…</div>;
 
@@ -2355,6 +2363,8 @@ function BookingDialog({
       data.settings.meetingFormats.in_person?.location ||
       "",
   );
+  const lesson = data.lessons.find((item)=>data.lessonParticipants.some((participant)=>participant.lessonId===item.id&&participant.bookingId===booking.id));
+  const relatedStudentId = booking.studentId || data.lessonParticipants.find((participant)=>participant.bookingId===booking.id)?.studentId;
   return (
     <Dialog
       title={booking.reference}
@@ -2406,6 +2416,8 @@ function BookingDialog({
           </label>
         )}
         <div className="form-actions">
+          {relatedStudentId && <Link className="button-link" to={`/coach/students/${relatedStudentId}`}>Open student</Link>}
+          {lesson && relatedStudentId && <Link className="button-link" to={`/coach/students/${relatedStudentId}/lessons/${lesson.id}`}>Open lesson</Link>}
           {booking.location === "in_person" && (
             <button
               disabled={!location.trim()}

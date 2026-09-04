@@ -102,7 +102,7 @@ export interface Student extends Versioned {
   timezone?: string;
   timezoneConfirmed?: boolean;
   portalPreferences?: {
-    compactView?: boolean;
+    appearance?: "light" | "dark";
     showProgress?: boolean;
     emailReminders?: boolean;
   };
@@ -267,6 +267,13 @@ export interface ConversationMessage {
   authorName: string;
   body: string;
   createdAt: string;
+}
+export interface ConversationState {
+  conversationId: UUID;
+  userId: UUID;
+  lastReadAt?: string;
+  draftBody: string;
+  updatedAt: string;
 }
 export interface RecurringSeries extends Versioned {
   studioId: UUID;
@@ -493,6 +500,7 @@ export interface LinkedContact extends Versioned {
   canViewFinance: boolean;
   canReceiveNotifications: boolean;
   notificationPreferences: NotificationPreferences;
+  portalPreferences?: { appearance?: "light" | "dark" };
   portalEnabled: boolean;
 }
 export interface DiscountCode extends Versioned {
@@ -688,7 +696,7 @@ export interface StudioSettings {
     paymentFailedBody: string;
   };
   portalDefaults: {
-    compactView: boolean;
+    appearance?: "light" | "dark";
     showProgress: boolean;
     showActorPage: boolean;
   };
@@ -722,6 +730,7 @@ export interface StudioSnapshot {
   serviceOfferings: ServiceOffering[];
   conversations: Conversation[];
   conversationMessages: ConversationMessage[];
+  conversationStates: ConversationState[];
   recurringSeries: RecurringSeries[];
   bookings: Booking[];
   lessonParticipants: LessonParticipant[];
