@@ -72,7 +72,32 @@ const studentPortal = fs.readFileSync(
   "src/features/student/StudentPortal.tsx",
   "utf8",
 );
+const verifiedEmailClaim = fs.readFileSync(
+  "supabase/migrations/20260905141058_google_portal_identity_claim.sql",
+  "utf8",
+);
+const loginPage = fs.readFileSync("src/features/auth/MagicLinkLogin.tsx", "utf8");
+const authCallback = fs.readFileSync("src/features/auth/AuthCallback.tsx", "utf8");
+const portalAuth = fs.readFileSync("netlify/functions/portal-auth.ts", "utf8");
 describe("database contracts", () => {
+  it("links verified Google identities to enabled portal profiles without trusting client email", () => {
+    expect(verifiedEmailClaim).toContain("email_confirmed_at is not null");
+    expect(verifiedEmailClaim).toContain("lower(trim(s.email)) = verified_email");
+    expect(verifiedEmailClaim).toContain("lower(trim(c.email)) = verified_email");
+    expect(verifiedEmailClaim).toContain("c.portal_enabled");
+    expect(verifiedEmailClaim).toContain("PORTAL_IDENTITY_CONFLICT");
+    expect(verifiedEmailClaim).toContain("AMBIGUOUS_STUDENT_EMAIL");
+    expect(verifiedEmailClaim).toContain("revoke all on function public.claim_portal_access_by_verified_email");
+    expect(verifiedEmailClaim).toContain("to service_role");
+    expect(portalAuth).toContain('context.params.action === "claim-access"');
+    expect(portalAuth).toContain("user.email_confirmed_at");
+    expect(portalAccess).not.toContain("existingIdentity.user_metadata?.student_id");
+    expect(studentWorkspace).toContain("Send new portal invite");
+    expect(loginPage).toContain("For coaches, students, guardians, and support people");
+    expect(loginPage).toContain('/auth/callback?returnTo=');
+    expect(authCallback).toContain('/api/v2/auth/claim-access');
+    expect(authCallback).toContain("await supabase.auth.signOut()");
+  });
   it("keeps legacy procedures lint-clean without weakening their signatures or grants", () => {
     expect(procedureLintRepair).toContain("calendar_projections_lesson_id_key");
     expect(procedureLintRepair).toContain("lesson_participants_lesson_id_email_key");

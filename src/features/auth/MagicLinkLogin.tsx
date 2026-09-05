@@ -1,4 +1,4 @@
-import { ShieldCheck, UserRound } from "lucide-react";
+import { UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
@@ -82,7 +82,7 @@ export function MagicLinkLogin() {
     const { error } = await supabase.auth.signInWithOtp({
       email,
       options: {
-        emailRedirectTo: `${window.location.origin}${safeReturn("/portal")}`,
+        emailRedirectTo: `${window.location.origin}/auth/callback?returnTo=${encodeURIComponent(safeReturn("/portal"))}`,
       },
     });
     setStatus(error ? "error" : "sent");
@@ -93,10 +93,13 @@ export function MagicLinkLogin() {
       setStatus("demo");
       return;
     }
+    setStatus("signing");
+    const callback = new URL("/auth/callback", window.location.origin);
+    callback.searchParams.set("returnTo", safeReturn("/"));
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}${safeReturn("/")}`,
+        redirectTo: callback.toString(),
         queryParams: { prompt: "select_account" },
       },
     });
@@ -114,19 +117,18 @@ export function MagicLinkLogin() {
         <UserRound />
         <h1>Sign in to {studio.name}</h1>
         <section className="login-choice coach-choice">
-          <ShieldCheck />
           <div>
-            <strong>Coach sign-in</strong>
-            <small>Use the authorized studio Google account.</small>
+            <strong>Sign in with Google</strong>
+            <small>For coaches, students, guardians, and support people. Choose the email saved on your profile.</small>
           </div>
-          <button type="button" onClick={() => void googleSignIn()}>
-            Continue with Google
+          <button type="button" disabled={status === "signing"} onClick={() => void googleSignIn()}>
+            {status === "signing" ? "Opening Google…" : "Continue with Google"}
           </button>
         </section>
-        <div className="login-divider">Student or guardian</div>
+        <div className="login-divider">Or use your portal password</div>
         <p>
-          Use the username and password created with your coach. This is the
-          normal way to enter your portal.
+          Students, guardians, and support people can also use the username and
+          password from their portal invitation.
         </p>
         <form className="login-credentials" onSubmit={passwordSignIn}>
           <label>
@@ -161,7 +163,7 @@ export function MagicLinkLogin() {
               record. We’ll send a private, expiring link.
             </p>
             <label>
-              Student or guardian email
+              Profile email
               <input
                 type="email"
                 required

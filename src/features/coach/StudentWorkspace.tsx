@@ -609,7 +609,7 @@ export function StudentWorkspace() {
             />
           }
         />
-        <Route path="contacts/:contactId" element={<HouseholdContactProfile data={data} student={student} />} />
+        <Route path="contacts/:contactId" element={<HouseholdContactProfile data={data} student={student} busy={settingCredentials} onInvite={sendPortalInvite} />} />
         <Route
           path="payments"
           element={<Payments data={data} student={student} isDemo={isDemo} />}
@@ -1862,7 +1862,12 @@ function LinkedContacts({ data, student, busy, onInvite, isDemo }: {
   </Section>;
 }
 
-function HouseholdContactProfile({ data, student }: { data: Data; student: Student }) {
+function HouseholdContactProfile({ data, student, busy, onInvite }: {
+  data: Data;
+  student: Student;
+  busy: boolean;
+  onInvite: (accountType: "student" | "guardian", linkedContactId?: string) => Promise<void>;
+}) {
   const { contactId = "" } = useParams();
   const contact = data.linkedContacts.find((item) => item.id === contactId && item.studentId === student.id);
   if (!contact) return <Navigate to={`/coach/students/${student.id}/account`} replace />;
@@ -1873,11 +1878,20 @@ function HouseholdContactProfile({ data, student }: { data: Data; student: Stude
     ["Manage profile", contact.canManageProfile],
     ["Payments", contact.canViewFinance],
   ] as const;
+  const delivery = data.outbox
+    .filter((item) => item.studentId === student.id && item.recipient.toLowerCase() === contact.email.toLowerCase() && item.subject.toLowerCase().includes("portal login"))
+    .sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt))[0];
   return <div className="two-section-grid household-profile">
     <Section title={contact.fullName} marked>
       <p className="section-intro">{contact.relationshipLabel || contact.relationshipType.replaceAll("_", " ")} for {student.preferredName || student.fullName}</p>
       <dl className="profile-grid"><div><dt>Email</dt><dd>{contact.email}</dd></div><div><dt>Timezone</dt><dd>{contact.timezone || "Uses device timezone"}</dd></div><div><dt>Portal access</dt><dd>{contact.portalEnabled ? "Enabled" : "Disabled"}</dd></div><div><dt>Notifications</dt><dd>{contact.canReceiveNotifications ? "Enabled" : "Optional messages off"}</dd></div></dl>
-      <div className="form-actions"><Link className="button-link primary" to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}><MessageSquare />Message household</Link><Link className="button-link" to={`/coach/inbox?student=${encodeURIComponent(student.id)}&recipient=${encodeURIComponent(contact.email)}&email=1`}><Mail />Email {contact.fullName.split(" ")[0]}</Link><Link className="button-link" to={`/coach/students/${student.id}/account`}>Edit access</Link></div>
+      <div className="form-actions">
+        {contact.portalEnabled && <button type="button" className="primary-button" disabled={busy} onClick={()=>void onInvite("guardian",contact.id)}>{busy ? "Sending…" : delivery?.status === "failed" ? "Retry portal invite" : delivery?.status === "sent" ? "Send new portal invite" : "Send portal invite"}</button>}
+        <Link className="button-link" to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}><MessageSquare />Message household</Link>
+        <Link className="button-link" to={`/coach/inbox?student=${encodeURIComponent(student.id)}&recipient=${encodeURIComponent(contact.email)}&email=1`}><Mail />Email {contact.fullName.split(" ")[0]}</Link>
+        <Link className="button-link" to={`/coach/students/${student.id}/account`}>Edit access</Link>
+      </div>
+      <p className="section-intro">{!contact.portalEnabled ? "Turn on portal access before inviting this person." : delivery?.status === "sent" ? `Last invitation sent ${formatStudioDateTime(delivery.updatedAt, data.settings.timezone)}.` : delivery ? "The invitation is queued with automatic retry protection." : "They can sign in with this Google email now, or you can send a username and temporary-password invitation."}</p>
     </Section>
     <Section title="Access & notifications">
       <div className="permission-summary">{access.map(([label, enabled]) => <div key={label}><span>{label}</span><Status tone={enabled ? "good" : "neutral"}>{enabled ? "Allowed" : "Hidden"}</Status></div>)}</div>

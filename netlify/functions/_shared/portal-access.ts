@@ -169,13 +169,6 @@ export async function provisionPortalAccount(
   }
   if (!authUser) {
     const existingIdentity = await findAuthUserByEmail(db, email);
-    if (
-      existingIdentity &&
-      existingIdentity.user_metadata?.student_id !== identity.id
-    )
-      throw new Error(
-        "EMAIL_ALREADY_IN_USE: This email already belongs to another studio account. Link or merge that account before sending a new invitation.",
-      );
     authUser = existingIdentity;
     linkedToStudent = Boolean(existingIdentity);
   }

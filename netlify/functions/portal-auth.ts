@@ -24,6 +24,19 @@ async function rateLimit(request: Request) {
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
   try {
+    if (context.params.action === "claim-access" && request.method === "POST") {
+      const db = userClient(request);
+      const { data: authData, error: authError } = await db.auth.getUser();
+      const user = authData.user;
+      if (authError || !user?.id || !user.email || !user.email_confirmed_at)
+        throw new Error("FORBIDDEN:VERIFIED_EMAIL_REQUIRED");
+      const { data, error } = await serviceClient().rpc(
+        "claim_portal_access_by_verified_email",
+        { target_user: user.id, target_email: user.email },
+      );
+      if (error) throw error;
+      return json(data);
+    }
     if (context.params.action === "password-changed" && request.method === "POST") {
       const db = userClient(request);
       const { data: authData, error: authError } = await db.auth.getUser();
