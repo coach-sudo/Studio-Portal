@@ -116,13 +116,14 @@ export function MagicLinkLogin() {
       <div className="login-card">
         <UserRound />
         <h1>Sign in to {studio.name}</h1>
-        <section className="login-choice coach-choice">
+        <section className="login-choice google-choice">
+          <span className="google-mark" aria-hidden="true">G</span>
           <div>
             <strong>Sign in with Google</strong>
-            <small>For coaches, students, guardians, and support people. Choose the email saved on your profile.</small>
+            <small>Use the Google email saved on your coach, student, or household profile.</small>
           </div>
-          <button type="button" disabled={status === "signing"} onClick={() => void googleSignIn()}>
-            {status === "signing" ? "Opening Google…" : "Continue with Google"}
+          <button type="button" aria-label="Continue with Google" disabled={status === "signing"} onClick={() => void googleSignIn()}>
+            {status === "signing" ? "Opening…" : "Continue"}
           </button>
         </section>
         <div className="login-divider">Or use your portal password</div>

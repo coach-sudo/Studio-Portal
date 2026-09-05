@@ -285,6 +285,36 @@ textarea:hover,
 .booking-summary,
 .login-card,
 .booking-confirmation { border-radius: var(--app-radius-panel); }
+.login-choice.google-choice {
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 12px;
+}
+.google-choice > .google-mark {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--app-border);
+  border-radius: 9px;
+  background: #fff;
+  box-shadow: 0 1px 3px #17211d12;
+  display: grid;
+  place-items: center;
+  color: #4285f4;
+  font: 700 17px/1 Arial, sans-serif;
+}
+.google-choice > div { min-width: 0; display: grid; gap: 2px; }
+.google-choice > div strong { font-size: 12px; line-height: 1.25; }
+.google-choice > div small { font-size: 10px; line-height: 1.35; }
+.login-page .google-choice > button {
+  grid-column: auto;
+  width: auto;
+  min-width: 84px;
+  min-height: 40px;
+  margin: 0;
+  padding: 0 13px;
+  white-space: nowrap;
+}
 .actor-public-section,
 .actor-public-hero,
 .actor-footer { border-radius: var(--app-radius-card); }
@@ -383,6 +413,10 @@ textarea:hover,
 }
 
 @media (max-width: 700px) {
+  .login-page { grid-template-columns: minmax(0, 1fr); justify-items: center; }
+  /* Legacy mobile CSS positioned every primary button at the page corner,
+     which pulled row and dialog actions out of their actual workflow. */
+  .primary-button { position: static; inset: auto; }
   .app-shell.sidebar-collapsed .main,
   .student-shell.sidebar-collapsed > main { width: 100%; margin-left: 0; }
   .page,
@@ -423,6 +457,10 @@ textarea:hover,
   .booking-summary,
   .login-card,
   .booking-confirmation { border-radius: 18px; }
+  .login-card { width: calc(100vw - 24px); max-width: 420px; min-width: 0; }
+  .login-choice.google-choice { grid-template-columns: 32px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
+  .google-choice > .google-mark { width: 32px; height: 32px; }
+  .login-page .google-choice > button { min-width: 76px; min-height: 44px; padding-inline: 11px; }
   .class-summary-grid { grid-template-columns: 1fr; }
   .class-summary-grid > article { min-height: 72px; }
   .class-assignment-form { grid-template-columns: 1fr; }
@@ -441,6 +479,9 @@ textarea:hover,
   .inbox-composer { grid-template-columns: minmax(0, 1fr); }
   .inbox-composer button { min-height: 46px; }
   .undo-send { right: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); left: 10px; min-width: 0; }
+  .portal-row > button { padding-inline: 12px; font-size: 11px; justify-content: space-between; }
+  .student-record-identity > .status,
+  .student-roster-row .status { display: inline-flex; }
 
   /* Mobile copy must wrap naturally. Older compact rules could squeeze words
      into narrow columns and visually stretch their letter spacing. */
@@ -476,6 +517,10 @@ textarea:hover,
     word-break: normal !important;
     hyphens: none;
   }
+}
+@media (max-width: 340px) {
+  .login-choice.google-choice { grid-template-columns: 32px minmax(0, 1fr); }
+  .login-page .google-choice > button { grid-column: 1 / -1; width: 100%; }
 }
 
 @media (max-width: 600px) {

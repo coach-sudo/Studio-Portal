@@ -93,7 +93,12 @@ describe("database contracts", () => {
     expect(portalAuth).toContain("user.email_confirmed_at");
     expect(portalAccess).not.toContain("existingIdentity.user_metadata?.student_id");
     expect(studentWorkspace).toContain("Send new portal invite");
-    expect(loginPage).toContain("For coaches, students, guardians, and support people");
+    expect(loginPage).toContain("coach, student, or household profile");
+    expect(loginPage).toContain('className="google-mark"');
+    expect(fs.readFileSync("src/app-system.css", "utf8")).toContain(
+      ".primary-button { position: static; inset: auto; }",
+    );
+    expect(studentWorkspace).toContain('onInvite("guardian",contact.id)');
     expect(loginPage).toContain('/auth/callback?returnTo=');
     expect(authCallback).toContain('/api/v2/auth/claim-access');
     expect(authCallback).toContain("await supabase.auth.signOut()");
