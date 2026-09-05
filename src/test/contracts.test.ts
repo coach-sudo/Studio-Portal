@@ -97,6 +97,9 @@ describe("database contracts", () => {
     expect(loginPage).toContain('/auth/callback?returnTo=');
     expect(authCallback).toContain('/api/v2/auth/claim-access');
     expect(authCallback).toContain("await supabase.auth.signOut()");
+    expect(studentPortal).toContain("All lesson lengths");
+    expect(studentPortal).toContain("Shortest lessons first");
+    expect(studentPortal).toContain("Longest lessons first");
   });
   it("keeps legacy procedures lint-clean without weakening their signatures or grants", () => {
     expect(procedureLintRepair).toContain("calendar_projections_lesson_id_key");

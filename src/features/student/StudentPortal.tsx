@@ -2159,7 +2159,17 @@ function MaterialSubmission({
 function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const student = data.students[0];
   const preferredDuration = student ? recentLessonDuration(data.lessons, student.id) : undefined;
-  const availableDefinitions = sortPackageDefinitions(data.packageDefinitions.filter((item)=>item.active && item.visibility === "public" && item.directPurchase), preferredDuration);
+  const purchasableDefinitions = data.packageDefinitions.filter((item)=>item.active && item.visibility === "public" && item.directPurchase);
+  const durationOptions = [...new Set(purchasableDefinitions.map((item)=>item.sessionDurationMinutes))].sort((a,b)=>a-b);
+  const [durationFilter, setDurationFilter] = useState("all");
+  const [packageSort, setPackageSort] = useState<"recommended"|"shortest"|"longest">("recommended");
+  const availableDefinitions = useMemo(() => {
+    const filtered = durationFilter === "all" ? purchasableDefinitions : purchasableDefinitions.filter((item)=>item.sessionDurationMinutes === Number(durationFilter));
+    if (packageSort === "recommended") return sortPackageDefinitions(filtered, preferredDuration);
+    return [...filtered].sort((a,b)=>packageSort === "shortest"
+      ? a.sessionDurationMinutes-b.sessionDurationMinutes || a.sessionCount-b.sessionCount || a.name.localeCompare(b.name)
+      : b.sessionDurationMinutes-a.sessionDurationMinutes || a.sessionCount-b.sessionCount || a.name.localeCompare(b.name));
+  }, [durationFilter, packageSort, preferredDuration, purchasableDefinitions]);
   const [params] = useSearchParams();
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
@@ -2298,6 +2308,10 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           item.active && item.visibility === "public" && item.directPurchase,
       ) && (
         <Section title="Available packages" marked>
+          <div className="list-controls package-purchase-controls">
+            <label>Lesson length<select value={durationFilter} onChange={(event)=>setDurationFilter(event.target.value)}><option value="all">All lesson lengths</option>{durationOptions.map((duration)=><option key={duration} value={duration}>{duration} minutes</option>)}</select></label>
+            <label>Sort packages<select value={packageSort} onChange={(event)=>setPackageSort(event.target.value as typeof packageSort)}><option value="recommended">Recommended first</option><option value="shortest">Shortest lessons first</option><option value="longest">Longest lessons first</option></select></label>
+          </div>
           <div className="table-list">
             {availableDefinitions
               .map((definition) => (
