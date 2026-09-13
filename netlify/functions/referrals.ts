@@ -6,9 +6,11 @@ export default async (request: Request) => {
   try {
     if (request.method !== "GET")
       return json({ message: "Method not allowed." }, 405);
+    if (!request.headers.get("authorization")?.startsWith("Bearer "))
+      return json({ message: "Sign in to view referrals." }, 401);
     const user = userClient(request);
     const { data: auth, error: authError } = await user.auth.getUser();
-    if (authError || !auth.user) throw new Error("UNAUTHORIZED");
+    if (authError || !auth.user) throw new Error("FORBIDDEN");
     const { data: membership, error: membershipError } = await user
       .from("memberships")
       .select("studio_id")
