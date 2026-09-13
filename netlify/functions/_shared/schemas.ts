@@ -40,6 +40,12 @@ export const publicBookingSchema = z
     timezone: z.string().min(3).max(80),
     occurrenceCount: z.number().int().min(2).max(52).optional(),
     discountCode: z.string().trim().min(3).max(40).optional(),
+    referralCode: z
+      .string()
+      .trim()
+      .regex(/^[a-fA-F0-9]{16}$/)
+      .transform((value) => value.toUpperCase())
+      .optional(),
     termsAccepted: z.literal(true),
     termsVersion: z.literal("2026-08-20"),
   })

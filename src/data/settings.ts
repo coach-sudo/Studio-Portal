@@ -12,6 +12,8 @@ export function mergeStudioSettings(defaults: StudioSettings, value?: Partial<St
     bookingCopy:{...defaults.bookingCopy,...current.bookingCopy},
     bookingPage:{...defaults.bookingPage,...current.bookingPage},
     emailAutomations:{...defaults.emailAutomations,...current.emailAutomations},
+    dailyPopup:{...defaults.dailyPopup,...current.dailyPopup},
+    campaignTemplates:Array.isArray(current.campaignTemplates)?current.campaignTemplates:defaults.campaignTemplates,
     portalDefaults:{...defaults.portalDefaults,...current.portalDefaults},
   };
 }

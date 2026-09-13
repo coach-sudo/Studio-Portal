@@ -343,6 +343,21 @@ async function createBooking(request: Request) {
         .single();
     if (serviceError || !service)
       throw new Error("VALIDATION_FAILED: Service is unavailable.");
+    if (input.referralCode) {
+      const { data: referrer, error: referralError } = await db.from("students")
+        .select("id,email,guardian_email")
+        .eq("studio_id", studioId)
+        .eq("referral_code", input.referralCode)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (referralError || !referrer)
+        throw new Error("VALIDATION_FAILED: This referral link is unavailable.");
+      const referrerEmails = [referrer.email, referrer.guardian_email]
+        .filter(Boolean).map((value: string) => value.trim().toLowerCase());
+      if (referrerEmails.includes(input.guestEmail) ||
+        (input.guardianEmail && referrerEmails.includes(input.guardianEmail.trim().toLowerCase())))
+        throw new Error("VALIDATION_FAILED: You cannot use your own referral link.");
+    }
     const { data: studio, error: studioError } = await db
       .from("studios")
       .select("timezone,settings")
@@ -634,14 +649,27 @@ async function createBooking(request: Request) {
           ? unitPrice * occurrenceCount
           : unitPrice;
     let discountMinor = 0;
-    if (input.discountCode) {
+    let appliedDiscountCode = input.discountCode;
+    if (!appliedDiscountCode && authenticatedStudent && input.paymentPolicy !== "credits" && subtotalMinor > 0) {
+      const { data: availableReward, error: rewardError } = await db.from("discount_codes")
+        .select("code").eq("studio_id", studioId)
+        .eq("restricted_student_id", authenticatedStudent.id)
+        .eq("referral_reward_kind", "paid_lesson")
+        .eq("active", true).eq("redemption_count", 0)
+        .order("created_at", { ascending: true }).limit(1).maybeSingle();
+      if (rewardError) throw rewardError;
+      appliedDiscountCode = availableReward?.code;
+    }
+    if (appliedDiscountCode) {
       const { data: discount, error: discountError } = await db.rpc(
         "claim_booking_discount",
         {
           target_studio: service.studio_id,
           target_service: service.id,
-          target_code: input.discountCode,
+          target_code: appliedDiscountCode,
           target_subtotal: subtotalMinor,
+          target_student: authenticatedStudent?.id || null,
+          target_recurrence: input.recurrence,
         },
       );
       if (discountError || !discount?.length)
@@ -730,6 +758,7 @@ async function createBooking(request: Request) {
         paid_minor: 0,
         discount_code_id: claimedDiscountId || null,
         discount_minor: discountMinor,
+        referral_code: input.referralCode || null,
         currency: service.currency,
         policy_snapshot: {
           ...service.policy,
@@ -741,7 +770,7 @@ async function createBooking(request: Request) {
           unitPriceMinor: unitPrice,
           subtotalMinor,
           discountMinor,
-          discountCode: input.discountCode || null,
+          discountCode: appliedDiscountCode || null,
           depositType: service.deposit_type,
           depositAmountMinor: depositAmount,
           balanceDueTiming: service.balance_due_timing,

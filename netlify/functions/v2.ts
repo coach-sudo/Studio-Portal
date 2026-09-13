@@ -10,6 +10,7 @@ import { queueLessonChangeEmails } from "./_shared/booking-email";
 import { provisionPortalAccount } from "./_shared/portal-access";
 import { derivePackageValues } from "./_shared/package-pricing";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
+import { unknownCampaignTokens } from "../../src/domain/campaignTemplates";
 
 const domains = new Set([
   "students",
@@ -2331,6 +2332,39 @@ export default async (request: Request, context: Context) => {
       if (readError || !before) throw new Error("FORBIDDEN");
       const incomingSettings =
         (input.payload.settings as Record<string, any>) || {};
+      if (incomingSettings.dailyPopup) {
+        const popup = incomingSettings.dailyPopup;
+        if (typeof popup !== "object" || typeof popup.enabled !== "boolean" ||
+          typeof popup.heading !== "string" || popup.heading.length > 120 ||
+          typeof popup.body !== "string" || popup.body.length > 1600 ||
+          (popup.enabled && (!popup.heading.trim() || !popup.body.trim())) ||
+          !/^#[0-9a-f]{6}$/i.test(String(popup.backgroundColor || "")) ||
+          !["light", "dark"].includes(popup.textTone) ||
+          !["left", "center"].includes(popup.alignment) ||
+          !["simple", "framed"].includes(popup.style) ||
+          typeof popup.backgroundImageUrl !== "string" ||
+          (popup.backgroundImageUrl && !/^https:\/\//i.test(popup.backgroundImageUrl)))
+          throw new Error("VALIDATION_FAILED: Check the daily popup fields.");
+        if (popup.backgroundImageStoragePath) {
+          const path = String(popup.backgroundImageStoragePath);
+          if (!path.startsWith(`${studioId}/`)) throw new Error("VALIDATION_FAILED: This background image does not belong to the studio.");
+          const { data: asset, error: assetError } = await serviceClient().from("file_assets")
+            .select("id,mime_type").eq("studio_id", studioId).eq("storage_path", path).maybeSingle();
+          if (assetError || !asset || !["image/jpeg", "image/png", "image/webp"].includes(asset.mime_type))
+            throw new Error("VALIDATION_FAILED: Choose a studio image for the popup background.");
+        }
+      }
+      if (incomingSettings.campaignTemplates !== undefined) {
+        const templates = incomingSettings.campaignTemplates;
+        if (!Array.isArray(templates) || templates.length > 50 || templates.some((template) =>
+          !template || typeof template !== "object" ||
+          !/^[0-9a-f-]{36}$/i.test(String(template.id || "")) ||
+          typeof template.name !== "string" || template.name.trim().length < 2 || template.name.length > 120 ||
+          typeof template.subject !== "string" || template.subject.trim().length < 2 || template.subject.length > 200 ||
+          typeof template.body !== "string" || template.body.trim().length < 2 || template.body.length > 10000 ||
+          unknownCampaignTokens(`${template.subject}\n${template.body}`).length > 0))
+          throw new Error("VALIDATION_FAILED: Check the campaign templates.");
+      }
       const nextSettings = {
         ...(before.settings || {}),
         ...incomingSettings,
@@ -2670,6 +2704,7 @@ export default async (request: Request, context: Context) => {
       if (input.command === "resend") {
         const { data: source, error: sourceError } = await service.from("outbox_messages").select("*").eq("id", input.entityId).eq("studio_id", studioId).single();
         if (sourceError || !source) throw new Error("VALIDATION_FAILED: The original email could not be found.");
+        if (source.campaign_id) throw new Error("VALIDATION_FAILED: Campaign email must be sent from Campaigns so unsubscribes are respected.");
         recipient = source.recipient;
         subject = source.subject;
         body = source.body;

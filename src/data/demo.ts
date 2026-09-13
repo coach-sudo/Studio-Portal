@@ -26,6 +26,17 @@ const base: StudioSnapshot = {
     portalLabel: "Student Workspace",
     welcomeMessage:
       "Your lessons, practice, materials, and bookings live here.",
+    dailyPopup: {
+      enabled: false,
+      heading: "",
+      body: "",
+      backgroundColor: "#173F35",
+      backgroundImageUrl: "",
+      textTone: "light",
+      alignment: "center",
+      style: "simple",
+    },
+    campaignTemplates: [],
     showContactButtons: true,
     showBookingButton: true,
     showDriveFolder: true,

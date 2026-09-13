@@ -62,6 +62,7 @@ import { applyStudioBranding } from "../../lib/branding";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 import { AssignmentActivity } from "../../components/AssignmentActivity";
 import { ActivityCenter } from "../../components/ActivityCenter";
+import { DailyPopup } from "../../components/DailyPopup";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import {
   isJoinableLesson,
@@ -80,6 +81,7 @@ import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
 import { PortalClassWorkspace } from "../classes/ClassWorkspace";
 import { PortalInbox } from "../messages/Inbox";
 import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
+import { StudentReferrals } from "../referrals/Referrals";
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -214,6 +216,7 @@ export function StudentPortal({
           <Route path="notes" element={<StudentNotes data={data} />} />
           <Route path="classes/:offeringId" element={<PortalClassWorkspace data={data} isDemo={isDemo} role={role} />} />
           <Route path="inbox" element={<PortalInbox data={data} isDemo={isDemo} role={role} />} />
+          <Route path="referrals" element={<StudentReferrals students={data.students} isDemo={isDemo} />} />
           <Route
             path="practice"
             element={<Navigate to={`${base}/work`} replace />}
@@ -238,6 +241,7 @@ export function StudentPortal({
         </Routes>
       </main>
       <ActivityCenter data={data} audience={role} />
+      <DailyPopup popup={data.settings.dailyPopup} studioId={data.studioId} viewerId={role === "guardian" ? `guardian:${data.currentLinkedContactId || data.displayName}` : `student:${person?.id || data.displayName}`} />
       <nav className="mobile-nav student-mobile">
         {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
           <NavLink key={to} to={`${base}/${to}`} end={!to}>

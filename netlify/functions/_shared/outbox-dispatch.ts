@@ -23,6 +23,16 @@ export async function dispatchOutbox(input: { ids?: string[]; batchSize?: number
   let sent = 0;
   for (const message of messages) {
     try {
+      if (message.campaign_id) {
+        const { data: preference, error: preferenceError } = await db.from("mailing_list_contacts")
+          .select("unsubscribed_at").eq("studio_id", message.studio_id)
+          .eq("email", message.recipient.toLowerCase()).maybeSingle();
+        if (preferenceError) throw preferenceError;
+        if (!preference || preference.unsubscribed_at) {
+          await db.from("outbox_messages").update({ status: "cancelled", last_error: null, updated_at: new Date().toISOString() }).eq("id", message.id);
+          continue;
+        }
+      }
       const result = await sendGmail(token, message);
       await db.from("delivery_attempts").insert({ outbox_message_id: message.id, provider: "gmail", provider_reference: result.id, response: result, succeeded: true });
       await db.from("outbox_messages").update({ status: "sent", last_error: null, updated_at: new Date().toISOString() }).eq("id", message.id);

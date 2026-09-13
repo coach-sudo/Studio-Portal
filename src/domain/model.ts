@@ -629,6 +629,23 @@ export interface StudioSettings {
   bookingUrl: string;
   portalLabel: string;
   welcomeMessage: string;
+  dailyPopup: {
+    enabled: boolean;
+    heading: string;
+    body: string;
+    backgroundColor: string;
+    backgroundImageUrl: string;
+    backgroundImageStoragePath?: string;
+    textTone: "light" | "dark";
+    alignment: "left" | "center";
+    style: "simple" | "framed";
+  };
+  campaignTemplates: Array<{
+    id: string;
+    name: string;
+    subject: string;
+    body: string;
+  }>;
   showContactButtons: boolean;
   showBookingButton: boolean;
   showDriveFolder: boolean;

@@ -186,8 +186,14 @@ export default async (request: Request, context: Context) => {
         if(!count)await db.from("packages").delete().eq("id",packageId);
         return done({packageCheckout:true});
       }
-      const {data:expiredBooking}=await db.from("bookings").select("hold_ids").eq("stripe_checkout_session_id",object.id).maybeSingle();if(expiredBooking?.hold_ids?.length)await db.from("booking_holds").update({status:"expired"}).in("id",expiredBooking.hold_ids);else await db.from("booking_holds").update({ status: "expired" }).eq("checkout_session_id", object.id);
-      await db.from("bookings").update({ status: "expired", payment_status: "failed", updated_at: new Date().toISOString() }).eq("stripe_checkout_session_id", object.id);
+      const {data:expiredBooking}=await db.from("bookings").select("id,hold_ids,status,discount_code_id").eq("stripe_checkout_session_id",object.id).maybeSingle();
+      if(expiredBooking?.status!=="pending_payment")return done();
+      if(expiredBooking.hold_ids?.length)await db.from("booking_holds").update({status:"expired"}).in("id",expiredBooking.hold_ids);else await db.from("booking_holds").update({ status: "expired" }).eq("checkout_session_id", object.id);
+      await db.from("bookings").update({ status: "expired", payment_status: "failed", updated_at: new Date().toISOString() }).eq("id",expiredBooking.id);
+      if(expiredBooking.discount_code_id){
+        await db.from("discount_redemptions").delete().eq("booking_id",expiredBooking.id);
+        await db.rpc("release_booking_discount",{target_code:expiredBooking.discount_code_id});
+      }
       return done();
     }
     if (event.type === "charge.refunded" || event.type === "refund.updated") {

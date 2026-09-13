@@ -1,0 +1,97 @@
+.daily-popup-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(17, 29, 25, 0.64);
+}
+.daily-popup-dialog {
+  position: relative;
+  width: min(560px, 100%);
+  border-radius: 20px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+}
+.daily-popup-card {
+  min-height: 260px;
+  padding: 52px 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 14px;
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  overflow-wrap: anywhere;
+}
+.daily-popup-card h2 {
+  font-family: Oswald, sans-serif;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1.08;
+  margin: 0;
+}
+.daily-popup-card p {
+  font-size: clamp(15px, 2vw, 18px);
+  line-height: 1.55;
+  white-space: pre-line;
+  margin: 0;
+  max-width: 48ch;
+}
+.daily-popup-card.daily-popup-dark {
+  color: #17231e;
+}
+.daily-popup-card.daily-popup-center {
+  text-align: center;
+  align-items: center;
+}
+.daily-popup-card.daily-popup-framed::before {
+  content: "";
+  position: absolute;
+  inset: 16px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.daily-popup-card.daily-popup-framed {
+  position: relative;
+}
+.daily-popup-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+.daily-popup-close {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.94);
+  color: #17231e;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+}
+.daily-popup-close svg {
+  width: 18px;
+  height: 18px;
+}
+@media (max-width: 600px) {
+  .daily-popup-card {
+    min-height: 240px;
+    padding: 58px 28px 34px;
+  }
+  .daily-popup-backdrop {
+    padding: 12px;
+  }
+  .daily-popup-close {
+    top: 12px;
+    right: 12px;
+  }
+}

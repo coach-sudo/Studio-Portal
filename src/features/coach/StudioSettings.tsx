@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   CircleDollarSign,
   Database,
+  Megaphone,
   Palette,
   RefreshCw,
   Send,
@@ -35,9 +36,10 @@ import type {
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
+import { DailyPopupForm } from "./DailyPopupSettingsForm";
 
 type Panel =
-  "studio" | "portal" | "pricing" | "email" | "integrations" | "data";
+  "studio" | "portal" | "popup" | "pricing" | "email" | "integrations" | "data";
 export function StudioSettings({
   data,
   isDemo,
@@ -113,6 +115,7 @@ export function StudioSettings({
   ] = [
     ["studio", "Studio", Palette, "Name, contact, timezone"],
     ["portal", "Student workspace", Users, "Visibility and welcome"],
+    ["popup", "Daily popup", Megaphone, "One message per day"],
     ["pricing", "Rates & reminders", CircleDollarSign, "Lesson rates and timing"],
     ["email", "Email automations", Send, "Confirmations and reminders"],
     ["integrations", "Connections", Settings2, "Calendar, email, payments"],
@@ -168,6 +171,14 @@ export function StudioSettings({
             onSave={(value) =>
               void save(value, "Lesson rates and reminder timing saved.")
             }
+          />
+        )}{" "}
+        {panel === "popup" && (
+          <DailyPopupForm
+            value={data.settings.dailyPopup}
+            studioId={data.studioId}
+            isDemo={isDemo}
+            onSave={(dailyPopup) => void save({ dailyPopup }, "Daily popup settings saved.")}
           />
         )}{" "}
         {panel === "email" && (

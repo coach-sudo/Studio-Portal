@@ -1,0 +1,90 @@
+.referrals-page {
+  display: grid;
+  gap: 1.25rem;
+}
+.referral-intro {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  padding: 1rem 1.2rem;
+  border-radius: 16px;
+  background: var(--surface, #fff);
+}
+.referral-intro p {
+  margin: 0;
+  max-width: 70ch;
+}
+.referral-student-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin-top: 1rem;
+}
+.referral-student-grid article,
+.referral-tracking article {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem;
+  border: 1px solid var(--border, #ddd);
+  border-radius: 12px;
+}
+.referral-student-grid small,
+.referral-tracking small {
+  display: block;
+  opacity: 0.7;
+}
+.referral-share {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin: 0.5rem 0;
+}
+.referral-share input {
+  flex: 1 1 220px;
+  min-width: 0;
+  padding: 0.65rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+}
+.referral-share button,
+.referral-refresh {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 0.8rem;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 8px;
+  background: var(--surface, #fff);
+  cursor: pointer;
+}
+.referral-tracking {
+  display: grid;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.referral-tracking article {
+  grid-template-columns: minmax(180px, 1fr) minmax(220px, 2fr);
+  align-items: center;
+}
+.referral-rewards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.referral-reward {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding: 0.4rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(145, 107, 68, 0.1);
+}
+.referral-reward code {
+  font-size: 0.85em;
+}
+@media (max-width: 680px) {
+  .referral-tracking article {
+    grid-template-columns: 1fr;
+  }
+}

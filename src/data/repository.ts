@@ -220,6 +220,13 @@ export async function loadStudioSnapshot(
         coachProfilePhotoUrl: signed.signedUrl,
       };
   }
+  if (settings.dailyPopup.backgroundImageStoragePath) {
+    const { data: signed } = await supabase.storage
+      .from("studio-materials")
+      .createSignedUrl(settings.dailyPopup.backgroundImageStoragePath, 3600);
+    if (signed?.signedUrl)
+      settings.dailyPopup = { ...settings.dailyPopup, backgroundImageUrl: signed.signedUrl };
+  }
   return {
     studioId:
       member?.studio_id ??

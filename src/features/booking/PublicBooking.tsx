@@ -398,6 +398,16 @@ export function PublicBooking() {
   const { slug, token } = useParams();
   const [searchParams] = useSearchParams();
   const initialOfferingId = searchParams.get("offering") || undefined;
+  const incomingReferralCode = searchParams.get("ref")?.trim().toUpperCase();
+  const referralCode = incomingReferralCode || window.sessionStorage.getItem("studio-referral-code") || "";
+  const incomingDiscountCode = searchParams.get("discount")?.trim().toUpperCase();
+  const rewardDiscountCode = incomingDiscountCode || window.sessionStorage.getItem("studio-reward-code") || "";
+  useEffect(() => {
+    if (incomingReferralCode) window.sessionStorage.setItem("studio-referral-code", incomingReferralCode);
+  }, [incomingReferralCode]);
+  useEffect(() => {
+    if (incomingDiscountCode) window.sessionStorage.setItem("studio-reward-code", incomingDiscountCode);
+  }, [incomingDiscountCode]);
   const store = useStudioStore();
   const [services, setServices] = useState(
     isDemoMode
@@ -594,6 +604,8 @@ export function PublicBooking() {
           live={liveCatalog}
           studio={studio}
           booker={booker}
+          initialReferralCode={referralCode}
+          initialDiscountCode={rewardDiscountCode}
         />
       ) : !catalogLoading ? (
         <LiveServiceCatalog services={services} studio={studio} />
@@ -769,6 +781,8 @@ function BookingFlow({
   live,
   studio,
   booker,
+  initialReferralCode,
+  initialDiscountCode,
 }: {
   service: BookingService;
   offerings: ServiceOffering[];
@@ -776,6 +790,8 @@ function BookingFlow({
   live: boolean;
   studio: PublicStudio;
   booker?: AuthenticatedBooker;
+  initialReferralCode: string;
+  initialDiscountCode: string;
 }) {
   const store = useStudioStore();
   const initialOffering = offerings.find((item) => item.id === initialOfferingId && item.serviceId === service.id && item.published);
@@ -816,7 +832,8 @@ function BookingFlow({
   );
   const [createPortalProfile, setCreatePortalProfile] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
-  const [discountCode, setDiscountCode] = useState("");
+  const [discountCode, setDiscountCode] = useState(initialDiscountCode);
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState("");
   const [confirmed, setConfirmed] = useState<{
@@ -1005,6 +1022,7 @@ function BookingFlow({
           termsAccepted: true,
           termsVersion: "2026-08-20",
           discountCode: discountCode.trim() || undefined,
+          referralCode: referralCode || undefined,
         }),
       });
       const result = await response.json();
@@ -1012,6 +1030,7 @@ function BookingFlow({
         throw new Error(
           result.message || "The booking could not be confirmed.",
         );
+      window.sessionStorage.removeItem("studio-reward-code");
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);
         return;
@@ -1423,16 +1442,18 @@ function BookingFlow({
                 </button>
               ))}
             </div>
+            {booker && <p className="booking-referral">If you have an unused $15 referral reward, it will apply automatically at checkout. To use a free-lesson reward instead, enter its code below.</p>}
+            {referralCode && <p className="booking-referral">Referral link applied. When your paid booking is confirmed, your friend can earn a reward. <button type="button" className="text-button" onClick={() => { setReferralCode(""); window.sessionStorage.removeItem("studio-referral-code"); }}>Remove</button></p>}
             <label className="booking-discount">
               Coupon or discount code
               <input
                 value={discountCode}
                 onChange={(event) =>
-                  setDiscountCode(
+                  { window.sessionStorage.removeItem("studio-reward-code"); setDiscountCode(
                     event.target.value
                       .toUpperCase()
                       .replace(/[^A-Z0-9_-]/g, ""),
-                  )
+                  ); }
                 }
                 placeholder="Optional"
                 maxLength={40}
