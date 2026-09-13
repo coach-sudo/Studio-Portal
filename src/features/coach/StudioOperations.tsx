@@ -50,6 +50,7 @@ import {
 import { useStudioStore } from "../../state/StudioStore";
 import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
 import { calculatePackagePrice, packagePricingChanged } from "../../domain/packagePricing";
+import { staleReviewPayload } from "../../domain/intakeRecency";
 
 const studentName = (data: StudioSnapshot, id: string) =>
   data.students.find((item) => item.id === id)?.fullName || "Student";
@@ -115,7 +116,7 @@ export function TodayView({
   const notePage = usePagedList(noteFollowups);
   const reviewGroups = Object.values(
     data.integrationImports
-      .filter((item) => item.status === "needs_review")
+      .filter((item) => item.status === "needs_review" && !staleReviewPayload(item.payload))
       .reduce<Record<string, IntegrationImport[]>>((groups, item) => {
         const key = `${item.detectedSource}:${importSummary(item)}`;
         (groups[key] ||= []).push(item);
@@ -802,7 +803,7 @@ export function LessonsView({
     [confirmCancel, setConfirmCancel] = useState(false),
     [cadence, setCadence] = useState<"weekly" | "biweekly">("weekly"),
     [occurrences, setOccurrences] = useState(6),
-    [creditQuantity, setCreditQuantity] = useState(1),
+    [creditQuantityText, setCreditQuantityText] = useState("1"),
     [creditReason, setCreditReason] = useState("Lesson-specific credit"),
     [paymentStatus, setPaymentStatus] = useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
     [lessonPrice, setLessonPrice] = useState(""),
@@ -939,8 +940,10 @@ export function LessonsView({
       setBusy("");
     }
   };
+  const creditQuantity = Number(creditQuantityText);
+  const validCreditQuantity = creditQuantityText.trim() !== "" && Number.isInteger(creditQuantity) && creditQuantity !== 0 && Math.abs(creditQuantity) <= 20;
   const adjustLessonCredit = async () => {
-    if (!selected || !creditQuantity || creditReason.trim().length < 3 || busy)
+    if (!selected || !validCreditQuantity || creditReason.trim().length < 3 || busy)
       return;
     setBusy("credit");
     try {
@@ -1255,13 +1258,10 @@ export function LessonsView({
                 <label>
                   Credits
                   <input
-                    type="number"
-                    min="-20"
-                    max="20"
-                    value={creditQuantity}
-                    onChange={(event) =>
-                      setCreditQuantity(Number(event.target.value))
-                    }
+                    type="text"
+                    inputMode="numeric"
+                    value={creditQuantityText}
+                    onChange={(event) => setCreditQuantityText(event.target.value)}
                   />
                 </label>
                 <label>
@@ -1274,7 +1274,7 @@ export function LessonsView({
                 <button
                   disabled={
                     Boolean(busy) ||
-                    !creditQuantity ||
+                    !validCreditQuantity ||
                     creditReason.trim().length < 3
                   }
                   onClick={() => void adjustLessonCredit()}

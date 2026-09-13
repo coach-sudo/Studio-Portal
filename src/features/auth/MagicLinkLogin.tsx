@@ -12,7 +12,7 @@ type LoginStatus =
   | "demo"
   | "error";
 
-export function MagicLinkLogin() {
+export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
   const [params] = useSearchParams();
   const [email, setEmail] = useState("");
   const [username, setUsername] = useState("");
@@ -95,7 +95,7 @@ export function MagicLinkLogin() {
     }
     setStatus("signing");
     const callback = new URL("/auth/callback", window.location.origin);
-    callback.searchParams.set("returnTo", safeReturn("/"));
+    callback.searchParams.set("returnTo", safeReturn("/coach"));
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -115,18 +115,21 @@ export function MagicLinkLogin() {
       )}
       <div className="login-card">
         <UserRound />
-        <h1>Sign in to {studio.name}</h1>
+        <h1>{coachOnly ? "Coach sign-in" : "Student and household sign-in"}</h1>
+        {coachOnly ? <>
+        <p>Google sign-in is available only to the studio coach account. Students, guardians, and support people should use their portal username and password.</p>
         <section className="login-choice google-choice">
           <span className="google-mark" aria-hidden="true">G</span>
           <div>
-            <strong>Sign in with Google</strong>
-            <small>Use the Google email saved on your coach, student, or household profile.</small>
+            <strong>Coach Google sign-in</strong>
+            <small>Use the studio coach Google account.</small>
           </div>
           <button type="button" aria-label="Continue with Google" disabled={status === "signing"} onClick={() => void googleSignIn()}>
             {status === "signing" ? "Opening…" : "Continue"}
           </button>
         </section>
-        <div className="login-divider">Or use your portal password</div>
+        <p><Link to="/login">Student or household login</Link></p>
+        </> : <>
         <p>
           Students, guardians, and support people can also use the username and
           password from their portal invitation.
@@ -178,6 +181,8 @@ export function MagicLinkLogin() {
             </button>
           </form>
         </details>
+        <p><Link to="/coach/login">Coach login</Link></p>
+        </>}
         {status === "sent" && (
           <div role="status">Check your inbox. The link expires automatically.</div>
         )}
@@ -190,8 +195,9 @@ export function MagicLinkLogin() {
         )}
         {status === "error" && (
           <div role="alert">
-            We couldn’t sign you in. Check your username and password, use the
-            email recovery option, or contact the studio.
+            {coachOnly
+              ? "We couldn’t open coach Google sign-in. Use the studio coach account or contact the studio."
+              : "We couldn’t sign you in. Check your username and password, use the email recovery option, or contact the studio."}
           </div>
         )}
         <small className="login-legal">

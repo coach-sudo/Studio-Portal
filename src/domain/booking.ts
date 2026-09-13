@@ -1,4 +1,5 @@
 import type { AvailabilityException, AvailabilityRule, Booking, BookingService, Lesson, RecurrenceCadence, StudioSnapshot } from "./model";
+import { slotIsVisible, type VisibleSlotsPercent } from "./availabilityVisibility";
 
 export interface AvailabilitySlot { startsAt: string; endsAt: string; label: string }
 
@@ -24,7 +25,7 @@ export function zonedDateTimeToUtc(value: WallTime, timeZone: string): Date {
   return new Date(result);
 }
 
-export function buildAvailability(input: { service: BookingService; rules: AvailabilityRule[]; exceptions: AvailabilityException[]; lessons: Lesson[]; from: Date; days?: number; now?: Date }): AvailabilitySlot[] {
+export function buildAvailability(input: { service: BookingService; rules: AvailabilityRule[]; exceptions: AvailabilityException[]; lessons: Lesson[]; from: Date; days?: number; now?: Date; visibleSlotsPercent?: VisibleSlotsPercent }): AvailabilitySlot[] {
   const { service, rules, exceptions, lessons, from } = input;
   const now = input.now ?? new Date();
   const days = Math.min(input.days ?? 14, service.bookingHorizonDays);
@@ -50,7 +51,7 @@ export function buildAvailability(input: { service: BookingService; rules: Avail
       }
     }
   }
-  return slots;
+  return slots.filter((slot) => slotIsVisible(service.id, slot.startsAt, input.visibleSlotsPercent ?? 100));
 }
 
 export const remainingCapacity = (capacity: number, enrolled: number, activeHolds = 0) => Math.max(0, capacity - enrolled - activeHolds);

@@ -19,6 +19,7 @@ export function AuthCallback() {
   const navigate = useNavigate();
   const [params] = useSearchParams();
   const [error, setError] = useState(false);
+  const coachLogin = params.get("returnTo")?.startsWith("/coach") ?? false;
 
   useEffect(() => {
     let active = true;
@@ -61,12 +62,13 @@ export function AuthCallback() {
   return (
     <main className="login-page">
       <section className="login-card">
-        <h1>We couldn’t match this Google account</h1>
+        <h1>We couldn’t finish sign-in</h1>
         <p>
-          Choose the Google account whose email is saved on your coach, student,
-          guardian, or support-person profile. Portal access must also be enabled.
+          {coachLogin
+            ? "Coach Google sign-in requires the studio coach account."
+            : "Use the email saved on your student or household profile, or sign in with your portal username and password."}
         </p>
-        <Link className="button-link primary" to="/login">Try another account</Link>
+        <Link className="button-link primary" to={coachLogin ? "/coach/login" : "/login"}>Return to sign-in</Link>
       </section>
     </main>
   );

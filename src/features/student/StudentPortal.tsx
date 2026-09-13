@@ -603,6 +603,7 @@ function StudentBookings({
                     part.lessonId === lesson.id,
                 ),
             ),
+            visibleSlotsPercent: data.settings.bookingDefaults.visibleSlotsPercent,
             from: new Date(),
             days: 21,
           }).slice(0, 8)

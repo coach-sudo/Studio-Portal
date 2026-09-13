@@ -250,6 +250,7 @@ export function BookingCenter() {
       {tab === "availability" && (
         <Availability
           data={data}
+          onSaveVisibility={(percent) => saveBookingSettings({ bookingDefaults: { ...data.settings.bookingDefaults, visibleSlotsPercent: percent } })}
           onRule={(item) => setDialog({ type: "rule", item })}
           onException={() => setDialog({ type: "exception" })}
           onDeleteRule={(item) =>
@@ -1229,12 +1230,14 @@ function Services({
 
 function Availability({
   data,
+  onSaveVisibility,
   onRule,
   onException,
   onDeleteRule,
   onDeleteException,
 }: {
   data: StudioSnapshot;
+  onSaveVisibility: (percent: 100 | 90 | 75) => Promise<void>;
   onRule: (item: AvailabilityRule) => void;
   onException: () => void;
   onDeleteRule: (item: AvailabilityRule) => void;
@@ -1242,6 +1245,8 @@ function Availability({
     item: StudioSnapshot["availabilityExceptions"][number],
   ) => void;
 }) {
+  const [visibility, setVisibility] = useState<100 | 90 | 75>(data.settings.bookingDefaults.visibleSlotsPercent);
+  const [savingVisibility, setSavingVisibility] = useState(false);
   const names = [
     "Sunday",
     "Monday",
@@ -1253,6 +1258,24 @@ function Availability({
   ];
   return (
     <div className="availability-layout">
+      <CoachPanel title="Public slot visibility">
+        <div className="settings-form">
+          <label>
+            Show this share of open times
+            <select value={visibility} onChange={(event) => setVisibility(Number(event.target.value) as 100 | 90 | 75)}>
+              <option value={100}>100% of open slots</option>
+              <option value={90}>About 90% of open slots</option>
+              <option value={75}>About 75% of open slots</option>
+            </select>
+            <small>Held-back slots stay free on your calendar but are unavailable through online booking. The same times stay hidden for every visitor.</small>
+          </label>
+          <div className="form-actions">
+            <button className="primary" type="button" disabled={savingVisibility || visibility === data.settings.bookingDefaults.visibleSlotsPercent} onClick={async () => { setSavingVisibility(true); try { await onSaveVisibility(visibility); } finally { setSavingVisibility(false); } }}>
+              {savingVisibility ? "Saving…" : "Save visibility"}
+            </button>
+          </div>
+        </div>
+      </CoachPanel>
       <CoachPanel
         title="Weekly hours"
         aside={

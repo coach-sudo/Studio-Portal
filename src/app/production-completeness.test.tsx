@@ -32,7 +32,7 @@ const routes = [
   ["46 portal notes", "/portal/notes", /^Notes$/i],
   ["47 portal practice joins current work", "/portal/practice", /^Current Work$/i],
   ["48 portal materials join current work", "/portal/materials", /^Current Work$/i],
-  ["49 unified sign-in", "/login", /Sign in to/i],
+  ["49 portal sign-in", "/login", /Student and household sign-in/i],
   ["50 public booking catalog", "/book", /Choose your session/i],
 ] as const;
 

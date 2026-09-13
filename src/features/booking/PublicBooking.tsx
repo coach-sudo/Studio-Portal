@@ -845,6 +845,7 @@ function BookingFlow({
             rules: store.snapshot.availabilityRules,
             exceptions: store.snapshot.availabilityExceptions,
             lessons: store.snapshot.lessons,
+            visibleSlotsPercent: store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
             from: new Date(),
             days: 45,
           })
@@ -869,6 +870,7 @@ function BookingFlow({
       store.snapshot.availabilityExceptions,
       store.snapshot.availabilityRules,
       store.snapshot.lessons,
+      store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
     ],
   );
   const [slots, setSlots] = useState(demoSlots);
@@ -1678,6 +1680,7 @@ function ManageBooking({
                     part.bookingId === booking.id && part.lessonId === item.id,
                 ),
             ),
+            visibleSlotsPercent: store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
             from: new Date(),
             days: 21,
           }).slice(0, 8)
@@ -1689,6 +1692,7 @@ function ManageBooking({
       store.snapshot.availabilityRules,
       store.snapshot.lessonParticipants,
       store.snapshot.lessons,
+      store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
     ],
   );
   const [slots, setSlots] = useState(demoManageSlots);

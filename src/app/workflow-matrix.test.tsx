@@ -569,11 +569,18 @@ describe("50 start-to-finish studio workflows", () => {
       );
       expect(await screen.findByText(/Booking cancelled/i)).toBeInTheDocument();
     });
-    it("31 shows one clear shared sign-in destination", async () => {
+    it("31 separates portal and coach sign-in", async () => {
       renderApp("/login");
-      expect(await screen.findByRole("heading", { name: /Sign in to/i })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Continue with Google/i })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: /Student and household sign-in/i })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /Continue with Google/i })).not.toBeInTheDocument();
       expect(screen.getByLabelText("Username")).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "Coach login" })).toHaveAttribute("href", "/coach/login");
+    });
+    it("keeps Google on the coach sign-in page", async () => {
+      renderApp("/coach/login");
+      expect(await screen.findByRole("heading", { name: "Coach sign-in" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
+      expect(screen.queryByLabelText("Username")).not.toBeInTheDocument();
     });
     it("32 shows service price, delivery, and policy before availability", async () => {
       renderApp("/book/private-acting-coaching");

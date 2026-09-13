@@ -3,6 +3,7 @@ import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { zonedDateTimeToUtc } from "./_shared/timezone";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
+import { pastOccurrence, staleReviewPayload } from "../../src/domain/intakeRecency";
 import {
   classifyProviderIntake,
   matchStudentIdentity,
@@ -670,6 +671,11 @@ async function importCalendar(
       .eq("external_id", event.id)
       .maybeSingle();
     if (prior?.status === "ignored") continue;
+    if (!prior?.lesson_id && pastOccurrence(event.start?.dateTime, event.end?.dateTime)) {
+      if (prior?.status === "needs_review")
+        await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).eq("id", prior.id);
+      continue;
+    }
     const intakeDecision = classifyProviderIntake({
       source: "google_calendar",
       text,
@@ -953,6 +959,11 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       .eq("provider", "gmail")
       .eq("external_id", item.id)
       .maybeSingle();
+    if (!prior?.lesson_id && staleReviewPayload({ candidate, headers })) {
+      if (prior?.status === "needs_review")
+        await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).eq("id", prior.id);
+      continue;
+    }
     const changeType: IntakeChangeType =
         messageKind || gmailChangeType(text),
       intakeDecision = classifyProviderIntake({
@@ -1291,6 +1302,16 @@ export async function runProviderIntake() {
       .from("studios")
       .select("id,settings,timezone");
   if (error) throw error;
+  const { data: pendingReviews, error: pendingError } = await db
+    .from("integration_imports")
+    .select("id,payload")
+    .eq("status", "needs_review");
+  if (pendingError) throw pendingError;
+  const staleIds = (pendingReviews || []).filter((item) => staleReviewPayload(item.payload)).map((item) => item.id);
+  if (staleIds.length) {
+    const { error: cleanupError } = await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).in("id", staleIds);
+    if (cleanupError) throw cleanupError;
+  }
   const token = await googleAccessToken();
   let calendarImported = 0,
     calendarReview = 0,

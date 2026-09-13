@@ -27,6 +27,7 @@ export function App() {
 function AppRoutes() {
   return <Suspense fallback={<div className="loading">Opening the studio…</div>}><Routes>
     <Route path="/login" element={<MagicLinkLogin />} />
+    <Route path="/coach/login" element={<MagicLinkLogin coachOnly />} />
     <Route path="/auth/callback" element={<AuthCallback />} />
     <Route path="/change-password" element={<AuthGate role="portal"><ChangeTemporaryPassword /></AuthGate>} />
     <Route path="/terms" element={<TermsPage />} />
@@ -88,7 +89,7 @@ function AuthGate({role,children}:{role:"coach"|"portal";children:ReactNode}){
   const [state,setState]=useState<"checking"|"allowed"|"login"|"role_home">(isSupabaseConfigured?"checking":isDemoMode?"allowed":"login"),location=useLocation();
   useEffect(()=>{const client=supabase;if(!isSupabaseConfigured||!client)return;let active=true;const check=async()=>{const {data:{session}}=await client.auth.getSession();if(!session){if(active)setState("login");return;}if(role==="coach"){const {data,error}=await client.from("memberships").select("id").eq("role","coach").limit(1);if(active)setState(!error&&Boolean(data?.length)?"allowed":"role_home");return;}const [{data:owned,error:ownedError},{data:related,error:relatedError}]=await Promise.all([client.from("students").select("id").eq("user_id",session.user.id).eq("portal_enabled",true).limit(1),client.from("linked_contacts").select("id").eq("user_id",session.user.id).eq("portal_enabled",true).limit(1)]);if(active)setState((!ownedError&&Boolean(owned?.length))||(!relatedError&&Boolean(related?.length))?"allowed":"role_home");};void check();const {data}=client.auth.onAuthStateChange(()=>void check());return()=>{active=false;data.subscription.unsubscribe();};},[role]);
   if(state==="checking")return <div className="loading">Verifying secure access…</div>;
-  if(state==="login")return <Navigate to={`/login?returnTo=${encodeURIComponent(location.pathname)}`} replace/>;
+  if(state==="login")return <Navigate to={`/${role === "coach" ? "coach/login" : "login"}?returnTo=${encodeURIComponent(location.pathname)}`} replace/>;
   if(state==="role_home")return <Navigate to="/" replace/>;
   return children;
 }

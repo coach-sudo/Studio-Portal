@@ -1843,6 +1843,7 @@ export default async (request: Request, context: Context) => {
             expires_at: expiresAt,
             stripe_price_id: definition.stripe_price_id,
             credit_quantity: definition.session_count,
+            auto_apply: input.payload.autoApply === true,
           })
           .select()
           .single();
@@ -1860,8 +1861,27 @@ export default async (request: Request, context: Context) => {
         await service.from("packages").delete().eq("id", pkg.id);
         throw creditError;
       }
+      let applied = 0;
+      let autoApplyPending = false;
+      if (pkg.auto_apply) {
+        const { data: upcoming, error: upcomingError } = await service
+          .from("lessons")
+          .select("id")
+          .eq("student_id", student.id)
+          .eq("status", "scheduled")
+          .is("package_id", null)
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at")
+          .limit(50);
+        if (upcomingError) autoApplyPending = true;
+        else for (const lesson of upcoming || []) {
+          const { data: packageId, error: applyError } = await service.rpc("reserve_package_credit_for_lesson", { p_lesson_id: lesson.id, p_package_id: pkg.id });
+          if (applyError) { autoApplyPending = true; break; }
+          if (packageId) applied += 1;
+        }
+      }
       return json({
-        resource: pkg,
+        resource: { ...pkg, applied, autoApplyPending },
         recommendations: [],
         auditEventId: await audit(
           studioId,
@@ -1871,7 +1891,7 @@ export default async (request: Request, context: Context) => {
           null,
           pkg,
         ),
-        queuedSideEffects: [],
+        queuedSideEffects: applied ? [`credits_applied:${applied}`] : [],
       });
     }
     if (domain === "packages" && ["create", "update", "recalculate", "bulk_create"].includes(input.command)) {

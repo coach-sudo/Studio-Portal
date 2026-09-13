@@ -32,6 +32,7 @@ const base: StudioSnapshot = {
     reminderHours: [72, 24, 2],
     lessonRatesMinor: { 30: 3500, 60: 5000, 90: 7200, intro: 3500 },
     bookingDefaults: {
+      visibleSlotsPercent: 100,
       minimumNoticeHours: 72,
       bookingHorizonDays: 90,
       cancellationWindowHours: 24,

@@ -996,7 +996,9 @@ function CoachLessonHub({
     "details" | "reschedule" | "credits" | null
   >(null);
   const [actionBusy, setActionBusy] = useState("");
-  const [creditQuantity, setCreditQuantity] = useState(1);
+  const [creditQuantityText, setCreditQuantityText] = useState("1");
+  const creditQuantity = Number(creditQuantityText);
+  const validCreditQuantity = creditQuantityText.trim() !== "" && Number.isInteger(creditQuantity) && creditQuantity !== 0 && Math.abs(creditQuantity) <= 20;
   const [creditReason, setCreditReason] = useState("Lesson-specific credit");
   const [paymentStatus, setPaymentStatus] = useState<NonNullable<Lesson["paymentStatus"]>>(lesson?.paymentStatus || "untracked");
   const [lessonPrice, setLessonPrice] = useState(lesson?.priceMinor == null ? "" : String(lesson.priceMinor / 100));
@@ -1132,7 +1134,7 @@ function CoachLessonHub({
     }
   };
   const adjustCredit = async () => {
-    if (actionBusy || !creditQuantity || creditReason.trim().length < 3) return;
+    if (actionBusy || !validCreditQuantity || creditReason.trim().length < 3) return;
     setActionBusy("credit");
     try {
       await studioCommand("credits", {
@@ -1298,9 +1300,9 @@ function CoachLessonHub({
             <section className="lesson-command-section">
               <p>Positive numbers add credits; negative numbers remove them. The reason stays attached to this lesson.</p>
               <div className="inline-command">
-                <label>Credits<input type="number" min="-20" max="20" value={creditQuantity} onChange={(event) => setCreditQuantity(Number(event.target.value))} /></label>
+                <label>Credits<input type="text" inputMode="numeric" value={creditQuantityText} onChange={(event) => setCreditQuantityText(event.target.value)} /></label>
                 <label>Reason<input value={creditReason} onChange={(event) => setCreditReason(event.target.value)} /></label>
-                <button disabled={Boolean(actionBusy) || !creditQuantity || creditReason.trim().length < 3} onClick={() => void adjustCredit()}>
+                <button disabled={Boolean(actionBusy) || !validCreditQuantity || creditReason.trim().length < 3} onClick={() => void adjustCredit()}>
                   {actionBusy === "credit" ? "Saving…" : "Save adjustment"}
                 </button>
               </div>
@@ -2061,9 +2063,13 @@ function Payments({
     [adjustingBalance, setAdjustingBalance] = useState(false),
     [balanceAmount, setBalanceAmount] = useState("0.00"),
     [balanceReason, setBalanceReason] = useState("Studio account credit"),
-    [creditQuantity, setCreditQuantity] = useState(1),
+    [creditQuantityText, setCreditQuantityText] = useState("1"),
     [creditReason, setCreditReason] = useState("Courtesy lesson credit"),
+    [autoApplyOnAssign, setAutoApplyOnAssign] = useState(true),
+    [packageBusy, setPackageBusy] = useState(""),
     [notice, setNotice] = useState("");
+  const creditQuantity = Number(creditQuantityText);
+  const validCreditQuantity = creditQuantityText.trim() !== "" && Number.isInteger(creditQuantity) && creditQuantity !== 0 && Math.abs(creditQuantity) <= 100;
   const adjustBalance = async (event: FormEvent) => {
     event.preventDefault();
     const amountMinor = Math.round(Number(balanceAmount) * 100);
@@ -2100,6 +2106,7 @@ function Payments({
   };
   const grantCredit = async (event: FormEvent) => {
     event.preventDefault();
+    if (!validCreditQuantity || creditReason.trim().length < 3) return;
     try {
       if (isDemo) {
         store.transact((draft) => {
@@ -2154,6 +2161,29 @@ function Payments({
       );
     }
   };
+  const togglePackageAutoApply = async (pkg: Data["packages"][number]) => {
+    if (packageBusy) return;
+    setPackageBusy(pkg.id);
+    try {
+      if (isDemo) store.transact((draft) => {
+        const current = draft.packages.find((item) => item.id === pkg.id);
+        if (current) { current.autoApply = !pkg.autoApply; current.version += 1; current.updatedAt = now(); }
+      });
+      else {
+        const result = await studioCommand("packages", {
+          command: "toggle_auto_apply",
+          entityId: pkg.id,
+          expectedVersion: pkg.version,
+          payload: { enabled: !pkg.autoApply },
+          reason: "Coach changed automatic lesson credit preference",
+        });
+        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        setNotice(!pkg.autoApply ? `Automatic credits enabled. ${result.resource.applied || 0} upcoming lesson(s) covered.` : "Automatic credits disabled for this package.");
+      }
+    } catch (reason) {
+      setNotice(reason instanceof Error ? reason.message : "Automatic credits could not be updated.");
+    } finally { setPackageBusy(""); }
+  };
   const assign = async (event: FormEvent) => {
     event.preventDefault();
     const definition = data.packageDefinitions.find(
@@ -2170,6 +2200,7 @@ function Payments({
             name: definition.name,
             priceMinor: definition.priceMinor,
             currency: definition.currency,
+            autoApply: autoApplyOnAssign,
             expiresAt: definition.expirationDays
               ? new Date(
                   Date.now() + definition.expirationDays * 86400000,
@@ -2188,20 +2219,26 @@ function Payments({
           });
         });
       else {
-        await studioCommand("packages", {
+        const result = await studioCommand("packages", {
           command: "assign",
           expectedVersion: 0,
           payload: {
             definitionId,
             studentId: student.id,
+            autoApply: autoApplyOnAssign,
             reason: "Coach assigned package",
           },
           reason: "Coach assigned package",
         });
         await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        if (result.resource.autoApplyPending) {
+          setAssigning(false);
+          setNotice("Package assigned. Automatic credit application is queued for the next maintenance run.");
+          return;
+        }
       }
       setAssigning(false);
-      setNotice("Package assigned with its full credit balance.");
+      setNotice(`Package assigned with its full credit balance${autoApplyOnAssign ? "; eligible upcoming lessons will use its credits automatically" : ""}.`);
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -2246,6 +2283,9 @@ function Payments({
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
                   left
                 </Status>
+                <button type="button" disabled={Boolean(packageBusy)} onClick={() => void togglePackageAutoApply(pkg)}>
+                  {packageBusy === pkg.id ? "Saving…" : pkg.autoApply ? "Auto-apply on" : "Auto-apply off"}
+                </button>
               </article>
             ))}
             {!pkgs.length && (
@@ -2303,6 +2343,10 @@ function Payments({
                   ))}
               </select>
             </label>
+            <label className="check-row full">
+              <input type="checkbox" checked={autoApplyOnAssign} onChange={(event) => setAutoApplyOnAssign(event.target.checked)} />
+              Automatically apply credits to eligible unpaid upcoming lessons
+            </label>
             <div className="form-actions full">
               <button type="button" onClick={() => setAssigning(false)}>
                 Cancel
@@ -2323,14 +2367,10 @@ function Payments({
               Credits
               <input
                 required
-                type="number"
-                min="-100"
-                max="100"
-                step="1"
-                value={creditQuantity}
-                onChange={(event) =>
-                  setCreditQuantity(Number(event.target.value))
-                }
+                type="text"
+                inputMode="numeric"
+                value={creditQuantityText}
+                onChange={(event) => setCreditQuantityText(event.target.value)}
               />
               <small>Use a negative number to correct a balance.</small>
             </label>
@@ -2349,7 +2389,7 @@ function Payments({
               </button>
               <button
                 className="primary"
-                disabled={!creditQuantity || creditReason.trim().length < 3}
+                disabled={!validCreditQuantity || creditReason.trim().length < 3}
               >
                 Save credit adjustment
               </button>

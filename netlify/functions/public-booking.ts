@@ -13,6 +13,7 @@ import {
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
 import { queueBookingEmails } from "./_shared/booking-email";
 import { cancelConfirmedBooking } from "./_shared/booking-cancellation";
+import { slotIsVisible, visibleSlotsPercent } from "../../src/domain/availabilityVisibility";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -162,6 +163,7 @@ async function availability(url: URL) {
     { data: exceptions, error: exceptionsError },
     { data: lessons, error: lessonsError },
     { data: holds, error: holdsError },
+    { data: studio, error: studioError },
   ] = await Promise.all([
     db
       .from("availability_rules")
@@ -187,9 +189,10 @@ async function availability(url: URL) {
       .eq("studio_id", studioId)
       .eq("status", "active")
       .gt("expires_at", new Date().toISOString()),
+    db.from("studios").select("settings").eq("id", studioId).single(),
   ]);
-  if (rulesError || exceptionsError || lessonsError || holdsError)
-    throw rulesError || exceptionsError || lessonsError || holdsError;
+  if (rulesError || exceptionsError || lessonsError || holdsError || studioError)
+    throw rulesError || exceptionsError || lessonsError || holdsError || studioError;
   const absoluteHorizon =
     Date.now() + Number(service.booking_horizon_days) * 86400000;
   if (from.getTime() > absoluteHorizon) return [];
@@ -276,6 +279,7 @@ async function availability(url: URL) {
   }
   return [...unique.values()]
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+    .filter((slot) => slotIsVisible(serviceId, slot.startsAt, visibleSlotsPercent(studio?.settings?.bookingDefaults?.visibleSlotsPercent)))
     .slice(0, 1000);
 }
 
@@ -517,6 +521,8 @@ async function createBooking(request: Request) {
       ]);
       if (ruleError || exceptionError) throw ruleError || exceptionError;
       for (const value of occurrenceStarts) {
+        if (!slotIsVisible(service.id, value, visibleSlotsPercent(preferences.visibleSlotsPercent)))
+          throw new Error("SLOT_UNAVAILABLE");
         const occurrenceEnd = new Date(
             new Date(value).getTime() +
               Number(service.duration_minutes) * 60000,
@@ -1036,6 +1042,13 @@ async function manage(url: URL, request: Request) {
         shifted[0].start,
         shifted.at(-1)!.end,
       );
+    if (!booking.offering_id) {
+      const { data: studio, error: studioError } = await db.from("studios").select("settings").eq("id", booking.studio_id).single();
+      if (studioError) throw studioError;
+      const percent = visibleSlotsPercent(studio?.settings?.bookingDefaults?.visibleSlotsPercent);
+      if (shifted.some((item) => !slotIsVisible(booking.service_id, item.start, percent)))
+        throw new Error("SLOT_UNAVAILABLE");
+    }
     if (
       shifted.some((item) =>
         busy.some((block) =>

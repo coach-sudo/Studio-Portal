@@ -635,6 +635,7 @@ export interface StudioSettings {
   reminderHours: number[];
   lessonRatesMinor: { 30: number; 60: number; 90: number; intro: number };
   bookingDefaults: {
+    visibleSlotsPercent: 100 | 90 | 75;
     minimumNoticeHours: number;
     bookingHorizonDays: number;
     cancellationWindowHours: number;

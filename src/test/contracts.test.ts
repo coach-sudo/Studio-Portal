@@ -93,7 +93,7 @@ describe("database contracts", () => {
     expect(portalAuth).toContain("user.email_confirmed_at");
     expect(portalAccess).not.toContain("existingIdentity.user_metadata?.student_id");
     expect(studentWorkspace).toContain("Send new portal invite");
-    expect(loginPage).toContain("coach, student, or household profile");
+    expect(loginPage).toContain("Google sign-in is available only to the studio coach account");
     expect(loginPage).toContain('className="google-mark"');
     expect(fs.readFileSync("src/app-system.css", "utf8")).toContain(
       ".primary-button { position: static; inset: auto; }",
