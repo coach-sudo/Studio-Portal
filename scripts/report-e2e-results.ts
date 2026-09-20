@@ -125,3 +125,16 @@ for (const item of evidence.filter((entry) => entry.status === "BLOCKED")) {
 if (process.env.GITHUB_STEP_SUMMARY) {
   await appendFile(process.env.GITHUB_STEP_SUMMARY, markdown);
 }
+
+const fixtureInfrastructureBlocked = evidence.some(
+  (entry) =>
+    entry.status === "BLOCKED" &&
+    (entry.reason?.startsWith("fixture setup failed:") ||
+      entry.reason?.includes("STAGING_E2E_FIXTURE_TOKEN")),
+);
+if (fixtureInfrastructureBlocked) {
+  process.stderr.write(
+    "Fixture infrastructure is unavailable; the deployed suite cannot be treated as successful.\n",
+  );
+  process.exitCode = 1;
+}
