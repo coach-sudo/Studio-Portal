@@ -4274,6 +4274,10 @@ export type Database = {
         Args: { target_student: string }
         Returns: number
       }
+      studio_route_snapshot: {
+        Args: { requested_domains: string[] }
+        Returns: Json
+      }
       studio_storage_health: { Args: never; Returns: Json }
       sync_future_contact_details: {
         Args: {
