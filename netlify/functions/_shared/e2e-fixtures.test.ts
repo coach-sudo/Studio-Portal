@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { fixtureCredentials, fixtureId } from "./e2e-fixtures";
+import { fixtureCredentials, fixtureId } from "../e2e-fixtures";
 
 describe("E2E fixture contracts", () => {
   it("derives stable UUIDs from a namespaced run", () => {
@@ -27,3 +27,4 @@ describe("E2E fixture contracts", () => {
     ).toBe(true);
   });
 });
+
