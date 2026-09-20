@@ -1805,6 +1805,13 @@ export type Database = {
             foreignKeyName: "material_links_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_links_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -2859,6 +2866,13 @@ export type Database = {
             foreignKeyName: "profile_submissions_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_submissions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -3716,15 +3730,44 @@ export type Database = {
           public_embed: boolean | null
           sort_order: number | null
           status: Database["public"]["Enums"]["material_status"] | null
-          student_name: string | null
           storage_path: string | null
+          student_name: string | null
           studio_id: string | null
           title: string | null
           updated_at: string | null
           version: number | null
           visible_to_student: boolean | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "material_links_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_links_student_id_fkey"
+            columns: ["link_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_owner_student_id_fkey"
+            columns: ["owner_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       published_actor_profiles: {
         Row: {
