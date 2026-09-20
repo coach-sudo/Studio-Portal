@@ -6,7 +6,7 @@ import {
   portalPageSize,
   shouldShowPagination,
 } from "./pagination";
-import { studioQueryKey } from "../hooks/useStudio";
+import { studioDomainQueryKey, studioQueryKey } from "../hooks/useStudio";
 
 const read = (path: string) => fs.readFileSync(path, "utf8");
 
@@ -14,7 +14,13 @@ describe("route-specific query contracts", () => {
   it("includes role, student, filters, and sorted domains in cache keys", () => {
     expect(
       studioQueryKey("student", "student-1", ["work", "identity"]),
-    ).toEqual(["studio", "student", "student-1", ["identity", "work"]]);
+    ).toEqual(["studio-route", "student", "student-1", ["identity", "work"]]);
+    expect(studioDomainQueryKey("coach", undefined, "lessons")).toEqual([
+      "studio-domain",
+      "coach",
+      null,
+      "lessons",
+    ]);
     expect(
       paginatedQueryKey({
         domain: "students",
@@ -36,7 +42,7 @@ describe("route-specific query contracts", () => {
     expect(shouldShowPagination(0, portalPageSize)).toBe(false);
   });
 
-  it("loads a V2 route through one RLS-preserving aggregate request", () => {
+  it("loads each V2 domain through the RLS-preserving RPC", () => {
     const repository = read("src/data/repository.ts");
     expect(repository).toContain('"studio_route_snapshot"');
     const migration = read(
@@ -57,9 +63,28 @@ describe("route-specific query contracts", () => {
   it("keeps polling only in the explicitly disabled rollback branch", () => {
     const hook = read("src/hooks/useStudio.ts");
     expect(hook).toContain("queryLayerV2Enabled");
-    expect(hook).toMatch(
-      /refetchInterval:[\s\S]*queryLayerV2Enabled[\s\S]*\? false/,
-    );
+    expect(hook).toContain("refetchInterval: false as const");
+    expect(hook).toContain("studio-legacy");
     expect(hook).toContain("placeholderData");
+  });
+
+  it("uses database paging on the major collection screens", () => {
+    const roster = read("src/features/coach/StudentsIndex.tsx");
+    const operations = read("src/features/coach/StudioOperations.tsx");
+    expect(roster).toContain('table: "students"');
+    expect(operations).toContain('table: "notes"');
+    expect(operations).toContain('table: "material_library_rows"');
+    expect(operations).toContain("shouldShowPagination");
+  });
+
+  it("does not retain broad studio-cache invalidations", () => {
+    for (const path of [
+      "src/features/coach/StudentWorkspace.tsx",
+      "src/features/coach/StudioOperations.tsx",
+      "src/features/student/StudentPortal.tsx",
+      "src/features/messages/Inbox.tsx",
+    ]) {
+      expect(read(path)).not.toContain('queryKey: ["studio"]');
+    }
   });
 });

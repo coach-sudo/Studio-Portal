@@ -6,6 +6,7 @@ security invoker
 set search_path = ''
 as $$
   select jsonb_build_object(
+    'currentUserId', (select auth.uid()),
     'membership', (
       select jsonb_build_object(
         'studio_id', m.studio_id,
@@ -28,9 +29,20 @@ as $$
       from public.studios s
       limit 1
     ),
-    'students', case when requested_domains && array['identity','students','lessons','booking','work','finance','messaging','actorProfiles','households','referrals'] then
-      coalesce((select jsonb_agg(to_jsonb(t)) from public.students t where t.deleted_at is null), '[]'::jsonb) else '[]'::jsonb end,
-    'lessons', case when requested_domains && array['lessons','booking'] then
+    'students', case
+      when requested_domains && array['students'] then
+        coalesce((select jsonb_agg(to_jsonb(t)) from public.students t where t.deleted_at is null), '[]'::jsonb)
+      when requested_domains && array['identity'] then
+        coalesce((
+          select jsonb_agg(to_jsonb(t))
+          from public.students t
+          where t.deleted_at is null
+            and not public.is_studio_coach(t.studio_id)
+            and public.can_access_student(t.id)
+        ), '[]'::jsonb)
+      else '[]'::jsonb
+    end,
+    'lessons', case when requested_domains && array['lessons'] then
       coalesce((select jsonb_agg(to_jsonb(t)) from public.lessons t), '[]'::jsonb) else '[]'::jsonb end,
     'notes', case when requested_domains && array['work'] then
       coalesce((select jsonb_agg(to_jsonb(t)) from public.notes t), '[]'::jsonb) else '[]'::jsonb end,

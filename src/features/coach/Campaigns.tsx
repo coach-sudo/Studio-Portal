@@ -13,7 +13,10 @@ import {
   unknownCampaignTokens,
 } from "../../domain/campaignTemplates";
 import type { StudioSettings, StudioSnapshot } from "../../domain/model";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import "./Campaigns.css";
 
@@ -48,7 +51,7 @@ function demoOverview(data: StudioSnapshot): CampaignOverview {
 }
 
 export function Campaigns() {
-  const { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "households"]);
+  const { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "households"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [overview, setOverview] = useState<CampaignOverview>();
@@ -133,7 +136,7 @@ export function Campaigns() {
         payload: { settings: { campaignTemplates: next } },
         reason: "Coach updated campaign templates",
       });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["identity"]);
     }
   };
   const saveTemplate = async (event: FormEvent) => {

@@ -45,7 +45,10 @@ import type {
   StudioSnapshot,
   StudioSettings,
 } from "../../domain/model";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { LessonsView } from "./StudioOperations";
 
@@ -79,7 +82,7 @@ const bookingTone = (status: Booking["status"]) =>
         : "neutral";
 
 export function BookingCenter() {
-  const { data, isLoading, isDemo } = useStudio("coach", undefined, ["identity", "students", "booking", "lessons"]);
+  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "booking", "lessons"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -131,7 +134,7 @@ export function BookingCenter() {
           expectedVersion: item?.version,
           payload,
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["booking"]);
       }
       setDialog(undefined);
       setNotice("Saved. The booking workspace has been updated.");
@@ -158,7 +161,7 @@ export function BookingCenter() {
           payload: { settings: updates },
           reason: "Coach updated booking setup",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["identity", "booking"]);
       }
       setNotice("Booking page and booking preferences saved.");
     } catch (reason) {

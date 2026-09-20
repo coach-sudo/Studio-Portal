@@ -6,12 +6,15 @@ import { EmptyState, PageHeader, Section, Status } from "../../components/Primit
 import { studioCommand } from "../../data/bookingCommands";
 import type { Role, StudioSnapshot } from "../../domain/model";
 import { formatStudioDateTime } from "../../domain/presentation";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 export function CoachClassWorkspace() {
   const { offeringId = "" } = useParams();
-  const { data, isLoading, isDemo } = useStudio("coach", undefined, ["identity", "lessons", "work"]);
+  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, ["identity", "lessons", "work"]);
   if (isLoading || !data) return <div className="loading">Opening class…</div>;
   return <ClassWorkspace data={data} isDemo={isDemo} role="coach" offeringId={offeringId} />;
 }
@@ -50,7 +53,7 @@ function ClassWorkspace({ data, isDemo, role, offeringId }: { data: StudioSnapsh
         });
       } else {
         await studioCommand("offerings", { command: "create_assignment", entityId: offering.id, expectedVersion: offering.version, payload: { title: assignment.title, details: assignment.details, dueAt: assignment.dueAt || undefined }, reason: "Coach assigned class work" });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setAssignment({ title: "", details: "", dueAt: "" });
       setAssignmentOpen(false);

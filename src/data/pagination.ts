@@ -1,12 +1,18 @@
 import type { Database } from "../types/database.generated";
 import { supabase } from "../lib/supabase";
+import type { StudioDomain } from "./repository";
 
 export const coachPageSize = 25;
 export const portalPageSize = 10;
 
-export type StudioTable = keyof Database["public"]["Tables"];
+export type StudioTable =
+  keyof Database["public"]["Tables"] | keyof Database["public"]["Views"];
 export type StudioTableRow<Table extends StudioTable> =
-  Database["public"]["Tables"][Table]["Row"];
+  Table extends keyof Database["public"]["Tables"]
+    ? Database["public"]["Tables"][Table]["Row"]
+    : Table extends keyof Database["public"]["Views"]
+      ? Database["public"]["Views"][Table]["Row"]
+      : never;
 
 export type PaginatedResult<Item> = {
   items: Item[];
@@ -16,12 +22,14 @@ export type PaginatedResult<Item> = {
 };
 
 export type PaginatedRequest<Table extends StudioTable> = {
-  domain: string;
+  domain: StudioDomain;
   table: Table;
+  select?: string;
   page: number;
   pageSize: number;
   search?: {
-    column: keyof StudioTableRow<Table> & string;
+    column?: keyof StudioTableRow<Table> & string;
+    columns?: readonly (keyof StudioTableRow<Table> & string)[];
     value: string;
   };
   filters?: Partial<Record<keyof StudioTableRow<Table> & string, unknown>>;
@@ -63,7 +71,7 @@ export async function loadPaginatedRows<Table extends StudioTable>(
   const to = from + request.pageSize - 1;
   let query: any = (supabase as any)
     .from(request.table)
-    .select("*", { count: "exact" });
+    .select(request.select ?? "*", { count: "exact" });
 
   for (const [column, value] of sortedEntries(
     request.filters as Record<string, unknown> | undefined,
@@ -72,7 +80,22 @@ export async function loadPaginatedRows<Table extends StudioTable>(
     query = value === null ? query.is(column, null) : query.eq(column, value);
   }
   const search = request.search?.value.trim();
-  if (search) query = query.ilike(request.search!.column, `%${search}%`);
+  if (search) {
+    const columns =
+      request.search?.columns ??
+      (request.search?.column ? [request.search.column] : []);
+    if (columns.length > 1) {
+      // `.or()` accepts raw PostgREST syntax, so strip its structural tokens
+      // from user-controlled search text before building the expression.
+      const safeSearch = search.replace(/[(),."\\]/g, " ").trim();
+      if (safeSearch)
+        query = query.or(
+          columns.map((column) => `${column}.ilike.%${safeSearch}%`).join(","),
+        );
+    } else if (columns[0]) {
+      query = query.ilike(columns[0], `%${search}%`);
+    }
+  }
   if (request.sort)
     query = query.order(request.sort.column, {
       ascending: request.sort.ascending,

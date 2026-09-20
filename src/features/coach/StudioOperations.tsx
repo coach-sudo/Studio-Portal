@@ -14,7 +14,7 @@ import {
   Trash2,
   UserRound,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import DOMPurify from "dompurify";
 import { useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
@@ -48,9 +48,23 @@ import {
   studioDateKey,
 } from "../../domain/presentation";
 import { useStudioStore } from "../../state/StudioStore";
-import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
-import { calculatePackagePrice, packagePricingChanged } from "../../domain/packagePricing";
+import {
+  checkSchedulingConflicts,
+  studioCommand,
+} from "../../data/bookingCommands";
+import {
+  calculatePackagePrice,
+  packagePricingChanged,
+} from "../../domain/packagePricing";
 import { staleReviewPayload } from "../../domain/intakeRecency";
+import { coachPageSize, shouldShowPagination } from "../../data/pagination";
+import { mapMaterialLibraryRow, mapNoteRow } from "../../data/studioMappers";
+import { getSignedMaterialUrl } from "../../data/repository";
+import { usePaginatedStudioRows } from "../../hooks/usePaginatedStudioRows";
+import {
+  invalidateStudioDomains,
+  queryLayerV2Enabled,
+} from "../../hooks/useStudio";
 
 const studentName = (data: StudioSnapshot, id: string) =>
   data.students.find((item) => item.id === id)?.fullName || "Student";
@@ -116,7 +130,10 @@ export function TodayView({
   const notePage = usePagedList(noteFollowups);
   const reviewGroups = Object.values(
     data.integrationImports
-      .filter((item) => item.status === "needs_review" && !staleReviewPayload(item.payload))
+      .filter(
+        (item) =>
+          item.status === "needs_review" && !staleReviewPayload(item.payload),
+      )
       .reduce<Record<string, IntegrationImport[]>>((groups, item) => {
         const key = `${item.detectedSource}:${importSummary(item)}`;
         (groups[key] ||= []).push(item);
@@ -150,7 +167,7 @@ export function TodayView({
           expectedVersion: lesson.version,
           reason: "Coach completed lesson",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setNotice(
         "Lesson completed. Add the follow-up from the student record when you are ready.",
@@ -165,18 +182,24 @@ export function TodayView({
   };
   const reviewed = async () => {
     setReviewing(undefined);
-    await queryClient.invalidateQueries({ queryKey: ["studio"] });
+    await invalidateStudioDomains(queryClient, ["students", "administration"]);
     setNotice(
       "The provider signal was reviewed and the student record was updated.",
     );
   };
-  const reschedule = async (startsAt: string, endsAt: string, allowConflict = false) => {
+  const reschedule = async (
+    startsAt: string,
+    endsAt: string,
+    allowConflict = false,
+  ) => {
     if (!rescheduling || rescheduleBusy) return;
     setRescheduleBusy(true);
     try {
       if (isDemo)
         store.transact((draft) => {
-          const item = draft.lessons.find((lesson) => lesson.id === rescheduling.id);
+          const item = draft.lessons.find(
+            (lesson) => lesson.id === rescheduling.id,
+          );
           if (!item) return;
           item.startsAt = startsAt;
           item.endsAt = endsAt;
@@ -191,12 +214,18 @@ export function TodayView({
           payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson from Today",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setRescheduling(undefined);
-      setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
+      setNotice(
+        "Lesson rescheduled. Calendar and student invitation updates are queued.",
+      );
     } catch (reason) {
-      setNotice(reason instanceof Error ? reason.message : "Lesson could not be rescheduled.");
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Lesson could not be rescheduled.",
+      );
     } finally {
       setRescheduleBusy(false);
     }
@@ -230,7 +259,7 @@ export function TodayView({
           payload: { preparation },
           reason: "Coach updated today's lesson preparation",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
     } catch (reason) {
       setNotice(
@@ -253,51 +282,59 @@ export function TodayView({
               new Date(lesson.endsAt).getTime() >= now;
             const isFeatured = lesson.id === featuredLessonId;
             return (
-            <article
-              key={lesson.id}
-              className={`today-lesson-row${isFeatured ? " featured" : ""}`}
-            >
-              <span>{index + 1}</span>
-              <div className="today-lesson-copy">
-                <strong>
-                  {studentName(data, lesson.studentId)} · {lesson.topic}
-                </strong>
-                <small>
-                  {formatStudioTime(lesson.startsAt, data.settings.timezone)} ·{" "}
-                  {lesson.locationLabel} · {sourceLabel(lesson.sourceProvider)}
-                </small>
-                <div
-                  className="today-prep-checks"
-                  aria-label={`Preparation for ${studentName(data, lesson.studentId)}`}
-                >
-                  {(
-                    [
-                      ["planned", "Plan"],
-                      ["setupReady", "Setup"],
-                      ["materialsReady", "Materials"],
-                    ] as const
-                  ).map(([key, label]) => (
-                    <label key={key} className="compact-check">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(lesson.preparation?.[key])}
-                        disabled={Boolean(prepBusy)}
-                        onChange={() => void togglePreparation(lesson, key)}
-                      />
-                      <span>{label}</span>
-                    </label>
-                  ))}
+              <article
+                key={lesson.id}
+                className={`today-lesson-row${isFeatured ? " featured" : ""}`}
+              >
+                <span>{index + 1}</span>
+                <div className="today-lesson-copy">
+                  <strong>
+                    {studentName(data, lesson.studentId)} · {lesson.topic}
+                  </strong>
+                  <small>
+                    {formatStudioTime(lesson.startsAt, data.settings.timezone)}{" "}
+                    · {lesson.locationLabel} ·{" "}
+                    {sourceLabel(lesson.sourceProvider)}
+                  </small>
+                  <div
+                    className="today-prep-checks"
+                    aria-label={`Preparation for ${studentName(data, lesson.studentId)}`}
+                  >
+                    {(
+                      [
+                        ["planned", "Plan"],
+                        ["setupReady", "Setup"],
+                        ["materialsReady", "Materials"],
+                      ] as const
+                    ).map(([key, label]) => (
+                      <label key={key} className="compact-check">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(lesson.preparation?.[key])}
+                          disabled={Boolean(prepBusy)}
+                          onChange={() => void togglePreparation(lesson, key)}
+                        />
+                        <span>{label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
-              </div>
-              <Status tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}>
-                {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
-              </Status>
-              <div className="row-actions">
-                <button onClick={() => setRescheduling(lesson)}>Reschedule</button>
-                <button onClick={() => void complete(lesson)}>Complete</button>
-              </div>
-            </article>
-          );})}
+                <Status
+                  tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}
+                >
+                  {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
+                </Status>
+                <div className="row-actions">
+                  <button onClick={() => setRescheduling(lesson)}>
+                    Reschedule
+                  </button>
+                  <button onClick={() => void complete(lesson)}>
+                    Complete
+                  </button>
+                </div>
+              </article>
+            );
+          })}
           {!lessons.length && (
             <EmptyState
               title="The rest of today is clear"
@@ -420,8 +457,8 @@ export function TodayView({
         bookingAttention.length > 0) && (
         <Section title="Approve & resolve" marked>
           <p className="section-intro">
-            Everything waiting for a coach decision is collected here; the
-            full record remains in its natural workspace.
+            Everything waiting for a coach decision is collected here; the full
+            record remains in its natural workspace.
           </p>
           <div className="table-list">
             {pendingMaterials.map((item) => (
@@ -429,10 +466,14 @@ export function TodayView({
                 <FolderOpen />
                 <div>
                   <strong>Review {item.title}</strong>
-                  <small>{studentName(data, item.studentId)} · actor material</small>
+                  <small>
+                    {studentName(data, item.studentId)} · actor material
+                  </small>
                 </div>
                 <Status tone="warn">approval</Status>
-                <button onClick={() => navigate("/coach/materials")}>Review</button>
+                <button onClick={() => navigate("/coach/materials")}>
+                  Review
+                </button>
               </article>
             ))}
             {pendingActorPages.map((item) => (
@@ -443,14 +484,18 @@ export function TodayView({
                   <small>Requested by the student</small>
                 </div>
                 <Status tone="warn">approval</Status>
-                <button onClick={() => navigate("/coach/actor-pages")}>Review</button>
+                <button onClick={() => navigate("/coach/actor-pages")}>
+                  Review
+                </button>
               </article>
             ))}
             {helpRequests.map((item) => (
               <article key={`help-${item.id}`}>
                 <CheckCircle2 />
                 <div>
-                  <strong>{studentName(data, item.studentId)} asked for help</strong>
+                  <strong>
+                    {studentName(data, item.studentId)} asked for help
+                  </strong>
                   <small>{item.title}</small>
                 </div>
                 <Status tone="warn">reply</Status>
@@ -467,11 +512,15 @@ export function TodayView({
               <article key={`booking-${item.id}`}>
                 <CalendarDays />
                 <div>
-                  <strong>{item.guestName} · {item.reference}</strong>
+                  <strong>
+                    {item.guestName} · {item.reference}
+                  </strong>
                   <small>Booking or integration delivery needs attention</small>
                 </div>
                 <Status tone="warn">resolve</Status>
-                <button onClick={() => navigate("/coach/bookings")}>Open</button>
+                <button onClick={() => navigate("/coach/bookings")}>
+                  Open
+                </button>
               </article>
             ))}
           </div>
@@ -500,9 +549,30 @@ export function TodayView({
             lesson={rescheduling}
             studentName={studentName(data, rescheduling.studentId)}
             timezone={data.settings.timezone}
-            cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
+            cancellationWindowHours={
+              data.settings.bookingDefaults.cancellationWindowHours
+            }
             busy={rescheduleBusy}
-            onCheckConflicts={(startsAt, endsAt) => isDemo ? Promise.resolve(data.lessons.filter((lesson) => lesson.id !== rescheduling.id && lesson.status === "scheduled" && lesson.startsAt < endsAt && lesson.endsAt > startsAt).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))) : checkSchedulingConflicts(startsAt, endsAt, rescheduling.id)}
+            onCheckConflicts={(startsAt, endsAt) =>
+              isDemo
+                ? Promise.resolve(
+                    data.lessons
+                      .filter(
+                        (lesson) =>
+                          lesson.id !== rescheduling.id &&
+                          lesson.status === "scheduled" &&
+                          lesson.startsAt < endsAt &&
+                          lesson.endsAt > startsAt,
+                      )
+                      .map((lesson) => ({
+                        id: lesson.id,
+                        summary: lesson.topic,
+                        start: lesson.startsAt,
+                        end: lesson.endsAt,
+                      })),
+                  )
+                : checkSchedulingConflicts(startsAt, endsAt, rescheduling.id)
+            }
             onCancel={() => setRescheduling(undefined)}
             onSubmit={reschedule}
           />
@@ -653,7 +723,8 @@ function ImportReviewDialog({
           <div className="import-evidence full">
             <strong>Lesson detected</strong>
             <span>
-              {formatStudioDateTime(candidate.startsAt, data.settings.timezone)} –{" "}
+              {formatStudioDateTime(candidate.startsAt, data.settings.timezone)}{" "}
+              –{" "}
               {candidate.endsAt
                 ? formatStudioTime(candidate.endsAt, data.settings.timezone)
                 : "end time unavailable"}
@@ -797,7 +868,9 @@ export function LessonsView({
     store = useStudioStore(),
     queryClient = useQueryClient(),
     [selected, setSelected] = useState<Lesson>(),
-    [panel, setPanel] = useState<"details" | "reschedule" | "credits">("details"),
+    [panel, setPanel] = useState<"details" | "reschedule" | "credits">(
+      "details",
+    ),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(""),
     [confirmCancel, setConfirmCancel] = useState(false),
@@ -805,7 +878,8 @@ export function LessonsView({
     [occurrences, setOccurrences] = useState(6),
     [creditQuantityText, setCreditQuantityText] = useState("1"),
     [creditReason, setCreditReason] = useState("Lesson-specific credit"),
-    [paymentStatus, setPaymentStatus] = useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
+    [paymentStatus, setPaymentStatus] =
+      useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
     [lessonPrice, setLessonPrice] = useState(""),
     [lessonPaid, setLessonPaid] = useState("");
   const openLesson = (lesson: Lesson) => {
@@ -813,7 +887,9 @@ export function LessonsView({
     setPanel("details");
     setConfirmCancel(false);
     setPaymentStatus(lesson.paymentStatus || "untracked");
-    setLessonPrice(lesson.priceMinor == null ? "" : String(lesson.priceMinor / 100));
+    setLessonPrice(
+      lesson.priceMinor == null ? "" : String(lesson.priceMinor / 100),
+    );
     setLessonPaid(String((lesson.paidMinor || 0) / 100));
   };
   const update = async (status: "completed" | "cancelled") => {
@@ -834,7 +910,7 @@ export function LessonsView({
           expectedVersion: selected.version,
           reason: `Coach marked lesson ${status}`,
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setSelected(undefined);
       setNotice(
@@ -852,7 +928,11 @@ export function LessonsView({
       setBusy("");
     }
   };
-  const move = async (startsAt: string, endsAt: string, allowConflict = false) => {
+  const move = async (
+    startsAt: string,
+    endsAt: string,
+    allowConflict = false,
+  ) => {
     if (!selected || busy) return;
     setBusy("reschedule");
     try {
@@ -871,10 +951,12 @@ export function LessonsView({
           payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setSelected(undefined);
-      setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
+      setNotice(
+        "Lesson rescheduled. Calendar and student invitation updates are queued.",
+      );
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -926,7 +1008,7 @@ export function LessonsView({
           },
           reason: "Coach created recurring lesson series",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setSelected(undefined);
       setNotice(`${occurrences} ${cadence} lessons added as one series.`);
@@ -941,9 +1023,18 @@ export function LessonsView({
     }
   };
   const creditQuantity = Number(creditQuantityText);
-  const validCreditQuantity = creditQuantityText.trim() !== "" && Number.isInteger(creditQuantity) && creditQuantity !== 0 && Math.abs(creditQuantity) <= 20;
+  const validCreditQuantity =
+    creditQuantityText.trim() !== "" &&
+    Number.isInteger(creditQuantity) &&
+    creditQuantity !== 0 &&
+    Math.abs(creditQuantity) <= 20;
   const adjustLessonCredit = async () => {
-    if (!selected || !validCreditQuantity || creditReason.trim().length < 3 || busy)
+    if (
+      !selected ||
+      !validCreditQuantity ||
+      creditReason.trim().length < 3 ||
+      busy
+    )
       return;
     setBusy("credit");
     try {
@@ -988,7 +1079,7 @@ export function LessonsView({
           },
           reason: "Coach adjusted credit for a specific lesson",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
       }
       setNotice(`Credit adjustment attached to ${selected.topic}.`);
     } catch (reason) {
@@ -1011,10 +1102,10 @@ export function LessonsView({
             .filter((item) => item.studentId === selected.studentId)
             .find(
               (item) =>
-                packageSummary(item, draft.creditEntries).remainingCredits >
-                0,
+                packageSummary(item, draft.creditEntries).remainingCredits > 0,
             );
-          if (!pkg) throw new Error("This student does not have an available credit.");
+          if (!pkg)
+            throw new Error("This student does not have an available credit.");
           draft.creditEntries.push({
             id: `credit-${crypto.randomUUID()}`,
             packageId: pkg.id,
@@ -1035,7 +1126,7 @@ export function LessonsView({
           payload: { reason: `Paid by credit for ${selected.topic}` },
           reason: "Coach marked lesson paid by credit",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
       }
       setSelected(undefined);
       setNotice("One credit was used and the lesson is marked paid by credit.");
@@ -1052,14 +1143,42 @@ export function LessonsView({
   const savePaymentStatus = async () => {
     if (!selected || busy) return;
     setBusy("payment");
-    const priceMinor = lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
+    const priceMinor =
+      lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
     const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
     try {
-      if (isDemo) store.transact((draft) => { const item = draft.lessons.find((row) => row.id === selected.id); if (item) { item.paymentStatus = paymentStatus; item.priceMinor = priceMinor; item.paidMinor = paidMinor; item.version += 1; item.updatedAt = new Date().toISOString(); } });
-      else { await studioCommand("lessons", { command: "set_payment_status", entityId: selected.id, expectedVersion: selected.version, payload: { paymentStatus, priceMinor, paidMinor }, reason: "Coach updated lesson payment status" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
-      setNotice("Lesson payment status saved."); setSelected(undefined);
-    } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Payment status could not be saved."); }
-    finally { setBusy(""); }
+      if (isDemo)
+        store.transact((draft) => {
+          const item = draft.lessons.find((row) => row.id === selected.id);
+          if (item) {
+            item.paymentStatus = paymentStatus;
+            item.priceMinor = priceMinor;
+            item.paidMinor = paidMinor;
+            item.version += 1;
+            item.updatedAt = new Date().toISOString();
+          }
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "set_payment_status",
+          entityId: selected.id,
+          expectedVersion: selected.version,
+          payload: { paymentStatus, priceMinor, paidMinor },
+          reason: "Coach updated lesson payment status",
+        });
+        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
+      }
+      setNotice("Lesson payment status saved.");
+      setSelected(undefined);
+    } catch (reason) {
+      setNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Payment status could not be saved.",
+      );
+    } finally {
+      setBusy("");
+    }
   };
   const selectedStudent = selected
     ? data.students.find((student) => student.id === selected.studentId)
@@ -1090,7 +1209,11 @@ export function LessonsView({
     ? data.materials.filter((item) => item.lessonId === selected.id).length
     : 0;
   const selectedDuration = selected
-    ? Math.round((new Date(selected.endsAt).getTime() - new Date(selected.startsAt).getTime()) / 60_000)
+    ? Math.round(
+        (new Date(selected.endsAt).getTime() -
+          new Date(selected.startsAt).getTime()) /
+          60_000,
+      )
     : 0;
   return (
     <Section title="Lesson calendar" marked>
@@ -1123,224 +1246,348 @@ export function LessonsView({
               lesson={selected}
               studentName={studentName(data, selected.studentId)}
               timezone={data.settings.timezone}
-              cancellationWindowHours={data.settings.bookingDefaults.cancellationWindowHours}
+              cancellationWindowHours={
+                data.settings.bookingDefaults.cancellationWindowHours
+              }
               busy={busy === "reschedule"}
-              onCheckConflicts={(startsAt, endsAt) => isDemo ? Promise.resolve(data.lessons.filter((lesson) => lesson.id !== selected.id && lesson.status === "scheduled" && lesson.startsAt < endsAt && lesson.endsAt > startsAt).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))) : checkSchedulingConflicts(startsAt, endsAt, selected.id)}
+              onCheckConflicts={(startsAt, endsAt) =>
+                isDemo
+                  ? Promise.resolve(
+                      data.lessons
+                        .filter(
+                          (lesson) =>
+                            lesson.id !== selected.id &&
+                            lesson.status === "scheduled" &&
+                            lesson.startsAt < endsAt &&
+                            lesson.endsAt > startsAt,
+                        )
+                        .map((lesson) => ({
+                          id: lesson.id,
+                          summary: lesson.topic,
+                          start: lesson.startsAt,
+                          end: lesson.endsAt,
+                        })),
+                    )
+                  : checkSchedulingConflicts(startsAt, endsAt, selected.id)
+              }
               onCancel={() => setPanel("details")}
               onSubmit={move}
             />
           ) : (
-          <div className="workflow-content lesson-command-center">
-            <div className="lesson-command-summary">
-              <Status
-                tone={
-                  selected.status === "completed"
-                    ? "good"
-                    : selected.status === "scheduled"
-                      ? "neutral"
-                      : "warn"
-                }
-              >
-                {selected.status}
-              </Status>
-              <span>{selected.locationLabel}</span>
-              <span>
-                {selected.seriesId ? "Recurring series" : "Single lesson"}
-              </span>
-              <span>
-                {paidByCredit
-                  ? "Paid by credit"
-                  : `${availableCredits} credits available`}
-              </span>
-            </div>
-            <div className="form-actions">
-              {panel === "credits" && (
-                <button className="text-button" onClick={() => setPanel("details")}>
-                  Back to lesson details
-                </button>
-              )}
-              {panel === "details" && selected.status === "scheduled" && (
-                <button className="primary" onClick={() => setPanel("reschedule")}>
-                  Reschedule
-                </button>
-              )}
-              {panel === "details" && (
-                <button className="text-button" onClick={() => setPanel("credits")}>
-                  Adjust credits
-                </button>
-              )}
-              <button
-                className="text-button"
-                onClick={() =>
-                  navigate(
-                    `/coach/students/${selected.studentId}/lessons/${selected.id}`,
-                  )
-                }
-              >
-                Open lesson workspace
-              </button>
-              <button
-                className="text-button"
-                onClick={() =>
-                  navigate(`/coach/students/${selected.studentId}/lessons`)
-                }
-              >
-                Student history
-              </button>
-              {data.lessonParticipants.some((part)=>part.lessonId===selected.id&&part.bookingId) && <button className="text-button" onClick={()=>navigate(`/coach/bookings?view=calendar&lesson=${selected.id}`)}>Open booking record</button>}
-            </div>
-            {panel === "details" && (
-              <section className="lesson-facts" aria-label="Lesson information">
-                <div>
-                  <small>Date & time</small>
-                  <strong>{formatStudioDateTime(selected.startsAt, data.settings.timezone)}</strong>
-                </div>
-                <div><small>Duration</small><strong>{selectedDuration} minutes</strong></div>
-                <div><small>Delivery</small><strong>{selected.locationLabel}</strong></div>
-                <div><small>Source</small><strong>{sourceLabel(selected.sourceProvider)}</strong></div>
-                <div>
-                  <small>Lesson work</small>
-                  <strong>{selectedNotes} notes · {selectedPractice} practice · {selectedMaterials} files</strong>
-                </div>
-                <div>
-                  <small>Payment</small>
-                  <strong>{paidByCredit ? "Paid with lesson credit" : (selected.paymentStatus || "untracked").replaceAll("_", " ")}{selected.priceMinor != null ? ` · ${formatMoney(selected.priceMinor)}` : ""}</strong>
-                </div>
-              </section>
-            )}
-            {panel === "details" && selected.status === "scheduled" && !selected.seriesId && (
-              <section className="lesson-command-section">
-                <h3>Make recurring</h3>
-                <p>Create the remaining occurrences in one DST-safe series.</p>
-                <div className="inline-command">
-                  <label>
-                    Rhythm
-                    <select
-                      value={cadence}
-                      onChange={(event) =>
-                        setCadence(event.target.value as typeof cadence)
-                      }
-                    >
-                      <option value="weekly">Weekly</option>
-                      <option value="biweekly">Every other week</option>
-                    </select>
-                  </label>
-                  <label>
-                    Total lessons
-                    <input
-                      type="number"
-                      min="2"
-                      max="52"
-                      value={occurrences}
-                      onChange={(event) =>
-                        setOccurrences(Number(event.target.value))
-                      }
-                    />
-                  </label>
-                  <button
-                    disabled={
-                      Boolean(busy) || occurrences < 2 || occurrences > 52
-                    }
-                    onClick={() => void makeRecurring()}
-                  >
-                    {busy === "recurring" ? "Creating…" : "Create series"}
-                  </button>
-                </div>
-              </section>
-            )}
-            {panel === "credits" && <section className="lesson-command-section">
-              <h3>Credits & payment</h3>
-              <p>
-                Adjust the student’s balance and attach the reason to this lesson.
-                Positive numbers add credits; negative numbers remove them.
-              </p>
-              <div className="inline-command">
-                <label>
-                  Credits
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={creditQuantityText}
-                    onChange={(event) => setCreditQuantityText(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Reason
-                  <input
-                    value={creditReason}
-                    onChange={(event) => setCreditReason(event.target.value)}
-                  />
-                </label>
-                <button
-                  disabled={
-                    Boolean(busy) ||
-                    !validCreditQuantity ||
-                    creditReason.trim().length < 3
+            <div className="workflow-content lesson-command-center">
+              <div className="lesson-command-summary">
+                <Status
+                  tone={
+                    selected.status === "completed"
+                      ? "good"
+                      : selected.status === "scheduled"
+                        ? "neutral"
+                        : "warn"
                   }
-                  onClick={() => void adjustLessonCredit()}
                 >
-                  {busy === "credit" ? "Saving…" : "Add adjustment"}
-                </button>
+                  {selected.status}
+                </Status>
+                <span>{selected.locationLabel}</span>
+                <span>
+                  {selected.seriesId ? "Recurring series" : "Single lesson"}
+                </span>
+                <span>
+                  {paidByCredit
+                    ? "Paid by credit"
+                    : `${availableCredits} credits available`}
+                </span>
               </div>
-              {!paidByCredit && (
-                <button
-                  className="primary"
-                  disabled={Boolean(busy) || availableCredits < 1}
-                  onClick={() => void payWithCredit()}
-                >
-                  {busy === "pay-credit"
-                    ? "Applying…"
-                    : availableCredits > 0
-                      ? "Use 1 credit for this lesson"
-                      : "No credit available"}
-                </button>
-              )}
-              <div className="inline-command payment-status-command">
-                <label>Status<select value={paymentStatus} onChange={(event) => setPaymentStatus(event.target.value as typeof paymentStatus)}><option value="untracked">Not tracked</option><option value="due">Due</option><option value="partially_paid">Partially paid</option><option value="paid">Paid</option><option value="waived">Waived</option><option value="refunded">Refunded</option></select></label>
-                <label>Lesson price (USD)<input type="number" min="0" step="0.01" value={lessonPrice} onChange={(event) => setLessonPrice(event.target.value)} /></label>
-                <label>Amount paid (USD)<input type="number" min="0" step="0.01" value={lessonPaid} onChange={(event) => setLessonPaid(event.target.value)} /></label>
-                <button disabled={Boolean(busy)} onClick={() => void savePaymentStatus()}>{busy === "payment" ? "Saving…" : "Save payment status"}</button>
-              </div>
-            </section>}
-            {panel === "details" && selected.status === "scheduled" && (
-              <div className="form-actions lesson-final-actions">
-                <button
-                  className="primary"
-                  disabled={Boolean(busy)}
-                  onClick={() => void update("completed")}
-                >
-                  {busy === "completed" ? "Saving…" : "Mark complete"}
-                </button>
-                {confirmCancel ? (
-                  <>
-                    <span>
-                      This removes it from active calendars and sends the
-                      cancellation to Google.
-                    </span>
-                    <button
-                      className="danger-button"
-                      disabled={Boolean(busy)}
-                      onClick={() => void update("cancelled")}
-                    >
-                      {busy === "cancelled"
-                        ? "Cancelling…"
-                        : "Confirm cancellation"}
-                    </button>
-                    <button onClick={() => setConfirmCancel(false)}>
-                      Keep lesson
-                    </button>
-                  </>
-                ) : (
+              <div className="form-actions">
+                {panel === "credits" && (
                   <button
-                    className="danger-button"
-                    onClick={() => setConfirmCancel(true)}
+                    className="text-button"
+                    onClick={() => setPanel("details")}
                   >
-                    Cancel & remove lesson
+                    Back to lesson details
+                  </button>
+                )}
+                {panel === "details" && selected.status === "scheduled" && (
+                  <button
+                    className="primary"
+                    onClick={() => setPanel("reschedule")}
+                  >
+                    Reschedule
+                  </button>
+                )}
+                {panel === "details" && (
+                  <button
+                    className="text-button"
+                    onClick={() => setPanel("credits")}
+                  >
+                    Adjust credits
+                  </button>
+                )}
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    navigate(
+                      `/coach/students/${selected.studentId}/lessons/${selected.id}`,
+                    )
+                  }
+                >
+                  Open lesson workspace
+                </button>
+                <button
+                  className="text-button"
+                  onClick={() =>
+                    navigate(`/coach/students/${selected.studentId}/lessons`)
+                  }
+                >
+                  Student history
+                </button>
+                {data.lessonParticipants.some(
+                  (part) => part.lessonId === selected.id && part.bookingId,
+                ) && (
+                  <button
+                    className="text-button"
+                    onClick={() =>
+                      navigate(
+                        `/coach/bookings?view=calendar&lesson=${selected.id}`,
+                      )
+                    }
+                  >
+                    Open booking record
                   </button>
                 )}
               </div>
-            )}
-          </div>
+              {panel === "details" && (
+                <section
+                  className="lesson-facts"
+                  aria-label="Lesson information"
+                >
+                  <div>
+                    <small>Date & time</small>
+                    <strong>
+                      {formatStudioDateTime(
+                        selected.startsAt,
+                        data.settings.timezone,
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <small>Duration</small>
+                    <strong>{selectedDuration} minutes</strong>
+                  </div>
+                  <div>
+                    <small>Delivery</small>
+                    <strong>{selected.locationLabel}</strong>
+                  </div>
+                  <div>
+                    <small>Source</small>
+                    <strong>{sourceLabel(selected.sourceProvider)}</strong>
+                  </div>
+                  <div>
+                    <small>Lesson work</small>
+                    <strong>
+                      {selectedNotes} notes · {selectedPractice} practice ·{" "}
+                      {selectedMaterials} files
+                    </strong>
+                  </div>
+                  <div>
+                    <small>Payment</small>
+                    <strong>
+                      {paidByCredit
+                        ? "Paid with lesson credit"
+                        : (selected.paymentStatus || "untracked").replaceAll(
+                            "_",
+                            " ",
+                          )}
+                      {selected.priceMinor != null
+                        ? ` · ${formatMoney(selected.priceMinor)}`
+                        : ""}
+                    </strong>
+                  </div>
+                </section>
+              )}
+              {panel === "details" &&
+                selected.status === "scheduled" &&
+                !selected.seriesId && (
+                  <section className="lesson-command-section">
+                    <h3>Make recurring</h3>
+                    <p>
+                      Create the remaining occurrences in one DST-safe series.
+                    </p>
+                    <div className="inline-command">
+                      <label>
+                        Rhythm
+                        <select
+                          value={cadence}
+                          onChange={(event) =>
+                            setCadence(event.target.value as typeof cadence)
+                          }
+                        >
+                          <option value="weekly">Weekly</option>
+                          <option value="biweekly">Every other week</option>
+                        </select>
+                      </label>
+                      <label>
+                        Total lessons
+                        <input
+                          type="number"
+                          min="2"
+                          max="52"
+                          value={occurrences}
+                          onChange={(event) =>
+                            setOccurrences(Number(event.target.value))
+                          }
+                        />
+                      </label>
+                      <button
+                        disabled={
+                          Boolean(busy) || occurrences < 2 || occurrences > 52
+                        }
+                        onClick={() => void makeRecurring()}
+                      >
+                        {busy === "recurring" ? "Creating…" : "Create series"}
+                      </button>
+                    </div>
+                  </section>
+                )}
+              {panel === "credits" && (
+                <section className="lesson-command-section">
+                  <h3>Credits & payment</h3>
+                  <p>
+                    Adjust the student’s balance and attach the reason to this
+                    lesson. Positive numbers add credits; negative numbers
+                    remove them.
+                  </p>
+                  <div className="inline-command">
+                    <label>
+                      Credits
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={creditQuantityText}
+                        onChange={(event) =>
+                          setCreditQuantityText(event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      Reason
+                      <input
+                        value={creditReason}
+                        onChange={(event) =>
+                          setCreditReason(event.target.value)
+                        }
+                      />
+                    </label>
+                    <button
+                      disabled={
+                        Boolean(busy) ||
+                        !validCreditQuantity ||
+                        creditReason.trim().length < 3
+                      }
+                      onClick={() => void adjustLessonCredit()}
+                    >
+                      {busy === "credit" ? "Saving…" : "Add adjustment"}
+                    </button>
+                  </div>
+                  {!paidByCredit && (
+                    <button
+                      className="primary"
+                      disabled={Boolean(busy) || availableCredits < 1}
+                      onClick={() => void payWithCredit()}
+                    >
+                      {busy === "pay-credit"
+                        ? "Applying…"
+                        : availableCredits > 0
+                          ? "Use 1 credit for this lesson"
+                          : "No credit available"}
+                    </button>
+                  )}
+                  <div className="inline-command payment-status-command">
+                    <label>
+                      Status
+                      <select
+                        value={paymentStatus}
+                        onChange={(event) =>
+                          setPaymentStatus(
+                            event.target.value as typeof paymentStatus,
+                          )
+                        }
+                      >
+                        <option value="untracked">Not tracked</option>
+                        <option value="due">Due</option>
+                        <option value="partially_paid">Partially paid</option>
+                        <option value="paid">Paid</option>
+                        <option value="waived">Waived</option>
+                        <option value="refunded">Refunded</option>
+                      </select>
+                    </label>
+                    <label>
+                      Lesson price (USD)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={lessonPrice}
+                        onChange={(event) => setLessonPrice(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      Amount paid (USD)
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={lessonPaid}
+                        onChange={(event) => setLessonPaid(event.target.value)}
+                      />
+                    </label>
+                    <button
+                      disabled={Boolean(busy)}
+                      onClick={() => void savePaymentStatus()}
+                    >
+                      {busy === "payment" ? "Saving…" : "Save payment status"}
+                    </button>
+                  </div>
+                </section>
+              )}
+              {panel === "details" && selected.status === "scheduled" && (
+                <div className="form-actions lesson-final-actions">
+                  <button
+                    className="primary"
+                    disabled={Boolean(busy)}
+                    onClick={() => void update("completed")}
+                  >
+                    {busy === "completed" ? "Saving…" : "Mark complete"}
+                  </button>
+                  {confirmCancel ? (
+                    <>
+                      <span>
+                        This removes it from active calendars and sends the
+                        cancellation to Google.
+                      </span>
+                      <button
+                        className="danger-button"
+                        disabled={Boolean(busy)}
+                        onClick={() => void update("cancelled")}
+                      >
+                        {busy === "cancelled"
+                          ? "Cancelling…"
+                          : "Confirm cancellation"}
+                      </button>
+                      <button onClick={() => setConfirmCancel(false)}>
+                        Keep lesson
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className="danger-button"
+                      onClick={() => setConfirmCancel(true)}
+                    >
+                      Cancel & remove lesson
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </Dialog>
       )}
@@ -1362,6 +1609,22 @@ export function NotesView({
     [notice, setNotice] = useState(""),
     [deleting, setDeleting] = useState(""),
     [selected, setSelected] = useState<StudioSnapshot["notes"][number]>();
+  const [serverPage, setServerPage] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(coachPageSize);
+  const serverPaging = queryLayerV2Enabled && !isDemo;
+  const remoteNotes = usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "notes",
+      page: serverPage,
+      pageSize: serverPageSize,
+      search: query.trim() ? { column: "title", value: query } : undefined,
+      filters: { status: status === "all" ? undefined : status },
+      sort: { column: "updated_at", ascending: false },
+    },
+    serverPaging,
+  );
+  useEffect(() => setServerPage(1), [query, status]);
   const filtered = [...data.notes]
     .filter(
       (note) =>
@@ -1377,7 +1640,21 @@ export function NotesView({
           .includes(query.toLowerCase()),
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const notePage = usePagedList(filtered);
+  const localNotePage = usePagedList(filtered, coachPageSize);
+  const notePage = serverPaging
+    ? {
+        visible: (remoteNotes.data?.items ?? []).map(mapNoteRow),
+        page: serverPage,
+        setPage: setServerPage,
+        pageSize: serverPageSize,
+        setPageSize: setServerPageSize,
+        pageCount: Math.max(
+          1,
+          Math.ceil((remoteNotes.data?.total ?? 0) / serverPageSize),
+        ),
+        total: remoteNotes.data?.total ?? 0,
+      }
+    : localNotePage;
   const remove = async (note: StudioSnapshot["notes"][number]) => {
     if (
       deleting ||
@@ -1397,7 +1674,7 @@ export function NotesView({
           expectedVersion: note.version,
           reason: "Coach deleted note",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Note deleted.");
     } catch (reason) {
@@ -1416,7 +1693,7 @@ export function NotesView({
           <Search />
           <input
             aria-label="Search notes"
-            placeholder="Search notes or students…"
+            placeholder="Search note titles…"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
           />
@@ -1431,15 +1708,17 @@ export function NotesView({
           <option value="published">Published</option>
         </select>
       </div>
-      <ListControls
-        page={notePage.page}
-        pageCount={notePage.pageCount}
-        pageSize={notePage.pageSize}
-        total={notePage.total}
-        onPage={notePage.setPage}
-        onPageSize={notePage.setPageSize}
-        label="notes"
-      />
+      {shouldShowPagination(notePage.total, notePage.pageSize) && (
+        <ListControls
+          page={notePage.page}
+          pageCount={notePage.pageCount}
+          pageSize={notePage.pageSize}
+          total={notePage.total}
+          onPage={notePage.setPage}
+          onPageSize={notePage.setPageSize}
+          label="notes"
+        />
+      )}
       <div className="lesson-note-index">
         {notePage.visible.map((note) => (
           <button type="button" key={note.id} onClick={() => setSelected(note)}>
@@ -1466,7 +1745,7 @@ export function NotesView({
             </Status>
           </button>
         ))}
-        {!filtered.length && (
+        {!notePage.total && (
           <EmptyState
             title="No notes yet"
             detail="Open a student record to save a private draft or publish follow-up."
@@ -1517,6 +1796,21 @@ export function NotesView({
     </Section>
   );
 }
+
+function useMaterialRoleCount(role: string, enabled: boolean) {
+  return usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "material_library_rows",
+      page: 1,
+      pageSize: 1,
+      filters: { link_role: role },
+      sort: { column: "title", ascending: true },
+    },
+    enabled,
+  );
+}
+
 export function MaterialsView({
   data,
   isDemo,
@@ -1531,11 +1825,67 @@ export function MaterialsView({
     [deleting, setDeleting] = useState(""),
     [query, setQuery] = useState(""),
     [role, setRole] = useState<
-      "all" | "current_script" | "lesson_material" | "library" | "actor_material"
+      | "all"
+      | "current_script"
+      | "lesson_material"
+      | "library"
+      | "actor_material"
     >("all"),
     [status, setStatus] = useState<
       "all" | "active" | "archived" | "vaulted" | "pending_review"
     >("all");
+  const [serverPage, setServerPage] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(coachPageSize);
+  const serverPaging = queryLayerV2Enabled && !isDemo;
+  const remoteMaterials = usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "material_library_rows",
+      page: serverPage,
+      pageSize: serverPageSize,
+      search: query.trim()
+        ? {
+            columns: [
+              "title",
+              "category",
+              "caption",
+              "student_name",
+              "lesson_topic",
+            ],
+            value: query,
+          }
+        : undefined,
+      filters: {
+        link_role: role === "all" ? undefined : role,
+        status:
+          status === "all" || status === "pending_review" ? undefined : status,
+        approval_status:
+          status === "pending_review" ? "pending_review" : undefined,
+      },
+      sort: { column: "title", ascending: true },
+    },
+    serverPaging,
+  );
+  const currentScriptCount = useMaterialRoleCount(
+    "current_script",
+    serverPaging,
+  );
+  const lessonMaterialCount = useMaterialRoleCount(
+    "lesson_material",
+    serverPaging,
+  );
+  const libraryCount = useMaterialRoleCount("library", serverPaging);
+  const actorMaterialCount = useMaterialRoleCount(
+    "actor_material",
+    serverPaging,
+  );
+  const remoteRoleCounts = {
+    current_script: currentScriptCount.data?.total ?? 0,
+    lesson_material: lessonMaterialCount.data?.total ?? 0,
+    library: libraryCount.data?.total ?? 0,
+    actor_material: actorMaterialCount.data?.total ?? 0,
+  };
+  useEffect(() => setServerPage(1), [query, role, status]);
   const roleOptions = [
     {
       value: "current_script" as const,
@@ -1563,7 +1913,11 @@ export function MaterialsView({
     },
   ];
   const normalizedQuery = query.trim().toLocaleLowerCase();
-  const filtered = data.materials
+  const remoteMaterialRows = (remoteMaterials.data?.items ?? []).map((row) =>
+    mapMaterialLibraryRow(row),
+  );
+  const materials = serverPaging ? remoteMaterialRows : data.materials;
+  const filtered = materials
     .filter((item) => role === "all" || item.role === role)
     .filter((item) => {
       if (status === "all") return true;
@@ -1594,9 +1948,23 @@ export function MaterialsView({
         Number(b.status === "active") - Number(a.status === "active");
       return activeOrder || a.title.localeCompare(b.title);
     });
-  const paged = usePagedList(filtered, 10);
+  const localMaterialPage = usePagedList(filtered, coachPageSize);
+  const paged = serverPaging
+    ? {
+        visible: remoteMaterialRows,
+        page: serverPage,
+        setPage: setServerPage,
+        pageSize: serverPageSize,
+        setPageSize: setServerPageSize,
+        pageCount: Math.max(
+          1,
+          Math.ceil((remoteMaterials.data?.total ?? 0) / serverPageSize),
+        ),
+        total: remoteMaterials.data?.total ?? 0,
+      }
+    : localMaterialPage;
   const archive = async (id: string) => {
-    const current = data.materials.find((item) => item.id === id)!;
+    const current = materials.find((item) => item.id === id)!;
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -1614,7 +1982,7 @@ export function MaterialsView({
           },
           reason: "Coach updated material status",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Material status updated.");
     } catch (reason) {
@@ -1629,7 +1997,7 @@ export function MaterialsView({
     id: string,
     status: "approved" | "changes_requested",
   ) => {
-    const current = data.materials.find((item) => item.id === id)!;
+    const current = materials.find((item) => item.id === id)!;
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -1646,7 +2014,7 @@ export function MaterialsView({
           payload: { status, publicEmbed: status === "approved" },
           reason: `Coach ${status} actor material`,
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice(`Material ${status.replaceAll("_", " ")}.`);
     } catch (reason) {
@@ -1656,7 +2024,7 @@ export function MaterialsView({
     }
   };
   const remove = async (id: string) => {
-    const current = data.materials.find((item) => item.id === id);
+    const current = materials.find((item) => item.id === id);
     if (
       !current ||
       deleting ||
@@ -1678,7 +2046,7 @@ export function MaterialsView({
           expectedVersion: current.version,
           reason: "Coach permanently deleted material",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Material and uploaded file deleted.");
     } catch (reason) {
@@ -1708,23 +2076,30 @@ export function MaterialsView({
       }
     >
       <p className="section-intro material-library-intro">
-        Find active scripts, lesson attachments, reusable resources, and actor-page
-        media without mixing their different jobs together.
+        Find active scripts, lesson attachments, reusable resources, and
+        actor-page media without mixing their different jobs together.
       </p>
-      {notice && <p className="portal-notice" role="status">{notice}</p>}
+      {notice && (
+        <p className="portal-notice" role="status">
+          {notice}
+        </p>
+      )}
       <div className="material-bucket-grid" aria-label="Material categories">
         {roleOptions.map((option) => {
           const Icon = option.icon;
-          const count = data.materials.filter(
-            (item) => item.role === option.value,
-          ).length;
+          const count = serverPaging
+            ? remoteRoleCounts[option.value]
+            : data.materials.filter((item) => item.role === option.value)
+                .length;
           return (
             <button
               type="button"
               key={option.value}
               className={role === option.value ? "selected" : ""}
               aria-pressed={role === option.value}
-              onClick={() => setRole(role === option.value ? "all" : option.value)}
+              onClick={() =>
+                setRole(role === option.value ? "all" : option.value)
+              }
             >
               <Icon />
               <span>
@@ -1760,7 +2135,9 @@ export function MaterialsView({
         >
           <option value="all">All material types</option>
           {roleOptions.map((option) => (
-            <option key={option.value} value={option.value}>{option.label}</option>
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
           ))}
         </select>
         <select
@@ -1778,15 +2155,17 @@ export function MaterialsView({
           <option value="vaulted">Vaulted</option>
         </select>
       </div>
-      <ListControls
-        page={paged.page}
-        pageCount={paged.pageCount}
-        pageSize={paged.pageSize}
-        total={paged.total}
-        onPage={paged.setPage}
-        onPageSize={paged.setPageSize}
-        label="materials"
-      />
+      {shouldShowPagination(paged.total, paged.pageSize) && (
+        <ListControls
+          page={paged.page}
+          pageCount={paged.pageCount}
+          pageSize={paged.pageSize}
+          total={paged.total}
+          onPage={paged.setPage}
+          onPageSize={paged.setPageSize}
+          label="materials"
+        />
+      )}
       <div className="material-library-list">
         {paged.visible.map((item) => {
           const lesson = item.lessonId
@@ -1799,7 +2178,9 @@ export function MaterialsView({
           const Icon = roleOption?.icon || FolderOpen;
           return (
             <article key={item.id}>
-              <span className="material-kind-icon" aria-hidden="true"><Icon /></span>
+              <span className="material-kind-icon" aria-hidden="true">
+                <Icon />
+              </span>
               <div className="material-library-copy">
                 <strong>{item.title}</strong>
                 <small>
@@ -1831,6 +2212,27 @@ export function MaterialsView({
                     Open
                   </a>
                 )}
+                {!item.externalUrl && item.storagePath && (
+                  <button
+                    type="button"
+                    className="button-link"
+                    onClick={() => {
+                      void getSignedMaterialUrl(item.storagePath!).then(
+                        (url) =>
+                          window.open(url, "_blank", "noopener,noreferrer"),
+                        (reason) =>
+                          setNotice(
+                            reason instanceof Error
+                              ? reason.message
+                              : "The material could not be opened.",
+                          ),
+                      );
+                    }}
+                  >
+                    <ExternalLink />
+                    Open
+                  </button>
+                )}
                 {item.approvalStatus === "pending_review" && (
                   <button
                     type="button"
@@ -1859,7 +2261,9 @@ export function MaterialsView({
                     {item.approvalStatus === "pending_review" && (
                       <button
                         type="button"
-                        onClick={() => void review(item.id, "changes_requested")}
+                        onClick={() =>
+                          void review(item.id, "changes_requested")
+                        }
                       >
                         Request changes
                       </button>
@@ -1874,7 +2278,9 @@ export function MaterialsView({
                       onClick={() => void remove(item.id)}
                     >
                       <Trash2 />
-                      {deleting === item.id ? "Deleting…" : "Delete permanently"}
+                      {deleting === item.id
+                        ? "Deleting…"
+                        : "Delete permanently"}
                     </button>
                   </div>
                 </details>
@@ -1884,16 +2290,24 @@ export function MaterialsView({
         })}
         {!paged.total && (
           <EmptyState
-            title={data.materials.length ? "No materials match these filters" : "No materials yet"}
+            title={
+              materials.length
+                ? "No materials match these filters"
+                : "No materials yet"
+            }
             detail={
-              data.materials.length
+              materials.length
                 ? "Clear the filters or choose another material category."
                 : "Choose a student above, then add a script, lesson resource, library file, or actor-page asset."
             }
           />
         )}
-        {!paged.total && data.materials.length > 0 && (
-          <button type="button" className="text-button material-filter-reset" onClick={resetFilters}>
+        {!paged.total && materials.length > 0 && (
+          <button
+            type="button"
+            className="text-button material-filter-reset"
+            onClick={resetFilters}
+          >
             Clear all filters
           </button>
         )}
@@ -1915,7 +2329,9 @@ type PackageBuilderPayload = {
   visibility: "private" | "public";
   directPurchase: boolean;
   giftable: boolean;
-  renewalModes: ("one_time" | "weekly" | "biweekly" | "monthly" | "balance_threshold")[];
+  renewalModes: (
+    "one_time" | "weekly" | "biweekly" | "monthly" | "balance_threshold"
+  )[];
   balanceThreshold: number;
   active: boolean;
 };
@@ -1961,7 +2377,10 @@ export function FinanceView({
           payload: value as unknown as Record<string, unknown>,
           reason: "Coach configured a booking discount",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, [
+          "booking",
+          "administration",
+        ]);
       }
       setDiscountDialog(undefined);
       setNotice("Discount code saved and available to the booking checkout.");
@@ -1976,21 +2395,80 @@ export function FinanceView({
   const save = async (value: PackageBuilderPayload) => {
     try {
       if (isDemo) {
-        store.transact((draft)=>{
-          for(const serviceId of value.serviceIds)for(const sessionCount of value.sessionCounts)for(const deliveryFormat of value.deliveryFormats){
-            const service=draft.bookingServices.find((item)=>item.id===serviceId);if(!service)continue;
-            const unitPrice=service.priceMinor+(deliveryFormat==="in_person"?draft.settings.bookingDefaults.inPersonUpchargeMinor:0);
-            const price=calculatePackagePrice({unitPriceMinor:unitPrice,sessionCount,discountType:value.discountType,discountMinor:value.discountMinor,discountBasisPoints:value.discountBasisPoints});
-            const definition:PackageDefinition={id:value.id||`package-definition-${crypto.randomUUID()}`,studioId:draft.studioId,name:value.name||`${service.name} — ${sessionCount} lesson${sessionCount===1?"":"s"}`,description:value.description,sessionCount,sessionDurationMinutes:service.durationMinutes,priceMinor:price.priceMinor,basePriceMinor:price.basePriceMinor,discountMinor:price.discountMinor,discountType:value.discountType,discountBasisPoints:value.discountBasisPoints,currency:service.currency,expirationDays:value.expirationDays,eligibleServiceIds:[service.id],meetingProviders:[deliveryFormat],deliveryFormat,recurringEligible:value.renewalModes.some((mode)=>mode!=="one_time"),visibility:value.visibility,directPurchase:value.directPurchase,giftable:value.giftable,active:value.active,pricingServiceId:service.id,pricingServiceVersion:service.version,pricingStatus:"current",version:1,updatedAt:new Date().toISOString()};
-            const current=draft.packageDefinitions.find((item)=>item.id===definition.id);if(current)Object.assign(current,definition,{version:current.version+1});else draft.packageDefinitions.push(definition);
-          }
+        store.transact((draft) => {
+          for (const serviceId of value.serviceIds)
+            for (const sessionCount of value.sessionCounts)
+              for (const deliveryFormat of value.deliveryFormats) {
+                const service = draft.bookingServices.find(
+                  (item) => item.id === serviceId,
+                );
+                if (!service) continue;
+                const unitPrice =
+                  service.priceMinor +
+                  (deliveryFormat === "in_person"
+                    ? draft.settings.bookingDefaults.inPersonUpchargeMinor
+                    : 0);
+                const price = calculatePackagePrice({
+                  unitPriceMinor: unitPrice,
+                  sessionCount,
+                  discountType: value.discountType,
+                  discountMinor: value.discountMinor,
+                  discountBasisPoints: value.discountBasisPoints,
+                });
+                const definition: PackageDefinition = {
+                  id: value.id || `package-definition-${crypto.randomUUID()}`,
+                  studioId: draft.studioId,
+                  name:
+                    value.name ||
+                    `${service.name} — ${sessionCount} lesson${sessionCount === 1 ? "" : "s"}`,
+                  description: value.description,
+                  sessionCount,
+                  sessionDurationMinutes: service.durationMinutes,
+                  priceMinor: price.priceMinor,
+                  basePriceMinor: price.basePriceMinor,
+                  discountMinor: price.discountMinor,
+                  discountType: value.discountType,
+                  discountBasisPoints: value.discountBasisPoints,
+                  currency: service.currency,
+                  expirationDays: value.expirationDays,
+                  eligibleServiceIds: [service.id],
+                  meetingProviders: [deliveryFormat],
+                  deliveryFormat,
+                  recurringEligible: value.renewalModes.some(
+                    (mode) => mode !== "one_time",
+                  ),
+                  visibility: value.visibility,
+                  directPurchase: value.directPurchase,
+                  giftable: value.giftable,
+                  active: value.active,
+                  pricingServiceId: service.id,
+                  pricingServiceVersion: service.version,
+                  pricingStatus: "current",
+                  version: 1,
+                  updatedAt: new Date().toISOString(),
+                };
+                const current = draft.packageDefinitions.find(
+                  (item) => item.id === definition.id,
+                );
+                if (current)
+                  Object.assign(current, definition, {
+                    version: current.version + 1,
+                  });
+                else draft.packageDefinitions.push(definition);
+              }
         });
         setNotice("Package catalog saved.");
-      }
-      else {
-        const existing = value.id ? data.packageDefinitions.find((item) => item.id === value.id) : undefined;
+      } else {
+        const existing = value.id
+          ? data.packageDefinitions.find((item) => item.id === value.id)
+          : undefined;
         const commandPayload = existing
-          ? { ...value, pricingServiceId: value.serviceIds[0], sessionCount: value.sessionCounts[0], deliveryFormat: value.deliveryFormats[0] }
+          ? {
+              ...value,
+              pricingServiceId: value.serviceIds[0],
+              sessionCount: value.sessionCounts[0],
+              deliveryFormat: value.deliveryFormats[0],
+            }
           : value;
         await studioCommand("packages", {
           command: existing ? "update" : "bulk_create",
@@ -1999,10 +2477,15 @@ export function FinanceView({
           payload: commandPayload as unknown as Record<string, unknown>,
           reason: "Coach configured lesson package",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
       }
       setDialog(undefined);
-      if (!isDemo) setNotice(value.id ? "Package recalculated and saved." : "Package combinations created with server-calculated prices.");
+      if (!isDemo)
+        setNotice(
+          value.id
+            ? "Package recalculated and saved."
+            : "Package combinations created with server-calculated prices.",
+        );
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -2047,11 +2530,33 @@ export function FinanceView({
                 >
                   {definition.active ? definition.visibility : "archived"}
                 </Status>
-                {packagePricingChanged(definition, data.bookingServices.find((service) => service.id === definition.pricingServiceId)) && (
-                  <Status tone="warn">Pricing changed</Status>
+                {packagePricingChanged(
+                  definition,
+                  data.bookingServices.find(
+                    (service) => service.id === definition.pricingServiceId,
+                  ),
+                ) && <Status tone="warn">Pricing changed</Status>}
+                {definition.giftable && definition.visibility === "public" && (
+                  <a
+                    className="button-link"
+                    href={`/gift/${definition.id}`}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    Gift link
+                  </a>
                 )}
-                {definition.giftable && definition.visibility === "public" && <a className="button-link" href={`/gift/${definition.id}`} target="_blank" rel="noreferrer">Gift link</a>}
-                {definition.visibility === "public" && definition.directPurchase && <a className="button-link" href={`/package/${definition.id}`} target="_blank" rel="noreferrer">Direct link</a>}
+                {definition.visibility === "public" &&
+                  definition.directPurchase && (
+                    <a
+                      className="button-link"
+                      href={`/package/${definition.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                    >
+                      Direct link
+                    </a>
+                  )}
                 <button onClick={() => setDialog(definition)}>Edit</button>
               </article>
             ))}
@@ -2367,9 +2872,14 @@ function PackageDefinitionDialog({
 }) {
   const [form, setForm] = useState<PackageBuilderPayload>(() => ({
     id: value?.id,
-    serviceIds: value?.pricingServiceId ? [value.pricingServiceId] : value?.eligibleServiceIds.slice(0, 1) || [],
+    serviceIds: value?.pricingServiceId
+      ? [value.pricingServiceId]
+      : value?.eligibleServiceIds.slice(0, 1) || [],
     sessionCounts: [value?.sessionCount || 4],
-    deliveryFormats: [(value?.deliveryFormat || value?.meetingProviders[0] || "google_meet") as "google_meet" | "in_person"],
+    deliveryFormats: [
+      (value?.deliveryFormat || value?.meetingProviders[0] || "google_meet") as
+        "google_meet" | "in_person",
+    ],
     name: value?.name || "",
     description: value?.description || "",
     expirationDays: value?.expirationDays || 180,
@@ -2383,13 +2893,34 @@ function PackageDefinitionDialog({
     balanceThreshold: 1,
     active: value?.active ?? true,
   }));
-  const toggle = <T extends string>(items: T[], item: T, checked: boolean) => checked ? [...new Set([...items, item])] : items.filter((current) => current !== item);
-  const toggleCount = (count: number, checked: boolean) => checked ? [...new Set([...form.sessionCounts, count])] : form.sessionCounts.filter((current) => current !== count);
-  const previewService = data.bookingServices.find((service) => service.id === form.serviceIds[0]);
+  const toggle = <T extends string>(items: T[], item: T, checked: boolean) =>
+    checked
+      ? [...new Set([...items, item])]
+      : items.filter((current) => current !== item);
+  const toggleCount = (count: number, checked: boolean) =>
+    checked
+      ? [...new Set([...form.sessionCounts, count])]
+      : form.sessionCounts.filter((current) => current !== count);
+  const previewService = data.bookingServices.find(
+    (service) => service.id === form.serviceIds[0],
+  );
   const previewCount = form.sessionCounts[0] || 1;
-  const previewUnit = (previewService?.priceMinor || 0) + (form.deliveryFormats[0] === "in_person" ? data.settings.bookingDefaults.inPersonUpchargeMinor : 0);
-  const preview = calculatePackagePrice({ unitPriceMinor: previewUnit, sessionCount: previewCount, discountType: form.discountType, discountMinor: form.discountMinor, discountBasisPoints: form.discountBasisPoints });
-  const combinationCount = form.serviceIds.length * form.sessionCounts.length * form.deliveryFormats.length;
+  const previewUnit =
+    (previewService?.priceMinor || 0) +
+    (form.deliveryFormats[0] === "in_person"
+      ? data.settings.bookingDefaults.inPersonUpchargeMinor
+      : 0);
+  const preview = calculatePackagePrice({
+    unitPriceMinor: previewUnit,
+    sessionCount: previewCount,
+    discountType: form.discountType,
+    discountMinor: form.discountMinor,
+    discountBasisPoints: form.discountBasisPoints,
+  });
+  const combinationCount =
+    form.serviceIds.length *
+    form.sessionCounts.length *
+    form.deliveryFormats.length;
   return (
     <Dialog
       title={value ? "Edit and recalculate package" : "Create packages"}
@@ -2400,26 +2931,210 @@ function PackageDefinitionDialog({
         className="workflow-form"
         onSubmit={(event) => {
           event.preventDefault();
-          if (!form.serviceIds.length || !form.sessionCounts.length || !form.deliveryFormats.length) return;
+          if (
+            !form.serviceIds.length ||
+            !form.sessionCounts.length ||
+            !form.deliveryFormats.length
+          )
+            return;
           onSave(form);
         }}
       >
-        <fieldset className="full option-fieldset"><legend>Services</legend>
-          {data.bookingServices.filter((service) => service.published).map((service) => <label className="check-row" key={service.id}><input type="checkbox" disabled={Boolean(value)} checked={form.serviceIds.includes(service.id)} onChange={(event) => setForm({ ...form, serviceIds: toggle(form.serviceIds, service.id, event.target.checked) })}/><span><strong>{service.name}</strong><small>{formatMoney(service.priceMinor, service.currency)} per lesson</small></span></label>)}
-          {!data.bookingServices.some((service) => service.published) && <small>Publish a booking service before creating a package.</small>}
+        <fieldset className="full option-fieldset">
+          <legend>Services</legend>
+          {data.bookingServices
+            .filter((service) => service.published)
+            .map((service) => (
+              <label className="check-row" key={service.id}>
+                <input
+                  type="checkbox"
+                  disabled={Boolean(value)}
+                  checked={form.serviceIds.includes(service.id)}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      serviceIds: toggle(
+                        form.serviceIds,
+                        service.id,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
+                <span>
+                  <strong>{service.name}</strong>
+                  <small>
+                    {formatMoney(service.priceMinor, service.currency)} per
+                    lesson
+                  </small>
+                </span>
+              </label>
+            ))}
+          {!data.bookingServices.some((service) => service.published) && (
+            <small>Publish a booking service before creating a package.</small>
+          )}
         </fieldset>
-        <fieldset className="full option-fieldset"><legend>Lesson counts</legend>
-          <div className="package-choice-grid">{[1,4,6,8,10,12].map((count) => <label className="choice-chip" key={count}><input type="checkbox" disabled={Boolean(value)} checked={form.sessionCounts.includes(count)} onChange={(event) => setForm({ ...form, sessionCounts: toggleCount(count, event.target.checked) })}/>{count}</label>)}</div>
-          {!value && <label>Custom count<input type="number" min="1" max="100" placeholder="e.g. 16" onBlur={(event) => { const count=Number(event.target.value); if(count>0)setForm({ ...form, sessionCounts:[...new Set([...form.sessionCounts,count])] }); }}/></label>}
+        <fieldset className="full option-fieldset">
+          <legend>Lesson counts</legend>
+          <div className="package-choice-grid">
+            {[1, 4, 6, 8, 10, 12].map((count) => (
+              <label className="choice-chip" key={count}>
+                <input
+                  type="checkbox"
+                  disabled={Boolean(value)}
+                  checked={form.sessionCounts.includes(count)}
+                  onChange={(event) =>
+                    setForm({
+                      ...form,
+                      sessionCounts: toggleCount(count, event.target.checked),
+                    })
+                  }
+                />
+                {count}
+              </label>
+            ))}
+          </div>
+          {!value && (
+            <label>
+              Custom count
+              <input
+                type="number"
+                min="1"
+                max="100"
+                placeholder="e.g. 16"
+                onBlur={(event) => {
+                  const count = Number(event.target.value);
+                  if (count > 0)
+                    setForm({
+                      ...form,
+                      sessionCounts: [
+                        ...new Set([...form.sessionCounts, count]),
+                      ],
+                    });
+                }}
+              />
+            </label>
+          )}
         </fieldset>
-        <fieldset className="full option-fieldset"><legend>Delivery formats</legend>
-          {(["google_meet","in_person"] as const).map((format) => <label className="check-row" key={format}><input type="checkbox" disabled={Boolean(value)} checked={form.deliveryFormats.includes(format)} onChange={(event) => setForm({ ...form, deliveryFormats: toggle(form.deliveryFormats, format, event.target.checked) })}/><span><strong>{format === "google_meet" ? "Google Meet" : "In person"}</strong>{format === "in_person" && data.settings.bookingDefaults.inPersonUpchargeMinor > 0 && <small>{formatMoney(data.settings.bookingDefaults.inPersonUpchargeMinor)} upcharge per lesson</small>}</span></label>)}
+        <fieldset className="full option-fieldset">
+          <legend>Delivery formats</legend>
+          {(["google_meet", "in_person"] as const).map((format) => (
+            <label className="check-row" key={format}>
+              <input
+                type="checkbox"
+                disabled={Boolean(value)}
+                checked={form.deliveryFormats.includes(format)}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    deliveryFormats: toggle(
+                      form.deliveryFormats,
+                      format,
+                      event.target.checked,
+                    ),
+                  })
+                }
+              />
+              <span>
+                <strong>
+                  {format === "google_meet" ? "Google Meet" : "In person"}
+                </strong>
+                {format === "in_person" &&
+                  data.settings.bookingDefaults.inPersonUpchargeMinor > 0 && (
+                    <small>
+                      {formatMoney(
+                        data.settings.bookingDefaults.inPersonUpchargeMinor,
+                      )}{" "}
+                      upcharge per lesson
+                    </small>
+                  )}
+              </span>
+            </label>
+          ))}
         </fieldset>
-        <label>Discount type<select value={form.discountType} onChange={(event) => setForm({ ...form, discountType:event.target.value as PackageBuilderPayload["discountType"] })}><option value="none">No discount</option><option value="percent">Percentage</option><option value="fixed">Fixed amount</option></select></label>
-        {form.discountType === "percent" && <label>Discount percentage<input type="number" min="0" max="100" value={form.discountBasisPoints/100} onChange={(event) => setForm({ ...form, discountBasisPoints:Math.round(Number(event.target.value)*100) })}/></label>}
-        {form.discountType === "fixed" && <label>Discount amount<input type="number" min="0" step="0.01" value={form.discountMinor/100} onChange={(event) => setForm({ ...form, discountMinor:Math.round(Number(event.target.value)*100) })}/></label>}
-        <div className="full package-price-preview" role="status"><div><small>Example base price</small><strong>{formatMoney(preview.basePriceMinor)}</strong></div><div><small>Savings</small><strong>{formatMoney(preview.discountMinor)}</strong></div><div><small>Calculated total</small><strong>{formatMoney(preview.priceMinor)}</strong></div><p>{combinationCount || 0} package{combinationCount === 1 ? "" : "s"} will be {value ? "recalculated" : "created"}. Final prices are verified on the server.</p></div>
-        <label>Name override<input value={form.name || ""} onChange={(event) => setForm({ ...form, name:event.target.value })} placeholder="Leave blank for automatic names"/><small>For bulk creation, automatic names keep every combination clear.</small></label>
+        <label>
+          Discount type
+          <select
+            value={form.discountType}
+            onChange={(event) =>
+              setForm({
+                ...form,
+                discountType: event.target
+                  .value as PackageBuilderPayload["discountType"],
+              })
+            }
+          >
+            <option value="none">No discount</option>
+            <option value="percent">Percentage</option>
+            <option value="fixed">Fixed amount</option>
+          </select>
+        </label>
+        {form.discountType === "percent" && (
+          <label>
+            Discount percentage
+            <input
+              type="number"
+              min="0"
+              max="100"
+              value={form.discountBasisPoints / 100}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  discountBasisPoints: Math.round(
+                    Number(event.target.value) * 100,
+                  ),
+                })
+              }
+            />
+          </label>
+        )}
+        {form.discountType === "fixed" && (
+          <label>
+            Discount amount
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={form.discountMinor / 100}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  discountMinor: Math.round(Number(event.target.value) * 100),
+                })
+              }
+            />
+          </label>
+        )}
+        <div className="full package-price-preview" role="status">
+          <div>
+            <small>Example base price</small>
+            <strong>{formatMoney(preview.basePriceMinor)}</strong>
+          </div>
+          <div>
+            <small>Savings</small>
+            <strong>{formatMoney(preview.discountMinor)}</strong>
+          </div>
+          <div>
+            <small>Calculated total</small>
+            <strong>{formatMoney(preview.priceMinor)}</strong>
+          </div>
+          <p>
+            {combinationCount || 0} package{combinationCount === 1 ? "" : "s"}{" "}
+            will be {value ? "recalculated" : "created"}. Final prices are
+            verified on the server.
+          </p>
+        </div>
+        <label>
+          Name override
+          <input
+            value={form.name || ""}
+            onChange={(event) => setForm({ ...form, name: event.target.value })}
+            placeholder="Leave blank for automatic names"
+          />
+          <small>
+            For bulk creation, automatic names keep every combination clear.
+          </small>
+        </label>
         <label>
           Expires after days
           <input
@@ -2454,15 +3169,59 @@ function PackageDefinitionDialog({
         </label>
         <label className="full">
           Description
-          <textarea value={form.description}
+          <textarea
+            value={form.description}
             onChange={(event) =>
               setForm({ ...form, description: event.target.value })
             }
           />
         </label>
-        <fieldset className="full option-fieldset"><legend>Purchase and renewal choices</legend>
-          {([['one_time','One-time purchase'],['weekly','Every week'],['biweekly','Every two weeks'],['monthly','Monthly'],['balance_threshold','When credits run low']] as const).map(([mode,label]) => <label className="check-row" key={mode}><input type="checkbox" checked={form.renewalModes.includes(mode)} onChange={(event) => setForm({ ...form, renewalModes:toggle(form.renewalModes,mode,event.target.checked) })}/>{label}</label>)}
-          {form.renewalModes.includes("balance_threshold") && <label>Renew at this balance<input type="number" min="0" max="20" value={form.balanceThreshold} onChange={(event)=>setForm({...form,balanceThreshold:Number(event.target.value)})}/></label>}
+        <fieldset className="full option-fieldset">
+          <legend>Purchase and renewal choices</legend>
+          {(
+            [
+              ["one_time", "One-time purchase"],
+              ["weekly", "Every week"],
+              ["biweekly", "Every two weeks"],
+              ["monthly", "Monthly"],
+              ["balance_threshold", "When credits run low"],
+            ] as const
+          ).map(([mode, label]) => (
+            <label className="check-row" key={mode}>
+              <input
+                type="checkbox"
+                checked={form.renewalModes.includes(mode)}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    renewalModes: toggle(
+                      form.renewalModes,
+                      mode,
+                      event.target.checked,
+                    ),
+                  })
+                }
+              />
+              {label}
+            </label>
+          ))}
+          {form.renewalModes.includes("balance_threshold") && (
+            <label>
+              Renew at this balance
+              <input
+                type="number"
+                min="0"
+                max="20"
+                value={form.balanceThreshold}
+                onChange={(event) =>
+                  setForm({
+                    ...form,
+                    balanceThreshold: Number(event.target.value),
+                  })
+                }
+              />
+            </label>
+          )}
         </fieldset>
         <label className="check-row">
           <input
@@ -2474,7 +3233,16 @@ function PackageDefinitionDialog({
           />
           Student can buy directly
         </label>
-        <label className="check-row"><input type="checkbox" checked={form.giftable} onChange={(event)=>setForm({...form,giftable:event.target.checked})}/>Can be purchased as a gift</label>
+        <label className="check-row">
+          <input
+            type="checkbox"
+            checked={form.giftable}
+            onChange={(event) =>
+              setForm({ ...form, giftable: event.target.checked })
+            }
+          />
+          Can be purchased as a gift
+        </label>
         <label className="check-row full">
           <input
             type="checkbox"
@@ -2489,7 +3257,11 @@ function PackageDefinitionDialog({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!combinationCount}>{value ? "Recalculate package" : `Create ${combinationCount || ""} package${combinationCount === 1 ? "" : "s"}`}</button>
+          <button className="primary" disabled={!combinationCount}>
+            {value
+              ? "Recalculate package"
+              : `Create ${combinationCount || ""} package${combinationCount === 1 ? "" : "s"}`}
+          </button>
         </div>
       </form>
     </Dialog>
@@ -2524,7 +3296,7 @@ export function ActorPagesView({
           payload: { status },
           reason: "Coach reviewed actor page",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["actorProfiles"]);
       }
       setNotice(`Actor page marked ${status.replaceAll("_", " ")}.`);
     } catch (reason) {

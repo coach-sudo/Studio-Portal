@@ -3696,6 +3696,36 @@ export type Database = {
       }
     }
     Views: {
+      material_library_rows: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["approval_status"] | null
+          caption: string | null
+          category: string | null
+          created_at: string | null
+          external_url: string | null
+          file_size_bytes: number | null
+          id: string | null
+          lesson_id: string | null
+          lesson_topic: string | null
+          link_id: string | null
+          link_role: string | null
+          link_student_id: string | null
+          media_kind: string | null
+          mime_type: string | null
+          owner_student_id: string | null
+          public_embed: boolean | null
+          sort_order: number | null
+          status: Database["public"]["Enums"]["material_status"] | null
+          student_name: string | null
+          storage_path: string | null
+          studio_id: string | null
+          title: string | null
+          updated_at: string | null
+          version: number | null
+          visible_to_student: boolean | null
+        }
+        Relationships: []
+      }
       published_actor_profiles: {
         Row: {
           content: Json | null

@@ -1,7 +1,10 @@
 import { ShieldCheck } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/Primitives";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  queryLayerV2Enabled,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import type { StudioDomain } from "../../data/repository";
 import { StudioSettings } from "./StudioSettings";
 import { StudentsIndex } from "./StudentsIndex";
@@ -54,10 +57,16 @@ const configs: Record<string, { title: string; description: string }> = {
 };
 const sectionDomains: Record<string, readonly StudioDomain[]> = {
   today: ["identity", "students", "lessons", "work", "administration"],
-  students: ["identity", "students", "lessons", "work", "households"],
+  students: queryLayerV2Enabled
+    ? ["identity"]
+    : ["identity", "students", "lessons", "work", "households"],
   lessons: ["identity", "students", "lessons", "booking"],
-  notes: ["identity", "students", "work"],
-  materials: ["identity", "students", "work"],
+  notes: queryLayerV2Enabled
+    ? ["identity", "students", "lessons"]
+    : ["identity", "students", "work"],
+  materials: queryLayerV2Enabled
+    ? ["identity", "students", "lessons"]
+    : ["identity", "students", "work"],
   finance: ["identity", "students", "finance"],
   "actor-pages": ["identity", "students", "actorProfiles", "work"],
   settings: ["identity", "booking", "finance", "administration"],
@@ -65,7 +74,7 @@ const sectionDomains: Record<string, readonly StudioDomain[]> = {
 export function CoachSection() {
   const { section = "today" } = useParams(),
     config = configs[section] ?? configs.today,
-    { data, isDemo } = useStudio("coach", undefined, sectionDomains[section] ?? sectionDomains.today);
+    { data, isDemo } = useStudioRoute("coach", undefined, sectionDomains[section] ?? sectionDomains.today);
   if (!data)
     return <div className="loading">Loading {config.title.toLowerCase()}…</div>;
   return (

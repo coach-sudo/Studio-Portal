@@ -62,6 +62,15 @@ async function signedUrlsForPaths(database: any, paths: string[]) {
   return urls;
 }
 
+export async function getSignedMaterialUrl(path: string) {
+  if (!supabase)
+    throw new Error("Production database configuration is unavailable.");
+  const urls = await signedUrlsForPaths(supabase, [path]);
+  const url = urls.get(path);
+  if (!url) throw new Error("The material could not be opened.");
+  return url;
+}
+
 export function resolveAccountDisplayName(
   role: Role,
   memberDisplayName?: string,
@@ -338,9 +347,11 @@ export async function loadStudioSnapshot(
   ].find((result) => result.error);
   if (failed?.error) throw failed.error;
   const member = membership.data;
-  const { data: authData } = await supabase.auth.getUser();
+  const authUserId = aggregate?.currentUserId
+    ? String(aggregate.currentUserId)
+    : (await supabase.auth.getUser()).data.user?.id;
   const currentLinkedContact = (linkedContacts.data ?? []).find(
-    (row: any) => row.user_id === authData.user?.id,
+    (row: any) => row.user_id === authUserId,
   );
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];

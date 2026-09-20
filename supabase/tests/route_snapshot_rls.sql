@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(4);
+select plan(5);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -36,6 +36,18 @@ insert into public.recommendations (
   3, 'review', 'rls-route-test'
 );
 
+insert into public.materials (
+  id, studio_id, owner_student_id, title, category, external_url
+) values
+  ('50000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Visible material', 'Scene', 'https://example.test/visible'),
+  ('50000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 'Unrelated material', 'Scene', 'https://example.test/unrelated');
+
+insert into public.material_links (
+  material_id, student_id, role, visible_to_student
+) values
+  ('50000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'current_script', true),
+  ('50000000-0000-0000-0000-000000000002', '30000000-0000-0000-0000-000000000002', 'current_script', true);
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
 
@@ -46,6 +58,11 @@ select is(
   jsonb_array_length(public.studio_route_snapshot(array['students','lessons','administration'])->'students'),
   1,
   'route snapshot RPC preserves student RLS'
+);
+select is(
+  (select count(*) from public.material_library_rows),
+  1::bigint,
+  'paginated material view preserves student RLS'
 );
 
 select * from finish();

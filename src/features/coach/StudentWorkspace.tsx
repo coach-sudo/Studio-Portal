@@ -48,7 +48,10 @@ import type {
   StudentStatus,
   StudioSnapshot,
 } from "../../domain/model";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { checkSchedulingConflicts, studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
@@ -72,7 +75,7 @@ const belongsToStudent = (data: Data, lesson: Lesson, studentId: string) =>
 
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
-  const { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "households"]);
+  const { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "households"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -130,7 +133,7 @@ export function StudentWorkspace() {
             payload: updates as Record<string, unknown>,
             reason: "Coach updated student record",
           });
-          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+          await invalidateStudioDomains(queryClient, ["students"]);
         }
       });
       setDialog(null);
@@ -171,7 +174,7 @@ export function StudentWorkspace() {
           setUndoInvite(result.outboxMessageId);
           window.setTimeout(() => setUndoInvite((current) => current === result.outboxMessageId ? undefined : current), 8_000);
         }
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["students", "messaging"]);
       }
       setNotice(
         `${accountType === "guardian" ? "Linked-contact" : "Student"} invitation is sending now. The audited queue remains available as automatic retry protection.`,
@@ -192,7 +195,7 @@ export function StudentWorkspace() {
     setUndoInvite(undefined);
     try {
       await studioCommand("outbox", { command: "cancel_manual", entityId: messageId, expectedVersion: 1, reason: "Coach undid portal invitation email" });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["messaging"]);
       setNotice("Invitation email send undone. Portal access remains available.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "The invitation has already started sending."); }
   };
@@ -222,7 +225,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach created lesson",
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setDialog(null);
       setNotice("Lesson added to the schedule.");
@@ -252,7 +255,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach assigned practice",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
       setNotice("Practice assigned and visible in the student workspace.");
@@ -287,7 +290,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach added student material",
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
       setNotice("Material added to the student record.");
@@ -324,7 +327,7 @@ export function StudentWorkspace() {
           },
           reason: "Coach created student note",
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
       setEditingNote(undefined);
@@ -354,7 +357,7 @@ export function StudentWorkspace() {
           expectedVersion: note.version,
           reason: "Coach deleted student note",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Note deleted.");
     } catch (reason) {
@@ -384,7 +387,7 @@ export function StudentWorkspace() {
           payload: { status },
           reason: "Coach updated student material status",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice(
         status === "archived"
@@ -420,7 +423,7 @@ export function StudentWorkspace() {
           expectedVersion: material.version,
           reason: "Coach permanently deleted student material",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Material and uploaded file deleted.");
     } catch (reason) {
@@ -451,7 +454,7 @@ export function StudentWorkspace() {
           expectedVersion: student.version,
           reason: "Coach removed student from the studio",
         });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["students"]);
       navigate("/coach/students", { replace: true });
     } catch (reason) {
       setNotice(
@@ -718,7 +721,7 @@ export function StudentWorkspace() {
   );
 }
 
-type Data = NonNullable<ReturnType<typeof useStudio>["data"]>;
+type Data = NonNullable<ReturnType<typeof useStudioRoute>["data"]>;
 function Overview({
   data,
   student,
@@ -1051,7 +1054,7 @@ function CoachLessonHub({
           expectedVersion: lesson.version,
           reason: "Coach cancelled lesson from lesson workspace",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       navigate(`/coach/students/${student.id}/lessons`);
     } catch (reason) {
@@ -1085,7 +1088,7 @@ function CoachLessonHub({
           payload: { startsAt, endsAt, allowConflict },
           reason: "Coach rescheduled lesson from student workspace",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setLessonAction(null);
       setNotice("Lesson rescheduled. Calendar and student invitation updates are queued.");
@@ -1121,7 +1124,7 @@ function CoachLessonHub({
           payload: { topic, locationLabel, joinUrl: joinUrl || null },
           reason: "Coach updated lesson details from student workspace",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setLessonAction(null);
       setNotice("Lesson details saved. Calendar and student updates are queued.");
@@ -1148,7 +1151,7 @@ function CoachLessonHub({
         },
         reason: "Coach adjusted credit from lesson workspace",
       });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
       setLessonAction(null);
       setNotice("Credit adjustment saved on this lesson.");
     } catch (reason) {
@@ -1168,7 +1171,7 @@ function CoachLessonHub({
         payload: { reason: `Paid by credit for ${lesson.topic}` },
         reason: "Coach marked lesson paid by credit from lesson workspace",
       });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
       setLessonAction(null);
       setNotice("One credit was used and this lesson is marked paid by credit.");
     } catch (reason) {
@@ -1184,7 +1187,7 @@ function CoachLessonHub({
     const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
     try {
       if (isDemo) store.transact((draft) => { const item = draft.lessons.find((row) => row.id === lesson.id); if (item) { item.paymentStatus = paymentStatus; item.priceMinor = priceMinor; item.paidMinor = paidMinor; item.version += 1; item.updatedAt = new Date().toISOString(); } });
-      else { await studioCommand("lessons", { command: "set_payment_status", entityId: lesson.id, expectedVersion: lesson.version, payload: { paymentStatus, priceMinor, paidMinor }, reason: "Coach updated lesson payment status" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
+      else { await studioCommand("lessons", { command: "set_payment_status", entityId: lesson.id, expectedVersion: lesson.version, payload: { paymentStatus, priceMinor, paidMinor }, reason: "Coach updated lesson payment status" }); await invalidateStudioDomains(queryClient, ["lessons", "finance"]); }
       setLessonAction(null); setNotice("Lesson payment status saved.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Payment status could not be saved."); }
     finally { setActionBusy(""); }
@@ -1833,7 +1836,7 @@ function LinkedContacts({ data, student, busy, onInvite, isDemo }: {
         payload,
         reason: "Coach configured linked household access",
       });
-      if (!isDemo) await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      if (!isDemo) await invalidateStudioDomains(queryClient, ["students", "households"]);
       setAdding(false); setEditing(undefined); setNotice("Linked contact saved.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Linked contact could not be saved."); }
   };
@@ -1841,7 +1844,7 @@ function LinkedContacts({ data, student, busy, onInvite, isDemo }: {
     setNotice("Removing access…");
     try {
       if (isDemo) store.transact((draft)=>{const match=draft.linkedContacts.find((item)=>item.id===contact.id);if(match)Object.assign(match,{portalEnabled:false,canReceiveNotifications:false,version:match.version+1,updatedAt:now()});});
-      else { await studioCommand("students", { command:"remove_linked_contact", entityId:student.id, expectedVersion:contact.version, payload:{ contactId:contact.id }, reason:"Coach removed linked household access" }); await queryClient.invalidateQueries({ queryKey:["studio"] }); }
+      else { await studioCommand("students", { command:"remove_linked_contact", entityId:student.id, expectedVersion:contact.version, payload:{ contactId:contact.id }, reason:"Coach removed linked household access" }); await invalidateStudioDomains(queryClient, ["students", "households"]); }
       setNotice("Linked contact access and optional notifications were disabled.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Access could not be removed."); }
   };
@@ -1933,7 +1936,7 @@ function Account({
     setSavingRate(serviceId); setRateNotice("");
     try {
       if (isDemo) store.transact((draft) => { const existing = draft.studentPricingRules.find((row) => row.studentId === student.id && row.serviceId === serviceId); if (existing) Object.assign(existing, { priceMinor, depositMinor, locationPriceAdjustments, version: existing.version + 1, updatedAt: now() }); else draft.studentPricingRules.push({ id: uid("rate"), studioId: draft.studioId, studentId: student.id, serviceId, priceMinor, depositMinor, locationPriceAdjustments, reason: "Student-specific pricing", startsAt: now(), active: true, version: 1, updatedAt: now() }); });
-      else { await studioCommand("pricing", { command: "upsert_student_rate", expectedVersion: 0, payload: { studentId: student.id, serviceId, priceMinor, depositMinor, locationPriceAdjustments, reason: "Student-specific pricing" }, reason: "Coach saved student-specific pricing" }); await queryClient.invalidateQueries({ queryKey: ["studio"] }); }
+      else { await studioCommand("pricing", { command: "upsert_student_rate", expectedVersion: 0, payload: { studentId: student.id, serviceId, priceMinor, depositMinor, locationPriceAdjustments, reason: "Student-specific pricing" }, reason: "Coach saved student-specific pricing" }); await invalidateStudioDomains(queryClient, ["finance"]); }
       setRateNotice(`${service.name} pricing saved.`);
     } catch (reason) { setRateNotice(reason instanceof Error ? reason.message : "Special pricing could not be saved."); }
     finally { setSavingRate(""); }
@@ -2095,7 +2098,7 @@ function Payments({
           payload: { amountMinor, currency: "USD", reason: balanceReason.trim() },
           reason: "Coach adjusted student dollar balance",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
       }
       setAdjustingBalance(false);
       setBalanceAmount("0.00");
@@ -2147,7 +2150,7 @@ function Payments({
           },
           reason: "Coach adjusted student credits",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
       }
       setCrediting(false);
       setNotice(
@@ -2177,7 +2180,7 @@ function Payments({
           payload: { enabled: !pkg.autoApply },
           reason: "Coach changed automatic lesson credit preference",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
         setNotice(!pkg.autoApply ? `Automatic credits enabled. ${result.resource.applied || 0} upcoming lesson(s) covered.` : "Automatic credits disabled for this package.");
       }
     } catch (reason) {
@@ -2230,7 +2233,7 @@ function Payments({
           },
           reason: "Coach assigned package",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
         if (result.resource.autoApplyPending) {
           setAssigning(false);
           setNotice("Package assigned. Automatic credit application is queued for the next maintenance run.");
@@ -2472,7 +2475,7 @@ function ActorPage({
         payload: { studentId: student.id },
         reason: "Coach created actor page draft",
       });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["students", "actorProfiles"]);
     }
   };
   const actorMaterials = data.materials.filter(
