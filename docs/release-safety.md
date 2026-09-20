@@ -8,7 +8,7 @@ Create a branch ruleset in **Repository settings → Rules → Rulesets** target
 
 1. Require a pull request with at least one approval.
 2. Dismiss stale approvals after new commits and require all conversations to be resolved.
-3. Require the `Production checks / verify`, `Production checks / migrations`, and `Deployed browser checks / smoke` checks.
+3. Require the `verify`, `migrations`, and `smoke` checks.
 4. Block force pushes and branch deletion, require linear history, and apply the rules to administrators.
 5. Do not grant direct-push bypasses for ordinary release work.
 
