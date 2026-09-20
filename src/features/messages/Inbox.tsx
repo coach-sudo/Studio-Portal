@@ -8,11 +8,12 @@ import { formatStudioDateTime } from "../../domain/presentation";
 import { useStudio } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabase";
 
 type Thread = Conversation & { subtitle: string; unread?: boolean; draftBody?: string };
 
 export function CoachInbox() {
-  const { data, isLoading, isDemo } = useStudio();
+  const { data, isLoading, isDemo } = useStudio("coach", undefined, ["identity", "students", "messaging"]);
   if (isLoading || !data) return <div className="loading">Opening inbox…</div>;
   return <Inbox data={data} isDemo={isDemo} role="coach" />;
 }
@@ -142,6 +143,22 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
   useEffect(() => {
     setBody(selected?.draftBody || "");
   }, [selected?.id]);
+
+  useEffect(() => {
+    if (isDemo || !supabase || !selected?.id || selected.id.startsWith("student:") || selected.id.startsWith("offering:")) return;
+    const database = supabase;
+    const refreshVisibleConversation = () => {
+      void queryClient.invalidateQueries({
+        predicate: (query) => query.queryKey[0] === "studio" && query.queryKey[1] === role && JSON.stringify(query.queryKey).includes("messaging"),
+      });
+    };
+    const channel = database
+      .channel(`visible-inbox:${selected.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_messages", filter: `conversation_id=eq.${selected.id}` }, refreshVisibleConversation)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${selected.id}` }, refreshVisibleConversation)
+      .subscribe();
+    return () => { void database.removeChannel(channel); };
+  }, [isDemo, queryClient, role, selected?.id]);
 
   useEffect(() => {
     if (!selected || selected.id.startsWith("student:") || selected.id.startsWith("offering:")) return;

@@ -116,7 +116,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
 
 export function PublicActorPage() {
   const { slug = "" } = useParams(),
-    { data, isDemo } = useStudio(),
+    { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "actorProfiles", "work"]),
     demoProfile = data?.actorProfiles.find(
       (row) => row.slug === slug && row.status === "published",
     ),

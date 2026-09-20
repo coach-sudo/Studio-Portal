@@ -8,7 +8,7 @@ import { coachNavigation } from "../app/navigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
 
 export function AppShell() {
-  const { data } = useStudio();
+  const { data } = useStudio("coach", undefined, ["identity"]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();

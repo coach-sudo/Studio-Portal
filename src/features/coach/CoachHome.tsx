@@ -11,7 +11,7 @@ import {
 } from "../../domain/presentation";
 
 export function CoachHome() {
-  const { data, isLoading, error } = useStudio();
+  const { data, isLoading, error } = useStudio("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "administration", "booking"]);
   const navigate = useNavigate();
   if (isLoading) return <div className="loading">Preparing your studio…</div>;
   if (error || !data) return <div className="error-state"><strong>We couldn’t load the studio.</strong><span>{String(error ?? "Unknown error")}</span></div>;

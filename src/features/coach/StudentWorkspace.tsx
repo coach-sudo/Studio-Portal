@@ -72,7 +72,7 @@ const belongsToStudent = (data: Data, lesson: Lesson, studentId: string) =>
 
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
-  const { data, isDemo } = useStudio();
+  const { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "households"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();

@@ -24,6 +24,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
@@ -82,6 +83,19 @@ import { PortalClassWorkspace } from "../classes/ClassWorkspace";
 import { PortalInbox } from "../messages/Inbox";
 import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 import { StudentReferrals } from "../referrals/Referrals";
+import type { StudioDomain } from "../../data/repository";
+
+function portalDomains(pathname: string): readonly StudioDomain[] {
+  if (pathname.includes("/inbox")) return ["identity", "students", "messaging"];
+  if (pathname.includes("/payments")) return ["identity", "students", "finance"];
+  if (pathname.includes("/settings")) return ["identity", "students", "households"];
+  if (pathname.includes("/actor")) return ["identity", "students", "actorProfiles", "work"];
+  if (pathname.includes("/referrals")) return ["identity", "students", "referrals"];
+  if (pathname.includes("/work") || pathname.includes("/notes")) return ["identity", "students", "work"];
+  if (pathname.includes("/schedule") || pathname.includes("/lesson")) return ["identity", "students", "lessons", "booking", "work"];
+  if (pathname.includes("/classes/")) return ["identity", "students", "lessons", "work", "messaging"];
+  return ["identity", "students", "lessons", "work"];
+}
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -99,7 +113,8 @@ export function StudentPortal({
   role?: Extract<Role, "student" | "guardian">;
 }) {
   const studentId = role === "guardian" ? "student-sarah" : "student-maya";
-  const { data, isLoading, isDemo } = useStudio(role, studentId);
+  const location = useLocation();
+  const { data, isLoading, isDemo } = useStudio(role, studentId, portalDomains(location.pathname));
   const base = "/portal";
   const navigatePortal = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);

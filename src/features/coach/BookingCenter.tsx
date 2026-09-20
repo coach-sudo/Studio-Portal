@@ -79,7 +79,7 @@ const bookingTone = (status: Booking["status"]) =>
         : "neutral";
 
 export function BookingCenter() {
-  const { data, isLoading, isDemo } = useStudio();
+  const { data, isLoading, isDemo } = useStudio("coach", undefined, ["identity", "students", "booking", "lessons"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();

@@ -119,7 +119,7 @@ function RewardList({
 }
 
 export function CoachReferrals() {
-  const { data, isDemo } = useStudio();
+  const { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "referrals"]);
   const { overview, error, loading, refresh } = useReferrals(
     data?.students,
     isDemo,

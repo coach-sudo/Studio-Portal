@@ -48,7 +48,7 @@ function demoOverview(data: StudioSnapshot): CampaignOverview {
 }
 
 export function Campaigns() {
-  const { data, isDemo } = useStudio();
+  const { data, isDemo } = useStudio("coach", undefined, ["identity", "students", "households"]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [overview, setOverview] = useState<CampaignOverview>();

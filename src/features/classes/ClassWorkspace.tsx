@@ -11,7 +11,7 @@ import { useStudioStore } from "../../state/StudioStore";
 
 export function CoachClassWorkspace() {
   const { offeringId = "" } = useParams();
-  const { data, isLoading, isDemo } = useStudio();
+  const { data, isLoading, isDemo } = useStudio("coach", undefined, ["identity", "lessons", "work"]);
   if (isLoading || !data) return <div className="loading">Opening class…</div>;
   return <ClassWorkspace data={data} isDemo={isDemo} role="coach" offeringId={offeringId} />;
 }
