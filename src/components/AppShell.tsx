@@ -1,4 +1,4 @@
-import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { LogOut, Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudioRoute } from "../hooks/useStudio";
@@ -6,6 +6,8 @@ import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
 import { coachNavigation } from "../app/navigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
+import { supabase } from "../lib/supabase";
+import "./IdentityActions.css";
 
 export function AppShell() {
   const { data } = useStudioRoute("coach", undefined, ["identity"]);
@@ -62,6 +64,9 @@ export function AppShell() {
             <strong>{data?.settings.coachName ?? "Darius A. Journigan"}</strong>
             <small>{data?.settings.coachTitle ?? "Acting Coach"}</small>
           </div>
+          <button type="button" className="identity-signout" aria-label="Sign out" onClick={async()=>{await supabase?.auth.signOut();navigate("/login",{replace:true});}}>
+            <LogOut aria-hidden="true" />
+          </button>
         </div>
       </aside>
       <main className="main">

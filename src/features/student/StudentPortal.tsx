@@ -6,6 +6,7 @@ import {
   FileText,
   FolderOpen,
   Mail,
+  LogOut,
   Menu,
   MessageSquare,
   PanelLeftClose,
@@ -94,6 +95,8 @@ import { PortalInbox } from "../messages/Inbox";
 import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 import { StudentReferrals } from "../referrals/Referrals";
 import type { StudioDomain } from "../../data/repository";
+import { supabase } from "../../lib/supabase";
+import "../../components/IdentityActions.css";
 
 function portalDomains(pathname: string): readonly StudioDomain[] {
   if (pathname.includes("/inbox")) return ["identity", "students", "messaging"];
@@ -202,6 +205,9 @@ export function StudentPortal({
                 : "Student"}
             </small>
           </div>
+          <button type="button" className="identity-signout" aria-label="Sign out" onClick={async()=>{await supabase?.auth.signOut();navigatePortal("/login",{replace:true});}}>
+            <LogOut aria-hidden="true" />
+          </button>
         </div>
       </aside>
       <main>

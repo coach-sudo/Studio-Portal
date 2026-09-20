@@ -9,5 +9,17 @@
     "strict": true,
     "types": ["node"]
   },
-  "include": ["vite.config.ts", "vitest.config.ts", "scripts", "netlify/functions/**/*.ts", "src/domain/model.ts", "src/domain/availabilityVisibility.ts", "src/domain/intakeRecency.ts", "src/domain/campaignTemplates.ts"]
+  "include": [
+    "vite.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "e2e/**/*.ts",
+    "scripts",
+    "netlify/functions/**/*.ts",
+    "src/domain/model.ts",
+    "src/domain/availabilityVisibility.ts",
+    "src/domain/intakeRecency.ts",
+    "src/domain/campaignTemplates.ts",
+    "src/security/e2eSafety.ts"
+  ]
 }
