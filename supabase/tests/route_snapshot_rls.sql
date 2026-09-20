@@ -24,7 +24,7 @@ insert into public.lessons (
   status, location_type, location_label
 ) values
   ('40000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', 'Visible lesson', now() + interval '1 day', now() + interval '1 day 1 hour', 'scheduled', 'virtual', 'Google Meet pending'),
-  ('40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 'Unrelated lesson', now() + interval '1 day', now() + interval '1 day 1 hour', 'scheduled', 'virtual', 'Google Meet pending');
+  ('40000000-0000-0000-0000-000000000002', '20000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', 'Unrelated lesson', now() + interval '2 days', now() + interval '2 days 1 hour', 'scheduled', 'virtual', 'Google Meet pending');
 
 insert into public.recommendations (
   studio_id, student_id, entity_type, reason_code, title, explanation,
