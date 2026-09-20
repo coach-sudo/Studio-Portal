@@ -1157,7 +1157,7 @@ function CoachLessonHub({
       setActionBusy("");
     }
   };
-  const useCredit = async () => {
+  const applyCredit = async () => {
     if (actionBusy || availableCredits < 1 || paidByCredit) return;
     setActionBusy("use-credit");
     try {
@@ -1308,7 +1308,7 @@ function CoachLessonHub({
               </div>
             </section>
             {!paidByCredit && (
-              <button className="primary-button" disabled={Boolean(actionBusy) || availableCredits < 1} onClick={() => void useCredit()}>
+              <button className="primary-button" disabled={Boolean(actionBusy) || availableCredits < 1} onClick={() => void applyCredit()}>
                 {actionBusy === "use-credit" ? "Applying…" : availableCredits ? "Use 1 credit for this lesson" : "No credit available"}
               </button>
             )}

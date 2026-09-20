@@ -21,12 +21,48 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm audit --omit=dev --audit-level=high
+      - run: npm run check:secrets
+      - run: npm run lint
+      - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+      - run: npm run bundle:check
+      - name: Upload failed build and test evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: verification-evidence-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            dist/
+            test-results/
+            playwright-report/
+
+  migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - run: npx supabase db reset --local --no-seed
+      - run: npx supabase db lint --local --schema public --fail-on error
+      - run: npx supabase test db
+      - run: npm run supabase:types
+      - run: git diff --exit-code -- src/types/database.generated.ts
+      - if: always()
+        run: npx supabase stop --no-backup

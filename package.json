@@ -6,6 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "bundle:check": "tsx scripts/check-bundle-size.ts",
+    "check:secrets": "tsx scripts/check-secrets.ts",
+    "format": "prettier --write .",
+    "format:check": "tsx scripts/check-format.ts",
+    "lint": "eslint .",
+    "playwright:smoke": "playwright test e2e/deployed-health.spec.ts",
+    "supabase:types": "tsx scripts/generate-database-types.ts --local",
+    "supabase:types:linked": "tsx scripts/generate-database-types.ts --linked",
+    "supabase:verify": "supabase db reset --local --no-seed && supabase db lint --local --schema public --fail-on error && supabase test db && npm run supabase:types && git diff --exit-code -- src/types/database.generated.ts",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -25,6 +34,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@playwright/test": "1.63.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@testing-library/user-event": "^14.6.1",
@@ -32,10 +43,18 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.3",
+    "eslint": "9.39.5",
+    "eslint-plugin-jsx-a11y": "6.10.2",
+    "eslint-plugin-react-hooks": "7.1.1",
+    "eslint-plugin-react-refresh": "0.5.7",
+    "globals": "17.12.0",
     "jsdom": "^29.1.1",
+    "prettier": "3.9.8",
+    "supabase": "2.117.0",
     "tsx": "^4.22.5",
     "typescript": "^6.0.3",
+    "typescript-eslint": "8.70.0",
     "vite": "^8.1.3",
-    "vitest": "^4.1.9"
+    "vitest": "4.1.11"
   }
 }

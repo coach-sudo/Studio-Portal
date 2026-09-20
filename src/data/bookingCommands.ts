@@ -100,8 +100,14 @@ export async function loadStorageHealth(): Promise<StorageHealth> {
 
 export async function loadPlatformHealth(): Promise<PlatformHealth> {
   try {
+    if (!supabase) throw new Error();
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new Error();
     const response = await fetch("/api/v2/health", {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${data.session.access_token}`,
+      },
     });
     if (!response.ok) throw new Error();
     return (await response.json()) as PlatformHealth;

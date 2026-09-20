@@ -1,0 +1,39 @@
+name: Deployed browser checks
+
+on:
+  workflow_dispatch:
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STAGING_BASE_URL: ${{ github.event.deployment_status.target_url || secrets.STAGING_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - name: Require a dedicated staging URL
+        run: test -n "$STAGING_BASE_URL"
+      - run: npm run playwright:smoke
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-browser-evidence-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            playwright-report/
+            test-results/
