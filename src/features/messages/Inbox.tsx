@@ -5,14 +5,18 @@ import { Dialog, EmptyState, PageHeader, Status } from "../../components/Primiti
 import { studioCommand } from "../../data/bookingCommands";
 import type { Conversation, ConversationMessage, Role, StudioSnapshot } from "../../domain/model";
 import { formatStudioDateTime } from "../../domain/presentation";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  useStudioRoute,
+} from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabase";
 
 type Thread = Conversation & { subtitle: string; unread?: boolean; draftBody?: string };
 
 export function CoachInbox() {
-  const { data, isLoading, isDemo } = useStudio();
+  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "messaging"]);
   if (isLoading || !data) return <div className="loading">Opening inbox…</div>;
   return <Inbox data={data} isDemo={isDemo} role="coach" />;
 }
@@ -144,6 +148,25 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
   }, [selected?.id]);
 
   useEffect(() => {
+    if (isDemo || !supabase || !selected?.id || selected.id.startsWith("student:") || selected.id.startsWith("offering:")) return;
+    const database = supabase;
+    const refreshVisibleConversation = () => {
+      void queryClient.invalidateQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "studio-domain" &&
+          query.queryKey[1] === role &&
+          query.queryKey[3] === "messaging",
+      });
+    };
+    const channel = database
+      .channel(`visible-inbox:${selected.id}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "conversation_messages", filter: `conversation_id=eq.${selected.id}` }, refreshVisibleConversation)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "conversations", filter: `id=eq.${selected.id}` }, refreshVisibleConversation)
+      .subscribe();
+    return () => { void database.removeChannel(channel); };
+  }, [isDemo, queryClient, role, selected?.id]);
+
+  useEffect(() => {
     if (!selected || selected.id.startsWith("student:") || selected.id.startsWith("offering:")) return;
     if (isDemo) {
       store.transact((draft) => {
@@ -151,7 +174,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
         if (state) { state.lastReadAt = new Date().toISOString(); state.updatedAt = new Date().toISOString(); }
         else draft.conversationStates.push({ conversationId:selected.id, userId:"demo-user", lastReadAt:new Date().toISOString(), draftBody:selected.draftBody || "", updatedAt:new Date().toISOString() });
       });
-    } else void studioCommand("messages", { command:"mark_read", entityId:selected.id, expectedVersion:0, payload:{}, reason:"Opened inbox conversation" }).then(()=>queryClient.invalidateQueries({queryKey:["studio"]})).catch(()=>undefined);
+    } else void studioCommand("messages", { command:"mark_read", entityId:selected.id, expectedVersion:0, payload:{}, reason:"Opened inbox conversation" }).then(()=>invalidateStudioDomains(queryClient,["messaging"])).catch(()=>undefined);
   }, [selected?.id]);
 
   useEffect(() => {
@@ -200,7 +223,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
         setSelectedKey(conversationId);
         setParams({ conversation: conversationId });
         setUndoMessage({ id: messageId, until: Date.now() + 10_000 });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["messaging"]);
       }
       setBody("");
       setNotice("Message sent.");
@@ -219,7 +242,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
       if (isDemo) store.transact((draft) => { draft.conversationMessages = draft.conversationMessages.filter((item) => item.id !== target.id); });
       else {
         await studioCommand("messages", { command: "undo", entityId: target.id, expectedVersion: 1, reason: "Undid a just-sent inbox message" });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["messaging"]);
       }
       setNotice("Message undone.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Message could not be undone."); }
@@ -250,7 +273,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
       } else {
         const response = await studioCommand("outbox", { command: "manual_send", expectedVersion: 0, payload: { ...email, studentId: selectedStudent?.id }, reason: `Manually sent ${emailTemplate.replaceAll("_", " ")} email` });
         setUndoEmail({ id: response.resource.id, until: new Date(response.undoUntil).getTime() });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["messaging"]);
       }
       setEmailOpen(false);
       setNotice("Email queued. You have a few seconds to undo it.");
@@ -266,7 +289,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
       else {
         const response = await studioCommand("outbox", { command: "resend", entityId: source.id, expectedVersion: source.version, reason: "Coach manually resent an email" });
         setUndoEmail({ id: response.resource.id, until: new Date(response.undoUntil).getTime() });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["messaging"]);
         setNotice("Email queued again. You have a few seconds to undo it.");
       }
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "Email could not be queued again."); }
@@ -281,7 +304,7 @@ function Inbox({ data, isDemo, role }: { data: StudioSnapshot; isDemo: boolean; 
       if (isDemo) store.transact((draft) => { const item = draft.outbox.find((row) => row.id === target.id); if (item) item.status = "cancelled"; });
       else {
         await studioCommand("outbox", { command: "cancel_manual", entityId: target.id, expectedVersion: 1, reason: "Coach undid a manual email send" });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["messaging"]);
       }
       setNotice("Email send undone.");
     } catch (reason) { setNotice(reason instanceof Error ? reason.message : "This email has already started sending."); }

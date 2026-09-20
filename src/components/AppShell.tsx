@@ -1,14 +1,14 @@
 import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useStudio } from "../hooks/useStudio";
+import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
 import { coachNavigation } from "../app/navigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
 
 export function AppShell() {
-  const { data } = useStudio();
+  const { data } = useStudioRoute("coach", undefined, ["identity"]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();

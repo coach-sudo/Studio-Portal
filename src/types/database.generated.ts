@@ -1805,6 +1805,13 @@ export type Database = {
             foreignKeyName: "material_links_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_links_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -2859,6 +2866,13 @@ export type Database = {
             foreignKeyName: "profile_submissions_material_id_fkey"
             columns: ["material_id"]
             isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profile_submissions_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
             referencedRelation: "materials"
             referencedColumns: ["id"]
           },
@@ -3696,6 +3710,65 @@ export type Database = {
       }
     }
     Views: {
+      material_library_rows: {
+        Row: {
+          approval_status: Database["public"]["Enums"]["approval_status"] | null
+          caption: string | null
+          category: string | null
+          created_at: string | null
+          external_url: string | null
+          file_size_bytes: number | null
+          id: string | null
+          lesson_id: string | null
+          lesson_topic: string | null
+          link_id: string | null
+          link_role: string | null
+          link_student_id: string | null
+          media_kind: string | null
+          mime_type: string | null
+          owner_student_id: string | null
+          public_embed: boolean | null
+          sort_order: number | null
+          status: Database["public"]["Enums"]["material_status"] | null
+          storage_path: string | null
+          student_name: string | null
+          studio_id: string | null
+          title: string | null
+          updated_at: string | null
+          version: number | null
+          visible_to_student: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_links_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lessons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_links_student_id_fkey"
+            columns: ["link_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_owner_student_id_fkey"
+            columns: ["owner_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "materials_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       published_actor_profiles: {
         Row: {
           content: Json | null
@@ -4273,6 +4346,10 @@ export type Database = {
       student_payment_balance: {
         Args: { target_student: string }
         Returns: number
+      }
+      studio_route_snapshot: {
+        Args: { requested_domains: string[] }
+        Returns: Json
       }
       studio_storage_health: { Args: never; Returns: Json }
       sync_future_contact_details: {

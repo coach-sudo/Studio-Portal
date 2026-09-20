@@ -24,6 +24,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
   useSearchParams,
@@ -55,7 +56,17 @@ import {
   studentBalanceMinor,
 } from "../../domain/finance";
 import type { Booking, Role, StudioSnapshot } from "../../domain/model";
-import { useStudio } from "../../hooks/useStudio";
+import {
+  invalidateStudioDomains,
+  queryLayerV2Enabled,
+  useStudioRoute,
+} from "../../hooks/useStudio";
+import {
+  portalPageSize,
+  shouldShowPagination,
+} from "../../data/pagination";
+import { mapNoteRow } from "../../data/studioMappers";
+import { usePaginatedStudioRows } from "../../hooks/usePaginatedStudioRows";
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { applyStudioBranding } from "../../lib/branding";
@@ -82,6 +93,23 @@ import { PortalClassWorkspace } from "../classes/ClassWorkspace";
 import { PortalInbox } from "../messages/Inbox";
 import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 import { StudentReferrals } from "../referrals/Referrals";
+import type { StudioDomain } from "../../data/repository";
+
+function portalDomains(pathname: string): readonly StudioDomain[] {
+  if (pathname.includes("/inbox")) return ["identity", "students", "messaging"];
+  if (pathname.includes("/payments")) return ["identity", "students", "finance"];
+  if (pathname.includes("/settings")) return ["identity", "students", "households"];
+  if (pathname.includes("/actor")) return ["identity", "students", "actorProfiles", "work"];
+  if (pathname.includes("/referrals")) return ["identity", "students", "referrals"];
+  if (pathname.includes("/notes"))
+    return queryLayerV2Enabled
+      ? ["identity", "students", "lessons"]
+      : ["identity", "students", "work"];
+  if (pathname.includes("/work")) return ["identity", "students", "work"];
+  if (pathname.includes("/schedule") || pathname.includes("/lesson")) return ["identity", "students", "lessons", "booking", "work"];
+  if (pathname.includes("/classes/")) return ["identity", "students", "lessons", "work", "messaging"];
+  return ["identity", "students", "lessons", "work"];
+}
 
 const portalNotificationLabels = {
   lessonReminders: "Lesson reminders",
@@ -99,7 +127,8 @@ export function StudentPortal({
   role?: Extract<Role, "student" | "guardian">;
 }) {
   const studentId = role === "guardian" ? "student-sarah" : "student-maya";
-  const { data, isLoading, isDemo } = useStudio(role, studentId);
+  const location = useLocation();
+  const { data, isLoading, isDemo } = useStudioRoute(role, studentId, portalDomains(location.pathname));
   const base = "/portal";
   const navigatePortal = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -213,7 +242,7 @@ export function StudentPortal({
               />
             }
           />
-          <Route path="notes" element={<StudentNotes data={data} />} />
+          <Route path="notes" element={<StudentNotes data={data} isDemo={isDemo} />} />
           <Route path="classes/:offeringId" element={<PortalClassWorkspace data={data} isDemo={isDemo} role={role} />} />
           <Route path="inbox" element={<PortalInbox data={data} isDemo={isDemo} role={role} />} />
           <Route path="referrals" element={<StudentReferrals students={data.students} isDemo={isDemo} />} />
@@ -697,7 +726,7 @@ function StudentBookings({
             ? { startsAt: slot.startsAt, endsAt: slot.endsAt, scope }
             : {},
         );
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["booking", "lessons"]);
       }
       setSelected(undefined);
       setNextStart(undefined);
@@ -737,7 +766,7 @@ function StudentBookings({
           body: JSON.stringify({ bookingId: booking.id }),
         });
         if (!response.ok) throw new Error((await response.json()).message);
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["booking", "finance"]);
       }
       setNotice("The series will end after the current paid period.");
     } catch (reason) {
@@ -1073,10 +1102,31 @@ function StudentBookings({
   );
 }
 
-function StudentNotes({ data }: { data: Snapshot }) {
+function StudentNotes({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   const [query, setQuery] = useState(""),
     [selectedLessonId, setSelectedLessonId] = useState<string>();
-  const filtered = data.notes
+  const [serverPage, setServerPage] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(portalPageSize);
+  const serverPaging = queryLayerV2Enabled && !isDemo;
+  const remoteNotes = usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "notes",
+      page: serverPage,
+      pageSize: serverPageSize,
+      search: query.trim()
+        ? { column: "title", value: query }
+        : undefined,
+      filters: { status: "published" },
+      sort: { column: "updated_at", ascending: false },
+    },
+    serverPaging,
+  );
+  useEffect(() => setServerPage(1), [query]);
+  const notes = serverPaging
+    ? (remoteNotes.data?.items ?? []).map((row) => mapNoteRow(row))
+    : data.notes;
+  const filtered = notes
     .filter((note) =>
       [note.title, note.body, note.category, ...(note.tags ?? [])]
         .join(" ")
@@ -1111,7 +1161,21 @@ function StudentNotes({ data }: { data: Snapshot }) {
       b.updatedAt;
     return bDate.localeCompare(aDate);
   });
-  const page = usePagedList(groups);
+  const localPage = usePagedList(groups, portalPageSize);
+  const page = serverPaging
+    ? {
+        visible: groups,
+        page: serverPage,
+        setPage: setServerPage,
+        pageSize: serverPageSize,
+        setPageSize: setServerPageSize,
+        pageCount: Math.max(
+          1,
+          Math.ceil((remoteNotes.data?.total ?? 0) / serverPageSize),
+        ),
+        total: remoteNotes.data?.total ?? 0,
+      }
+    : localPage;
   const selected = groups.find(
     (group) => group.lessonId === selectedLessonId,
   );
@@ -1133,15 +1197,17 @@ function StudentNotes({ data }: { data: Snapshot }) {
             />
           </label>
         </div>
-        <ListControls
-          page={page.page}
-          pageCount={page.pageCount}
-          pageSize={page.pageSize}
-          total={page.total}
-          onPage={page.setPage}
-          onPageSize={page.setPageSize}
-          label="lessons with notes"
-        />
+        {shouldShowPagination(page.total, page.pageSize) && (
+          <ListControls
+            page={page.page}
+            pageCount={page.pageCount}
+            pageSize={page.pageSize}
+            total={page.total}
+            onPage={page.setPage}
+            onPageSize={page.setPageSize}
+            label="notes"
+          />
+        )}
         <div className="lesson-note-index">
           {page.visible.map((group) => {
             const lesson = data.lessons.find(
@@ -1321,7 +1387,7 @@ function LessonHub({
               ? "Student completed lesson practice"
               : "Student requested help from lesson workspace",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice(
         command === "complete"
@@ -1359,7 +1425,7 @@ function LessonHub({
           payload: { responses, progress: Math.max(assignment.progress || 0, 25) },
           reason: "Student saved lesson assignment progress",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Assignment progress saved.");
     } catch (reason) {
@@ -1620,7 +1686,7 @@ function Practice({
               ? "Student completed practice"
               : "Student requested practice help",
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice(
         command === "complete"
@@ -1659,7 +1725,7 @@ function Practice({
           payload: { responses, progress: Math.max(assignment.progress || 0, 25) },
           reason: "Student saved assignment progress",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
       setNotice("Progress saved.");
     } catch (reason) {
@@ -1850,7 +1916,7 @@ function Materials({
               : "Student added current work material",
         });
       }
-      void queryClient.invalidateQueries({ queryKey: ["studio"] });
+      void invalidateStudioDomains(queryClient, ["work"]);
       setAdding(false);
       setNotice(
         role === "current_script"
@@ -1886,7 +1952,7 @@ function Materials({
           payload: { status },
           reason: "Student updated material status",
         });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["work"]);
       setNotice(
         status === "archived"
           ? "Material moved to your archive."
@@ -1925,7 +1991,7 @@ function Materials({
           expectedVersion: material.version,
           reason: "Student permanently deleted own material",
         });
-      await queryClient.invalidateQueries({ queryKey: ["studio"] });
+      await invalidateStudioDomains(queryClient, ["work"]);
       setNotice("Material and uploaded file deleted.");
     } catch (reason) {
       setNotice(
@@ -2231,7 +2297,7 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           payload: { enabled: !pkg.autoApply },
           reason: "Student changed automatic credit preference",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
         setNotice(
           !pkg.autoApply
             ? `Automatic credits enabled${result.resource.applied ? `; ${result.resource.applied} upcoming lesson${result.resource.applied === 1 ? "" : "s"} updated` : ""}.`
@@ -2277,7 +2343,7 @@ function Payments({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
           payload: {},
           reason: "Student turned off package renewal",
         });
-        await queryClient.invalidateQueries({ queryKey: ["studio"] });
+        await invalidateStudioDomains(queryClient, ["finance"]);
         setNotice(
           result.resource.status === "cancel_at_period_end"
             ? "Renewal is off. Your current paid period remains available."
@@ -2519,7 +2585,7 @@ function StudentSettings({
         else {
           if (role === "guardian" && linkedContact) await studioCommand("students", { command:"update_linked_contact_self", entityId:linkedContact.id, expectedVersion:linkedContact.version, payload:{ fullName:form.preferredName, email:form.email, timezone:form.timezone, notificationPreferences:form.notificationPreferences, portalPreferences:{ appearance:form.appearance } }, reason:"Linked contact updated portal settings" });
           else await studioCommand("students", { command: "update_self", entityId: student.id, expectedVersion: student.version, payload: updates, reason: "Student updated portal settings" });
-          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+          await invalidateStudioDomains(queryClient, ["students", "households"]);
         }
       });
       setNotice("Your settings were saved.");
@@ -2592,7 +2658,7 @@ function StudentSettings({
           });
           if (error) throw error;
         }
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["identity"]);
       }
       setLoginPassword("");
       setNotice("Your private password was updated.");
@@ -2808,7 +2874,7 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
             status: submit ? "review_requested" : "draft",
           },
         });
-        void queryClient.invalidateQueries({ queryKey: ["studio"] });
+        void invalidateStudioDomains(queryClient, ["actorProfiles"]);
       }
       setEditing(false);
       setNotice(

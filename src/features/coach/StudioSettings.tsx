@@ -36,6 +36,10 @@ import type {
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
+import {
+  invalidateStudioDomains,
+  studioDomainQueryKey,
+} from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
 
 type Panel =
@@ -86,7 +90,7 @@ export function StudioSettings({
             reason: "Coach updated studio settings",
           });
           queryClient.setQueryData<StudioSnapshot>(
-            ["studio", "coach", undefined],
+            studioDomainQueryKey("coach", undefined, "identity"),
             (current) =>
               current
                 ? {
@@ -97,7 +101,7 @@ export function StudioSettings({
                   }
                 : current,
           );
-          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+          await invalidateStudioDomains(queryClient, ["identity"]);
         }
       });
       setNotice(message);
@@ -196,7 +200,10 @@ export function StudioSettings({
             onRefresh={async () => {
               await Promise.all([
                 refreshHealth(),
-                queryClient.invalidateQueries({ queryKey: ["studio"] }),
+                invalidateStudioDomains(queryClient, [
+                  "identity",
+                  "administration",
+                ]),
               ]);
             }}
           />
@@ -869,7 +876,7 @@ function DataPanel({
         expectedVersion: 0,
         reason: "Coach retried failed email delivery",
       });
-    await queryClient.invalidateQueries({ queryKey: ["studio"] });
+    await invalidateStudioDomains(queryClient, ["messaging"]);
     onNotice(
       `${failed.length} failed message${failed.length === 1 ? "" : "s"} queued again.`,
     );

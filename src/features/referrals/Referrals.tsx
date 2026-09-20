@@ -7,7 +7,7 @@ import {
   type ReferralOverview,
 } from "../../data/referrals";
 import type { Student } from "../../domain/model";
-import { useStudio } from "../../hooks/useStudio";
+import { useStudioRoute } from "../../hooks/useStudio";
 import "./Referrals.css";
 
 const demoCode = (id: string) =>
@@ -119,7 +119,7 @@ function RewardList({
 }
 
 export function CoachReferrals() {
-  const { data, isDemo } = useStudio();
+  const { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "referrals"]);
   const { overview, error, loading, refresh } = useReferrals(
     data?.students,
     isDemo,

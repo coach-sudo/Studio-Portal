@@ -1,7 +1,7 @@
 import { ArrowLeft, FileText, Mail, MapPin, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useStudio } from "../../hooks/useStudio";
+import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
 
 type ActorMaterial = {
@@ -116,7 +116,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
 
 export function PublicActorPage() {
   const { slug = "" } = useParams(),
-    { data, isDemo } = useStudio(),
+    { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "actorProfiles", "work"]),
     demoProfile = data?.actorProfiles.find(
       (row) => row.slug === slug && row.status === "published",
     ),
