@@ -43,6 +43,8 @@ npm run playwright:report
 
 All browser commands require `STAGING_BASE_URL`. Fixture-backed runs also require `STAGING_E2E_FIXTURE_TOKEN`. The reporter writes `test-results/pr3-status.json` and distinguishes `PASSED`, `FAILED`, `BLOCKED`, and `NOT RUN`.
 
+For PRs into `main`, CI uses Netlify's numbered Deploy Preview. For a sequential PR stacked on another release branch, Netlify does not automatically create that numbered preview; CI therefore uses the explicit `STAGING_BASE_URL`. The staging draft message and verification record must identify the PR and commit so the tested release remains traceable.
+
 Artifacts are written to `playwright-report/` and `test-results/`. CI retains screenshots on failure, traces on first retry, video for failing attempts, the HTML report, and the machine-readable status report for 14 days.
 
 ## Journey matrix

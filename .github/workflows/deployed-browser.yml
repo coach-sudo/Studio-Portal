@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || github.event.deployment_status.target_url || secrets.STAGING_BASE_URL }}
+      STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || secrets.STAGING_BASE_URL || github.event.deployment_status.target_url }}
     steps:
       - uses: actions/checkout@v5
         with:
@@ -63,7 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || github.event.deployment_status.target_url || secrets.STAGING_BASE_URL }}
+      STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || secrets.STAGING_BASE_URL || github.event.deployment_status.target_url }}
       STAGING_E2E_FIXTURE_TOKEN: ${{ secrets.STAGING_E2E_FIXTURE_TOKEN }}
       E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
