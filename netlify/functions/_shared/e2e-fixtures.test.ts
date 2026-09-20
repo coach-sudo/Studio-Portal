@@ -27,4 +27,3 @@ describe("E2E fixture contracts", () => {
     ).toBe(true);
   });
 });
-
