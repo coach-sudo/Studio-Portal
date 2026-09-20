@@ -17,6 +17,8 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      TZ: America/New_York
     steps:
       - uses: actions/checkout@v5
         with:

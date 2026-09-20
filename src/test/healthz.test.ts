@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import healthz from "./healthz";
-import platformHealth from "./platform-health";
+import healthz from "../../netlify/functions/healthz";
+import platformHealth from "../../netlify/functions/platform-health";
 
 describe("health endpoints", () => {
   it("keeps public liveness free of provider detail", async () => {
