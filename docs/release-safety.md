@@ -12,7 +12,7 @@ Create a branch ruleset in **Repository settings → Rules → Rulesets** target
 4. Block force pushes and branch deletion, require linear history, and apply the rules to administrators.
 5. Do not grant direct-push bypasses for ordinary release work.
 
-These settings are manual because repository configuration is outside the source tree.
+Apply and verify these settings in GitHub because repository rules live outside the source tree.
 
 ## Netlify projects
 
@@ -28,6 +28,7 @@ Use two Git-connected Netlify projects for the same repository:
 
 ### Staging
 
+- Site: `https://coachd-staging.netlify.app` (`coachd-staging`).
 - Production branch: `main`; Deploy Previews: enabled for pull requests.
 - Environment variables: dedicated staging Supabase project, Stripe test-mode restricted key and webhook secret, and an optional isolated Google test calendar/account.
 - Never point staging at production Supabase, Stripe live mode, or the production Google account.
