@@ -1,0 +1,57 @@
+name: Deployed browser checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - ready_for_review
+  deployment_status:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || github.event.deployment_status.target_url || secrets.STAGING_BASE_URL }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - name: Require a dedicated staging URL
+        run: test -n "$STAGING_BASE_URL"
+      - name: Wait for the staging preview
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent --show-error "$STAGING_BASE_URL/api/healthz" > /dev/null; then
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "Staging preview did not become ready in five minutes." >&2
+          exit 1
+      - run: npm run playwright:smoke
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployed-browser-evidence-${{ github.run_id }}
+          if-no-files-found: ignore
+          retention-days: 14
+          path: |
+            playwright-report/
+            test-results/
