@@ -93,5 +93,43 @@ as $$
   );
 $$;
 
+-- SECURITY INVOKER keeps RLS authoritative, but callers still need ordinary
+-- SELECT privileges on every relation referenced by the route snapshot.
+grant select on table
+  public.memberships,
+  public.studios,
+  public.students,
+  public.lessons,
+  public.notes,
+  public.assignments,
+  public.materials,
+  public.material_links,
+  public.packages,
+  public.package_definitions,
+  public.package_billing_options,
+  public.package_subscriptions,
+  public.package_gifts,
+  public.linked_contacts,
+  public.file_assets,
+  public.student_pricing_rules,
+  public.package_credit_entries,
+  public.payment_entries,
+  public.actor_profiles,
+  public.outbox_messages,
+  public.recommendations,
+  public.booking_services,
+  public.availability_rules,
+  public.availability_exceptions,
+  public.service_offerings,
+  public.conversations,
+  public.conversation_messages,
+  public.conversation_states,
+  public.recurring_series,
+  public.bookings,
+  public.lesson_participants,
+  public.integration_imports,
+  public.discount_codes
+to authenticated;
+
 revoke all on function public.studio_route_snapshot(text[]) from public;
 grant execute on function public.studio_route_snapshot(text[]) to authenticated;
