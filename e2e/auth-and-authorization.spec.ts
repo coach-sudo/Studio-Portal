@@ -45,11 +45,21 @@ test("@journey Journey 12: student is denied coach route and coach-only data", a
   await page.goto("/portal");
   const token = await accessToken(page);
   expect(token).not.toBe("");
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  expect(supabaseUrl).toBeTruthy();
+  expect(anonKey).toBeTruthy();
   const response = await context.request.get(
-    "/.netlify/functions/platform-health",
-    { headers: { Authorization: `Bearer ${token}` } },
+    `${supabaseUrl}/rest/v1/memberships?select=id&role=eq.coach`,
+    {
+      headers: {
+        apikey: anonKey!,
+        Authorization: `Bearer ${token}`,
+      },
+    },
   );
-  expect(response.status()).toBe(403);
+  expect(response.status()).toBe(200);
+  expect(await response.json()).toEqual([]);
   await context.close();
 });
 

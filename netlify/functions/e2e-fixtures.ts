@@ -142,6 +142,24 @@ async function cleanup(
     .ilike("original_name", `${runId}-%`);
   if (assetError) throwFixtureError("asset_lookup", assetError);
   const storagePaths = (assets || []).map((asset) => asset.storage_path);
+  const { data: uploadedMaterials, error: uploadedMaterialError } = await db
+    .from("materials")
+    .select("id")
+    .eq("studio_id", studioId)
+    .ilike("title", `${runId}%`);
+  if (uploadedMaterialError)
+    throwFixtureError("material_lookup", uploadedMaterialError);
+  const auditEntityIds = [
+    ...Object.values(fixture),
+    ...(assets || []).map((asset) => asset.id),
+    ...(uploadedMaterials || []).map((material) => material.id),
+  ];
+  const { error: auditError } = await db
+    .from("audit_events")
+    .delete()
+    .eq("studio_id", studioId)
+    .in("entity_id", auditEntityIds);
+  if (auditError) throwFixtureError("audit_cleanup", auditError);
   if (storagePaths.length) {
     const { error } = await db.storage
       .from("studio-materials")
