@@ -107,6 +107,9 @@ jobs:
           snapshot_table "$RUNNER_TEMP/storage-before.sql" --table=storage.objects
           snapshot_table "$RUNNER_TEMP/auth-users-before.sql" --table=auth.users
           snapshot_table "$RUNNER_TEMP/auth-identities-before.sql" --table=auth.identities
+          baseline_rate_limits="$(docker exec "$db_container" psql -U postgres -d postgres -Atc \
+            "select count(*) from public.public_endpoint_rate_limits;")"
+          test "$baseline_rate_limits" = "0"
 
           cloudflared="$RUNNER_TEMP/cloudflared"
           curl --fail --silent --show-error --location \
@@ -129,7 +132,7 @@ jobs:
 
           {
             echo "DB_CONTAINER=$db_container"
-            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_URL=$supabase_public_url"
             echo "SUPABASE_ANON_KEY=$ANON_KEY"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "VITE_SUPABASE_URL=$supabase_public_url"
@@ -206,6 +209,8 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p test-results
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
+            "delete from public.public_endpoint_rate_limits;" > /dev/null
           snapshot_table() {
             local file="$1"
             shift
