@@ -54,6 +54,16 @@ const ids = [
 
 type FixtureIds = Record<(typeof ids)[number], string>;
 
+function throwFixtureError(operation: string, error: unknown): never {
+  const code =
+    error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "UNKNOWN";
+  throw new Error(`E2E_FIXTURE_${operation.toUpperCase()}:${code}`, {
+    cause: error,
+  });
+}
+
 export function fixtureId(runId: string, label: string) {
   const hex = createHash("sha256").update(`${runId}:${label}`).digest("hex");
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-a${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
@@ -107,7 +117,7 @@ async function removeAuthUsers(emails: string[]) {
     const user = await findAuthUserByEmail(db, email);
     if (user) {
       const { error } = await db.auth.admin.deleteUser(user.id);
-      if (error) throw error;
+      if (error) throwFixtureError("auth_user_delete", error);
     }
   }
 }
@@ -125,18 +135,18 @@ async function cleanup(
     .select("id,storage_path")
     .eq("studio_id", studioId)
     .ilike("original_name", `${runId}-%`);
-  if (assetError) throw assetError;
+  if (assetError) throwFixtureError("asset_lookup", assetError);
   const storagePaths = (assets || []).map((asset) => asset.storage_path);
   if (storagePaths.length) {
     const { error } = await db.storage
       .from("studio-materials")
       .remove(storagePaths);
-    if (error) throw error;
+    if (error) throwFixtureError("storage_remove", error);
   }
 
   const deleteIds = async (table: string, values: string[]) => {
     const { error } = await db.from(table).delete().in("id", values);
-    if (error) throw error;
+    if (error) throwFixtureError(`delete_${table}`, error);
   };
 
   if (assets?.length)
@@ -149,7 +159,7 @@ async function cleanup(
     .delete()
     .eq("studio_id", studioId)
     .ilike("title", `${runId}%`);
-  if (materialError) throw materialError;
+  if (materialError) throwFixtureError("material_cleanup", materialError);
 
   await deleteIds("referral_rewards", [
     fixture.rewardEarned,
@@ -173,7 +183,7 @@ async function cleanup(
     .from("conversation_messages")
     .delete()
     .eq("conversation_id", fixture.conversation);
-  if (messageError) throw messageError;
+  if (messageError) throwFixtureError("message_cleanup", messageError);
   await deleteIds("conversations", [fixture.conversation]);
   await deleteIds("payment_entries", [fixture.payment]);
   await deleteIds("packages", [fixture.package]);
@@ -182,7 +192,8 @@ async function cleanup(
     .from("actor_profiles")
     .update({ published_revision_id: null })
     .eq("id", fixture.actorProfile);
-  if (detachRevisionError) throw detachRevisionError;
+  if (detachRevisionError)
+    throwFixtureError("actor_revision_detach", detachRevisionError);
   await deleteIds("actor_profile_revisions", [fixture.actorRevision]);
   await deleteIds("actor_profiles", [fixture.actorProfile]);
   await deleteIds("assignments", [fixture.assignment]);
@@ -230,7 +241,7 @@ async function upsertAuthUser(
       email_confirm: true,
       user_metadata: { display_name: displayName, e2e: true },
     });
-    if (error) throw error;
+    if (error) throwFixtureError("auth_user_update", error);
     return data.user;
   }
   const { data, error } = await db.auth.admin.createUser({
@@ -239,7 +250,7 @@ async function upsertAuthUser(
     email_confirm: true,
     user_metadata: { display_name: displayName, e2e: true },
   });
-  if (error) throw error;
+  if (error) throwFixtureError("auth_user_create", error);
   return data.user;
 }
 
@@ -335,7 +346,7 @@ async function setup(
   const { error: studentsError } = await db
     .from("students")
     .upsert(studentRows);
-  if (studentsError) throw studentsError;
+  if (studentsError) throwFixtureError("students", studentsError);
 
   const { error: membershipError } = await db.from("memberships").upsert({
     id: fixture.membership,
@@ -344,7 +355,7 @@ async function setup(
     display_name: "E2E Coach",
     role: "coach",
   });
-  if (membershipError) throw membershipError;
+  if (membershipError) throwFixtureError("membership", membershipError);
 
   const { error: contactError } = await db.from("linked_contacts").upsert({
     id: fixture.guardianContact,
@@ -362,7 +373,7 @@ async function setup(
     can_manage_profile: true,
     can_manage_lessons: true,
   });
-  if (contactError) throw contactError;
+  if (contactError) throwFixtureError("linked_contact", contactError);
   const { error: relationshipError } = await db
     .from("student_relationships")
     .upsert({
@@ -377,7 +388,8 @@ async function setup(
       can_manage_profile: true,
       can_manage_lessons: true,
     });
-  if (relationshipError) throw relationshipError;
+  if (relationshipError)
+    throwFixtureError("student_relationship", relationshipError);
 
   const portalRows = [
     {
@@ -421,7 +433,7 @@ async function setup(
   const { error: portalError } = await db
     .from("portal_accounts")
     .upsert(portalRows);
-  if (portalError) throw portalError;
+  if (portalError) throwFixtureError("portal_accounts", portalError);
 
   const services = [
     {
@@ -465,7 +477,7 @@ async function setup(
   const { error: serviceError } = await db
     .from("booking_services")
     .upsert(services);
-  if (serviceError) throw serviceError;
+  if (serviceError) throwFixtureError("booking_services", serviceError);
 
   const lessonBase = {
     studio_id: studioId,
@@ -516,7 +528,7 @@ async function setup(
       join_url: null,
     },
   ]);
-  if (lessonsError) throw lessonsError;
+  if (lessonsError) throwFixtureError("lessons", lessonsError);
 
   const { error: assignmentError } = await db.from("assignments").upsert({
     id: fixture.assignment,
@@ -528,7 +540,7 @@ async function setup(
     status: "assigned",
     due_at: iso(5760),
   });
-  if (assignmentError) throw assignmentError;
+  if (assignmentError) throwFixtureError("assignment", assignmentError);
   const { error: materialError } = await db.from("materials").upsert({
     id: fixture.material,
     studio_id: studioId,
@@ -541,7 +553,7 @@ async function setup(
     status: "active",
     approval_status: "not_public",
   });
-  if (materialError) throw materialError;
+  if (materialError) throwFixtureError("material", materialError);
 
   const { error: packageDefinitionError } = await db
     .from("package_definitions")
@@ -558,7 +570,8 @@ async function setup(
       direct_purchase: true,
       eligible_service_ids: [fixture.paidService],
     });
-  if (packageDefinitionError) throw packageDefinitionError;
+  if (packageDefinitionError)
+    throwFixtureError("package_definition", packageDefinitionError);
   const { error: packageError } = await db.from("packages").upsert({
     id: fixture.package,
     student_id: fixture.student,
@@ -569,7 +582,7 @@ async function setup(
     auto_apply: true,
     expires_at: iso(60 * 24 * 90),
   });
-  if (packageError) throw packageError;
+  if (packageError) throwFixtureError("package", packageError);
   const { error: paymentError } = await db.from("payment_entries").upsert({
     id: fixture.payment,
     student_id: fixture.student,
@@ -578,7 +591,7 @@ async function setup(
     kind: "payment",
     reason: `${runId} fixture payment`,
   });
-  if (paymentError) throw paymentError;
+  if (paymentError) throwFixtureError("payment", paymentError);
 
   const actorContent = {
     headline: "E2E Actor",
@@ -596,7 +609,7 @@ async function setup(
     status: "published",
     published_revision_id: null,
   });
-  if (profileError) throw profileError;
+  if (profileError) throwFixtureError("actor_profile", profileError);
   const { error: revisionError } = await db
     .from("actor_profile_revisions")
     .upsert({
@@ -605,12 +618,12 @@ async function setup(
       revision_number: 1,
       content: actorContent,
     });
-  if (revisionError) throw revisionError;
+  if (revisionError) throwFixtureError("actor_revision", revisionError);
   const { error: publishError } = await db
     .from("actor_profiles")
     .update({ published_revision_id: fixture.actorRevision })
     .eq("id", fixture.actorProfile);
-  if (publishError) throw publishError;
+  if (publishError) throwFixtureError("actor_publish", publishError);
 
   const { error: conversationError } = await db.from("conversations").upsert({
     id: fixture.conversation,
@@ -620,7 +633,7 @@ async function setup(
     title: "E2E Coach conversation",
     last_message_at: iso(-30),
   });
-  if (conversationError) throw conversationError;
+  if (conversationError) throwFixtureError("conversation", conversationError);
   const { error: messageError } = await db
     .from("conversation_messages")
     .upsert({
@@ -633,7 +646,7 @@ async function setup(
       body: `${runId} fixture welcome message`,
       created_at: iso(-30),
     });
-  if (messageError) throw messageError;
+  if (messageError) throwFixtureError("message", messageError);
 
   const referred = [
     fixture.referredPending,
@@ -669,7 +682,7 @@ async function setup(
       .digest("hex"),
   }));
   const { error: bookingError } = await db.from("bookings").upsert(bookingRows);
-  if (bookingError) throw bookingError;
+  if (bookingError) throwFixtureError("bookings", bookingError);
   const referralRows = [
     fixture.referralPending,
     fixture.referralEarned,
@@ -685,7 +698,7 @@ async function setup(
   const { error: referralError } = await db
     .from("referrals")
     .upsert(referralRows);
-  if (referralError) throw referralError;
+  if (referralError) throwFixtureError("referrals", referralError);
   const discountRows = [
     {
       id: fixture.discountEarned,
@@ -713,7 +726,7 @@ async function setup(
   const { error: discountError } = await db
     .from("discount_codes")
     .upsert(discountRows);
-  if (discountError) throw discountError;
+  if (discountError) throwFixtureError("discounts", discountError);
   const { error: rewardsError } = await db.from("referral_rewards").upsert([
     {
       id: fixture.rewardEarned,
@@ -730,7 +743,7 @@ async function setup(
       kind: "paid_lesson",
     },
   ]);
-  if (rewardsError) throw rewardsError;
+  if (rewardsError) throwFixtureError("referral_rewards", rewardsError);
 
   return {
     accounts,
