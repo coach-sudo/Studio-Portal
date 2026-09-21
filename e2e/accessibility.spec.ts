@@ -1,6 +1,6 @@
 import { openAs } from "./support/auth";
 import { expectNoSeriousAxeViolations } from "./support/axe";
-import { requireFixtures, test } from "./support/fixtures";
+import { expect, requireFixtures, test } from "./support/fixtures";
 
 test("@a11y @mobile login and public booking have no serious axe violations", async ({
   page,
@@ -64,9 +64,12 @@ test("@a11y focused dialog, form validation, pagination, and live-region pattern
   await page.keyboard.press("Escape");
 
   await page.goto("/portal/settings");
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(page.locator("form")).toBeVisible();
   await expectNoSeriousAxeViolations(page, "form");
 
   await page.goto("/portal/bookings");
+  await expect(page.getByRole("heading", { name: "Schedule" })).toBeVisible();
   const controls = page.locator('[aria-label$="display controls"]').first();
   if (await controls.isVisible()) {
     await expectNoSeriousAxeViolations(
