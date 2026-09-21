@@ -406,6 +406,7 @@ async function setup(
       account_type: "student",
       username: accounts.coach.username,
       email: accounts.coach.email,
+      must_change_password: false,
     },
     {
       id: fixture.studentAccount,
@@ -415,6 +416,7 @@ async function setup(
       account_type: "student",
       username: accounts.student.username,
       email: accounts.student.email,
+      must_change_password: false,
     },
     {
       id: fixture.guardianAccount,
@@ -425,6 +427,7 @@ async function setup(
       account_type: "guardian",
       username: accounts.guardian.username,
       email: accounts.guardian.email,
+      must_change_password: false,
     },
     {
       id: fixture.unrelatedAccount,
@@ -434,6 +437,7 @@ async function setup(
       account_type: "student",
       username: accounts.unrelated.username,
       email: accounts.unrelated.email,
+      must_change_password: false,
     },
   ] satisfies InsertRow<"portal_accounts">[];
   const { error: portalError } = await db

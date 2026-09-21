@@ -62,20 +62,28 @@ export default async function globalSetup(config: FullConfig) {
       if (!account)
         throw new Error(`fixture response omitted ${role} credentials`);
       const context = await browser.newContext({ baseURL });
-      const page = await context.newPage();
-      await page.goto("/login");
-      await page.getByLabel("Username").fill(account.username);
-      await page.getByLabel("Password").fill(account.password);
-      await Promise.all([
-        page.waitForURL(/\/(portal|coach)(?:\/|$)/, { timeout: 30_000 }),
-        page.getByRole("button", { name: "Sign in" }).click(),
-      ]);
-      if (role === "coach") {
-        await page.goto("/coach");
-        await page.waitForURL(/\/coach(?:\/|$)/);
+      try {
+        const page = await context.newPage();
+        await page.goto("/login");
+        await page.getByLabel("Username").fill(account.username);
+        await page.getByLabel("Password").fill(account.password);
+        await Promise.all([
+          page.waitForURL(/\/(portal|coach)(?:\/|$)/, { timeout: 30_000 }),
+          page.getByRole("button", { name: "Sign in" }).click(),
+        ]);
+        if (role === "coach") {
+          await page.goto("/coach");
+          await page.waitForURL(/\/coach(?:\/|$)/);
+        }
+        await context.storageState({ path: storageStatePath(role) });
+      } catch (error) {
+        throw new Error(
+          `fixture authentication failed for ${role}: ${error instanceof Error ? error.message : String(error)}`,
+          { cause: error },
+        );
+      } finally {
+        await context.close();
       }
-      await context.storageState({ path: storageStatePath(role) });
-      await context.close();
     }
     await browser.close();
   } catch (error) {
