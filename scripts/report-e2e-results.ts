@@ -55,7 +55,22 @@ function collect(suites: Suite[], output: Evidence[]) {
 }
 
 const reportPath = path.resolve("test-results/results.json");
-const report = JSON.parse(await readFile(reportPath, "utf8")) as Report;
+let report: Report = {};
+let reportUnavailableReason: string | undefined;
+try {
+  report = JSON.parse(await readFile(reportPath, "utf8")) as Report;
+} catch (error) {
+  if (
+    error instanceof Error &&
+    "code" in error &&
+    (error as NodeJS.ErrnoException).code === "ENOENT"
+  ) {
+    reportUnavailableReason =
+      "The deployed test command did not produce a results file.";
+  } else {
+    throw error;
+  }
+}
 const evidence: Evidence[] = [];
 collect(report.suites || [], evidence);
 
@@ -79,7 +94,9 @@ const journeys = Array.from({ length: 13 }, (_, index) => {
     reason:
       failed?.reason ||
       blocked?.reason ||
-      (!matching.length ? "No matching deployed test result." : undefined),
+      (!matching.length
+        ? reportUnavailableReason || "No matching deployed test result."
+        : undefined),
     tests: matching,
   };
 });
@@ -136,5 +153,9 @@ if (fixtureInfrastructureBlocked) {
   process.stderr.write(
     "Fixture infrastructure is unavailable; the deployed suite cannot be treated as successful.\n",
   );
+  process.exitCode = 1;
+}
+if (reportUnavailableReason) {
+  process.stderr.write(`${reportUnavailableReason}\n`);
   process.exitCode = 1;
 }
