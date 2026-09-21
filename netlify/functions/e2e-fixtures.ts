@@ -491,7 +491,7 @@ async function setup(
     location_label: "Google Meet",
     location_type: "virtual",
     meeting_provider: "google_meet",
-    source_provider: "manual",
+    source_provider: "studio",
     payment_status: "paid",
     price_minor: 7500,
     paid_minor: 7500,
