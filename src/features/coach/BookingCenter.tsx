@@ -1,40 +1,28 @@
+import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
   CalendarDays,
   CheckCircle2,
-  Edit3,
-  MoreHorizontal,
   Plus,
-  RefreshCw,
-  Settings2,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
   PageHeader,
-  Section,
   Status,
-  Toggle,
 } from "../../components/Primitives";
 import {
   bookingAdminCommand,
-  checkSchedulingConflicts,
   loadPlatformHealth,
   studioCommand,
   type BookingAdminResource,
   type PlatformHealth,
 } from "../../data/bookingCommands";
-import { cancelDemoBooking, remainingCapacity } from "../../domain/booking";
+import { cancelDemoBooking } from "../../domain/booking";
 import { formatMoney } from "../../domain/finance";
-import {
-  formatStudioDate,
-  formatStudioDateTime,
-  formatStudioTime,
-} from "../../domain/presentation";
 import type {
   AvailabilityRule,
   Booking,
@@ -42,47 +30,35 @@ import type {
   MeetingProvider,
   RecurringSeries,
   ServiceOffering,
-  StudioSnapshot,
   StudioSettings,
+  StudioSnapshot,
 } from "../../domain/model";
-import {
-  invalidateStudioDomains,
-  useStudioRoute,
-} from "../../hooks/useStudio";
+import { formatStudioDateTime } from "../../domain/presentation";
+import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { LessonsView } from "./StudioOperations";
 
-type Tab =
-  | "overview"
-  | "setup"
-  | "calendar"
-  | "services"
-  | "availability"
-  | "classes"
-  | "series";
-const tabs: readonly [Tab, string][] = [
-  ["calendar", "Calendar"],
-  ["overview", "Overview"],
-  ["setup", "Booking setup"],
-  ["services", "Services"],
-  ["availability", "Availability"],
-  ["classes", "Classes"],
-  ["series", "Recurring"],
-];
-const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
-const serviceName = (data: StudioSnapshot, id: string) =>
-  data.bookingServices.find((item) => item.id === id)?.name ?? "Booking";
-const bookingTone = (status: Booking["status"]) =>
-  status === "confirmed" || status === "completed"
-    ? "good"
-    : status === "needs_attention" || status === "late_cancelled"
-      ? "warn"
-      : status === "cancelled" || status === "expired"
-        ? "danger"
-        : "neutral";
+import { Availability } from "./BookingAvailability";
+import {
+  bookingTone,
+  serviceName,
+  tabs,
+  uid,
+  type Tab,
+} from "./BookingCenter.shared";
+import { Classes } from "./BookingClasses";
+import { ManualBookingDialog, Overview } from "./BookingOverview";
+import { Series } from "./BookingSeries";
+import { Services } from "./BookingServices";
+import { BookingSetup } from "./BookingSetup";
 
 export function BookingCenter() {
-  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "booking", "lessons"]);
+  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, [
+    "identity",
+    "students",
+    "booking",
+    "lessons",
+  ]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -111,8 +87,14 @@ export function BookingCenter() {
     if (!data) return;
     const bookingId = searchParams.get("booking");
     const lessonId = searchParams.get("lesson");
-    const booking = data.bookings.find((item)=>item.id===bookingId) || data.bookings.find((item)=>data.lessonParticipants.some((part)=>part.lessonId===lessonId&&part.bookingId===item.id));
-    if (booking) setDialog({type:"booking",item:booking});
+    const booking =
+      data.bookings.find((item) => item.id === bookingId) ||
+      data.bookings.find((item) =>
+        data.lessonParticipants.some(
+          (part) => part.lessonId === lessonId && part.bookingId === item.id,
+        ),
+      );
+    if (booking) setDialog({ type: "booking", item: booking });
   }, [data, requestedRecord]);
   if (isLoading || !data)
     return <div className="loading">Opening booking center…</div>;
@@ -180,7 +162,12 @@ export function BookingCenter() {
         title="Bookings"
         action={
           <div className="header-actions">
-            <a className="button-link" href="/book" target="_blank" rel="noreferrer">
+            <a
+              className="button-link"
+              href="/book"
+              target="_blank"
+              rel="noreferrer"
+            >
               View public booking page
             </a>
             <button
@@ -235,14 +222,9 @@ export function BookingCenter() {
         />
       )}
       {tab === "setup" && (
-        <BookingSetup
-          value={data.settings}
-          onSave={saveBookingSettings}
-        />
+        <BookingSetup value={data.settings} onSave={saveBookingSettings} />
       )}
-      {tab === "calendar" && (
-        <LessonsView data={data} isDemo={isDemo} />
-      )}
+      {tab === "calendar" && <LessonsView data={data} isDemo={isDemo} />}
       {tab === "services" && (
         <Services
           data={data}
@@ -253,7 +235,14 @@ export function BookingCenter() {
       {tab === "availability" && (
         <Availability
           data={data}
-          onSaveVisibility={(percent) => saveBookingSettings({ bookingDefaults: { ...data.settings.bookingDefaults, visibleSlotsPercent: percent } })}
+          onSaveVisibility={(percent) =>
+            saveBookingSettings({
+              bookingDefaults: {
+                ...data.settings.bookingDefaults,
+                visibleSlotsPercent: percent,
+              },
+            })
+          }
           onRule={(item) => setDialog({ type: "rule", item })}
           onException={() => setDialog({ type: "exception" })}
           onDeleteRule={(item) =>
@@ -411,10 +400,19 @@ export function BookingCenter() {
           data={data}
           onClose={() => setDialog(undefined)}
           onDelete={() => {
-            if (!window.confirm(`Delete “${dialog.item.title}” and its unsold occurrences?`)) return;
+            if (
+              !window.confirm(
+                `Delete “${dialog.item.title}” and its unsold occurrences?`,
+              )
+            )
+              return;
             void run("offerings", "delete", {}, dialog.item, (draft) => {
-              draft.serviceOfferings = draft.serviceOfferings.filter((item) => item.id !== dialog.item.id);
-              draft.lessons = draft.lessons.filter((lesson) => !dialog.item.lessonIds.includes(lesson.id));
+              draft.serviceOfferings = draft.serviceOfferings.filter(
+                (item) => item.id !== dialog.item.id,
+              );
+              draft.lessons = draft.lessons.filter(
+                (lesson) => !dialog.item.lessonIds.includes(lesson.id),
+              );
             });
           }}
         />
@@ -470,1059 +468,6 @@ export function BookingCenter() {
   );
 }
 
-function BookingSetup({
-  value,
-  onSave,
-}: {
-  value: StudioSettings;
-  onSave: (updates: Partial<StudioSettings>) => Promise<void>;
-}) {
-  const [form, setForm] = useState(value);
-  const [saving, setSaving] = useState(false);
-  const updateDefaults = (
-    updates: Partial<StudioSettings["bookingDefaults"]>,
-  ) =>
-    setForm({
-      ...form,
-      bookingDefaults: { ...form.bookingDefaults, ...updates },
-    });
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (saving) return;
-    setSaving(true);
-    try {
-      await onSave({
-        bookingUrl: form.bookingUrl,
-        showBookingButton: form.showBookingButton,
-        bookingCopy: form.bookingCopy,
-        bookingPage: form.bookingPage,
-        bookingDefaults: form.bookingDefaults,
-      });
-    } catch {
-      // The booking center displays the actionable save error.
-    } finally {
-      setSaving(false);
-    }
-  };
-  return (
-    <Section title="Public booking setup" marked>
-      <p className="section-intro">
-        Control what people see, when they can book, and the defaults used when
-        you create a new service. A service can still override these defaults.
-      </p>
-      <form className="settings-form booking-setup-form" onSubmit={submit}>
-        <h3 className="full">Page content</h3>
-        <label>
-          Booking page address
-          <input
-            value={form.bookingUrl}
-            onChange={(event) => setForm({ ...form, bookingUrl: event.target.value })}
-            placeholder="https://portal.example.com/book"
-          />
-        </label>
-        <label>
-          Button text
-          <input
-            value={form.bookingDefaults.bookingButtonLabel}
-            onChange={(event) => updateDefaults({ bookingButtonLabel: event.target.value })}
-            placeholder="View times"
-          />
-        </label>
-        <label>
-          Short label above the headline
-          <input
-            value={form.bookingCopy.eyebrow}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, eyebrow: event.target.value },
-              })
-            }
-          />
-        </label>
-        <label className="full">
-          Main headline
-          <input
-            value={form.bookingCopy.headline}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, headline: event.target.value },
-              })
-            }
-          />
-        </label>
-        <label className="full">
-          Introduction
-          <textarea
-            value={form.bookingCopy.intro}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingCopy: { ...form.bookingCopy, intro: event.target.value },
-              })
-            }
-          />
-        </label>
-        <label className="full">
-          Message shown after a booking is confirmed
-          <textarea
-            value={form.bookingDefaults.confirmationMessage}
-            onChange={(event) => updateDefaults({ confirmationMessage: event.target.value })}
-          />
-        </label>
-        <label>
-          Footer website address
-          <input
-            type="url"
-            value={form.bookingPage.footerWebsiteUrl}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, footerWebsiteUrl: event.target.value },
-              })
-            }
-          />
-        </label>
-        <label>
-          Footer link text
-          <input
-            value={form.bookingPage.footerWebsiteLabel}
-            onChange={(event) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, footerWebsiteLabel: event.target.value },
-              })
-            }
-          />
-        </label>
-
-        <h3 className="full">What people can see and choose</h3>
-        <div className="settings-list full">
-          <Toggle
-            label="Show the booking button in student accounts"
-            detail="Signed-in students can book from their own profile."
-            checked={form.showBookingButton}
-            onChange={(showBookingButton) => setForm({ ...form, showBookingButton })}
-          />
-          <Toggle
-            label="Show coach name"
-            detail="Identify the coach beneath the booking-page introduction."
-            checked={form.bookingPage.showCoachName}
-            onChange={(showCoachName) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showCoachName },
-              })
-            }
-          />
-          <Toggle
-            label="Show trust and security details"
-            detail="Explain secure checkout, live availability, and lesson delivery."
-            checked={form.bookingPage.showTrustRow}
-            onChange={(showTrustRow) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showTrustRow },
-              })
-            }
-          />
-          <Toggle
-            label="Show cancellation and rescheduling rules"
-            detail="Keep the accepted change rules visible during booking."
-            checked={form.bookingPage.showPolicies}
-            onChange={(showPolicies) =>
-              setForm({
-                ...form,
-                bookingPage: { ...form.bookingPage, showPolicies },
-              })
-            }
-          />
-          <Toggle
-            label="Show prices"
-            detail="Display prices in the public service list and checkout."
-            checked={form.bookingDefaults.showPrices}
-            onChange={(showPrices) => updateDefaults({ showPrices })}
-          />
-          <Toggle
-            label="Require a phone number"
-            detail="Ask for a reachable phone number before checkout."
-            checked={form.bookingDefaults.requirePhone}
-            onChange={(requirePhone) => updateDefaults({ requirePhone })}
-          />
-          <Toggle
-            label="Allow weekly and biweekly booking"
-            detail="Only services that offer repeating lessons will show these choices."
-            checked={form.bookingDefaults.allowRecurring}
-            onChange={(allowRecurring) => updateDefaults({ allowRecurring })}
-          />
-          <Toggle
-            label="Allow payment later"
-            detail="Only services that support payment later will show this choice."
-            checked={form.bookingDefaults.allowPayLater}
-            onChange={(allowPayLater) => updateDefaults({ allowPayLater })}
-          />
-        </div>
-
-        <h3 className="full">Default timing and price rules</h3>
-        <label>
-          How soon someone can book (hours)
-          <input
-            type="number"
-            min="0"
-            value={form.bookingDefaults.minimumNoticeHours}
-            onChange={(event) => updateDefaults({ minimumNoticeHours: Number(event.target.value) })}
-          />
-          <small>For example, 24 prevents bookings less than a day away.</small>
-        </label>
-        <label>
-          How far ahead people can book (days)
-          <input
-            type="number"
-            min="1"
-            max="730"
-            value={form.bookingDefaults.bookingHorizonDays}
-            onChange={(event) => updateDefaults({ bookingHorizonDays: Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Notice required to cancel or reschedule (hours)
-          <input
-            type="number"
-            min="0"
-            value={form.bookingDefaults.cancellationWindowHours}
-            onChange={(event) => updateDefaults({ cancellationWindowHours: Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Break before each lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={form.bookingDefaults.bufferBeforeMinutes}
-            onChange={(event) => updateDefaults({ bufferBeforeMinutes: Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Break after each lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={form.bookingDefaults.bufferAfterMinutes}
-            onChange={(event) => updateDefaults({ bufferAfterMinutes: Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Weeks of ongoing lessons to keep scheduled
-          <input
-            type="number"
-            min="1"
-            value={form.bookingDefaults.recurringHorizonWeeks}
-            onChange={(event) => updateDefaults({ recurringHorizonWeeks: Number(event.target.value) })}
-          />
-        </label>
-        <label>
-          Default extra charge for in-person lessons (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.bookingDefaults.inPersonUpchargeMinor / 100}
-            onChange={(event) =>
-              updateDefaults({
-                inPersonUpchargeMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-          <small>A service-specific amount will take priority over this default.</small>
-        </label>
-        <div className="form-actions full">
-          <button className="primary" disabled={saving}>
-            {saving ? "Saving…" : "Save booking setup"}
-          </button>
-        </div>
-      </form>
-    </Section>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  detail,
-  tone,
-}: {
-  label: string;
-  value: string;
-  detail: string;
-  tone?: string;
-}) {
-  return (
-    <article className={`booking-metric ${tone ?? ""}`}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-      <small>{detail}</small>
-    </article>
-  );
-}
-function Overview({
-  data,
-  health,
-  onViewAll,
-  onBooking,
-}: {
-  data: StudioSnapshot;
-  health: PlatformHealth;
-  onViewAll: () => void;
-  onBooking: (item: Booking) => void;
-}) {
-  const confirmed = data.bookings.filter((item) => item.status === "confirmed");
-  const revenue = data.bookings.reduce((sum, item) => sum + item.paidMinor, 0);
-  const seats = data.serviceOfferings.reduce(
-    (sum, item) => sum + remainingCapacity(item.capacity, item.enrolled),
-    0,
-  );
-  const readyCount = [
-    health.supabase,
-    health.stripe,
-    health.googleCalendar,
-    health.gmail,
-  ].filter(Boolean).length;
-  const recentBookings = [...data.bookings]
-    .filter(
-      (item) =>
-        !["expired", "cancelled", "late_cancelled"].includes(item.status),
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-    .slice(0, 3);
-  const integrationsReady = readyCount === 4;
-  return (
-    <>
-      <section className="metric-grid">
-        <Metric
-          label="Upcoming"
-          value={String(confirmed.length)}
-          detail="confirmed bookings"
-        />
-        <Metric
-          label="Booked revenue"
-          value={formatMoney(revenue, "USD")}
-          detail="across current bookings"
-          tone="gold"
-        />
-        <Metric
-          label="Class seats"
-          value={String(seats)}
-          detail="remaining across offerings"
-        />
-        {!integrationsReady && (
-          <Metric
-            label="Integration health"
-            value={`${readyCount}/4`}
-            detail={
-              health.mode === "live"
-                ? "services ready"
-                : "demo configuration"
-            }
-            tone="gold"
-          />
-        )}
-      </section>
-      <CoachPanel
-        title="Recent bookings"
-        aside={<button onClick={onViewAll}>View calendar</button>}
-      >
-        <div className="booking-table">
-          <div className="booking-table-head">
-            <span>Student</span>
-            <span>Service</span>
-            <span>When</span>
-            <span>Payment</span>
-            <span>Status</span>
-            <span />
-          </div>
-          {recentBookings.map((booking) => (
-            <BookingRow
-              key={booking.id}
-              booking={booking}
-              data={data}
-              onOpen={() => onBooking(booking)}
-            />
-          ))}
-          {!recentBookings.length && (
-            <EmptyState
-              title="No active bookings yet"
-              detail="Confirmed and in-progress bookings will appear here."
-            />
-          )}
-        </div>
-      </CoachPanel>
-      <div className={`coach-two-column${integrationsReady ? " single" : ""}`}>
-        <CoachPanel title="Needs attention">
-          <div className="attention-card">
-            <RefreshCw />
-            <div>
-              <strong>
-                {data.bookings.some((item) => item.status === "needs_attention")
-                  ? "A booking needs attention"
-                  : "No booking failures are open"}
-              </strong>
-              <small>
-                Failed projections, expiring holds, and delinquent subscriptions
-                appear here.
-              </small>
-            </div>
-            <Status
-              tone={
-                data.bookings.some((item) => item.status === "needs_attention")
-                  ? "warn"
-                  : "good"
-              }
-            >
-              {data.bookings.some((item) => item.status === "needs_attention")
-                ? "review"
-                : "clear"}
-            </Status>
-          </div>
-        </CoachPanel>
-        {!integrationsReady && (
-          <CoachPanel title="Integration setup">
-            <div className="setup-list">
-              <HealthLine ready={health.supabase}>Supabase database</HealthLine>
-              <HealthLine ready={health.googleCalendar}>
-                Google Calendar &amp; Meet
-              </HealthLine>
-              <HealthLine ready={health.stripe}>Stripe payments</HealthLine>
-              <HealthLine ready={health.gmail}>Gmail delivery</HealthLine>
-            </div>
-          </CoachPanel>
-        )}
-      </div>
-    </>
-  );
-}
-function HealthLine({
-  ready,
-  children,
-}: {
-  ready: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <span>
-      {ready ? <CheckCircle2 /> : <RefreshCw />}
-      {children}
-    </span>
-  );
-}
-function BookingRow({
-  booking,
-  data,
-  onOpen,
-}: {
-  booking: Booking;
-  data: StudioSnapshot;
-  onOpen: () => void;
-}) {
-  return (
-    <article className="booking-table-row">
-      <div>
-        <span className="avatar tiny">
-          {booking.guestName
-            .split(" ")
-            .map((part) => part[0])
-            .slice(0, 2)
-            .join("")}
-        </span>
-        <strong>{booking.guestName}</strong>
-      </div>
-      <span>{serviceName(data, booking.serviceId)}</span>
-      <span>
-        {formatStudioDateTime(booking.startsAt, data.settings.timezone, {
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })}
-      </span>
-      <span>{booking.paymentStatus.replaceAll("_", " ")}</span>
-      <Status tone={bookingTone(booking.status)}>
-        {booking.status.replaceAll("_", " ")}
-      </Status>
-      <button aria-label={`Open ${booking.reference}`} onClick={onOpen}>
-        <MoreHorizontal />
-      </button>
-    </article>
-  );
-}
-
-
-function ManualBookingDialog({
-  data,
-  isDemo,
-  onClose,
-  onSave,
-}: {
-  data: StudioSnapshot;
-  isDemo: boolean;
-  onClose: () => void;
-  onSave: (payload: Record<string, unknown>) => Promise<void> | void;
-}) {
-  const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
-    [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
-    [startsAt, setStartsAt] = useState(
-      new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 16),
-    ),
-    [location, setLocation] = useState<MeetingProvider>(
-      data.bookingServices[0]?.defaultLocation ?? "google_meet",
-    ),
-    [locationLabel, setLocationLabel] = useState(
-      data.settings.meetingFormats.in_person?.location ?? "",
-    ),
-    [customPrice, setCustomPrice] = useState(""),
-    [markPaid, setMarkPaid] = useState(false),
-    [reason, setReason] = useState("Coach-created booking"),
-    [dateError, setDateError] = useState(""),
-    [conflicts, setConflicts] = useState<Array<{ id: string; summary: string; start: string; end: string }>>([]),
-    [approvedTime, setApprovedTime] = useState(""),
-    [checking, setChecking] = useState(false);
-  const service = data.bookingServices.find((item) => item.id === serviceId);
-  useEffect(() => {
-    if (service && !service.locationOptions.includes(location))
-      setLocation(service.defaultLocation);
-  }, [location, service]);
-  return (
-    <Dialog
-      title="Create a booking"
-      description="Coach bookings may override public notice and price rules. The action is audited and still creates calendar and email work."
-      onClose={onClose}
-    >
-      <form
-        className="workflow-form"
-        onSubmit={async (event) => {
-          event.preventDefault();
-          const parsedStart = new Date(startsAt);
-          if (!startsAt || Number.isNaN(parsedStart.getTime())) {
-            setDateError("Choose a valid date and time before creating the booking.");
-            return;
-          }
-          setDateError("");
-          const endsAt = new Date(parsedStart.getTime() + Number(service?.durationMinutes || 60) * 60_000);
-          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}`;
-          if (approvedTime !== timeKey) {
-            setChecking(true);
-            try {
-              const found = isDemo
-                ? data.lessons.filter((lesson) => lesson.status === "scheduled" && new Date(lesson.startsAt) < endsAt && new Date(lesson.endsAt) > parsedStart).map((lesson) => ({ id: lesson.id, summary: lesson.topic, start: lesson.startsAt, end: lesson.endsAt }))
-                : await checkSchedulingConflicts(parsedStart.toISOString(), endsAt.toISOString());
-              setConflicts(found);
-              if (found.length) { setApprovedTime(timeKey); return; }
-            } catch (reason) {
-              setDateError(reason instanceof Error ? reason.message : "Calendar could not be checked. Nothing was scheduled.");
-              return;
-            } finally { setChecking(false); }
-          }
-          await onSave({
-            student_id: studentId,
-            service_id: serviceId,
-            starts_at: parsedStart.toISOString(),
-            location,
-            location_label: locationLabel,
-            price_minor:
-              customPrice === "" ? null : Math.round(Number(customPrice) * 100),
-            mark_paid: markPaid,
-            reason,
-            allow_conflict: approvedTime === timeKey,
-          });
-        }}
-      >
-        {!data.students.length && (
-          <p className="inline-error full">
-            Add a student to the roster before creating a coach booking.
-          </p>
-        )}
-        <label>
-          Student
-          <select
-            required
-            value={studentId}
-            onChange={(event) => setStudentId(event.target.value)}
-          >
-            <option value="" disabled>
-              Choose student
-            </option>
-            {data.students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.fullName}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Service
-          <select
-            required
-            value={serviceId}
-            onChange={(event) => {
-              const next = data.bookingServices.find(
-                (item) => item.id === event.target.value,
-              );
-              setServiceId(event.target.value);
-              if (next) setLocation(next.defaultLocation);
-            }}
-          >
-            <option value="" disabled>
-              Choose service
-            </option>
-            {data.bookingServices.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Starts
-          <input
-            required
-            type="datetime-local"
-            min={new Date().toISOString().slice(0, 16)}
-            value={startsAt}
-            onChange={(event) => {
-              setStartsAt(event.target.value);
-              setDateError("");
-              setConflicts([]);
-              setApprovedTime("");
-            }}
-          />
-          {dateError && <small className="inline-error" role="alert">{dateError}</small>}
-        </label>
-        <label>
-          Meeting format
-          <select
-            value={location}
-            onChange={(event) =>
-              setLocation(event.target.value as MeetingProvider)
-            }
-          >
-            {service?.locationOptions.map((item) => (
-              <option key={item} value={item}>
-                {item.replaceAll("_", " ")}
-              </option>
-            ))}
-          </select>
-        </label>
-        {location === "in_person" && (
-          <label className="full">
-            Location
-            <input
-              value={locationLabel}
-              onChange={(event) => setLocationLabel(event.target.value)}
-              placeholder="Confirm now or leave blank to add later"
-            />
-          </label>
-        )}
-        <label>
-          Custom price (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={customPrice}
-            onChange={(event) => setCustomPrice(event.target.value)}
-            placeholder={
-              service
-                ? String(
-                    (service.priceMinor +
-                      Number(service.locationPriceAdjustments[location] || 0)) /
-                      100,
-                  )
-                : ""
-            }
-          />
-          <small>Leave blank to use the current service price.</small>
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={markPaid}
-            onChange={(event) => setMarkPaid(event.target.checked)}
-          />
-          Mark balance paid manually
-        </label>
-        <label className="full">
-          Override reason
-          <input
-            required
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-        </label>
-        {conflicts.length > 0 && <div className="calendar-conflict full" role="alert">
-          <strong>Calendar conflict</strong>
-          {conflicts.map((item) => <p key={`${item.id}-${item.start}`}>You have “{item.summary}” from {formatStudioTime(item.start, data.settings.timezone)}–{formatStudioTime(item.end, data.settings.timezone)} that day. Do you still want to schedule for this time?</p>)}
-          <small>Submit again to schedule anyway, or choose another time.</small>
-        </div>}
-        <div className="form-actions full">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="primary" disabled={!studentId || !serviceId || checking}>
-            {checking ? "Checking calendar…" : conflicts.length ? "Schedule anyway" : "Create booking"}
-          </button>
-        </div>
-      </form>
-    </Dialog>
-  );
-}
-
-function Services({
-  data,
-  onAdd,
-  onEdit,
-}: {
-  data: StudioSnapshot;
-  onAdd: () => void;
-  onEdit: (item: BookingService) => void;
-}) {
-  return (
-    <CoachPanel
-      title="Booking services"
-      aside={
-        <button className="small-primary" onClick={onAdd}>
-          <Plus />
-          Add service
-        </button>
-      }
-    >
-      <div className="service-admin-grid">
-        {data.bookingServices.map((service) => (
-          <article key={service.id}>
-            <header>
-              <span>{service.category.replaceAll("_", " ")}</span>
-              <Status tone={service.published ? "good" : "neutral"}>
-                {service.published ? "published" : "draft"}
-              </Status>
-            </header>
-            <h3>{service.name}</h3>
-            <p>
-              {service.durationMinutes} min ·{" "}
-              {formatMoney(service.priceMinor, service.currency)} ·{" "}
-              {service.locationOptions
-                .map((item) => (item === "google_meet" ? "Meet" : "Studio"))
-                .join(" / ")}
-            </p>
-            <div className="policy-chips">
-              <span>{service.minimumNoticeHours}h notice</span>
-              <span>{service.bufferAfterMinutes}m buffer</span>
-              <span>{service.paymentPolicies.length} payment options</span>
-            </div>
-            <footer>
-              {service.published && <a className="button-link" href={`/book/${service.slug}`} target="_blank" rel="noreferrer">Direct link</a>}
-              <button onClick={() => onEdit(service)}>
-                <Edit3 />
-                Edit
-              </button>
-            </footer>
-          </article>
-        ))}
-      </div>
-    </CoachPanel>
-  );
-}
-
-function Availability({
-  data,
-  onSaveVisibility,
-  onRule,
-  onException,
-  onDeleteRule,
-  onDeleteException,
-}: {
-  data: StudioSnapshot;
-  onSaveVisibility: (percent: 100 | 90 | 75) => Promise<void>;
-  onRule: (item: AvailabilityRule) => void;
-  onException: () => void;
-  onDeleteRule: (item: AvailabilityRule) => void;
-  onDeleteException: (
-    item: StudioSnapshot["availabilityExceptions"][number],
-  ) => void;
-}) {
-  const [visibility, setVisibility] = useState<100 | 90 | 75>(data.settings.bookingDefaults.visibleSlotsPercent);
-  const [savingVisibility, setSavingVisibility] = useState(false);
-  const names = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday",
-  ];
-  return (
-    <div className="availability-layout">
-      <CoachPanel title="Public slot visibility">
-        <div className="settings-form">
-          <label>
-            Show this share of open times
-            <select value={visibility} onChange={(event) => setVisibility(Number(event.target.value) as 100 | 90 | 75)}>
-              <option value={100}>100% of open slots</option>
-              <option value={90}>About 90% of open slots</option>
-              <option value={75}>About 75% of open slots</option>
-            </select>
-            <small>Held-back slots stay free on your calendar but are unavailable through online booking. The same times stay hidden for every visitor.</small>
-          </label>
-          <div className="form-actions">
-            <button className="primary" type="button" disabled={savingVisibility || visibility === data.settings.bookingDefaults.visibleSlotsPercent} onClick={async () => { setSavingVisibility(true); try { await onSaveVisibility(visibility); } finally { setSavingVisibility(false); } }}>
-              {savingVisibility ? "Saving…" : "Save visibility"}
-            </button>
-          </div>
-        </div>
-      </CoachPanel>
-      <CoachPanel
-        title="Weekly hours"
-        aside={
-          <span className="status neutral">
-            <Settings2 />
-            {data.settings.timezone}
-          </span>
-        }
-      >
-        <div className="hours-list">
-          {names.map((name, index) => {
-            const rules = data.availabilityRules
-              .filter((item) => item.weekday === index)
-              .sort((a, b) => a.startsAtLocal.localeCompare(b.startsAtLocal));
-            return (
-              <article key={name} className={!rules.length ? "off" : ""}>
-                <strong>{name}</strong>
-                <div className="availability-windows">
-                  {rules.length ? (
-                    rules.map((rule) => (
-                      <span key={rule.id}>
-                        {rule.startsAtLocal} – {rule.endsAtLocal}
-                        <button
-                          aria-label={`Edit ${name} ${rule.startsAtLocal}`}
-                          onClick={() => onRule(rule)}
-                        >
-                          <Edit3 />
-                        </button>
-                        <button
-                          aria-label={`Delete ${name} ${rule.startsAtLocal}`}
-                          onClick={() => onDeleteRule(rule)}
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))
-                  ) : (
-                    <span>Unavailable</span>
-                  )}
-                </div>
-                <button
-                  aria-label={`Add ${name}`}
-                  onClick={() =>
-                    onRule({
-                      id: uid("rule"),
-                      studioId: data.studioId,
-                      weekday: index,
-                      startsAtLocal: "12:00",
-                      endsAtLocal: "18:00",
-                      timezone: data.settings.timezone,
-                      active: true,
-                      version: 1,
-                      updatedAt: new Date().toISOString(),
-                    })
-                  }
-                >
-                  <Plus />
-                </button>
-              </article>
-            );
-          })}
-        </div>
-      </CoachPanel>
-      <CoachPanel
-        title="Blackouts & exceptions"
-        aside={
-          <button className="small-primary" onClick={onException}>
-            <Plus />
-            Add
-          </button>
-        }
-      >
-        <div className="exception-list">
-          {data.availabilityExceptions.map((item) => (
-            <article key={item.id}>
-              <CalendarDays />
-              <div>
-                <strong>{item.label}</strong>
-                <small>
-                  {formatStudioDate(item.startsAt, data.settings.timezone)} –{" "}
-                  {formatStudioDate(item.endsAt, data.settings.timezone)}
-                </small>
-              </div>
-              <Status tone={item.kind === "unavailable" ? "warn" : "good"}>
-                {item.kind}
-              </Status>
-              <button
-                aria-label={`Delete ${item.label}`}
-                onClick={() => onDeleteException(item)}
-              >
-                ×
-              </button>
-            </article>
-          ))}
-          {!data.availabilityExceptions.length && (
-            <EmptyState
-              title="No exceptions"
-              detail="Blackouts, vacations, and special availability will appear here."
-            />
-          )}
-        </div>
-      </CoachPanel>
-    </div>
-  );
-}
-
-function Classes({
-  data,
-  onCreate,
-  onOpen,
-  onRoster,
-}: {
-  data: StudioSnapshot;
-  onCreate: () => void;
-  onOpen: (item: ServiceOffering) => void;
-  onRoster: (item: ServiceOffering) => void;
-}) {
-  return (
-    <CoachPanel
-      title="Group classes"
-      aside={
-        <button className="small-primary" onClick={onCreate}>
-          <Plus />
-          Create offering
-        </button>
-      }
-    >
-      <div className="offering-grid">
-        {data.serviceOfferings.filter((offering) => data.bookingServices.find((service) => service.id === offering.serviceId)?.category === "group_class").map((offering) => {
-          const service = data.bookingServices.find(
-            (item) => item.id === offering.serviceId,
-          );
-          const remaining = remainingCapacity(
-            offering.capacity,
-            offering.enrolled,
-          );
-          return (
-            <article key={offering.id}>
-              <div className="offering-date">
-                <span>
-                  {formatStudioDate(offering.startsAt, data.settings.timezone, {
-                    month: "short",
-                  })}
-                </span>
-                <strong>{formatStudioDate(offering.startsAt, data.settings.timezone, { day: "numeric", month: undefined, year: undefined })}</strong>
-              </div>
-              <div>
-                <span className="eyebrow">
-                  {service?.category.replaceAll("_", " ")}
-                </span>
-                <h3>{offering.title}</h3>
-                <p>
-                  {formatStudioDateTime(offering.startsAt, data.settings.timezone, {
-                    weekday: "long",
-                    month: undefined,
-                    day: undefined,
-                    year: undefined,
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}{" "}
-                  ·{" "}
-                  {service?.defaultLocation === "google_meet"
-                    ? "Google Meet"
-                    : "Studio"}
-                </p>
-                <div className="capacity-bar">
-                  <i
-                    style={{
-                      width: `${(offering.enrolled / offering.capacity) * 100}%`,
-                    }}
-                  />
-                  <span>
-                    {offering.enrolled} enrolled · {remaining} spots left
-                  </span>
-                </div>
-              </div>
-              <div className="offering-actions">
-                <button className="primary" onClick={() => onOpen(offering)}>Open class</button>
-                <button onClick={() => onRoster(offering)}>Roster</button>
-                {offering.published && service?.slug && <a className="button-link" href={`/book/${service.slug}?offering=${encodeURIComponent(offering.id)}`} target="_blank" rel="noreferrer">Direct link</a>}
-              </div>
-            </article>
-          );
-        })}
-      </div>
-    </CoachPanel>
-  );
-}
-function Series({
-  data,
-  onManage,
-}: {
-  data: StudioSnapshot;
-  onManage: (item: RecurringSeries) => void;
-}) {
-  return (
-    <CoachPanel
-      title="Recurring students"
-      aside={<span className="status good">Rolling 12 weeks</span>}
-    >
-      <div className="series-list">
-        {data.recurringSeries.map((series) => {
-          const student = data.students.find(
-            (item) => item.id === series.studentId,
-          );
-          const service = data.bookingServices.find(
-            (item) => item.id === series.serviceId,
-          );
-          return (
-            <article key={series.id}>
-              <span className="series-icon">
-                <CalendarClock />
-              </span>
-              <div>
-                <strong>{student?.fullName ?? "Course cohort"}</strong>
-                <small>
-                  {service?.name} · {series.cadence} · {series.kind}
-                </small>
-              </div>
-              <div>
-                <strong>
-                  {series.nextBillingAt
-                    ? formatStudioDate(series.nextBillingAt, data.settings.timezone)
-                    : "Paid upfront"}
-                </strong>
-                <small>next billing</small>
-              </div>
-              <Status tone={series.status === "active" ? "good" : "warn"}>
-                {series.status.replaceAll("_", " ")}
-              </Status>
-              <button
-                aria-label="Manage series"
-                onClick={() => onManage(series)}
-              >
-                <MoreHorizontal />
-              </button>
-            </article>
-          );
-        })}
-      </div>
-    </CoachPanel>
-  );
-}
-
 function ServiceDialog({
   service,
   settings,
@@ -1552,10 +497,15 @@ function ServiceDialog({
           autoChargeBalance: false,
           currency: settings.currency,
           capacity: 1,
-          locationOptions: (Object.entries(settings.meetingFormats)
-            .filter(([, format]) => format.enabled)
-            .map(([provider]) => provider) as BookingService["locationOptions"]).filter(
-            (provider) => provider === "google_meet" || provider === "in_person",
+          locationOptions: (
+            Object.entries(settings.meetingFormats)
+              .filter(([, format]) => format.enabled)
+              .map(
+                ([provider]) => provider,
+              ) as BookingService["locationOptions"]
+          ).filter(
+            (provider) =>
+              provider === "google_meet" || provider === "in_person",
           ),
           defaultLocation: settings.meetingFormats.google_meet?.enabled
             ? "google_meet"
@@ -1649,7 +599,11 @@ function ServiceDialog({
           >
             <option value="private">Private</option>
             <option value="group_class">Group class</option>
-            {service?.category === "course" && <option value="course" disabled>Course (existing only)</option>}
+            {service?.category === "course" && (
+              <option value="course" disabled>
+                Course (existing only)
+              </option>
+            )}
           </select>
         </label>
         <label className="full">
@@ -2197,7 +1151,10 @@ function OfferingDialog({
               .map((line) => {
                 const [label, ...urlParts] = line.split("|");
                 const url = urlParts.join("|").trim() || label.trim();
-                return { label: urlParts.length ? label.trim() : "Resource", url };
+                return {
+                  label: urlParts.length ? label.trim() : "Resource",
+                  url,
+                };
               }),
             version: 1,
             updatedAt: new Date().toISOString(),
@@ -2246,15 +1203,28 @@ function OfferingDialog({
         </label>
         <label className="full">
           Description
-          <textarea value={description} onChange={(event) => setDescription(event.target.value)} placeholder="What students should know about this class." />
+          <textarea
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="What students should know about this class."
+          />
         </label>
         <label className="full">
           Google Meet or class link
-          <input type="url" value={meetingUrl} onChange={(event) => setMeetingUrl(event.target.value)} placeholder="https://meet.google.com/…" />
+          <input
+            type="url"
+            value={meetingUrl}
+            onChange={(event) => setMeetingUrl(event.target.value)}
+            placeholder="https://meet.google.com/…"
+          />
         </label>
         <label className="full">
           Resources
-          <textarea value={resourceText} onChange={(event) => setResourceText(event.target.value)} placeholder={"Warm-up | https://…\nScript | https://…"} />
+          <textarea
+            value={resourceText}
+            onChange={(event) => setResourceText(event.target.value)}
+            placeholder={"Warm-up | https://…\nScript | https://…"}
+          />
           <small>One resource per line. Use “Label | URL”.</small>
         </label>
         <p className="portal-notice full">
@@ -2292,12 +1262,27 @@ function RosterDialog({
       <div className="workflow-content">
         {offering.description && <p>{offering.description}</p>}
         {offering.meetingUrl && (
-          <a className="button-link" href={offering.meetingUrl} target="_blank" rel="noreferrer">Open Google Meet</a>
+          <a
+            className="button-link"
+            href={offering.meetingUrl}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Open Google Meet
+          </a>
         )}
         {!!offering.resourceLinks?.length && (
           <div className="table-list">
             {offering.resourceLinks.map((resource) => (
-              <a key={`${resource.label}-${resource.url}`} className="button-link" href={resource.url} target="_blank" rel="noreferrer">{resource.label}</a>
+              <a
+                key={`${resource.label}-${resource.url}`}
+                className="button-link"
+                href={resource.url}
+                target="_blank"
+                rel="noreferrer"
+              >
+                {resource.label}
+              </a>
             ))}
           </div>
         )}
@@ -2322,8 +1307,17 @@ function RosterDialog({
           )}
         </div>
         <div className="form-actions">
-          <button type="button" onClick={onClose}>Close</button>
-          <button type="button" className="danger-button" onClick={onDelete} disabled={unique.length > 0}>Delete offering</button>
+          <button type="button" onClick={onClose}>
+            Close
+          </button>
+          <button
+            type="button"
+            className="danger-button"
+            onClick={onDelete}
+            disabled={unique.length > 0}
+          >
+            Delete offering
+          </button>
         </div>
       </div>
     </Dialog>
@@ -2389,8 +1383,18 @@ function BookingDialog({
       data.settings.meetingFormats.in_person?.location ||
       "",
   );
-  const lesson = data.lessons.find((item)=>data.lessonParticipants.some((participant)=>participant.lessonId===item.id&&participant.bookingId===booking.id));
-  const relatedStudentId = booking.studentId || data.lessonParticipants.find((participant)=>participant.bookingId===booking.id)?.studentId;
+  const lesson = data.lessons.find((item) =>
+    data.lessonParticipants.some(
+      (participant) =>
+        participant.lessonId === item.id &&
+        participant.bookingId === booking.id,
+    ),
+  );
+  const relatedStudentId =
+    booking.studentId ||
+    data.lessonParticipants.find(
+      (participant) => participant.bookingId === booking.id,
+    )?.studentId;
   return (
     <Dialog
       title={booking.reference}
@@ -2403,8 +1407,8 @@ function BookingDialog({
             <div>
               <strong>Schedule</strong>
               <small>
-                {formatStudioDateTime(booking.startsAt, data.settings.timezone)} ·{" "}
-                {booking.location.replaceAll("_", " ")}
+                {formatStudioDateTime(booking.startsAt, data.settings.timezone)}{" "}
+                · {booking.location.replaceAll("_", " ")}
                 {booking.inPersonLocation
                   ? ` · ${booking.inPersonLocation}`
                   : ""}
@@ -2442,8 +1446,22 @@ function BookingDialog({
           </label>
         )}
         <div className="form-actions">
-          {relatedStudentId && <Link className="button-link" to={`/coach/students/${relatedStudentId}`}>Open student</Link>}
-          {lesson && relatedStudentId && <Link className="button-link" to={`/coach/students/${relatedStudentId}/lessons/${lesson.id}`}>Open lesson</Link>}
+          {relatedStudentId && (
+            <Link
+              className="button-link"
+              to={`/coach/students/${relatedStudentId}`}
+            >
+              Open student
+            </Link>
+          )}
+          {lesson && relatedStudentId && (
+            <Link
+              className="button-link"
+              to={`/coach/students/${relatedStudentId}/lessons/${lesson.id}`}
+            >
+              Open lesson
+            </Link>
+          )}
           {booking.location === "in_person" && (
             <button
               disabled={!location.trim()}
@@ -2476,26 +1494,6 @@ function FormActions({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
-function CoachPanel({
-  title,
-  aside,
-  children,
-}: {
-  title: string;
-  aside?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="coach-panel">
-      <header>
-        <h2>{title}</h2>
-        {aside}
-      </header>
-      {children}
-    </section>
-  );
-}
-
 function toServiceRow(value: BookingService, studioId: string) {
   return {
     studio_id: studioId,

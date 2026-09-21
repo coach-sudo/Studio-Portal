@@ -43,9 +43,12 @@ const stripeWebhook = fs.readFileSync(
   "utf8",
 );
 const compactStripeWebhook = stripeWebhook.replace(/\s+/g, "");
-const studentWorkspace = fs.readFileSync(
+const readSources = (...paths: string[]) =>
+  paths.map((path) => fs.readFileSync(path, "utf8")).join("\n");
+const studentWorkspace = readSources(
   "src/features/coach/StudentWorkspace.tsx",
-  "utf8",
+  "src/features/coach/StudentWorkspaceAccount.tsx",
+  "src/features/coach/StudentWorkspaceOverview.tsx",
 );
 const securityHardening = fs.readFileSync(
   "supabase/migrations/20260820184240_actor_view_security_invoker.sql",
@@ -68,9 +71,10 @@ const bookingMaintenance = fs.readFileSync(
   "utf8",
 );
 const commandFunction = fs.readFileSync("netlify/functions/v2.ts", "utf8");
-const studentPortal = fs.readFileSync(
+const studentPortal = readSources(
   "src/features/student/StudentPortal.tsx",
-  "utf8",
+  "src/features/student/StudentPortalPayments.tsx",
+  "src/features/student/StudentPortalSettings.tsx",
 );
 const verifiedEmailClaim = fs.readFileSync(
   "supabase/migrations/20260905141058_google_portal_identity_claim.sql",
@@ -98,7 +102,7 @@ describe("database contracts", () => {
     expect(fs.readFileSync("src/app-system.css", "utf8")).toContain(
       ".primary-button { position: static; inset: auto; }",
     );
-    expect(studentWorkspace).toContain('onInvite("guardian",contact.id)');
+    expect(studentWorkspace).toContain('onInvite("guardian", contact.id)');
     expect(loginPage).toContain('/auth/callback?returnTo=');
     expect(authCallback).toContain('/api/v2/auth/claim-access');
     expect(authCallback).toContain("await supabase.auth.signOut()");

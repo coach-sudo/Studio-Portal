@@ -70,7 +70,12 @@ describe("route-specific query contracts", () => {
 
   it("uses database paging on the major collection screens", () => {
     const roster = read("src/features/coach/StudentsIndex.tsx");
-    const operations = read("src/features/coach/StudioOperations.tsx");
+    const operations = [
+      "src/features/coach/StudioNotes.tsx",
+      "src/features/coach/StudioMaterials.tsx",
+    ]
+      .map(read)
+      .join("\n");
     expect(roster).toContain('table: "students"');
     expect(operations).toContain('table: "notes"');
     expect(operations).toContain('table: "material_library_rows"');
