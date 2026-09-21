@@ -149,10 +149,18 @@ async function cleanup(
     .ilike("title", `${runId}%`);
   if (uploadedMaterialError)
     throwFixtureError("material_lookup", uploadedMaterialError);
+  const { data: conversationMessages, error: conversationMessageError } =
+    await db
+      .from("conversation_messages")
+      .select("id")
+      .eq("conversation_id", fixture.conversation);
+  if (conversationMessageError)
+    throwFixtureError("conversation_message_lookup", conversationMessageError);
   const auditEntityIds = [
     ...Object.values(fixture),
     ...(assets || []).map((asset) => asset.id),
     ...(uploadedMaterials || []).map((material) => material.id),
+    ...(conversationMessages || []).map((message) => message.id),
   ];
   const { error: auditError } = await db
     .from("audit_events")
