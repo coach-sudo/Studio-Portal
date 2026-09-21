@@ -100,7 +100,7 @@ jobs:
             shift
             docker exec "$db_container" pg_dump -U postgres -d postgres \
               --data-only --column-inserts --no-owner --no-privileges "$@" \
-              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^[[:space:]]*$/d' \
+              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^\\restrict /d' -e '/^\\unrestrict /d' -e '/^[[:space:]]*$/d' \
               | LC_ALL=C sort > "$file"
           }
           snapshot_table "$RUNNER_TEMP/public-before.sql" --schema=public
@@ -148,8 +148,10 @@ jobs:
           BROWSER: none
         run: |
           set -euo pipefail
-          nohup npx --yes netlify-cli@27.8.0 serve --offline \
-            --context deploy-preview --port 8888 --dir dist --functions netlify/functions \
+          npm run build
+          nohup npx --yes netlify-cli@27.8.0 dev --offline --no-open \
+            --context deploy-preview --framework '#static' \
+            --port 8888 --dir dist --functions netlify/functions \
             > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/netlify-serve.pid"
           for attempt in {1..120}; do
@@ -209,7 +211,7 @@ jobs:
             shift
             docker exec "$DB_CONTAINER" pg_dump -U postgres -d postgres \
               --data-only --column-inserts --no-owner --no-privileges "$@" \
-              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^[[:space:]]*$/d' \
+              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^\\restrict /d' -e '/^\\unrestrict /d' -e '/^[[:space:]]*$/d' \
               | LC_ALL=C sort > "$file"
           }
           snapshot_table "$RUNNER_TEMP/public-after.sql" --schema=public
@@ -230,7 +232,7 @@ jobs:
             fi
           done
           e2e_auth_users="$(docker exec "$DB_CONTAINER" psql -U postgres -d postgres -Atc \
-            "select count(*) from auth.users where email like 'e2e-%@example.test')"
+            "select count(*) from auth.users where email like 'e2e-%@example.test';")"
           echo "remaining e2e auth users: $e2e_auth_users" | tee -a test-results/cleanup-verification.txt
           if [ "$e2e_auth_users" != "0" ]; then failed=1; fi
           exit "$failed"
