@@ -360,6 +360,25 @@ async function setup(
   });
   if (membershipError) throwFixtureError("membership", membershipError);
 
+  // Seed the deterministic authorization row before the linked contact. The
+  // linked-contact trigger then updates this row in place instead of creating
+  // a random relationship id that fixture cleanup could not target.
+  const { error: relationshipError } = await db
+    .from("student_relationships")
+    .upsert({
+      id: fixture.guardianRelationship,
+      student_id: fixture.student,
+      user_id: users.guardian.id,
+      relationship: "guardian",
+      can_view_finance: true,
+      can_view_schedule: true,
+      can_view_work: true,
+      can_manage_profile: true,
+      can_manage_lessons: true,
+    });
+  if (relationshipError)
+    throwFixtureError("student_relationship", relationshipError);
+
   const { error: contactError } = await db.from("linked_contacts").upsert({
     id: fixture.guardianContact,
     studio_id: studioId,
@@ -377,22 +396,6 @@ async function setup(
     can_manage_lessons: true,
   });
   if (contactError) throwFixtureError("linked_contact", contactError);
-  const { error: relationshipError } = await db
-    .from("student_relationships")
-    .upsert({
-      id: fixture.guardianRelationship,
-      student_id: fixture.student,
-      user_id: users.guardian.id,
-      linked_contact_id: fixture.guardianContact,
-      relationship: "guardian",
-      can_view_finance: true,
-      can_view_schedule: true,
-      can_view_work: true,
-      can_manage_profile: true,
-      can_manage_lessons: true,
-    });
-  if (relationshipError)
-    throwFixtureError("student_relationship", relationshipError);
 
   const portalRows = [
     {
