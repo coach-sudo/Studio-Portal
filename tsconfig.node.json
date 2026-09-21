@@ -16,6 +16,7 @@
     "e2e/**/*.ts",
     "scripts",
     "netlify/functions/**/*.ts",
+    "src/types/database.generated.ts",
     "src/domain/model.ts",
     "src/domain/availabilityVisibility.ts",
     "src/domain/intakeRecency.ts",

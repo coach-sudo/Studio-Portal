@@ -8,8 +8,11 @@ import {
   assertNonProductionE2EUrl,
   isProductionDeployContext,
 } from "../../src/security/e2eSafety";
+import type { Database } from "../../src/types/database.generated";
 
 type RoleName = "coach" | "student" | "guardian" | "unrelated";
+type TableName = keyof Database["public"]["Tables"];
+type InsertRow<T extends TableName> = Database["public"]["Tables"][T]["Insert"];
 
 const ids = [
   "coachStudent",
@@ -340,12 +343,12 @@ async function setup(
       email: `e2e-referred-${label.toLowerCase()}-${runId.slice(-8)}@example.test`,
       portal_enabled: false,
       referral_code: `E2E${label.toUpperCase()}${runId.slice(-4).toUpperCase()}`,
-      status: "active",
+      status: "active" as const,
     })),
-  ];
+  ] satisfies InsertRow<"students">[];
   const { error: studentsError } = await db
     .from("students")
-    .upsert(studentRows);
+    .upsert(studentRows, { defaultToNull: false });
   if (studentsError) throwFixtureError("students", studentsError);
 
   const { error: membershipError } = await db.from("memberships").upsert({
@@ -429,7 +432,7 @@ async function setup(
       username: accounts.unrelated.username,
       email: accounts.unrelated.email,
     },
-  ];
+  ] satisfies InsertRow<"portal_accounts">[];
   const { error: portalError } = await db
     .from("portal_accounts")
     .upsert(portalRows);
@@ -473,10 +476,10 @@ async function setup(
       booking_horizon_days: 90,
       published: true,
     },
-  ];
+  ] satisfies InsertRow<"booking_services">[];
   const { error: serviceError } = await db
     .from("booking_services")
-    .upsert(services);
+    .upsert(services, { defaultToNull: false });
   if (serviceError) throwFixtureError("booking_services", serviceError);
 
   const lessonBase = {
@@ -489,7 +492,10 @@ async function setup(
     payment_status: "paid",
     price_minor: 7500,
     paid_minor: 7500,
-  };
+  } satisfies Omit<
+    InsertRow<"lessons">,
+    "id" | "topic" | "starts_at" | "ends_at" | "status" | "join_url"
+  >;
   const { error: lessonsError } = await db.from("lessons").upsert([
     {
       ...lessonBase,
@@ -680,7 +686,7 @@ async function setup(
     manage_token_hash: createHash("sha256")
       .update(`${runId}:${id}`)
       .digest("hex"),
-  }));
+  })) satisfies InsertRow<"bookings">[];
   const { error: bookingError } = await db.from("bookings").upsert(bookingRows);
   if (bookingError) throwFixtureError("bookings", bookingError);
   const referralRows = [
@@ -694,7 +700,7 @@ async function setup(
     referred_student_id: referred[index],
     referred_email: bookingRows[index].guest_email,
     source_booking_id: bookingIds[index],
-  }));
+  })) satisfies InsertRow<"referrals">[];
   const { error: referralError } = await db
     .from("referrals")
     .upsert(referralRows);
@@ -722,7 +728,7 @@ async function setup(
       referral_reward_kind: "paid_lesson",
       redemption_count: 1,
     },
-  ];
+  ] satisfies InsertRow<"discount_codes">[];
   const { error: discountError } = await db
     .from("discount_codes")
     .upsert(discountRows);
