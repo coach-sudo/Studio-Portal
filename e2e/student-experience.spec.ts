@@ -13,9 +13,20 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "Join lesson" })).toBeVisible();
   await page.goto("/portal/bookings");
-  await expect(page.getByText(`${runtime.runId} Meet pending`)).toBeVisible();
-  await expect(page.getByText("Meet pending").first()).toBeVisible();
-  await expect(page.getByText("Meet link ready")).toBeVisible();
+  const availableLesson = page.locator("article", {
+    hasText: `${runtime.runId} Meet available`,
+  });
+  await expect(availableLesson.getByRole("link", { name: "Join" })).toBeVisible();
+  for (const lessonTitle of [
+    `${runtime.runId} No meeting link`,
+    `${runtime.runId} Meet pending`,
+  ]) {
+    await expect(
+      page
+        .locator("article", { hasText: lessonTitle })
+        .getByRole("button", { name: "Meet pending" }),
+    ).toBeVisible();
+  }
   await expect(
     page.getByText(`${runtime.runId} Cancelled lesson`),
   ).toBeVisible();
@@ -30,7 +41,9 @@ test("@journey Journey 05: inbox shows coach identity and supports a safe reply"
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/inbox");
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-  await page.getByText("E2E Coach conversation").click();
+  await page
+    .getByRole("button", { name: /E2E Coach conversation/ })
+    .click();
   await expect(
     page.getByText("E2E Coach", { exact: true }).first(),
   ).toBeVisible();
