@@ -1,7 +1,8 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 
-export type FixtureRole = "coach" | "student" | "guardian" | "unrelated";
+export type FixtureRole =
+  "coach" | "student" | "guardian" | "unrelated" | "signout";
 
 export interface E2ERuntime {
   runId: string;

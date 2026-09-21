@@ -19,6 +19,7 @@ describe("E2E fixture contracts", () => {
       "student",
       "guardian",
       "unrelated",
+      "signout",
     ]);
     expect(JSON.stringify(result)).not.toContain(secret);
     expect(JSON.stringify(result)).not.toMatch(/service[_-]?role/i);

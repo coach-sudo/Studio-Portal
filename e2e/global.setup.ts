@@ -57,6 +57,7 @@ export default async function globalSetup(config: FullConfig) {
       "student",
       "guardian",
       "unrelated",
+      "signout",
     ] as FixtureRole[]) {
       const account = runtime.accounts?.[role];
       if (!account)

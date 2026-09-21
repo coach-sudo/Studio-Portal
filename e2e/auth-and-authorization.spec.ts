@@ -6,7 +6,7 @@ test("@journey Journey 01: sign-in persists across a protected nested refresh an
   runtime,
 }) => {
   requireFixtures(runtime);
-  const { context, page } = await openAs(browser, "student");
+  const { context, page } = await openAs(browser, "signout");
   await page.goto("/portal/settings");
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
   await page.reload();

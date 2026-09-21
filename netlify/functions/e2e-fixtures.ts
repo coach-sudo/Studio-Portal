@@ -10,7 +10,7 @@ import {
 } from "../../src/security/e2eSafety";
 import type { Database } from "../../src/types/database.generated";
 
-type RoleName = "coach" | "student" | "guardian" | "unrelated";
+type RoleName = "coach" | "student" | "guardian" | "unrelated" | "signout";
 type TableName = keyof Database["public"]["Tables"];
 type InsertRow<T extends TableName> = Database["public"]["Tables"][T]["Insert"];
 
@@ -18,12 +18,14 @@ const ids = [
   "coachStudent",
   "student",
   "unrelatedStudent",
+  "signoutStudent",
   "guardianContact",
   "membership",
   "coachAccount",
   "studentAccount",
   "guardianAccount",
   "unrelatedAccount",
+  "signoutAccount",
   "guardianRelationship",
   "conversation",
   "message",
@@ -88,16 +90,16 @@ export function fixtureCredentials(runId: string, token: string) {
   const suffix = createHash("sha256").update(runId).digest("hex").slice(0, 8);
   const password = `E2e!${createHash("sha256").update(`${token}:${runId}`).digest("base64url").slice(0, 18)}`;
   return Object.fromEntries(
-    (["coach", "student", "guardian", "unrelated"] as RoleName[]).map(
-      (role) => [
-        role,
-        {
-          username: `e2e.${role}.${suffix}`,
-          email: `e2e-${role}-${suffix}@example.test`,
-          password,
-        },
-      ],
-    ),
+    (
+      ["coach", "student", "guardian", "unrelated", "signout"] as RoleName[]
+    ).map((role) => [
+      role,
+      {
+        username: `e2e.${role}.${suffix}`,
+        email: `e2e-${role}-${suffix}@example.test`,
+        password,
+      },
+    ]),
   ) as Record<RoleName, { username: string; email: string; password: string }>;
 }
 
@@ -217,6 +219,7 @@ async function cleanup(
     fixture.studentAccount,
     fixture.guardianAccount,
     fixture.unrelatedAccount,
+    fixture.signoutAccount,
   ]);
   await deleteIds("linked_contacts", [fixture.guardianContact]);
   await deleteIds("memberships", [fixture.membership]);
@@ -224,6 +227,7 @@ async function cleanup(
     fixture.coachStudent,
     fixture.student,
     fixture.unrelatedStudent,
+    fixture.signoutStudent,
     fixture.referredPending,
     fixture.referredEarned,
     fixture.referredRedeemed,
@@ -292,6 +296,11 @@ async function setup(
       accounts.unrelated.password,
       "E2E Unrelated Student",
     ),
+    signout: await upsertAuthUser(
+      accounts.signout.email,
+      accounts.signout.password,
+      "E2E Sign-out Student",
+    ),
   };
   const now = Date.now();
   const iso = (minutes: number) =>
@@ -334,6 +343,18 @@ async function setup(
       portal_enabled: true,
       portal_username: accounts.unrelated.username,
       referral_code: `E2EOTHER${runId.slice(-4).toUpperCase()}`,
+      status: "active",
+    },
+    {
+      id: fixture.signoutStudent,
+      studio_id: studioId,
+      user_id: users.signout.id,
+      full_name: `${runId} Sign-out Student`,
+      preferred_name: "E2E Sign-out Student",
+      email: accounts.signout.email,
+      portal_enabled: true,
+      portal_username: accounts.signout.username,
+      referral_code: `E2ESIGNOUT${runId.slice(-4).toUpperCase()}`,
       status: "active",
     },
     ...(["Pending", "Earned", "Redeemed"] as const).map((label) => ({
@@ -437,6 +458,16 @@ async function setup(
       account_type: "student",
       username: accounts.unrelated.username,
       email: accounts.unrelated.email,
+      must_change_password: false,
+    },
+    {
+      id: fixture.signoutAccount,
+      studio_id: studioId,
+      student_id: fixture.signoutStudent,
+      user_id: users.signout.id,
+      account_type: "student",
+      username: accounts.signout.username,
+      email: accounts.signout.email,
       must_change_password: false,
     },
   ] satisfies InsertRow<"portal_accounts">[];
