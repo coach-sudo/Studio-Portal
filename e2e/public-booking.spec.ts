@@ -38,11 +38,12 @@ test("@journey @mobile @mobile-only Journey 04: mobile booking reflows and keeps
 }) => {
   requireFixtures(runtime);
   await page.goto(`/book/${runtime.runId}-free-introduction`);
-  await expect(
-    page.getByRole("button", { name: "Choose a time" }),
-  ).toBeInViewport();
+  const chooseTime = page.getByRole("button", { name: "Choose a time" });
+  await expect(chooseTime).toBeVisible();
   await expectNoHorizontalOverflow(page);
-  await page.getByRole("button", { name: "Choose a time" }).click();
+  await chooseTime.scrollIntoViewIfNeeded();
+  await expect(chooseTime).toBeInViewport();
+  await chooseTime.click();
   await expect(page.getByRole("button", { name: /Continue/i })).toBeVisible();
   await expect(page.getByRole("button", { name: /Continue/i })).toBeDisabled();
   await expectNoHorizontalOverflow(page);

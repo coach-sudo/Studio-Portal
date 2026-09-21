@@ -9,7 +9,9 @@ test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and 
   requireFixtures(runtime);
 
   await page.goto(`/book/${runtime.runId}-free-introduction`);
-  await page.keyboard.press("Tab");
+  await expect(
+    page.getByRole("heading", { name: `${runtime.runId} Free introduction` }),
+  ).toBeVisible();
   await page.keyboard.press("Tab");
   expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe(
     "BODY",
@@ -24,6 +26,9 @@ test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and 
   const student = await openAs(browser, "student");
   for (const route of ["inbox", "settings", "payments"]) {
     await student.page.goto(`/portal/${route}`);
+    await expect(
+      student.page.locator("main").getByRole("heading").first(),
+    ).toBeVisible();
     await student.page.keyboard.press("Tab");
     expect(
       await student.page.evaluate(() => document.activeElement?.tagName),
