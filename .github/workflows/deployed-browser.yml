@@ -63,6 +63,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
+      USE_EPHEMERAL_STACK: ${{ (github.event_name == 'pull_request' && github.base_ref == 'codex/pr2-query-layer') || github.event_name == 'workflow_dispatch' }}
       STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || secrets.STAGING_BASE_URL || github.event.deployment_status.target_url }}
       STAGING_E2E_FIXTURE_TOKEN: ${{ secrets.STAGING_E2E_FIXTURE_TOKEN }}
       E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}
@@ -76,9 +77,113 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Start free ephemeral Supabase
+        if: env.USE_EPHEMERAL_STACK == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+          npx supabase db reset --local --no-seed
+          npx supabase db lint --local --schema public --fail-on error
+          npx supabase test db
+
+          eval "$(npx supabase status -o env)"
+          echo "::add-mask::$SERVICE_ROLE_KEY"
+          fixture_token="$(openssl rand -hex 32)"
+          echo "::add-mask::$fixture_token"
+
+          db_container="$(docker ps --filter 'name=supabase_db_studio-portal' --format '{{.Names}}' | head -n 1)"
+          test -n "$db_container"
+
+          snapshot_table() {
+            local file="$1"
+            shift
+            docker exec "$db_container" pg_dump -U postgres -d postgres \
+              --data-only --column-inserts --no-owner --no-privileges "$@" \
+              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^[[:space:]]*$/d' \
+              | LC_ALL=C sort > "$file"
+          }
+          snapshot_table "$RUNNER_TEMP/public-before.sql" --schema=public
+          snapshot_table "$RUNNER_TEMP/storage-before.sql" --table=storage.objects
+          snapshot_table "$RUNNER_TEMP/auth-users-before.sql" --table=auth.users
+          snapshot_table "$RUNNER_TEMP/auth-identities-before.sql" --table=auth.identities
+
+          cloudflared="$RUNNER_TEMP/cloudflared"
+          curl --fail --silent --show-error --location \
+            https://github.com/cloudflare/cloudflared/releases/download/2026.9.1/cloudflared-linux-amd64 \
+            --output "$cloudflared"
+          echo "03f1f25d1cc93b9ad6c60569d44060bc4f17ed97075760ed8cfca4b12dcd68cc  $cloudflared" \
+            | sha256sum --check
+          chmod +x "$cloudflared"
+
+          nohup "$cloudflared" tunnel --no-autoupdate --url "$API_URL" \
+            > "$RUNNER_TEMP/supabase-tunnel.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/supabase-tunnel.pid"
+          supabase_public_url=""
+          for attempt in {1..60}; do
+            supabase_public_url="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' "$RUNNER_TEMP/supabase-tunnel.log" | head -n 1 || true)"
+            if [ -n "$supabase_public_url" ]; then break; fi
+            sleep 1
+          done
+          test -n "$supabase_public_url"
+
+          {
+            echo "DB_CONTAINER=$db_container"
+            echo "SUPABASE_URL=$API_URL"
+            echo "SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
+            echo "VITE_SUPABASE_URL=$supabase_public_url"
+            echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "STUDIO_SLUG=stage-story"
+            echo "E2E_FIXTURE_TOKEN=$fixture_token"
+            echo "STAGING_E2E_FIXTURE_TOKEN=$fixture_token"
+            echo "E2E_EPHEMERAL=true"
+            echo "CONTEXT=deploy-preview"
+            echo "COMMIT_REF=$GITHUB_SHA"
+          } >> "$GITHUB_ENV"
+      - name: Start ephemeral deployed preview
+        if: env.USE_EPHEMERAL_STACK == 'true'
+        shell: bash
+        env:
+          BROWSER: none
+        run: |
+          set -euo pipefail
+          nohup npx --yes netlify-cli@27.8.0 serve --offline \
+            --context deploy-preview --port 8888 --dir dist --functions netlify/functions \
+            > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/netlify-serve.pid"
+          for attempt in {1..120}; do
+            if curl --fail --silent http://127.0.0.1:8888/api/healthz > /dev/null; then break; fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/netlify-serve.pid")" 2>/dev/null; then
+              cat "$RUNNER_TEMP/netlify-serve.log"
+              exit 1
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error http://127.0.0.1:8888/api/healthz > /dev/null
+
+          nohup "$RUNNER_TEMP/cloudflared" tunnel --no-autoupdate --url http://127.0.0.1:8888 \
+            > "$RUNNER_TEMP/app-tunnel.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/app-tunnel.pid"
+          preview_url=""
+          for attempt in {1..60}; do
+            preview_url="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' "$RUNNER_TEMP/app-tunnel.log" | head -n 1 || true)"
+            if [ -n "$preview_url" ]; then break; fi
+            sleep 1
+          done
+          test -n "$preview_url"
+          echo "STAGING_BASE_URL=$preview_url" >> "$GITHUB_ENV"
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error "$preview_url/api/healthz" > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/app-tunnel.log"
+          exit 1
       - name: Require a dedicated staging URL
+        if: env.USE_EPHEMERAL_STACK != 'true'
         run: test -n "$STAGING_BASE_URL"
       - name: Wait for the staging preview
+        if: env.USE_EPHEMERAL_STACK != 'true'
         run: |
           for attempt in {1..30}; do
             if curl --fail --silent --show-error "$STAGING_BASE_URL/api/healthz" > /dev/null; then
@@ -93,6 +198,42 @@ jobs:
       - name: Report passed, failed, blocked, and not-run tests
         if: always()
         run: npm run playwright:report
+      - name: Verify fixture cleanup and non-E2E isolation
+        if: always() && env.USE_EPHEMERAL_STACK == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p test-results
+          snapshot_table() {
+            local file="$1"
+            shift
+            docker exec "$DB_CONTAINER" pg_dump -U postgres -d postgres \
+              --data-only --column-inserts --no-owner --no-privileges "$@" \
+              | sed -e '/^--/d' -e '/^SET /d' -e '/^SELECT pg_catalog.set_config/d' -e '/^[[:space:]]*$/d' \
+              | LC_ALL=C sort > "$file"
+          }
+          snapshot_table "$RUNNER_TEMP/public-after.sql" --schema=public
+          snapshot_table "$RUNNER_TEMP/storage-after.sql" --table=storage.objects
+          snapshot_table "$RUNNER_TEMP/auth-users-after.sql" --table=auth.users
+          snapshot_table "$RUNNER_TEMP/auth-identities-after.sql" --table=auth.identities
+
+          failed=0
+          : > test-results/cleanup-verification.txt
+          for dataset in public storage auth-users auth-identities; do
+            if diff --unified=3 "$RUNNER_TEMP/$dataset-before.sql" "$RUNNER_TEMP/$dataset-after.sql" \
+              > "test-results/$dataset-cleanup.diff"; then
+              echo "$dataset: restored to the pre-fixture baseline" | tee -a test-results/cleanup-verification.txt
+              rm "test-results/$dataset-cleanup.diff"
+            else
+              echo "$dataset: differs from the pre-fixture baseline" | tee -a test-results/cleanup-verification.txt
+              failed=1
+            fi
+          done
+          e2e_auth_users="$(docker exec "$DB_CONTAINER" psql -U postgres -d postgres -Atc \
+            "select count(*) from auth.users where email like 'e2e-%@example.test')"
+          echo "remaining e2e auth users: $e2e_auth_users" | tee -a test-results/cleanup-verification.txt
+          if [ "$e2e_auth_users" != "0" ]; then failed=1; fi
+          exit "$failed"
       - name: Upload full browser evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -103,3 +244,6 @@ jobs:
           path: |
             playwright-report/
             test-results/
+      - name: Stop ephemeral services
+        if: always() && env.USE_EPHEMERAL_STACK == 'true'
+        run: npx supabase stop --no-backup

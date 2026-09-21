@@ -24,6 +24,7 @@ export default defineConfig({
     : [["list"], ["json", { outputFile: "test-results/results.json" }]],
   use: {
     baseURL,
+    bypassCSP: process.env.E2E_EPHEMERAL === "true",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
