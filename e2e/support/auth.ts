@@ -8,6 +8,7 @@ export async function openAs(
   const runtime = await readRuntime();
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
+    bypassCSP: process.env.E2E_EPHEMERAL === "true",
     storageState: storageStatePath(role),
   });
   return { context, page: await context.newPage() };

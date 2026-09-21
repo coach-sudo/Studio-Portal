@@ -61,7 +61,10 @@ export default async function globalSetup(config: FullConfig) {
       const account = runtime.accounts?.[role];
       if (!account)
         throw new Error(`fixture response omitted ${role} credentials`);
-      const context = await browser.newContext({ baseURL });
+      const context = await browser.newContext({
+        baseURL,
+        bypassCSP: process.env.E2E_EPHEMERAL === "true",
+      });
       try {
         const page = await context.newPage();
         await page.goto("/login");
