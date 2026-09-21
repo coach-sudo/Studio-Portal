@@ -11,6 +11,8 @@ import { provisionPortalAccount } from "./_shared/portal-access";
 import { derivePackageValues } from "./_shared/package-pricing";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { unknownCampaignTokens } from "../../src/domain/campaignTemplates";
+import platformHealth from "./platform-health";
+import referrals from "./referrals";
 
 const domains = new Set([
   "students",
@@ -30,6 +32,8 @@ const domains = new Set([
   "recommendations",
   "settings",
   "pricing",
+  "health",
+  "referrals",
 ]);
 const sourceLabelServer = (value: string) =>
   (
@@ -56,6 +60,8 @@ export default async (request: Request, context: Context) => {
         },
         404,
       );
+    if (domain === "health") return platformHealth(request);
+    if (domain === "referrals") return referrals(request);
     if (request.method === "GET")
       return json({
         ok: true,

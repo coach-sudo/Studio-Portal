@@ -6,6 +6,7 @@ import {
   FileText,
   FolderOpen,
   Mail,
+  LogOut,
   Menu,
   MessageSquare,
   PanelLeftClose,
@@ -94,6 +95,8 @@ import { PortalInbox } from "../messages/Inbox";
 import { recentLessonDuration, sortPackageDefinitions } from "../../domain/packageSelection";
 import { StudentReferrals } from "../referrals/Referrals";
 import type { StudioDomain } from "../../data/repository";
+import { supabase } from "../../lib/supabase";
+import "../../components/IdentityActions.css";
 
 function portalDomains(pathname: string): readonly StudioDomain[] {
   if (pathname.includes("/inbox")) return ["identity", "students", "messaging"];
@@ -202,6 +205,9 @@ export function StudentPortal({
                 : "Student"}
             </small>
           </div>
+          <button type="button" className="identity-signout" aria-label="Sign out" onClick={async()=>{await supabase?.auth.signOut();navigatePortal("/login",{replace:true});}}>
+            <LogOut aria-hidden="true" />
+          </button>
         </div>
       </aside>
       <main>
@@ -1466,11 +1472,7 @@ function LessonHub({
           </Link>
         </div>
       </header>
-      {notice && (
-        <p className="portal-notice" role="status">
-          {notice}
-        </p>
-      )}
+      {notice && <p className="portal-notice">{notice}</p>}
       {delivery &&
         (delivery.calendar?.status !== "not_required" ||
           Boolean(delivery.email?.length)) && (
@@ -1743,7 +1745,11 @@ function Practice({
           <p>Published assignments you can complete or ask about.</p>
         </header>
       )}
-      {notice && <p className="portal-notice">{notice}</p>}
+      {notice && (
+        <p className="portal-notice" role="status">
+          {notice}
+        </p>
+      )}
       <Section title="Next practice" marked>
         <ListControls
           page={assignmentPage.page}
@@ -2894,7 +2900,11 @@ function ActorPage({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
         <h1>Actor Page</h1>
         <p>Edit a draft and submit it for coach review before publishing.</p>
       </header>
-      {notice && <p className="portal-notice">{notice}</p>}
+      {notice && (
+        <p className="portal-notice" role="status">
+          {notice}
+        </p>
+      )}
       <Section title="Profile" marked>
         <div className="table-list">
           <article>

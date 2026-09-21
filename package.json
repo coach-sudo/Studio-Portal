@@ -12,6 +12,10 @@
     "format:check": "tsx scripts/check-format.ts",
     "lint": "eslint .",
     "playwright:smoke": "playwright test e2e/deployed-health.spec.ts",
+    "playwright:e2e": "playwright test --grep @journey",
+    "playwright:a11y": "playwright test --grep @a11y",
+    "playwright:deployed": "playwright test",
+    "playwright:report": "tsx scripts/report-e2e-results.ts",
     "supabase:types": "tsx scripts/generate-database-types.ts --local",
     "supabase:types:linked": "tsx scripts/generate-database-types.ts --linked",
     "supabase:verify": "supabase db reset --local --no-seed && supabase db lint --local --schema public --fail-on error && supabase test db && npm run supabase:types && git diff --exit-code -- src/types/database.generated.ts",
@@ -34,6 +38,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@eslint/js": "9.39.5",
     "@playwright/test": "1.63.0",
     "@testing-library/jest-dom": "^6.9.1",

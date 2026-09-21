@@ -94,6 +94,10 @@ body {
 .page-header p,
 .student-header p,
 .section-intro { max-width: 760px; color: var(--muted); line-height: 1.55; }
+.workflow-form label.material-upload,
+.workflow-form label.material-upload > small,
+.settings-form label.material-upload,
+.settings-form label.material-upload > small { color: var(--ink); }
 .page-actions,
 .header-actions,
 .form-actions,

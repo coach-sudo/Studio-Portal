@@ -1,6 +1,8 @@
 import { expect, test } from "@playwright/test";
 
-test("staging exposes sanitized release liveness", async ({ request }) => {
+test("@smoke staging exposes sanitized release liveness", async ({
+  request,
+}) => {
   const response = await request.get("/api/healthz");
   expect(response.ok()).toBe(true);
 
@@ -13,7 +15,9 @@ test("staging exposes sanitized release liveness", async ({ request }) => {
   expect(body).not.toHaveProperty("issues");
 });
 
-test("staging app loads on desktop and mobile", async ({ page }) => {
+test("@smoke @mobile staging app loads on desktop and mobile", async ({
+  page,
+}) => {
   await page.goto("/login");
   await expect(page.locator("body")).toBeVisible();
 });

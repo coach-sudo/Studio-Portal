@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import { assertNonProductionE2EUrl } from "./src/security/e2eSafety";
 
 const baseURL = process.env.STAGING_BASE_URL;
 
@@ -6,24 +7,38 @@ if (!baseURL) {
   throw new Error("STAGING_BASE_URL is required for deployed browser checks.");
 }
 
-const hostname = new URL(baseURL).hostname.toLowerCase();
-if (hostname === "portal.d-a-j.com" || hostname.endsWith(".portal.d-a-j.com")) {
-  throw new Error("Deployed browser checks must never target production.");
-}
+assertNonProductionE2EUrl(baseURL);
 
 export default defineConfig({
   testDir: "./e2e",
   outputDir: "test-results/artifacts",
+  globalSetup: "./e2e/global.setup.ts",
+  globalTeardown: "./e2e/global.teardown.ts",
   retries: process.env.CI ? 2 : 0,
-  reporter: process.env.CI ? [["github"], ["html", { open: "never" }]] : "list",
+  reporter: process.env.CI
+    ? [
+        ["github"],
+        ["html", { open: "never" }],
+        ["json", { outputFile: "test-results/results.json" }],
+      ]
+    : [["list"], ["json", { outputFile: "test-results/results.json" }]],
   use: {
     baseURL,
+    bypassCSP: process.env.E2E_EPHEMERAL === "true",
     trace: "on-first-retry",
     screenshot: "only-on-failure",
-    video: "on-last-retry",
+    video: "retain-on-failure",
   },
   projects: [
-    { name: "desktop-chromium", use: { ...devices["Desktop Chrome"] } },
-    { name: "mobile-chromium", use: { ...devices["Pixel 7"] } },
+    {
+      name: "desktop-chromium",
+      grepInvert: /@mobile-only/,
+      use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "mobile-chromium",
+      grep: /@mobile|@smoke/,
+      use: { ...devices["Pixel 7"] },
+    },
   ],
 });
