@@ -245,7 +245,9 @@ export function PublicActorPage() {
       <header className="actor-public-kicker">
         <span>{actor.displayName} · Actor</span>
       </header>
-      <article className="actor-public-hero">
+      <article
+        className={`actor-public-hero ${headshot ? "" : "actor-public-hero-sparse"}`}
+      >
         {headshot ? (
           <img
             className="actor-headshot"
