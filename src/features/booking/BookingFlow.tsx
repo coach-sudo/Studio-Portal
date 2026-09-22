@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { readApiClientError } from "../../data/apiClientError";
 import {
   buildAvailability,
   remainingCapacity,
@@ -299,11 +300,12 @@ export function BookingFlow({
           referralCode: referralCode || undefined,
         }),
       });
-      const result = await response.json();
       if (!response.ok)
-        throw new Error(
-          result.message || "The booking could not be confirmed.",
+        throw await readApiClientError(
+          response,
+          "The booking could not be confirmed.",
         );
+      const result = await response.json();
       window.sessionStorage.removeItem("studio-reward-code");
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);

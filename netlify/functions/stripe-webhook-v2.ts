@@ -16,7 +16,7 @@ export default async (request: Request, context: Context) => {
     const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });
     const raw = await request.text();
     const event = stripe.webhooks.constructEvent(raw, request.headers.get("stripe-signature") || "", secret);
-    const db = serviceClient(), object: any = event.data.object;
+    const db = serviceClient();
     eventId = event.id;
     const { data: existing } = await db.from("webhook_events").select("status").eq("id", event.id).maybeSingle();
     if (existing?.status === "processed") return json({ ok: true, duplicate: true });
@@ -28,6 +28,7 @@ export default async (request: Request, context: Context) => {
     const done = async (payload: Record<string, unknown> = {}) => { await db.from("webhook_events").update({ status: "processed", processed_at: new Date().toISOString(), error: null }).eq("id", event.id); return json({ ok: true, ...payload }); };
 
     if (event.type === "checkout.session.completed") {
+      const object = event.data.object;
       // Payment-method Checkout sessions are completed by the subsequent
       // setup_intent event; they are never package purchases.
       if (object.mode === "setup") return done({ setup: true });
@@ -73,11 +74,16 @@ export default async (request: Request, context: Context) => {
       }
       if (packageSubscriptionId) {
         const stripeSubscriptionId = object.subscription ? String(object.subscription) : null;
+        const subscriptionDetails = (
+          object as Stripe.Checkout.Session & {
+            subscription_details?: { current_period_end?: number };
+          }
+        ).subscription_details;
         await db.from("package_subscriptions").update({
           status: "active",
           stripe_customer_id: object.customer ? String(object.customer) : null,
           stripe_subscription_id: stripeSubscriptionId,
-          next_billing_at: stripeSubscriptionId ? new Date(((object.subscription_details?.current_period_end || 0) * 1000) || Date.now()).toISOString() : null,
+          next_billing_at: stripeSubscriptionId ? new Date(((subscriptionDetails?.current_period_end || 0) * 1000) || Date.now()).toISOString() : null,
           updated_at: new Date().toISOString(),
         }).eq("id", packageSubscriptionId);
         if (object.customer)
@@ -87,7 +93,13 @@ export default async (request: Request, context: Context) => {
     }
 
     if (event.type === "invoice.payment_failed" || event.type === "invoice.paid") {
-      const subscriptionId = String(object.parent?.subscription_details?.subscription || object.subscription || "");
+      const object = event.data.object;
+      const legacySubscription = (
+        object as Stripe.Invoice & {
+          subscription?: string | Stripe.Subscription | null;
+        }
+      ).subscription;
+      const subscriptionId = String(object.parent?.subscription_details?.subscription || legacySubscription || "");
       const metadata = { ...(object.metadata || {}), ...(object.parent?.subscription_details?.metadata || {}) };
       let bookingId = metadata.booking_id as string | undefined;
       if (!bookingId && subscriptionId) {
@@ -150,6 +162,7 @@ export default async (request: Request, context: Context) => {
     }
 
     if (event.type === "customer.subscription.updated") {
+      const object = event.data.object;
       const status = object.cancel_at_period_end ? "cancel_at_period_end" : object.status === "active" ? "active" : undefined;
       if (status) {
         const { data: packageSubscription } = await db.from("package_subscriptions").update({ status, next_billing_at: object.items?.data?.[0]?.current_period_end ? new Date(Number(object.items.data[0].current_period_end) * 1000).toISOString() : null, updated_at: new Date().toISOString() }).eq("stripe_subscription_id", String(object.id)).select("id").maybeSingle();
@@ -158,9 +171,11 @@ export default async (request: Request, context: Context) => {
       return done();
     }
     if(event.type==="setup_intent.succeeded"){
+      const object = event.data.object;
       const customerId=typeof object.customer==="string"?object.customer:object.customer?.id,paymentMethodId=typeof object.payment_method==="string"?object.payment_method:object.payment_method?.id;if(customerId&&paymentMethodId){const method=await stripe.paymentMethods.retrieve(paymentMethodId),card=method.card,summary=card?{label:`${card.brand.toUpperCase()} ending in ${card.last4}`,brand:card.brand,last4:card.last4,expires:`${card.exp_month}/${card.exp_year}`}:{label:"Payment method saved"};const {error:updateError}=await db.from("students").update({payment_method_summary:summary,updated_at:new Date().toISOString()}).eq("stripe_customer_id",customerId);if(updateError)throw updateError;}return done();
     }
     if (event.type === "customer.subscription.deleted") {
+      const object = event.data.object;
       const subscriptionId = String(object.id);
       const { data: packageSubscription } = await db.from("package_subscriptions").update({ status: "cancelled", updated_at: new Date().toISOString() }).eq("stripe_subscription_id", subscriptionId).select("id").maybeSingle();
       if (packageSubscription) return done({ packageSubscription: true });
@@ -178,6 +193,7 @@ export default async (request: Request, context: Context) => {
       return done({ installmentsComplete });
     }
     if (event.type === "checkout.session.expired") {
+      const object = event.data.object;
       if(object.metadata?.package_gift_id){await db.from("package_gifts").update({status:"expired",updated_at:new Date().toISOString()}).eq("id",object.metadata.package_gift_id).eq("status","pending_payment");return done({packageGift:true});}
       if(object.metadata?.package_id){
         const packageId=String(object.metadata.package_id),packageSubscriptionId=String(object.metadata.package_subscription_id||"");
@@ -197,13 +213,22 @@ export default async (request: Request, context: Context) => {
       return done();
     }
     if (event.type === "charge.refunded" || event.type === "refund.updated") {
-      const refund = event.type === "refund.updated" ? object : object.refunds?.data?.find((item: any) => item.status === "succeeded") ?? object.refunds?.data?.[0];
+      let charge: Stripe.Charge | undefined;
+      let refund: Stripe.Refund | undefined;
+      if (event.type === "charge.refunded") {
+        charge = event.data.object;
+        refund =
+          charge.refunds?.data?.find((item) => item.status === "succeeded") ??
+          charge.refunds?.data?.[0];
+      } else {
+        refund = event.data.object;
+      }
       const bookingId = refund?.metadata?.booking_id;
-      const giftId=refund?.metadata?.package_gift_id||object.metadata?.package_gift_id;
-      if(giftId&&(!refund.status||refund.status==="succeeded")){const reversed=await db.rpc("refund_package_gift",{target_gift:giftId});if(reversed.error)throw reversed.error;return done({packageGift:true});}
-      if (bookingId && (!refund.status || refund.status === "succeeded")) {
+      const giftId=refund?.metadata?.package_gift_id||charge?.metadata?.package_gift_id;
+      if(giftId&&(!refund?.status||refund.status==="succeeded")){const reversed=await db.rpc("refund_package_gift",{target_gift:giftId});if(reversed.error)throw reversed.error;return done({packageGift:true});}
+      if (refund && bookingId && (!refund.status || refund.status === "succeeded")) {
         const { data: booking } = await db.from("bookings").update({ payment_status: "refunded", updated_at: new Date().toISOString() }).eq("id", bookingId).select("student_id,currency,reference").maybeSingle();
-        if (booking?.student_id) await db.from("payment_entries").upsert({ student_id: booking.student_id, kind: "refund", amount_minor: Number(refund.amount || object.amount_refunded || 0), currency: String(refund.currency || object.currency || booking.currency).toUpperCase(), external_reference: refund.id, reason: `Stripe refund ${booking.reference}` }, { onConflict: "external_reference", ignoreDuplicates: true });
+        if (booking?.student_id) await db.from("payment_entries").upsert({ student_id: booking.student_id, kind: "refund", amount_minor: Number(refund.amount || charge?.amount_refunded || 0), currency: String(refund.currency || charge?.currency || booking.currency).toUpperCase(), external_reference: refund.id, reason: `Stripe refund ${booking.reference}` }, { onConflict: "external_reference", ignoreDuplicates: true });
       }
       return done();
     }

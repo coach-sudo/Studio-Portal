@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "node:crypto";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
+import { packageGiftCommandSchema } from "./_shared/schemas";
 import { serviceClient } from "./_shared/supabase";
 import { provisionPortalAccount } from "./_shared/portal-access";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
@@ -25,7 +26,7 @@ export default async (request:Request,context:Context)=>{
     }
     if(request.method!=="POST")return json({code:"METHOD_NOT_ALLOWED",message:"Method not allowed.",retryable:false,correlationId:id},405);
     await rateLimit(request,action);
-    const body=await request.json() as Record<string,unknown>;
+    const body=packageGiftCommandSchema.parse(await request.json());
     if(action==="create"){
       const definitionId=String(body.definitionId||""),purchaserName=String(body.purchaserName||"").trim(),purchaserEmail=String(body.purchaserEmail||"").trim().toLowerCase(),recipientName=String(body.recipientName||"").trim(),recipientEmail=String(body.recipientEmail||"").trim().toLowerCase();
       if(purchaserName.length<2||recipientName.length<2||!purchaserEmail.includes("@")||!recipientEmail.includes("@"))throw new Error("VALIDATION_FAILED: Complete the purchaser and recipient details.");

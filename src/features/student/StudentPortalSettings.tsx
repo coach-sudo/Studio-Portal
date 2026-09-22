@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import "../../components/IdentityActions.css";
 import { Section, Toggle } from "../../components/Primitives";
 import { TimezoneSelect } from "../../components/TimezoneSelect";
+import { readApiClientError } from "../../data/apiClientError";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import type { Role } from "../../domain/model";
@@ -211,9 +212,13 @@ export function StudentSettings({
             "Idempotency-Key": crypto.randomUUID(),
           },
           body: JSON.stringify({ studentId: student.id }),
-        }),
-        result = await response.json();
-      if (!response.ok) throw new Error(result.message);
+        });
+      if (!response.ok)
+        throw await readApiClientError(
+          response,
+          "Payment settings could not be opened.",
+        );
+      const result = await response.json();
       window.location.assign(result.url);
     } catch (reason) {
       setNotice(
