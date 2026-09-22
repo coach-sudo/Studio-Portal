@@ -1,6 +1,7 @@
 import { ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { readApiClientError } from "../../data/apiClientError";
 import {
   buildAvailability,
   cancelDemoBooking,
@@ -53,7 +54,8 @@ export function ManageBooking({
         const response = await fetch(
           `/api/v2/public/booking/manage?token=${encodeURIComponent(token)}`,
         );
-        if (!response.ok) throw new Error();
+        if (!response.ok)
+          throw await readApiClientError(response, "Booking unavailable.");
         const row = await response.json();
         if (!cancelled) {
           setBooking({
@@ -222,9 +224,12 @@ export function ManageBooking({
             }),
           },
         );
-        const row = await response.json();
         if (!response.ok)
-          throw new Error(row.message || "That change is not permitted.");
+          throw await readApiClientError(
+            response,
+            "That change is not permitted.",
+          );
+        const row = await response.json();
         updated = {
           ...booking,
           status: row.status,

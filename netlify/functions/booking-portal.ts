@@ -1,6 +1,7 @@
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
+import { bookingPortalCommandSchema } from "./_shared/schemas";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
@@ -11,7 +12,7 @@ export default async (request: Request, context: Context) => {
   try {
     if (request.method !== "POST") return json({ code: "METHOD_NOT_ALLOWED", message: "Method not allowed.", retryable: false, correlationId: id }, 405);
     const action = context.params.action;
-    const body = await request.json() as { studentId?: string; bookingId?: string; startsAt?: string; endsAt?: string; scope?: "occurrence" | "series" };
+    const body = bookingPortalCommandSchema.parse(await request.json());
     const userDb = userClient(request);
     if(action==="payment-method"||action==="billing"){
       if(!body.studentId)throw new Error("VALIDATION_FAILED: studentId is required.");

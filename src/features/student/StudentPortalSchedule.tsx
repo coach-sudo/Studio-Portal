@@ -3,6 +3,7 @@ import { CalendarDays, Repeat2, ShieldCheck, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../../components/IdentityActions.css";
+import { readApiClientError } from "../../data/apiClientError";
 import {
   Dialog,
   EmptyState,
@@ -195,7 +196,11 @@ export function StudentBookings({
           },
           body: JSON.stringify({ bookingId: booking.id }),
         });
-        if (!response.ok) throw new Error((await response.json()).message);
+        if (!response.ok)
+          throw await readApiClientError(
+            response,
+            "The recurring series could not be updated.",
+          );
         void invalidateStudioDomains(queryClient, ["booking", "finance"]);
       }
       setNotice("The series will end after the current paid period.");

@@ -1,4 +1,5 @@
 import type { Config } from "@netlify/functions";
+import { z } from "zod";
 import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { zonedDateTimeToUtc } from "./_shared/timezone";
@@ -59,6 +60,49 @@ type ExistingLessonCandidate = {
   source_provider?: string | null;
   topic?: string | null;
 };
+const calendarListSchema = z
+  .object({
+    items: z
+      .array(z.object({ id: z.string().min(1) }).passthrough())
+      .optional(),
+    nextPageToken: z.string().optional(),
+    error: z.unknown().optional(),
+  })
+  .passthrough();
+const gmailListSchema = z
+  .object({
+    messages: z.array(z.object({ id: z.string().min(1) })).optional(),
+    nextPageToken: z.string().optional(),
+    error: z.object({ message: z.string().optional() }).passthrough().optional(),
+  })
+  .passthrough();
+const gmailMessageSchema = z
+  .object({
+    id: z.string().optional(),
+    threadId: z.string().optional(),
+    snippet: z.string().optional(),
+    payload: z
+      .object({
+        headers: z
+          .array(
+            z.object({
+              name: z.string(),
+              value: z.string().optional(),
+            }),
+          )
+          .optional(),
+      })
+      .passthrough()
+      .optional(),
+  })
+  .passthrough();
+
+function providerPayload<T extends z.ZodType>(schema: T, value: unknown) {
+  const result = schema.safeParse(value);
+  if (!result.success)
+    throw new Error("PROVIDER_UNAVAILABLE: Provider payload was invalid.");
+  return result.data as z.infer<T>;
+}
 const normalize = (value?: string | null) =>
   (value || "")
     .normalize("NFKD")
@@ -330,7 +374,7 @@ async function listCalendarEvents(
         `https://www.googleapis.com/calendar/v3/calendars/${calendar}/events?${params.toString()}${suffix}`,
         { headers: { Authorization: `Bearer ${token}` } },
       ),
-      payload = (await response.json()) as {
+      payload = providerPayload(calendarListSchema, await response.json()) as {
         items?: CalendarEvent[];
         nextPageToken?: string;
         error?: unknown;
@@ -891,11 +935,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=200${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`,
         { headers: { Authorization: `Bearer ${token}` } },
       ),
-      payload = (await list.json()) as {
-        messages?: Array<{ id: string }>;
-        nextPageToken?: string;
-        error?: any;
-      };
+      payload = providerPayload(gmailListSchema, await list.json());
     if (!list.ok) {
       await db.from("recommendations").upsert(
         {
@@ -926,7 +966,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         `https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=full`,
         { headers: { Authorization: `Bearer ${token}` } },
       ),
-      message = (await response.json()) as any;
+      message = providerPayload(gmailMessageSchema, await response.json());
     if (!response.ok) continue;
     const headers = Object.fromEntries(
         (message.payload?.headers || []).map((header: any) => [

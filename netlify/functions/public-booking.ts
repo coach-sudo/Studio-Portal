@@ -3,7 +3,7 @@ import Stripe from "stripe";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { apiError, correlationId, json } from "./_shared/http";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
-import { publicBookingSchema } from "./_shared/schemas";
+import { publicBookingSchema, publicManageBookingSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
 import {
   recurringDates,
@@ -1013,12 +1013,7 @@ async function manage(url: URL, request: Request) {
     .single();
   if (error || !booking) throw new Error("FORBIDDEN");
   if (request.method === "GET") return booking;
-  const body = (await request.json()) as {
-    command?: string;
-    startsAt?: string;
-    endsAt?: string;
-    scope?: "occurrence" | "series";
-  };
+  const body = publicManageBookingSchema.parse(await request.json());
   if (body.command === "cancel") {
     const result = await cancelConfirmedBooking({
       db,

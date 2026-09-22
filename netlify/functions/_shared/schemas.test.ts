@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { commandSchema, publicBookingSchema } from "./schemas";
+import { commandSchema, parseCommand, publicBookingSchema } from "./schemas";
 
 describe("command schema", () => {
   it("accepts version zero for create commands", () => {
@@ -43,10 +43,10 @@ describe("public booking terms", () => {
 
   it("requires the current terms version and affirmative acceptance", () => {
     const parsed = publicBookingSchema.parse({
-        ...booking,
-        termsAccepted: true,
-        termsVersion: "2026-08-20",
-      });
+      ...booking,
+      termsAccepted: true,
+      termsVersion: "2026-08-20",
+    });
     expect(parsed.termsAccepted).toBe(true);
     expect(parsed.createPortalProfile).toBe(false);
     expect(() => publicBookingSchema.parse(booking)).toThrow();
@@ -61,5 +61,37 @@ describe("public booking terms", () => {
         termsVersion: "2026-08-20",
       }).createPortalProfile,
     ).toBe(true);
+  });
+});
+
+describe("domain command payload schemas", () => {
+  const envelope = {
+    command: "create",
+    idempotencyKey: "idempotency-key",
+    expectedVersion: 0,
+    reason: "Create a lesson",
+  };
+
+  it("validates scheduling payloads before command dispatch", () => {
+    expect(() =>
+      parseCommand("lessons", {
+        ...envelope,
+        payload: {
+          studentId: "11111111-1111-4111-8111-111111111111",
+          startsAt: "2026-09-21T18:00:00.000Z",
+          endsAt: "2026-09-21T17:00:00.000Z",
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("retains compatibility for commands without a specialized payload schema", () => {
+    expect(
+      parseCommand("settings", {
+        ...envelope,
+        command: "update",
+        payload: { timezone: "America/New_York" },
+      }).payload,
+    ).toEqual({ timezone: "America/New_York" });
   });
 });
