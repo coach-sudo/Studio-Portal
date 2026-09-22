@@ -27,6 +27,24 @@ describe("TimezoneSelect", () => {
     expect(worldTimezones().length).toBeGreaterThan(20);
   });
 
+  it("finds common US timezone names as well as IANA city names", async () => {
+    const user = userEvent.setup(),
+      change = vi.fn();
+    render(
+      <label>
+        Timezone
+        <TimezoneSelect value="America/New_York" onChange={change} />
+      </label>,
+    );
+    const input = screen.getByRole("combobox", { name: "Timezone" });
+    await user.clear(input);
+    await user.type(input, "Pacific");
+    await user.click(
+      screen.getByRole("option", { name: /America\/Los Angeles/ }),
+    );
+    expect(change).toHaveBeenLastCalledWith("America/Los_Angeles");
+  });
+
   it("offers the browser-observed timezone as the default choice", () => {
     const change = vi.fn();
     render(<TimezoneSelect value="" onChange={change} />);
