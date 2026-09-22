@@ -1,4 +1,5 @@
 import { openAs } from "./support/auth";
+import { expectNoSeriousAxeViolations } from "./support/axe";
 import {
   expect,
   requireCapability,
@@ -49,7 +50,7 @@ test("@journey Journey 08: Stripe test checkout hands off only to test-mode infr
   await context.close();
 });
 
-test("@journey Journey 09: student submits an actor edit, coach publishes it, and public page reflects it", async ({
+test("@journey @a11y Journey 09: student submits an actor edit, coach publishes it, and public page reflects it", async ({
   browser,
   runtime,
 }) => {
@@ -82,5 +83,6 @@ test("@journey Journey 09: student submits an actor edit, coach publishes it, an
     coach.page.getByRole("link", { name: "Book coaching" }),
   ).toBeVisible();
   await expect(coach.page.getByText(/being prepared/i)).toHaveCount(0);
+  await expectNoSeriousAxeViolations(coach.page);
   await coach.context.close();
 });

@@ -58,16 +58,6 @@ test("@a11y guardian and coach representative workspaces have no serious axe vio
   await coach.context.close();
 });
 
-test("@a11y public actor profile and configured CTA have no serious axe violations", async ({
-  page,
-  runtime,
-}) => {
-  requireFixtures(runtime);
-  await page.goto(`/actors/${runtime.actorSlug}`);
-  await expect(page.getByRole("link", { name: "Book coaching" })).toBeVisible();
-  await expectNoSeriousAxeViolations(page);
-});
-
 test("@a11y focused dialog, form validation, pagination, and live-region patterns pass axe", async ({
   browser,
   runtime,

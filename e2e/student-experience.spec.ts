@@ -14,13 +14,15 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
   await expect(page.getByRole("link", { name: "Message coach" })).toHaveClass(
     /primary-contact-action/,
   );
-  await expect(page.getByRole("link", { name: "Join lesson" })).toBeVisible();
+  await expect(
+    page.getByRole("link", { name: "Join Google Meet" }),
+  ).toBeVisible();
   await page.goto("/portal/bookings");
   const availableLesson = page.locator("article", {
     hasText: `${runtime.runId} Meet available`,
   });
   await expect(
-    availableLesson.getByRole("link", { name: "Join" }),
+    availableLesson.getByRole("link", { name: /Join/ }),
   ).toBeVisible();
   for (const lessonTitle of [
     `${runtime.runId} No meeting link`,
@@ -72,7 +74,10 @@ test("@journey Journey 05: inbox shows coach identity and supports a safe reply"
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/inbox");
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-  await page.getByRole("button", { name: /E2E Coach conversation/ }).click();
+  await page
+    .getByRole("complementary", { name: "Conversations" })
+    .getByRole("button", { name: /Acting Coach/ })
+    .click();
   await expect(
     page.getByText("E2E Coach", { exact: true }).first(),
   ).toBeVisible();
