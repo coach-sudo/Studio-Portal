@@ -25,7 +25,7 @@ import { studioCommand } from "../../data/bookingCommands";
 import { portalPageSize, shouldShowPagination } from "../../data/pagination";
 import { mapNoteRow } from "../../data/studioMappers";
 import { formatMoney } from "../../domain/finance";
-import { isJoinableLesson } from "../../domain/lessonExperience";
+import { selectLessonDelivery } from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -282,6 +282,9 @@ export function LessonHub({
     };
   }, [lessonId]);
   if (!lesson) return <Navigate to="/portal/bookings" replace />;
+  const deliveryPresentation = selectLessonDelivery(lesson, {
+    calendarStatus: delivery?.calendar?.status,
+  });
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
   const assignments = data.assignments.filter(
     (item) => item.lessonId === lesson.id,
@@ -405,7 +408,7 @@ export function LessonHub({
           </p>
         </div>
         <div className="lesson-immediate-actions">
-          {lesson.joinUrl && isJoinableLesson(lesson) && (
+          {lesson.joinUrl && deliveryPresentation.state === "available" && (
             <a
               className="button-link primary"
               href={lesson.joinUrl}
@@ -413,7 +416,7 @@ export function LessonHub({
               rel="noreferrer"
             >
               <Video />
-              Join Google Meet
+              {deliveryPresentation.actionLabel}
             </a>
           )}
           <Link className="button-link" to="/portal/bookings">
@@ -423,27 +426,18 @@ export function LessonHub({
         </div>
       </header>
       {notice && <p className="portal-notice">{notice}</p>}
-      {delivery &&
-        (delivery.calendar?.status !== "not_required" ||
-          Boolean(delivery.email?.length)) && (
-          <details className="lesson-delivery-receipt" role="status">
-            <summary>
-              <ShieldCheck />
-              <strong>Schedule confirmation</strong>
-            </summary>
-            <div>
-              <small>
-                Calendar:{" "}
-                {delivery.calendar?.status?.replaceAll("_", " ") ||
-                  "not required"}
-                {delivery.email?.length
-                  ? ` · Email: ${delivery.email[0].status.replaceAll("_", " ")}`
-                  : ""}
-                {delivery.correlationId ? ` · ${delivery.correlationId}` : ""}
-              </small>
-            </div>
-          </details>
-        )}
+      {(lesson.locationType === "virtual" ||
+        lesson.meetingProvider === "google_meet") && (
+        <details className="lesson-delivery-receipt" role="status">
+          <summary>
+            <ShieldCheck />
+            <strong>{deliveryPresentation.label}</strong>
+          </summary>
+          <div>
+            <small>{deliveryPresentation.detail}</small>
+          </div>
+        </details>
+      )}
       {offering && (
         <Section title="Class information" marked>
           <p>

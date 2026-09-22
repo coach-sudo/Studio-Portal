@@ -7,6 +7,7 @@ import {
   CircleDollarSign,
   FolderOpen,
   MessageSquare,
+  Plus,
   Trash2,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -133,10 +134,16 @@ export function CoachLessonHub({
   data,
   student,
   isDemo,
+  onAddNote,
+  onAddAssignment,
+  onAddMaterial,
 }: {
   data: Data;
   student: Student;
   isDemo: boolean;
+  onAddNote: (lessonId: string) => void;
+  onAddAssignment: (lessonId: string) => void;
+  onAddMaterial: (lessonId: string) => void;
 }) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
@@ -677,7 +684,14 @@ export function CoachLessonHub({
         </Dialog>
       )}
       <div className="lesson-hub-grid">
-        <Section title="Notes">
+        <Section
+          title="Notes"
+          aside={
+            <button onClick={() => onAddNote(lesson.id)}>
+              <Plus /> Add note
+            </button>
+          }
+        >
           <div className="note-cards">
             {notes.map((note) => (
               <article key={note.id}>
@@ -700,12 +714,19 @@ export function CoachLessonHub({
             {!notes.length && (
               <EmptyState
                 title="No lesson notes"
-                detail="Use the Notes tab to add one for this lesson."
+                detail="Capture a private draft or publish a note from this lesson."
               />
             )}
           </div>
         </Section>
-        <Section title="Practice">
+        <Section
+          title="Practice"
+          aside={
+            <button onClick={() => onAddAssignment(lesson.id)}>
+              <Plus /> Assign practice
+            </button>
+          }
+        >
           <div className="table-list">
             {assignments.map((item) => (
               <article key={item.id}>
@@ -724,12 +745,19 @@ export function CoachLessonHub({
             {!assignments.length && (
               <EmptyState
                 title="No linked practice"
-                detail="Use Current work to assign practice to this lesson."
+                detail="Give the student a clear next action from this lesson."
               />
             )}
           </div>
         </Section>
-        <Section title="Attachments">
+        <Section
+          title="Attachments"
+          aside={
+            <button onClick={() => onAddMaterial(lesson.id)}>
+              <Plus /> Attach resource
+            </button>
+          }
+        >
           <div className="table-list">
             {materials.map((item) => (
               <article key={item.id}>
@@ -753,7 +781,7 @@ export function CoachLessonHub({
             {!materials.length && (
               <EmptyState
                 title="No attachments"
-                detail="Use Current work to attach a file or link to this lesson."
+                detail="Attach a private file or link without leaving the lesson."
               />
             )}
           </div>

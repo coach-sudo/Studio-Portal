@@ -37,9 +37,27 @@ export default async (request: Request) => {
     const selectedStudents = students.filter(
       (student) => student.studio_id === studioId,
     );
+    const { data: studio, error: studioError } = await db
+      .from("studios")
+      .select("settings")
+      .eq("id", studioId)
+      .single();
+    if (studioError) throw studioError;
+    const config = {
+      enabled: studio.settings?.referralProgram?.enabled !== false,
+      paidLessonRewardMinor: Number(
+        studio.settings?.referralProgram?.paidLessonRewardMinor ?? 1500,
+      ),
+      recurringSlotRewardSessionMinutes: Number(
+        studio.settings?.referralProgram?.recurringSlotRewardSessionMinutes ??
+          60,
+      ),
+      referredPersonBenefit:
+        studio.settings?.referralProgram?.referredPersonBenefit || undefined,
+    };
     const studentIds = selectedStudents.map((student) => student.id);
     if (!studentIds.length)
-      return json({ students: [], referrals: [], rewards: [] });
+      return json({ config, students: [], referrals: [], rewards: [] });
 
     let referralQuery = db
       .from("referrals")
@@ -76,6 +94,7 @@ export default async (request: Request) => {
       (discounts || []).map((discount) => [discount.id, discount]),
     );
     return json({
+      config,
       students: selectedStudents.map((student) => ({
         id: student.id,
         name: student.full_name,

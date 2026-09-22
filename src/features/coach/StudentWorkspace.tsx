@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Mail,
   MessageSquare,
+  MoreHorizontal,
   Plus,
   RotateCcw,
   Trash2,
@@ -15,6 +16,7 @@ import {
   Navigate,
   Route,
   Routes,
+  useLocation,
   useNavigate,
   useParams,
 } from "react-router-dom";
@@ -57,6 +59,7 @@ export function StudentWorkspace() {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const location = useLocation();
   const [dialog, setDialog] = useState<
     | "edit"
     | "lesson"
@@ -73,7 +76,20 @@ export function StudentWorkspace() {
   const [undoInvite, setUndoInvite] = useState<string>();
   const [removingStudent, setRemovingStudent] = useState(false);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [recordMenuOpen, setRecordMenuOpen] = useState(false);
+  const [workflowLessonId, setWorkflowLessonId] = useState<string>();
   const student = data?.students.find((item) => item.id === studentId);
+  useEffect(() => {
+    const tabs = document.querySelector<HTMLElement>(".record-tabs");
+    const active = tabs?.querySelector<HTMLElement>("a.active");
+    if (tabs && active)
+      tabs.scrollLeft = Math.max(
+        0,
+        active.offsetLeft -
+          tabs.offsetLeft -
+          (tabs.clientWidth - active.clientWidth) / 2,
+      );
+  }, [location.pathname]);
   if (!data) return <div className="loading">Opening student record…</div>;
   if (!student) return <Navigate to="/coach/students" replace />;
 
@@ -260,6 +276,7 @@ export function StudentWorkspace() {
         await invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
+      setWorkflowLessonId(undefined);
       setNotice("Practice assigned and visible in the student workspace.");
     } catch (reason) {
       setNotice(
@@ -295,6 +312,7 @@ export function StudentWorkspace() {
         void invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
+      setWorkflowLessonId(undefined);
       setNotice("Material added to the student record.");
     } catch (reason) {
       setNotice(
@@ -333,6 +351,7 @@ export function StudentWorkspace() {
         void invalidateStudioDomains(queryClient, ["work"]);
       }
       setDialog(null);
+      setWorkflowLessonId(undefined);
       setEditingNote(undefined);
       setNotice(
         note.status === "published"
@@ -509,7 +528,6 @@ export function StudentWorkspace() {
           </Status>
         </div>
         <div className="record-actions">
-          <button onClick={() => setDialog("edit")}>Edit details</button>
           <button onClick={() => setDialog("lesson")}>
             <Plus />
             Add lesson
@@ -524,21 +542,17 @@ export function StudentWorkspace() {
             </Link>
           )}
           {student.email && (
-            <Link
-              className="button-link primary"
-              to={`/coach/inbox?student=${encodeURIComponent(student.id)}&email=1`}
-            >
-              <Mail />
-              Email
-            </Link>
+            <button onClick={() => setRecordMenuOpen(true)}>
+              <MoreHorizontal />
+              More actions
+            </button>
           )}
-          <button
-            className="danger-button"
-            onClick={() => setConfirmRemove(true)}
-          >
-            <Trash2 />
-            Remove student
-          </button>
+          {!student.email && (
+            <button onClick={() => setRecordMenuOpen(true)}>
+              <MoreHorizontal />
+              More actions
+            </button>
+          )}
         </div>
       </header>
       {notice && (
@@ -585,7 +599,23 @@ export function StudentWorkspace() {
         <Route
           path="lessons/:lessonId"
           element={
-            <CoachLessonHub data={data} student={student} isDemo={isDemo} />
+            <CoachLessonHub
+              data={data}
+              student={student}
+              isDemo={isDemo}
+              onAddNote={(lessonId) => {
+                setWorkflowLessonId(lessonId);
+                setDialog("note");
+              }}
+              onAddAssignment={(lessonId) => {
+                setWorkflowLessonId(lessonId);
+                setDialog("assignment");
+              }}
+              onAddMaterial={(lessonId) => {
+                setWorkflowLessonId(lessonId);
+                setDialog("material");
+              }}
+            />
           }
         />
         <Route
@@ -694,6 +724,44 @@ export function StudentWorkspace() {
           </div>
         </Dialog>
       )}
+      {recordMenuOpen && (
+        <Dialog
+          title="Student actions"
+          description={`Secondary actions for ${student.preferredName || student.fullName}.`}
+          onClose={() => setRecordMenuOpen(false)}
+        >
+          <div className="stack-actions student-overflow-actions">
+            <button
+              onClick={() => {
+                setRecordMenuOpen(false);
+                setDialog("edit");
+              }}
+            >
+              Edit details
+            </button>
+            {student.email && (
+              <Link
+                className="button-link"
+                to={`/coach/inbox?student=${encodeURIComponent(student.id)}&email=1`}
+                onClick={() => setRecordMenuOpen(false)}
+              >
+                <Mail />
+                Email
+              </Link>
+            )}
+            <button
+              className="danger-button"
+              onClick={() => {
+                setRecordMenuOpen(false);
+                setConfirmRemove(true);
+              }}
+            >
+              <Trash2 />
+              Remove student
+            </button>
+          </div>
+        </Dialog>
+      )}
       {dialog === "lesson" && (
         <LessonForm
           student={student}
@@ -706,7 +774,11 @@ export function StudentWorkspace() {
           student={student}
           lessons={studentLessons}
           timezone={data.settings.timezone}
-          onClose={() => setDialog(null)}
+          initialLessonId={workflowLessonId}
+          onClose={() => {
+            setDialog(null);
+            setWorkflowLessonId(undefined);
+          }}
           onSave={addAssignment}
         />
       )}
@@ -716,7 +788,11 @@ export function StudentWorkspace() {
           lessons={studentLessons}
           timezone={data.settings.timezone}
           isDemo={isDemo}
-          onClose={() => setDialog(null)}
+          initialLessonId={workflowLessonId}
+          onClose={() => {
+            setDialog(null);
+            setWorkflowLessonId(undefined);
+          }}
           onSave={addMaterial}
         />
       )}
@@ -737,8 +813,10 @@ export function StudentWorkspace() {
           lessons={studentLessons}
           timezone={data.settings.timezone}
           note={editingNote}
+          initialLessonId={workflowLessonId}
           onClose={() => {
             setDialog(null);
+            setWorkflowLessonId(undefined);
             setEditingNote(undefined);
           }}
           onSave={addNote}
@@ -1104,6 +1182,7 @@ function AssignmentForm({
   lessons,
   timezone,
   note,
+  initialLessonId,
   onClose,
   onSave,
 }: {
@@ -1111,6 +1190,7 @@ function AssignmentForm({
   lessons: Lesson[];
   timezone: string;
   note?: Note;
+  initialLessonId?: string;
   onClose: () => void;
   onSave: (a: Assignment) => void;
 }) {
@@ -1120,7 +1200,7 @@ function AssignmentForm({
     [activityType, setActivityType] =
       useState<NonNullable<Assignment["activityType"]>>("instruction"),
     [activityItems, setActivityItems] = useState(""),
-    [lessonId, setLessonId] = useState(lessons[0]?.id ?? "");
+    [lessonId, setLessonId] = useState(initialLessonId || lessons[0]?.id || "");
   return (
     <Dialog
       title="Assign practice"
@@ -1272,6 +1352,7 @@ function MaterialForm({
   onClose,
   onSave,
   fixedRole,
+  initialLessonId,
 }: {
   student: Student;
   lessons: Lesson[];
@@ -1280,12 +1361,15 @@ function MaterialForm({
   onClose: () => void;
   onSave: (m: Material) => void;
   fixedRole?: Material["role"];
+  initialLessonId?: string;
 }) {
   const [title, setTitle] = useState(""),
     [category, setCategory] = useState("Script"),
     [url, setUrl] = useState(""),
-    [role, setRole] = useState<Material["role"]>(fixedRole || "current_script"),
-    [lessonId, setLessonId] = useState(lessons[0]?.id ?? ""),
+    [role, setRole] = useState<Material["role"]>(
+      fixedRole || (initialLessonId ? "lesson_material" : "current_script"),
+    ),
+    [lessonId, setLessonId] = useState(initialLessonId || lessons[0]?.id || ""),
     [file, setFile] = useState<File>(),
     [uploading, setUploading] = useState(false);
   return (
@@ -1437,6 +1521,7 @@ function NoteForm({
   lessons,
   timezone,
   note,
+  initialLessonId,
   onClose,
   onSave,
 }: {
@@ -1444,13 +1529,16 @@ function NoteForm({
   lessons: Lesson[];
   timezone: string;
   note?: Note;
+  initialLessonId?: string;
   onClose: () => void;
   onSave: (n: Note) => void;
 }) {
   const [title, setTitle] = useState(note?.title || "Lesson note"),
     [body, setBody] = useState(note?.bodyHtml || note?.body || ""),
     [published, setPublished] = useState(note?.status === "published"),
-    [lessonId, setLessonId] = useState(note?.lessonId || lessons[0]?.id || "");
+    [lessonId, setLessonId] = useState(
+      note?.lessonId || initialLessonId || lessons[0]?.id || "",
+    );
   const editorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!editorRef.current) return;

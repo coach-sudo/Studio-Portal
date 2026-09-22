@@ -1,0 +1,36 @@
+# PR6 product-polish acceptance
+
+PR6 is stacked on PR5 (`codex/pr5-server-contracts`). It changes no production deployment or production settings. The additive migration is committed for the free ephemeral CI database and must not be applied to production without separate release approval.
+
+| Area | Before | After | Coverage |
+| --- | --- | --- | --- |
+| Student Home and contact | Repeated lesson information and equally weighted contact actions | Priority next action, a single next-lesson presentation, primary Message coach, secondary Email coach | Home unit/workflow tests; deployed student journey |
+| Lesson delivery and workspace | Meet states and related coach actions presented separately | Shared delivery selector across Home/Schedule/Lesson Hub; coach note, practice, and material forms open with the lesson selected and return in context | Selector tests; deployed student and coach lesson journeys |
+| Payments and packages | Package promotion preceded account status; benefit copy could imply savings without a configured discount | Balance, history, available packages, then purchase actions; authoritative discount display and optional coach benefit text | Package unit tests; deployed payment/package journey |
+| Referrals | Reward terms duplicated in code; sharing and status feedback were limited | Persisted reward configuration with current $15/60-minute defaults, native share/copy fallback, live feedback, earned/redeemed status and celebration | Referral unit/workflow and deployed journey |
+| Settings and timezone | Long page without a section index; timezone choice was hard to search | One-route section index and searchable IANA combobox with common US zones | Timezone unit and keyboard journey |
+| Actor profiles | Sparse public sections showed placeholders; fixed CTA | Empty sections omitted, rendered numbering, configurable Book coaching CTA | Deployed actor/public axe journey |
+| Guardian | Student context was not persistent | Context header stays visible across guardian routes | Deployed authorization/guardian journey |
+| Booking | Zero-cost introductory service showed a misleading From price | Free only when all selected options are free; varied paid options retain From | Price unit and desktop/mobile booking journeys |
+| Navigation, feedback and PWA | Card-like controls and dynamic updates had inconsistent semantics | Real links/buttons, live regions, skip navigation, compact cards, safe-area controls, session-counted install prompt | Component axe, deployed keyboard and axe journeys |
+
+No changed-link state is inferred because no durable changed-link signal exists. A guardian multi-student switcher is deferred because the current household access contract scopes a guardian to one student; adding switching would require new authorization and data-model work. Neither item is represented as completed.
+
+The PR6 migration adds nullable `package_definitions.benefit_text` and backfills `studios.settings.referralProgram` and `actorPageCta` only where absent. It retains the previous referral defaults and updates referral reward issuance to read the persisted configuration. Existing referrals and discount codes are not rewritten.
+
+## Verification record
+
+| Gate | Result |
+| --- | --- |
+| Vitest | PASSED — 279 tests in 52 files |
+| TypeScript | PASSED |
+| ESLint | PASSED — zero errors; existing warning backlog remains |
+| Prettier | PASSED |
+| Build | PASSED |
+| Bundle budget | PASSED — entry JS 125,070 gzip bytes and CSS 24,486 gzip bytes; both in warning bands, below failure limits |
+| Secret scan | PASSED — 314 files scanned |
+| Dependency audit | PASSED — zero production vulnerabilities |
+| Supabase reset/lint/pgTAP/type regeneration | Awaiting PR CI; local Podman has no running machine and Docker is unavailable |
+| Desktop/mobile deployed journeys, public/authenticated axe, fixture cleanup | Awaiting the PR's free ephemeral GitHub Actions run |
+
+The deployed workflow runs against a GitHub-hosted, isolated Supabase stack and Netlify Dev preview at $0/month, not a production or paid staging project. Stripe Checkout and live Google provider operations remain explicitly blocked when test-only provider credentials are unavailable; deterministic UI journeys still run. CI must verify exact before/after fixture baselines.

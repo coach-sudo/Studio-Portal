@@ -236,6 +236,7 @@ export function ListControls({
   onPageSize: (size: number) => void;
   label?: string;
 }) {
+  if (total === 0 || total <= pageSize) return null;
   return (
     <div className="list-controls" aria-label={`${label} display controls`}>
       <label>

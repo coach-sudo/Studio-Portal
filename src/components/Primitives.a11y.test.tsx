@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import axe from "axe-core";
 import { describe, expect, it, vi } from "vitest";
 import { Dialog, InlineNotice, ListControls } from "./Primitives";
@@ -53,5 +53,22 @@ describe("shared accessibility patterns", () => {
       </>,
     );
     await expectAccessible(container);
+  });
+
+  it("hides pagination when all results fit on one page", () => {
+    render(
+      <ListControls
+        page={1}
+        pageCount={1}
+        pageSize={10}
+        total={10}
+        onPage={vi.fn()}
+        onPageSize={vi.fn()}
+        label="fixture records"
+      />,
+    );
+    expect(
+      screen.queryByLabelText("fixture records display controls"),
+    ).not.toBeInTheDocument();
   });
 });

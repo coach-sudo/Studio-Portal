@@ -11,6 +11,9 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
   await expect(
     page.getByRole("heading", { name: /Welcome back/i }),
   ).toBeVisible();
+  await expect(page.getByRole("link", { name: "Message coach" })).toHaveClass(
+    /primary-contact-action/,
+  );
   await expect(page.getByRole("link", { name: "Join lesson" })).toBeVisible();
   await page.goto("/portal/bookings");
   const availableLesson = page.locator("article", {
@@ -26,12 +29,38 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
     await expect(
       page
         .locator("article", { hasText: lessonTitle })
-        .getByRole("button", { name: "Meet pending" }),
+        .getByText("Google Meet is being prepared"),
     ).toBeVisible();
   }
   await expect(
     page.getByText(`${runtime.runId} Cancelled lesson`),
   ).toBeVisible();
+  await context.close();
+});
+
+test("@journey PR6 coach lesson workspace opens linked work in context", async ({
+  browser,
+  runtime,
+}) => {
+  requireFixtures(runtime);
+  const lessonId = runtime.ids?.lessonPending;
+  expect(lessonId).toBeTruthy();
+  const { context, page } = await openAs(browser, "coach");
+  await page.goto(
+    `/coach/students/${runtime.ids?.student}/lessons/${lessonId}`,
+  );
+  for (const [button, dialog] of [
+    ["Add note", "New note"],
+    ["Assign practice", "Assign practice"],
+    ["Attach resource", "Add material"],
+  ] as const) {
+    await page.getByRole("button", { name: button }).click();
+    const workflow = page.getByRole("dialog", { name: dialog });
+    await expect(workflow.getByLabel("Related lesson")).toHaveValue(lessonId!);
+    await page.keyboard.press("Escape");
+    await expect(workflow).toBeHidden();
+  }
+  await expect(page).toHaveURL(new RegExp(`/lessons/${lessonId}$`));
   await context.close();
 });
 

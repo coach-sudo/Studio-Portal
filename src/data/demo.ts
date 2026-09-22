@@ -83,6 +83,15 @@ const base: StudioSnapshot = {
       showTrustRow: true,
       showPolicies: true,
     },
+    actorPageCta: {
+      label: "Book coaching",
+      url: "/book",
+    },
+    referralProgram: {
+      enabled: true,
+      paidLessonRewardMinor: 1500,
+      recurringSlotRewardSessionMinutes: 60,
+    },
     emailAutomations: {
       enabled: true,
       coachNewBooking: true,
@@ -347,7 +356,8 @@ const base: StudioSnapshot = {
       updatedAt: at(-2, 10),
       studioId: "studio-stage-story",
       name: "Four private coaching sessions",
-      description: "Four flexible private coaching sessions purchased together.",
+      description:
+        "Four flexible private coaching sessions purchased together.",
       sessionCount: 4,
       sessionDurationMinutes: 60,
       priceMinor: 32000,

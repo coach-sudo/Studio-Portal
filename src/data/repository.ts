@@ -602,6 +602,7 @@ export async function loadStudioSnapshot(
       deliveryFormat: r.delivery_format,
       giftable: Boolean(r.giftable),
       pricingStatus: r.pricing_status,
+      benefitText: r.benefit_text || undefined,
       locationPriceAdjustments: r.location_price_adjustments ?? {},
       depositMinor:
         r.deposit_minor == null ? undefined : Number(r.deposit_minor),

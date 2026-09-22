@@ -39,6 +39,7 @@ import {
   type AuthenticatedBooker,
   type PublicStudio,
 } from "./PublicBooking.shared";
+import { exactBookingPriceLabel } from "./pricePresentation";
 
 type Step = "format" | "time" | "details" | "payment" | "done";
 export function BookingFlow({
@@ -355,7 +356,9 @@ export function BookingFlow({
           <div>
             <dt>Price</dt>
             <dd>
-              {formatMoney(displayedPrice, service.currency)}
+              <span aria-live="polite">
+                {exactBookingPriceLabel(displayedPrice, service.currency)}
+              </span>
               {locationUpcharge > 0 && (
                 <small>
                   {" "}

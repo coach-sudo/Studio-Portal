@@ -20,6 +20,9 @@ test("@journey Journey 08: package and payment context is usable without a provi
   await expect(
     page.getByText(`${runtime.runId} fixture payment`),
   ).toBeVisible();
+  await expect(
+    page.getByText("Includes a coach-authored E2E package benefit."),
+  ).toBeVisible();
   await context.close();
 });
 
@@ -75,5 +78,9 @@ test("@journey Journey 09: student submits an actor edit, coach publishes it, an
   await expect(
     coach.page.getByRole("heading", { name: updatedName }),
   ).toBeVisible();
+  await expect(
+    coach.page.getByRole("link", { name: "Book coaching" }),
+  ).toBeVisible();
+  await expect(coach.page.getByText(/being prepared/i)).toHaveCount(0);
   await coach.context.close();
 });

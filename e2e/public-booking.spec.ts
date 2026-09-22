@@ -14,7 +14,7 @@ test("@journey Journey 03: desktop booking distinguishes free and varying paid p
   await expect(
     page.getByRole("heading", { name: `${runtime.runId} Free introduction` }),
   ).toBeVisible();
-  await expect(page.getByText("$0.00", { exact: true })).toBeVisible();
+  await expect(page.getByText("Free", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Choose a time" }).click();
   await expect(
     page.getByRole("heading", { name: "Pick your first session" }),

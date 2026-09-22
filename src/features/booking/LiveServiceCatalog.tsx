@@ -12,6 +12,7 @@ import { formatMoney } from "../../domain/finance";
 import type { BookingService } from "../../domain/model";
 
 import { locationLabel, type PublicStudio } from "./PublicBooking.shared";
+import { serviceCatalogPriceLabel } from "./pricePresentation";
 
 export function LiveServiceCatalog({
   services,
@@ -70,7 +71,7 @@ export function LiveServiceCatalog({
                 <span>{service.category.replaceAll("_", " ")}</span>
                 <strong>
                   {studio.bookingDefaults.showPrices
-                    ? `From ${formatMoney(service.priceMinor, service.currency)}`
+                    ? serviceCatalogPriceLabel(service)
                     : "Session details"}
                 </strong>
               </div>

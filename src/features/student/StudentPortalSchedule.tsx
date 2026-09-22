@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Repeat2, ShieldCheck, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import { readApiClientError } from "../../data/apiClientError";
 import {
@@ -16,7 +16,10 @@ import {
   cancelDemoBooking,
   isLateChange,
 } from "../../domain/booking";
-import { isJoinableLesson, splitLessons } from "../../domain/lessonExperience";
+import {
+  selectLessonDelivery,
+  splitLessons,
+} from "../../domain/lessonExperience";
 import type { Booking } from "../../domain/model";
 import {
   formatStudioDate,
@@ -37,7 +40,6 @@ export function StudentBookings({
   isDemo: boolean;
   canManageLessons?: boolean;
 }) {
-  const navigate = useNavigate();
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
@@ -237,6 +239,7 @@ export function StudentBookings({
       <Section title="Upcoming" marked>
         <div className="student-bookings">
           {upcomingLessons.map((lesson) => {
+            const delivery = selectLessonDelivery(lesson);
             const participant = data.lessonParticipants.find(
               (part) => part.lessonId === lesson.id && part.bookingId,
             );
@@ -323,7 +326,7 @@ export function StudentBookings({
                   </Link>
                   {(lesson.meetingProvider === "google_meet" ||
                     lesson.locationType === "virtual") &&
-                    (isJoinableLesson(lesson) && lesson.joinUrl ? (
+                    (delivery.state === "available" && lesson.joinUrl ? (
                       <a
                         className="join-button"
                         href={lesson.joinUrl}
@@ -331,18 +334,15 @@ export function StudentBookings({
                         rel="noreferrer"
                       >
                         <Video />
-                        Join
+                        {delivery.actionLabel}
                       </a>
-                    ) : lesson.joinUrl ? (
-                      <span className="open-label">Meet link ready</span>
+                    ) : delivery.state === "ready" ? (
+                      <span className="open-label">{delivery.label}</span>
                     ) : (
-                      <button
-                        disabled
-                        title="Meet link is created with the calendar invitation"
-                      >
+                      <span className="lesson-delivery-status" role="status">
                         <Video />
-                        Meet pending
-                      </button>
+                        {delivery.label}
+                      </span>
                     ))}
                   {canManageLessons && booking?.status === "confirmed" && (
                     <button
@@ -423,10 +423,10 @@ export function StudentBookings({
       <Section title="Lesson history">
         <div className="table-list">
           {lessonHistory.map((lesson) => (
-            <article
+            <Link
               key={lesson.id}
               className="clickable-row"
-              onClick={() => navigate(`/portal/lessons/${lesson.id}`)}
+              to={`/portal/lessons/${lesson.id}`}
             >
               <CalendarDays />
               <div>
@@ -443,7 +443,7 @@ export function StudentBookings({
                 {lesson.status.replaceAll("_", " ")}
               </Status>
               <span className="open-label">Open</span>
-            </article>
+            </Link>
           ))}
           {!lessonHistory.length && (
             <EmptyState

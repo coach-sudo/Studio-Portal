@@ -2335,6 +2335,7 @@ export type Database = {
         Row: {
           active: boolean
           base_price_minor: number | null
+          benefit_text: string | null
           created_at: string
           currency: string
           delivery_format: string | null
@@ -2365,6 +2366,7 @@ export type Database = {
         Insert: {
           active?: boolean
           base_price_minor?: number | null
+          benefit_text?: string | null
           created_at?: string
           currency?: string
           delivery_format?: string | null
@@ -2395,6 +2397,7 @@ export type Database = {
         Update: {
           active?: boolean
           base_price_minor?: number | null
+          benefit_text?: string | null
           created_at?: string
           currency?: string
           delivery_format?: string | null
