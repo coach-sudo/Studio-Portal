@@ -20,17 +20,19 @@ The PR6 migration adds nullable `package_definitions.benefit_text` and backfills
 
 ## Verification record
 
-| Gate                                                                        | Result                                                                                                      |
-| --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
-| Vitest                                                                      | PASSED — 279 tests in 52 files                                                                              |
-| TypeScript                                                                  | PASSED                                                                                                      |
-| ESLint                                                                      | PASSED — zero errors; existing warning backlog remains                                                      |
-| Prettier                                                                    | PASSED                                                                                                      |
-| Build                                                                       | PASSED                                                                                                      |
-| Bundle budget                                                               | PASSED — entry JS 125,070 gzip bytes and CSS 24,486 gzip bytes; both in warning bands, below failure limits |
-| Secret scan                                                                 | PASSED — 314 files scanned                                                                                  |
-| Dependency audit                                                            | PASSED — zero production vulnerabilities                                                                    |
-| Supabase reset/lint/pgTAP/type regeneration                                 | Awaiting PR CI; local Podman has no running machine and Docker is unavailable                               |
-| Desktop/mobile deployed journeys, public/authenticated axe, fixture cleanup | Awaiting the PR's free ephemeral GitHub Actions run                                                         |
+| Gate                                                          | Result                                                                                                      |
+| ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| Vitest                                                        | PASSED — 279 tests in 52 files                                                                              |
+| TypeScript                                                    | PASSED                                                                                                      |
+| ESLint                                                        | PASSED — zero errors; existing warning backlog remains                                                      |
+| Prettier                                                      | PASSED                                                                                                      |
+| Build                                                         | PASSED                                                                                                      |
+| Bundle budget                                                 | PASSED — entry JS 125,070 gzip bytes and CSS 24,486 gzip bytes; both in warning bands, below failure limits |
+| Secret scan                                                   | PASSED — 314 files scanned                                                                                  |
+| Dependency audit                                              | PASSED — zero production vulnerabilities                                                                    |
+| Supabase reset/lint/pgTAP/type regeneration                   | PASSED — PR #16 `migrations` job; local Podman has no running machine and Docker is unavailable             |
+| Desktop/mobile deployed journeys and public/authenticated axe | PASSED — 31 tests; 13 journeys covered, with Stripe test Checkout explicitly BLOCKED                        |
+| Fixture cleanup and authorization isolation                   | PASSED — exact public, Storage, Auth-user, and Auth-identity baselines; zero remaining `e2e-` users         |
+| Standing-preview smoke                                        | NOT RUN — this stacked PR uses the free ephemeral preview instead                                           |
 
-The deployed workflow runs against a GitHub-hosted, isolated Supabase stack and Netlify Dev preview at $0/month, not a production or paid staging project. Stripe Checkout and live Google provider operations remain explicitly blocked when test-only provider credentials are unavailable; deterministic UI journeys still run. CI must verify exact before/after fixture baselines.
+The authoritative browser result is [PR #16 deployed browser run 35781727480](https://github.com/coach-sudo/Studio-Portal/actions/runs/35781727480) on head `618bc6a`. It runs against a GitHub-hosted, isolated Supabase stack and Netlify Dev preview at $0/month, not a production or paid staging project. Stripe Checkout remains explicitly blocked because no test-mode secret is configured; Google-backed UI states use deterministic fixtures, and no live Google provider mutation is claimed. The successful run verified exact before/after fixture baselines.
