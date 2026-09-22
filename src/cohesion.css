@@ -102,6 +102,12 @@
   gap: clamp(50px, 8vw, 120px) !important;
   padding: 80px 0 105px;
 }
+.actor-public-hero.actor-public-hero-sparse {
+  min-height: 340px !important;
+  grid-template-columns: 180px minmax(0, 1fr) !important;
+  gap: 38px !important;
+  padding: 45px 0;
+}
 .actor-public-hero:after {
   content: "";
   position: absolute;
@@ -497,6 +503,12 @@
     grid-template-columns: 1fr !important;
     padding: 42px 0 80px;
     gap: 52px !important;
+  }
+  .actor-public-hero.actor-public-hero-sparse {
+    min-height: 0 !important;
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+    padding: 30px 0 44px;
   }
   .actor-public-hero:after {
     display: none;
@@ -2529,6 +2541,49 @@
 .table-list > a:hover,
 .table-list > a:focus-visible {
   background: var(--wash);
+}
+
+.lesson-history-row > div {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+@media (max-width: 520px) {
+  .table-list > a.student-roster-row small {
+    font-size: 12px;
+  }
+
+  .table-list > a.lesson-history-row {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 7px 10px;
+  }
+
+  .lesson-history-row > svg {
+    grid-column: 1;
+  }
+
+  .lesson-history-row > div {
+    grid-column: 2 / -1;
+  }
+
+  .lesson-history-row strong,
+  .lesson-history-row small {
+    display: block;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .lesson-history-row > .status {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .lesson-history-row > .open-label {
+    grid-column: 3;
+    align-self: center;
+  }
 }
 
 @media (max-width: 700px) {

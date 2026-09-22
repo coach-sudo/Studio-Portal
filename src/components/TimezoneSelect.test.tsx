@@ -27,7 +27,14 @@ describe("TimezoneSelect", () => {
     expect(worldTimezones().length).toBeGreaterThan(20);
   });
 
-  it("finds common US timezone names as well as IANA city names", async () => {
+  it.each([
+    ["Eastern", "America/New_York"],
+    ["Central", "America/Chicago"],
+    ["Mountain", "America/Denver"],
+    ["Pacific", "America/Los_Angeles"],
+    ["Alaska", "America/Anchorage"],
+    ["Hawaii", "Pacific/Honolulu"],
+  ])("finds %s as %s", async (search, timezone) => {
     const user = userEvent.setup(),
       change = vi.fn();
     render(
@@ -38,11 +45,13 @@ describe("TimezoneSelect", () => {
     );
     const input = screen.getByRole("combobox", { name: "Timezone" });
     await user.clear(input);
-    await user.type(input, "Pacific");
+    await user.type(input, search);
     await user.click(
-      screen.getByRole("option", { name: /America\/Los Angeles/ }),
+      screen.getByRole("option", {
+        name: new RegExp(timezone.replaceAll("_", " ")),
+      }),
     );
-    expect(change).toHaveBeenLastCalledWith("America/Los_Angeles");
+    expect(change).toHaveBeenLastCalledWith(timezone);
   });
 
   it("offers the browser-observed timezone as the default choice", () => {

@@ -8,13 +8,14 @@ import {
 test("@journey Journey 03: desktop booking distinguishes free and varying paid pricing and exposes unavailable dates", async ({
   page,
   runtime,
-}) => {
+}, testInfo) => {
   requireFixtures(runtime);
   await page.goto(`/book/${runtime.runId}-free-introduction`);
   await expect(
     page.getByRole("heading", { name: `${runtime.runId} Free introduction` }),
   ).toBeVisible();
   await expect(page.getByText("Free", { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("free-booking.png") });
   await page.getByRole("button", { name: "Choose a time" }).click();
   await expect(
     page.getByRole("heading", { name: "Pick your first session" }),
@@ -35,12 +36,15 @@ test("@journey Journey 03: desktop booking distinguishes free and varying paid p
 test("@journey @mobile @mobile-only Journey 04: mobile booking reflows and keeps validation/actions reachable", async ({
   page,
   runtime,
-}) => {
+}, testInfo) => {
   requireFixtures(runtime);
   await page.goto(`/book/${runtime.runId}-free-introduction`);
   const chooseTime = page.getByRole("button", { name: "Choose a time" });
   await expect(chooseTime).toBeVisible();
   await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath("free-booking-mobile.png"),
+  });
   await chooseTime.scrollIntoViewIfNeeded();
   await expect(chooseTime).toBeInViewport();
   await chooseTime.click();

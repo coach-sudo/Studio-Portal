@@ -244,67 +244,65 @@ export function Payments({
           )}
         </div>
       </Section>
-      <Section title="Your packages">
-        <div className="table-list">
-          {data.packages.map((pkg) => {
-            const expired = Boolean(
-              pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
-            );
-            const subscription = data.packageSubscriptions.find(
-              (item) => item.packageId === pkg.id,
-            );
-            const renewalActive = Boolean(
-              subscription &&
-              ["pending", "active", "past_due"].includes(subscription.status),
-            );
-            return (
-              <article key={pkg.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{pkg.name}</strong>
-                  <small>
-                    {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                    credits · {formatMoney(pkg.priceMinor, pkg.currency)}
-                    {pkg.expiresAt &&
-                      ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
-                    {subscription &&
-                      ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
-                  </small>
-                </div>
-                <Status tone={expired ? "danger" : "good"}>
-                  {expired ? "expired" : "active"}
-                </Status>
-                {!expired &&
-                  packageSummary(pkg, data.creditEntries).remainingCredits >
-                    0 && (
-                    <Toggle
-                      checked={Boolean(pkg.autoApply)}
-                      label="Auto-apply"
-                      detail="Use this package for eligible upcoming lessons."
-                      onChange={() => void toggleAutoApply(pkg)}
-                    />
+      {data.packages.length > 0 && (
+        <Section title="Your packages">
+          <div className="table-list">
+            {data.packages.map((pkg) => {
+              const expired = Boolean(
+                pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
+              );
+              const subscription = data.packageSubscriptions.find(
+                (item) => item.packageId === pkg.id,
+              );
+              const renewalActive = Boolean(
+                subscription &&
+                ["pending", "active", "past_due"].includes(subscription.status),
+              );
+              return (
+                <article key={pkg.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{pkg.name}</strong>
+                    <small>
+                      {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
+                      credits · {formatMoney(pkg.priceMinor, pkg.currency)}
+                      {pkg.expiresAt &&
+                        ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
+                      {subscription &&
+                        ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
+                    </small>
+                  </div>
+                  <Status tone={expired ? "danger" : "good"}>
+                    {expired ? "expired" : "active"}
+                  </Status>
+                  {!expired &&
+                    packageSummary(pkg, data.creditEntries).remainingCredits >
+                      0 && (
+                      <Toggle
+                        checked={Boolean(pkg.autoApply)}
+                        label="Auto-apply"
+                        detail="Use this package for eligible upcoming lessons."
+                        onChange={() => void toggleAutoApply(pkg)}
+                      />
+                    )}
+                  {subscription && renewalActive && (
+                    <button
+                      disabled={
+                        packageBusy === `subscription:${subscription.id}`
+                      }
+                      onClick={() => void cancelRenewal(subscription)}
+                    >
+                      {packageBusy === `subscription:${subscription.id}`
+                        ? "Saving…"
+                        : "Turn off renewal"}
+                    </button>
                   )}
-                {subscription && renewalActive && (
-                  <button
-                    disabled={packageBusy === `subscription:${subscription.id}`}
-                    onClick={() => void cancelRenewal(subscription)}
-                  >
-                    {packageBusy === `subscription:${subscription.id}`
-                      ? "Saving…"
-                      : "Turn off renewal"}
-                  </button>
-                )}
-              </article>
-            );
-          })}
-          {!data.packages.length && (
-            <EmptyState
-              title="No active packages"
-              detail="Available multi-session options are listed below."
-            />
-          )}
-        </div>
-      </Section>
+                </article>
+              );
+            })}
+          </div>
+        </Section>
+      )}
       {purchasableDefinitions.length > 0 && (
         <Section title="Available packages">
           {purchasableDefinitions.length > 1 && (

@@ -388,44 +388,46 @@ export function StudentBookings({
           )}
         </div>
       </Section>
-      <Section title="Recurring plans">
-        <div className="series-portal">
-          {data.recurringSeries.map((series) => (
-            <article key={series.id}>
-              <Repeat2 />
-              <div>
-                <strong>
-                  {
-                    data.bookingServices.find(
-                      (item) => item.id === series.serviceId,
-                    )?.name
-                  }
-                </strong>
-                <small>
-                  {series.cadence} ·{" "}
-                  {series.kind === "ongoing"
-                    ? "rolling 12-week schedule"
-                    : `${series.occurrenceCount ?? 0} occurrences`}
-                </small>
-              </div>
-              <Status tone={series.status === "active" ? "good" : "warn"}>
-                {series.status.replaceAll("_", " ")}
-              </Status>
-              {series.status === "active" && canManageLessons && (
-                <button onClick={() => cancelSeries(series.id)}>
-                  End plan
-                </button>
-              )}
-            </article>
-          ))}
-        </div>
-      </Section>
+      {data.recurringSeries.length > 0 && (
+        <Section title="Recurring plans">
+          <div className="series-portal">
+            {data.recurringSeries.map((series) => (
+              <article key={series.id}>
+                <Repeat2 />
+                <div>
+                  <strong>
+                    {
+                      data.bookingServices.find(
+                        (item) => item.id === series.serviceId,
+                      )?.name
+                    }
+                  </strong>
+                  <small>
+                    {series.cadence} ·{" "}
+                    {series.kind === "ongoing"
+                      ? "rolling 12-week schedule"
+                      : `${series.occurrenceCount ?? 0} occurrences`}
+                  </small>
+                </div>
+                <Status tone={series.status === "active" ? "good" : "warn"}>
+                  {series.status.replaceAll("_", " ")}
+                </Status>
+                {series.status === "active" && canManageLessons && (
+                  <button onClick={() => cancelSeries(series.id)}>
+                    End plan
+                  </button>
+                )}
+              </article>
+            ))}
+          </div>
+        </Section>
+      )}
       <Section title="Lesson history">
         <div className="table-list">
           {lessonHistory.map((lesson) => (
             <Link
               key={lesson.id}
-              className="clickable-row"
+              className="clickable-row lesson-history-row"
               to={`/portal/lessons/${lesson.id}`}
             >
               <CalendarDays />

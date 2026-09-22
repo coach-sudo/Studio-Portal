@@ -472,10 +472,10 @@ textarea:hover,
   .offering-grid > article { grid-template-columns: 52px minmax(0, 1fr); align-items: start; }
   .offering-actions { grid-column: 1 / -1; width: 100%; }
   .offering-actions button { flex: 1 1 0; min-height: 44px; }
-  .inbox-layout { min-height: calc(100dvh - 210px); display: block; overflow: visible; }
-  .inbox-threads { min-height: calc(100dvh - 210px); border-right: 0; }
+  .inbox-layout { min-height: max(360px, calc(100dvh - 310px)); display: block; overflow: visible; }
+  .inbox-threads { min-height: max(360px, calc(100dvh - 310px)); border-right: 0; }
   .inbox-layout.has-selection .inbox-threads { display: none; }
-  .inbox-conversation { min-height: calc(100dvh - 210px); }
+  .inbox-conversation { min-height: max(360px, calc(100dvh - 310px)); }
   .inbox-layout:not(.has-selection) .inbox-conversation { display: none; }
   .inbox-back { display: grid; }
   .inbox-messages { max-height: none; padding: 14px 11px; }

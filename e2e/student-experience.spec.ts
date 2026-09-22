@@ -1,5 +1,12 @@
 import { openAs } from "./support/auth";
-import { expect, requireFixtures, test } from "./support/fixtures";
+import { expectNoSeriousAxeViolations } from "./support/axe";
+import {
+  expect,
+  expectNoHorizontalOverflow,
+  requireFixtures,
+  test,
+} from "./support/fixtures";
+import { storageStatePath } from "./support/runtime";
 
 test("@journey Journey 02: home and schedule present deterministic lesson delivery states", async ({
   browser,
@@ -18,6 +25,9 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
     page.getByRole("link", { name: "Join Google Meet" }),
   ).toBeVisible();
   await page.goto("/portal/bookings");
+  await expect(
+    page.getByRole("heading", { name: "Recurring plans" }),
+  ).toHaveCount(0);
   const availableLesson = page.locator("article", {
     hasText: `${runtime.runId} Meet available`,
   });
@@ -38,6 +48,27 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
     page.getByText(`${runtime.runId} Cancelled lesson`),
   ).toBeVisible();
   await context.close();
+});
+
+test.describe("student mobile schedule", () => {
+  test.use({ storageState: storageStatePath("student") });
+
+  test("@mobile @mobile-only @a11y hides empty recurring plans and keeps lesson rows readable", async ({
+    page,
+    runtime,
+  }) => {
+    requireFixtures(runtime);
+    await page.goto("/portal/bookings");
+    await expect(page.getByRole("heading", { name: "Schedule" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Recurring plans" }),
+    ).toHaveCount(0);
+    const row = page.locator(".lesson-history-row").first();
+    await expect(row.locator("strong")).toBeVisible();
+    await expect(row.locator("small")).toBeVisible();
+    await expectNoHorizontalOverflow(page);
+    await expectNoSeriousAxeViolations(page);
+  });
 });
 
 test("@journey PR6 coach lesson workspace opens linked work in context", async ({

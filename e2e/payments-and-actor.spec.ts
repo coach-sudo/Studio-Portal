@@ -82,6 +82,10 @@ test("@journey @a11y Journey 09: student submits an actor edit, coach publishes 
   await expect(
     coach.page.getByRole("link", { name: "Book coaching" }),
   ).toBeVisible();
+  await expect(coach.page.locator(".actor-public-hero-sparse")).toHaveCSS(
+    "min-height",
+    "340px",
+  );
   await expect(coach.page.getByText(/being prepared/i)).toHaveCount(0);
   await expectNoSeriousAxeViolations(coach.page);
   await coach.context.close();
