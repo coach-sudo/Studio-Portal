@@ -49,6 +49,16 @@ const commonUsTimezones = [
   "Pacific/Honolulu",
 ];
 
+const timezoneSearchAliases: Record<string, string[]> = {
+  "America/New_York": ["Eastern", "Eastern Time", "ET"],
+  "America/Chicago": ["Central", "Central Time", "CT"],
+  "America/Denver": ["Mountain", "Mountain Time", "MT"],
+  "America/Phoenix": ["Arizona", "Mountain Standard Time", "MST"],
+  "America/Los_Angeles": ["Pacific", "Pacific Time", "PT"],
+  "America/Anchorage": ["Alaska", "Alaska Time", "AKT"],
+  "Pacific/Honolulu": ["Hawaii", "Hawaii Time", "HST"],
+};
+
 function timezoneLabel(timezone: string, detected: string) {
   const offset = new Intl.DateTimeFormat("en-US", {
     timeZone: timezone,
@@ -119,8 +129,13 @@ export function TimezoneSelect({
     if (!needle || needle === selectedLabel) return timezones;
     const normalizedNeedle = needle.replaceAll(/[/_-]+/g, " ");
     return timezones.filter((timezone) => {
-      const searchable =
-        `${timezone} ${timezone.replaceAll(/[/_-]+/g, " ")}`.toLowerCase();
+      const searchable = [
+        timezone,
+        timezone.replaceAll(/[/_-]+/g, " "),
+        ...(timezoneSearchAliases[timezone] ?? []),
+      ]
+        .join(" ")
+        .toLowerCase();
       return (
         searchable.includes(needle) || searchable.includes(normalizedNeedle)
       );
