@@ -66,10 +66,11 @@ test.describe("student product-review evidence", () => {
         );
       }
       if (name === "payments" && testInfo.project.name === "mobile-chromium") {
-        await expect(page.locator(".payment-history-amount").first()).toHaveCSS(
-          "white-space",
-          "nowrap",
-        );
+        const amount = page.locator(".payment-history-amount").first();
+        await expect(amount).toBeVisible();
+        const bounds = await amount.boundingBox();
+        expect(bounds?.width).toBeGreaterThan(40);
+        expect(bounds?.height).toBeLessThan(35);
       }
       await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
     }
