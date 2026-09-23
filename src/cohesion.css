@@ -2611,7 +2611,7 @@
     grid-column: 2;
   }
 
-  .payment-history-amount {
+  .table-list article strong.payment-history-amount {
     justify-self: end;
     white-space: nowrap;
   }

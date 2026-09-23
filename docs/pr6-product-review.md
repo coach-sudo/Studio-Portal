@@ -40,7 +40,7 @@ This review compares the PR5 experience with the current PR6 branch. It uses the
 
 ## PR7 recommendations only — no PR7 work started
 
-- Analyze and split the entry JavaScript and global stylesheet: both currently pass their failure budgets but exceed warning thresholds (125,061 B and 24,879 B gzip respectively). The stylesheet is close to the 25,000 B failure budget.
+- Analyze and split the entry JavaScript and global stylesheet: both currently pass their failure budgets but exceed warning thresholds (125,066 B and 24,884 B gzip respectively). The stylesheet is close to the 25,000 B failure budget.
 - Consolidate duplicate actor styling in `styles.css` / `cohesion.css` so a later broad rule cannot silently override a feature-specific layout again.
 - Record route-level transfer/request/render figures before optimization and rerun visual/axe evidence after CSS extraction. Preserve the new mobile Inbox safe-area geometry and sparse actor breakpoints as regression baselines.
 
