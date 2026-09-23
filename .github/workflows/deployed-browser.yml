@@ -8,6 +8,7 @@ on:
       - codex/pr2-query-layer
       - codex/pr5-server-contracts
       - codex/pr6-product-polish
+      - codex/pr7-performance-styles
     types:
       - opened
       - reopened
@@ -24,7 +25,7 @@ concurrency:
 
 jobs:
   smoke:
-    if: (github.event_name == 'pull_request' && github.base_ref != 'codex/pr5-server-contracts' && github.base_ref != 'codex/pr6-product-polish') || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')
+    if: (github.event_name == 'pull_request' && github.base_ref != 'codex/pr5-server-contracts' && github.base_ref != 'codex/pr6-product-polish' && github.base_ref != 'codex/pr7-performance-styles') || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
@@ -69,7 +70,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      USE_EPHEMERAL_STACK: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'codex/pr2-query-layer' || github.base_ref == 'codex/pr5-server-contracts' || github.base_ref == 'codex/pr6-product-polish')) || github.event_name == 'workflow_dispatch' }}
+      USE_EPHEMERAL_STACK: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'codex/pr2-query-layer' || github.base_ref == 'codex/pr5-server-contracts' || github.base_ref == 'codex/pr6-product-polish' || github.base_ref == 'codex/pr7-performance-styles')) || github.event_name == 'workflow_dispatch' }}
       STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || secrets.STAGING_BASE_URL || github.event.deployment_status.target_url }}
       STAGING_E2E_FIXTURE_TOKEN: ${{ secrets.STAGING_E2E_FIXTURE_TOKEN }}
       E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}
