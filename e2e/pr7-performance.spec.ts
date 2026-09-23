@@ -39,10 +39,13 @@ test("@perf @mobile measures cold representative routes", async ({
       hasTouch: testInfo.project.use.hasTouch,
       deviceScaleFactor: testInfo.project.use.deviceScaleFactor,
       userAgent: testInfo.project.use.userAgent,
+      serviceWorkers: "block",
       ...(role === "public" ? {} : { storageState: storageStatePath(role) }),
     });
     try {
       const page = await context.newPage();
+      const cdp = await context.newCDPSession(page);
+      await cdp.send("Network.setCacheDisabled", { cacheDisabled: true });
       const requests: string[] = [];
       page.on("request", (request) => {
         try {

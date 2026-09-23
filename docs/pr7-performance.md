@@ -3,7 +3,7 @@
 ## Measurement method
 
 - `npm run build && npm run bundle:analyze && npm run bundle:check` records every built asset's raw/gzip size in `dist/bundle-analysis.json` and enforces the unchanged warning/failure budgets.
-- `e2e/pr7-performance.spec.ts` opens a new browser context for each representative route, waits for its first heading and fonts, then samples after 500 ms. It records browser request counts and Performance Resource Timing `transferSize` for same-origin resources. Cross-origin providers may omit transferred bytes without a Timing-Allow-Origin header, so the byte comparison is a same-origin lower bound, not a total network bill.
+- `e2e/pr7-performance.spec.ts` opens a new browser context for each representative route with service workers and Chromium cache disabled, waits for its first heading and fonts, then samples after 500 ms. It records browser request counts and Performance Resource Timing `transferSize` for same-origin resources. Cross-origin providers may omit transferred bytes without a Timing-Allow-Origin header, so the byte comparison is a same-origin lower bound, not a total network bill.
 - Desktop and mobile samples use the same deterministic `e2e-` fixture family and routes before and after optimization. GitHub's free ephemeral Supabase/Netlify Dev runner is used; production is never a test target.
 
 ## Baseline — accepted PR6 head `c5a49ce`
@@ -29,6 +29,21 @@ The original warning targets are 120,000 B gzip JS and 22,000 B gzip CSS. Hard f
 The first measurement-only [browser run](https://github.com/coach-sudo/Studio-Portal/actions/runs/35855634169) passed, but its ephemeral build inherited the rollback default `VITE_QUERY_LAYER_V2=false`. That makes its authenticated request counts a **legacy-reader profile**, not evidence of the V2 query contract. Desktop cold-load measurements were: login 12 requests / 693.6 KiB same-origin transfer; public booking 20 / 740.9 KiB; public actor 47 / 697.4 KiB; student Home 81 / 861.4 KiB; Lesson Hub 82 / 861.8 KiB; Inbox 82 / 687.5 KiB; coach Home 52 / 702.2 KiB; coach student workspace 65 / 823.6 KiB. The mobile run used the same fixture family and is retained in the artifact.
 
 Subsequent PR7 ephemeral builds explicitly use `VITE_QUERY_LAYER_V2=true` **only in CI**. A second measurement-only run will establish the V2 before-values before any optimization. Production flags remain unchanged.
+
+The first V2 [browser run](https://github.com/coach-sudo/Studio-Portal/actions/runs/35856534348) passed. Its request counts are shown below; `Data` counts all `/api/`, Supabase Auth, and Supabase REST requests, not just the PR2 domain queries. Browser cache unexpectedly produced zero-byte asset entries on later routes, so **its transfer columns are not a valid cold-load baseline**. A cache-disabled measurement-only rerun will replace them before optimization.
+
+| Route                   | Requests | Data |
+| ----------------------- | -------: | ---: |
+| Login                   |       12 |    1 |
+| Public booking          |       20 |    1 |
+| Public actor            |       22 |    9 |
+| Student Home            |       51 |   12 |
+| Student Lesson Hub      |       53 |   14 |
+| Student Inbox           |       52 |   13 |
+| Coach Home              |       26 |   11 |
+| Coach student workspace |       38 |   10 |
+
+The mobile profile is retained in the same run artifact. Its request counts are within three of desktop on each route. Static production gzip sizes remain the authoritative bundle-size comparison.
 
 ## After optimization
 
