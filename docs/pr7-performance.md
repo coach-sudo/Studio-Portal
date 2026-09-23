@@ -34,14 +34,14 @@ The first V2 [browser run](https://github.com/coach-sudo/Studio-Portal/actions/r
 
 | Route                   | Desktop requests / data / bytes | Mobile requests / data / bytes |
 | ----------------------- | ------------------------------: | -----------------------------: |
-| Login                   |             12 / 1 / 717,828 |            12 / 1 / 717,780 |
-| Public booking          |             20 / 1 / 752,988 |            20 / 1 / 759,622 |
-| Public actor            |             22 / 9 / 715,062 |            22 / 9 / 715,074 |
-| Student Home            |            51 / 12 / 883,203 |           52 / 12 / 883,215 |
-| Student Lesson Hub      |            53 / 14 / 883,641 |           54 / 14 / 883,653 |
-| Student Inbox           |            52 / 13 / 883,775 |           52 / 13 / 883,787 |
-| Coach Home              |            26 / 11 / 719,931 |           29 / 11 / 719,943 |
-| Coach student workspace |            38 / 10 / 844,253 |           40 / 10 / 844,265 |
+| Login                   |                12 / 1 / 717,828 |               12 / 1 / 717,780 |
+| Public booking          |                20 / 1 / 752,988 |               20 / 1 / 759,622 |
+| Public actor            |                22 / 9 / 715,062 |               22 / 9 / 715,074 |
+| Student Home            |               51 / 12 / 883,203 |              52 / 12 / 883,215 |
+| Student Lesson Hub      |               53 / 14 / 883,641 |              54 / 14 / 883,653 |
+| Student Inbox           |               52 / 13 / 883,775 |              52 / 13 / 883,787 |
+| Coach Home              |               26 / 11 / 719,931 |              29 / 11 / 719,943 |
+| Coach student workspace |               38 / 10 / 844,253 |              40 / 10 / 844,265 |
 
 Static production gzip sizes remain the authoritative bundle-size comparison. Browser-transfer values reflect the ephemeral Netlify Dev transport and are comparative, not production CDN estimates.
 

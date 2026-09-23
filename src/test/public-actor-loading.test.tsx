@@ -33,7 +33,9 @@ describe("public actor loading", () => {
       </MemoryRouter>,
     );
 
-    expect(await screen.findByRole("heading", { name: "E2E Actor" })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: "E2E Actor" }),
+    ).toBeInTheDocument();
     expect(fetchActor).toHaveBeenCalledTimes(1);
     expect(fetchActor).toHaveBeenCalledWith(
       "/api/v2/public/actors/e2e-actor",
