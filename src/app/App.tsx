@@ -1,10 +1,10 @@
 import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
-import { AppShell } from "../components/AppShell";
 import { StudioStoreProvider } from "../state/StudioStore";
 import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
 import { InstallPrompt } from "../components/InstallPrompt";
 const CoachHome=lazy(()=>import("../features/coach/CoachHome").then(module=>({default:module.CoachHome})));
+const AppShell=lazy(()=>import("../components/AppShell").then(module=>({default:module.AppShell})));
 const CoachSection=lazy(()=>import("../features/coach/CoachSection").then(module=>({default:module.CoachSection})));
 const StudentPortal=lazy(()=>import("../features/student/StudentPortal").then(module=>({default:module.StudentPortal})));
 const PublicActorPage=lazy(()=>import("../features/public/PublicActorPage").then(module=>({default:module.PublicActorPage})));

@@ -32,6 +32,7 @@ import {
   queryLayerV2Enabled,
 } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
+import "./StudioMaterials.css";
 
 import { studentName } from "./StudioOperations.shared";
 

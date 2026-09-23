@@ -4,7 +4,13 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main, codex/pr2-query-layer, codex/pr5-server-contracts]
+    branches:
+      [
+        main,
+        codex/pr2-query-layer,
+        codex/pr5-server-contracts,
+        codex/pr6-product-polish,
+      ]
 
 permissions:
   contents: read

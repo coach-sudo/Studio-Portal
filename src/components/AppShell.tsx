@@ -10,7 +10,7 @@ import { useEffect, useState } from "react";
 import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
-import { coachNavigation } from "../app/navigation";
+import { coachNavigation } from "../app/coachNavigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
 import { supabase } from "../lib/supabase";
 import "./IdentityActions.css";

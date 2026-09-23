@@ -7,6 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "bundle:check": "tsx scripts/check-bundle-size.ts",
+    "bundle:analyze": "tsx scripts/analyze-bundle.ts",
     "check:secrets": "tsx scripts/check-secrets.ts",
     "format": "prettier --write .",
     "format:check": "tsx scripts/check-format.ts",

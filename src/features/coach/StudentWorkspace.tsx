@@ -9,7 +9,7 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
 import {
   Link,
   NavLink,
@@ -37,13 +37,51 @@ import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { belongsToStudent, now, uid } from "./StudentWorkspace.shared";
-import { Account, HouseholdContactProfile } from "./StudentWorkspaceAccount";
-import { ActorPage } from "./StudentWorkspaceActorPage";
-import { CoachLessonHub, Lessons } from "./StudentWorkspaceLessons";
-import { Notes } from "./StudentWorkspaceNotes";
-import { Overview } from "./StudentWorkspaceOverview";
-import { Payments } from "./StudentWorkspacePayments";
-import { Work } from "./StudentWorkspaceWork";
+const Account = lazy(() =>
+  import("./StudentWorkspaceAccount").then((module) => ({
+    default: module.Account,
+  })),
+);
+const HouseholdContactProfile = lazy(() =>
+  import("./StudentWorkspaceAccount").then((module) => ({
+    default: module.HouseholdContactProfile,
+  })),
+);
+const ActorPage = lazy(() =>
+  import("./StudentWorkspaceActorPage").then((module) => ({
+    default: module.ActorPage,
+  })),
+);
+const CoachLessonHub = lazy(() =>
+  import("./StudentWorkspaceLessons").then((module) => ({
+    default: module.CoachLessonHub,
+  })),
+);
+const Lessons = lazy(() =>
+  import("./StudentWorkspaceLessons").then((module) => ({
+    default: module.Lessons,
+  })),
+);
+const Notes = lazy(() =>
+  import("./StudentWorkspaceNotes").then((module) => ({
+    default: module.Notes,
+  })),
+);
+const Overview = lazy(() =>
+  import("./StudentWorkspaceOverview").then((module) => ({
+    default: module.Overview,
+  })),
+);
+const Payments = lazy(() =>
+  import("./StudentWorkspacePayments").then((module) => ({
+    default: module.Payments,
+  })),
+);
+const Work = lazy(() =>
+  import("./StudentWorkspaceWork").then((module) => ({
+    default: module.Work,
+  })),
+);
 
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
@@ -580,6 +618,7 @@ export function StudentWorkspace() {
           </NavLink>
         ))}
       </nav>
+      <Suspense fallback={<div className="loading" role="status">Opening this section…</div>}>
       <Routes>
         <Route
           index
@@ -687,6 +726,7 @@ export function StudentWorkspace() {
         />
         <Route path="*" element={<Navigate to={base} replace />} />
       </Routes>
+      </Suspense>
       {dialog === "edit" && (
         <StudentEditor
           student={student}
