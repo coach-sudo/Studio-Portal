@@ -3,7 +3,13 @@ import { CircleDollarSign, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import "../../components/IdentityActions.css";
-import { Dialog, Section, Status, Toggle } from "../../components/Primitives";
+import {
+  Dialog,
+  EmptyState,
+  Section,
+  Status,
+  Toggle,
+} from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import {
   formatMoney,
@@ -14,6 +20,7 @@ import {
   recentLessonDuration,
   sortPackageDefinitions,
 } from "../../domain/packageSelection";
+import { packageBenefitLines } from "../../domain/packagePresentation";
 import { formatStudioDate } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -191,51 +198,145 @@ export function Payments({
     <div className="student-page">
       <header className="student-header">
         <h1>Payments</h1>
-        <p>
-          Packages, credits, receipts, refunds, and balances from the immutable
-          ledger.
-        </p>
+        <p>See your balance, payment history, and available lesson packages.</p>
       </header>
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
       )}
-      {data.packageDefinitions.some(
-        (item) =>
-          item.active && item.visibility === "public" && item.directPurchase,
-      ) && (
-        <Section title="Available packages" marked>
-          <div className="list-controls package-purchase-controls">
-            <label>
-              Lesson length
-              <select
-                value={durationFilter}
-                onChange={(event) => setDurationFilter(event.target.value)}
-              >
-                <option value="all">All lesson lengths</option>
-                {durationOptions.map((duration) => (
-                  <option key={duration} value={duration}>
-                    {duration} minutes
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Sort packages
-              <select
-                value={packageSort}
-                onChange={(event) =>
-                  setPackageSort(event.target.value as typeof packageSort)
-                }
-              >
-                <option value="recommended">Recommended first</option>
-                <option value="shortest">Shortest lessons first</option>
-                <option value="longest">Longest lessons first</option>
-              </select>
-            </label>
+      {student && (
+        <Section title="Current balance" marked>
+          <div className="account-balance-card" role="status">
+            <span>Amount due</span>
+            <strong>
+              {formatMoney(
+                Math.max(0, studentBalanceMinor(student.id, data.payments)),
+              )}
+            </strong>
+            <small>Payments and adjustments are listed below.</small>
           </div>
+        </Section>
+      )}
+      <Section title="Receipts & adjustments">
+        <div className="table-list">
+          {data.payments.map((entry) => (
+            <article key={entry.id} className="payment-history-row">
+              <FileText />
+              <div>
+                <strong>{entry.reason}</strong>
+                <small>
+                  {formatStudioDate(entry.createdAt, data.settings.timezone)} ·{" "}
+                  {entry.externalReference ?? "Studio ledger"}
+                </small>
+              </div>
+              <strong className="payment-history-amount">
+                {entry.kind === "refund" ? "+" : "−"}
+                {formatMoney(entry.amountMinor, entry.currency)}
+              </strong>
+            </article>
+          ))}
+          {!data.payments.length && (
+            <EmptyState
+              title="No payment history"
+              detail="Receipts, refunds, and adjustments will appear here."
+            />
+          )}
+        </div>
+      </Section>
+      {data.packages.length > 0 && (
+        <Section title="Your packages">
           <div className="table-list">
+            {data.packages.map((pkg) => {
+              const expired = Boolean(
+                pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
+              );
+              const subscription = data.packageSubscriptions.find(
+                (item) => item.packageId === pkg.id,
+              );
+              const renewalActive = Boolean(
+                subscription &&
+                ["pending", "active", "past_due"].includes(subscription.status),
+              );
+              return (
+                <article key={pkg.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{pkg.name}</strong>
+                    <small>
+                      {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
+                      credits · {formatMoney(pkg.priceMinor, pkg.currency)}
+                      {pkg.expiresAt &&
+                        ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
+                      {subscription &&
+                        ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
+                    </small>
+                  </div>
+                  <Status tone={expired ? "danger" : "good"}>
+                    {expired ? "expired" : "active"}
+                  </Status>
+                  {!expired &&
+                    packageSummary(pkg, data.creditEntries).remainingCredits >
+                      0 && (
+                      <Toggle
+                        checked={Boolean(pkg.autoApply)}
+                        label="Auto-apply"
+                        detail="Use this package for eligible upcoming lessons."
+                        onChange={() => void toggleAutoApply(pkg)}
+                      />
+                    )}
+                  {subscription && renewalActive && (
+                    <button
+                      disabled={
+                        packageBusy === `subscription:${subscription.id}`
+                      }
+                      onClick={() => void cancelRenewal(subscription)}
+                    >
+                      {packageBusy === `subscription:${subscription.id}`
+                        ? "Saving…"
+                        : "Turn off renewal"}
+                    </button>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </Section>
+      )}
+      {purchasableDefinitions.length > 0 && (
+        <Section title="Available packages">
+          {purchasableDefinitions.length > 1 && (
+            <div className="list-controls package-purchase-controls">
+              <label>
+                Lesson length
+                <select
+                  value={durationFilter}
+                  onChange={(event) => setDurationFilter(event.target.value)}
+                >
+                  <option value="all">All lesson lengths</option>
+                  {durationOptions.map((duration) => (
+                    <option key={duration} value={duration}>
+                      {duration} minutes
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Sort packages
+                <select
+                  value={packageSort}
+                  onChange={(event) =>
+                    setPackageSort(event.target.value as typeof packageSort)
+                  }
+                >
+                  <option value="recommended">Recommended first</option>
+                  <option value="shortest">Shortest lessons first</option>
+                  <option value="longest">Longest lessons first</option>
+                </select>
+              </label>
+            </div>
+          )}
+          <div className="table-list package-offer-list">
             {availableDefinitions.map((definition) => (
               <article key={definition.id}>
                 <CircleDollarSign />
@@ -249,6 +350,11 @@ export function Payments({
                     {definition.sessionDurationMinutes} minutes each ·{" "}
                     {formatMoney(definition.priceMinor, definition.currency)}
                   </small>
+                  <ul className="package-benefits">
+                    {packageBenefitLines(definition).map((benefit) => (
+                      <li key={benefit}>{benefit}</li>
+                    ))}
+                  </ul>
                 </div>
                 <button
                   onClick={() => {
@@ -263,89 +369,6 @@ export function Payments({
             ))}
           </div>
         </Section>
-      )}
-      <Section title="Packages" marked>
-        <div className="table-list">
-          {data.packages.map((pkg) => {
-            const expired = Boolean(
-              pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
-            );
-            const subscription = data.packageSubscriptions.find(
-              (item) => item.packageId === pkg.id,
-            );
-            const renewalActive = Boolean(
-              subscription &&
-              ["pending", "active", "past_due"].includes(subscription.status),
-            );
-            return (
-              <article key={pkg.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{pkg.name}</strong>
-                  <small>
-                    {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                    credits · {formatMoney(pkg.priceMinor, pkg.currency)}
-                    {pkg.expiresAt &&
-                      ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
-                    {subscription &&
-                      ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
-                  </small>
-                </div>
-                <Status tone={expired ? "danger" : "good"}>
-                  {expired ? "expired" : "active"}
-                </Status>
-                {!expired &&
-                  packageSummary(pkg, data.creditEntries).remainingCredits >
-                    0 && (
-                    <Toggle
-                      checked={Boolean(pkg.autoApply)}
-                      label="Auto-apply"
-                      detail="Use this package for eligible upcoming lessons."
-                      onChange={() => void toggleAutoApply(pkg)}
-                    />
-                  )}
-                {subscription && renewalActive && (
-                  <button
-                    disabled={packageBusy === `subscription:${subscription.id}`}
-                    onClick={() => void cancelRenewal(subscription)}
-                  >
-                    {packageBusy === `subscription:${subscription.id}`
-                      ? "Saving…"
-                      : "Turn off renewal"}
-                  </button>
-                )}
-              </article>
-            );
-          })}
-        </div>
-      </Section>
-      <Section title="Receipts & adjustments">
-        <div className="table-list">
-          {data.payments.map((entry) => (
-            <article key={entry.id}>
-              <FileText />
-              <div>
-                <strong>{entry.reason}</strong>
-                <small>
-                  {formatStudioDate(entry.createdAt, data.settings.timezone)} ·{" "}
-                  {entry.externalReference ?? "Studio ledger"}
-                </small>
-              </div>
-              <strong>
-                {entry.kind === "refund" ? "+" : "−"}
-                {formatMoney(entry.amountMinor, entry.currency)}
-              </strong>
-            </article>
-          ))}
-        </div>
-      </Section>
-      {student && (
-        <p className="portal-notice">
-          Current balance:{" "}
-          {formatMoney(
-            Math.max(0, studentBalanceMinor(student.id, data.payments)),
-          )}
-        </p>
       )}
       {purchaseDefinition && (
         <Dialog

@@ -435,6 +435,7 @@ export interface PackageDefinition extends Versioned {
   deliveryFormat?: "google_meet" | "in_person";
   giftable?: boolean;
   pricingStatus?: "current" | "changed" | "syncing" | "failed" | "legacy";
+  benefitText?: string;
 }
 export type PackageRenewalMode =
   "one_time" | "weekly" | "biweekly" | "monthly" | "balance_threshold";
@@ -700,6 +701,16 @@ export interface StudioSettings {
     showCoachName: boolean;
     showTrustRow: boolean;
     showPolicies: boolean;
+  };
+  actorPageCta: {
+    label: string;
+    url: string;
+  };
+  referralProgram: {
+    enabled: boolean;
+    paidLessonRewardMinor: number;
+    recurringSlotRewardSessionMinutes: number;
+    referredPersonBenefit?: string;
   };
   emailAutomations: {
     enabled: boolean;

@@ -209,6 +209,7 @@ function ActorDialog({
   return (
     <Dialog title="Edit actor profile" onClose={onClose}>
       <form className="workflow-form" onSubmit={save}>
+        <h3 className="full actor-form-section">Identity</h3>
         <label className="full">
           Display name
           <input
@@ -255,6 +256,7 @@ function ActorDialog({
             <option>Other</option>
           </select>
         </label>
+        <h3 className="full actor-form-section">Professional details</h3>
         <label>
           Base location
           <input
@@ -333,6 +335,7 @@ function ActorDialog({
             placeholder="https://…"
           />
         </label>
+        <h3 className="full actor-form-section">Public contact</h3>
         <label>
           Public email
           <input
@@ -393,6 +396,7 @@ function ActorDialog({
           </select>
           <small>All other approved photos appear in the gallery.</small>
         </label>
+        <h3 className="full actor-form-section">Biography & review</h3>
         <label className="full">
           Bio
           <textarea

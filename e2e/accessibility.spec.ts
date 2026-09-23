@@ -20,7 +20,9 @@ for (const [route, label] of [
   ["/portal", "student home"],
   ["/portal/inbox", "inbox"],
   ["/portal/work", "current work"],
+  ["/portal/bookings", "schedule"],
   ["/portal/payments", "payments"],
+  ["/portal/referrals", "referrals"],
   ["/portal/settings", "settings"],
   ["/portal/actor-page", "actor profile"],
 ] as const) {
@@ -48,6 +50,10 @@ test("@a11y guardian and coach representative workspaces have no serious axe vio
 
   const coach = await openAs(browser, "coach");
   await coach.page.goto(`/coach/students/${runtime.ids?.student}/actor-page`);
+  await expectNoSeriousAxeViolations(coach.page);
+  await coach.page.goto(
+    `/coach/students/${runtime.ids?.student}/lessons/${runtime.ids?.lessonPending}`,
+  );
   await expectNoSeriousAxeViolations(coach.page);
   await coach.context.close();
 });

@@ -104,6 +104,9 @@ export function StudentPortal({
     <div
       className={`student-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}
     >
+      <a className="skip-link" href="#portal-main-content">
+        Skip to main content
+      </a>
       <aside>
         <div className="shell-brand">
           {data.settings.branding?.logoUrl && (
@@ -171,13 +174,29 @@ export function StudentPortal({
           </button>
         </div>
       </aside>
-      <main>
+      <main id="portal-main-content" tabIndex={-1}>
         {isDemo && (
           <div className="demo-banner">
             <ShieldCheck />
             Practice, profile, and studio-work changes are saved on this device.
             Live charges remain in preview until Stripe is connected.
           </div>
+        )}
+        {role === "guardian" && (
+          <section
+            className="guardian-context guardian-context-shell"
+            aria-label="Household context"
+          >
+            <div>
+              <small>You’re viewing</small>
+              <strong>{studentDisplayName}’s workspace</strong>
+            </div>
+            <span>
+              {linkedAccess?.relationshipLabel ||
+                linkedAccess?.relationshipType?.replaceAll("_", " ") ||
+                "Household access"}
+            </span>
+          </section>
         )}
         <Routes>
           <Route
@@ -249,7 +268,11 @@ export function StudentPortal({
           <Route
             path="referrals"
             element={
-              <StudentReferrals students={data.students} isDemo={isDemo} />
+              <StudentReferrals
+                students={data.students}
+                settings={data.settings}
+                isDemo={isDemo}
+              />
             }
           />
           <Route

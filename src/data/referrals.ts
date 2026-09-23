@@ -2,6 +2,12 @@ import { isDemoMode, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
 
 export interface ReferralOverview {
+  config: {
+    enabled: boolean;
+    paidLessonRewardMinor: number;
+    recurringSlotRewardSessionMinutes: number;
+    referredPersonBenefit?: string;
+  };
   students: { id: string; name: string; code: string }[];
   referrals: {
     id: string;

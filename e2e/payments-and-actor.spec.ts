@@ -1,4 +1,5 @@
 import { openAs } from "./support/auth";
+import { expectNoSeriousAxeViolations } from "./support/axe";
 import {
   expect,
   requireCapability,
@@ -19,6 +20,9 @@ test("@journey Journey 08: package and payment context is usable without a provi
   ).toBeVisible();
   await expect(
     page.getByText(`${runtime.runId} fixture payment`),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Includes a coach-authored E2E package benefit."),
   ).toBeVisible();
   await context.close();
 });
@@ -46,10 +50,10 @@ test("@journey Journey 08: Stripe test checkout hands off only to test-mode infr
   await context.close();
 });
 
-test("@journey Journey 09: student submits an actor edit, coach publishes it, and public page reflects it", async ({
+test("@journey @a11y Journey 09: student submits an actor edit, coach publishes it, and public page reflects it", async ({
   browser,
   runtime,
-}) => {
+}, testInfo) => {
   requireFixtures(runtime);
   const updatedName = `E2E Actor ${runtime.runId.slice(-6)}`;
   const student = await openAs(browser, "student");
@@ -75,5 +79,17 @@ test("@journey Journey 09: student submits an actor edit, coach publishes it, an
   await expect(
     coach.page.getByRole("heading", { name: updatedName }),
   ).toBeVisible();
+  await expect(
+    coach.page.getByRole("link", { name: "Book coaching" }),
+  ).toBeVisible();
+  await expect(coach.page.locator(".actor-public-hero-sparse")).toHaveCSS(
+    "min-height",
+    "340px",
+  );
+  await expect(coach.page.getByText(/being prepared/i)).toHaveCount(0);
+  await expectNoSeriousAxeViolations(coach.page);
+  await coach.page.screenshot({
+    path: testInfo.outputPath("public-actor-sparse.png"),
+  });
   await coach.context.close();
 });

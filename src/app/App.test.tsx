@@ -1,18 +1,158 @@
-import { QueryClient,QueryClientProvider } from "@tanstack/react-query";
-import { render,screen } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe,expect,it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { App } from "./App";
-const renderApp=(path="/")=>render(<QueryClientProvider client={new QueryClient({defaultOptions:{queries:{retry:false}}})}><MemoryRouter initialEntries={[path]}><App/></MemoryRouter></QueryClientProvider>);
-describe("studio surfaces",()=>{
-  it("separates the weekly home overview from today's compact action link",async()=>{renderApp();expect(await screen.findByRole("heading",{name:/good (morning|afternoon|evening)/i})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Coming up this week"})).toBeInTheDocument();expect(screen.getByRole("button",{name:/items? need attention today/i})).toBeInTheDocument();expect(screen.queryByRole("heading",{name:"Today is your action queue"})).not.toBeInTheDocument();expect(screen.getByRole("button",{name:/imports to verify/i})).toBeInTheDocument()});
-  it("prioritizes student work and next lesson",async()=>{renderApp("/portal");expect(await screen.findByRole("heading",{name:/welcome back/i})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Current work"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Next lesson"})).toBeInTheDocument()});
-  it("does not publish draft actor profiles",async()=>{renderApp("/actors/maya-kim");expect(await screen.findByRole("heading",{name:"Actor page unavailable"})).toBeInTheDocument()});
-  it("shows the public service catalog and complete booking funnel",async()=>{const catalog=renderApp("/book");expect(await screen.findByRole("heading",{name:/find the right room/i})).toBeInTheDocument();expect(screen.getAllByRole("link",{name:/view times/i}).length).toBeGreaterThan(0);catalog.unmount();renderApp("/book/private-acting-coaching");expect(await screen.findByRole("heading",{name:/how would you like to meet/i})).toBeInTheDocument();expect(screen.getByRole("button",{name:/google meet/i})).toBeInTheDocument()});
-  it("opens bookings on the calendar and keeps every management view",async()=>{renderApp("/coach/bookings");expect(await screen.findByRole("heading",{name:"Bookings"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Calendar"})).toHaveClass("active");expect(screen.getByLabelText("Search lessons")).toBeInTheDocument();expect(screen.getByRole("button",{name:"Overview"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Services"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Availability"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Classes"})).toBeInTheDocument();});
-  it("opens a complete group class workspace",async()=>{renderApp("/coach/classes/offering-scene-night");expect(await screen.findByRole("heading",{name:"August Scene Night"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"About this class"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Assignments"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Class conversation"})).toBeInTheDocument();expect(screen.getByRole("link",{name:/Open class inbox/i})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Students"})).toBeInTheDocument();});
-  it("shows student schedule and recurring self-service",async()=>{renderApp("/portal/bookings");expect(await screen.findByRole("heading",{name:"Schedule"})).toBeInTheDocument();expect(screen.getByRole("heading",{name:"Recurring plans"})).toBeInTheDocument();expect(screen.getByRole("button",{name:"Reschedule"})).toBeInTheDocument();});
-  it("scopes the guest management view to one booking",async()=>{renderApp("/booking/demo-maya");expect(await screen.findByRole("heading",{name:"Private Acting Coaching"})).toBeInTheDocument();expect(screen.getByText(/SS-1048/)).toBeInTheDocument();expect(screen.getByRole("button",{name:"Cancel booking"})).toBeInTheDocument();});
-  it("offers password login and the current terms",async()=>{renderApp("/login");expect(await screen.findByLabelText("Username")).toBeInTheDocument();expect(screen.getByLabelText("Password")).toBeInTheDocument();expect(screen.getByRole("link",{name:"Terms and Conditions"})).toHaveAttribute("href","/terms");});
-  it("renders the supplied terms document",async()=>{renderApp("/terms");expect(await screen.findByRole("heading",{name:"Coach Darius Terms and Conditions"})).toBeInTheDocument();expect(screen.getByText(/Effective Date: August 20, 2026/)).toBeInTheDocument();});
+const renderApp = (path = "/") =>
+  render(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      <MemoryRouter initialEntries={[path]}>
+        <App />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  );
+describe("studio surfaces", () => {
+  it("separates the weekly home overview from today's compact action link", async () => {
+    renderApp();
+    expect(
+      await screen.findByRole("heading", {
+        name: /good (morning|afternoon|evening)/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Coming up this week" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /items? need attention today/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", { name: "Today is your action queue" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /imports to verify/i }),
+    ).toBeInTheDocument();
+  });
+  it("prioritizes the student's next action", async () => {
+    renderApp("/portal");
+    expect(
+      await screen.findByRole("heading", { name: /welcome back/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Up next" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Message coach" }),
+    ).toBeInTheDocument();
+  });
+  it("does not publish draft actor profiles", async () => {
+    renderApp("/actors/maya-kim");
+    expect(
+      await screen.findByRole("heading", { name: "Actor page unavailable" }),
+    ).toBeInTheDocument();
+  });
+  it("shows the public service catalog and complete booking funnel", async () => {
+    const catalog = renderApp("/book");
+    expect(
+      await screen.findByRole("heading", { name: /find the right room/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("link", { name: /view times/i }).length,
+    ).toBeGreaterThan(0);
+    catalog.unmount();
+    renderApp("/book/private-acting-coaching");
+    expect(
+      await screen.findByRole("heading", {
+        name: /how would you like to meet/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /google meet/i }),
+    ).toBeInTheDocument();
+  });
+  it("opens bookings on the calendar and keeps every management view", async () => {
+    renderApp("/coach/bookings");
+    expect(
+      await screen.findByRole("heading", { name: "Bookings" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Calendar" })).toHaveClass(
+      "active",
+    );
+    expect(screen.getByLabelText("Search lessons")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Overview" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Services" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Availability" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Classes" })).toBeInTheDocument();
+  });
+  it("opens a complete group class workspace", async () => {
+    renderApp("/coach/classes/offering-scene-night");
+    expect(
+      await screen.findByRole("heading", { name: "August Scene Night" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "About this class" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Assignments" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Class conversation" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Open class inbox/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Students" }),
+    ).toBeInTheDocument();
+  });
+  it("shows student schedule and recurring self-service", async () => {
+    renderApp("/portal/bookings");
+    expect(
+      await screen.findByRole("heading", { name: "Schedule" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Recurring plans" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Reschedule" }),
+    ).toBeInTheDocument();
+  });
+  it("scopes the guest management view to one booking", async () => {
+    renderApp("/booking/demo-maya");
+    expect(
+      await screen.findByRole("heading", { name: "Private Acting Coaching" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/SS-1048/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Cancel booking" }),
+    ).toBeInTheDocument();
+  });
+  it("offers password login and the current terms", async () => {
+    renderApp("/login");
+    expect(await screen.findByLabelText("Username")).toBeInTheDocument();
+    expect(screen.getByLabelText("Password")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Terms and Conditions" }),
+    ).toHaveAttribute("href", "/terms");
+  });
+  it("renders the supplied terms document", async () => {
+    renderApp("/terms");
+    expect(
+      await screen.findByRole("heading", {
+        name: "Coach Darius Terms and Conditions",
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Effective Date: August 20, 2026/),
+    ).toBeInTheDocument();
+  });
 });

@@ -24,6 +24,7 @@ interface PublicActor {
       logoUrl?: string;
     };
     websiteUrl?: string;
+    actorCta?: { label: string; url: string };
   };
   displayName: string;
   bio: string;
@@ -92,9 +93,13 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
           allow="fullscreen; picture-in-picture"
           allowFullScreen
         />
-      ) : item.mime_type === "application/pdf" || /\.pdf(?:$|\?)/i.test(item.url) ? (
+      ) : item.mime_type === "application/pdf" ||
+        /\.pdf(?:$|\?)/i.test(item.url) ? (
         <div className="actor-document-preview">
-          <iframe src={`${item.url}#toolbar=0&navpanes=0`} title={`${item.title} preview`} />
+          <iframe
+            src={`${item.url}#toolbar=0&navpanes=0`}
+            title={`${item.title} preview`}
+          />
           <a href={item.url} target="_blank" rel="noreferrer">
             <FileText />
             View or download résumé
@@ -116,7 +121,12 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
 
 export function PublicActorPage() {
   const { slug = "" } = useParams(),
-    { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "actorProfiles", "work"]),
+    { data, isDemo } = useStudioRoute("coach", undefined, [
+      "identity",
+      "students",
+      "actorProfiles",
+      "work",
+    ]),
     demoProfile = data?.actorProfiles.find(
       (row) => row.slug === slug && row.status === "published",
     ),
@@ -130,6 +140,7 @@ export function PublicActorPage() {
               name: data!.settings.studioName,
               branding: data!.settings.branding,
               websiteUrl: data!.settings.bookingPage.footerWebsiteUrl,
+              actorCta: data!.settings.actorPageCta,
             },
             displayName: demoProfile.displayName,
             bio: demoProfile.bio,
@@ -147,7 +158,9 @@ export function PublicActorPage() {
                 title: row.title,
                 category: row.category,
                 url: row.externalUrl!,
-                media_kind: row.mediaKind || (row.mimeType?.startsWith("image/") ? "image" : "link"),
+                media_kind:
+                  row.mediaKind ||
+                  (row.mimeType?.startsWith("image/") ? "image" : "link"),
                 mime_type: row.mimeType,
               })),
           }
@@ -171,7 +184,8 @@ export function PublicActorPage() {
       root = document.documentElement;
     document.title = `${actor.displayName} — ${actor.studio.name} · Coach’D`;
     applyStudioBranding(b);
-    if (actor.accentColor) root.style.setProperty("--actor-accent", actor.accentColor);
+    if (actor.accentColor)
+      root.style.setProperty("--actor-accent", actor.accentColor);
   }, [actor]);
   if (loading) return <div className="loading">Opening actor page…</div>;
   if (!actor)
@@ -186,26 +200,90 @@ export function PublicActorPage() {
         </Link>
       </main>
     );
-  const imageMaterials = actor.materials.filter((item) => item.media_kind === "image" || item.mime_type?.startsWith("image/"));
-  const headshot = imageMaterials.find((item) => item.id === actor.primaryHeadshotMaterialId) || imageMaterials.find((item) => item.category.toLowerCase().includes("headshot")) || imageMaterials[0];
+  const imageMaterials = actor.materials.filter(
+    (item) =>
+      item.media_kind === "image" || item.mime_type?.startsWith("image/"),
+  );
+  const headshot =
+    imageMaterials.find(
+      (item) => item.id === actor.primaryHeadshotMaterialId,
+    ) ||
+    imageMaterials.find((item) =>
+      item.category.toLowerCase().includes("headshot"),
+    ) ||
+    imageMaterials[0];
   const gallery = imageMaterials.filter((item) => item.id !== headshot?.id);
-  const reel = actor.materials.filter((item) => item.id !== headshot?.id && (item.media_kind === "video" || /(reel|performance|clip)/i.test(item.category)));
-  const documents = actor.materials.filter((item) => item.id !== headshot?.id && !gallery.some((photo) => photo.id === item.id) && !reel.some((video) => video.id === item.id));
+  const reel = actor.materials.filter(
+    (item) =>
+      item.id !== headshot?.id &&
+      (item.media_kind === "video" ||
+        /(reel|performance|clip)/i.test(item.category)),
+  );
+  const documents = actor.materials.filter(
+    (item) =>
+      item.id !== headshot?.id &&
+      !gallery.some((photo) => photo.id === item.id) &&
+      !reel.some((video) => video.id === item.id),
+  );
+  const sections = [
+    {
+      key: "gallery",
+      title: "Gallery",
+      items: gallery,
+      className: "actor-gallery",
+    },
+    { key: "reel", title: "Reel & performance", items: reel, className: "" },
+    {
+      key: "documents",
+      title: "Résumé & selected work",
+      items: documents,
+      className: "actor-documents",
+    },
+  ].filter((section) => section.items.length > 0);
   return (
     <main className="actor-public">
-      <header className="actor-public-kicker"><span>{actor.displayName} · Actor</span></header>
-      <article className="actor-public-hero">
-        {headshot ? <img className="actor-headshot" src={headshot.url} alt={`${actor.displayName} headshot`} /> : <div className="actor-monogram">
-          {actor.displayName
-            .split(" ")
-            .map((part) => part[0])
-            .join("")}
-        </div>}
+      <header className="actor-public-kicker">
+        <span>{actor.displayName} · Actor</span>
+      </header>
+      <article
+        className={`actor-public-hero ${headshot ? "" : "actor-public-hero-sparse"}`}
+      >
+        {headshot ? (
+          <img
+            className="actor-headshot"
+            src={headshot.url}
+            alt={`${actor.displayName} headshot`}
+          />
+        ) : (
+          <div className="actor-monogram">
+            {actor.displayName
+              .split(" ")
+              .map((part) => part[0])
+              .join("")}
+          </div>
+        )}
         <div className="actor-public-intro">
-          {actor.profileLabel && <span className="actor-eyebrow">{actor.profileLabel}</span>}
+          {actor.profileLabel && (
+            <span className="actor-eyebrow">{actor.profileLabel}</span>
+          )}
           <h1>{actor.displayName}</h1>
           {actor.headline && <h2>{actor.headline}</h2>}
-          {(actor.showPhone || actor.showEmail) && <div className="actor-contact-actions">{actor.showPhone && actor.contactPhone && <a href={`tel:${actor.contactPhone}`}><Phone />Call</a>}{actor.showEmail && actor.contactEmail && <a href={`mailto:${actor.contactEmail}`}><Mail />Email</a>}</div>}
+          {(actor.showPhone || actor.showEmail) && (
+            <div className="actor-contact-actions">
+              {actor.showPhone && actor.contactPhone && (
+                <a href={`tel:${actor.contactPhone}`}>
+                  <Phone />
+                  Call
+                </a>
+              )}
+              {actor.showEmail && actor.contactEmail && (
+                <a href={`mailto:${actor.contactEmail}`}>
+                  <Mail />
+                  Email
+                </a>
+              )}
+            </div>
+          )}
           <p>{actor.bio}</p>
           {actor.location && (
             <span>
@@ -213,15 +291,95 @@ export function PublicActorPage() {
               {actor.location}
             </span>
           )}
-          <dl className="actor-stats">{actor.unionStatus && <div><dt>Union</dt><dd>{actor.unionStatus}</dd></div>}{actor.playingAge && <div><dt>Playing age</dt><dd>{actor.playingAge}</dd></div>}{actor.height && <div><dt>Height</dt><dd>{actor.height}</dd></div>}{actor.eyeColor && <div><dt>Eyes</dt><dd>{actor.eyeColor}</dd></div>}{actor.hairColor && <div><dt>Hair</dt><dd>{actor.hairColor}</dd></div>}{actor.representation && <div><dt>Representation</dt><dd>{actor.representation}</dd></div>}</dl>
-          {actor.website && <a className="actor-website" href={actor.website} target="_blank" rel="noreferrer">Official website</a>}
+          <dl className="actor-stats">
+            {actor.unionStatus && (
+              <div>
+                <dt>Union</dt>
+                <dd>{actor.unionStatus}</dd>
+              </div>
+            )}
+            {actor.playingAge && (
+              <div>
+                <dt>Playing age</dt>
+                <dd>{actor.playingAge}</dd>
+              </div>
+            )}
+            {actor.height && (
+              <div>
+                <dt>Height</dt>
+                <dd>{actor.height}</dd>
+              </div>
+            )}
+            {actor.eyeColor && (
+              <div>
+                <dt>Eyes</dt>
+                <dd>{actor.eyeColor}</dd>
+              </div>
+            )}
+            {actor.hairColor && (
+              <div>
+                <dt>Hair</dt>
+                <dd>{actor.hairColor}</dd>
+              </div>
+            )}
+            {actor.representation && (
+              <div>
+                <dt>Representation</dt>
+                <dd>{actor.representation}</dd>
+              </div>
+            )}
+          </dl>
+          {actor.website && (
+            <a
+              className="actor-website"
+              href={actor.website}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Official website
+            </a>
+          )}
         </div>
       </article>
-      {gallery.length > 0 && <section className="actor-public-section"><div className="actor-section-heading"><span>01</span><h2>Gallery</h2></div><div className="actor-media-grid actor-gallery">{gallery.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
-      {reel.length > 0 && <section className="actor-public-section actor-reel-section"><div className="actor-section-heading"><span>02</span><h2>Reel & performance</h2></div><div className="actor-media-grid">{reel.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
-      {documents.length > 0 && <section className="actor-public-section"><div className="actor-section-heading"><span>03</span><h2>Résumé & selected work</h2></div><div className="actor-media-grid actor-documents">{documents.map((item) => <ActorMedia key={item.id} item={item} />)}</div></section>}
-      {!actor.materials.length && <section><h2>Selected work</h2><p>Selected work is being prepared.</p></section>}
-      <footer className="actor-footer">{actor.studio.branding.logoUrl ? <img className="booking-logo" src={actor.studio.branding.logoUrl} alt={actor.studio.name} /> : <div className="wordmark">{actor.studio.name}</div>}{actor.studio.websiteUrl && <a href={actor.studio.websiteUrl} target="_blank" rel="noreferrer">Visit {actor.studio.name}</a>}</footer>
+      {sections.map((section, index) => (
+        <section
+          key={section.key}
+          className={`actor-public-section ${section.key === "reel" ? "actor-reel-section" : ""}`}
+        >
+          <div className="actor-section-heading">
+            <span>{String(index + 1).padStart(2, "0")}</span>
+            <h2>{section.title}</h2>
+          </div>
+          <div className={`actor-media-grid ${section.className}`}>
+            {section.items.map((item) => (
+              <ActorMedia key={item.id} item={item} />
+            ))}
+          </div>
+        </section>
+      ))}
+      <footer className="actor-footer">
+        {actor.studio.branding.logoUrl ? (
+          <img
+            className="booking-logo"
+            src={actor.studio.branding.logoUrl}
+            alt={actor.studio.name}
+          />
+        ) : (
+          <div className="wordmark">{actor.studio.name}</div>
+        )}
+        <div>
+          {actor.studio.actorCta?.url && (
+            <a className="actor-coaching-cta" href={actor.studio.actorCta.url}>
+              {actor.studio.actorCta.label || "Book coaching"}
+            </a>
+          )}
+          {actor.studio.websiteUrl && (
+            <a href={actor.studio.websiteUrl} target="_blank" rel="noreferrer">
+              Visit {actor.studio.name}
+            </a>
+          )}
+        </div>
+      </footer>
     </main>
   );
 }

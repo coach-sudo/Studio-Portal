@@ -283,223 +283,240 @@ export function StudentSettings({
           {notice}
         </p>
       )}
-      <Section title="Contact & portal" marked>
-        <form className="settings-form" onSubmit={save}>
-          <label>
-            {role === "guardian" ? "Your name" : "Preferred name"}
-            <input
-              value={form.preferredName}
-              onChange={(event) =>
-                setForm({ ...form, preferredName: event.target.value })
-              }
-            />
-          </label>
-          {role === "student" && (
+      <nav className="settings-section-index" aria-label="Settings sections">
+        <a href="#profile-timezone">Profile &amp; timezone</a>
+        <a href="#preferences-notifications">Preferences &amp; notifications</a>
+        <a href="#security">Security</a>
+        {(role === "guardian"
+          ? (linkedContact?.canViewFinance ?? student.isMinor)
+          : !student.isMinor) && <a href="#billing">Billing</a>}
+      </nav>
+      <div id="profile-timezone" className="settings-anchor">
+        <Section title="Profile & timezone" marked>
+          <form className="settings-form" onSubmit={save}>
             <label>
-              Pronouns
+              {role === "guardian" ? "Your name" : "Preferred name"}
               <input
-                value={form.pronouns}
+                value={form.preferredName}
                 onChange={(event) =>
-                  setForm({ ...form, pronouns: event.target.value })
+                  setForm({ ...form, preferredName: event.target.value })
                 }
               />
             </label>
-          )}
-          <label>
-            Email
-            <input
-              required
-              type="email"
-              value={form.email}
-              onChange={(event) =>
-                setForm({ ...form, email: event.target.value })
-              }
-            />
-          </label>
-          {role === "student" && (
+            {role === "student" && (
+              <label>
+                Pronouns
+                <input
+                  value={form.pronouns}
+                  onChange={(event) =>
+                    setForm({ ...form, pronouns: event.target.value })
+                  }
+                />
+              </label>
+            )}
             <label>
-              Phone
+              Email
               <input
-                value={form.phone}
+                required
+                type="email"
+                value={form.email}
                 onChange={(event) =>
-                  setForm({ ...form, phone: event.target.value })
+                  setForm({ ...form, email: event.target.value })
                 }
               />
             </label>
-          )}
-          {role === "student" && (
-            <label className="full profile-photo-field">
-              Profile photo
+            {role === "student" && (
+              <label>
+                Phone
+                <input
+                  value={form.phone}
+                  onChange={(event) =>
+                    setForm({ ...form, phone: event.target.value })
+                  }
+                />
+              </label>
+            )}
+            {role === "student" && (
+              <label className="full profile-photo-field">
+                Profile photo
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  onChange={(event) => {
+                    setProfilePhoto(event.target.files?.[0]);
+                    setRemovePhoto(false);
+                  }}
+                />
+                <small>
+                  Optional. Shown only in portal identity areas; actor-page
+                  headshots remain separate.
+                </small>
+                {student.profilePhotoUrl && !removePhoto && (
+                  <span className="profile-photo-preview">
+                    <img src={student.profilePhotoUrl} alt="Current profile" />
+                    Current photo{" "}
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => {
+                        setRemovePhoto(true);
+                        setProfilePhoto(undefined);
+                      }}
+                    >
+                      Remove
+                    </button>
+                  </span>
+                )}
+                {removePhoto && (
+                  <small>Photo will be removed when you save.</small>
+                )}
+              </label>
+            )}
+            <label>
+              Timezone
+              <TimezoneSelect
+                value={form.timezone}
+                onChange={(timezone) => setForm({ ...form, timezone })}
+              />
+            </label>
+            <div className="settings-list full">
+              <Toggle
+                checked={form.appearance === "dark"}
+                label="Dark mode"
+                detail="Use a lower-glare dark workspace on this account."
+                onChange={(darkMode) =>
+                  setForm({ ...form, appearance: darkMode ? "dark" : "light" })
+                }
+              />
+              <Toggle
+                checked={form.showProgress}
+                label="Show progress"
+                detail="Include practice progress in your workspace."
+                onChange={(showProgress) => setForm({ ...form, showProgress })}
+              />
+              <Toggle
+                checked={form.emailReminders}
+                label="Email reminders"
+                detail="Receive the lesson reminders configured by the studio."
+                onChange={(emailReminders) =>
+                  setForm({ ...form, emailReminders })
+                }
+              />
+            </div>
+            <div className="form-actions full">
+              <button
+                className="primary"
+                disabled={settingsMutation.isPending("portal-settings")}
+              >
+                {settingsMutation.isPending("portal-settings")
+                  ? "Saving…"
+                  : "Save settings"}
+              </button>
+            </div>
+          </form>
+        </Section>
+      </div>
+      <div id="preferences-notifications" className="settings-anchor">
+        <Section title="Preferences & notifications">
+          <p className="section-intro">
+            Choose optional updates. Security messages, credentials, receipts,
+            cancellations, and critical payment failures are always sent to the
+            responsible recipient.
+          </p>
+          <div className="settings-list">
+            {Object.entries(portalNotificationLabels).map(([key, label]) => (
+              <Toggle
+                key={key}
+                checked={Boolean(
+                  form.notificationPreferences[
+                    key as keyof typeof form.notificationPreferences
+                  ],
+                )}
+                label={label}
+                detail={
+                  key === "lessonReminders"
+                    ? "Students receive lesson reminders by default."
+                    : "Email and in-app updates when applicable."
+                }
+                onChange={(checked) =>
+                  setForm({
+                    ...form,
+                    notificationPreferences: {
+                      ...form.notificationPreferences,
+                      [key]: checked,
+                    },
+                  })
+                }
+              />
+            ))}
+          </div>
+        </Section>
+      </div>
+      <div id="security" className="settings-anchor">
+        <Section title="Password & security">
+          <form className="settings-form" onSubmit={saveLogin}>
+            <label>
+              New password
               <input
-                type="file"
-                accept="image/jpeg,image/png,image/webp"
-                onChange={(event) => {
-                  setProfilePhoto(event.target.files?.[0]);
-                  setRemovePhoto(false);
-                }}
+                type="password"
+                minLength={12}
+                autoComplete="new-password"
+                required
+                value={loginPassword}
+                onChange={(event) => setLoginPassword(event.target.value)}
               />
               <small>
-                Optional. Shown only in portal identity areas; actor-page
-                headshots remain separate.
+                Use 12+ characters with upper/lowercase letters, a number, and a
+                symbol.
               </small>
-              {student.profilePhotoUrl && !removePhoto && (
-                <span className="profile-photo-preview">
-                  <img src={student.profilePhotoUrl} alt="Current profile" />
-                  Current photo{" "}
-                  <button
-                    type="button"
-                    className="text-button"
-                    onClick={() => {
-                      setRemovePhoto(true);
-                      setProfilePhoto(undefined);
-                    }}
-                  >
-                    Remove
-                  </button>
-                </span>
-              )}
-              {removePhoto && (
-                <small>Photo will be removed when you save.</small>
-              )}
             </label>
-          )}
-          <label>
-            Timezone
-            <TimezoneSelect
-              value={form.timezone}
-              onChange={(timezone) => setForm({ ...form, timezone })}
-            />
-          </label>
-          <div className="settings-list full">
-            <Toggle
-              checked={form.appearance === "dark"}
-              label="Dark mode"
-              detail="Use a lower-glare dark workspace on this account."
-              onChange={(darkMode) =>
-                setForm({ ...form, appearance: darkMode ? "dark" : "light" })
-              }
-            />
-            <Toggle
-              checked={form.showProgress}
-              label="Show progress"
-              detail="Include practice progress in your workspace."
-              onChange={(showProgress) => setForm({ ...form, showProgress })}
-            />
-            <Toggle
-              checked={form.emailReminders}
-              label="Email reminders"
-              detail="Receive the lesson reminders configured by the studio."
-              onChange={(emailReminders) =>
-                setForm({ ...form, emailReminders })
-              }
-            />
-          </div>
-          <div className="form-actions full">
-            <button
-              className="primary"
-              disabled={settingsMutation.isPending("portal-settings")}
-            >
-              {settingsMutation.isPending("portal-settings")
-                ? "Saving…"
-                : "Save settings"}
-            </button>
-          </div>
-        </form>
-      </Section>
-      <Section title="Notifications">
-        <p className="section-intro">
-          Choose optional updates. Security messages, credentials, receipts,
-          cancellations, and critical payment failures are always sent to the
-          responsible recipient.
-        </p>
-        <div className="settings-list">
-          {Object.entries(portalNotificationLabels).map(([key, label]) => (
-            <Toggle
-              key={key}
-              checked={Boolean(
-                form.notificationPreferences[
-                  key as keyof typeof form.notificationPreferences
-                ],
-              )}
-              label={label}
-              detail={
-                key === "lessonReminders"
-                  ? "Students receive lesson reminders by default."
-                  : "Email and in-app updates when applicable."
-              }
-              onChange={(checked) =>
-                setForm({
-                  ...form,
-                  notificationPreferences: {
-                    ...form.notificationPreferences,
-                    [key]: checked,
-                  },
-                })
-              }
-            />
-          ))}
-        </div>
-      </Section>
-      <Section title="Password & security">
-        <form className="settings-form" onSubmit={saveLogin}>
-          <label>
-            New password
-            <input
-              type="password"
-              minLength={12}
-              autoComplete="new-password"
-              required
-              value={loginPassword}
-              onChange={(event) => setLoginPassword(event.target.value)}
-            />
-            <small>
-              Use 12+ characters with upper/lowercase letters, a number, and a
-              symbol.
-            </small>
-          </label>
-          <div className="form-actions full">
-            <button className="primary" disabled={loginBusy}>
-              {loginBusy ? "Saving login…" : "Save login"}
-            </button>
-          </div>
-        </form>
-      </Section>
+            <div className="form-actions full">
+              <button className="primary" disabled={loginBusy}>
+                {loginBusy ? "Saving login…" : "Save login"}
+              </button>
+            </div>
+          </form>
+        </Section>
+      </div>
       {(role === "guardian"
         ? (linkedContact?.canViewFinance ?? student.isMinor)
         : !student.isMinor) && (
-        <Section title="Payment method">
-          <div className="data-summary">
-            <CreditCard />
-            <div>
-              <strong>
-                {student.paymentMethodSummary || "No saved payment method"}
-              </strong>
-              <small>
-                Card details are stored by Stripe, never by this studio portal.
-              </small>
+        <div id="billing" className="settings-anchor">
+          <Section title="Payment method">
+            <div className="data-summary">
+              <CreditCard />
+              <div>
+                <strong>
+                  {student.paymentMethodSummary || "No saved payment method"}
+                </strong>
+                <small>
+                  Card details are stored by Stripe, never by this studio
+                  portal.
+                </small>
+              </div>
             </div>
-          </div>
-          <div className="form-actions">
-            <button
-              disabled={Boolean(stripeBusy)}
-              onClick={() => void stripeAction("payment-method")}
-            >
-              {stripeBusy === "payment-method"
-                ? "Opening Stripe…"
-                : student.stripeCustomerId
-                  ? "Add another payment method"
-                  : "Add payment method"}
-            </button>
-            {student.stripeCustomerId && (
+            <div className="form-actions">
               <button
                 disabled={Boolean(stripeBusy)}
-                onClick={() => void stripeAction("billing")}
+                onClick={() => void stripeAction("payment-method")}
               >
-                {stripeBusy === "billing" ? "Opening…" : "Manage billing"}
+                {stripeBusy === "payment-method"
+                  ? "Opening Stripe…"
+                  : student.stripeCustomerId
+                    ? "Add another payment method"
+                    : "Add payment method"}
               </button>
-            )}
-          </div>
-        </Section>
+              {student.stripeCustomerId && (
+                <button
+                  disabled={Boolean(stripeBusy)}
+                  onClick={() => void stripeAction("billing")}
+                >
+                  {stripeBusy === "billing" ? "Opening…" : "Manage billing"}
+                </button>
+              )}
+            </div>
+          </Section>
+        </div>
       )}
     </div>
   );

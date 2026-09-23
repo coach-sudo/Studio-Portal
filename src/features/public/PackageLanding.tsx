@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { readApiClientError } from "../../data/apiClientError";
 import { formatMoney } from "../../domain/finance";
+import { packageBenefitLines } from "../../domain/packagePresentation";
 
 type Catalog = {
   package: {
@@ -15,6 +16,12 @@ type Catalog = {
     currency: string;
     deliveryFormat?: string;
     giftable: boolean;
+    expirationDays?: number;
+    discountType?: "none" | "fixed" | "percent";
+    discountMinor: number;
+    discountBasisPoints: number;
+    recurringEligible: boolean;
+    benefitText?: string;
   };
   studio?: { name?: string };
 };
@@ -67,6 +74,11 @@ export default function PackageLanding() {
                 )}
               </b>
             </div>
+            <ul className="package-benefits">
+              {packageBenefitLines(catalog.package).map((benefit) => (
+                <li key={benefit}>{benefit}</li>
+              ))}
+            </ul>
             <div className="form-actions">
               <Link
                 className="button-link primary"

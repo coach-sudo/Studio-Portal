@@ -34,6 +34,14 @@ test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and 
       await student.page.evaluate(() => document.activeElement?.tagName),
     ).not.toBe("BODY");
   }
+  await student.page.goto("/portal/settings");
+  const timezone = student.page.getByRole("combobox", { name: "Timezone" });
+  await timezone.focus();
+  await timezone.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+  await timezone.fill("Asia Tokyo");
+  await timezone.press("ArrowDown");
+  await timezone.press("Enter");
+  await expect(timezone).toHaveValue(/Asia\/Tokyo/);
   await student.page.goto("/portal/work");
   const opener = student.page.getByRole("button", { name: "Submit material" });
   await opener.focus();

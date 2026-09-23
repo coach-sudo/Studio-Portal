@@ -27,6 +27,7 @@ test("@journey Journey 11: guardian sees the permitted household but not an unre
   await expect(
     page.getByText("E2E Student", { exact: false }).first(),
   ).toBeVisible();
+  await expect(page.getByLabel("Household context")).toContainText("workspace");
   await expect(
     page.getByText(`${runtime.runId} Unrelated`, { exact: false }),
   ).toHaveCount(0);

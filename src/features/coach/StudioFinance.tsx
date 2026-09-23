@@ -35,6 +35,7 @@ type PackageBuilderPayload = {
   deliveryFormats: ("google_meet" | "in_person")[];
   name?: string;
   description: string;
+  benefitText?: string;
   expirationDays?: number;
   discountType: "none" | "fixed" | "percent";
   discountMinor: number;
@@ -135,6 +136,7 @@ export function FinanceView({
                     value.name ||
                     `${service.name} — ${sessionCount} lesson${sessionCount === 1 ? "" : "s"}`,
                   description: value.description,
+                  benefitText: value.benefitText,
                   sessionCount,
                   sessionDurationMinutes: service.durationMinutes,
                   priceMinor: price.priceMinor,
@@ -595,6 +597,7 @@ function PackageDefinitionDialog({
     ],
     name: value?.name || "",
     description: value?.description || "",
+    benefitText: value?.benefitText || "",
     expirationDays: value?.expirationDays || 180,
     discountType: value?.discountType || "none",
     discountMinor: value?.discountMinor || 0,
@@ -888,6 +891,21 @@ function PackageDefinitionDialog({
               setForm({ ...form, description: event.target.value })
             }
           />
+        </label>
+        <label className="full">
+          Student-facing package benefit
+          <textarea
+            maxLength={240}
+            value={form.benefitText || ""}
+            onChange={(event) =>
+              setForm({ ...form, benefitText: event.target.value })
+            }
+            placeholder="Optional: explain a scheduling or coaching advantage without changing the calculated price."
+          />
+          <small>
+            Displayed anywhere this package is offered. Calculated pricing and
+            discounts remain authoritative.
+          </small>
         </label>
         <fieldset className="full option-fieldset">
           <legend>Purchase and renewal choices</legend>

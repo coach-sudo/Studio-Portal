@@ -1,5 +1,12 @@
 import { openAs } from "./support/auth";
-import { expect, requireFixtures, test } from "./support/fixtures";
+import { expectNoSeriousAxeViolations } from "./support/axe";
+import {
+  expect,
+  expectNoHorizontalOverflow,
+  requireFixtures,
+  test,
+} from "./support/fixtures";
+import { storageStatePath } from "./support/runtime";
 
 test("@journey Journey 02: home and schedule present deterministic lesson delivery states", async ({
   browser,
@@ -11,13 +18,21 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
   await expect(
     page.getByRole("heading", { name: /Welcome back/i }),
   ).toBeVisible();
-  await expect(page.getByRole("link", { name: "Join lesson" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "Message coach" })).toHaveClass(
+    /primary-contact-action/,
+  );
+  await expect(
+    page.getByRole("link", { name: "Join Google Meet" }),
+  ).toBeVisible();
   await page.goto("/portal/bookings");
+  await expect(
+    page.getByRole("heading", { name: "Recurring plans" }),
+  ).toHaveCount(0);
   const availableLesson = page.locator("article", {
     hasText: `${runtime.runId} Meet available`,
   });
   await expect(
-    availableLesson.getByRole("link", { name: "Join" }),
+    availableLesson.getByRole("link", { name: /Join/ }),
   ).toBeVisible();
   for (const lessonTitle of [
     `${runtime.runId} No meeting link`,
@@ -26,12 +41,62 @@ test("@journey Journey 02: home and schedule present deterministic lesson delive
     await expect(
       page
         .locator("article", { hasText: lessonTitle })
-        .getByRole("button", { name: "Meet pending" }),
+        .getByText("Google Meet is being prepared"),
     ).toBeVisible();
   }
   await expect(
     page.getByText(`${runtime.runId} Cancelled lesson`),
   ).toBeVisible();
+  await context.close();
+});
+
+test.describe("student mobile schedule", () => {
+  test.use({ storageState: storageStatePath("student") });
+
+  test("@mobile @mobile-only @a11y hides empty recurring plans and keeps lesson rows readable", async ({
+    page,
+    runtime,
+  }) => {
+    requireFixtures(runtime);
+    await page.goto("/portal/bookings");
+    await expect(page.getByRole("heading", { name: "Schedule" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Recurring plans" }),
+    ).toHaveCount(0);
+    const row = page.locator(".lesson-history-row").first();
+    await expect(row.locator("strong")).toBeVisible();
+    await expect(row.locator("small")).toBeVisible();
+    await expect(page.locator(".booking-date span").first()).toHaveText(
+      /^[A-Za-z]{3}$/,
+    );
+    await expectNoHorizontalOverflow(page);
+    await expectNoSeriousAxeViolations(page);
+  });
+});
+
+test("@journey PR6 coach lesson workspace opens linked work in context", async ({
+  browser,
+  runtime,
+}) => {
+  requireFixtures(runtime);
+  const lessonId = runtime.ids?.lessonPending;
+  expect(lessonId).toBeTruthy();
+  const { context, page } = await openAs(browser, "coach");
+  await page.goto(
+    `/coach/students/${runtime.ids?.student}/lessons/${lessonId}`,
+  );
+  for (const [button, dialog] of [
+    ["Add note", "New note"],
+    ["Assign practice", "Assign practice"],
+    ["Attach resource", "Add material"],
+  ] as const) {
+    await page.getByRole("button", { name: button }).click();
+    const workflow = page.getByRole("dialog", { name: dialog });
+    await expect(workflow.getByLabel("Related lesson")).toHaveValue(lessonId!);
+    await page.keyboard.press("Escape");
+    await expect(workflow).toBeHidden();
+  }
+  await expect(page).toHaveURL(new RegExp(`/lessons/${lessonId}$`));
   await context.close();
 });
 
@@ -43,7 +108,10 @@ test("@journey Journey 05: inbox shows coach identity and supports a safe reply"
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/inbox");
   await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-  await page.getByRole("button", { name: /E2E Coach conversation/ }).click();
+  await page
+    .getByRole("complementary", { name: "Conversations" })
+    .getByRole("button", { name: /Acting Coach/ })
+    .click();
   await expect(
     page.getByText("E2E Coach", { exact: true }).first(),
   ).toBeVisible();

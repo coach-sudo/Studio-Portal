@@ -389,6 +389,46 @@ export async function handleAdministrationCommands(
       )
         throw new Error("VALIDATION_FAILED: Check the campaign templates.");
     }
+    if (incomingSettings.actorPageCta) {
+      const cta = incomingSettings.actorPageCta;
+      if (
+        typeof cta !== "object" ||
+        typeof cta.label !== "string" ||
+        !cta.label.trim() ||
+        cta.label.length > 60 ||
+        typeof cta.url !== "string" ||
+        !(
+          (cta.url.startsWith("/") && !cta.url.startsWith("//")) ||
+          (() => {
+            try {
+              return new URL(cta.url).protocol === "https:";
+            } catch {
+              return false;
+            }
+          })()
+        )
+      )
+        throw new Error("VALIDATION_FAILED: Check the actor-page action.");
+    }
+    if (incomingSettings.referralProgram) {
+      const referral = incomingSettings.referralProgram;
+      if (
+        typeof referral !== "object" ||
+        (referral.enabled != null && typeof referral.enabled !== "boolean") ||
+        (referral.paidLessonRewardMinor != null &&
+          (!Number.isInteger(referral.paidLessonRewardMinor) ||
+            referral.paidLessonRewardMinor < 0 ||
+            referral.paidLessonRewardMinor > 100000)) ||
+        (referral.recurringSlotRewardSessionMinutes != null &&
+          (!Number.isInteger(referral.recurringSlotRewardSessionMinutes) ||
+            referral.recurringSlotRewardSessionMinutes < 15 ||
+            referral.recurringSlotRewardSessionMinutes > 240)) ||
+        (referral.referredPersonBenefit != null &&
+          (typeof referral.referredPersonBenefit !== "string" ||
+            referral.referredPersonBenefit.length > 200))
+      )
+        throw new Error("VALIDATION_FAILED: Check the referral offer.");
+    }
     const nextSettings = {
       ...(before.settings || {}),
       ...incomingSettings,
@@ -401,6 +441,8 @@ export async function handleAdministrationCommands(
       "meetingFormats",
       "emailAutomations",
       "portalDefaults",
+      "actorPageCta",
+      "referralProgram",
     ]) {
       if (incomingSettings[key])
         (nextSettings as any)[key] = {
