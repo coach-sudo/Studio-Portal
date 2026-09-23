@@ -138,6 +138,7 @@ jobs:
             echo "SUPABASE_SERVICE_ROLE_KEY=$SERVICE_ROLE_KEY"
             echo "VITE_SUPABASE_URL=$API_URL"
             echo "VITE_SUPABASE_ANON_KEY=$ANON_KEY"
+            echo "VITE_QUERY_LAYER_V2=true"
             echo "STUDIO_SLUG=stage-story"
             echo "E2E_FIXTURE_TOKEN=$fixture_token"
             echo "STAGING_E2E_FIXTURE_TOKEN=$fixture_token"

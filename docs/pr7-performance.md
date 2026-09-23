@@ -8,17 +8,17 @@
 
 ## Baseline — accepted PR6 head `c5a49ce`
 
-| Built asset | Raw bytes | Gzip bytes |
-| --- | ---: | ---: |
-| Entry JavaScript | 425,393 | 125,061 |
-| Global CSS | 140,114 | 24,884 |
-| StudentWorkspace JS | 79,966 | 18,910 |
-| StudentPortal JS | 73,832 | 18,588 |
-| StudioOperations JS | 64,397 | 16,489 |
-| BookingCenter JS | 49,697 | 12,721 |
-| CoachSection JS | 42,560 | 11,765 |
-| PublicBooking JS | 39,134 | 11,303 |
-| DOMPurify JS | 26,818 | 10,610 |
+| Built asset         | Raw bytes | Gzip bytes |
+| ------------------- | --------: | ---------: |
+| Entry JavaScript    |   425,393 |    125,061 |
+| Global CSS          |   140,114 |     24,884 |
+| StudentWorkspace JS |    79,966 |     18,910 |
+| StudentPortal JS    |    73,832 |     18,588 |
+| StudioOperations JS |    64,397 |     16,489 |
+| BookingCenter JS    |    49,697 |     12,721 |
+| CoachSection JS     |    42,560 |     11,765 |
+| PublicBooking JS    |    39,134 |     11,303 |
+| DOMPurify JS        |    26,818 |     10,610 |
 
 Largest source CSS files: `src/cohesion.css` 66,845 B / 11,349 B gzip; `src/styles.css` 59,506 B / 10,940 B gzip; `src/app-system.css` 30,889 B / 6,560 B gzip. `src/cohesion.css` contains broad actor public/preview, lesson, coach material, and gift sections; `src/styles.css` contains older overlapping actor/public rules. These are candidates for route-scoped extraction and consolidation, subject to visual comparison. Source-file size alone is not the optimization criterion.
 
@@ -26,7 +26,9 @@ The original warning targets are 120,000 B gzip JS and 22,000 B gzip CSS. Hard f
 
 ## Route baseline
 
-Pending the first measurement-only deployed run. The run artifact will contain `route-performance.json` for desktop and mobile.
+The first measurement-only [browser run](https://github.com/coach-sudo/Studio-Portal/actions/runs/35855634169) passed, but its ephemeral build inherited the rollback default `VITE_QUERY_LAYER_V2=false`. That makes its authenticated request counts a **legacy-reader profile**, not evidence of the V2 query contract. Desktop cold-load measurements were: login 12 requests / 693.6 KiB same-origin transfer; public booking 20 / 740.9 KiB; public actor 47 / 697.4 KiB; student Home 81 / 861.4 KiB; Lesson Hub 82 / 861.8 KiB; Inbox 82 / 687.5 KiB; coach Home 52 / 702.2 KiB; coach student workspace 65 / 823.6 KiB. The mobile run used the same fixture family and is retained in the artifact.
+
+Subsequent PR7 ephemeral builds explicitly use `VITE_QUERY_LAYER_V2=true` **only in CI**. A second measurement-only run will establish the V2 before-values before any optimization. Production flags remain unchanged.
 
 ## After optimization
 

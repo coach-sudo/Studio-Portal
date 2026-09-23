@@ -29,7 +29,10 @@ const assets = (
   await Promise.all(
     (await readdir(assetsDirectory))
       .filter((file) => /\.(?:js|css|svg|png|webp|jpg|woff2?)$/.test(file))
-      .map(async (file) => ({ file, ...(await size(join(assetsDirectory, file))) })),
+      .map(async (file) => ({
+        file,
+        ...(await size(join(assetsDirectory, file))),
+      })),
   )
 ).sort((left, right) => right.gzipBytes - left.gzipBytes);
 const sourceStylesheets = (
@@ -43,11 +46,9 @@ const sourceStylesheets = (
 
 const report = {
   generatedAt: new Date().toISOString(),
-  entryJavascript: assets.find(
-    (asset) => /^index-[^.]+\.js$/.test(asset.file),
-  ),
-  globalStylesheet: assets.find(
-    (asset) => /^index-[^.]+\.css$/.test(asset.file),
+  entryJavascript: assets.find((asset) => /^index-[^.]+\.js$/.test(asset.file)),
+  globalStylesheet: assets.find((asset) =>
+    /^index-[^.]+\.css$/.test(asset.file),
   ),
   assets,
   sourceStylesheets,
