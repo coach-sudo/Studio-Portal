@@ -28,7 +28,7 @@ This review compares the PR5 experience with the current PR6 branch. It uses the
 1. Make sparse actor hero overrides effective at both breakpoints.
 2. Hide empty recurring plans and empty active-package section; preserve populated states.
 3. Reflow mobile lesson history and receipt amounts, correct the month-only date tile, increase coach roster metadata to 12 px, and keep the mobile Inbox composer above navigation.
-4. Ensure coach lesson facts styling loads on its own route, dark/light neutral status pills meet contrast, the mobile settings index does not cut off labels, and timezone options avoid the bottom navigation.
+4. Ensure coach lesson facts styling loads on its own route, dark/light neutral status pills meet contrast, the mobile settings index does not cut off labels, and a focused timezone field scrolls clear of the fixed bottom navigation so its options remain usable.
 5. Expand timezone alias tests and add desktop/mobile visual screenshots and affected mobile axe assertions. The free booking screenshot uses only the deterministic `e2e-` fixture.
 
 ## Deliberately deferred

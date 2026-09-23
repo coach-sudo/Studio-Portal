@@ -173,6 +173,18 @@ export function TimezoneSelect({
     const below = navigationTop - bounds.bottom;
     setOpenUp(below < 250 && bounds.top > below);
   };
+  const keepInputAboveMobileNavigation = () => {
+    const input = inputRef.current;
+    const navigation = document.querySelector(".mobile-nav");
+    if (!input || !navigation) return;
+    const navigationBounds = navigation.getBoundingClientRect();
+    if (
+      navigationBounds.height > 0 &&
+      input.getBoundingClientRect().bottom > navigationBounds.top - 12
+    ) {
+      input.scrollIntoView({ block: "center", behavior: "instant" });
+    }
+  };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
@@ -210,6 +222,7 @@ export function TimezoneSelect({
             : undefined
         }
         onFocus={() => {
+          keepInputAboveMobileNavigation();
           updatePopupDirection();
           setOpen(true);
         }}

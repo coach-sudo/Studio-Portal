@@ -39,20 +39,19 @@ test.describe("student product-review evidence", () => {
         const option = page.getByRole("option", { name: /America\/New York/ });
         await expect(option).toBeVisible();
         if (testInfo.project.name === "mobile-chromium") {
-          const { optionTop, optionBottom, navigationTop } =
-            await page.evaluate(() => ({
-              optionTop: document
-                .querySelector('[role="option"]')!
-                .getBoundingClientRect().top,
-              optionBottom: document
-                .querySelector('[role="option"]')!
-                .getBoundingClientRect().bottom,
-              navigationTop: document
-                .querySelector(".mobile-nav")!
-                .getBoundingClientRect().top,
-            }));
-          expect(optionTop).toBeGreaterThanOrEqual(0);
-          expect(optionBottom).toBeLessThanOrEqual(navigationTop);
+          await expect
+            .poll(async () =>
+              page.evaluate(() => {
+                const option = document.querySelector('[role="option"]')!;
+                const navigation = document.querySelector(".mobile-nav")!;
+                return (
+                  option.getBoundingClientRect().top >= 0 &&
+                  option.getBoundingClientRect().bottom <=
+                    navigation.getBoundingClientRect().top
+                );
+              }),
+            )
+            .toBe(true);
           await expect(
             page
               .getByRole("navigation", { name: "Settings sections" })
