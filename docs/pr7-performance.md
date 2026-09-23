@@ -30,20 +30,20 @@ The first measurement-only [browser run](https://github.com/coach-sudo/Studio-Po
 
 Subsequent PR7 ephemeral builds explicitly use `VITE_QUERY_LAYER_V2=true` **only in CI**. A second measurement-only run will establish the V2 before-values before any optimization. Production flags remain unchanged.
 
-The first V2 [browser run](https://github.com/coach-sudo/Studio-Portal/actions/runs/35856534348) passed. Its request counts are shown below; `Data` counts all `/api/`, Supabase Auth, and Supabase REST requests, not just the PR2 domain queries. Browser cache unexpectedly produced zero-byte asset entries on later routes, so **its transfer columns are not a valid cold-load baseline**. A cache-disabled measurement-only rerun will replace them before optimization.
+The first V2 [browser run](https://github.com/coach-sudo/Studio-Portal/actions/runs/35856534348) passed. Browser cache unexpectedly produced zero-byte asset entries on later routes, so **its transfer columns are not a valid cold-load baseline**. The corrected cache-disabled [measurement-only rerun](https://github.com/coach-sudo/Studio-Portal/actions/runs/35857400050) passed, including cleanup, and supplies the authoritative V2 route baseline below. `Data` counts all `/api/`, Supabase Auth, and Supabase REST requests, not just PR2 domain queries. Transferred bytes are same-origin Resource Timing bytes as explained above.
 
-| Route                   | Requests | Data |
-| ----------------------- | -------: | ---: |
-| Login                   |       12 |    1 |
-| Public booking          |       20 |    1 |
-| Public actor            |       22 |    9 |
-| Student Home            |       51 |   12 |
-| Student Lesson Hub      |       53 |   14 |
-| Student Inbox           |       52 |   13 |
-| Coach Home              |       26 |   11 |
-| Coach student workspace |       38 |   10 |
+| Route                   | Desktop requests / data / bytes | Mobile requests / data / bytes |
+| ----------------------- | ------------------------------: | -----------------------------: |
+| Login                   |             12 / 1 / 717,828 |            12 / 1 / 717,780 |
+| Public booking          |             20 / 1 / 752,988 |            20 / 1 / 759,622 |
+| Public actor            |             22 / 9 / 715,062 |            22 / 9 / 715,074 |
+| Student Home            |            51 / 12 / 883,203 |           52 / 12 / 883,215 |
+| Student Lesson Hub      |            53 / 14 / 883,641 |           54 / 14 / 883,653 |
+| Student Inbox           |            52 / 13 / 883,775 |           52 / 13 / 883,787 |
+| Coach Home              |            26 / 11 / 719,931 |           29 / 11 / 719,943 |
+| Coach student workspace |            38 / 10 / 844,253 |           40 / 10 / 844,265 |
 
-The mobile profile is retained in the same run artifact. Its request counts are within three of desktop on each route. Static production gzip sizes remain the authoritative bundle-size comparison.
+Static production gzip sizes remain the authoritative bundle-size comparison. Browser-transfer values reflect the ephemeral Netlify Dev transport and are comparative, not production CDN estimates.
 
 ## After optimization
 

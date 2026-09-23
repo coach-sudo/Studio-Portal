@@ -1,0 +1,206 @@
+/* Feature-owned styles extracted from the global stylesheet. */
+
+.actor-draft-preview {
+  --actor-preview-accent: var(--gold);
+  color: var(--ink);
+  background: color-mix(in srgb, var(--surface), white 45%);
+  overflow: hidden;
+}
+.actor-preview-notice {
+  margin: 0;
+  padding: 10px 16px;
+  background: var(--forest);
+  color: white !important;
+  font-size: 10px !important;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.actor-preview-hero {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(150px, 230px) minmax(0, 1fr);
+  gap: 30px;
+  align-items: start;
+}
+.actor-preview-hero > img,
+.actor-preview-monogram {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: cover;
+  background: var(--wash);
+  box-shadow: 11px 11px 0 var(--actor-preview-accent);
+}
+.actor-preview-monogram {
+  display: grid;
+  place-items: center;
+  font:
+    600 48px Oswald,
+    sans-serif;
+}
+.actor-preview-hero > div > span {
+  color: var(--actor-preview-accent);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.actor-preview-hero h2 {
+  margin: 8px 0 0;
+  font-size: clamp(38px, 6vw, 64px);
+  line-height: 0.92;
+  letter-spacing: -0.055em;
+}
+.actor-preview-hero h3 {
+  margin: 13px 0 0;
+  color: var(--muted);
+  font:
+    italic 17px Georgia,
+    serif;
+}
+.actor-preview-hero p {
+  margin: 20px 0 10px;
+  font:
+    15px/1.65 Georgia,
+    serif;
+}
+.actor-preview-hero small {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+}
+.actor-preview-hero small svg {
+  width: 14px;
+}
+.actor-preview-hero dl {
+  margin: 18px 0 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(75px, 1fr));
+  gap: 9px;
+}
+.actor-preview-hero dl div {
+  padding-top: 7px;
+  border-top: 1px solid var(--line);
+}
+.actor-preview-hero dt {
+  color: var(--muted);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+.actor-preview-hero dd {
+  margin: 3px 0 0;
+  font-size: 10px;
+  font-weight: 800;
+}
+.actor-preview-contact {
+  display: flex;
+  gap: 7px;
+  margin-top: 14px;
+}
+.actor-preview-contact span {
+  padding: 7px 9px;
+  border: 1px solid var(--ink);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.actor-preview-contact svg {
+  width: 12px;
+}
+.actor-preview-section {
+  padding: 22px 24px;
+  border-top: 1px solid var(--line);
+}
+.actor-preview-section > h3 {
+  margin: 0 0 14px;
+  font-size: 24px;
+}
+.actor-preview-gallery {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.actor-preview-gallery figure {
+  margin: 0;
+}
+.actor-preview-gallery img {
+  width: 100%;
+  aspect-ratio: 4/5;
+  object-fit: cover;
+}
+.actor-preview-gallery figcaption {
+  padding-top: 5px;
+  color: var(--muted);
+  font-size: 9px;
+}
+.actor-preview-links {
+  display: grid;
+  gap: 7px;
+}
+.actor-preview-links a {
+  padding: 10px;
+  border: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.actor-preview-links svg {
+  width: 18px;
+}
+.actor-preview-links span {
+  display: grid;
+}
+.actor-preview-links small {
+  color: var(--muted);
+}
+.actor-preview-empty {
+  margin: 0;
+  padding: 22px 24px;
+  border-top: 1px solid var(--line);
+  color: var(--muted);
+}
+.actor-draft-preview > footer {
+  padding: 14px 24px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font:
+    600 13px Oswald,
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.actor-draft-preview > footer img {
+  width: 26px;
+  height: 26px;
+  object-fit: contain;
+}
+@media (max-width: 600px) {
+  .actor-preview-hero {
+    grid-template-columns: 1fr;
+    padding: 20px;
+  }
+}
+@media (max-width: 600px) {
+  .actor-preview-hero > img,
+  .actor-preview-monogram {
+    max-width: 280px;
+  }
+}
+@media (max-width: 600px) {
+  .actor-preview-hero dl {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .actor-preview-gallery {
+    grid-template-columns: 1fr;
+  }
+}

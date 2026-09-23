@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
+import { isDemoMode } from "../../lib/supabase";
+import "./PublicActorPage.css";
 
 type ActorMaterial = {
   id: string;
@@ -76,7 +78,12 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
   return (
     <article className={`actor-media-card actor-media-${kind}`}>
       {kind === "image" ? (
-        <img src={item.url} alt={item.caption || item.title} />
+        <img
+          src={item.url}
+          alt={item.caption || item.title}
+          loading="lazy"
+          decoding="async"
+        />
       ) : kind === "video" ? (
         <video
           src={item.url}
@@ -90,6 +97,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
         <iframe
           src={embedUrl(item.url)}
           title={item.title}
+          loading="lazy"
           allow="fullscreen; picture-in-picture"
           allowFullScreen
         />
@@ -99,6 +107,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
           <iframe
             src={`${item.url}#toolbar=0&navpanes=0`}
             title={`${item.title} preview`}
+            loading="lazy"
           />
           <a href={item.url} target="_blank" rel="noreferrer">
             <FileText />
@@ -120,64 +129,91 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
 }
 
 export function PublicActorPage() {
-  const { slug = "" } = useParams(),
-    { data, isDemo } = useStudioRoute("coach", undefined, [
-      "identity",
-      "students",
-      "actorProfiles",
-      "work",
-    ]),
-    demoProfile = data?.actorProfiles.find(
-      (row) => row.slug === slug && row.status === "published",
-    ),
-    demoStudent = data?.students.find(
-      (row) => row.id === demoProfile?.studentId,
-    ),
-    [actor, setActor] = useState<PublicActor | undefined>(() =>
-      demoProfile
-        ? {
-            studio: {
-              name: data!.settings.studioName,
-              branding: data!.settings.branding,
-              websiteUrl: data!.settings.bookingPage.footerWebsiteUrl,
-              actorCta: data!.settings.actorPageCta,
-            },
-            displayName: demoProfile.displayName,
-            bio: demoProfile.bio,
-            focusArea: demoStudent?.focusArea,
-            ...demoProfile.draftContent,
-            materials: (data?.materials || [])
-              .filter(
-                (row) =>
-                  row.studentId === demoProfile.studentId &&
-                  row.approvalStatus === "approved" &&
-                  row.externalUrl,
-              )
-              .map((row) => ({
-                id: row.id,
-                title: row.title,
-                category: row.category,
-                url: row.externalUrl!,
-                media_kind:
-                  row.mediaKind ||
-                  (row.mimeType?.startsWith("image/") ? "image" : "link"),
-                mime_type: row.mimeType,
-              })),
-          }
-        : undefined,
-    ),
-    [loading, setLoading] = useState(!isDemo);
+  const { slug = "" } = useParams();
+  return isDemoMode ? (
+    <DemoActorPage slug={slug} />
+  ) : (
+    <LiveActorPage slug={slug} />
+  );
+}
+
+function DemoActorPage({ slug }: { slug: string }) {
+  const { data } = useStudioRoute("coach", undefined, [
+    "identity",
+    "students",
+    "actorProfiles",
+    "work",
+  ]);
+  const profile = data?.actorProfiles.find(
+    (row) => row.slug === slug && row.status === "published",
+  );
+  const student = data?.students.find((row) => row.id === profile?.studentId);
+  const actor: PublicActor | undefined =
+    profile && data
+      ? {
+          studio: {
+            name: data.settings.studioName,
+            branding: data.settings.branding,
+            websiteUrl: data.settings.bookingPage.footerWebsiteUrl,
+            actorCta: data.settings.actorPageCta,
+          },
+          displayName: profile.displayName,
+          bio: profile.bio,
+          focusArea: student?.focusArea,
+          ...profile.draftContent,
+          materials: data.materials
+            .filter(
+              (row) =>
+                row.studentId === profile.studentId &&
+                row.approvalStatus === "approved" &&
+                row.externalUrl,
+            )
+            .map((row) => ({
+              id: row.id,
+              title: row.title,
+              category: row.category,
+              url: row.externalUrl!,
+              media_kind:
+                row.mediaKind ||
+                (row.mimeType?.startsWith("image/") ? "image" : "link"),
+              mime_type: row.mimeType,
+            })),
+        }
+      : undefined;
+  return <ActorPageContent actor={actor} loading={false} />;
+}
+
+function LiveActorPage({ slug }: { slug: string }) {
+  const [actor, setActor] = useState<PublicActor>();
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
-    if (isDemo) {
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/v2/public/actors/${encodeURIComponent(slug)}`)
+    const controller = new AbortController();
+    setLoading(true);
+    fetch(`/api/v2/public/actors/${encodeURIComponent(slug)}`, {
+      signal: controller.signal,
+    })
       .then((response) => (response.ok ? response.json() : Promise.reject()))
-      .then(setActor)
-      .catch(() => setActor(undefined))
-      .finally(() => setLoading(false));
-  }, [isDemo, slug]);
+      .then((result: PublicActor) => {
+        if (!controller.signal.aborted) setActor(result);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setActor(undefined);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [slug]);
+  return <ActorPageContent actor={actor} loading={loading} />;
+}
+
+function ActorPageContent({
+  actor,
+  loading,
+}: {
+  actor?: PublicActor;
+  loading: boolean;
+}) {
   useEffect(() => {
     if (!actor) return;
     const b = actor.studio.branding,
@@ -253,6 +289,7 @@ export function PublicActorPage() {
             className="actor-headshot"
             src={headshot.url}
             alt={`${actor.displayName} headshot`}
+            fetchPriority="high"
           />
         ) : (
           <div className="actor-monogram">

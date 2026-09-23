@@ -5,7 +5,7 @@ import {
   PanelLeftOpen,
   ShieldCheck,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Navigate,
   NavLink,
@@ -23,18 +23,55 @@ import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
 import { supabase } from "../../lib/supabase";
-import { PortalClassWorkspace } from "../classes/ClassWorkspace";
-import { PortalInbox } from "../messages/Inbox";
-import { StudentReferrals } from "../referrals/Referrals";
-
 import { portalDomains } from "./StudentPortal.shared";
-import { ActorPage } from "./StudentPortalActorPage";
 import { GuardianHome, StudentHome } from "./StudentPortalHome";
-import { LessonHub, StudentNotes } from "./StudentPortalLessonHub";
-import { Payments } from "./StudentPortalPayments";
-import { StudentBookings } from "./StudentPortalSchedule";
-import { StudentSettings } from "./StudentPortalSettings";
-import { Work } from "./StudentPortalWork";
+
+const PortalClassWorkspace = lazy(() =>
+  import("../classes/ClassWorkspace").then((module) => ({
+    default: module.PortalClassWorkspace,
+  })),
+);
+const PortalInbox = lazy(() =>
+  import("../messages/Inbox").then((module) => ({ default: module.PortalInbox })),
+);
+const StudentReferrals = lazy(() =>
+  import("../referrals/Referrals").then((module) => ({
+    default: module.StudentReferrals,
+  })),
+);
+const ActorPage = lazy(() =>
+  import("./StudentPortalActorPage").then((module) => ({
+    default: module.ActorPage,
+  })),
+);
+const LessonHub = lazy(() =>
+  import("./StudentPortalLessonHub").then((module) => ({
+    default: module.LessonHub,
+  })),
+);
+const StudentNotes = lazy(() =>
+  import("./StudentPortalLessonHub").then((module) => ({
+    default: module.StudentNotes,
+  })),
+);
+const Payments = lazy(() =>
+  import("./StudentPortalPayments").then((module) => ({
+    default: module.Payments,
+  })),
+);
+const StudentBookings = lazy(() =>
+  import("./StudentPortalSchedule").then((module) => ({
+    default: module.StudentBookings,
+  })),
+);
+const StudentSettings = lazy(() =>
+  import("./StudentPortalSettings").then((module) => ({
+    default: module.StudentSettings,
+  })),
+);
+const Work = lazy(() =>
+  import("./StudentPortalWork").then((module) => ({ default: module.Work })),
+);
 
 export function StudentPortal({
   role = "student",
@@ -198,6 +235,7 @@ export function StudentPortal({
             </span>
           </section>
         )}
+        <Suspense fallback={<div className="loading" role="status">Opening this section…</div>}>
         <Routes>
           <Route
             index
@@ -311,6 +349,7 @@ export function StudentPortal({
           />
           <Route path="*" element={<Navigate to={base} replace />} />
         </Routes>
+        </Suspense>
       </main>
       <ActivityCenter data={data} audience={role} />
       <DailyPopup
