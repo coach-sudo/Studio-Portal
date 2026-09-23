@@ -35,6 +35,13 @@ test.describe("student product-review evidence", () => {
         ).toBeVisible();
       }
       if (name === "settings") {
+        if (testInfo.project.name === "mobile-chromium") {
+          await expect(
+            page
+              .getByRole("navigation", { name: "Settings sections" })
+              .getByRole("link", { name: "Preferences & notifications" }),
+          ).toBeInViewport();
+        }
         await page.getByRole("combobox", { name: "Timezone" }).fill("Eastern");
         const option = page.getByRole("option", { name: /America\/New York/ });
         await expect(option).toBeVisible();
@@ -52,11 +59,6 @@ test.describe("student product-review evidence", () => {
               }),
             )
             .toBe(true);
-          await expect(
-            page
-              .getByRole("navigation", { name: "Settings sections" })
-              .getByRole("link", { name: "Preferences & notifications" }),
-          ).toBeInViewport();
         }
       }
       if (name === "referrals") {
