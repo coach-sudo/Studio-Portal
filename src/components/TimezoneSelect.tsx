@@ -1,4 +1,11 @@
-import { useEffect, useId, useMemo, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { observedTimezone } from "../domain/presentation";
 
 const fallbackTimezones = [
@@ -118,7 +125,9 @@ export function TimezoneSelect({
     timezoneLabel(value || detected, detected),
   );
   const [open, setOpen] = useState(false);
+  const [openUp, setOpenUp] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const inputRef = useRef<HTMLInputElement>(null);
   const listId = useId();
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -153,6 +162,15 @@ export function TimezoneSelect({
     setQuery(timezoneLabel(timezone, detected));
     setOpen(false);
   };
+  const updatePopupDirection = () => {
+    const bounds = inputRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    const navigationTop =
+      document.querySelector(".mobile-nav")?.getBoundingClientRect().top ??
+      window.innerHeight;
+    const below = navigationTop - bounds.bottom;
+    setOpenUp(below < 250 && bounds.top > below);
+  };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "ArrowDown" || event.key === "ArrowUp") {
       event.preventDefault();
@@ -174,6 +192,7 @@ export function TimezoneSelect({
   return (
     <div className="timezone-combobox">
       <input
+        ref={inputRef}
         id={id}
         role="combobox"
         type="text"
@@ -188,17 +207,25 @@ export function TimezoneSelect({
             ? `${listId}-option-${activeIndex}`
             : undefined
         }
-        onFocus={() => setOpen(true)}
+        onFocus={() => {
+          updatePopupDirection();
+          setOpen(true);
+        }}
         onBlur={() => window.setTimeout(() => setOpen(false), 100)}
         onKeyDown={onKeyDown}
         onChange={(event) => {
+          updatePopupDirection();
           setQuery(event.target.value);
           setOpen(true);
           setActiveIndex(0);
         }}
       />
       {open && (
-        <div className="timezone-options" id={listId} role="listbox">
+        <div
+          className={`timezone-options${openUp ? " timezone-options-up" : ""}`}
+          id={listId}
+          role="listbox"
+        >
           {filtered.map((timezone, index) => (
             <button
               type="button"

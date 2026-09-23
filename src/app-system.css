@@ -621,6 +621,7 @@ textarea:hover,
   --app-border: #34463f;
   --app-border-strong: #52675e;
 }
+:root[data-portal-theme="dark"] .status.neutral { color: var(--muted); }
 :root[data-portal-theme="dark"] body { background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 90%), transparent 24rem), var(--app-canvas); color: var(--ink); }
 :root[data-portal-theme="dark"] .student-shell main,
 :root[data-portal-theme="dark"] .student-page,

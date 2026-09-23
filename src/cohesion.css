@@ -2433,6 +2433,11 @@
   box-shadow: 0 18px 42px #10261d29;
 }
 
+.timezone-options-up {
+  top: auto;
+  bottom: calc(100% + 5px);
+}
+
 .timezone-options button {
   width: 100%;
   min-height: 42px;
@@ -2548,8 +2553,72 @@
   flex: 1 1 auto;
 }
 
+.status.neutral {
+  color: #526059;
+}
+
+.lesson-facts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--line);
+}
+
+.lesson-facts > div {
+  min-height: 76px;
+  padding: 13px;
+  background: var(--surface);
+  display: grid;
+  align-content: center;
+  gap: 5px;
+}
+
+.lesson-facts small {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.lesson-facts strong {
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+@media (max-width: 560px) {
+  .lesson-facts {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 520px) {
-  .table-list > a.student-roster-row small {
+  .table-list > article.payment-history-row {
+    display: grid;
+    grid-template-columns: 24px minmax(0, 1fr);
+    align-items: start;
+  }
+
+  .payment-history-row > svg {
+    grid-column: 1;
+  }
+
+  .payment-history-row > div,
+  .payment-history-amount {
+    grid-column: 2;
+  }
+
+  .payment-history-amount {
+    justify-self: end;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 520px) {
+  button.student-roster-row small {
     font-size: 12px;
   }
 
@@ -2599,13 +2668,20 @@
   }
 
   .settings-section-index {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: thin;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    overflow: visible;
   }
 
   .settings-section-index a {
-    flex: 0 0 auto;
+    min-width: 0;
+    padding: 8px;
+    white-space: normal;
+    line-height: 1.25;
+  }
+
+  .settings-anchor {
+    scroll-margin-top: 125px;
   }
 
   .lesson-hub-grid .section > header {

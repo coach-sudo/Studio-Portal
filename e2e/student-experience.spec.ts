@@ -66,6 +66,9 @@ test.describe("student mobile schedule", () => {
     const row = page.locator(".lesson-history-row").first();
     await expect(row.locator("strong")).toBeVisible();
     await expect(row.locator("small")).toBeVisible();
+    await expect(page.locator(".booking-date span").first()).toHaveText(
+      /^[A-Za-z]{3}$/,
+    );
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page);
   });

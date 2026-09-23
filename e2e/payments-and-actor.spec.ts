@@ -53,7 +53,7 @@ test("@journey Journey 08: Stripe test checkout hands off only to test-mode infr
 test("@journey @a11y Journey 09: student submits an actor edit, coach publishes it, and public page reflects it", async ({
   browser,
   runtime,
-}) => {
+}, testInfo) => {
   requireFixtures(runtime);
   const updatedName = `E2E Actor ${runtime.runId.slice(-6)}`;
   const student = await openAs(browser, "student");
@@ -88,5 +88,8 @@ test("@journey @a11y Journey 09: student submits an actor edit, coach publishes 
   );
   await expect(coach.page.getByText(/being prepared/i)).toHaveCount(0);
   await expectNoSeriousAxeViolations(coach.page);
+  await coach.page.screenshot({
+    path: testInfo.outputPath("public-actor-sparse.png"),
+  });
   await coach.context.close();
 });

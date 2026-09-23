@@ -255,6 +255,8 @@ export function StudentBookings({
                   <span>
                     {formatStudioDate(lesson.startsAt, data.settings.timezone, {
                       month: "short",
+                      day: undefined,
+                      year: undefined,
                     })}
                   </span>
                   <strong>

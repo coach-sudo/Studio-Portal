@@ -221,7 +221,7 @@ export function Payments({
       <Section title="Receipts & adjustments">
         <div className="table-list">
           {data.payments.map((entry) => (
-            <article key={entry.id}>
+            <article key={entry.id} className="payment-history-row">
               <FileText />
               <div>
                 <strong>{entry.reason}</strong>
@@ -230,7 +230,7 @@ export function Payments({
                   {entry.externalReference ?? "Studio ledger"}
                 </small>
               </div>
-              <strong>
+              <strong className="payment-history-amount">
                 {entry.kind === "refund" ? "+" : "−"}
                 {formatMoney(entry.amountMinor, entry.currency)}
               </strong>

@@ -36,16 +36,52 @@ test.describe("student product-review evidence", () => {
       }
       if (name === "settings") {
         await page.getByRole("combobox", { name: "Timezone" }).fill("Eastern");
-        await expect(
-          page.getByRole("option", { name: /America\/New York/ }),
-        ).toBeVisible();
+        const option = page.getByRole("option", { name: /America\/New York/ });
+        await expect(option).toBeVisible();
+        if (testInfo.project.name === "mobile-chromium") {
+          const { optionTop, optionBottom, navigationTop } =
+            await page.evaluate(() => ({
+              optionTop: document
+                .querySelector('[role="option"]')!
+                .getBoundingClientRect().top,
+              optionBottom: document
+                .querySelector('[role="option"]')!
+                .getBoundingClientRect().bottom,
+              navigationTop: document
+                .querySelector(".mobile-nav")!
+                .getBoundingClientRect().top,
+            }));
+          expect(optionTop).toBeGreaterThanOrEqual(0);
+          expect(optionBottom).toBeLessThanOrEqual(navigationTop);
+          await expect(
+            page
+              .getByRole("navigation", { name: "Settings sections" })
+              .getByRole("link", { name: "Preferences & notifications" }),
+          ).toBeInViewport();
+        }
+      }
+      if (name === "referrals") {
+        await expect(page.getByLabel("Your referral link")).toHaveValue(
+          /\/book\?ref=/,
+        );
+      }
+      if (name === "payments" && testInfo.project.name === "mobile-chromium") {
+        await expect(page.locator(".payment-history-amount").first()).toHaveCSS(
+          "white-space",
+          "nowrap",
+        );
       }
       await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
     }
 
     await page.goto("/portal/inbox");
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
-    await page.getByRole("button", { name: /Acting Coach/ }).click();
+    if (!(await page.getByLabel("Message").isVisible())) {
+      await page
+        .getByRole("complementary", { name: "Conversations" })
+        .getByRole("button", { name: /Acting Coach/ })
+        .click();
+    }
     await expect(page.getByLabel("Message")).toBeVisible();
     await expectNoHorizontalOverflow(page);
     if (testInfo.project.name === "mobile-chromium") {
@@ -106,6 +142,7 @@ test.describe("coach product-review evidence", () => {
 
     await page.goto(`/coach/students/${student}/lessons/${lesson}`);
     await expect(page.getByRole("button", { name: "Add note" })).toBeVisible();
+    await expect(page.locator(".lesson-facts")).toHaveCSS("display", "grid");
     await expectNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("coach-lesson.png") });
     for (const [action, dialog, filename] of [
