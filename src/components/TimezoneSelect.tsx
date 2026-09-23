@@ -165,9 +165,11 @@ export function TimezoneSelect({
   const updatePopupDirection = () => {
     const bounds = inputRef.current?.getBoundingClientRect();
     if (!bounds) return;
+    const navigation = document
+      .querySelector(".mobile-nav")
+      ?.getBoundingClientRect();
     const navigationTop =
-      document.querySelector(".mobile-nav")?.getBoundingClientRect().top ??
-      window.innerHeight;
+      navigation && navigation.height > 0 ? navigation.top : window.innerHeight;
     const below = navigationTop - bounds.bottom;
     setOpenUp(below < 250 && bounds.top > below);
   };
