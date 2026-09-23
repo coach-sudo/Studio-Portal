@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
-import { isDemoMode } from "../../lib/supabase";
+import { isDemoMode, isSupabaseConfigured } from "../../lib/supabase";
 import "./PublicActorPage.css";
 
 type ActorMaterial = {
@@ -130,7 +130,7 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
 
 export function PublicActorPage() {
   const { slug = "" } = useParams();
-  return isDemoMode ? (
+  return isDemoMode && !isSupabaseConfigured ? (
     <DemoActorPage slug={slug} />
   ) : (
     <LiveActorPage slug={slug} />

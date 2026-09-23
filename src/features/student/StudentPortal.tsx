@@ -14,7 +14,7 @@ import {
   useLocation,
   useNavigate,
 } from "react-router-dom";
-import { portalNavigation } from "../../app/navigation";
+import { portalNavigation } from "../../app/portalNavigation";
 import { ActivityCenter } from "../../components/ActivityCenter";
 import { DailyPopup } from "../../components/DailyPopup";
 import "../../components/IdentityActions.css";

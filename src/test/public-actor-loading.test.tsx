@@ -5,7 +5,10 @@ import { PublicActorPage } from "../features/public/PublicActorPage";
 import { useStudioRoute } from "../hooks/useStudio";
 
 vi.mock("../hooks/useStudio", () => ({ useStudioRoute: vi.fn() }));
-vi.mock("../lib/supabase", () => ({ isDemoMode: false }));
+vi.mock("../lib/supabase", () => ({
+  isDemoMode: true,
+  isSupabaseConfigured: true,
+}));
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -13,7 +16,7 @@ afterEach(() => {
 });
 
 describe("public actor loading", () => {
-  it("loads only the public endpoint, not authenticated studio domains", async () => {
+  it("loads only the public endpoint, not authenticated studio domains, when a database is configured", async () => {
     const fetchActor = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
