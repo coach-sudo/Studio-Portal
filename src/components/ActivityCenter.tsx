@@ -12,7 +12,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import type { StudioSnapshot } from "../domain/model";
 import { buildActivityFeed, type ActivityItem } from "../domain/activityFeed";
-import { supabase } from "../lib/supabase";
+import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { formatStudioDateTime } from "../domain/presentation";
 import { queryLayerV2Enabled, useStudioActivity } from "../hooks/useStudio";
 import "./ActivityCenter.css";
@@ -39,7 +39,8 @@ export function ActivityCenter({
   const navigate = useNavigate();
   const root = useRef<HTMLDivElement>(null);
   const activity = useStudioActivity(audience, studentId);
-  const activityData = queryLayerV2Enabled ? activity.data : data;
+  const activityData =
+    queryLayerV2Enabled && isSupabaseConfigured ? activity.data : data;
   const feed = useMemo(
     () => (activityData ? buildActivityFeed(activityData, audience) : []),
     [activityData, audience],
