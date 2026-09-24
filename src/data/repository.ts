@@ -94,6 +94,7 @@ export async function loadStudioSnapshot(
   studentId?: string,
   domains: readonly StudioDomain[] = studioDomains,
   signal?: AbortSignal,
+  signAssetUrls = true,
 ): Promise<StudioSnapshot> {
   if (!isSupabaseConfigured || !supabase) {
     if (isDemoMode)
@@ -364,7 +365,9 @@ export async function loadStudioSnapshot(
       (row: any) => [row.id, row.storage_path] as [string, string],
     ),
   );
-  const signedMaterialUrls = await signedUrlsForPaths(database, storagePaths);
+  const signedMaterialUrls = signAssetUrls
+    ? await signedUrlsForPaths(database, storagePaths)
+    : new Map<string, string>();
   const currentStudent = studentId
     ? (studentRows.find((row: any) => row.id === studentId) ?? studentRows[0])
     : studentRows[0];
@@ -400,7 +403,9 @@ export async function loadStudioSnapshot(
     settings.branding?.coachProfilePhotoStoragePath,
     settings.dailyPopup.backgroundImageStoragePath,
   ].filter((value): value is string => Boolean(value));
-  const brandingUrls = await signedUrlsForPaths(database, brandingPaths);
+  const brandingUrls = signAssetUrls
+    ? await signedUrlsForPaths(database, brandingPaths)
+    : new Map<string, string>();
   if (settings.branding?.logoStoragePath)
     settings.branding = {
       ...settings.branding,

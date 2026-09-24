@@ -1,11 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/Primitives";
-import {
-  queryLayerV2Enabled,
-  useStudioRoute,
-} from "../../hooks/useStudio";
-import type { StudioDomain } from "../../data/repository";
+import { useStudioRoute } from "../../hooks/useStudio";
 import { StudioSettings } from "./StudioSettings";
 import { StudentsIndex } from "./StudentsIndex";
 import {
@@ -16,6 +12,7 @@ import {
   NotesView,
   TodayView,
 } from "./StudioOperations";
+import { coachSectionDomains } from "./routeDomains";
 
 const configs: Record<string, { title: string; description: string }> = {
   today: {
@@ -55,26 +52,14 @@ const configs: Record<string, { title: string; description: string }> = {
       "Studio identity, student experience, pricing, connections, and recovery.",
   },
 };
-const sectionDomains: Record<string, readonly StudioDomain[]> = {
-  today: ["identity", "students", "lessons", "work", "administration"],
-  students: queryLayerV2Enabled
-    ? ["identity"]
-    : ["identity", "students", "lessons", "work", "households"],
-  lessons: ["identity", "students", "lessons", "booking"],
-  notes: queryLayerV2Enabled
-    ? ["identity", "students", "lessons"]
-    : ["identity", "students", "work"],
-  materials: queryLayerV2Enabled
-    ? ["identity", "students", "lessons"]
-    : ["identity", "students", "work"],
-  finance: ["identity", "students", "finance"],
-  "actor-pages": ["identity", "students", "actorProfiles", "work"],
-  settings: ["identity", "booking", "finance", "administration"],
-};
 export function CoachSection() {
   const { section = "today" } = useParams(),
     config = configs[section] ?? configs.today,
-    { data, isDemo } = useStudioRoute("coach", undefined, sectionDomains[section] ?? sectionDomains.today);
+    { data, isDemo } = useStudioRoute(
+      "coach",
+      undefined,
+      coachSectionDomains(section),
+    );
   if (!data)
     return <div className="loading">Loading {config.title.toLowerCase()}…</div>;
   return (

@@ -3,25 +3,31 @@ import type { StudioSnapshot } from "../../domain/model";
 import { queryLayerV2Enabled } from "../../hooks/useStudio";
 
 export function portalDomains(pathname: string): readonly StudioDomain[] {
-  if (pathname.includes("/inbox")) return ["identity", "students", "messaging"];
-  if (pathname.includes("/payments"))
-    return ["identity", "students", "finance"];
-  if (pathname.includes("/settings"))
+  const route = pathname.replace(/\/+$/, "") || "/";
+  if (route === "/portal/inbox") return ["identity", "students", "messaging"];
+  if (route === "/portal/payments")
+    return ["identity", "students", "finance", "lessons"];
+  if (route === "/portal/settings")
     return ["identity", "students", "households"];
-  if (pathname.includes("/actor"))
+  if (route === "/portal/actor-page")
     return ["identity", "students", "actorProfiles", "work"];
-  if (pathname.includes("/referrals"))
+  if (route === "/portal/referrals")
     return ["identity", "students", "referrals"];
-  if (pathname.includes("/notes"))
+  if (route === "/portal/notes")
     return queryLayerV2Enabled
       ? ["identity", "students", "lessons"]
       : ["identity", "students", "work"];
-  if (pathname.includes("/work")) return ["identity", "students", "work"];
-  if (pathname.includes("/schedule") || pathname.includes("/lesson"))
+  if (route === "/portal/work")
+    return ["identity", "students", "work", "lessons"];
+  if (route === "/portal/bookings")
+    return ["identity", "students", "lessons", "booking"];
+  if (/^\/portal\/lessons\/[^/]+$/.test(route))
     return ["identity", "students", "lessons", "booking", "work"];
-  if (pathname.includes("/classes/"))
+  if (/^\/portal\/classes\/[^/]+$/.test(route))
     return ["identity", "students", "lessons", "work", "messaging"];
-  return ["identity", "students", "lessons", "work"];
+  return route === "/portal"
+    ? ["identity", "students", "lessons", "work", "finance"]
+    : ["identity", "students"];
 }
 
 export const portalNotificationLabels = {

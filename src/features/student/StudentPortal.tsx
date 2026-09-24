@@ -32,7 +32,9 @@ const PortalClassWorkspace = lazy(() =>
   })),
 );
 const PortalInbox = lazy(() =>
-  import("../messages/Inbox").then((module) => ({ default: module.PortalInbox })),
+  import("../messages/Inbox").then((module) => ({
+    default: module.PortalInbox,
+  })),
 );
 const StudentReferrals = lazy(() =>
   import("../referrals/Referrals").then((module) => ({
@@ -235,123 +237,129 @@ export function StudentPortal({
             </span>
           </section>
         )}
-        <Suspense fallback={<div className="loading" role="status">Opening this section…</div>}>
-        <Routes>
-          <Route
-            index
-            element={
-              role === "guardian" ? (
-                <GuardianHome data={data} base={base} />
-              ) : (
-                <StudentHome data={data} base={base} />
-              )
-            }
-          />
-          <Route
-            path="work"
-            element={
-              role === "guardian" && !guardianWork ? (
-                <Navigate to={base} replace />
-              ) : (
-                <Work data={data} isDemo={isDemo} />
-              )
-            }
-          />
-          <Route
-            path="bookings"
-            element={
-              role === "guardian" && !guardianSchedule ? (
-                <Navigate to={base} replace />
-              ) : (
-                <StudentBookings
+        <Suspense
+          fallback={
+            <div className="loading" role="status">
+              Opening this section…
+            </div>
+          }
+        >
+          <Routes>
+            <Route
+              index
+              element={
+                role === "guardian" ? (
+                  <GuardianHome data={data} base={base} />
+                ) : (
+                  <StudentHome data={data} base={base} />
+                )
+              }
+            />
+            <Route
+              path="work"
+              element={
+                role === "guardian" && !guardianWork ? (
+                  <Navigate to={base} replace />
+                ) : (
+                  <Work data={data} isDemo={isDemo} />
+                )
+              }
+            />
+            <Route
+              path="bookings"
+              element={
+                role === "guardian" && !guardianSchedule ? (
+                  <Navigate to={base} replace />
+                ) : (
+                  <StudentBookings
+                    data={data}
+                    isDemo={isDemo}
+                    canManageLessons={
+                      role !== "guardian" || guardianManageLessons
+                    }
+                  />
+                )
+              }
+            />
+            <Route
+              path="lessons"
+              element={<Navigate to={`${base}/bookings`} replace />}
+            />
+            <Route
+              path="lessons/:lessonId"
+              element={
+                <LessonHub
                   data={data}
                   isDemo={isDemo}
-                  canManageLessons={
-                    role !== "guardian" || guardianManageLessons
+                  showFinance={
+                    role === "guardian" ? guardianFinance : !person?.isMinor
                   }
                 />
-              )
-            }
-          />
-          <Route
-            path="lessons"
-            element={<Navigate to={`${base}/bookings`} replace />}
-          />
-          <Route
-            path="lessons/:lessonId"
-            element={
-              <LessonHub
-                data={data}
-                isDemo={isDemo}
-                showFinance={
-                  role === "guardian" ? guardianFinance : !person?.isMinor
-                }
-              />
-            }
-          />
-          <Route
-            path="notes"
-            element={<StudentNotes data={data} isDemo={isDemo} />}
-          />
-          <Route
-            path="classes/:offeringId"
-            element={
-              <PortalClassWorkspace data={data} isDemo={isDemo} role={role} />
-            }
-          />
-          <Route
-            path="inbox"
-            element={<PortalInbox data={data} isDemo={isDemo} role={role} />}
-          />
-          <Route
-            path="referrals"
-            element={
-              <StudentReferrals
-                students={data.students}
-                settings={data.settings}
-                isDemo={isDemo}
-              />
-            }
-          />
-          <Route
-            path="practice"
-            element={<Navigate to={`${base}/work`} replace />}
-          />
-          <Route
-            path="materials"
-            element={<Navigate to={`${base}/work`} replace />}
-          />
-          <Route
-            path="payments"
-            element={
-              (role === "guardian" ? guardianFinance : !person?.isMinor) ? (
-                <Payments data={data} isDemo={isDemo} />
-              ) : (
-                <Navigate to={base} replace />
-              )
-            }
-          />
-          <Route
-            path="actor-page"
-            element={
-              role === "guardian" && !guardianProfile ? (
-                <Navigate to={base} replace />
-              ) : (
-                <ActorPage data={data} isDemo={isDemo} />
-              )
-            }
-          />
-          <Route
-            path="settings"
-            element={
-              <StudentSettings data={data} isDemo={isDemo} role={role} />
-            }
-          />
-          <Route path="*" element={<Navigate to={base} replace />} />
-        </Routes>
+              }
+            />
+            <Route
+              path="notes"
+              element={<StudentNotes data={data} isDemo={isDemo} />}
+            />
+            <Route
+              path="classes/:offeringId"
+              element={
+                <PortalClassWorkspace data={data} isDemo={isDemo} role={role} />
+              }
+            />
+            <Route
+              path="inbox"
+              element={<PortalInbox data={data} isDemo={isDemo} role={role} />}
+            />
+            <Route
+              path="referrals"
+              element={
+                <StudentReferrals
+                  students={data.students}
+                  settings={data.settings}
+                  isDemo={isDemo}
+                />
+              }
+            />
+            <Route
+              path="practice"
+              element={<Navigate to={`${base}/work`} replace />}
+            />
+            <Route
+              path="materials"
+              element={<Navigate to={`${base}/work`} replace />}
+            />
+            <Route
+              path="payments"
+              element={
+                (role === "guardian" ? guardianFinance : !person?.isMinor) ? (
+                  <Payments data={data} isDemo={isDemo} />
+                ) : (
+                  <Navigate to={base} replace />
+                )
+              }
+            />
+            <Route
+              path="actor-page"
+              element={
+                role === "guardian" && !guardianProfile ? (
+                  <Navigate to={base} replace />
+                ) : (
+                  <ActorPage data={data} isDemo={isDemo} />
+                )
+              }
+            />
+            <Route
+              path="settings"
+              element={
+                <StudentSettings data={data} isDemo={isDemo} role={role} />
+              }
+            />
+            <Route path="*" element={<Navigate to={base} replace />} />
+          </Routes>
         </Suspense>
       </main>
-      <ActivityCenter data={data} audience={role} />
+      <ActivityCenter data={data} audience={role} studentId={studentId} />
       <DailyPopup
         popup={data.settings.dailyPopup}
         studioId={data.studioId}

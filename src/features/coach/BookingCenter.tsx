@@ -51,17 +51,9 @@ import { ManualBookingDialog, Overview } from "./BookingOverview";
 import { Series } from "./BookingSeries";
 import { Services } from "./BookingServices";
 import { BookingSetup } from "./BookingSetup";
+import { bookingCenterDomains } from "./routeDomains";
 
 export function BookingCenter() {
-  const { data, isLoading, isDemo } = useStudioRoute("coach", undefined, [
-    "identity",
-    "students",
-    "booking",
-    "lessons",
-  ]);
-  const store = useStudioStore();
-  const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const requestedRecord = searchParams.toString();
   const requestedView = searchParams.get("view");
@@ -70,6 +62,14 @@ export function BookingCenter() {
       ? (requestedView as Tab)
       : "calendar",
   );
+  const { data, isLoading, isDemo } = useStudioRoute(
+    "coach",
+    undefined,
+    bookingCenterDomains(tab),
+  );
+  const store = useStudioStore();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [dialog, setDialog] = useState<{ type: string; item?: any }>();
   const [notice, setNotice] = useState("");
   const [health, setHealth] = useState<PlatformHealth>({

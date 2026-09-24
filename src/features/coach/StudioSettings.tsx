@@ -44,6 +44,10 @@ import { DailyPopupForm } from "./DailyPopupSettingsForm";
 
 type Panel =
   "studio" | "portal" | "popup" | "pricing" | "email" | "integrations" | "data";
+
+export const studioRecoverySummary = (data: StudioSnapshot) =>
+  `${data.students.length} people · ${data.lessons.length} lessons · ${data.materials.length} materials.`;
+
 export function StudioSettings({
   data,
   isDemo,
@@ -1090,8 +1094,7 @@ function DataPanel({
                 : "Saved securely in the studio database"}
             </strong>
             <small>
-              {data.students.length} people · {data.lessons.length} lessons ·{" "}
-              {data.materials.length} materials.{" "}
+              {studioRecoverySummary(data)}{" "}
               {isDemo
                 ? "Refreshing resets sample changes."
                 : "Authorized users see the same current records on every device."}

@@ -7,6 +7,7 @@ import {
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { demoSnapshot } from "../data/demo";
+import { portalDomains } from "../features/student/StudentPortal.shared";
 
 const loadStudioSnapshot = vi.hoisted(() => vi.fn());
 
@@ -141,5 +142,108 @@ describe("V2 domain query behavior", () => {
       expect(counts).toEqual({ identity: 1, students: 2, page: 2 }),
     );
     target.unmount();
+  });
+
+  it("refetches the active booking query after a portal recurring-series mutation", async () => {
+    const [
+      { useStudioRoute, invalidateStudioDomains, countActiveDomainRefetches },
+      { StudioStoreProvider },
+    ] = await Promise.all([
+      import("./useStudio"),
+      import("../state/StudioStore"),
+    ]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const route = renderHook(
+      () =>
+        useStudioRoute(
+          "student",
+          "student-maya",
+          portalDomains("/portal/bookings"),
+        ),
+      { wrapper: wrapperFor(queryClient, StudioStoreProvider) },
+    );
+    await waitFor(() => expect(route.result.current.data).toBeDefined());
+    expect(
+      countActiveDomainRefetches(queryClient, ["booking", "finance"]),
+    ).toBe(1);
+    loadStudioSnapshot.mockClear();
+    await act(async () => {
+      await invalidateStudioDomains(queryClient, ["booking", "finance"]);
+    });
+    expect(loadStudioSnapshot.mock.calls.map((call) => call[2][0])).toEqual([
+      "booking",
+    ]);
+    route.unmount();
+  });
+
+  it("updates the global activity snapshot from targeted domain refetches", async () => {
+    const [
+      { useStudioRoute, useStudioActivity, invalidateStudioDomains },
+      { StudioStoreProvider },
+    ] = await Promise.all([
+      import("./useStudio"),
+      import("../state/StudioStore"),
+    ]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const route = renderHook(
+      () => {
+        const page = useStudioRoute("coach", undefined, [
+          "identity",
+          "lessons",
+          "finance",
+        ]);
+        const activity = useStudioActivity("coach");
+        return { page, activity };
+      },
+      { wrapper: wrapperFor(queryClient, StudioStoreProvider) },
+    );
+    await waitFor(() =>
+      expect(route.result.current.activity.data).toBeDefined(),
+    );
+    expect(
+      loadStudioSnapshot.mock.calls.find((call) =>
+        call[2].includes("messaging"),
+      )?.[4],
+    ).toBe(false);
+    await waitFor(() => expect(route.result.current.page.data).toBeDefined());
+    const changed = structuredClone(demoSnapshot);
+    changed.lessons = [
+      { ...changed.lessons[0], topic: "Updated after command" },
+    ];
+    loadStudioSnapshot.mockClear();
+    loadStudioSnapshot.mockImplementation(async (_role, _studentId, domains) =>
+      domains[0] === "lessons" ? changed : structuredClone(demoSnapshot),
+    );
+    await act(async () => {
+      await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
+    });
+    expect(
+      loadStudioSnapshot.mock.calls.map((call) => call[2][0]).sort(),
+    ).toEqual(["finance", "lessons"]);
+    await waitFor(() =>
+      expect(route.result.current.activity.data?.lessons[0]?.topic).toBe(
+        "Updated after command",
+      ),
+    );
+    const identityWithoutCoachStudents = structuredClone(demoSnapshot);
+    identityWithoutCoachStudents.students = [];
+    loadStudioSnapshot.mockImplementation(async (_role, _studentId, domains) =>
+      domains[0] === "identity"
+        ? identityWithoutCoachStudents
+        : structuredClone(demoSnapshot),
+    );
+    await act(async () => {
+      await invalidateStudioDomains(queryClient, ["identity"]);
+    });
+    await waitFor(() =>
+      expect(
+        route.result.current.activity.data?.students.length,
+      ).toBeGreaterThan(0),
+    );
+    route.unmount();
   });
 });

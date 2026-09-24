@@ -9,7 +9,14 @@ import {
   RotateCcw,
   Trash2,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import {
   Link,
   NavLink,
@@ -37,6 +44,7 @@ import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { belongsToStudent, now, uid } from "./StudentWorkspace.shared";
+import { studentWorkspaceDomains } from "./routeDomains";
 const Account = lazy(() =>
   import("./StudentWorkspaceAccount").then((module) => ({
     default: module.Account,
@@ -85,19 +93,15 @@ const Work = lazy(() =>
 
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
-  const { data, isDemo } = useStudioRoute("coach", undefined, [
-    "identity",
-    "students",
-    "lessons",
-    "work",
-    "finance",
-    "actorProfiles",
-    "households",
-  ]);
+  const location = useLocation();
+  const { data, isDemo } = useStudioRoute(
+    "coach",
+    undefined,
+    studentWorkspaceDomains(location.pathname),
+  );
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const location = useLocation();
   const [dialog, setDialog] = useState<
     | "edit"
     | "lesson"
@@ -618,114 +622,120 @@ export function StudentWorkspace() {
           </NavLink>
         ))}
       </nav>
-      <Suspense fallback={<div className="loading" role="status">Opening this section…</div>}>
-      <Routes>
-        <Route
-          index
-          element={
-            <Overview
-              data={data}
-              student={student}
-              onAddAssignment={() => setDialog("assignment")}
-              onAddMaterial={() => setDialog("material")}
-            />
-          }
-        />
-        <Route
-          path="lessons"
-          element={<Lessons data={data} student={student} />}
-        />
-        <Route
-          path="lessons/:lessonId"
-          element={
-            <CoachLessonHub
-              data={data}
-              student={student}
-              isDemo={isDemo}
-              onAddNote={(lessonId) => {
-                setWorkflowLessonId(lessonId);
-                setDialog("note");
-              }}
-              onAddAssignment={(lessonId) => {
-                setWorkflowLessonId(lessonId);
-                setDialog("assignment");
-              }}
-              onAddMaterial={(lessonId) => {
-                setWorkflowLessonId(lessonId);
-                setDialog("material");
-              }}
-            />
-          }
-        />
-        <Route
-          path="work"
-          element={
-            <Work
-              data={data}
-              student={student}
-              onAddAssignment={() => setDialog("assignment")}
-              onAddMaterial={() => setDialog("material")}
-              onArchiveMaterial={updateMaterialStatus}
-              onDeleteMaterial={deleteMaterial}
-            />
-          }
-        />
-        <Route
-          path="notes"
-          element={
-            <Notes
-              data={data}
-              student={student}
-              onAdd={() => setDialog("note")}
-              onEdit={(note) => {
-                setEditingNote(note);
-                setDialog("note");
-              }}
-              onDelete={deleteNote}
-            />
-          }
-        />
-        <Route
-          path="account"
-          element={
-            <Account
-              data={data}
-              student={student}
-              isDemo={isDemo}
-              onSave={saveStudent}
-              onInvite={sendPortalInvite}
-              settingCredentials={settingCredentials}
-            />
-          }
-        />
-        <Route
-          path="contacts/:contactId"
-          element={
-            <HouseholdContactProfile
-              data={data}
-              student={student}
-              busy={settingCredentials}
-              onInvite={sendPortalInvite}
-            />
-          }
-        />
-        <Route
-          path="payments"
-          element={<Payments data={data} student={student} isDemo={isDemo} />}
-        />
-        <Route
-          path="actor-page"
-          element={
-            <ActorPage
-              data={data}
-              student={student}
-              isDemo={isDemo}
-              onAddMaterial={() => setDialog("actor-material")}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to={base} replace />} />
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="loading" role="status">
+            Opening this section…
+          </div>
+        }
+      >
+        <Routes>
+          <Route
+            index
+            element={
+              <Overview
+                data={data}
+                student={student}
+                onAddAssignment={() => setDialog("assignment")}
+                onAddMaterial={() => setDialog("material")}
+              />
+            }
+          />
+          <Route
+            path="lessons"
+            element={<Lessons data={data} student={student} />}
+          />
+          <Route
+            path="lessons/:lessonId"
+            element={
+              <CoachLessonHub
+                data={data}
+                student={student}
+                isDemo={isDemo}
+                onAddNote={(lessonId) => {
+                  setWorkflowLessonId(lessonId);
+                  setDialog("note");
+                }}
+                onAddAssignment={(lessonId) => {
+                  setWorkflowLessonId(lessonId);
+                  setDialog("assignment");
+                }}
+                onAddMaterial={(lessonId) => {
+                  setWorkflowLessonId(lessonId);
+                  setDialog("material");
+                }}
+              />
+            }
+          />
+          <Route
+            path="work"
+            element={
+              <Work
+                data={data}
+                student={student}
+                onAddAssignment={() => setDialog("assignment")}
+                onAddMaterial={() => setDialog("material")}
+                onArchiveMaterial={updateMaterialStatus}
+                onDeleteMaterial={deleteMaterial}
+              />
+            }
+          />
+          <Route
+            path="notes"
+            element={
+              <Notes
+                data={data}
+                student={student}
+                onAdd={() => setDialog("note")}
+                onEdit={(note) => {
+                  setEditingNote(note);
+                  setDialog("note");
+                }}
+                onDelete={deleteNote}
+              />
+            }
+          />
+          <Route
+            path="account"
+            element={
+              <Account
+                data={data}
+                student={student}
+                isDemo={isDemo}
+                onSave={saveStudent}
+                onInvite={sendPortalInvite}
+                settingCredentials={settingCredentials}
+              />
+            }
+          />
+          <Route
+            path="contacts/:contactId"
+            element={
+              <HouseholdContactProfile
+                data={data}
+                student={student}
+                busy={settingCredentials}
+                onInvite={sendPortalInvite}
+              />
+            }
+          />
+          <Route
+            path="payments"
+            element={<Payments data={data} student={student} isDemo={isDemo} />}
+          />
+          <Route
+            path="actor-page"
+            element={
+              <ActorPage
+                data={data}
+                student={student}
+                isDemo={isDemo}
+                onAddMaterial={() => setDialog("actor-material")}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to={base} replace />} />
+        </Routes>
       </Suspense>
       {dialog === "edit" && (
         <StudentEditor

@@ -27,6 +27,21 @@ export const studioDomainQueryKey = (
   domain: StudioDomain,
 ) => ["studio-domain", role, studentId ?? null, domain] as const;
 
+export const studioActivityQueryKey = (
+  role: Role,
+  studentId: string | undefined,
+) => ["studio-activity", role, studentId ?? null] as const;
+
+const activityDomains: readonly StudioDomain[] = [
+  "identity",
+  "students",
+  "lessons",
+  "booking",
+  "work",
+  "messaging",
+  "administration",
+];
+
 export const studioQueryKey = (
   role: Role,
   studentId: string | undefined,
@@ -235,6 +250,54 @@ export async function invalidateStudioDomains(
         selected.has(query.queryKey[1] as StudioDomain),
     }),
   ]);
+  // Activity uses one aggregate read so the global bell does not mount six more
+  // domain queries. Reuse fresh active domain results after a mutation instead
+  // of causing a third network refetch for a two-domain command.
+  for (const query of queryClient.getQueryCache().findAll({
+    queryKey: ["studio-activity"],
+  })) {
+    const current = query.state.data as StudioSnapshot | undefined;
+    if (!current) continue;
+    const role = query.queryKey[1] as Role;
+    const studentId = (query.queryKey[2] as string | null) ?? undefined;
+    let updated = current;
+    for (const domain of domains) {
+      const domainQuery = queryClient.getQueryCache().find({
+        queryKey: studioDomainQueryKey(role, studentId, domain),
+      });
+      const snapshot = domainQuery?.getObserversCount()
+        ? (domainQuery.state.data as StudioSnapshot | undefined)
+        : undefined;
+      if (!snapshot) continue;
+      updated = { ...updated };
+      const keys: readonly (keyof StudioSnapshot)[] =
+        domain === "identity" ? commonDomainKeys : studioDomainDataKeys[domain];
+      for (const key of keys) (updated[key] as never) = snapshot[key] as never;
+    }
+    if (updated !== current) queryClient.setQueryData(query.queryKey, updated);
+  }
+}
+
+export function useStudioActivity(role: Role, studentId?: string) {
+  return useQuery({
+    queryKey: studioActivityQueryKey(role, studentId),
+    queryFn: ({ signal }) =>
+      loadStudioSnapshot(
+        role,
+        studentId,
+        role === "coach"
+          ? activityDomains
+          : activityDomains.filter((domain) => domain !== "administration"),
+        signal,
+        false,
+      ),
+    enabled: isSupabaseConfigured && queryLayerV2Enabled,
+    staleTime: 30_000,
+    gcTime: 30 * 60_000,
+    refetchOnWindowFocus: true,
+    refetchOnReconnect: true,
+    refetchInterval: false,
+  });
 }
 
 export const countActiveDomainRefetches = (

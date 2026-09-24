@@ -3,6 +3,19 @@ import { useStudioRoute } from "../../hooks/useStudio";
 
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export const now = () => new Date().toISOString();
+export const portalInvitationDelivery = (
+  data: Data,
+  studentId: string,
+  recipient: string,
+) =>
+  data.outbox
+    .filter(
+      (item) =>
+        item.studentId === studentId &&
+        item.recipient.toLowerCase() === recipient.toLowerCase() &&
+        item.subject.toLowerCase().includes("portal login"),
+    )
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
 export const belongsToStudent = (
   data: Data,
   lesson: Lesson,

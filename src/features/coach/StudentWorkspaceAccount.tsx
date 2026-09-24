@@ -17,7 +17,12 @@ import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
-import { now, uid, type Data } from "./StudentWorkspace.shared";
+import {
+  now,
+  portalInvitationDelivery,
+  uid,
+  type Data,
+} from "./StudentWorkspace.shared";
 
 function PortalInvite({
   accountType,
@@ -223,14 +228,7 @@ function LinkedContacts({
     }
   };
   const invitation = (contact: Data["linkedContacts"][number]) =>
-    data.outbox
-      .filter(
-        (item) =>
-          item.studentId === student.id &&
-          item.recipient.toLowerCase() === contact.email.toLowerCase() &&
-          item.subject.toLowerCase().includes("portal login"),
-      )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+    portalInvitationDelivery(data, student.id, contact.email);
   return (
     <Section
       title="Household access"
@@ -493,14 +491,7 @@ export function HouseholdContactProfile({
     ["Manage profile", contact.canManageProfile],
     ["Payments", contact.canViewFinance],
   ] as const;
-  const delivery = data.outbox
-    .filter(
-      (item) =>
-        item.studentId === student.id &&
-        item.recipient.toLowerCase() === contact.email.toLowerCase() &&
-        item.subject.toLowerCase().includes("portal login"),
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
+  const delivery = portalInvitationDelivery(data, student.id, contact.email);
   return (
     <div className="two-section-grid household-profile">
       <Section title={contact.fullName} marked>
