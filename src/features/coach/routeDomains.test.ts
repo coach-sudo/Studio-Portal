@@ -67,6 +67,9 @@ describe("V2 route data contracts", () => {
     expect(domains).toEqual(
       expect.arrayContaining(["students", "messaging", "work", "lessons"]),
     );
+    expect(domains).toHaveLength(5);
+    for (const unused of ["booking", "finance", "administration"])
+      expect(domains).not.toContain(unused);
     const data = selectedData(domains)!;
     expect(data.outbox[0]?.status).toBe("sent");
     expect(studioRecoverySummary(data)).toBe(

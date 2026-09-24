@@ -23,16 +23,7 @@ export function coachSectionDomains(
     case "actor-pages":
       return ["identity", "students", "actorProfiles", "work"];
     case "settings":
-      return [
-        "identity",
-        "students",
-        "booking",
-        "finance",
-        "administration",
-        "lessons",
-        "work",
-        "messaging",
-      ];
+      return ["identity", "students", "lessons", "work", "messaging"];
     default:
       return [
         "identity",
