@@ -7,6 +7,7 @@ import {
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { demoSnapshot } from "../data/demo";
+import { buildActivityFeed } from "../domain/activityFeed";
 import { portalDomains } from "../features/student/StudentPortal.shared";
 
 const loadStudioSnapshot = vi.hoisted(() => vi.fn());
@@ -243,6 +244,58 @@ describe("V2 domain query behavior", () => {
       expect(
         route.result.current.activity.data?.students.length,
       ).toBeGreaterThan(0),
+    );
+    route.unmount();
+  });
+
+  it("refreshes the portal notification feed when a visible inbox conversation changes", async () => {
+    const [
+      { useStudioRoute, useStudioActivity, invalidateStudioDomains },
+      { StudioStoreProvider },
+    ] = await Promise.all([
+      import("./useStudio"),
+      import("../state/StudioStore"),
+    ]);
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const route = renderHook(
+      () => {
+        const page = useStudioRoute("student", undefined, ["messaging"]);
+        const activity = useStudioActivity("student");
+        return { page, activity };
+      },
+      { wrapper: wrapperFor(queryClient, StudioStoreProvider) },
+    );
+    await waitFor(() => {
+      expect(route.result.current.page.data).toBeDefined();
+      expect(route.result.current.activity.data).toBeDefined();
+    });
+    const changed = structuredClone(demoSnapshot);
+    changed.conversationMessages.push({
+      ...changed.conversationMessages[0],
+      id: "incoming-coach-message",
+      body: "Please bring the new scene",
+      createdAt: new Date().toISOString(),
+    });
+    loadStudioSnapshot.mockClear();
+    loadStudioSnapshot.mockImplementation(async (_role, _studentId, domains) =>
+      domains[0] === "messaging" ? changed : structuredClone(demoSnapshot),
+    );
+    await act(async () => {
+      await invalidateStudioDomains(queryClient, ["messaging"]);
+    });
+    expect(loadStudioSnapshot.mock.calls.map((call) => call[2][0])).toEqual([
+      "messaging",
+    ]);
+    await waitFor(() =>
+      expect(
+        buildActivityFeed(route.result.current.activity.data!, "student").some(
+          (item) =>
+            item.kind === "message" &&
+            item.detail.includes("Please bring the new scene"),
+        ),
+      ).toBe(true),
     );
     route.unmount();
   });

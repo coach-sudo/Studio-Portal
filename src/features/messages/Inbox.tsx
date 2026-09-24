@@ -356,12 +356,7 @@ function Inbox({
       return;
     const database = supabase;
     const refreshVisibleConversation = () => {
-      void queryClient.invalidateQueries({
-        predicate: (query) =>
-          query.queryKey[0] === "studio-domain" &&
-          query.queryKey[1] === role &&
-          query.queryKey[3] === "messaging",
-      });
+      void invalidateStudioDomains(queryClient, ["messaging"]);
     };
     const channel = database
       .channel(`visible-inbox:${selected.id}`)
@@ -389,7 +384,7 @@ function Inbox({
     return () => {
       void database.removeChannel(channel);
     };
-  }, [isDemo, queryClient, role, selected?.id]);
+  }, [isDemo, queryClient, selected?.id]);
 
   useEffect(() => {
     if (
