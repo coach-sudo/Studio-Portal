@@ -1,16 +1,11 @@
 import { UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
+import { readApiClientError } from "../../data/apiClientError";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
 import { applyStudioBranding } from "../../lib/branding";
 
-type LoginStatus =
-  | "idle"
-  | "signing"
-  | "sending"
-  | "sent"
-  | "demo"
-  | "error";
+type LoginStatus = "idle" | "signing" | "sending" | "sent" | "demo" | "error";
 
 export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
   const [params] = useSearchParams();
@@ -59,8 +54,12 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
+      if (!response.ok)
+        throw await readApiClientError(
+          response,
+          "Sign-in could not be completed.",
+        );
       const result = await response.json();
-      if (!response.ok) throw new Error(result.message);
       const { error } = await supabase.auth.setSession({
         access_token: result.accessToken,
         refresh_token: result.refreshToken,
@@ -116,75 +115,98 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
       <div className="login-card">
         <UserRound />
         <h1>{coachOnly ? "Coach sign-in" : "Student and household sign-in"}</h1>
-        {coachOnly ? <>
-        <p>Google sign-in is available only to the studio coach account. Students, guardians, and support people should use their portal username and password.</p>
-        <section className="login-choice google-choice">
-          <span className="google-mark" aria-hidden="true">G</span>
-          <div>
-            <strong>Coach Google sign-in</strong>
-            <small>Use the studio coach Google account.</small>
-          </div>
-          <button type="button" aria-label="Continue with Google" disabled={status === "signing"} onClick={() => void googleSignIn()}>
-            {status === "signing" ? "Opening…" : "Continue"}
-          </button>
-        </section>
-        <p><Link to="/login">Student or household login</Link></p>
-        </> : <>
-        <p>
-          Students, guardians, and support people can also use the username and
-          password from their portal invitation.
-        </p>
-        <form className="login-credentials" onSubmit={passwordSignIn}>
-          <label>
-            Username
-            <input
-              required
-              autoComplete="username"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              placeholder="your.username"
-            />
-          </label>
-          <label>
-            Password
-            <input
-              required
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
-          <button disabled={status === "signing"}>
-            {status === "signing" ? "Signing in…" : "Sign in"}
-          </button>
-        </form>
-        <details className="login-recovery">
-          <summary>Use an email sign-in link instead</summary>
-          <form onSubmit={emailSignIn}>
+        {coachOnly ? (
+          <>
             <p>
-              Enter the same email address your coach has on your student
-              record. We’ll send a private, expiring link.
+              Google sign-in is available only to the studio coach account.
+              Students, guardians, and support people should use their portal
+              username and password.
             </p>
-            <label>
-              Profile email
-              <input
-                type="email"
-                required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                placeholder="you@example.com"
-              />
-            </label>
-            <button disabled={status === "sending"}>
-              {status === "sending" ? "Sending…" : "Email me a sign-in link"}
-            </button>
-          </form>
-        </details>
-        <p><Link to="/coach/login">Coach login</Link></p>
-        </>}
+            <section className="login-choice google-choice">
+              <span className="google-mark" aria-hidden="true">
+                G
+              </span>
+              <div>
+                <strong>Coach Google sign-in</strong>
+                <small>Use the studio coach Google account.</small>
+              </div>
+              <button
+                type="button"
+                aria-label="Continue with Google"
+                disabled={status === "signing"}
+                onClick={() => void googleSignIn()}
+              >
+                {status === "signing" ? "Opening…" : "Continue"}
+              </button>
+            </section>
+            <p>
+              <Link to="/login">Student or household login</Link>
+            </p>
+          </>
+        ) : (
+          <>
+            <p>
+              Students, guardians, and support people can also use the username
+              and password from their portal invitation.
+            </p>
+            <form className="login-credentials" onSubmit={passwordSignIn}>
+              <label>
+                Username
+                <input
+                  required
+                  autoComplete="username"
+                  value={username}
+                  onChange={(event) => setUsername(event.target.value)}
+                  placeholder="your.username"
+                />
+              </label>
+              <label>
+                Password
+                <input
+                  required
+                  type="password"
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </label>
+              <button disabled={status === "signing"}>
+                {status === "signing" ? "Signing in…" : "Sign in"}
+              </button>
+            </form>
+            <details className="login-recovery">
+              <summary>Use an email sign-in link instead</summary>
+              <form onSubmit={emailSignIn}>
+                <p>
+                  Enter the same email address your coach has on your student
+                  record. We’ll send a private, expiring link.
+                </p>
+                <label>
+                  Profile email
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(event) => setEmail(event.target.value)}
+                    placeholder="you@example.com"
+                  />
+                </label>
+                <button disabled={status === "sending"}>
+                  {status === "sending"
+                    ? "Sending…"
+                    : "Email me a sign-in link"}
+                </button>
+              </form>
+            </details>
+            <p>
+              <Link to="/coach/login">Coach login</Link>
+            </p>
+          </>
+        )}
         {status === "sent" && (
-          <div role="status">Check your inbox. The link expires automatically.</div>
+          <div role="status">
+            Check your inbox. The link expires automatically.
+          </div>
         )}
         {status === "demo" && (
           <div role="status">

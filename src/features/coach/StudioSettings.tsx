@@ -36,10 +36,18 @@ import type {
 import { useStudioStore } from "../../state/StudioStore";
 import { uploadStudioFile } from "../../data/uploads";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
+import {
+  invalidateStudioDomains,
+  studioDomainQueryKey,
+} from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
 
 type Panel =
   "studio" | "portal" | "popup" | "pricing" | "email" | "integrations" | "data";
+
+export const studioRecoverySummary = (data: StudioSnapshot) =>
+  `${data.students.length} people · ${data.lessons.length} lessons · ${data.materials.length} materials.`;
+
 export function StudioSettings({
   data,
   isDemo,
@@ -86,7 +94,7 @@ export function StudioSettings({
             reason: "Coach updated studio settings",
           });
           queryClient.setQueryData<StudioSnapshot>(
-            ["studio", "coach", undefined],
+            studioDomainQueryKey("coach", undefined, "identity"),
             (current) =>
               current
                 ? {
@@ -97,7 +105,7 @@ export function StudioSettings({
                   }
                 : current,
           );
-          await queryClient.invalidateQueries({ queryKey: ["studio"] });
+          await invalidateStudioDomains(queryClient, ["identity"]);
         }
       });
       setNotice(message);
@@ -116,7 +124,12 @@ export function StudioSettings({
     ["studio", "Studio", Palette, "Name, contact, timezone"],
     ["portal", "Student workspace", Users, "Visibility and welcome"],
     ["popup", "Daily popup", Megaphone, "One message per day"],
-    ["pricing", "Rates & reminders", CircleDollarSign, "Lesson rates and timing"],
+    [
+      "pricing",
+      "Rates & reminders",
+      CircleDollarSign,
+      "Lesson rates and timing",
+    ],
     ["email", "Email automations", Send, "Confirmations and reminders"],
     ["integrations", "Connections", Settings2, "Calendar, email, payments"],
     ["data", "Data & recovery", Database, "Saved data and delivery queue"],
@@ -178,7 +191,9 @@ export function StudioSettings({
             value={data.settings.dailyPopup}
             studioId={data.studioId}
             isDemo={isDemo}
-            onSave={(dailyPopup) => void save({ dailyPopup }, "Daily popup settings saved.")}
+            onSave={(dailyPopup) =>
+              void save({ dailyPopup }, "Daily popup settings saved.")
+            }
           />
         )}{" "}
         {panel === "email" && (
@@ -196,7 +211,10 @@ export function StudioSettings({
             onRefresh={async () => {
               await Promise.all([
                 refreshHealth(),
-                queryClient.invalidateQueries({ queryKey: ["studio"] }),
+                invalidateStudioDomains(queryClient, [
+                  "identity",
+                  "administration",
+                ]),
               ]);
             }}
           />
@@ -221,7 +239,7 @@ function StudioForm({
   const [form, setForm] = useState(value),
     [logo, setLogo] = useState<File>(),
     [coachPhoto, setCoachPhoto] = useState<File>(),
-    [removeCoachPhoto,setRemoveCoachPhoto]=useState(false),
+    [removeCoachPhoto, setRemoveCoachPhoto] = useState(false),
     [uploading, setUploading] = useState(false);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
@@ -241,11 +259,32 @@ function StudioForm({
           logoUrl: uploaded.signedUrl,
         };
       }
-      if (removeCoachPhoto) branding={...branding,coachProfilePhotoStoragePath:undefined,coachProfilePhotoUrl:undefined};
+      if (removeCoachPhoto)
+        branding = {
+          ...branding,
+          coachProfilePhotoStoragePath: undefined,
+          coachProfilePhotoUrl: undefined,
+        };
       if (coachPhoto) {
-        if (!coachPhoto.type.startsWith("image/") || coachPhoto.size > 5*1024*1024) throw new Error("Choose a JPG, PNG, or WebP image smaller than 5 MB.");
-        const uploaded=await uploadStudioFile({studioId,entityType:"studio",file:coachPhoto,visibility:"private"});
-        branding={...branding,coachProfilePhotoStoragePath:uploaded.storagePath,coachProfilePhotoUrl:uploaded.signedUrl,coachProfilePhotoPosition:{x:50,y:50}};
+        if (
+          !coachPhoto.type.startsWith("image/") ||
+          coachPhoto.size > 5 * 1024 * 1024
+        )
+          throw new Error(
+            "Choose a JPG, PNG, or WebP image smaller than 5 MB.",
+          );
+        const uploaded = await uploadStudioFile({
+          studioId,
+          entityType: "studio",
+          file: coachPhoto,
+          visibility: "private",
+        });
+        branding = {
+          ...branding,
+          coachProfilePhotoStoragePath: uploaded.storagePath,
+          coachProfilePhotoUrl: uploaded.signedUrl,
+          coachProfilePhotoPosition: { x: 50, y: 50 },
+        };
       }
       onSave({
         studioName: form.studioName,
@@ -371,7 +410,40 @@ function StudioForm({
             actor pages.
           </small>
         </label>
-        <label className="full material-upload">Coach profile photo<input type="file" accept="image/png,image/jpeg,image/webp" onChange={(event)=>{setCoachPhoto(event.target.files?.[0]);setRemoveCoachPhoto(false);}}/><small>Optional. Used only in your signed-in identity areas. Coach’D never inserts stock or generated people.</small>{form.branding.coachProfilePhotoUrl&&!removeCoachPhoto&&<span className="profile-photo-preview"><img src={form.branding.coachProfilePhotoUrl} alt="Current coach profile"/>Current photo <button type="button" className="text-button" onClick={()=>{setRemoveCoachPhoto(true);setCoachPhoto(undefined);}}>Remove</button></span>}</label>
+        <label className="full material-upload">
+          Coach profile photo
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            onChange={(event) => {
+              setCoachPhoto(event.target.files?.[0]);
+              setRemoveCoachPhoto(false);
+            }}
+          />
+          <small>
+            Optional. Used only in your signed-in identity areas. Coach’D never
+            inserts stock or generated people.
+          </small>
+          {form.branding.coachProfilePhotoUrl && !removeCoachPhoto && (
+            <span className="profile-photo-preview">
+              <img
+                src={form.branding.coachProfilePhotoUrl}
+                alt="Current coach profile"
+              />
+              Current photo{" "}
+              <button
+                type="button"
+                className="text-button"
+                onClick={() => {
+                  setRemoveCoachPhoto(true);
+                  setCoachPhoto(undefined);
+                }}
+              >
+                Remove
+              </button>
+            </span>
+          )}
+        </label>
         <div className="form-actions full">
           <button className="primary" disabled={uploading}>
             {uploading ? "Uploading…" : "Save studio"}
@@ -400,6 +472,8 @@ function PortalForm({
             welcomeMessage: form.welcomeMessage,
             showContactButtons: form.showContactButtons,
             showDriveFolder: form.showDriveFolder,
+            actorPageCta: form.actorPageCta,
+            referralProgram: form.referralProgram,
           });
         }}
       >
@@ -419,6 +493,67 @@ function PortalForm({
             }
           />
         </label>
+        <fieldset className="full option-fieldset">
+          <legend>Public actor-page coaching action</legend>
+          <label>
+            Button label
+            <input
+              required
+              maxLength={60}
+              value={form.actorPageCta.label}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  actorPageCta: {
+                    ...form.actorPageCta,
+                    label: event.target.value,
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Destination
+            <input
+              required
+              value={form.actorPageCta.url}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  actorPageCta: {
+                    ...form.actorPageCta,
+                    url: event.target.value,
+                  },
+                })
+              }
+              placeholder="/book or https://…"
+            />
+          </label>
+        </fieldset>
+        <fieldset className="full option-fieldset">
+          <legend>Referral offer</legend>
+          <label className="full">
+            Referred-person benefit
+            <input
+              maxLength={200}
+              value={form.referralProgram.referredPersonBenefit || ""}
+              onChange={(event) =>
+                setForm({
+                  ...form,
+                  referralProgram: {
+                    ...form.referralProgram,
+                    referredPersonBenefit: event.target.value || undefined,
+                  },
+                })
+              }
+              placeholder="Leave blank when only the referring student earns a reward"
+            />
+            <small>
+              Student and public referral copy omits this benefit when it is not
+              configured. Existing reward amounts remain authoritative.
+            </small>
+          </label>
+        </fieldset>
         <div className="settings-list full">
           <Toggle
             title="Contact coach buttons"
@@ -623,27 +758,60 @@ function EmailAutomationForm({
         </label>
         <label>
           Reschedule subject
-          <input value={form.rescheduleSubject} onChange={(event) => setForm({ ...form, rescheduleSubject: event.target.value })} />
+          <input
+            value={form.rescheduleSubject}
+            onChange={(event) =>
+              setForm({ ...form, rescheduleSubject: event.target.value })
+            }
+          />
         </label>
         <label className="full">
           Reschedule body
-          <textarea rows={4} value={form.rescheduleBody} onChange={(event) => setForm({ ...form, rescheduleBody: event.target.value })} />
+          <textarea
+            rows={4}
+            value={form.rescheduleBody}
+            onChange={(event) =>
+              setForm({ ...form, rescheduleBody: event.target.value })
+            }
+          />
         </label>
         <label>
           Cancellation subject
-          <input value={form.cancellationSubject} onChange={(event) => setForm({ ...form, cancellationSubject: event.target.value })} />
+          <input
+            value={form.cancellationSubject}
+            onChange={(event) =>
+              setForm({ ...form, cancellationSubject: event.target.value })
+            }
+          />
         </label>
         <label className="full">
           Cancellation body
-          <textarea rows={4} value={form.cancellationBody} onChange={(event) => setForm({ ...form, cancellationBody: event.target.value })} />
+          <textarea
+            rows={4}
+            value={form.cancellationBody}
+            onChange={(event) =>
+              setForm({ ...form, cancellationBody: event.target.value })
+            }
+          />
         </label>
         <label>
           Package-expiry subject
-          <input value={form.packageExpirySubject} onChange={(event) => setForm({ ...form, packageExpirySubject: event.target.value })} />
+          <input
+            value={form.packageExpirySubject}
+            onChange={(event) =>
+              setForm({ ...form, packageExpirySubject: event.target.value })
+            }
+          />
         </label>
         <label className="full">
           Package-expiry body
-          <textarea rows={4} value={form.packageExpiryBody} onChange={(event) => setForm({ ...form, packageExpiryBody: event.target.value })} />
+          <textarea
+            rows={4}
+            value={form.packageExpiryBody}
+            onChange={(event) =>
+              setForm({ ...form, packageExpiryBody: event.target.value })
+            }
+          />
         </label>
         <label>
           Failed-payment subject
@@ -834,7 +1002,10 @@ function DataPanel({
   const [cleaning, setCleaning] = useState(false);
   const failed = data.outbox.filter((item) => item.status === "failed");
   const cleanupCount = storage
-    ? Object.values(storage.cleanupCandidates).reduce((total, value) => total + value, 0)
+    ? Object.values(storage.cleanupCandidates).reduce(
+        (total, value) => total + value,
+        0,
+      )
     : 0;
   const formatBytes = (bytes: number) => {
     if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
@@ -846,7 +1017,11 @@ function DataPanel({
       setStorageError("");
       setStorage(await loadStorageHealth());
     } catch (reason) {
-      setStorageError(reason instanceof Error ? reason.message : "Storage information could not be loaded.");
+      setStorageError(
+        reason instanceof Error
+          ? reason.message
+          : "Storage information could not be loaded.",
+      );
     }
   };
   useEffect(() => {
@@ -869,7 +1044,7 @@ function DataPanel({
         expectedVersion: 0,
         reason: "Coach retried failed email delivery",
       });
-    await queryClient.invalidateQueries({ queryKey: ["studio"] });
+    await invalidateStudioDomains(queryClient, ["messaging"]);
     onNotice(
       `${failed.length} failed message${failed.length === 1 ? "" : "s"} queued again.`,
     );
@@ -894,9 +1069,15 @@ function DataPanel({
         reason: "Coach ran safe transient-data cleanup",
       });
       await refreshStorage();
-      onNotice("Safe cleanup finished. Student, lesson, note, payment, credit, and file records were preserved.");
+      onNotice(
+        "Safe cleanup finished. Student, lesson, note, payment, credit, and file records were preserved.",
+      );
     } catch (reason) {
-      onNotice(reason instanceof Error ? reason.message : "Safe cleanup could not be completed.");
+      onNotice(
+        reason instanceof Error
+          ? reason.message
+          : "Safe cleanup could not be completed.",
+      );
     } finally {
       setCleaning(false);
     }
@@ -913,8 +1094,7 @@ function DataPanel({
                 : "Saved securely in the studio database"}
             </strong>
             <small>
-              {data.students.length} people · {data.lessons.length} lessons ·{" "}
-              {data.materials.length} materials.{" "}
+              {studioRecoverySummary(data)}{" "}
               {isDemo
                 ? "Refreshing resets sample changes."
                 : "Authorized users see the same current records on every device."}
@@ -926,18 +1106,32 @@ function DataPanel({
           <div className="storage-health-grid">
             <article>
               <small>Database</small>
-              <strong>{storage ? formatBytes(storage.databaseBytes) : "Measuring…"}</strong>
-              <span>Includes Supabase’s system tables and indexes, not just studio records.</span>
+              <strong>
+                {storage ? formatBytes(storage.databaseBytes) : "Measuring…"}
+              </strong>
+              <span>
+                Includes Supabase’s system tables and indexes, not just studio
+                records.
+              </span>
             </article>
             <article>
               <small>Uploaded files</small>
-              <strong>{storage ? formatBytes(storage.storageBytes) : "Measuring…"}</strong>
-              <span>{storage?.storageObjects ?? 0} stored objects. Active files are never auto-deleted.</span>
+              <strong>
+                {storage ? formatBytes(storage.storageBytes) : "Measuring…"}
+              </strong>
+              <span>
+                {storage?.storageObjects ?? 0} stored objects. Active files are
+                never auto-deleted.
+              </span>
             </article>
             <article>
               <small>Safe cleanup</small>
-              <strong>{storage ? `${cleanupCount} eligible records` : "Measuring…"}</strong>
-              <span>Only expired or reconstructable operational records qualify.</span>
+              <strong>
+                {storage ? `${cleanupCount} eligible records` : "Measuring…"}
+              </strong>
+              <span>
+                Only expired or reconstructable operational records qualify.
+              </span>
             </article>
           </div>
         )}
@@ -948,11 +1142,11 @@ function DataPanel({
             <div>
               <strong>Studio history is protected</strong>
               <small>
-                Students, lessons, notes, practice, payments, credits, actor profiles,
-                audit history, and current materials are retained. Automated cleanup
-                targets expired booking holds and rate limits, old processed webhook
-                receipts, successful delivery attempts, resolved alerts, and bulky old
-                provider-import payloads.
+                Students, lessons, notes, practice, payments, credits, actor
+                profiles, audit history, and current materials are retained.
+                Automated cleanup targets expired booking holds and rate limits,
+                old processed webhook receipts, successful delivery attempts,
+                resolved alerts, and bulky old provider-import payloads.
               </small>
             </div>
           </div>
@@ -980,9 +1174,16 @@ function DataPanel({
             </button>
           )}
           {!isDemo && (
-            <button disabled={cleaning || !cleanupCount} onClick={() => void cleanup()}>
+            <button
+              disabled={cleaning || !cleanupCount}
+              onClick={() => void cleanup()}
+            >
               <RefreshCw />
-              {cleaning ? "Cleaning safely…" : cleanupCount ? `Clean ${cleanupCount} transient records` : "Nothing safe to clean"}
+              {cleaning
+                ? "Cleaning safely…"
+                : cleanupCount
+                  ? `Clean ${cleanupCount} transient records`
+                  : "Nothing safe to clean"}
             </button>
           )}
         </div>

@@ -20,45 +20,33 @@ body {
   background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 87%), transparent 24rem), var(--app-canvas);
 }
 
-.app-shell-main,
-.student-shell-main { background: transparent; }
+.app-shell-main, .student-shell-main { background: transparent; }
 
-.sidebar,
-.student-shell > aside,
-.main,
-.student-shell > main { transition: width 180ms ease, margin-left 180ms ease; }
+.sidebar, .student-shell > aside, .main, .student-shell > main { transition: width 180ms ease, margin-left 180ms ease; }
 .shell-brand { gap: 9px; }
 .shell-mark { width: 30px; height: 30px; flex: 0 0 30px; border: 1px solid #ffffff42; border-radius: 8px; display: grid; place-items: center; font: 700 10px Oswald, sans-serif; letter-spacing: .04em; }
 .sidebar-collapse { width: 38px; height: 38px; min-height: 38px; margin-left: auto; padding: 0; border: 1px solid #ffffff24; color: #eaf0ed; display: grid; place-items: center; }
 .sidebar-collapse:hover { background: #ffffff14; }
 .sidebar-collapse svg { width: 18px; }
-.app-shell.sidebar-collapsed .sidebar,
-.student-shell.sidebar-collapsed > aside { width: 78px; padding-inline: 12px; }
-.app-shell.sidebar-collapsed .main,
-.student-shell.sidebar-collapsed > main { width: calc(100% - 78px); margin-left: 78px; }
+.app-shell.sidebar-collapsed .sidebar, .student-shell.sidebar-collapsed > aside { width: 78px; padding-inline: 12px; }
+.app-shell.sidebar-collapsed .main, .student-shell.sidebar-collapsed > main { width: calc(100% - 78px); margin-left: 78px; }
 .sidebar-collapsed .shell-brand { justify-content: center; flex-wrap: wrap; }
 .sidebar-collapsed .shell-brand .wordmark { display: none; }
 .sidebar-collapsed .shell-brand img { width: 38px; height: 38px; }
 .sidebar-collapsed .sidebar-collapse { margin: 4px 0 0; }
-.sidebar-collapsed .sidebar nav,
-.sidebar-collapsed.student-shell > aside nav { margin-top: 22px; }
-.sidebar-collapsed .sidebar nav a,
-.sidebar-collapsed.student-shell > aside nav a { justify-content: center; padding-inline: 0; }
-.sidebar-collapsed .sidebar nav a span,
-.sidebar-collapsed.student-shell > aside nav a span,
-.sidebar-collapsed .identity > div { display: none; }
+.sidebar-collapsed .sidebar nav, .sidebar-collapsed.student-shell > aside nav { margin-top: 22px; }
+.sidebar-collapsed .sidebar nav a, .sidebar-collapsed.student-shell > aside nav a { justify-content: center; padding-inline: 0; }
+.sidebar-collapsed .sidebar nav a span, .sidebar-collapsed.student-shell > aside nav a span, .sidebar-collapsed .identity > div { display: none; }
 .sidebar-collapsed .identity { padding: 8px; justify-content: center; }
 .sidebar-collapsed .identity > span { flex: 0 0 40px; width: 40px; height: 40px; }
 
-.page,
-.student-page {
+.page, .student-page {
   width: min(100%, 1240px);
   margin-inline: auto;
   padding: clamp(18px, 2.8vw, 36px);
 }
 
-.page-header,
-.student-header {
+.page-header, .student-header {
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -73,8 +61,7 @@ body {
   gap: 18px;
 }
 
-.page-header::after,
-.student-header::after {
+.page-header::after, .student-header::after {
   content: "";
   position: absolute;
   z-index: -1;
@@ -87,72 +74,38 @@ body {
   pointer-events: none;
 }
 
-.page-header > div:first-child,
-.student-header > div:first-child { min-width: 0; }
-.page-header h1,
-.student-header h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.04; letter-spacing: -.035em; }
-.page-header p,
-.student-header p,
-.section-intro { max-width: 760px; color: var(--muted); line-height: 1.55; }
-.page-actions,
-.header-actions,
-.form-actions,
-.student-quick-actions,
-.lesson-primary-actions { gap: 9px; }
+.page-header > div:first-child, .student-header > div:first-child { min-width: 0; }
+.page-header h1, .student-header h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.04; letter-spacing: -.035em; }
+.page-header p, .student-header p, .section-intro { max-width: 760px; color: var(--muted); line-height: 1.55; }
+.workflow-form label.material-upload, .workflow-form label.material-upload > small, .settings-form label.material-upload, .settings-form label.material-upload > small { color: var(--ink); }
+.page-actions, .header-actions, .form-actions, .student-quick-actions, .lesson-primary-actions { gap: 9px; }
 .page-actions { position: relative; z-index: 1; flex-wrap: wrap; justify-content: flex-end; }
 
-.section,
-.disclosure-section,
-.lesson-command-section,
-.settings-card,
-.portal-card,
-.summary-card,
-.metric-card {
+.section, .disclosure-section, .lesson-command-section, .settings-card, .portal-card, .summary-card, .metric-card {
   border: 1px solid var(--app-border);
   border-radius: var(--app-radius-card);
   background: var(--app-surface);
   box-shadow: var(--app-shadow-card);
 }
 
-.page > .section,
-.student-page > .section,
-.portal-priority-stack > .section,
-.lesson-hub-grid > .section,
-.two-section-grid > .section,
-.settings-content > .section { margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
+.page > .section, .student-page > .section, .portal-priority-stack > .section, .lesson-hub-grid > .section, .two-section-grid > .section, .settings-content > .section { margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
 
-.section > header,
-.section-heading,
-.disclosure-section > summary,
-.lesson-command-section > header { gap: 12px; }
-.section > header h2,
-.section-heading h2,
-.disclosure-section > summary strong { letter-spacing: -.015em; }
+.section > header, .section-heading, .disclosure-section > summary, .lesson-command-section > header { gap: 12px; }
+.section > header h2, .section-heading h2, .disclosure-section > summary strong { letter-spacing: -.015em; }
 
 .disclosure-section { margin-top: 12px; overflow: clip; }
 .disclosure-section > summary { min-height: 54px; padding: 13px 16px; background: var(--app-surface-soft); }
 .disclosure-section > :not(summary) { margin-inline: 16px; }
 
-.subnav,
-.record-tabs,
-.settings-nav {
+.subnav, .record-tabs, .settings-nav {
   padding: 5px;
   border: 1px solid var(--app-border);
   border-radius: 14px;
   background: color-mix(in srgb, var(--app-surface), transparent 5%);
   box-shadow: 0 6px 20px #102c2408;
 }
-.subnav button,
-.record-tabs a,
-.record-tabs button,
-.settings-nav button,
-.settings-nav a { min-height: 42px; border-radius: 10px; }
-.subnav button[aria-current="page"],
-.subnav button.active,
-.record-tabs .active,
-.record-tabs [aria-current="page"],
-.settings-nav .active,
-.settings-nav [aria-current="page"] {
+.subnav button, .record-tabs a, .record-tabs button, .settings-nav button, .settings-nav a { min-height: 42px; border-radius: 10px; }
+.subnav button[aria-current="page"], .subnav button.active, .record-tabs .active, .record-tabs [aria-current="page"], .settings-nav .active, .settings-nav [aria-current="page"] {
   border-color: transparent;
   background: var(--forest);
   color: white;
@@ -160,8 +113,7 @@ body {
 }
 
 .settings-layout { gap: var(--app-page-gap); align-items: start; }
-.settings-layout > aside,
-.settings-sidebar {
+.settings-layout > aside, .settings-sidebar {
   position: sticky;
   top: 18px;
   padding: 12px;
@@ -172,17 +124,8 @@ body {
 }
 .settings-content { min-width: 0; }
 
-.table-list,
-.workflow-list,
-.student-bookings,
-.portal-list,
-.lesson-note-index { display: grid; gap: 10px; }
-.table-list > article,
-.workflow-list > article,
-.student-bookings > article,
-.portal-row,
-.lesson-note-index > button,
-.booking-table-row {
+.table-list, .workflow-list, .student-bookings, .portal-list, .lesson-note-index { display: grid; gap: 10px; }
+.table-list > article, .workflow-list > article, .student-bookings > article, .portal-row, .lesson-note-index > button, .booking-table-row {
   min-height: 66px;
   padding: 13px 15px;
   border: 1px solid var(--app-border);
@@ -190,63 +133,28 @@ body {
   background: var(--app-surface-soft);
   transition: border-color 160ms ease, background 160ms ease, transform 160ms ease, box-shadow 160ms ease;
 }
-.table-list > article:hover,
-.workflow-list > article:hover,
-.student-bookings > article:hover,
-.portal-row:hover,
-.lesson-note-index > button:hover,
-.booking-table-row:hover {
+.table-list > article:hover, .workflow-list > article:hover, .student-bookings > article:hover, .portal-row:hover, .lesson-note-index > button:hover, .booking-table-row:hover {
   border-color: var(--app-border-strong);
   background: var(--app-surface);
   box-shadow: 0 9px 24px #102c240c;
 }
-.table-list > article:focus-within,
-.workflow-list > article:focus-within,
-.student-bookings > article:focus-within,
-.portal-row:focus-within,
-.booking-table-row:focus-within { border-color: var(--sage); }
+.table-list > article:focus-within, .workflow-list > article:focus-within, .student-bookings > article:focus-within, .portal-row:focus-within, .booking-table-row:focus-within { border-color: var(--sage); }
 
 .activity-menu > header { gap: 10px; }
 .activity-menu > header > span { display: flex; align-items: center; gap: 3px; }
 .activity-clear { min-height: 38px; padding: 0 8px; color: var(--sage); font-size: 11px; font-weight: 800; }
 
-button,
-.button-link,
-.booking-primary,
-input,
-select,
-textarea,
-[contenteditable="true"] { border-radius: var(--app-radius-control); }
-button,
-.button-link,
-.booking-primary { transition: transform 120ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease; }
-button:not(:disabled):active,
-.button-link:active,
-.booking-primary:active { transform: translateY(1px); }
-button:focus-visible,
-.button-link:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-[contenteditable="true"]:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
-input,
-select,
-textarea,
-[contenteditable="true"] { border-color: var(--app-border-strong); background: white; }
-input:hover,
-select:hover,
-textarea:hover,
-[contenteditable="true"]:hover { border-color: color-mix(in srgb, var(--sage), var(--forest) 22%); }
+button, .button-link, .booking-primary, input, select, textarea, [contenteditable="true"] { border-radius: var(--app-radius-control); }
+button, .button-link, .booking-primary { transition: transform 120ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease; }
+button:not(:disabled):active, .button-link:active, .booking-primary:active { transform: translateY(1px); }
+button:focus-visible, .button-link:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [contenteditable="true"]:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
+input, select, textarea, [contenteditable="true"] { border-color: var(--app-border-strong); background: white; }
+input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { border-color: color-mix(in srgb, var(--sage), var(--forest) 22%); }
 
-.inline-notice,
-.portal-notice,
-.inline-error,
-.empty-state { border-radius: 14px; }
+.inline-notice, .portal-notice, .inline-error, .empty-state { border-radius: 14px; }
 .empty-state { min-height: 132px; padding: 24px; border: 1px dashed var(--app-border-strong); background: var(--app-surface-soft); }
 
-.command-dialog,
-.workflow-dialog {
+.command-dialog, .workflow-dialog {
   width: min(94vw, 760px);
   max-height: min(88dvh, 920px);
   padding: 0;
@@ -255,11 +163,8 @@ textarea:hover,
   background: var(--app-surface);
   box-shadow: var(--app-shadow-float);
 }
-.command-dialog::backdrop,
-.workflow-dialog::backdrop { background: color-mix(in srgb, var(--forest), transparent 38%); backdrop-filter: blur(4px); }
-.command-dialog > header,
-.workflow-dialog > header,
-.dialog-header {
+.command-dialog::backdrop, .workflow-dialog::backdrop { background: color-mix(in srgb, var(--forest), transparent 38%); backdrop-filter: blur(4px); }
+.command-dialog > header, .workflow-dialog > header, .dialog-header {
   position: sticky;
   z-index: 3;
   top: 0;
@@ -268,23 +173,11 @@ textarea:hover,
   background: color-mix(in srgb, var(--app-surface), transparent 4%);
   backdrop-filter: blur(12px);
 }
-.command-dialog > form,
-.workflow-dialog > form,
-.command-dialog > .dialog-body,
-.workflow-dialog > .dialog-body { padding: var(--app-card-pad); }
+.command-dialog > form, .workflow-dialog > form, .command-dialog > .dialog-body, .workflow-dialog > .dialog-body { padding: var(--app-card-pad); }
 
-.booking-public,
-.legal-page { background-color: var(--app-canvas); }
-.booking-topbar,
-.login-card,
-.booking-flow,
-.booking-confirmation,
-.manage-page > section,
-.legal-page article { border-color: var(--app-border); box-shadow: var(--app-shadow-card); }
-.booking-step,
-.booking-summary,
-.login-card,
-.booking-confirmation { border-radius: var(--app-radius-panel); }
+.booking-public, .legal-page { background-color: var(--app-canvas); }
+.booking-topbar, .login-card, .booking-flow, .booking-confirmation, .manage-page > section, .legal-page article { border-color: var(--app-border); box-shadow: var(--app-shadow-card); }
+.booking-step, .booking-summary, .login-card, .booking-confirmation { border-radius: var(--app-radius-panel); }
 .login-choice.google-choice {
   grid-template-columns: 34px minmax(0, 1fr) auto;
   align-items: center;
@@ -315,9 +208,6 @@ textarea:hover,
   padding: 0 13px;
   white-space: nowrap;
 }
-.actor-public-section,
-.actor-public-hero,
-.actor-footer { border-radius: var(--app-radius-card); }
 
 .offering-actions { display: flex; align-items: center; justify-content: flex-end; gap: 7px; }
 .offering-actions button { min-height: 38px; padding: 0 10px; border: 1px solid var(--app-border); border-radius: 9px; font-size: 10px; font-weight: 800; }
@@ -334,8 +224,7 @@ textarea:hover,
 .class-content-grid > .section { min-width: 0; margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
 .class-assignment-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 0; }
 .class-assignment-form label { min-width: 0; display: grid; gap: 5px; color: var(--muted); font-size: 10px; font-weight: 800; }
-.class-assignment-form input,
-.class-assignment-form textarea { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid var(--app-border-strong); }
+.class-assignment-form input, .class-assignment-form textarea { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid var(--app-border-strong); }
 .class-assignment-form textarea { min-height: 100px; resize: vertical; }
 .class-assignment-form .full { grid-column: 1 / -1; }
 
@@ -348,13 +237,11 @@ textarea:hover,
 .inbox-filters button { min-width: 0; min-height: 32px; padding: 0 5px; border-radius: 8px; color: var(--muted); font-size: 9px; font-weight: 800; text-transform: capitalize; }
 .inbox-filters button.active { background: var(--app-surface); color: var(--ink); box-shadow: 0 2px 8px #102c2410; }
 .inbox-threads > button { width: 100%; min-width: 0; min-height: 58px; padding: 9px; border: 1px solid transparent; border-radius: 12px; background: transparent; display: grid; grid-template-columns: 36px minmax(0, 1fr); align-items: center; gap: 9px; text-align: left; }
-.inbox-threads > button:hover,
-.inbox-threads > button.active { border-color: var(--app-border); background: var(--app-surface); box-shadow: 0 5px 16px rgba(14, 49, 40, .06); }
+.inbox-threads > button:hover, .inbox-threads > button.active { border-color: var(--app-border); background: var(--app-surface); box-shadow: 0 5px 16px rgba(14, 49, 40, .06); }
 .inbox-threads > button > span { width: 36px; height: 36px; border-radius: 10px; background: color-mix(in srgb, var(--sage), white 84%); color: var(--sage); display: grid; place-items: center; }
 .inbox-threads svg { width: 17px; }
 .inbox-threads button div { min-width: 0; display: grid; gap: 2px; }
-.inbox-threads button strong,
-.inbox-threads button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.inbox-threads button strong, .inbox-threads button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .inbox-threads button small { color: var(--muted); font-size: 10px; }
 .inbox-threads > button.unread strong { display: flex; align-items: center; gap: 6px; }
 .inbox-threads > button.unread strong i { width: 7px; height: 7px; flex: 0 0 7px; border-radius: 50%; background: var(--coral); }
@@ -367,8 +254,7 @@ textarea:hover,
 .inbox-messages { min-height: 260px; max-height: 56vh; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 10px; }
 .inbox-messages > article { width: fit-content; max-width: min(78%, 620px); padding: 10px 13px; border: 1px solid var(--app-border); border-radius: 15px 15px 15px 4px; background: var(--app-surface-soft); }
 .inbox-messages > article.mine { align-self: flex-end; border-color: color-mix(in srgb, var(--sage), white 60%); border-radius: 15px 15px 4px; background: color-mix(in srgb, var(--sage), white 89%); }
-.inbox-messages article small,
-.inbox-messages article time { display: block; color: var(--muted); font-size: 9px; }
+.inbox-messages article small, .inbox-messages article time { display: block; color: var(--muted); font-size: 9px; }
 .inbox-messages article p { margin: 5px 0; line-height: 1.55; white-space: pre-wrap; overflow-wrap: break-word; }
 .inbox-composer { padding: 14px; border-top: 1px solid var(--app-border); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px; }
 .inbox-composer label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
@@ -392,22 +278,16 @@ textarea:hover,
 .recipient-picker > div { max-height: 50vh; margin-top: 10px; overflow-y: auto; }
 .recipient-picker > div > button { width: 100%; min-height: 58px; padding: 9px 6px; border-bottom: 1px solid var(--app-border); display: flex; align-items: center; gap: 10px; text-align: left; }
 .recipient-picker > div > button > span { min-width: 0; flex: 1; display: grid; gap: 3px; }
-.recipient-picker > div > button strong,.recipient-picker > div > button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recipient-picker > div > button strong, .recipient-picker > div > button small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recipient-picker > div > button small { color: var(--muted); font-size: 10px; }
 .recipient-picker > div > button svg { width: 17px; color: var(--sage); }
 
 @media (max-width: 900px) {
-  .page,
-  .student-page { padding: 20px; }
+  .page, .student-page { padding: 20px; }
   .settings-layout { grid-template-columns: 1fr; }
-  .settings-layout > aside,
-  .settings-sidebar { position: static; }
-  .settings-nav,
-  .subnav,
-  .record-tabs { display: flex; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
-  .settings-nav > *,
-  .subnav > *,
-  .record-tabs > * { flex: 0 0 auto; }
+  .settings-layout > aside, .settings-sidebar { position: static; }
+  .settings-nav, .subnav, .record-tabs { display: flex; max-width: 100%; overflow-x: auto; overscroll-behavior-inline: contain; scrollbar-width: thin; }
+  .settings-nav > *, .subnav > *, .record-tabs > * { flex: 0 0 auto; }
   .class-content-grid { grid-template-columns: 1fr; }
   .inbox-layout { grid-template-columns: 220px minmax(0, 1fr); }
 }
@@ -417,46 +297,18 @@ textarea:hover,
   /* Legacy mobile CSS positioned every primary button at the page corner,
      which pulled row and dialog actions out of their actual workflow. */
   .primary-button { position: static; inset: auto; }
-  .app-shell.sidebar-collapsed .main,
-  .student-shell.sidebar-collapsed > main { width: 100%; margin-left: 0; }
-  .page,
-  .student-page { width: 100%; padding: 14px 12px calc(86px + env(safe-area-inset-bottom)); overflow-x: clip; }
-  .page-header,
-  .student-header { min-height: 0; padding: 20px 17px; border-radius: 18px; align-items: flex-start; }
-  .page-header h1,
-  .student-header h1 { font-size: clamp(28px, 9vw, 38px); }
-  .page-actions,
-  .header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; justify-content: stretch; }
-  .page-actions > *,
-  .header-actions > * { min-width: 0; min-height: 44px; justify-content: center; white-space: normal; text-align: center; }
-  .page > .section,
-  .student-page > .section,
-  .portal-priority-stack > .section,
-  .lesson-hub-grid > .section,
-  .two-section-grid > .section,
-  .settings-content > .section { padding: 16px 14px; border-radius: 15px; }
-  .table-list > article,
-  .workflow-list > article,
-  .student-bookings > article,
-  .portal-row,
-  .lesson-note-index > button,
-  .booking-table-row { padding: 12px; }
-  .form-actions,
-  .student-booking-actions,
-  .lesson-primary-actions { width: 100%; }
-  .form-actions > button,
-  .form-actions > .button-link,
-  .student-booking-actions > button,
-  .student-booking-actions > .button-link,
-  .lesson-primary-actions > button,
-  .lesson-primary-actions > .button-link { min-height: 44px; }
-  .command-dialog,
-  .workflow-dialog { width: 100vw; max-width: none; max-height: calc(94dvh - env(safe-area-inset-top)); margin: auto 0 0; border-radius: 22px 22px 0 0; }
-  .booking-flow,
-  .booking-step,
-  .booking-summary,
-  .login-card,
-  .booking-confirmation { border-radius: 18px; }
+  .app-shell.sidebar-collapsed .main, .student-shell.sidebar-collapsed > main { width: 100%; margin-left: 0; }
+  .page, .student-page { width: 100%; padding: 14px 12px calc(86px + env(safe-area-inset-bottom)); overflow-x: clip; }
+  .page-header, .student-header { min-height: 0; padding: 20px 17px; border-radius: 18px; align-items: flex-start; }
+  .page-header h1, .student-header h1 { font-size: clamp(28px, 9vw, 38px); }
+  .page-actions, .header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; justify-content: stretch; }
+  .page-actions > *, .header-actions > * { min-width: 0; min-height: 44px; justify-content: center; white-space: normal; text-align: center; }
+  .page > .section, .student-page > .section, .portal-priority-stack > .section, .lesson-hub-grid > .section, .two-section-grid > .section, .settings-content > .section { padding: 16px 14px; border-radius: 15px; }
+  .table-list > article, .workflow-list > article, .student-bookings > article, .portal-row, .lesson-note-index > button, .booking-table-row { padding: 12px; }
+  .form-actions, .student-booking-actions, .lesson-primary-actions { width: 100%; }
+  .form-actions > button, .form-actions > .button-link, .student-booking-actions > button, .student-booking-actions > .button-link, .lesson-primary-actions > button, .lesson-primary-actions > .button-link { min-height: 44px; }
+  .command-dialog, .workflow-dialog { width: 100vw; max-width: none; max-height: calc(94dvh - env(safe-area-inset-top)); margin: auto 0 0; border-radius: 22px 22px 0 0; }
+  .booking-flow, .booking-step, .booking-summary, .login-card, .booking-confirmation { border-radius: 18px; }
   .login-card { width: calc(100vw - 24px); max-width: 420px; min-width: 0; }
   .login-choice.google-choice { grid-template-columns: 32px minmax(0, 1fr) auto; gap: 8px; padding: 10px; }
   .google-choice > .google-mark { width: 32px; height: 32px; }
@@ -468,10 +320,10 @@ textarea:hover,
   .offering-grid > article { grid-template-columns: 52px minmax(0, 1fr); align-items: start; }
   .offering-actions { grid-column: 1 / -1; width: 100%; }
   .offering-actions button { flex: 1 1 0; min-height: 44px; }
-  .inbox-layout { min-height: calc(100dvh - 210px); display: block; overflow: visible; }
-  .inbox-threads { min-height: calc(100dvh - 210px); border-right: 0; }
+  .inbox-layout { min-height: max(360px, calc(100dvh - 310px)); display: block; overflow: visible; }
+  .inbox-threads { min-height: max(360px, calc(100dvh - 310px)); border-right: 0; }
   .inbox-layout.has-selection .inbox-threads { display: none; }
-  .inbox-conversation { min-height: calc(100dvh - 210px); }
+  .inbox-conversation { min-height: max(360px, calc(100dvh - 310px)); }
   .inbox-layout:not(.has-selection) .inbox-conversation { display: none; }
   .inbox-back { display: grid; }
   .inbox-messages { max-height: none; padding: 14px 11px; }
@@ -480,39 +332,16 @@ textarea:hover,
   .inbox-composer button { min-height: 46px; }
   .undo-send { right: 10px; bottom: calc(76px + env(safe-area-inset-bottom)); left: 10px; min-width: 0; }
   .portal-row > button { padding-inline: 12px; font-size: 11px; justify-content: space-between; }
-  .student-record-identity > .status,
-  .student-roster-row .status { display: inline-flex; }
+  .student-record-identity > .status, .student-roster-row .status { display: inline-flex; }
 
   /* Mobile copy must wrap naturally. Older compact rules could squeeze words
      into narrow columns and visually stretch their letter spacing. */
   .section > header { align-items: flex-start; flex-wrap: wrap; }
   .section > header h2 { flex: 1 1 180px; min-width: 0; text-wrap: balance; }
   .section > header .header-actions { flex: 0 1 auto; }
-  .table-list > article > div,
-  .workflow-list > article > div,
-  .portal-row > div,
-  .material-library-copy { min-width: 0 !important; }
-  .table-list strong,
-  .table-list small,
-  .workflow-list strong,
-  .workflow-list small,
-  .portal-row strong,
-  .portal-row small,
-  .material-library-copy strong,
-  .material-library-copy small,
-  .lesson-command-summary span,
-  .status,
-  .eyebrow { white-space: normal !important; overflow-wrap: break-word; word-break: normal; letter-spacing: normal; text-align: left; }
-  .material-library-state { justify-content: flex-start; }
-  .material-primary-actions { padding-left: 0; }
-  .page-header h1,
-  .student-header h1,
-  .section h2,
-  .section-intro,
-  .empty-state strong,
-  .empty-state small,
-  .setting-toggle strong,
-  .setting-toggle small {
+  .table-list > article > div, .workflow-list > article > div, .portal-row > div { min-width: 0 !important; }
+  .table-list strong, .table-list small, .workflow-list strong, .workflow-list small, .portal-row strong, .portal-row small, .lesson-command-summary span, .status, .eyebrow { white-space: normal !important; overflow-wrap: break-word; word-break: normal; letter-spacing: normal; text-align: left; }
+  .page-header h1, .student-header h1, .section h2, .section-intro, .empty-state strong, .empty-state small, .setting-toggle strong, .setting-toggle small {
     overflow-wrap: break-word !important;
     word-break: normal !important;
     hyphens: none;
@@ -549,9 +378,7 @@ textarea:hover,
     grid-column: 1;
     width: 100%;
   }
-  .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > .status,
-  .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > button,
-  .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > a {
+  .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > .status, .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > button, .table-list > article:not(.assignment-card):not(.current-script-card):not(.today-lesson-row) > a {
     grid-column: 1 / -1;
     justify-self: stretch;
     width: 100%;
@@ -572,8 +399,7 @@ textarea:hover,
   }
   .portal-row > svg { grid-column: 1; grid-row: 1; }
   .portal-row > div { grid-column: 2; grid-row: 1; width: 100%; }
-  .portal-row > button,
-  .portal-row > a { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+  .portal-row > button, .portal-row > a { grid-column: 1 / -1; width: 100%; min-height: 44px; }
   .student-bookings > article {
     grid-template-columns: 48px minmax(0, 1fr) !important;
     align-items: start;
@@ -582,24 +408,15 @@ textarea:hover,
 }
 
 @media (max-width: 430px) {
-  .page-actions,
-  .header-actions,
-  .student-quick-actions,
-  .lesson-primary-actions,
-  .lesson-admin-disclosure > .form-actions { grid-template-columns: minmax(0, 1fr); }
-  .student-quick-actions > *,
-  .lesson-primary-actions > * { width: 100%; max-width: 100%; }
+  .page-actions, .header-actions, .student-quick-actions, .lesson-primary-actions, .lesson-admin-disclosure > .form-actions { grid-template-columns: minmax(0, 1fr); }
+  .student-quick-actions > *, .lesson-primary-actions > * { width: 100%; max-width: 100%; }
   .creative-welcome > div { min-width: 0; max-width: 100%; }
-  .creative-welcome h1,
-  .creative-welcome p { max-width: 100%; overflow-wrap: break-word; }
-  .page-header::after,
-  .student-header::after { right: -45px; }
+  .creative-welcome h1, .creative-welcome p { max-width: 100%; overflow-wrap: break-word; }
+  .page-header::after, .student-header::after { right: -45px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 
 /* Account-level portal appearance. Public and coach pages keep the studio's
@@ -617,25 +434,8 @@ textarea:hover,
   --app-border: #34463f;
   --app-border-strong: #52675e;
 }
+:root[data-portal-theme="dark"] .status.neutral { color: var(--muted); }
 :root[data-portal-theme="dark"] body { background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 90%), transparent 24rem), var(--app-canvas); color: var(--ink); }
-:root[data-portal-theme="dark"] .student-shell main,
-:root[data-portal-theme="dark"] .student-page,
-:root[data-portal-theme="dark"] .section,
-:root[data-portal-theme="dark"] .record-card,
-:root[data-portal-theme="dark"] .table-list > article,
-:root[data-portal-theme="dark"] .portal-row,
-:root[data-portal-theme="dark"] .assignment-card,
-:root[data-portal-theme="dark"] .current-script-card,
-:root[data-portal-theme="dark"] .settings-form input,
-:root[data-portal-theme="dark"] .settings-form select,
-:root[data-portal-theme="dark"] .settings-form textarea,
-:root[data-portal-theme="dark"] .workflow-form input,
-:root[data-portal-theme="dark"] .workflow-form select,
-:root[data-portal-theme="dark"] .workflow-form textarea,
-:root[data-portal-theme="dark"] .setting-toggle,
-:root[data-portal-theme="dark"] .workflow-dialog,
-:root[data-portal-theme="dark"] .inbox-conversation,
-:root[data-portal-theme="dark"] .inbox-composer textarea { background-color: var(--app-surface); color: var(--ink); border-color: var(--app-border); }
-:root[data-portal-theme="dark"] .page-header,
-:root[data-portal-theme="dark"] .student-header { background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 76%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), var(--app-surface-soft)); }
+:root[data-portal-theme="dark"] .student-shell main, :root[data-portal-theme="dark"] .student-page, :root[data-portal-theme="dark"] .section, :root[data-portal-theme="dark"] .record-card, :root[data-portal-theme="dark"] .table-list > article, :root[data-portal-theme="dark"] .portal-row, :root[data-portal-theme="dark"] .assignment-card, :root[data-portal-theme="dark"] .current-script-card, :root[data-portal-theme="dark"] .settings-form input, :root[data-portal-theme="dark"] .settings-form select, :root[data-portal-theme="dark"] .settings-form textarea, :root[data-portal-theme="dark"] .workflow-form input, :root[data-portal-theme="dark"] .workflow-form select, :root[data-portal-theme="dark"] .workflow-form textarea, :root[data-portal-theme="dark"] .setting-toggle, :root[data-portal-theme="dark"] .workflow-dialog, :root[data-portal-theme="dark"] .inbox-conversation, :root[data-portal-theme="dark"] .inbox-composer textarea { background-color: var(--app-surface); color: var(--ink); border-color: var(--app-border); }
+:root[data-portal-theme="dark"] .page-header, :root[data-portal-theme="dark"] .student-header { background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 76%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), var(--app-surface-soft)); }
 .disabled-row { opacity: .72; }

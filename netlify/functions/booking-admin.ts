@@ -2,6 +2,7 @@ import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { createHash, randomBytes } from "node:crypto";
 import { apiError, correlationId, json } from "./_shared/http";
+import { bookingAdminCommandSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { queueBookingEmails } from "./_shared/booking-email";
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
@@ -51,14 +52,7 @@ export default async (request: Request, context: Context) => {
         },
         405,
       );
-    const body = (await request.json()) as {
-      command?: string;
-      id?: string;
-      expectedVersion?: number;
-      payload?: Record<string, any>;
-    };
-    if (!body.command)
-      throw new Error("VALIDATION_FAILED: command is required.");
+    const body = bookingAdminCommandSchema.parse(await request.json());
 
     if (resource === "bookings" && body.command === "check_conflicts" && body.payload) {
       const { data: membership, error: membershipError } = await db.from("memberships").select("studio_id").eq("role", "coach").limit(1).single();
@@ -663,7 +657,7 @@ export default async (request: Request, context: Context) => {
         !Array.isArray(recurrences) ||
         !recurrences.length ||
         !locations.includes(body.payload.default_location) ||
-        (body.payload.payment_policies.includes("deposit") &&
+        (payments.includes("deposit") &&
           Number(body.payload.deposit_minor) <= 0)
       )
         throw new Error(

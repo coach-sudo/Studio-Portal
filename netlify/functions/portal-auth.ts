@@ -2,6 +2,7 @@ import type { Config, Context } from "@netlify/functions";
 import { createClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import { apiError, correlationId, json } from "./_shared/http";
+import { portalLoginSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
 
 const hash = (value: string) =>
@@ -59,14 +60,9 @@ export default async (request: Request, context: Context) => {
         404,
       );
     await rateLimit(request);
-    const body = (await request.json()) as {
-      username?: string;
-      password?: string;
-    };
-    const username = String(body.username || "").trim().toLowerCase();
-    const password = String(body.password || "");
-    if (!/^[a-z][a-z0-9._-]{2,31}$/.test(username) || password.length < 8)
-      throw new Error("FORBIDDEN");
+    const body = portalLoginSchema.parse(await request.json());
+    const username = body.username.toLowerCase();
+    const password = body.password;
     const service = serviceClient();
     const { data: account, error: accountError } = await service
       .from("portal_accounts")

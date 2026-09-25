@@ -1,0 +1,65 @@
+import { openAs } from "./support/auth";
+import { expect, requireFixtures, test } from "./support/fixtures";
+
+test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and menus are keyboard operable", async ({
+  browser,
+  page,
+  runtime,
+}) => {
+  requireFixtures(runtime);
+
+  await page.goto(`/book/${runtime.runId}-free-introduction`);
+  await expect(
+    page.getByRole("heading", { name: `${runtime.runId} Free introduction` }),
+  ).toBeVisible();
+  await page.keyboard.press("Tab");
+  expect(await page.evaluate(() => document.activeElement?.tagName)).not.toBe(
+    "BODY",
+  );
+  const chooseTime = page.getByRole("button", { name: "Choose a time" });
+  await chooseTime.focus();
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "Pick your first session" }),
+  ).toBeVisible();
+
+  const student = await openAs(browser, "student");
+  for (const route of ["inbox", "settings", "payments"]) {
+    await student.page.goto(`/portal/${route}`);
+    await expect(
+      student.page.locator("main").getByRole("heading").first(),
+    ).toBeVisible();
+    await student.page.keyboard.press("Tab");
+    expect(
+      await student.page.evaluate(() => document.activeElement?.tagName),
+    ).not.toBe("BODY");
+  }
+  await student.page.goto("/portal/settings");
+  const timezone = student.page.getByRole("combobox", { name: "Timezone" });
+  await timezone.focus();
+  await timezone.press(process.platform === "darwin" ? "Meta+A" : "Control+A");
+  await timezone.fill("Asia Tokyo");
+  await timezone.press("ArrowDown");
+  await timezone.press("Enter");
+  await expect(timezone).toHaveValue(/Asia\/Tokyo/);
+  await student.page.goto("/portal/work");
+  const opener = student.page.getByRole("button", { name: "Submit material" });
+  await opener.focus();
+  await student.page.keyboard.press("Enter");
+  const dialog = student.page.getByRole("dialog", { name: "Submit material" });
+  await expect(dialog).toBeVisible();
+  await student.page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(opener).toBeFocused();
+
+  const more = student.page.getByRole("button", { name: "More" });
+  if (await more.isVisible()) {
+    await more.focus();
+    await student.page.keyboard.press("Enter");
+    await expect(
+      student.page.getByRole("dialog", { name: "Student portal menu" }),
+    ).toBeVisible();
+    await student.page.keyboard.press("Escape");
+  }
+  await student.context.close();
+});

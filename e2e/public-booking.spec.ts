@@ -1,0 +1,54 @@
+import {
+  expect,
+  expectNoHorizontalOverflow,
+  requireFixtures,
+  test,
+} from "./support/fixtures";
+
+test("@journey Journey 03: desktop booking distinguishes free and varying paid pricing and exposes unavailable dates", async ({
+  page,
+  runtime,
+}, testInfo) => {
+  requireFixtures(runtime);
+  await page.goto(`/book/${runtime.runId}-free-introduction`);
+  await expect(
+    page.getByRole("heading", { name: `${runtime.runId} Free introduction` }),
+  ).toBeVisible();
+  await expect(page.getByText("Free", { exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("free-booking.png") });
+  await page.getByRole("button", { name: "Choose a time" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Pick your first session" }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: /unavailable/i }).first(),
+  ).toBeDisabled();
+  await expect(page.getByRole("button", { name: /Continue/i })).toBeDisabled();
+
+  await page.goto(`/book/${runtime.runId}-paid-coaching`);
+  await expect(page.getByText("$75.00", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: /In person/i }).click();
+  await expect(
+    page.getByText(/includes \$15\.00 in-person upcharge/i),
+  ).toBeVisible();
+});
+
+test("@journey @mobile @mobile-only Journey 04: mobile booking reflows and keeps validation/actions reachable", async ({
+  page,
+  runtime,
+}, testInfo) => {
+  requireFixtures(runtime);
+  await page.goto(`/book/${runtime.runId}-free-introduction`);
+  const chooseTime = page.getByRole("button", { name: "Choose a time" });
+  await expect(chooseTime).toBeVisible();
+  await expectNoHorizontalOverflow(page);
+  await page.screenshot({
+    path: testInfo.outputPath("free-booking-mobile.png"),
+  });
+  await chooseTime.scrollIntoViewIfNeeded();
+  await expect(chooseTime).toBeInViewport();
+  await chooseTime.click();
+  await expect(page.getByRole("button", { name: /Continue/i })).toBeVisible();
+  await expect(page.getByRole("button", { name: /Continue/i })).toBeDisabled();
+  await expectNoHorizontalOverflow(page);
+});

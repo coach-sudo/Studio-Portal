@@ -1,0 +1,17 @@
+.identity-signout {
+  width: 40px;
+  height: 40px;
+  margin-left: auto;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 1px solid currentColor;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+}
+
+.identity-signout svg {
+  width: 17px;
+  height: 17px;
+}

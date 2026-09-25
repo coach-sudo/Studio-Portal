@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { readApiClientError } from "./apiClientError";
 
 export interface CampaignContact {
   email: string;
@@ -39,9 +40,9 @@ async function campaignRequest(
     },
     body: body ? JSON.stringify(body) : undefined,
   });
-  const result = await response.json();
   if (!response.ok)
-    throw new Error(result.message || "Campaign request failed.");
+    throw await readApiClientError(response, "Campaign request failed.");
+  const result = await response.json();
   return result;
 }
 

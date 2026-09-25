@@ -1,7 +1,7 @@
 import { ShieldCheck } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { PageHeader } from "../../components/Primitives";
-import { useStudio } from "../../hooks/useStudio";
+import { useStudioRoute } from "../../hooks/useStudio";
 import { StudioSettings } from "./StudioSettings";
 import { StudentsIndex } from "./StudentsIndex";
 import {
@@ -12,6 +12,7 @@ import {
   NotesView,
   TodayView,
 } from "./StudioOperations";
+import { coachSectionDomains } from "./routeDomains";
 
 const configs: Record<string, { title: string; description: string }> = {
   today: {
@@ -54,7 +55,11 @@ const configs: Record<string, { title: string; description: string }> = {
 export function CoachSection() {
   const { section = "today" } = useParams(),
     config = configs[section] ?? configs.today,
-    { data, isDemo } = useStudio();
+    { data, isDemo } = useStudioRoute(
+      "coach",
+      undefined,
+      coachSectionDomains(section),
+    );
   if (!data)
     return <div className="loading">Loading {config.title.toLowerCase()}…</div>;
   return (

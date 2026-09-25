@@ -21,12 +21,17 @@ const renderApp = (path: string) =>
 const renderGuardian = (path: string) =>
   render(
     <QueryClientProvider
-      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
     >
       <StudioStoreProvider>
         <MemoryRouter initialEntries={[path]}>
           <Routes>
-            <Route path="/portal/*" element={<StudentPortal role="guardian" />} />
+            <Route
+              path="/portal/*"
+              element={<StudentPortal role="guardian" />}
+            />
           </Routes>
         </MemoryRouter>
       </StudioStoreProvider>
@@ -114,8 +119,9 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-liam");
       await user.click(
-        await screen.findByRole("button", { name: "Edit details" }),
+        await screen.findByRole("button", { name: "More actions" }),
       );
+      await user.click(screen.getByRole("button", { name: "Edit details" }));
       const dialog = screen.getByRole("dialog");
       await user.selectOptions(
         within(dialog).getByLabelText("Status"),
@@ -296,35 +302,49 @@ describe("50 start-to-finish studio workflows", () => {
     });
     it("16 keeps Home oriented around the week and one Today action", async () => {
       renderApp("/coach");
-      expect((await screen.findAllByText("Open Today")).length).toBeGreaterThan(0);
+      expect((await screen.findAllByText("Open Today")).length).toBeGreaterThan(
+        0,
+      );
       expect(screen.getByText("Coming up this week")).toBeInTheDocument();
       expect(screen.queryByText("Run today")).not.toBeInTheDocument();
     });
     it("17 keeps Today as the preparation and action queue", async () => {
       renderApp("/coach/today");
       expect(await screen.findByText("Today’s lessons")).toBeInTheDocument();
-      expect(screen.getAllByLabelText(/Preparation for/i).length).toBeGreaterThan(0);
+      expect(
+        screen.getAllByLabelText(/Preparation for/i).length,
+      ).toBeGreaterThan(0);
       expect(screen.getByText("Notes due within 48 hours")).toBeInTheDocument();
     });
     it("18 opens Bookings on the calendar", async () => {
       renderApp("/coach/bookings");
       const calendar = await screen.findByRole("button", { name: "Calendar" });
       expect(calendar).toHaveClass("active");
-      expect(screen.getByRole("button", { name: "Overview" })).not.toHaveClass("active");
+      expect(screen.getByRole("button", { name: "Overview" })).not.toHaveClass(
+        "active",
+      );
     });
     it("19 filters the material index by its role", async () => {
       const user = userEvent.setup();
       renderApp("/coach/materials");
-      const scripts = await screen.findByRole("button", { name: /Current scripts/i });
+      const scripts = await screen.findByRole("button", {
+        name: /Current scripts/i,
+      });
       await user.click(scripts);
       expect(scripts).toHaveAttribute("aria-pressed", "true");
-      expect(screen.getByRole("button", { name: /Actor-page media/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Actor-page media/i }),
+      ).toBeInTheDocument();
     });
     it("20 explains booking limits in plain language", async () => {
       const user = userEvent.setup();
       renderApp("/coach/bookings");
-      await user.click(await screen.findByRole("button", { name: "Booking setup" }));
-      expect(screen.getByLabelText("How far ahead people can book (days)")).toBeInTheDocument();
+      await user.click(
+        await screen.findByRole("button", { name: "Booking setup" }),
+      );
+      expect(
+        screen.getByLabelText("How far ahead people can book (days)"),
+      ).toBeInTheDocument();
       expect(screen.queryByText(/^Booking horizon$/i)).not.toBeInTheDocument();
     });
   });
@@ -352,13 +372,19 @@ describe("50 start-to-finish studio workflows", () => {
     });
     it("18 keeps current work focused on assigned studio work", async () => {
       renderApp("/portal/work");
-      expect(await screen.findByRole("heading", { name: "Current Work" })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Request a reader/i })).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Current Work" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Request a reader/i }),
+      ).not.toBeInTheDocument();
     });
     it("19 completes practice", async () => {
       const user = userEvent.setup();
       renderApp("/portal/work");
-      await user.click(await screen.findByRole("button", { name: "Complete & archive" }));
+      await user.click(
+        await screen.findByRole("button", { name: "Complete & archive" }),
+      );
       expect(
         await screen.findByText("Practice marked complete."),
       ).toBeInTheDocument();
@@ -445,27 +471,38 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("heading", { name: "Payments" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Packages" }),
+        screen.getByRole("heading", { name: "Your packages" }),
       ).toBeInTheDocument();
-      expect(screen.getByText(/Current balance/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Current balance" }),
+      ).toBeInTheDocument();
     });
-    it("26 sees only the three immediate priorities on Home", async () => {
+    it("26 sees one primary action and related workspace actions on Home", async () => {
       renderApp("/portal");
-      expect(await screen.findByRole("heading", { name: "Next lesson" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Current work" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Next practice" })).toBeInTheDocument();
-      expect(screen.queryByRole("heading", { name: "Materials" })).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Up next" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: "Message coach" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("heading", { name: "Materials" }),
+      ).not.toBeInTheDocument();
     });
     it("27 opens a lesson as one connected workspace", async () => {
       const user = userEvent.setup();
       renderApp("/portal/bookings");
-      await user.click((await screen.findAllByRole("link", { name: "Details" }))[0]);
+      await user.click(
+        (await screen.findAllByRole("link", { name: "Details" }))[0],
+      );
       expect(await screen.findByText("Lesson work")).toBeInTheDocument();
       expect(screen.getByText("Administrative details")).toBeInTheDocument();
     });
     it("28 browses published notes by lesson", async () => {
       renderApp("/portal/notes");
-      expect(await screen.findByRole("heading", { name: "Notes" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Notes" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("Lesson notes")).toBeInTheDocument();
       expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
     });
@@ -476,16 +513,25 @@ describe("50 start-to-finish studio workflows", () => {
       expect(screen.queryByText("Compact view")).not.toBeInTheDocument();
       await user.click(screen.getByRole("switch", { name: /Dark mode/i }));
       expect(document.documentElement.dataset.portalTheme).toBe("dark");
-      await user.selectOptions(screen.getByLabelText("Timezone"), "Europe/London");
+      const timezone = screen.getByRole("combobox", { name: "Timezone" });
+      await user.clear(timezone);
+      await user.type(timezone, "Europe London");
+      await user.click(screen.getByRole("option", { name: /Europe\/London/ }));
       await user.click(screen.getByRole("button", { name: /Save settings/i }));
       expect(await screen.findByText(/settings.*saved/i)).toBeInTheDocument();
     });
     it("30 keeps completed practice out of the active queue", async () => {
       const user = userEvent.setup();
       renderApp("/portal/work");
-      await user.click(await screen.findByRole("button", { name: "Complete & archive" }));
-      expect(await screen.findByText("Practice marked complete.")).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Show completed work/i })).toBeInTheDocument();
+      await user.click(
+        await screen.findByRole("button", { name: "Complete & archive" }),
+      );
+      expect(
+        await screen.findByText("Practice marked complete."),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Show completed work/i }),
+      ).toBeInTheDocument();
     });
   });
 
@@ -527,10 +573,14 @@ describe("50 start-to-finish studio workflows", () => {
         "taylor@example.com",
       );
       await user.click(
-        screen.getByRole("checkbox", { name: /create a studio portal profile/i }),
+        screen.getByRole("checkbox", {
+          name: /create a studio portal profile/i,
+        }),
       );
       await user.click(screen.getByRole("button", { name: /Review payment/i }));
-      await user.click(screen.getByRole("checkbox", { name: /terms and conditions/i }));
+      await user.click(
+        screen.getByRole("checkbox", { name: /terms and conditions/i }),
+      );
       await user.click(
         screen.getByRole("button", { name: /Confirm booking/i }),
       );
@@ -571,38 +621,65 @@ describe("50 start-to-finish studio workflows", () => {
     });
     it("31 separates portal and coach sign-in", async () => {
       renderApp("/login");
-      expect(await screen.findByRole("heading", { name: /Student and household sign-in/i })).toBeInTheDocument();
-      expect(screen.queryByRole("button", { name: /Continue with Google/i })).not.toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", {
+          name: /Student and household sign-in/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: /Continue with Google/i }),
+      ).not.toBeInTheDocument();
       expect(screen.getByLabelText("Username")).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: "Coach login" })).toHaveAttribute("href", "/coach/login");
+      expect(screen.getByRole("link", { name: "Coach login" })).toHaveAttribute(
+        "href",
+        "/coach/login",
+      );
     });
     it("keeps Google on the coach sign-in page", async () => {
       renderApp("/coach/login");
-      expect(await screen.findByRole("heading", { name: "Coach sign-in" })).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: "Continue with Google" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Coach sign-in" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Continue with Google" }),
+      ).toBeInTheDocument();
       expect(screen.queryByLabelText("Username")).not.toBeInTheDocument();
     });
     it("32 shows service price, delivery, and policy before availability", async () => {
       renderApp("/book/private-acting-coaching");
-      expect(await screen.findByRole("heading", { name: "Private Acting Coaching" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Private Acting Coaching" }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/self-service reschedule/i)).toBeInTheDocument();
-      expect(screen.getByRole("button", { name: /Choose a time/i })).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: /Choose a time/i }),
+      ).toBeInTheDocument();
     });
     it("33 presents availability as a calendar before time choices", async () => {
       const user = userEvent.setup();
       renderApp("/book/audition-tune-up");
-      await user.click(await screen.findByRole("button", { name: /Google Meet/i }));
+      await user.click(
+        await screen.findByRole("button", { name: /Google Meet/i }),
+      );
       await user.click(screen.getByRole("button", { name: /Choose a time/i }));
-      expect(await screen.findByLabelText("Available dates")).toBeInTheDocument();
+      expect(
+        await screen.findByLabelText("Available dates"),
+      ).toBeInTheDocument();
     });
     it("34 exposes terms from a stable public route", async () => {
       renderApp("/terms");
-      expect(await screen.findByRole("heading", { name: /Terms and Conditions/i })).toBeInTheDocument();
-      expect(screen.getByRole("link", { name: /Return to booking/i })).toHaveAttribute("href", "/book");
+      expect(
+        await screen.findByRole("heading", { name: /Terms and Conditions/i }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("link", { name: /Return to booking/i }),
+      ).toHaveAttribute("href", "/book");
     });
     it("35 preserves the legacy student URL by redirecting to the portal", async () => {
       renderApp("/student/work");
-      expect(await screen.findByRole("heading", { name: "Current Work" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Current Work" }),
+      ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });
   });
@@ -613,16 +690,25 @@ describe("50 start-to-finish studio workflows", () => {
       expect(await screen.findByText(/Guardian for/i)).toBeInTheDocument();
       expect(screen.getByText("Coach'D")).toBeInTheDocument();
       expect(screen.getByText("Dana Patterson")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Next lesson" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Up next" }),
+      ).toBeInTheDocument();
+      expect(screen.getByLabelText("Household context")).toBeInTheDocument();
     });
     it("G2 opens the linked student schedule", async () => {
       renderGuardian("/portal/bookings");
-      expect(await screen.findByRole("heading", { name: "Schedule" })).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Upcoming" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Schedule" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Upcoming" }),
+      ).toBeInTheDocument();
     });
     it("G3 can access guardian-only payment information", async () => {
       renderGuardian("/portal/payments");
-      expect(await screen.findByRole("heading", { name: "Payments" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Payments" }),
+      ).toBeInTheDocument();
       expect(screen.getByText(/Current balance/i)).toBeInTheDocument();
     });
     it("G4 can open the linked actor-page workspace", async () => {
@@ -633,9 +719,13 @@ describe("50 start-to-finish studio workflows", () => {
     });
     it("G5 can manage contact, timezone, and billing settings", async () => {
       renderGuardian("/portal/settings");
-      expect(await screen.findByRole("heading", { name: "Settings" })).toBeInTheDocument();
+      expect(
+        await screen.findByRole("heading", { name: "Settings" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText("Timezone")).toBeInTheDocument();
-      expect(screen.getByRole("heading", { name: "Payment method" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Payment method" }),
+      ).toBeInTheDocument();
     });
   });
 });

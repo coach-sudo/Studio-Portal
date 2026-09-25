@@ -5,6 +5,72 @@ import type { Role, StudioSnapshot } from "../domain/model";
 import { observedTimezone } from "../domain/presentation";
 import { scopeStudioSnapshot } from "../state/StudioStore";
 
+export const studioDomains = [
+  "identity",
+  "students",
+  "lessons",
+  "booking",
+  "work",
+  "finance",
+  "messaging",
+  "actorProfiles",
+  "households",
+  "referrals",
+  "administration",
+] as const;
+
+export type StudioDomain = (typeof studioDomains)[number];
+
+const allStudioDomains = new Set<StudioDomain>(studioDomains);
+const signedUrlCache = new Map<string, { url: string; refreshAfter: number }>();
+
+type QueryResult = { data: any; error: any };
+
+function selectedQuery(
+  enabled: boolean,
+  createQuery: () => any,
+  signal: AbortSignal | undefined,
+  emptyData: any = [],
+): PromiseLike<QueryResult> {
+  if (!enabled) return Promise.resolve({ data: emptyData, error: null });
+  const query = createQuery();
+  return signal ? query.abortSignal(signal) : query;
+}
+
+async function signedUrlsForPaths(database: any, paths: string[]) {
+  const now = Date.now();
+  const urls = new Map<string, string>();
+  const missing: string[] = [];
+  for (const path of [...new Set(paths)]) {
+    const cached = signedUrlCache.get(path);
+    if (cached && cached.refreshAfter > now) urls.set(path, cached.url);
+    else missing.push(path);
+  }
+  if (missing.length) {
+    const { data } = await database.storage
+      .from("studio-materials")
+      .createSignedUrls(missing, 3600);
+    for (const row of data ?? []) {
+      if (!row.path || !row.signedUrl) continue;
+      signedUrlCache.set(row.path, {
+        url: row.signedUrl,
+        refreshAfter: now + 55 * 60_000,
+      });
+      urls.set(row.path, row.signedUrl);
+    }
+  }
+  return urls;
+}
+
+export async function getSignedMaterialUrl(path: string) {
+  if (!supabase)
+    throw new Error("Production database configuration is unavailable.");
+  const urls = await signedUrlsForPaths(supabase, [path]);
+  const url = urls.get(path);
+  if (!url) throw new Error("The material could not be opened.");
+  return url;
+}
+
 export function resolveAccountDisplayName(
   role: Role,
   memberDisplayName?: string,
@@ -14,13 +80,21 @@ export function resolveAccountDisplayName(
   if (role === "guardian")
     return linkedContact?.full_name || memberDisplayName || "Support person";
   if (role === "student")
-    return student?.preferred_name || student?.full_name || memberDisplayName || "Student";
+    return (
+      student?.preferred_name ||
+      student?.full_name ||
+      memberDisplayName ||
+      "Student"
+    );
   return memberDisplayName || "Studio";
 }
 
 export async function loadStudioSnapshot(
   role: Role = "coach",
   studentId?: string,
+  domains: readonly StudioDomain[] = studioDomains,
+  signal?: AbortSignal,
+  signAssetUrls = true,
 ): Promise<StudioSnapshot> {
   if (!isSupabaseConfigured || !supabase) {
     if (isDemoMode)
@@ -31,6 +105,31 @@ export async function loadStudioSnapshot(
       );
     throw new Error("Production database configuration is unavailable.");
   }
+  const database = supabase;
+  const requested =
+    domains === studioDomains ? allStudioDomains : new Set(domains);
+  const wants = (...names: StudioDomain[]) =>
+    names.some((name) => requested.has(name));
+  let aggregate: Record<string, any> | undefined;
+  if (domains !== studioDomains) {
+    const rpcQuery = (database.rpc as any)("studio_route_snapshot", {
+      requested_domains: [...requested],
+    });
+    const aggregateResult = signal
+      ? await rpcQuery.abortSignal(signal)
+      : await rpcQuery;
+    if (aggregateResult.error) throw aggregateResult.error;
+    aggregate = aggregateResult.data as Record<string, any>;
+  }
+  const pick = (
+    key: string,
+    enabled: boolean,
+    createQuery: () => any,
+    emptyData: any = [],
+  ) =>
+    aggregate
+      ? Promise.resolve({ data: aggregate[key] ?? emptyData, error: null })
+      : selectedQuery(enabled, createQuery, signal, emptyData);
   const [
     membership,
     studio,
@@ -66,57 +165,151 @@ export async function loadStudioSnapshot(
     integrationImports,
     discountCodes,
   ] = await Promise.all([
-    supabase
-      .from("memberships")
-      .select("studio_id,role,display_name,profile_photo_asset_id,profile_photo_position")
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from("studios")
-      .select("id,name,slug,timezone,settings")
-      .limit(1)
-      .maybeSingle(),
-    supabase.from("students").select("*").is("deleted_at", null),
-    supabase.from("lessons").select("*"),
-    supabase.from("notes").select("*"),
-    supabase.from("assignments").select("*"),
-    supabase.from("materials").select("*"),
-    supabase.from("material_links").select("*"),
-    supabase.from("packages").select("*"),
-    supabase.from("package_definitions").select("*"),
-    supabase.from("package_billing_options").select("*"),
-    supabase.from("package_subscriptions").select("*"),
-    supabase.from("package_gifts").select("*"),
-    supabase.from("linked_contacts").select("*"),
-    supabase.from("file_assets").select("id,storage_path,mime_type"),
-    supabase.from("student_pricing_rules").select("*"),
-    supabase.from("package_credit_entries").select("*"),
-    supabase.from("payment_entries").select("*"),
-    supabase.from("actor_profiles").select("*"),
-    supabase.from("outbox_messages").select("*"),
-    supabase
-      .from("recommendations")
-      .select("*")
-      .eq("status", "open")
-      .order("urgency", { ascending: false }),
-    supabase.from("booking_services").select("*"),
-    supabase.from("availability_rules").select("*"),
-    supabase.from("availability_exceptions").select("*"),
-    supabase.from("service_offerings").select("*"),
-    supabase.from("conversations").select("*").order("last_message_at", { ascending: false }),
-    supabase.from("conversation_messages").select("*").is("deleted_at", null).order("created_at", { ascending: true }),
-    supabase.from("conversation_states").select("*"),
-    supabase.from("recurring_series").select("*"),
-    supabase.from("bookings").select("*"),
-    supabase.from("lesson_participants").select("*"),
-    supabase
-      .from("integration_imports")
-      .select("*")
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("discount_codes")
-      .select("*")
-      .order("created_at", { ascending: false }),
+    pick(
+      "membership",
+      true,
+      () =>
+        database
+          .from("memberships")
+          .select(
+            "studio_id,role,display_name,profile_photo_asset_id,profile_photo_position",
+          )
+          .limit(1)
+          .maybeSingle(),
+      null,
+    ),
+    pick(
+      "studio",
+      true,
+      () =>
+        database
+          .from("studios")
+          .select("id,name,slug,timezone,settings")
+          .limit(1)
+          .maybeSingle(),
+      null,
+    ),
+    pick(
+      "students",
+      wants(
+        "identity",
+        "students",
+        "lessons",
+        "booking",
+        "work",
+        "finance",
+        "messaging",
+        "actorProfiles",
+        "households",
+        "referrals",
+      ),
+      () => database.from("students").select("*").is("deleted_at", null),
+    ),
+    pick("lessons", wants("lessons", "booking"), () =>
+      database.from("lessons").select("*"),
+    ),
+    pick("notes", wants("work"), () => database.from("notes").select("*")),
+    pick("assignments", wants("work"), () =>
+      database.from("assignments").select("*"),
+    ),
+    pick("materials", wants("work", "actorProfiles"), () =>
+      database.from("materials").select("*"),
+    ),
+    pick("links", wants("work", "actorProfiles"), () =>
+      database.from("material_links").select("*"),
+    ),
+    pick("packages", wants("finance"), () =>
+      database.from("packages").select("*"),
+    ),
+    pick("packageDefinitions", wants("finance"), () =>
+      database.from("package_definitions").select("*"),
+    ),
+    pick("packageBillingOptions", wants("finance"), () =>
+      database.from("package_billing_options").select("*"),
+    ),
+    pick("packageSubscriptions", wants("finance"), () =>
+      database.from("package_subscriptions").select("*"),
+    ),
+    pick("packageGifts", wants("finance"), () =>
+      database.from("package_gifts").select("*"),
+    ),
+    pick("linkedContacts", wants("identity", "households", "messaging"), () =>
+      database.from("linked_contacts").select("*"),
+    ),
+    pick("profileAssets", wants("identity", "work", "actorProfiles"), () =>
+      database.from("file_assets").select("id,storage_path,mime_type"),
+    ),
+    pick("pricingRules", wants("finance"), () =>
+      database.from("student_pricing_rules").select("*"),
+    ),
+    pick("credits", wants("finance"), () =>
+      database.from("package_credit_entries").select("*"),
+    ),
+    pick("payments", wants("finance"), () =>
+      database.from("payment_entries").select("*"),
+    ),
+    pick("profiles", wants("actorProfiles"), () =>
+      database.from("actor_profiles").select("*"),
+    ),
+    pick("outbox", wants("messaging"), () =>
+      database.from("outbox_messages").select("*"),
+    ),
+    pick("recommendations", wants("administration"), () =>
+      database
+        .from("recommendations")
+        .select("*")
+        .eq("status", "open")
+        .order("urgency", { ascending: false }),
+    ),
+    pick("bookingServices", wants("booking", "lessons"), () =>
+      database.from("booking_services").select("*"),
+    ),
+    pick("availabilityRules", wants("booking"), () =>
+      database.from("availability_rules").select("*"),
+    ),
+    pick("availabilityExceptions", wants("booking"), () =>
+      database.from("availability_exceptions").select("*"),
+    ),
+    pick("serviceOfferings", wants("booking", "lessons", "messaging"), () =>
+      database.from("service_offerings").select("*"),
+    ),
+    pick("conversations", wants("messaging"), () =>
+      database
+        .from("conversations")
+        .select("*")
+        .order("last_message_at", { ascending: false }),
+    ),
+    pick("conversationMessages", wants("messaging"), () =>
+      database
+        .from("conversation_messages")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true }),
+    ),
+    pick("conversationStates", wants("messaging"), () =>
+      database.from("conversation_states").select("*"),
+    ),
+    pick("recurringSeries", wants("booking", "lessons"), () =>
+      database.from("recurring_series").select("*"),
+    ),
+    pick("bookings", wants("booking", "lessons"), () =>
+      database.from("bookings").select("*"),
+    ),
+    pick("lessonParticipants", wants("booking", "lessons"), () =>
+      database.from("lesson_participants").select("*"),
+    ),
+    pick("integrationImports", wants("administration"), () =>
+      database
+        .from("integration_imports")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ),
+    pick("discountCodes", wants("administration", "booking"), () =>
+      database
+        .from("discount_codes")
+        .select("*")
+        .order("created_at", { ascending: false }),
+    ),
   ]);
   const failed = [
     membership,
@@ -155,26 +348,26 @@ export async function loadStudioSnapshot(
   ].find((result) => result.error);
   if (failed?.error) throw failed.error;
   const member = membership.data;
-  const { data: authData } = await supabase.auth.getUser();
-  const currentLinkedContact = (linkedContacts.data ?? []).find((row: any) => row.user_id === authData.user?.id);
+  const authUserId = aggregate?.currentUserId
+    ? String(aggregate.currentUserId)
+    : (await supabase.auth.getUser()).data.user?.id;
+  const currentLinkedContact = (linkedContacts.data ?? []).find(
+    (row: any) => row.user_id === authUserId,
+  );
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];
   const storagePaths = [
     ...(materials.data ?? []).map((row: any) => row.storage_path),
     ...(profileAssets.data ?? []).map((row: any) => row.storage_path),
   ].filter((value: any): value is string => Boolean(value));
-  const profileAssetPaths = new Map(
-    (profileAssets.data ?? []).map((row: any) => [row.id, row.storage_path]),
+  const profileAssetPaths = new Map<string, string>(
+    (profileAssets.data ?? []).map(
+      (row: any) => [row.id, row.storage_path] as [string, string],
+    ),
   );
-  const signedMaterialUrls = new Map<string, string>();
-  if (storagePaths.length) {
-    const { data: signedRows } = await supabase.storage
-      .from("studio-materials")
-      .createSignedUrls(storagePaths, 3600);
-    for (const row of signedRows ?? [])
-      if (row.path && row.signedUrl)
-        signedMaterialUrls.set(row.path, row.signedUrl);
-  }
+  const signedMaterialUrls = signAssetUrls
+    ? await signedUrlsForPaths(database, storagePaths)
+    : new Map<string, string>();
   const currentStudent = studentId
     ? (studentRows.find((row: any) => row.id === studentId) ?? studentRows[0])
     : studentRows[0];
@@ -195,38 +388,44 @@ export async function loadStudioSnapshot(
       studio.data?.timezone ?? raw.timezone ?? demoSnapshot.settings.timezone,
   });
   if (role === "student") {
-    settings.timezone = currentStudent?.timezone_confirmed
-      ? currentStudent.timezone
-      : observedTimezone();
+    settings.timezone =
+      currentStudent?.timezone_confirmed && currentStudent.timezone
+        ? currentStudent.timezone
+        : observedTimezone();
   } else if (role === "guardian") {
-    settings.timezone = currentLinkedContact?.timezone_confirmed
-      ? currentLinkedContact.timezone
-      : observedTimezone();
+    settings.timezone =
+      currentLinkedContact?.timezone_confirmed && currentLinkedContact.timezone
+        ? currentLinkedContact.timezone
+        : observedTimezone();
   }
-  if (settings.branding?.logoStoragePath) {
-    const { data: signed } = await supabase.storage
-      .from("studio-materials")
-      .createSignedUrl(settings.branding.logoStoragePath, 3600);
-    if (signed?.signedUrl)
-      settings.branding = { ...settings.branding, logoUrl: signed.signedUrl };
-  }
-  if (settings.branding?.coachProfilePhotoStoragePath) {
-    const { data: signed } = await supabase.storage
-      .from("studio-materials")
-      .createSignedUrl(settings.branding.coachProfilePhotoStoragePath, 3600);
-    if (signed?.signedUrl)
-      settings.branding = {
-        ...settings.branding,
-        coachProfilePhotoUrl: signed.signedUrl,
-      };
-  }
-  if (settings.dailyPopup.backgroundImageStoragePath) {
-    const { data: signed } = await supabase.storage
-      .from("studio-materials")
-      .createSignedUrl(settings.dailyPopup.backgroundImageStoragePath, 3600);
-    if (signed?.signedUrl)
-      settings.dailyPopup = { ...settings.dailyPopup, backgroundImageUrl: signed.signedUrl };
-  }
+  const brandingPaths = [
+    settings.branding?.logoStoragePath,
+    settings.branding?.coachProfilePhotoStoragePath,
+    settings.dailyPopup.backgroundImageStoragePath,
+  ].filter((value): value is string => Boolean(value));
+  const brandingUrls = signAssetUrls
+    ? await signedUrlsForPaths(database, brandingPaths)
+    : new Map<string, string>();
+  if (settings.branding?.logoStoragePath)
+    settings.branding = {
+      ...settings.branding,
+      logoUrl: brandingUrls.get(settings.branding.logoStoragePath),
+    };
+  if (settings.branding?.coachProfilePhotoStoragePath)
+    settings.branding = {
+      ...settings.branding,
+      coachProfilePhotoUrl: brandingUrls.get(
+        settings.branding.coachProfilePhotoStoragePath,
+      ),
+    };
+  const dailyPopupBackgroundUrl = settings.dailyPopup.backgroundImageStoragePath
+    ? brandingUrls.get(settings.dailyPopup.backgroundImageStoragePath)
+    : undefined;
+  if (dailyPopupBackgroundUrl)
+    settings.dailyPopup = {
+      ...settings.dailyPopup,
+      backgroundImageUrl: dailyPopupBackgroundUrl,
+    };
   return {
     studioId:
       member?.studio_id ??
@@ -266,7 +465,9 @@ export async function loadStudioSnapshot(
       notificationPreferences: r.notification_preferences,
       profilePhotoAssetId: r.profile_photo_asset_id,
       profilePhotoUrl: r.profile_photo_asset_id
-        ? signedMaterialUrls.get(profileAssetPaths.get(r.profile_photo_asset_id) || "")
+        ? signedMaterialUrls.get(
+            profileAssetPaths.get(r.profile_photo_asset_id) || "",
+          )
         : undefined,
       profilePhotoPosition: r.profile_photo_position,
       stripeCustomerId: r.stripe_customer_id,
@@ -406,8 +607,10 @@ export async function loadStudioSnapshot(
       deliveryFormat: r.delivery_format,
       giftable: Boolean(r.giftable),
       pricingStatus: r.pricing_status,
+      benefitText: r.benefit_text || undefined,
       locationPriceAdjustments: r.location_price_adjustments ?? {},
-      depositMinor: r.deposit_minor == null ? undefined : Number(r.deposit_minor),
+      depositMinor:
+        r.deposit_minor == null ? undefined : Number(r.deposit_minor),
       version: r.version,
       updatedAt: r.updated_at,
     })),

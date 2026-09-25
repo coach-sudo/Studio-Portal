@@ -1,5 +1,6 @@
 import { FileText, Mail, MapPin, Phone } from "lucide-react";
 import type { ActorProfile, Material } from "../domain/model";
+import "./ActorProfilePreview.css";
 
 export function ActorProfilePreview({
   profile,

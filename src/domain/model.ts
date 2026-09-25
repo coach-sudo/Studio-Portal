@@ -146,7 +146,14 @@ export interface Lesson extends Versioned {
   sourceExternalId?: string;
   sourceConfidence?: number;
   importedAt?: string;
-  paymentStatus?: "untracked" | "due" | "partially_paid" | "paid" | "paid_by_credit" | "waived" | "refunded";
+  paymentStatus?:
+    | "untracked"
+    | "due"
+    | "partially_paid"
+    | "paid"
+    | "paid_by_credit"
+    | "waived"
+    | "refunded";
   priceMinor?: number;
   paidMinor?: number;
   preparation?: {
@@ -372,7 +379,8 @@ export interface Assignment extends Versioned {
   dueAt?: string;
   status: AssignmentStatus;
   helpRequested: boolean;
-  activityType?: "instruction" | "qa" | "journal" | "multiple_choice" | "checklist";
+  activityType?:
+    "instruction" | "qa" | "journal" | "multiple_choice" | "checklist";
   activityConfig?: { prompts?: string[]; options?: string[]; items?: string[] };
   responses?: Record<string, unknown>;
   progress?: number;
@@ -427,13 +435,10 @@ export interface PackageDefinition extends Versioned {
   deliveryFormat?: "google_meet" | "in_person";
   giftable?: boolean;
   pricingStatus?: "current" | "changed" | "syncing" | "failed" | "legacy";
+  benefitText?: string;
 }
 export type PackageRenewalMode =
-  | "one_time"
-  | "weekly"
-  | "biweekly"
-  | "monthly"
-  | "balance_threshold";
+  "one_time" | "weekly" | "biweekly" | "monthly" | "balance_threshold";
 export interface PackageBillingOption extends Versioned {
   studioId: UUID;
   definitionId: UUID;
@@ -471,7 +476,13 @@ export interface PackageGift extends Versioned {
   deliverAt?: string;
   packageId?: UUID;
   claimedStudentId?: UUID;
-  status: "pending_payment" | "purchased" | "delivered" | "claimed" | "expired" | "refunded";
+  status:
+    | "pending_payment"
+    | "purchased"
+    | "delivered"
+    | "claimed"
+    | "expired"
+    | "refunded";
   expiresAt: string;
 }
 export interface NotificationPreferences {
@@ -691,6 +702,16 @@ export interface StudioSettings {
     showTrustRow: boolean;
     showPolicies: boolean;
   };
+  actorPageCta: {
+    label: string;
+    url: string;
+  };
+  referralProgram: {
+    enabled: boolean;
+    paidLessonRewardMinor: number;
+    recurringSlotRewardSessionMinutes: number;
+    referredPersonBenefit?: string;
+  };
   emailAutomations: {
     enabled: boolean;
     coachNewBooking: boolean;
@@ -771,8 +792,7 @@ export interface CommandResult<T> {
 export interface ApiErrorShape {
   code: string;
   message: string;
-  fieldErrors?: Record<string, string[]>;
   retryable: boolean;
-  conflict?: unknown;
   correlationId: string;
+  details?: Record<string, unknown>;
 }

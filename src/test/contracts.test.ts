@@ -43,9 +43,12 @@ const stripeWebhook = fs.readFileSync(
   "utf8",
 );
 const compactStripeWebhook = stripeWebhook.replace(/\s+/g, "");
-const studentWorkspace = fs.readFileSync(
+const readSources = (...paths: string[]) =>
+  paths.map((path) => fs.readFileSync(path, "utf8")).join("\n");
+const studentWorkspace = readSources(
   "src/features/coach/StudentWorkspace.tsx",
-  "utf8",
+  "src/features/coach/StudentWorkspaceAccount.tsx",
+  "src/features/coach/StudentWorkspaceOverview.tsx",
 );
 const securityHardening = fs.readFileSync(
   "supabase/migrations/20260820184240_actor_view_security_invoker.sql",
@@ -67,40 +70,65 @@ const bookingMaintenance = fs.readFileSync(
   "netlify/functions/booking-maintenance.ts",
   "utf8",
 );
-const commandFunction = fs.readFileSync("netlify/functions/v2.ts", "utf8");
-const studentPortal = fs.readFileSync(
+const commandFunction = readSources(
+  "netlify/functions/v2.ts",
+  "netlify/functions/_v2/students.ts",
+  "netlify/functions/_v2/lessons.ts",
+  "netlify/functions/_v2/work.ts",
+  "netlify/functions/_v2/messaging.ts",
+  "netlify/functions/_v2/finance.ts",
+  "netlify/functions/_v2/administration.ts",
+);
+const studentPortal = readSources(
   "src/features/student/StudentPortal.tsx",
-  "utf8",
+  "src/features/student/StudentPortalPayments.tsx",
+  "src/features/student/StudentPortalSettings.tsx",
 );
 const verifiedEmailClaim = fs.readFileSync(
   "supabase/migrations/20260905141058_google_portal_identity_claim.sql",
   "utf8",
 );
-const loginPage = fs.readFileSync("src/features/auth/MagicLinkLogin.tsx", "utf8");
-const authCallback = fs.readFileSync("src/features/auth/AuthCallback.tsx", "utf8");
+const loginPage = fs.readFileSync(
+  "src/features/auth/MagicLinkLogin.tsx",
+  "utf8",
+);
+const authCallback = fs.readFileSync(
+  "src/features/auth/AuthCallback.tsx",
+  "utf8",
+);
 const portalAuth = fs.readFileSync("netlify/functions/portal-auth.ts", "utf8");
 describe("database contracts", () => {
   it("links verified Google identities to enabled portal profiles without trusting client email", () => {
     expect(verifiedEmailClaim).toContain("email_confirmed_at is not null");
-    expect(verifiedEmailClaim).toContain("lower(trim(s.email)) = verified_email");
-    expect(verifiedEmailClaim).toContain("lower(trim(c.email)) = verified_email");
+    expect(verifiedEmailClaim).toContain(
+      "lower(trim(s.email)) = verified_email",
+    );
+    expect(verifiedEmailClaim).toContain(
+      "lower(trim(c.email)) = verified_email",
+    );
     expect(verifiedEmailClaim).toContain("c.portal_enabled");
     expect(verifiedEmailClaim).toContain("PORTAL_IDENTITY_CONFLICT");
     expect(verifiedEmailClaim).toContain("AMBIGUOUS_STUDENT_EMAIL");
-    expect(verifiedEmailClaim).toContain("revoke all on function public.claim_portal_access_by_verified_email");
+    expect(verifiedEmailClaim).toContain(
+      "revoke all on function public.claim_portal_access_by_verified_email",
+    );
     expect(verifiedEmailClaim).toContain("to service_role");
     expect(portalAuth).toContain('context.params.action === "claim-access"');
     expect(portalAuth).toContain("user.email_confirmed_at");
-    expect(portalAccess).not.toContain("existingIdentity.user_metadata?.student_id");
+    expect(portalAccess).not.toContain(
+      "existingIdentity.user_metadata?.student_id",
+    );
     expect(studentWorkspace).toContain("Send new portal invite");
-    expect(loginPage).toContain("Google sign-in is available only to the studio coach account");
+    expect(loginPage).toContain(
+      "Google sign-in is available only to the studio coach account",
+    );
     expect(loginPage).toContain('className="google-mark"');
     expect(fs.readFileSync("src/app-system.css", "utf8")).toContain(
       ".primary-button { position: static; inset: auto; }",
     );
-    expect(studentWorkspace).toContain('onInvite("guardian",contact.id)');
-    expect(loginPage).toContain('/auth/callback?returnTo=');
-    expect(authCallback).toContain('/api/v2/auth/claim-access');
+    expect(studentWorkspace).toContain('onInvite("guardian", contact.id)');
+    expect(loginPage).toContain("/auth/callback?returnTo=");
+    expect(authCallback).toContain("/api/v2/auth/claim-access");
     expect(authCallback).toContain("await supabase.auth.signOut()");
     expect(studentPortal).toContain("All lesson lengths");
     expect(studentPortal).toContain("Shortest lessons first");
@@ -108,7 +136,9 @@ describe("database contracts", () => {
   });
   it("keeps legacy procedures lint-clean without weakening their signatures or grants", () => {
     expect(procedureLintRepair).toContain("calendar_projections_lesson_id_key");
-    expect(procedureLintRepair).toContain("lesson_participants_lesson_id_email_key");
+    expect(procedureLintRepair).toContain(
+      "lesson_participants_lesson_id_email_key",
+    );
     expect(procedureLintRepair).toContain("private.reader_requests");
     expect(procedureLintRepair).toContain("extensions.digest");
     expect(procedureLintRepair).not.toContain("drop function");
@@ -271,9 +301,9 @@ describe("database contracts", () => {
     );
     expect(setupBranch).toBeGreaterThan(-1);
     expect(packageMetadata).toBeGreaterThan(setupBranch);
-    expect(
-      compactStripeWebhook.slice(setupBranch, packageMetadata),
-    ).toContain("returndone(");
+    expect(compactStripeWebhook.slice(setupBranch, packageMetadata)).toContain(
+      "returndone(",
+    );
   });
 
   it("records Stripe refund webhooks idempotently by external reference", () => {
@@ -282,9 +312,7 @@ describe("database contracts", () => {
     );
     const compactRefundBranch = refundBranch.replace(/\s+/g, "");
     expect(compactRefundBranch).toContain('.from("payment_entries").upsert(');
-    expect(compactRefundBranch).toContain(
-      'onConflict:"external_reference"',
-    );
+    expect(compactRefundBranch).toContain('onConflict:"external_reference"');
   });
 
   it("shows only future scheduled lessons as the student overview next lesson", () => {
@@ -297,14 +325,26 @@ describe("database contracts", () => {
   });
 
   it("keeps portal credentials server-managed and removes obsolete whiteboards", () => {
-    expect(productionCloseout).toContain("create table if not exists public.portal_accounts");
+    expect(productionCloseout).toContain(
+      "create table if not exists public.portal_accounts",
+    );
     expect(productionCloseout).toContain("must_change_password");
     expect(productionCloseout).toContain("activity_type");
-    expect(portalAccountHardening).toContain("revoke all on table public.portal_accounts from anon");
-    expect(portalAccountHardening).toContain("grant select on table public.portal_accounts to authenticated");
-    expect(portalAccountHardening).toContain("drop table if exists public.lesson_whiteboards cascade");
-    expect(optionalBookingPortalInvites).toContain("portal_requested boolean not null default false");
-    expect(publicBooking).toContain("portal_requested: input.createPortalProfile");
+    expect(portalAccountHardening).toContain(
+      "revoke all on table public.portal_accounts from anon",
+    );
+    expect(portalAccountHardening).toContain(
+      "grant select on table public.portal_accounts to authenticated",
+    );
+    expect(portalAccountHardening).toContain(
+      "drop table if exists public.lesson_whiteboards cascade",
+    );
+    expect(optionalBookingPortalInvites).toContain(
+      "portal_requested boolean not null default false",
+    );
+    expect(publicBooking).toContain(
+      "portal_requested: input.createPortalProfile",
+    );
     expect(studentWorkspace).not.toContain("Temporary password");
     expect(studentWorkspace).not.toContain('command: "set_credentials"');
     expect(portalAccess).toContain('accountType: "student"');
@@ -328,9 +368,7 @@ describe("database contracts", () => {
   });
 
   it("keeps balance renewals in flight and uses stable Stripe idempotency", () => {
-    expect(householdPackageHardening).toContain(
-      "renewal_in_flight = true",
-    );
+    expect(householdPackageHardening).toContain("renewal_in_flight = true");
     expect(householdPackageHardening).not.toContain("interval '15 minutes'");
     expect(bookingMaintenance).toContain(
       "package-renewal:${renewal.id}:${attemptKey}:invoice",

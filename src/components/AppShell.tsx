@@ -1,14 +1,22 @@
-import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import {
+  LogOut,
+  Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Search,
+} from "lucide-react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { useStudio } from "../hooks/useStudio";
+import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { ActivityCenter } from "./ActivityCenter";
-import { coachNavigation } from "../app/navigation";
+import { coachNavigation } from "../app/coachNavigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
+import { supabase } from "../lib/supabase";
+import "./IdentityActions.css";
 
 export function AppShell() {
-  const { data } = useStudio();
+  const { data } = useStudioRoute("coach", undefined, ["identity"]);
   const [searchOpen, setSearchOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();
@@ -33,12 +41,30 @@ export function AppShell() {
   }, [data?.settings.studioName]);
   return (
     <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+      <a className="skip-link" href="#main-content">
+        Skip to main content
+      </a>
       <aside className="sidebar">
         <div className="shell-brand">
-          {data?.settings.branding?.logoUrl && <img src={data.settings.branding.logoUrl} alt="" />}
-          {!data?.settings.branding?.logoUrl && <span className="shell-mark" aria-hidden="true">C’D</span>}
-          <div className="wordmark">{data?.settings.studioName ?? "Coach’D"}</div>
-          <button type="button" className="sidebar-collapse" aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"} onClick={() => setSidebarCollapsed(!sidebarCollapsed)}>
+          {data?.settings.branding?.logoUrl && (
+            <img src={data.settings.branding.logoUrl} alt="" />
+          )}
+          {!data?.settings.branding?.logoUrl && (
+            <span className="shell-mark" aria-hidden="true">
+              C’D
+            </span>
+          )}
+          <div className="wordmark">
+            {data?.settings.studioName ?? "Coach’D"}
+          </div>
+          <button
+            type="button"
+            className="sidebar-collapse"
+            aria-label={
+              sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"
+            }
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+          >
             {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
           </button>
         </div>
@@ -51,20 +77,45 @@ export function AppShell() {
           ))}
         </nav>
         <div className="identity">
-          <span className={data?.settings.branding.coachProfilePhotoUrl ? "has-photo" : ""}>
-            {data?.settings.branding.coachProfilePhotoUrl ? <img src={data.settings.branding.coachProfilePhotoUrl} alt="" style={{objectPosition:`${data.settings.branding.coachProfilePhotoPosition?.x ?? 50}% ${data.settings.branding.coachProfilePhotoPosition?.y ?? 50}%`}}/> : (data?.settings.coachName ?? "Darius A. Journigan")
-              .split(" ")
-              .map((part) => part[0])
-              .join("")
-              .slice(0, 2)}
+          <span
+            className={
+              data?.settings.branding.coachProfilePhotoUrl ? "has-photo" : ""
+            }
+          >
+            {data?.settings.branding.coachProfilePhotoUrl ? (
+              <img
+                src={data.settings.branding.coachProfilePhotoUrl}
+                alt=""
+                style={{
+                  objectPosition: `${data.settings.branding.coachProfilePhotoPosition?.x ?? 50}% ${data.settings.branding.coachProfilePhotoPosition?.y ?? 50}%`,
+                }}
+              />
+            ) : (
+              (data?.settings.coachName ?? "Darius A. Journigan")
+                .split(" ")
+                .map((part) => part[0])
+                .join("")
+                .slice(0, 2)
+            )}
           </span>
           <div>
             <strong>{data?.settings.coachName ?? "Darius A. Journigan"}</strong>
             <small>{data?.settings.coachTitle ?? "Acting Coach"}</small>
           </div>
+          <button
+            type="button"
+            className="identity-signout"
+            aria-label="Sign out"
+            onClick={async () => {
+              await supabase?.auth.signOut();
+              navigate("/login", { replace: true });
+            }}
+          >
+            <LogOut aria-hidden="true" />
+          </button>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
       {data && <ActivityCenter data={data} audience="coach" />}

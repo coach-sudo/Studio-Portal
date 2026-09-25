@@ -1,4 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
+import { readApiClientError } from "./apiClientError";
 
 export type BookingAdminResource =
   | "services"
@@ -27,15 +28,28 @@ export async function bookingAdminCommand(
     },
     body: JSON.stringify(body),
   });
-  const payload = await response.json();
   if (!response.ok)
-    throw new Error(payload.message || "The booking command failed.");
+    throw await readApiClientError(response, "The booking command failed.");
+  const payload = await response.json();
   return payload.resource;
 }
 
-export interface SchedulingConflict { id: string; summary: string; start: string; end: string; source: "google" | "studio" }
-export async function checkSchedulingConflicts(startsAt: string, endsAt: string, lessonId?: string) {
-  const result = await bookingAdminCommand("bookings", { command: "check_conflicts", payload: { starts_at: startsAt, ends_at: endsAt, lesson_id: lessonId } });
+export interface SchedulingConflict {
+  id: string;
+  summary: string;
+  start: string;
+  end: string;
+  source: "google" | "studio";
+}
+export async function checkSchedulingConflicts(
+  startsAt: string,
+  endsAt: string,
+  lessonId?: string,
+) {
+  const result = await bookingAdminCommand("bookings", {
+    command: "check_conflicts",
+    payload: { starts_at: startsAt, ends_at: endsAt, lesson_id: lessonId },
+  });
   return (result?.conflicts || []) as SchedulingConflict[];
 }
 
@@ -56,9 +70,9 @@ export async function portalBookingCommand(
     },
     body: JSON.stringify({ bookingId, ...payload }),
   });
-  const result = await response.json();
   if (!response.ok)
-    throw new Error(result.message || "The booking change failed.");
+    throw await readApiClientError(response, "The booking change failed.");
+  const result = await response.json();
   return result.booking;
 }
 
@@ -92,16 +106,25 @@ export async function loadStorageHealth(): Promise<StorageHealth> {
       Authorization: `Bearer ${data.session.access_token}`,
     },
   });
-  const payload = await response.json();
   if (!response.ok)
-    throw new Error(payload.message || "Storage information could not be loaded.");
+    throw await readApiClientError(
+      response,
+      "Storage information could not be loaded.",
+    );
+  const payload = await response.json();
   return payload as StorageHealth;
 }
 
 export async function loadPlatformHealth(): Promise<PlatformHealth> {
   try {
+    if (!supabase) throw new Error();
+    const { data } = await supabase.auth.getSession();
+    if (!data.session) throw new Error();
     const response = await fetch("/api/v2/health", {
-      headers: { Accept: "application/json" },
+      headers: {
+        Accept: "application/json",
+        Authorization: `Bearer ${data.session.access_token}`,
+      },
     });
     if (!response.ok) throw new Error();
     return (await response.json()) as PlatformHealth;
@@ -119,11 +142,23 @@ export async function loadPlatformHealth(): Promise<PlatformHealth> {
 }
 
 export async function startProviderIntake() {
-  if (!isSupabaseConfigured || !supabase) throw new Error("Production database is not configured.");
+  if (!isSupabaseConfigured || !supabase)
+    throw new Error("Production database is not configured.");
   const { data } = await supabase.auth.getSession();
-  if (!data.session) throw new Error("Sign in as the coach to check providers.");
-  const response = await fetch("/api/v2/admin/provider-intake", { method: "POST", headers: { Authorization: `Bearer ${data.session.access_token}`, "Idempotency-Key": crypto.randomUUID() } });
-  if (!response.ok && response.status !== 202) { const payload = await response.json().catch(()=>({})); throw new Error(payload.message || "Calendar and Gmail check could not be started."); }
+  if (!data.session)
+    throw new Error("Sign in as the coach to check providers.");
+  const response = await fetch("/api/v2/admin/provider-intake", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${data.session.access_token}`,
+      "Idempotency-Key": crypto.randomUUID(),
+    },
+  });
+  if (!response.ok && response.status !== 202)
+    throw await readApiClientError(
+      response,
+      "Calendar and Gmail check could not be started.",
+    );
   return true;
 }
 
@@ -144,7 +179,9 @@ export function studioCommand(
   const key = `${domain}:${input.command}:${input.entityId || "new"}:${JSON.stringify(input.payload || {})}`;
   const existing = inFlightStudioCommands.get(key);
   if (existing) return existing;
-  const request = executeStudioCommand(domain, input).finally(() => inFlightStudioCommands.delete(key));
+  const request = executeStudioCommand(domain, input).finally(() =>
+    inFlightStudioCommands.delete(key),
+  );
   inFlightStudioCommands.set(key, request);
   return request;
 }
@@ -173,8 +210,8 @@ async function executeStudioCommand(
     },
     body: JSON.stringify({ ...input, idempotencyKey: crypto.randomUUID() }),
   });
-  const result = await response.json();
   if (!response.ok)
-    throw new Error(result.message || "The studio command failed.");
+    throw await readApiClientError(response, "The studio command failed.");
+  const result = await response.json();
   return result;
 }

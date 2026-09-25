@@ -1,12 +1,49 @@
 import type { Config } from "@netlify/functions";
 import Stripe from "stripe";
 import { googleAccessToken, googleFreeBusy } from "./_shared/google";
-import { serviceClient } from "./_shared/supabase";
+import { correlationId, json } from "./_shared/http";
+import { releaseMetadata } from "./_shared/release";
+import { serviceClient, userClient } from "./_shared/supabase";
 
 const has = (...names: string[]) =>
   names.some((name) => Boolean(Netlify.env.get(name)));
 
-export default async () => {
+export default async (request: Request) => {
+  const id = correlationId(request, crypto.randomUUID());
+  if (!request.headers.get("authorization")?.startsWith("Bearer ")) {
+    return json(
+      {
+        code: "UNAUTHENTICATED",
+        message: "Sign in as the coach to view provider health.",
+        retryable: false,
+        correlationId: id,
+      },
+      401,
+    );
+  }
+  const user = userClient(request);
+  const { data: membership, error: membershipError } = await user
+    .from("memberships")
+    .select("id")
+    .eq("role", "coach")
+    .limit(1)
+    .maybeSingle();
+  if (membershipError || !membership) {
+    if (membershipError)
+      console.error("[health-auth]", {
+        correlationId: id,
+        error: membershipError,
+      });
+    return json(
+      {
+        code: "FORBIDDEN",
+        message: "You do not have access to provider health.",
+        retryable: false,
+        correlationId: id,
+      },
+      403,
+    );
+  }
   const issues: string[] = [];
   let supabase =
     has("SUPABASE_URL") &&
@@ -21,8 +58,9 @@ export default async () => {
       if (error) throw error;
     } catch (error) {
       supabase = false;
+      console.error("[health-supabase]", { correlationId: id, error });
       issues.push(
-        `Supabase: ${error instanceof Error ? error.message : "connection failed"}`,
+        "Supabase: the database health check failed. Review the function logs using the correlation ID.",
       );
     }
   }
@@ -34,8 +72,9 @@ export default async () => {
       }).customers.list({ limit: 1 });
     } catch (error) {
       stripe = false;
+      console.error("[health-stripe]", { correlationId: id, error });
       issues.push(
-        `Stripe: ${error instanceof Error ? error.message : "connection failed"}`,
+        "Stripe: the test request failed. Verify the server-only key and account access.",
       );
     }
   }
@@ -75,8 +114,9 @@ export default async () => {
           await googleFreeBusy(token, now.toISOString(), after.toISOString());
         } catch (error) {
           googleCalendar = false;
+          console.error("[health-calendar]", { correlationId: id, error });
           issues.push(
-            `Google Calendar: ${error instanceof Error ? error.message : "provider check failed"}`,
+            "Google Calendar: availability could not be verified. Reconnect Calendar or review the function logs.",
           );
         }
       }
@@ -95,23 +135,23 @@ export default async () => {
     } catch (error) {
       googleCalendar = false;
       gmail = false;
+      console.error("[health-google]", { correlationId: id, error });
       issues.push(
-        `Google: ${error instanceof Error ? error.message : "connection failed"}`,
+        "Google: the connected account could not be verified. Reconnect Google and confirm the required scopes.",
       );
     }
   }
-  return Response.json(
-    {
-      mode: supabase ? "live" : "demo",
-      supabase,
-      stripe,
-      googleCalendar,
-      gmail,
-      scheduledWorkers: supabase && googleCalendar && gmail,
-      issues,
-    },
-    { headers: { "Cache-Control": "no-store" } },
-  );
+  return json({
+    mode: supabase ? "live" : "demo",
+    supabase,
+    stripe,
+    googleCalendar,
+    gmail,
+    scheduledWorkers: supabase && googleCalendar && gmail,
+    issues,
+    release: releaseMetadata(),
+    correlationId: id,
+  });
 };
 
 export const config: Config = { path: "/api/v2/health" };

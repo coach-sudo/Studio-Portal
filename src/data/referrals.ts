@@ -1,6 +1,13 @@
 import { isDemoMode, supabase } from "../lib/supabase";
+import { readApiClientError } from "./apiClientError";
 
 export interface ReferralOverview {
+  config: {
+    enabled: boolean;
+    paidLessonRewardMinor: number;
+    recurringSlotRewardSessionMinutes: number;
+    referredPersonBenefit?: string;
+  };
   students: { id: string; name: string; code: string }[];
   referrals: {
     id: string;
@@ -29,8 +36,8 @@ export async function loadReferralOverview(): Promise<ReferralOverview> {
   const response = await fetch("/api/v2/referrals", {
     headers: { Authorization: `Bearer ${data.session.access_token}` },
   });
-  const result = await response.json();
   if (!response.ok)
-    throw new Error(result.message || "Could not load referrals.");
+    throw await readApiClientError(response, "Could not load referrals.");
+  const result = await response.json();
   return result as ReferralOverview;
 }
