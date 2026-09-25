@@ -1,7 +1,6 @@
 import { Download, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
 
 interface InstallEvent extends Event {
   prompt: () => Promise<void>;
@@ -60,6 +59,9 @@ export function InstallPrompt() {
         if (active) setEligible(false);
         return;
       }
+      const { isDemoMode, isSupabaseConfigured, supabase } = await import(
+        "../lib/supabase"
+      );
       const authenticated =
         isDemoMode ||
         (!isSupabaseConfigured

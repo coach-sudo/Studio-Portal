@@ -30,6 +30,24 @@ if (!javascript || !stylesheet) {
   throw new Error("Build assets are missing. Run npm run build first.");
 }
 
+if (process.argv.includes("--require-configured-client")) {
+  const bundles = await Promise.all(
+    files
+      .filter((file) => file.endsWith(".js"))
+      .map((file) => readFile(join(assetsDirectory, file), "utf8")),
+  );
+  if (
+    !bundles.some((bundle) =>
+      bundle.includes("https://ci.example.supabase.co"),
+    ) ||
+    !bundles.some((bundle) => bundle.includes("sb_publishable_ci_example"))
+  ) {
+    throw new Error(
+      "The bundle was not built with CI's browser-public Supabase placeholders.",
+    );
+  }
+}
+
 const report = {
   generatedAt: new Date().toISOString(),
   javascript,

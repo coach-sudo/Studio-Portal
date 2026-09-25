@@ -8,6 +8,7 @@ vitest.config.js
 vitest.config.d.ts
 netlify/functions/**/*.js
 netlify/functions/**/*.d.ts
+netlify/functions/_shared/release.generated.ts
 supabase/.temp/
 .stripe-setup-token.tmp
 .env

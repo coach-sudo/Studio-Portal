@@ -42,8 +42,13 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
-      - run: npm run build
-      - run: npm run bundle:check
+      - name: Build production-shaped browser bundle
+        env:
+          VITE_SUPABASE_URL: https://ci.example.supabase.co
+          VITE_SUPABASE_ANON_KEY: sb_publishable_ci_example
+          VITE_QUERY_LAYER_V2: "false"
+        run: npm run build
+      - run: npm run bundle:check -- --require-configured-client
       - name: Upload failed build and test evidence
         if: failure()
         uses: actions/upload-artifact@v4

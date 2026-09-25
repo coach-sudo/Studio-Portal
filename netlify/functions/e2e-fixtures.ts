@@ -2,6 +2,7 @@ import type { Config, Context } from "@netlify/functions";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { findAuthUserByEmail } from "./_shared/auth-users";
 import { json } from "./_shared/http";
+import { releaseMetadata } from "./_shared/release";
 import { serviceClient } from "./_shared/supabase";
 import {
   assertE2ERunId,
@@ -836,7 +837,7 @@ async function setup(
 export default async (request: Request, context: Context) => {
   try {
     assertNonProductionE2EUrl(request.url);
-    if (isProductionDeployContext(Netlify.env.get("CONTEXT"))) {
+    if (isProductionDeployContext(releaseMetadata().context)) {
       return json({ message: "E2E fixtures are disabled in production." }, 403);
     }
     if (request.method !== "POST")
