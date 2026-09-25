@@ -1,7 +1,58 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(5);
+select plan(11);
+
+select ok(
+  has_function_privilege('authenticated', 'public.studio_route_snapshot(text[])', 'EXECUTE'),
+  'authenticated can execute route snapshot RPC'
+);
+select ok(
+  not has_function_privilege('anon', 'public.studio_route_snapshot(text[])', 'EXECUTE'),
+  'anon cannot execute route snapshot RPC'
+);
+select ok(
+  not exists (
+    select 1
+    from pg_proc p, lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+    where p.oid = 'public.studio_route_snapshot(text[])'::regprocedure
+      and acl.grantee = 0
+      and acl.privilege_type = 'EXECUTE'
+  ),
+  'PUBLIC has no direct route snapshot EXECUTE grant'
+);
+select ok(
+  not (select p.prosecdef from pg_proc p where p.oid = 'public.studio_route_snapshot(text[])'::regprocedure),
+  'route snapshot remains SECURITY INVOKER'
+);
+select ok(
+  (select p.proconfig @> array['search_path=""'] from pg_proc p where p.oid = 'public.studio_route_snapshot(text[])'::regprocedure),
+  'route snapshot retains an empty search_path'
+);
+select ok(
+  (select bool_and(c.relrowsecurity)
+   from pg_class c
+   where c.oid = any(array[
+     'public.memberships'::regclass, 'public.studios'::regclass,
+     'public.students'::regclass, 'public.lessons'::regclass,
+     'public.notes'::regclass, 'public.assignments'::regclass,
+     'public.materials'::regclass, 'public.material_links'::regclass,
+     'public.packages'::regclass, 'public.package_definitions'::regclass,
+     'public.package_billing_options'::regclass, 'public.package_subscriptions'::regclass,
+     'public.package_gifts'::regclass, 'public.linked_contacts'::regclass,
+     'public.file_assets'::regclass, 'public.student_pricing_rules'::regclass,
+     'public.package_credit_entries'::regclass, 'public.payment_entries'::regclass,
+     'public.actor_profiles'::regclass, 'public.outbox_messages'::regclass,
+     'public.recommendations'::regclass, 'public.booking_services'::regclass,
+     'public.availability_rules'::regclass, 'public.availability_exceptions'::regclass,
+     'public.service_offerings'::regclass, 'public.conversations'::regclass,
+     'public.conversation_messages'::regclass, 'public.conversation_states'::regclass,
+     'public.recurring_series'::regclass, 'public.bookings'::regclass,
+     'public.lesson_participants'::regclass, 'public.integration_imports'::regclass,
+     'public.discount_codes'::regclass
+   ])),
+  'all route snapshot source tables retain RLS'
+);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
