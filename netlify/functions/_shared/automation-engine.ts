@@ -237,16 +237,22 @@ export async function evaluateAndQueueRule(
         outboxIds.push(...queued.map((item) => item.id));
       }
     }
+  const recipientUnresolved = !resolution.recipients.length;
+  const escalationRecipientAvailable =
+    decision.stages.some((stage) => stage.coachEscalation) &&
+    Boolean(coachUser?.data.user?.email);
+  // Successfully queued coach escalation is an outcome, even without a payer.
+  // Keep recipient configuration evidence separate from the delivery result.
   const result = preview
     ? "not_due"
     : !decision.eligible
       ? "suppressed"
-      : !resolution.recipients.length
-        ? "unresolved"
-        : outboxIds.length
-          ? rule.mode === "draft"
-            ? "draft"
-            : "queued"
+      : outboxIds.length
+        ? rule.mode === "draft"
+          ? "draft"
+          : "queued"
+        : recipientUnresolved && !escalationRecipientAvailable
+          ? "unresolved"
           : "duplicate";
   const evidence = {
     trigger: rule.trigger,
@@ -256,6 +262,7 @@ export async function evaluateAndQueueRule(
     recipients: resolution.recipients,
     suppressedRecipients: resolution.suppressed,
     unresolvedRecipients: resolution.unresolved,
+    recipientIssue: recipientUnresolved ? "recipient_unresolved" : null,
     preview,
     stages: decision.stages,
   };
@@ -279,7 +286,7 @@ export async function evaluateAndQueueRule(
       explanation: decision.explanation,
       suppressed_reason:
         decision.suppressedReason ??
-        (!resolution.recipients.length ? "recipient_unresolved" : null),
+        (recipientUnresolved ? "recipient_unresolved" : null),
       outbox_ids: outboxIds,
       correlation_id: correlationId,
       decision: evidence as Json,

@@ -31,6 +31,8 @@ The full migration chain, RLS/privilege assertions and generated-type diff run o
 
 Modes are `off`, `draft`, `automatic`, and `automatic_with_escalation`.
 
+Run results describe actual queue outcomes: a successfully queued coach escalation is `queued` even when the payer is unresolved. The decision separately retains `recipientIssue: "recipient_unresolved"`, detailed unresolved-recipient reasons and the existing reason field. A repeated deduped escalation is `duplicate`; an unresolved recipient with no queueable escalation remains `unresolved`. Draft mode retains `draft` for created drafts and does not introduce coach escalation. Recipient policy, stage timing and message/audit dedupe keys are unchanged.
+
 | Family                  | Trigger/audience                                                                                         | Initial state                                      |
 | ----------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
 | Booking confirmation    | Confirmed booking; permitted scheduling recipients                                                       | Retains legacy master/confirmation switches        |
@@ -121,7 +123,7 @@ Full-page Account mobile evidence includes its communication timeline. Screensho
 
 | Gate                                  | Evidence                                                                                                       |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 422 tests |
+| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 432 tests |
 | TypeScript / ESLint / Prettier        | Required; lint passes with existing repository warnings, not zero warnings                                     |
 | Production build / bundle gate        | Required in production-shaped CI, unchanged warning/failure limits                                             |
 | Secret scan                           | Required, no backup/password/provider credential in Git                                                        |
