@@ -140,9 +140,10 @@ export function forecastPackages(
     const booking = bookingForLesson(lesson, data);
     if (
       ["paid", "waived"].includes(lesson.paymentStatus ?? "") ||
-      ["paid", "partially_paid", "processing", "not_required"].includes(
-        booking?.paymentStatus ?? "",
-      )
+      (booking?.paymentPolicy !== "credits" &&
+        ["paid", "partially_paid", "processing", "not_required"].includes(
+          booking?.paymentStatus ?? "",
+        ))
     )
       continue;
     const definitionFor = (pkg: PackageAccount) =>

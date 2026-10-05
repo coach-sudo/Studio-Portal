@@ -61,17 +61,19 @@ alter table public.outbox_messages
   add column entity_snapshot jsonb not null default '{}' check (jsonb_typeof(entity_snapshot) = 'object');
 create index outbox_automation_rule on public.outbox_messages(automation_rule_id) where automation_rule_id is not null;
 
--- Compatibility defaults: retain confirmation/reminder settings, but do not activate new billing mail.
+-- Preserve existing confirmation/reminder/failure/package-warning producers. New PAYG/forecast/coach rules stay off.
+create function public.seed_studio_automation_rules(target_studio uuid) returns void
+language sql security definer set search_path='' as $$
 insert into public.automation_rules (studio_id, rule_key, enabled, mode, trigger, audience, timing, suppressions)
 select s.id, r.key,
-  r.key in ('booking_confirmation','lesson_reminder') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
-    and coalesce((s.settings->'emailAutomations'->>case when r.key='booking_confirmation' then 'studentConfirmation' else 'reminders' end)::boolean,true),
-  case when r.key in ('booking_confirmation','lesson_reminder') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
-    and coalesce((s.settings->'emailAutomations'->>case when r.key='booking_confirmation' then 'studentConfirmation' else 'reminders' end)::boolean,true) then 'automatic' else 'off' end,
+  r.key in ('booking_confirmation','lesson_reminder','payment_failed','package_low','package_expiration') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
+    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true) else true end,
+  case when r.key in ('booking_confirmation','lesson_reminder','payment_failed','package_low','package_expiration') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
+    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true) else true end then 'automatic' else 'off' end,
   r.trigger, r.audience,
   case when r.key='lesson_reminder' then jsonb_build_object('hoursBefore',coalesce(s.settings->'reminderHours','[72,24,2]'::jsonb))
        when r.key in ('payment_due','payment_past_due') then '{"hoursBefore":[72,24,2]}'::jsonb
-       when r.key='package_expiration' then '{"daysBefore":7}'::jsonb else '{}'::jsonb end,
+       when r.key='package_expiration' then '{"daysBefore":30}'::jsonb else '{}'::jsonb end,
   '["condition_resolved","lesson_cancelled","lesson_rescheduled","preference_disabled","permission_revoked","duplicate"]'::jsonb
 from public.studios s cross join (values
   ('booking_confirmation','booking_confirmed','lesson_confirmation'),
@@ -84,7 +86,22 @@ from public.studios s cross join (values
   ('package_expiration','package_expiration','package_expiration'),
   ('missing_financial_setup','financial_review','coach'),
   ('delivery_failure','delivery_failed','coach')
-) as r(key, trigger, audience);
+) as r(key, trigger, audience)
+where s.id=target_studio
+on conflict (studio_id,rule_key) do nothing;
+$$;
+revoke all on function public.seed_studio_automation_rules(uuid) from public,anon,authenticated;
+grant execute on function public.seed_studio_automation_rules(uuid) to service_role;
+select public.seed_studio_automation_rules(id) from public.studios;
+create function public.initialize_studio_automation_rules() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+  perform public.seed_studio_automation_rules(new.id);
+  return new;
+end $$;
+revoke all on function public.initialize_studio_automation_rules() from public,anon,authenticated;
+grant execute on function public.initialize_studio_automation_rules() to service_role;
+create trigger initialize_studio_automation_rules after insert on public.studios for each row execute function public.initialize_studio_automation_rules();
 
 -- Invalidate queued decisions immediately on authoritative lesson changes. Never delete history.
 create function public.suppress_obsolete_lesson_automation() returns trigger

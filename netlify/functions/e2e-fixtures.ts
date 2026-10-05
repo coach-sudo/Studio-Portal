@@ -10,6 +10,7 @@ import {
   isProductionDeployContext,
 } from "../../src/security/e2eSafety";
 import type { Database } from "../../src/types/database.generated";
+import { queueLessonChangeEmails } from "./_shared/booking-email";
 
 type RoleName = "coach" | "student" | "guardian" | "unrelated" | "signout";
 type TableName = keyof Database["public"]["Tables"];
@@ -56,6 +57,16 @@ const ids = [
   "discountRedeemed",
   "rewardEarned",
   "rewardRedeemed",
+  "operationalStudent",
+  "operationalContact",
+  "operationalPackage",
+  "lessonPaid",
+  "lessonDue",
+  "lessonCredit",
+  "lessonShortfall",
+  "operationalReminder",
+  "operationalPaymentReminder",
+  "operationalSuppressed",
 ] as const;
 
 type FixtureIds = Record<(typeof ids)[number], string>;
@@ -136,6 +147,39 @@ async function cleanup(
 ) {
   assertE2ERunId(runId);
   const db = serviceClient();
+  const operationalStudents = [fixture.student, fixture.operationalStudent];
+  const queued = await db
+    .from("outbox_messages")
+    .select("id")
+    .eq("studio_id", studioId)
+    .in("student_id", operationalStudents);
+  if (queued.error) throwFixtureError("outbox_lookup", queued.error);
+  const messageIds = (queued.data ?? []).map((item) => item.id);
+  if (messageIds.length) {
+    const attempts = await db
+      .from("delivery_attempts")
+      .delete()
+      .in("outbox_message_id", messageIds);
+    if (attempts.error) throwFixtureError("delivery_cleanup", attempts.error);
+  }
+  const runs = await db
+    .from("automation_runs")
+    .delete()
+    .eq("studio_id", studioId)
+    .in("entity_id", [...Object.values(fixture), ...messageIds]);
+  if (runs.error) throwFixtureError("automation_cleanup", runs.error);
+  const messages = await db
+    .from("outbox_messages")
+    .delete()
+    .eq("studio_id", studioId)
+    .in("student_id", operationalStudents);
+  if (messages.error) throwFixtureError("outbox_cleanup", messages.error);
+  const ruleAudit = await db
+    .from("audit_events")
+    .delete()
+    .eq("studio_id", studioId)
+    .like("correlation_id", `${runId}:%`);
+  if (ruleAudit.error) throwFixtureError("rule_audit_cleanup", ruleAudit.error);
   const { data: assets, error: assetError } = await db
     .from("file_assets")
     .select("id,storage_path")
@@ -218,7 +262,7 @@ async function cleanup(
   if (messageError) throwFixtureError("message_cleanup", messageError);
   await deleteIds("conversations", [fixture.conversation]);
   await deleteIds("payment_entries", [fixture.payment]);
-  await deleteIds("packages", [fixture.package]);
+  await deleteIds("packages", [fixture.package, fixture.operationalPackage]);
   await deleteIds("package_definitions", [fixture.packageDefinition]);
   const { error: detachRevisionError } = await db
     .from("actor_profiles")
@@ -235,6 +279,10 @@ async function cleanup(
     fixture.lessonPending,
     fixture.lessonAvailable,
     fixture.lessonCancelled,
+    fixture.lessonPaid,
+    fixture.lessonDue,
+    fixture.lessonCredit,
+    fixture.lessonShortfall,
   ]);
   await deleteIds("booking_services", [
     fixture.freeService,
@@ -248,7 +296,10 @@ async function cleanup(
     fixture.unrelatedAccount,
     fixture.signoutAccount,
   ]);
-  await deleteIds("linked_contacts", [fixture.guardianContact]);
+  await deleteIds("linked_contacts", [
+    fixture.guardianContact,
+    fixture.operationalContact,
+  ]);
   await deleteIds("memberships", [fixture.membership]);
   await deleteIds("students", [
     fixture.coachStudent,
@@ -258,6 +309,7 @@ async function cleanup(
     fixture.referredPending,
     fixture.referredEarned,
     fixture.referredRedeemed,
+    fixture.operationalStudent,
   ]);
   await removeAuthUsers(emails);
 }
@@ -332,6 +384,12 @@ async function setup(
   const now = Date.now();
   const iso = (minutes: number) =>
     new Date(now + minutes * 60_000).toISOString();
+  const operationalDay = new Date(now);
+  operationalDay.setUTCHours(16, 0, 0, 0);
+  if (operationalDay.getTime() <= now)
+    operationalDay.setUTCDate(operationalDay.getUTCDate() + 1);
+  const operationalIso = (minutes: number) =>
+    new Date(operationalDay.getTime() + minutes * 60000).toISOString();
   const studentRows = [
     {
       id: fixture.coachStudent,
@@ -383,6 +441,16 @@ async function setup(
       portal_username: accounts.signout.username,
       referral_code: `E2ESIGNOUT${runId.slice(-4).toUpperCase()}`,
       status: "active",
+    },
+    {
+      id: fixture.operationalStudent,
+      studio_id: studioId,
+      full_name: `${runId} Operational minor`,
+      preferred_name: "Operational minor",
+      email: `e2e-minor-${runId.slice(-8)}@example.test`,
+      is_minor: true,
+      status: "active",
+      portal_enabled: false,
     },
     ...(["Pending", "Earned", "Redeemed"] as const).map((label) => ({
       id: fixture[`referred${label}`],
@@ -442,8 +510,38 @@ async function setup(
     can_view_work: true,
     can_manage_profile: true,
     can_manage_lessons: true,
+    is_primary_payer: true,
+    is_primary_scheduling_contact: true,
+    receives_financial_escalations: true,
   });
   if (contactError) throwFixtureError("linked_contact", contactError);
+  const operationalContact = await db.from("linked_contacts").upsert({
+    id: fixture.operationalContact,
+    studio_id: studioId,
+    student_id: fixture.operationalStudent,
+    full_name: "E2E Primary payer",
+    email: accounts.guardian.email,
+    relationship_type: "guardian",
+    portal_enabled: true,
+    can_view_finance: true,
+    can_view_schedule: true,
+    can_view_work: false,
+    can_receive_notifications: true,
+    is_primary_payer: true,
+    is_primary_scheduling_contact: true,
+    receives_financial_escalations: true,
+    notification_preferences: {
+      lessonReminders: true,
+      scheduleChanges: true,
+      lessonContent: false,
+      assignments: false,
+      packageBalance: true,
+      payments: true,
+      accountAccess: true,
+    },
+  });
+  if (operationalContact.error)
+    throwFixtureError("operational_contact", operationalContact.error);
 
   const portalRows = [
     {
@@ -659,6 +757,124 @@ async function setup(
     expires_at: iso(60 * 24 * 90),
   });
   if (packageError) throwFixtureError("package", packageError);
+  const operationalPackage = await db.from("packages").upsert({
+    id: fixture.operationalPackage,
+    student_id: fixture.operationalStudent,
+    definition_id: fixture.packageDefinition,
+    name: `${runId} Forecast package`,
+    credit_quantity: 1,
+    price_minor: 7000,
+    auto_apply: true,
+    expires_at: iso(60 * 24 * 90),
+  });
+  if (operationalPackage.error)
+    throwFixtureError("operational_package", operationalPackage.error);
+  const opsBase = {
+    ...lessonBase,
+    student_id: fixture.operationalStudent,
+    join_url: "https://meet.google.com/e2e-safe-fixture",
+    preparation: { planned: true, setupReady: true, materialsReady: true },
+    status: "scheduled",
+  };
+  const operationalLessons = await db.from("lessons").upsert([
+    {
+      ...opsBase,
+      id: fixture.lessonPaid,
+      topic: `${runId} Paid readiness`,
+      starts_at: operationalIso(0),
+      ends_at: operationalIso(60),
+    },
+    {
+      ...opsBase,
+      id: fixture.lessonDue,
+      topic: `${runId} Payment due readiness`,
+      starts_at: operationalIso(80),
+      ends_at: operationalIso(140),
+      payment_status: "due",
+      paid_minor: 0,
+    },
+    {
+      ...opsBase,
+      id: fixture.lessonCredit,
+      topic: `${runId} Package covered readiness`,
+      starts_at: operationalIso(160),
+      ends_at: operationalIso(220),
+      service_id: fixture.paidService,
+      payment_status: "untracked",
+      paid_minor: 0,
+    },
+    {
+      ...opsBase,
+      id: fixture.lessonShortfall,
+      topic: `${runId} Package shortfall readiness`,
+      starts_at: operationalIso(240),
+      ends_at: operationalIso(300),
+      service_id: fixture.paidService,
+      payment_status: "untracked",
+      paid_minor: 0,
+    },
+  ]);
+  if (operationalLessons.error)
+    throwFixtureError("operational_lessons", operationalLessons.error);
+  const reservation = await db.rpc("reserve_package_credit_for_lesson", {
+    p_lesson_id: fixture.lessonCredit,
+  });
+  if (reservation.error)
+    throwFixtureError("operational_reservation", reservation.error);
+  const opsMessages = await db.from("outbox_messages").upsert([
+    {
+      id: fixture.operationalReminder,
+      studio_id: studioId,
+      student_id: fixture.operationalStudent,
+      lesson_id: fixture.lessonDue,
+      recipient: accounts.guardian.email,
+      channel: "email",
+      subject: `${runId} Future lesson reminder`,
+      body: "Your lesson is coming up.",
+      status: "queued",
+      send_at: iso(60),
+      event_key: "booking.reminder.student",
+      recipient_intent: "lesson_reminder",
+      entity_snapshot: {
+        startsAt: operationalIso(80),
+        endsAt: operationalIso(140),
+      },
+      dedupe_key: `${runId}:lesson-reminder`,
+    },
+    {
+      id: fixture.operationalPaymentReminder,
+      studio_id: studioId,
+      student_id: fixture.operationalStudent,
+      lesson_id: fixture.lessonDue,
+      recipient: accounts.guardian.email,
+      channel: "email",
+      subject: `${runId} Future payment reminder`,
+      body: "Please review your recorded balance.",
+      status: "queued",
+      send_at: iso(60),
+      event_key: "payment.due.student",
+      recipient_intent: "payment_due",
+      dedupe_key: `${runId}:payment-reminder`,
+    },
+    {
+      id: fixture.operationalSuppressed,
+      studio_id: studioId,
+      student_id: fixture.operationalStudent,
+      lesson_id: fixture.lessonPaid,
+      recipient: accounts.guardian.email,
+      channel: "email",
+      subject: `${runId} Suppressed payment reminder`,
+      body: "Retained fixture history.",
+      status: "cancelled",
+      send_at: iso(-60),
+      event_key: "payment.due.student",
+      recipient_intent: "payment_due",
+      suppression_reason: "payment_received",
+      dedupe_key: `${runId}:suppressed-reminder`,
+    },
+  ]);
+  if (opsMessages.error)
+    throwFixtureError("operational_outbox", opsMessages.error);
   const { error: paymentError } = await db.from("payment_entries").upsert({
     id: fixture.payment,
     student_id: fixture.student,
@@ -820,10 +1036,17 @@ async function setup(
     },
   ]);
   if (rewardsError) throwFixtureError("referral_rewards", rewardsError);
+  const originalRules = await db
+    .from("automation_rules")
+    .select("*")
+    .eq("studio_id", studioId);
+  if (originalRules.error)
+    throwFixtureError("rule_baseline", originalRules.error);
 
   return {
     accounts,
     ids: fixture,
+    ruleSnapshots: originalRules.data,
     actorSlug: `${runId}-actor`,
     capabilities: {
       google: Boolean(Netlify.env.get("GOOGLE_REFRESH_TOKEN")),
@@ -847,7 +1070,11 @@ export default async (request: Request, context: Context) => {
     if (!expectedToken || !secretMatches(suppliedToken, expectedToken)) {
       return json({ message: "Fixture authorization failed." }, 401);
     }
-    const body = (await request.json()) as { action?: string; runId?: string };
+    const body = (await request.json()) as {
+      action?: string;
+      runId?: string;
+      ruleSnapshots?: Database["public"]["Tables"]["automation_rules"]["Row"][];
+    };
     const runId = assertE2ERunId(String(body.runId || ""));
     const studio = await resolveStudio();
     const fixture = fixtureIds(runId);
@@ -859,7 +1086,64 @@ export default async (request: Request, context: Context) => {
         fixture,
         Object.values(accountSet).map((item) => item.email),
       );
+      if (body.ruleSnapshots?.length) {
+        if (Netlify.env.get("E2E_EPHEMERAL") !== "true")
+          return json(
+            {
+              message:
+                "Rule-baseline restoration is restricted to the run-local isolated stack.",
+            },
+            403,
+          );
+        for (const rule of body.ruleSnapshots) {
+          if (rule.studio_id !== studio.id)
+            throw new Error("Fixture rule scope mismatch");
+          const restored = await serviceClient()
+            .from("automation_rules")
+            .update(rule)
+            .eq("id", rule.id)
+            .eq("studio_id", studio.id);
+          if (restored.error) throwFixtureError("rule_restore", restored.error);
+        }
+      }
       return json({ ok: true, runId });
+    }
+    if (body.action === "reschedule_operational") {
+      if (Netlify.env.get("E2E_EPHEMERAL") !== "true")
+        return json(
+          { message: "Isolated provider-independent fixture operation only." },
+          403,
+        );
+      const db = serviceClient(),
+        lesson = await db
+          .from("lessons")
+          .select("version,starts_at,ends_at")
+          .eq("id", fixture.lessonDue)
+          .eq("student_id", fixture.operationalStudent)
+          .single();
+      if (lesson.error)
+        throwFixtureError("operational_reschedule_read", lesson.error);
+      const changed = await db.rpc("command_change_lesson_state", {
+        p_lesson_id: fixture.lessonDue,
+        p_expected_version: lesson.data.version,
+        p_action: "reschedule",
+        p_starts_at: new Date(
+          Date.parse(lesson.data.starts_at) + 86400000,
+        ).toISOString(),
+        p_ends_at: new Date(
+          Date.parse(lesson.data.ends_at) + 86400000,
+        ).toISOString(),
+        p_queue_calendar: false,
+      });
+      if (changed.error)
+        throwFixtureError("operational_reschedule", changed.error);
+      await queueLessonChangeEmails(
+        db,
+        fixture.lessonDue,
+        "rescheduled",
+        `${runId}:reschedule`,
+      );
+      return json({ ok: true });
     }
     if (body.action !== "setup")
       return json({ message: "Unknown fixture action." }, 400);

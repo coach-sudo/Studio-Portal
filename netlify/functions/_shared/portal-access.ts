@@ -1,3 +1,4 @@
+import { portalActionUrl, portalOrigin } from "./portal-url";
 import { randomBytes } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { findAuthUserByEmail } from "./auth-users";
@@ -282,7 +283,7 @@ export async function provisionPortalAccount(
     .single();
   if (updateError) throw updateError;
 
-  const loginUrl = `${Netlify.env.get("URL") || "https://portal.d-a-j.com"}/login`;
+  const loginUrl = portalActionUrl(portalOrigin(), "login");
   const studioName = studio?.name || "Coach'D";
   const relationshipLabel = linkedContact
     ? linkedContact.relationship_label || (linkedContact.relationship_type === "support_person" ? "support person" : linkedContact.relationship_type)

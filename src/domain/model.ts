@@ -592,6 +592,10 @@ export interface ActorProfile extends Versioned {
   };
 }
 export interface OutboxMessage extends Versioned {
+  bookingId?: UUID;
+  suppressionReason?: string;
+  recipientIntent?: string;
+  automationRuleId?: UUID;
   studentId?: UUID;
   lessonId?: UUID;
   correlationId?: string;

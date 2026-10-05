@@ -235,6 +235,134 @@ export type Database = {
           },
         ]
       }
+      automation_rules: {
+        Row: {
+          audience: string
+          conditions: Json
+          created_at: string
+          enabled: boolean
+          escalation: Json
+          id: string
+          mode: string
+          priority: number
+          rule_key: string
+          studio_id: string
+          suppressions: Json
+          template: Json
+          timing: Json
+          trigger: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          audience: string
+          conditions?: Json
+          created_at?: string
+          enabled?: boolean
+          escalation?: Json
+          id?: string
+          mode?: string
+          priority?: number
+          rule_key: string
+          studio_id: string
+          suppressions?: Json
+          template?: Json
+          timing?: Json
+          trigger: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          audience?: string
+          conditions?: Json
+          created_at?: string
+          enabled?: boolean
+          escalation?: Json
+          id?: string
+          mode?: string
+          priority?: number
+          rule_key?: string
+          studio_id?: string
+          suppressions?: Json
+          template?: Json
+          timing?: Json
+          trigger?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_runs: {
+        Row: {
+          correlation_id: string
+          decision: Json
+          decision_key: string
+          entity_id: string
+          entity_type: string
+          evaluated_at: string
+          explanation: string
+          id: string
+          outbox_ids: string[]
+          result: string
+          rule_id: string
+          studio_id: string
+          suppressed_reason: string | null
+        }
+        Insert: {
+          correlation_id: string
+          decision?: Json
+          decision_key: string
+          entity_id: string
+          entity_type: string
+          evaluated_at?: string
+          explanation: string
+          id?: string
+          outbox_ids?: string[]
+          result: string
+          rule_id: string
+          studio_id: string
+          suppressed_reason?: string | null
+        }
+        Update: {
+          correlation_id?: string
+          decision?: Json
+          decision_key?: string
+          entity_id?: string
+          entity_type?: string
+          evaluated_at?: string
+          explanation?: string
+          id?: string
+          outbox_ids?: string[]
+          result?: string
+          rule_id?: string
+          studio_id?: string
+          suppressed_reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_runs_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       availability_exceptions: {
         Row: {
           created_at: string
@@ -1646,9 +1774,12 @@ export type Database = {
           email: string
           full_name: string
           id: string
+          is_primary_payer: boolean
+          is_primary_scheduling_contact: boolean
           notification_preferences: Json
           portal_enabled: boolean
           portal_preferences: Json
+          receives_financial_escalations: boolean
           relationship_label: string
           relationship_type: string
           student_id: string
@@ -1670,9 +1801,12 @@ export type Database = {
           email: string
           full_name: string
           id?: string
+          is_primary_payer?: boolean
+          is_primary_scheduling_contact?: boolean
           notification_preferences?: Json
           portal_enabled?: boolean
           portal_preferences?: Json
+          receives_financial_escalations?: boolean
           relationship_label?: string
           relationship_type?: string
           student_id: string
@@ -1694,9 +1828,12 @@ export type Database = {
           email?: string
           full_name?: string
           id?: string
+          is_primary_payer?: boolean
+          is_primary_scheduling_contact?: boolean
           notification_preferences?: Json
           portal_enabled?: boolean
           portal_preferences?: Json
+          receives_financial_escalations?: boolean
           relationship_label?: string
           relationship_type?: string
           student_id?: string
@@ -2108,6 +2245,7 @@ export type Database = {
       outbox_messages: {
         Row: {
           attempts: number
+          automation_rule_id: string | null
           body: string
           booking_id: string | null
           campaign_id: string | null
@@ -2115,23 +2253,28 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          entity_snapshot: Json
           event_key: string | null
+          html_body: string | null
           id: string
           last_error: string | null
           lesson_id: string | null
           next_attempt_at: string | null
           priority: number
           recipient: string
+          recipient_intent: string | null
           send_at: string
           status: Database["public"]["Enums"]["delivery_status"]
           student_id: string | null
           studio_id: string
           subject: string
+          suppression_reason: string | null
           updated_at: string
           version: number
         }
         Insert: {
           attempts?: number
+          automation_rule_id?: string | null
           body: string
           booking_id?: string | null
           campaign_id?: string | null
@@ -2139,23 +2282,28 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          entity_snapshot?: Json
           event_key?: string | null
+          html_body?: string | null
           id?: string
           last_error?: string | null
           lesson_id?: string | null
           next_attempt_at?: string | null
           priority?: number
           recipient: string
+          recipient_intent?: string | null
           send_at?: string
           status?: Database["public"]["Enums"]["delivery_status"]
           student_id?: string | null
           studio_id: string
           subject?: string
+          suppression_reason?: string | null
           updated_at?: string
           version?: number
         }
         Update: {
           attempts?: number
+          automation_rule_id?: string | null
           body?: string
           booking_id?: string | null
           campaign_id?: string | null
@@ -2163,22 +2311,33 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          entity_snapshot?: Json
           event_key?: string | null
+          html_body?: string | null
           id?: string
           last_error?: string | null
           lesson_id?: string | null
           next_attempt_at?: string | null
           priority?: number
           recipient?: string
+          recipient_intent?: string | null
           send_at?: string
           status?: Database["public"]["Enums"]["delivery_status"]
           student_id?: string | null
           studio_id?: string
           subject?: string
+          suppression_reason?: string | null
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "outbox_messages_automation_rule_id_fkey"
+            columns: ["automation_rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "outbox_messages_booking_id_fkey"
             columns: ["booking_id"]
@@ -3857,6 +4016,7 @@ export type Database = {
         Args: { batch_size?: number }
         Returns: {
           attempts: number
+          automation_rule_id: string | null
           body: string
           booking_id: string | null
           campaign_id: string | null
@@ -3864,18 +4024,22 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          entity_snapshot: Json
           event_key: string | null
+          html_body: string | null
           id: string
           last_error: string | null
           lesson_id: string | null
           next_attempt_at: string | null
           priority: number
           recipient: string
+          recipient_intent: string | null
           send_at: string
           status: Database["public"]["Enums"]["delivery_status"]
           student_id: string | null
           studio_id: string
           subject: string
+          suppression_reason: string | null
           updated_at: string
           version: number
         }[]
@@ -3897,6 +4061,7 @@ export type Database = {
         Args: { batch_size?: number }
         Returns: {
           attempts: number
+          automation_rule_id: string | null
           body: string
           booking_id: string | null
           campaign_id: string | null
@@ -3904,18 +4069,22 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          entity_snapshot: Json
           event_key: string | null
+          html_body: string | null
           id: string
           last_error: string | null
           lesson_id: string | null
           next_attempt_at: string | null
           priority: number
           recipient: string
+          recipient_intent: string | null
           send_at: string
           status: Database["public"]["Enums"]["delivery_status"]
           student_id: string | null
           studio_id: string
           subject: string
+          suppression_reason: string | null
           updated_at: string
           version: number
         }[]

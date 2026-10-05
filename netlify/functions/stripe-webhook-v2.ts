@@ -1,3 +1,4 @@
+import { portalOrigin } from "./_shared/portal-url";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
@@ -43,7 +44,7 @@ export default async (request: Request, context: Context) => {
         await db.from("package_gifts").update({status:"purchased",updated_at:new Date().toISOString()}).eq("id",gift.id).eq("status","pending_payment");
         const deliversLater=Boolean(gift.deliver_at&&new Date(gift.deliver_at)>new Date());
         if(recipient&&!deliversLater){const claimed=await db.rpc("claim_package_gift",{target_gift:gift.id,target_student:recipient.id,apply_automatically:false});if(claimed.error)throw claimed.error;}
-        const claimUrl=`${Netlify.env.get("URL")||new URL(request.url).origin}/gift/claim/${object.metadata?.claim_token}`;
+        const claimUrl=`${portalOrigin()}/gift/claim/${object.metadata?.claim_token}`;
         await db.from("outbox_messages").upsert({studio_id:gift.studio_id,channel:"email",recipient:gift.recipient_email,subject:`${gift.purchaser_name} sent you a Coach'D lesson package`,body:[`Hello ${gift.recipient_name},`,"",`${gift.purchaser_name} sent you ${definition.name}.`,gift.message?`Message: ${gift.message}`:"",recipient?(deliversLater?"The credits will be added to your portal on the delivery date.":"The credits are already in your portal."):`Claim your gift: ${claimUrl}`,"","Gifts never create recurring charges."].filter(Boolean).join("\n"),status:"queued",send_at:gift.deliver_at||new Date().toISOString(),event_key:"package.gift",dedupe_key:`package-gift:${gift.id}:delivery`,priority:85},{onConflict:"dedupe_key",ignoreDuplicates:true});
         return done({packageGift:true});
       }

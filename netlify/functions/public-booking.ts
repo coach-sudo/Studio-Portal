@@ -1,3 +1,4 @@
+import { portalOrigin } from "./_shared/portal-url";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
@@ -871,7 +872,7 @@ async function createBooking(request: Request) {
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" }),
-      origin = new URL(request.url).origin,
+      origin = portalOrigin(),
       recurring = ["subscription", "installments"].includes(
         input.paymentPolicy,
       );

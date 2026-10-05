@@ -54,21 +54,29 @@ export interface LessonReadiness {
   logistics: { calendarReady: boolean | "unknown"; meetingReady: boolean };
   issues: ReadinessIssue[];
 }
-export type ReadinessData = Pick<
-  StudioSnapshot,
-  | "students"
-  | "lessons"
-  | "bookings"
-  | "lessonParticipants"
-  | "packages"
-  | "packageDefinitions"
-  | "creditEntries"
-  | "payments"
-  | "studentPricingRules"
-  | "linkedContacts"
-  | "outbox"
-  | "settings"
->;
+export type ReadinessData = Omit<
+  Pick<
+    StudioSnapshot,
+    | "students"
+    | "lessons"
+    | "bookings"
+    | "lessonParticipants"
+    | "packages"
+    | "packageDefinitions"
+    | "creditEntries"
+    | "payments"
+    | "studentPricingRules"
+    | "linkedContacts"
+    | "outbox"
+    | "settings"
+  >,
+  "settings"
+> & {
+  settings: Pick<
+    StudioSnapshot["settings"],
+    "emailAutomations" | "timezone" | "currency"
+  >;
+};
 
 function communicationState(
   messages: ReadinessData["outbox"],
@@ -128,7 +136,7 @@ export function evaluateLessonReadiness(
   if (lesson.paymentStatus === "waived") {
     financial.state = "covered_waived";
     financial.reason = "Coach recorded a waiver or arrangement.";
-  } else if (paymentStatus === "paid") {
+  } else if (paymentStatus === "paid" && booking?.paymentPolicy !== "credits") {
     financial.state = "covered_paid";
     financial.reason = "Payment is recorded as paid.";
   } else if (paymentStatus === "not_required") {
@@ -146,7 +154,11 @@ export function evaluateLessonReadiness(
     financial.state = "covered_package";
     financial.packageId = pkg.id;
     financial.reason = "A ledger credit is already reserved for this lesson.";
-  } else if (paymentStatus === "paid_by_credit" || reserved) {
+  } else if (
+    paymentStatus === "paid_by_credit" ||
+    booking?.paymentPolicy === "credits" ||
+    reserved
+  ) {
     financial.state = "review_required";
     financial.reason =
       "The credit designation and applicable package ledger need reconciliation.";
@@ -211,7 +223,9 @@ export function evaluateLessonReadiness(
     data.settings.emailAutomations.reminders,
   );
   const confirmationState = communicationState(
-    messages.filter((message) => /confirmation/.test(message.eventKey ?? "")),
+    messages.filter((message) =>
+      /confirmation|confirmed\.student/.test(message.eventKey ?? ""),
+    ),
     confirmationRequired,
   );
   const reminderState = communicationState(
