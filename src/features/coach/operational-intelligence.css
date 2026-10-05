@@ -42,6 +42,9 @@
 .financial-setup {
   margin-bottom: 1rem;
 }
+.financial-setup > .section {
+  padding: clamp(16px, 2vw, 24px);
+}
 .operational-counts {
   display: flex;
   flex-wrap: wrap;

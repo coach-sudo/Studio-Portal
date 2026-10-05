@@ -99,6 +99,8 @@ Necessary compatibility is deliberately retained: the collapsed legacy templates
 
 The existing seven-day delivered-credential retention job now clears both plain text and the new stored HTML rendering, retaining the outbox row/status/history. Regression tests preserve queued/recent credential messages and unrelated email, and require purge failures to surface. No production retention job or manual data cleanup was run during implementation.
 
+Visual inspection also found a missing financial-card inset caused by its wrapper. The shared setup panel now has the existing card-scale spacing; desktop/mobile browser assertions verify its heading is inset rather than flush with the edge.
+
 ## Verification and visual evidence
 
 The authoritative exact-head workflows are **Production checks** (`verify`, `migrations`) and **Deployed browser checks** (`smoke`, `deployed-suite`) on PR #26. The latter runs the original thirteen journeys plus the fifteen-step operational coach journey and a mobile operational surface journey.

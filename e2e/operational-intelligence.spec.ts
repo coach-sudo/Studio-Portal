@@ -45,6 +45,16 @@ async function read(page: Page, table: string, filter: string) {
   expect(response.ok()).toBeTruthy();
   return response.json();
 }
+
+async function expectFinancialInset(page: Page) {
+  const panel = page.locator(".financial-setup > .section");
+  await expect(panel).toBeVisible();
+  const heading = await panel
+    .getByRole("heading", { name: "Financial setup" })
+    .boundingBox();
+  const bounds = await panel.boundingBox();
+  expect(heading!.x - bounds!.x).toBeGreaterThanOrEqual(16);
+}
 async function command(
   page: Page,
   runtime: E2ERuntime,
@@ -467,6 +477,7 @@ test.describe("Stateful operational acceptance", () => {
       await expect(
         page.getByRole("heading", { name: "Financial setup" }),
       ).toBeVisible();
+      await expectFinancialInset(page);
       await expectNoSeriousAxeViolations(page);
       await page.screenshot({
         path: testInfo.outputPath("student-payments-desktop.png"),
@@ -529,6 +540,8 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       await expect(payerName).toHaveText("E2E Primary payer");
       expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     }
+    if (name === "account" || name === "payments")
+      await expectFinancialInset(page);
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page);
     await page.screenshot({
