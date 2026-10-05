@@ -1100,10 +1100,11 @@ async function setup(
 
 export default async (request: Request, context: Context) => {
   try {
-    assertNonProductionE2EUrl(request.url);
+    // Reject production before the hostname assertion can reach the 500 handler.
     if (isProductionDeployContext(releaseMetadata().context)) {
       return json({ message: "E2E fixtures are disabled in production." }, 403);
     }
+    assertNonProductionE2EUrl(request.url);
     if (request.method !== "POST")
       return json({ message: "Method not allowed." }, 405);
     const expectedToken = Netlify.env.get("E2E_FIXTURE_TOKEN") || "";
