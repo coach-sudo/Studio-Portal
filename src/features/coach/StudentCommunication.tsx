@@ -83,7 +83,12 @@ export function StudentCommunication({
     },
   });
   const attempts = useQuery({
-    queryKey: ["studio-page", "messaging", "delivery-attempts", selected?.id],
+    queryKey: [
+      "studio-delivery-attempts",
+      "coach",
+      data.studioId,
+      selected?.id,
+    ],
     enabled: !isDemo && Boolean(supabase && selected),
     queryFn: async ({ signal }) => {
       const result = await supabase!
@@ -270,7 +275,9 @@ export function StudentCommunication({
             <p key={attempt.id}>
               {formatStudioDateTime(attempt.created_at, data.settings.timezone)}{" "}
               · {attempt.succeeded ? "Delivered" : "Failed"}
-              {attempt.error ? ` · ${attempt.error}` : ""}
+              {!attempt.succeeded
+                ? " · Check the email provider connection."
+                : ""}
             </p>
           ))}
           {["draft", "approved", "queued", "failed"].includes(

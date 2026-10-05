@@ -84,6 +84,11 @@ export function evaluateAutomationRule(
 ): AutomationDecision {
   if (!rule.enabled || rule.mode === "off")
     return suppressed("rule_off", "This rule is off.");
+  if (!data.settings.emailAutomations.enabled)
+    return suppressed(
+      "automation_disabled",
+      "The studio automated-email master switch is off.",
+    );
   const lesson = entity.lesson;
   const readiness = lesson && evaluateLessonReadiness(lesson, data, now);
   if (lesson && !readiness?.active)

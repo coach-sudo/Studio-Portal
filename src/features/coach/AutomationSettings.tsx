@@ -169,9 +169,16 @@ export function AutomationSettings({
           reason: "Coach updated structured automation rule",
           payload,
         });
-      await invalidateStudioDomains(queryClient, [
-        "administration",
-        "messaging",
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [
+            "studio-page",
+            "administration",
+            "automation-rules",
+            data.studioId,
+          ],
+        }),
+        invalidateStudioDomains(queryClient, ["messaging"]),
       ]);
       setEdit(undefined);
       setNotice(
@@ -190,13 +197,44 @@ export function AutomationSettings({
     : testing?.rule_key === "delivery_failure"
       ? "outbox"
       : "lesson";
+  const packageChoices = useQuery({
+    queryKey: [
+      "studio-page",
+      "finance",
+      "automation-package-choices",
+      data.studioId,
+    ],
+    enabled:
+      !isDemo &&
+      Boolean(supabase) &&
+      entityType === "package" &&
+      Boolean(testing),
+    staleTime: 30000,
+    queryFn: async ({ signal }) => {
+      const result = await supabase!
+        .from("packages")
+        .select("id,student_id,name,students!inner(studio_id)")
+        .eq("students.studio_id", data.studioId)
+        .order("name")
+        .limit(100)
+        .abortSignal(signal);
+      if (result.error) throw result.error;
+      return result.data.map((item) => ({
+        id: item.id,
+        studentId: item.student_id,
+        label: item.name,
+      }));
+    },
+  });
   const entities =
     entityType === "package"
-      ? data.packages.map((item) => ({
-          id: item.id,
-          studentId: item.studentId,
-          label: item.name,
-        }))
+      ? isDemo
+        ? data.packages.map((item) => ({
+            id: item.id,
+            studentId: item.studentId,
+            label: item.name,
+          }))
+        : (packageChoices.data ?? [])
       : entityType === "outbox"
         ? data.outbox
             .filter((item) => item.status === "failed" && item.studentId)
@@ -235,9 +273,16 @@ export function AutomationSettings({
       setPreview(
         `${result.resource.decision.explanation} Result: ${result.resource.result}. ${result.resource.outboxIds.length} outbox item(s).${result.resource.recipients.unresolved.length ? " Recipient unresolved." : ""}`,
       );
-      await invalidateStudioDomains(queryClient, [
-        "administration",
-        "messaging",
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: [
+            "studio-page",
+            "administration",
+            "automation-runs",
+            data.studioId,
+          ],
+        }),
+        invalidateStudioDomains(queryClient, ["messaging"]),
       ]);
     } catch (error) {
       setPreview(error instanceof Error ? error.message : "Evaluation failed.");

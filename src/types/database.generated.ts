@@ -4515,6 +4515,10 @@ export type Database = {
         Args: { p_lesson_id: string; p_package_id?: string; p_reason?: string }
         Returns: string
       }
+      seed_studio_automation_rules: {
+        Args: { target_studio: string }
+        Returns: undefined
+      }
       student_payment_balance: {
         Args: { target_student: string }
         Returns: number

@@ -36,7 +36,13 @@ function client(rows: Record<string, unknown>) {
       const query = {
         select: () => query,
         eq: () => query,
-        single: async () => ({ data: rows[table], error: null }),
+        single: async () => ({
+          data:
+            table === "studios"
+              ? (rows[table] ?? { settings: {} })
+              : rows[table],
+          error: null,
+        }),
         maybeSingle: async () => ({ data: rows[table], error: null }),
       };
       return query;

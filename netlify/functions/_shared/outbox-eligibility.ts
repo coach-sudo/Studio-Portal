@@ -20,6 +20,7 @@ export function messageIntent(
   if (recipientIntents.includes(explicit as RecipientIntent))
     return explicit as RecipientIntent;
   const event = message.event_key ?? "";
+  if (event.endsWith(".coach")) return "coach";
   if (event.includes("reminder")) return "lesson_reminder";
   if (event.startsWith("payment."))
     return event.includes("failed") ? "payment_failed" : "payment_due";
@@ -63,6 +64,45 @@ export async function checkOutboxEligibility(
       return { allowed: false, reason: "rule_off" };
   }
   if (!intent) return { allowed: true };
+  const studio = await db
+    .from("studios")
+    .select("settings")
+    .eq("id", message.studio_id)
+    .single();
+  if (studio.error) throw studio.error;
+  const settings = studio.data.settings as {
+    contactEmail?: string;
+    emailAutomations?: { enabled?: boolean; coachNewBooking?: boolean };
+  };
+  if (settings.emailAutomations?.enabled === false)
+    return { allowed: false, reason: "automation_disabled" };
+  if (intent === "coach") {
+    if (!message.automation_rule_id) {
+      if (
+        settings.contactEmail?.toLowerCase() !== message.recipient.toLowerCase()
+      )
+        return { allowed: false, reason: "coach_recipient_changed" };
+    } else {
+      const memberships = await db
+        .from("memberships")
+        .select("user_id")
+        .eq("studio_id", message.studio_id)
+        .eq("role", "coach");
+      if (memberships.error) throw memberships.error;
+      let allowed = false;
+      for (const membership of memberships.data) {
+        const user = await db.auth.admin.getUserById(membership.user_id);
+        if (user.error) throw user.error;
+        if (
+          user.data.user?.email?.toLowerCase() ===
+          message.recipient.toLowerCase()
+        )
+          allowed = true;
+      }
+      if (!allowed)
+        return { allowed: false, reason: "coach_permission_removed" };
+    }
+  }
   const snapshot = (message.entity_snapshot ?? {}) as {
     startsAt?: string;
     endsAt?: string;
@@ -132,6 +172,32 @@ export async function checkOutboxEligibility(
           recipient.email.toLowerCase() === message.recipient.toLowerCase(),
       )
     )
+      return { allowed: false, reason: "recipient_no_longer_eligible" };
+  }
+  if (!studentId && intent !== "coach" && message.lesson_id) {
+    const participants = await db
+      .from("lesson_participants")
+      .select("student_id")
+      .eq("lesson_id", message.lesson_id)
+      .neq("status", "cancelled");
+    if (participants.error) throw participants.error;
+    let allowed = false;
+    for (const participant of participants.data)
+      if (participant.student_id) {
+        const resolved = await resolveEventRecipients(
+          client,
+          participant.student_id,
+          intent,
+        );
+        if (
+          resolved.recipients.some(
+            (recipient) =>
+              recipient.email.toLowerCase() === message.recipient.toLowerCase(),
+          )
+        )
+          allowed = true;
+      }
+    if (!allowed && !message.booking_id)
       return { allowed: false, reason: "recipient_no_longer_eligible" };
   }
   if (

@@ -15,6 +15,8 @@ export async function handleAutomationCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   if (ctx.domain !== "automations") return null;
+  if (!ctx.input.entityId)
+    throw AppError.validation({ entityId: "An entity ID is required." });
   const studioId = await ctx.requireCoach(),
     client = serviceClient(),
     db = client as SupabaseClient<Database>;
@@ -47,6 +49,19 @@ export async function handleAutomationCommands(
         status: 409,
         message: "The rule changed. Refresh and try again.",
       });
+    if (!value.enabled || value.mode === "off") {
+      const suppressed = await db
+        .from("outbox_messages")
+        .update({
+          status: "cancelled",
+          suppression_reason: "rule_off",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("studio_id", studioId)
+        .eq("automation_rule_id", result.data.id)
+        .in("status", ["draft", "approved", "queued", "failed"]);
+      if (suppressed.error) throw suppressed.error;
+    }
     return json({
       resource: result.data,
       auditEventId: await ctx.audit(
@@ -73,6 +88,11 @@ export async function handleAutomationCommands(
       .eq("studio_id", studioId)
       .single();
     if (rule.error) throw AppError.forbidden(rule.error);
+    if (rule.data.version !== ctx.input.expectedVersion)
+      throw new AppError("VERSION_CONFLICT", {
+        status: 409,
+        message: "The rule changed. Refresh before evaluating it.",
+      });
     const result = await evaluateAndQueueRule(
       client,
       rule.data,

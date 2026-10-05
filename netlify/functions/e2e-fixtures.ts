@@ -60,6 +60,7 @@ const ids = [
   "operationalStudent",
   "operationalContact",
   "operationalPackage",
+  "operationalCredit",
   "lessonPaid",
   "lessonDue",
   "lessonCredit",
@@ -769,6 +770,18 @@ async function setup(
   });
   if (operationalPackage.error)
     throwFixtureError("operational_package", operationalPackage.error);
+  const operationalCredit = await db
+    .from("package_credit_entries")
+    .upsert({
+      id: fixture.operationalCredit,
+      package_id: fixture.operationalPackage,
+      kind: "purchase",
+      quantity: 1,
+      reason: `${runId} deterministic credit purchase`,
+      idempotency_key: `${runId}:operational-credit`,
+    });
+  if (operationalCredit.error)
+    throwFixtureError("operational_credit", operationalCredit.error);
   const opsBase = {
     ...lessonBase,
     student_id: fixture.operationalStudent,
@@ -821,58 +834,61 @@ async function setup(
   });
   if (reservation.error)
     throwFixtureError("operational_reservation", reservation.error);
-  const opsMessages = await db.from("outbox_messages").upsert([
-    {
-      id: fixture.operationalReminder,
-      studio_id: studioId,
-      student_id: fixture.operationalStudent,
-      lesson_id: fixture.lessonDue,
-      recipient: accounts.guardian.email,
-      channel: "email",
-      subject: `${runId} Future lesson reminder`,
-      body: "Your lesson is coming up.",
-      status: "queued",
-      send_at: iso(60),
-      event_key: "booking.reminder.student",
-      recipient_intent: "lesson_reminder",
-      entity_snapshot: {
-        startsAt: operationalIso(80),
-        endsAt: operationalIso(140),
+  const opsMessages = await db.from("outbox_messages").upsert(
+    [
+      {
+        id: fixture.operationalReminder,
+        studio_id: studioId,
+        student_id: fixture.operationalStudent,
+        lesson_id: fixture.lessonDue,
+        recipient: accounts.guardian.email,
+        channel: "email",
+        subject: `${runId} Future lesson reminder`,
+        body: "Your lesson is coming up.",
+        status: "queued",
+        send_at: iso(60),
+        event_key: "booking.reminder.student",
+        recipient_intent: "lesson_reminder",
+        entity_snapshot: {
+          startsAt: operationalIso(80),
+          endsAt: operationalIso(140),
+        },
+        dedupe_key: `${runId}:lesson-reminder`,
       },
-      dedupe_key: `${runId}:lesson-reminder`,
-    },
-    {
-      id: fixture.operationalPaymentReminder,
-      studio_id: studioId,
-      student_id: fixture.operationalStudent,
-      lesson_id: fixture.lessonDue,
-      recipient: accounts.guardian.email,
-      channel: "email",
-      subject: `${runId} Future payment reminder`,
-      body: "Please review your recorded balance.",
-      status: "queued",
-      send_at: iso(60),
-      event_key: "payment.due.student",
-      recipient_intent: "payment_due",
-      dedupe_key: `${runId}:payment-reminder`,
-    },
-    {
-      id: fixture.operationalSuppressed,
-      studio_id: studioId,
-      student_id: fixture.operationalStudent,
-      lesson_id: fixture.lessonPaid,
-      recipient: accounts.guardian.email,
-      channel: "email",
-      subject: `${runId} Suppressed payment reminder`,
-      body: "Retained fixture history.",
-      status: "cancelled",
-      send_at: iso(-60),
-      event_key: "payment.due.student",
-      recipient_intent: "payment_due",
-      suppression_reason: "payment_received",
-      dedupe_key: `${runId}:suppressed-reminder`,
-    },
-  ]);
+      {
+        id: fixture.operationalPaymentReminder,
+        studio_id: studioId,
+        student_id: fixture.operationalStudent,
+        lesson_id: fixture.lessonDue,
+        recipient: accounts.guardian.email,
+        channel: "email",
+        subject: `${runId} Future payment reminder`,
+        body: "Please review your recorded balance.",
+        status: "queued",
+        send_at: iso(60),
+        event_key: "payment.due.student",
+        recipient_intent: "payment_due",
+        dedupe_key: `${runId}:payment-reminder`,
+      },
+      {
+        id: fixture.operationalSuppressed,
+        studio_id: studioId,
+        student_id: fixture.operationalStudent,
+        lesson_id: fixture.lessonPaid,
+        recipient: accounts.guardian.email,
+        channel: "email",
+        subject: `${runId} Suppressed payment reminder`,
+        body: "Retained fixture history.",
+        status: "cancelled",
+        send_at: iso(-60),
+        event_key: "payment.due.student",
+        recipient_intent: "payment_due",
+        suppression_reason: "payment_received",
+        dedupe_key: `${runId}:suppressed-reminder`,
+      },
+    ],
+    { defaultToNull: false },
+  );
   if (opsMessages.error)
     throwFixtureError("operational_outbox", opsMessages.error);
   const { error: paymentError } = await db.from("payment_entries").upsert({
