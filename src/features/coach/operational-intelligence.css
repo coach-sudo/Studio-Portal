@@ -108,7 +108,7 @@
   color: #2b6042;
   font-size: 12px;
 }
-.today-lesson-row .row-actions > button.primary-button {
+.today-lesson-row .row-actions > button:last-child {
   color: #17211d;
   background: #c99a45;
 }

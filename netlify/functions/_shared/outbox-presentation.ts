@@ -48,10 +48,36 @@ export function presentOutboxMessage(
     login: "Sign in",
     book: "Book a Lesson",
   };
-  const primary = action ?? {
-    label: labels[defaultAction],
-    url: portalActionUrl(origin, defaultAction, input.lesson_id ?? undefined),
-  };
+  // Preserve established token-scoped booking management links from legacy plain-text rows.
+  // Only this trusted origin and exact token route are accepted; strip query/hash data.
+  const bookingLink = /booking\.confirmed/.test(event)
+    ? text
+        .match(/https?:\/\/[^\s<>]+/g)
+        ?.map((value) => {
+          try {
+            const url = new URL(value);
+            return url.origin === origin &&
+              /^\/booking\/[A-Za-z0-9_-]+$/.test(url.pathname)
+              ? `${origin}${url.pathname}`
+              : undefined;
+          } catch {
+            return undefined;
+          }
+        })
+        .find(Boolean)
+    : undefined;
+  const primary =
+    action ??
+    (bookingLink
+      ? { label: "View / Manage Booking", url: bookingLink }
+      : {
+          label: labels[defaultAction],
+          url: portalActionUrl(
+            origin,
+            defaultAction,
+            input.lesson_id ?? undefined,
+          ),
+        });
   // Preserve editable copy while avoiding a duplicated inline copy of the same generated CTA.
   const footer = `${studio.settings?.coachName || "Darius"}\n\n${studio.name}`;
   const withoutFooter = text.trim().endsWith(footer)

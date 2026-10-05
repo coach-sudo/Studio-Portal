@@ -19,6 +19,8 @@ export function AutomationRuleEditor({
   onClose: () => void;
   onSave: (event: FormEvent<HTMLFormElement>) => void;
 }) {
+  const timed = ["lesson_reminder", "payment_due"].includes(edit.rule_key);
+  const escalation = timed || edit.rule_key === "payment_past_due";
   return (
     <Dialog
       title={`Edit ${automationRuleLabels[edit.rule_key as AutomationRuleKey]}`}
@@ -41,7 +43,7 @@ export function AutomationRuleEditor({
             </option>
           </select>
         </label>
-        <label>
+        <label hidden={!timed}>
           Hours before lesson (comma-separated)
           <input
             name="hours"
@@ -52,7 +54,7 @@ export function AutomationRuleEditor({
             }
           />
         </label>
-        <label>
+        <label hidden={edit.rule_key !== "package_expiration"}>
           Expiration warning days
           <input
             name="days"
@@ -64,7 +66,7 @@ export function AutomationRuleEditor({
             }
           />
         </label>
-        <label>
+        <label hidden={edit.rule_key !== "package_low"}>
           Low credit threshold
           <input
             name="threshold"
@@ -76,7 +78,7 @@ export function AutomationRuleEditor({
             }
           />
         </label>
-        <label>
+        <label hidden={!escalation}>
           Coach escalation
           <input
             name="coach"
@@ -86,7 +88,7 @@ export function AutomationRuleEditor({
             }
           />
         </label>
-        <label>
+        <label hidden={!timed}>
           Escalate hours before lesson
           <input
             name="escalationHours"
@@ -99,6 +101,12 @@ export function AutomationRuleEditor({
             }
           />
         </label>
+        {edit.rule_key === "payment_past_due" && (
+          <p className="full">
+            One follow-up per lesson while the balance remains past due. Coach
+            escalation, when enabled, accompanies that follow-up.
+          </p>
+        )}
         <label>
           Subject (blank uses existing/default content)
           <input

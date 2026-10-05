@@ -137,6 +137,26 @@ describe("dispatch-time authoritative suppression", () => {
       ),
     ).toEqual({ allowed: false, reason: "lesson_not_scheduled" });
   });
+  it("permits a recorded past-due follow-up after completion, but never after cancellation", async () => {
+    const value = data();
+    value.lessons[0].status = "completed";
+    vi.mocked(loadOperationalData).mockResolvedValue(value);
+    const pastDue = { ...message, recipient_intent: "payment_past_due" };
+    expect(
+      await checkOutboxEligibility(
+        client({ lessons: { ...rows.lessons, status: "completed" } }),
+        pastDue,
+        now,
+      ),
+    ).toEqual({ allowed: true });
+    expect(
+      await checkOutboxEligibility(
+        client({ lessons: { ...rows.lessons, status: "cancelled" } }),
+        pastDue,
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "lesson_not_scheduled" });
+  });
   it("stops obsolete timing after rescheduling", async () => {
     expect(
       await checkOutboxEligibility(

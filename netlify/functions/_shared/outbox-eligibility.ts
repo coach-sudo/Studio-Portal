@@ -6,10 +6,14 @@ import {
   recipientIntents,
   type RecipientIntent,
 } from "../../../src/domain/notificationRecipients";
-import { loadOperationalData } from "./operational-data";
+import {
+  loadOperationalData,
+  loadDeliveryFailureData,
+} from "./operational-data";
 import { mapAutomationRule } from "./automation-config";
 import { resolveEventRecipients } from "./notification-recipients";
 import { resolveBookingGuestRecipients } from "../../../src/domain/bookingGuestRecipients";
+import { packageWarningKey } from "../../../src/domain/packageWarningKey";
 
 export type OutboxEligibility =
   { allowed: true } | { allowed: false; reason: string };
@@ -108,6 +112,7 @@ export async function checkOutboxEligibility(
     startsAt?: string;
     endsAt?: string;
     entityId?: string;
+    coverageKey?: string;
   };
   let studentId = message.student_id;
   if (message.lesson_id) {
@@ -126,7 +131,8 @@ export async function checkOutboxEligibility(
         "payment_failed",
         "lesson_confirmation",
       ].includes(intent) &&
-      result.data.status !== "scheduled"
+      result.data.status !== "scheduled" &&
+      !(intent === "payment_past_due" && result.data.status === "completed")
     )
       return { allowed: false, reason: "lesson_not_scheduled" };
     if (
@@ -246,7 +252,7 @@ export async function checkOutboxEligibility(
     )
       return { allowed: false, reason: "financial_condition_resolved" };
   }
-  if (studentId && message.automation_rule_id && snapshot.entityId) {
+  if (message.automation_rule_id && snapshot.entityId) {
     const result = await db
       .from("automation_rules")
       .select("*")
@@ -254,7 +260,17 @@ export async function checkOutboxEligibility(
       .single();
     if (result.error) throw result.error;
     const rule = mapAutomationRule(result.data),
-      data = await loadOperationalData(client, message.studio_id, studentId);
+      data =
+        rule.key === "delivery_failure"
+          ? await loadDeliveryFailureData(
+              client,
+              message.studio_id,
+              snapshot.entityId,
+            )
+          : studentId
+            ? await loadOperationalData(client, message.studio_id, studentId)
+            : undefined;
+    if (!data) return { allowed: false, reason: "entity_identity_unavailable" };
     const entity = rule.key.startsWith("package_")
       ? { package: data.packages.find((item) => item.id === snapshot.entityId) }
       : rule.key === "delivery_failure"
@@ -263,6 +279,18 @@ export async function checkOutboxEligibility(
             lesson: data.lessons.find((item) => item.id === snapshot.entityId),
           };
     const decision = evaluateAutomationRule(rule, entity, data, now);
+    if (
+      entity.package &&
+      snapshot.coverageKey &&
+      ["package_low", "package_expiration"].includes(rule.key) &&
+      packageWarningKey(
+        entity.package,
+        data.creditEntries,
+        rule.key as "package_low" | "package_expiration",
+        now,
+      ) !== snapshot.coverageKey
+    )
+      return { allowed: false, reason: "package_state_changed" };
     if (!decision.eligible)
       return {
         allowed: false,

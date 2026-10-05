@@ -242,19 +242,7 @@ test.describe("Stateful operational acceptance", () => {
       });
     });
     await test.step("09 Reschedule replaces obsolete timing through the production queue helper (Google availability isolated)", async () => {
-      // Re-open only this disposable fixture so the normal tracked reschedule command can be exercised without a Google account.
-      const token = await accessToken(page),
-        patch = await page.request.patch(
-          `${process.env.SUPABASE_URL}/rest/v1/lessons?id=eq.${ids.lessonDue}`,
-          {
-            headers: {
-              apikey: process.env.SUPABASE_ANON_KEY!,
-              Authorization: `Bearer ${token}`,
-            },
-            data: { status: "scheduled", payment_status: "due", paid_minor: 0 },
-          },
-        );
-      expect(patch.ok()).toBeTruthy();
+      // Reschedule a different scheduled fixture: never undo the cancellation checkpoint.
       const response = await page.request.post("/api/e2e/fixtures", {
         headers: {
           "x-e2e-fixture-token": process.env.STAGING_E2E_FIXTURE_TOKEN!,
@@ -265,7 +253,7 @@ test.describe("Stateful operational acceptance", () => {
       const messages = await read(
         page,
         "outbox_messages",
-        `select=status,event_key,entity_snapshot&lesson_id=eq.${ids.lessonDue}`,
+        `select=status,event_key,entity_snapshot&lesson_id=eq.${ids.lessonShortfall}`,
       );
       expect(
         messages.some(
@@ -315,7 +303,7 @@ test.describe("Stateful operational acceptance", () => {
         "run_rule",
         rule.id,
         rule.version + 1,
-        { studentId: ids.operationalStudent, entityId: ids.lessonDue },
+        { studentId: ids.operationalStudent, entityId: ids.lessonShortfall },
       );
       const messages = await read(
         page,
@@ -355,7 +343,7 @@ test.describe("Stateful operational acceptance", () => {
         "run_rule",
         rule.id,
         current.version + 1,
-        { studentId: ids.operationalStudent, entityId: ids.lessonDue },
+        { studentId: ids.operationalStudent, entityId: ids.lessonShortfall },
       );
       expect(result.resource.result).toBe("queued");
       expect(result.resource.outboxIds.length).toBeGreaterThan(0);
@@ -404,7 +392,7 @@ test.describe("Stateful operational acceptance", () => {
         "test_rule",
         rule.id,
         rule.version + 2,
-        { studentId: ids.operationalStudent, entityId: ids.lessonDue },
+        { studentId: ids.operationalStudent, entityId: ids.lessonShortfall },
       );
       expect(result.resource.outboxIds).toHaveLength(0);
       expect(
@@ -428,6 +416,23 @@ test.describe("Stateful operational acceptance", () => {
       expect(result).toEqual([]);
       const rules = await read(guardian.page, "automation_rules", "select=id");
       expect(rules).toEqual([]);
+      const denied = await guardian.page.request.post("/api/v2/automations", {
+        headers: {
+          Authorization: `Bearer ${await accessToken(guardian.page)}`,
+        },
+        data: {
+          command: "test_rule",
+          entityId: rule.id,
+          expectedVersion: rule.version + 2,
+          idempotencyKey: crypto.randomUUID(),
+          reason: "Isolated guardian role denial",
+          payload: {
+            studentId: ids.operationalStudent,
+            entityId: ids.lessonDue,
+          },
+        },
+      });
+      expect(denied.status()).toBe(403);
       await guardian.context.close();
     });
     await test.step("15 Keyboard/axe/reflow on Today, Account, Payments, timeline and Settings", async () => {

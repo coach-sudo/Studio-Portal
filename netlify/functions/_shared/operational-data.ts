@@ -11,6 +11,64 @@ import { emailDefaults } from "./email-templates";
 import { z } from "zod";
 import { AppError } from "./http";
 
+/** Failure alerts are studio-scoped even when an invite/guest/campaign has no student. */
+export async function loadDeliveryFailureData(
+  client: SupabaseClient,
+  studioId: string,
+  messageId: string,
+): Promise<ReadinessData> {
+  const db = client as SupabaseClient<Database>;
+  const [message, studio] = await Promise.all([
+    db
+      .from("outbox_messages")
+      .select("*")
+      .eq("id", messageId)
+      .eq("studio_id", studioId)
+      .single(),
+    db.from("studios").select("settings,timezone").eq("id", studioId).single(),
+  ]);
+  if (message.error || !message.data) throw AppError.forbidden(message.error);
+  if (studio.error) throw studio.error;
+  const settings = studio.data.settings as {
+    emailAutomations?: typeof emailDefaults;
+    currency?: string;
+  };
+  const row = message.data;
+  return {
+    students: [],
+    lessons: [],
+    bookings: [],
+    lessonParticipants: [],
+    packages: [],
+    packageDefinitions: [],
+    creditEntries: [],
+    payments: [],
+    studentPricingRules: [],
+    linkedContacts: [],
+    settings: {
+      timezone: studio.data.timezone,
+      currency: settings.currency ?? "USD",
+      emailAutomations: { ...emailDefaults, ...settings.emailAutomations },
+    },
+    outbox: [
+      {
+        id: row.id,
+        studentId: row.student_id ?? undefined,
+        lessonId: row.lesson_id ?? undefined,
+        recipient: row.recipient,
+        subject: row.subject,
+        body: row.body,
+        status: row.status,
+        channel: z.enum(["email", "sms"]).parse(row.channel),
+        attempts: row.attempts,
+        eventKey: row.event_key ?? undefined,
+        version: row.version,
+        updatedAt: row.updated_at,
+      },
+    ],
+  };
+}
+
 async function completeRows<T>(
   page: (
     start: number,

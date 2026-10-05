@@ -10,6 +10,7 @@ import { portalOrigin, portalActionUrl } from "./portal-url";
 import { loadOperationalData } from "./operational-data";
 import { mapAutomationRule } from "./automation-config";
 import { evaluateAutomationRule } from "../../../src/domain/automationRules";
+import { packageWarningKey } from "../../../src/domain/packageWarningKey";
 
 export async function queuePackageWarning(
   client: SupabaseClient,
@@ -31,6 +32,7 @@ export async function queuePackageWarning(
   const rule = await compatibleRule(client, input.studioId, input.key),
     status = compatibleQueueStatus(rule, input.legacyEnabled);
   if (!status) return [];
+  let dedupe = input.dedupe;
   if (rule) {
     const data = await loadOperationalData(
       client,
@@ -46,6 +48,8 @@ export async function queuePackageWarning(
       Date.now(),
     );
     if (!decision.eligible) return [];
+    const pkg = data.packages.find((item) => item.id === input.packageId)!;
+    dedupe = packageWarningKey(pkg, data.creditEntries, input.key, Date.now());
   }
   const resolution = await resolveEventRecipients(
       client,
@@ -64,11 +68,11 @@ export async function queuePackageWarning(
       status,
       send_at: new Date().toISOString(),
       event_key: `package.${input.key}.student`,
-      dedupe_key: `${input.dedupe}:${recipient.email}`,
+      dedupe_key: `${dedupe}:${recipient.email}`,
       priority: 65,
       automation_rule_id: rule?.id,
       recipient_intent: input.key,
-      entity_snapshot: { entityId: input.packageId },
+      entity_snapshot: { entityId: input.packageId, coverageKey: dedupe },
     }),
   );
   return queuePresentedMessages(client, messages, input.studio, origin, {

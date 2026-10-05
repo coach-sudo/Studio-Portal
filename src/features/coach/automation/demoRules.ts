@@ -3,28 +3,24 @@ import type { StudioSnapshot } from "../../../domain/model";
 import type { Tables } from "../../../types/database.generated";
 type Rule = Tables<"automation_rules">;
 export function demoRules(data: StudioSnapshot): Rule[] {
+  const enabled = (key: string) =>
+    data.settings.emailAutomations.enabled &&
+    [
+      "booking_confirmation",
+      "lesson_reminder",
+      "payment_failed",
+      "package_low",
+      "package_expiration",
+    ].includes(key) &&
+    (key !== "booking_confirmation" ||
+      data.settings.emailAutomations.studentConfirmation) &&
+    (key !== "lesson_reminder" || data.settings.emailAutomations.reminders);
   return automationRuleKeys.map((key) => ({
     id: `demo-${key}`,
     studio_id: data.studioId,
     rule_key: key,
-    enabled:
-      [
-        "booking_confirmation",
-        "lesson_reminder",
-        "payment_failed",
-        "package_low",
-        "package_expiration",
-      ].includes(key) && data.settings.emailAutomations.enabled,
-    mode:
-      [
-        "booking_confirmation",
-        "lesson_reminder",
-        "payment_failed",
-        "package_low",
-        "package_expiration",
-      ].includes(key) && data.settings.emailAutomations.enabled
-        ? "automatic"
-        : "off",
+    enabled: enabled(key),
+    mode: enabled(key) ? "automatic" : "off",
     trigger: key.startsWith("package_") ? "package_state" : "lesson_state",
     audience: ["missing_financial_setup", "delivery_failure"].includes(key)
       ? "coach"

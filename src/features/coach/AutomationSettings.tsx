@@ -189,10 +189,10 @@ export function AutomationSettings({
         : (packageChoices.data ?? [])
       : entityType === "outbox"
         ? data.outbox
-            .filter((item) => item.status === "failed" && item.studentId)
+            .filter((item) => item.status === "failed")
             .map((item) => ({
               id: item.id,
-              studentId: item.studentId!,
+              studentId: item.studentId,
               label: item.subject,
             }))
         : data.lessons

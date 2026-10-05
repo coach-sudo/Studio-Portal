@@ -78,7 +78,10 @@ export async function handleAutomationCommands(
   }
   if (["test_rule", "run_rule"].includes(ctx.input.command)) {
     const value = z
-      .object({ studentId: z.string().uuid(), entityId: z.string().uuid() })
+      .object({
+        studentId: z.string().uuid().optional(),
+        entityId: z.string().uuid(),
+      })
       .strict()
       .parse(ctx.input.payload);
     const rule = await db

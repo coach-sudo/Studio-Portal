@@ -5,6 +5,7 @@ import {
 } from "../../../domain/automationRules";
 import type { Tables } from "../../../types/database.generated";
 import { Status } from "../../../components/Primitives";
+import { ruleDescriptions } from "./ruleDescriptions";
 export function AutomationRuleCard({
   rule,
   last,
@@ -17,6 +18,7 @@ export function AutomationRuleCard({
   onPreview: () => void;
 }) {
   const timing = rule.timing as AutomationRule["timing"];
+  const description = ruleDescriptions[rule.rule_key as AutomationRuleKey];
   return (
     <article className="communication-card">
       <div className="action-row">
@@ -26,8 +28,9 @@ export function AutomationRuleCard({
       <dl>
         <dt>When</dt>
         <dd>
-          {rule.trigger.replaceAll("_", " ")}
-          {timing.hoursBefore?.length
+          {description.when}
+          {["lesson_reminder", "payment_due"].includes(rule.rule_key) &&
+          timing.hoursBefore?.length
             ? ` · ${timing.hoursBefore.join(", ")} hours before lesson`
             : ""}
           {rule.rule_key === "package_expiration"
@@ -35,24 +38,21 @@ export function AutomationRuleCard({
             : ""}
         </dd>
         <dt>Send to</dt>
-        <dd>
-          {rule.audience === "coach"
-            ? "Coach"
-            : "Eligible recipients only: scheduling contacts for lesson updates; primary payer for finance. Minors never receive billing reminders."}
-        </dd>
+        <dd>{description.audience}</dd>
         <dt>Only if</dt>
-        <dd>
-          The authoritative lesson, booking or package condition still holds.
-        </dd>
+        <dd>{description.condition}</dd>
         <dt>Stop when</dt>
-        <dd>
-          Paid, covered by credits, waived, cancelled, rescheduled, renewed,
-          preferences disabled, permission removed, or a duplicate exists.
-        </dd>
+        <dd>{description.stop}</dd>
         <dt>Escalation</dt>
         <dd>
-          {(rule.escalation as AutomationRule["escalation"]).coach
-            ? "Coach alert at configured threshold"
+          {["lesson_reminder", "payment_due", "payment_past_due"].includes(
+            rule.rule_key,
+          ) &&
+          rule.mode === "automatic_with_escalation" &&
+          (rule.escalation as AutomationRule["escalation"]).coach
+            ? rule.rule_key === "payment_past_due"
+              ? "Coach alert with the past-due follow-up"
+              : `Coach alert ${(rule.escalation as AutomationRule["escalation"]).hoursBefore ?? 1} hour(s) before lesson`
             : "None"}
         </dd>
         <dt>Recent run</dt>

@@ -124,6 +124,21 @@ describe("shared branded email presentation", () => {
     );
     expect(result.text).toContain("Darius\n\nCoach’D");
   });
+  it("preserves legacy trusted token-scoped booking management without private query strings", () => {
+    const email = presentOutboxMessage(
+      {
+        body: "Hi Jordan,\nManage: https://preview.example.test/booking/scoped-token?email=private#fragment",
+        event_key: "booking.confirmed.student",
+      },
+      { name: "Coach’D" },
+      "https://preview.example.test",
+    );
+    expect(email.text).toContain(
+      "View / Manage Booking: https://preview.example.test/booking/scoped-token",
+    );
+    expect(email.text).not.toContain("email=private");
+    expect(email.html).not.toContain("fragment");
+  });
   it("escapes templates and rejects unsafe CTA and logo schemes", () => {
     const result = renderStudioEmail({
       ...input,

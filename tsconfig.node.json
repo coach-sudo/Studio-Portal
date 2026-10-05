@@ -26,6 +26,7 @@
     "src/domain/paymentResponsibility.ts",
     "src/domain/lessonReadiness.ts",
     "src/domain/packageForecast.ts",
+    "src/domain/packageWarningKey.ts",
     "src/domain/finance.ts",
     "src/domain/automationRules.ts",
     "src/security/e2eSafety.ts"

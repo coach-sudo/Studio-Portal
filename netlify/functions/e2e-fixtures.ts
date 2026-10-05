@@ -829,7 +829,7 @@ async function setup(
       starts_at: operationalIso(240),
       ends_at: operationalIso(300),
       service_id: fixture.paidService,
-      payment_status: "untracked",
+      payment_status: "due",
       paid_minor: 0,
     },
   ]);
@@ -842,6 +842,25 @@ async function setup(
     throwFixtureError("operational_reservation", reservation.error);
   const opsMessages = await db.from("outbox_messages").upsert(
     [
+      {
+        id: fixtureId(runId, "shortfall-reminder"),
+        studio_id: studioId,
+        student_id: fixture.operationalStudent,
+        lesson_id: fixture.lessonShortfall,
+        recipient: accounts.guardian.email,
+        channel: "email",
+        subject: `${runId} Original shortfall reminder`,
+        body: "Your lesson is coming up.",
+        status: "queued",
+        send_at: iso(60),
+        event_key: "booking.reminder.student",
+        recipient_intent: "lesson_reminder",
+        entity_snapshot: {
+          startsAt: operationalIso(240),
+          endsAt: operationalIso(300),
+        },
+        dedupe_key: `${runId}:shortfall-reminder`,
+      },
       {
         id: fixture.operationalReminder,
         studio_id: studioId,
@@ -1140,13 +1159,13 @@ export default async (request: Request, context: Context) => {
         lesson = await db
           .from("lessons")
           .select("version,starts_at,ends_at")
-          .eq("id", fixture.lessonDue)
+          .eq("id", fixture.lessonShortfall)
           .eq("student_id", fixture.operationalStudent)
           .single();
       if (lesson.error)
         throwFixtureError("operational_reschedule_read", lesson.error);
       const changed = await db.rpc("command_change_lesson_state", {
-        p_lesson_id: fixture.lessonDue,
+        p_lesson_id: fixture.lessonShortfall,
         p_expected_version: lesson.data.version,
         p_action: "reschedule",
         p_starts_at: new Date(
@@ -1161,7 +1180,7 @@ export default async (request: Request, context: Context) => {
         throwFixtureError("operational_reschedule", changed.error);
       await queueLessonChangeEmails(
         db,
-        fixture.lessonDue,
+        fixture.lessonShortfall,
         "rescheduled",
         `${runId}:reschedule`,
       );

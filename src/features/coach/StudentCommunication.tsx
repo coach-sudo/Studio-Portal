@@ -264,6 +264,7 @@ export function StudentCommunication({
           onClose={() => setSelected(undefined)}
         >
           <p>To: {selected.recipient}</p>
+          {notice && <p role="status">{notice}</p>}
           <pre className="communication-preview">{selected.body}</pre>
           <p>
             Status: {selected.status} · {selected.attempts} attempt(s)
