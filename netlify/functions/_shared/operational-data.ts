@@ -9,6 +9,7 @@ import type {
 import { notificationRecipientContext } from "./notification-recipients";
 import { emailDefaults } from "./email-templates";
 import { z } from "zod";
+import { AppError } from "./http";
 
 // Server projection shares the pure evaluator; no browser client or demo snapshot is imported.
 export async function loadOperationalData(
@@ -18,8 +19,7 @@ export async function loadOperationalData(
 ): Promise<ReadinessData> {
   const db = client as SupabaseClient<Database>;
   const context = await notificationRecipientContext(client, studentId);
-  if (context.student.studioId !== studioId)
-    throw new Error("Operational scope mismatch");
+  if (context.student.studioId !== studioId) throw AppError.forbidden();
   const results = await Promise.all([
     db.from("studios").select("settings,timezone").eq("id", studioId).single(),
     db

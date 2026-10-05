@@ -7,6 +7,9 @@ import {
 } from "./outbox-queue";
 import { resolveEventRecipients } from "./notification-recipients";
 import { portalOrigin, portalActionUrl } from "./portal-url";
+import { loadOperationalData } from "./operational-data";
+import { mapAutomationRule } from "./automation-config";
+import { evaluateAutomationRule } from "../../../src/domain/automationRules";
 
 export async function queuePackageWarning(
   client: SupabaseClient,
@@ -28,6 +31,22 @@ export async function queuePackageWarning(
   const rule = await compatibleRule(client, input.studioId, input.key),
     status = compatibleQueueStatus(rule, input.legacyEnabled);
   if (!status) return [];
+  if (rule) {
+    const data = await loadOperationalData(
+      client,
+      input.studioId,
+      input.studentId,
+    );
+    const decision = evaluateAutomationRule(
+      mapAutomationRule(rule),
+      {
+        package: data.packages.find((pkg) => pkg.id === input.packageId),
+      },
+      data,
+      Date.now(),
+    );
+    if (!decision.eligible) return [];
+  }
   const resolution = await resolveEventRecipients(
       client,
       input.studentId,

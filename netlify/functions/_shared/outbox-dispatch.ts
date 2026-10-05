@@ -4,6 +4,8 @@ import { googleAccessToken, sendGmail } from "./google";
 import { serviceClient } from "./supabase";
 import { checkOutboxEligibility, suppressOutbox } from "./outbox-eligibility";
 import { releaseMetadata } from "./release";
+import { presentOutboxMessage, type EmailStudio } from "./outbox-presentation";
+import { portalOrigin } from "./portal-url";
 
 export async function dispatchOutbox(
   input: { ids?: string[]; batchSize?: number } = {},
@@ -65,7 +67,57 @@ export async function dispatchOutbox(
         suppressed++;
         continue;
       }
-      const result = await sendGmail(token, current.data);
+      // SQL note/practice/invite producers use the same final presentation as booking rules.
+      // Resolve private branding only at delivery so future queued messages never embed expired URLs.
+      const studioResult = await db
+        .from("studios")
+        .select("name,settings")
+        .eq("id", current.data.studio_id)
+        .single();
+      if (studioResult.error) throw studioResult.error;
+      const studio: EmailStudio = {
+        name: studioResult.data.name,
+        settings: studioResult.data.settings as EmailStudio["settings"],
+      };
+      const path = studio.settings?.branding?.logoStoragePath;
+      if (path) {
+        const asset = await db.storage
+          .from("studio-materials")
+          .createSignedUrl(path, 7 * 86400);
+        if (asset.error) throw asset.error;
+        studio.settings = {
+          ...studio.settings,
+          branding: {
+            ...studio.settings?.branding,
+            logoUrl: asset.data.signedUrl,
+          },
+        };
+      }
+      // Already presented messages keep their scoped booking CTA; old plain-text producers
+      // receive a trusted authenticated deep link. The presenter strips its own prior footer.
+      const scopedAction = current.data.html_body?.match(
+        /<a href="([^"]+)"[^>]*>([^<]+)<\/a>/,
+      );
+      const origin = portalOrigin();
+      const action =
+        scopedAction &&
+        new URL(scopedAction[1].replace(/&amp;/g, "&")).origin === origin
+          ? {
+              url: scopedAction[1].replace(/&amp;/g, "&"),
+              label: scopedAction[2].replace(/&amp;/g, "&"),
+            }
+          : undefined;
+      const presented = presentOutboxMessage(
+        current.data,
+        studio,
+        origin,
+        action,
+      );
+      const result = await sendGmail(token, {
+        ...current.data,
+        body: presented.text,
+        html_body: presented.html,
+      });
       const attempt = await db.from("delivery_attempts").insert({
         outbox_message_id: message.id,
         provider: "gmail",

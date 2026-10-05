@@ -56,28 +56,26 @@ export default async () => {
         .eq("id", booking.id)
         .single();
       if (row.error) throw row.error;
-      const recommendation = await db
-        .from("recommendations")
-        .upsert(
-          {
-            studio_id: row.data.studio_id,
-            student_id: row.data.student_id,
-            entity_type: "booking",
-            entity_id: booking.id,
-            reason_code: "PAYMENT_PAST_DUE",
-            title: "Review past-due booking",
-            explanation:
-              "Payment remains unresolved. The lesson is not automatically cancelled; record an arrangement or review the booking.",
-            evidence: ["Recorded booking payment status: past_due"],
-            urgency: 5,
-            suggested_action: "review_booking",
-            requires_confirmation: true,
-            status: "open",
-            dedupe_key: `booking:${booking.id}:past-due`,
-            updated_at: now,
-          },
-          { onConflict: "dedupe_key" },
-        );
+      const recommendation = await db.from("recommendations").upsert(
+        {
+          studio_id: row.data.studio_id,
+          student_id: row.data.student_id,
+          entity_type: "booking",
+          entity_id: booking.id,
+          reason_code: "PAYMENT_PAST_DUE",
+          title: "Review past-due booking",
+          explanation:
+            "Payment remains unresolved. The lesson is not automatically cancelled; record an arrangement or review the booking.",
+          evidence: ["Recorded booking payment status: past_due"],
+          urgency: 5,
+          suggested_action: "review_booking",
+          requires_confirmation: true,
+          status: "open",
+          dedupe_key: `booking:${booking.id}:past-due`,
+          updated_at: now,
+        },
+        { onConflict: "dedupe_key" },
+      );
       if (recommendation.error) throw recommendation.error;
     }
   }
@@ -123,32 +121,30 @@ export default async () => {
     ).toISOString();
     const timeZone =
       studioSettings.get(lesson.studio_id)?.timezone || "America/New_York";
-    await db
-      .from("recommendations")
-      .upsert(
-        {
-          studio_id: lesson.studio_id,
-          student_id: lesson.student_id,
-          entity_type: "lesson",
-          entity_id: lesson.id,
-          reason_code: "lesson_note_due_48h",
-          title: `Write follow-up for ${lesson.topic}`,
-          explanation:
-            "Lesson notes are due within 48 hours of the lesson ending.",
-          evidence: [
-            `Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone })}`,
-            `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone })}`,
-          ],
-          urgency: new Date(dueAt) <= new Date() ? 5 : 4,
-          due_at: dueAt,
-          suggested_action: "write_note",
-          requires_confirmation: false,
-          status: "open",
-          dedupe_key: `lesson:${lesson.id}:note-48h`,
-          updated_at: now,
-        },
-        { onConflict: "dedupe_key" },
-      );
+    await db.from("recommendations").upsert(
+      {
+        studio_id: lesson.studio_id,
+        student_id: lesson.student_id,
+        entity_type: "lesson",
+        entity_id: lesson.id,
+        reason_code: "lesson_note_due_48h",
+        title: `Write follow-up for ${lesson.topic}`,
+        explanation:
+          "Lesson notes are due within 48 hours of the lesson ending.",
+        evidence: [
+          `Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone })}`,
+          `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone })}`,
+        ],
+        urgency: new Date(dueAt) <= new Date() ? 5 : 4,
+        due_at: dueAt,
+        suggested_action: "write_note",
+        requires_confirmation: false,
+        status: "open",
+        dedupe_key: `lesson:${lesson.id}:note-48h`,
+        updated_at: now,
+      },
+      { onConflict: "dedupe_key" },
+    );
     noteReminders++;
   }
 
@@ -297,33 +293,31 @@ export default async () => {
             updated_at: now,
           })
           .eq("id", renewal.id);
-        await db
-          .from("recommendations")
-          .upsert(
-            {
-              studio_id: renewal.studio_id,
-              student_id: renewal.student_id,
-              entity_type: "package_subscription",
-              entity_id: renewal.id,
-              reason_code: "package_auto_renewal_failed",
-              title: "Package auto-renewal needs attention",
-              explanation:
-                "Stripe could not start the balance-based package renewal.",
-              evidence: [String(renewalError)],
-              urgency: 5,
-              suggested_action: "review_package",
-              requires_confirmation: false,
-              status: "open",
-              dedupe_key: `package-subscription:${renewal.id}:auto-renewal`,
-              updated_at: now,
-            },
-            { onConflict: "dedupe_key" },
-          );
+        await db.from("recommendations").upsert(
+          {
+            studio_id: renewal.studio_id,
+            student_id: renewal.student_id,
+            entity_type: "package_subscription",
+            entity_id: renewal.id,
+            reason_code: "package_auto_renewal_failed",
+            title: "Package auto-renewal needs attention",
+            explanation:
+              "Stripe could not start the balance-based package renewal.",
+            evidence: [String(renewalError)],
+            urgency: 5,
+            suggested_action: "review_package",
+            requires_confirmation: false,
+            status: "open",
+            dedupe_key: `package-subscription:${renewal.id}:auto-renewal`,
+            updated_at: now,
+          },
+          { onConflict: "dedupe_key" },
+        );
       }
     }
   }
 
-  const expiryLimit = new Date(Date.now() + 30 * 86400000).toISOString();
+  const expiryLimit = new Date(Date.now() + 365 * 86400000).toISOString();
   const { data: expiringPackages } = await db
     .from("packages")
     .select(
@@ -356,29 +350,30 @@ export default async () => {
     const studio = studioSettings.get(student.studio_id);
     const timeZone = studio?.timezone || "America/New_York";
     const dedupe = `package:${pkg.id}:expiry:${threshold}`;
-    await db.from("recommendations").upsert(
-      {
-        studio_id: student.studio_id,
-        student_id: pkg.student_id,
-        entity_type: "package",
-        entity_id: pkg.id,
-        reason_code: "package_expiring",
-        title: `${studentName}'s ${pkg.name} expires soon`,
-        explanation: `${balance} lesson credit${balance === 1 ? "" : "s"} expire${balance === 1 ? "s" : ""} in ${days} day${days === 1 ? "" : "s"}.`,
-        evidence: [
-          `Expires ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone })}`,
-          `${balance} credits remaining`,
-        ],
-        urgency: days <= 7 ? 5 : days <= 14 ? 4 : 3,
-        due_at: pkg.expires_at,
-        suggested_action: "review_package",
-        requires_confirmation: false,
-        status: "open",
-        dedupe_key: `${dedupe}:coach`,
-        updated_at: now,
-      },
-      { onConflict: "dedupe_key" },
-    );
+    if (days <= 30)
+      await db.from("recommendations").upsert(
+        {
+          studio_id: student.studio_id,
+          student_id: pkg.student_id,
+          entity_type: "package",
+          entity_id: pkg.id,
+          reason_code: "package_expiring",
+          title: `${studentName}'s ${pkg.name} expires soon`,
+          explanation: `${balance} lesson credit${balance === 1 ? "" : "s"} expire${balance === 1 ? "s" : ""} in ${days} day${days === 1 ? "" : "s"}.`,
+          evidence: [
+            `Expires ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone })}`,
+            `${balance} credits remaining`,
+          ],
+          urgency: days <= 7 ? 5 : days <= 14 ? 4 : 3,
+          due_at: pkg.expires_at,
+          suggested_action: "review_package",
+          requires_confirmation: false,
+          status: "open",
+          dedupe_key: `${dedupe}:coach`,
+          updated_at: now,
+        },
+        { onConflict: "dedupe_key" },
+      );
     {
       const automation = studio?.settings?.emailAutomations || {};
       if (automation.enabled === false) continue;
@@ -434,7 +429,7 @@ export default async () => {
       (total, entry) => total + Number(entry.quantity),
       0,
     );
-    if (balance < 0 || balance > 1) continue;
+    if (balance < 0) continue;
     const latestPurchase =
       (entries || []).find(
         (entry) => entry.kind === "purchase" || entry.quantity > 0,
@@ -490,7 +485,8 @@ export default async () => {
     extendedOccurrences: extended || 0,
     transientCleanup: cleaned || {},
     storageCleanupRan: runDailyStorageCleanup,
-    delinquentCancelled: delinquent?.length || 0,
+    delinquentCancelled: 0,
+    pastDueReviewCount: delinquent?.length || 0,
     noteReminders,
     autoCreditsApplied,
     packageGiftsDelivered,

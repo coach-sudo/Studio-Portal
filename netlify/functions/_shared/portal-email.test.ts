@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { resolvePortalOrigin, portalActionUrl } from "./portal-url";
 import { renderStudioEmail } from "./email-presentation";
+import { presentOutboxMessage } from "./outbox-presentation";
 
 describe("trusted email origins", () => {
   it("uses the real production origin even with a legacy configured URL", () => {
@@ -70,6 +71,35 @@ describe("trusted email origins", () => {
   });
 });
 describe("shared branded email presentation", () => {
+  it("presents SQL note emails and repeated dispatch without duplicating the signoff", () => {
+    const studio = {
+      name: "Coach’D",
+      settings: {
+        coachName: "Darius",
+        branding: { logoUrl: "https://assets.example.test/logo.png" },
+      },
+    };
+    const first = presentOutboxMessage(
+      {
+        body: "Hi Jordan,\n\nYour notes are ready.",
+        event_key: "note.published.student",
+      },
+      studio,
+      "https://preview.example.test",
+    );
+    expect(first.text).toContain(
+      "Read Lesson Notes: https://preview.example.test/portal/work",
+    );
+    const again = presentOutboxMessage(
+      { body: first.text, event_key: "note.published.student" },
+      studio,
+      "https://preview.example.test",
+    );
+    expect(again.text.match(/Darius/g)).toHaveLength(1);
+    expect(again.html.indexOf("<img")).toBeGreaterThan(
+      again.html.indexOf("<footer"),
+    );
+  });
   const input = {
     greeting: "Hi Jordan,",
     message: "Your lesson is tomorrow.",

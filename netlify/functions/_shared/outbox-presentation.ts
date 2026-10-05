@@ -3,7 +3,10 @@ import { portalActionUrl, type PortalAction } from "./portal-url";
 
 export interface EmailStudio {
   name: string;
-  settings?: { coachName?: string; branding?: { logoUrl?: string } };
+  settings?: {
+    coachName?: string;
+    branding?: { logoUrl?: string; logoStoragePath?: string };
+  };
 }
 export function presentOutboxMessage(
   input: { body: string; event_key?: string | null; lesson_id?: string | null },
@@ -50,7 +53,11 @@ export function presentOutboxMessage(
     url: portalActionUrl(origin, defaultAction, input.lesson_id ?? undefined),
   };
   // Preserve editable copy while avoiding a duplicated inline copy of the same generated CTA.
-  const body = text
+  const footer = `${studio.settings?.coachName || "Darius"}\n\n${studio.name}`;
+  const withoutFooter = text.trim().endsWith(footer)
+    ? text.trim().slice(0, -footer.length).trim()
+    : text;
+  const body = withoutFooter
     .split("\n")
     .filter((line) => !line.includes(primary.url))
     .join("\n")

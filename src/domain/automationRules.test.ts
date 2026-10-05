@@ -41,6 +41,74 @@ function fixture() {
   return { data, lesson };
 }
 describe("constrained automation decisions", () => {
+  it("past-due follow-up has one stable stage and stops immediately on resolution", () => {
+    const { data, lesson } = fixture();
+    data.bookings = [
+      {
+        ...demoSnapshot.bookings[0],
+        id: "booking",
+        studentId: lesson.studentId,
+        startsAt: lesson.startsAt,
+        endsAt: lesson.endsAt,
+        status: "confirmed",
+        paymentPolicy: "pay_later",
+        paymentStatus: "past_due",
+        totalMinor: 8500,
+        paidMinor: 0,
+      },
+    ];
+    const pastDue = {
+      ...rule,
+      key: "payment_past_due" as const,
+      audience: "payment_past_due" as const,
+    };
+    const later = Date.parse(lesson.endsAt) + 86400000;
+    expect(
+      evaluateAutomationRule(pastDue, { lesson }, data, later),
+    ).toMatchObject({ eligible: true, stages: [{ key: "past-due" }] });
+    data.bookings[0].paymentStatus = "paid";
+    expect(
+      evaluateAutomationRule(pastDue, { lesson }, data, later).suppressedReason,
+    ).toBe("condition_resolved");
+  });
+  it("master switch suppresses an enabled structured rule", () => {
+    const { data, lesson } = fixture();
+    data.settings.emailAutomations.enabled = false;
+    expect(
+      evaluateAutomationRule(rule, { lesson }, data, now).suppressedReason,
+    ).toBe("automation_disabled");
+  });
+  it("one remaining replacement credit is sufficient to suppress a stale package warning", () => {
+    const { data } = fixture();
+    data.packages = ["old", "new"].map((id) => ({
+      id,
+      studentId: data.students[0].id,
+      name: "Package",
+      autoApply: true,
+      priceMinor: 0,
+      currency: "USD",
+      version: 1,
+      updatedAt: "",
+    }));
+    data.creditEntries = [
+      {
+        id: "purchase",
+        packageId: "new",
+        quantity: 1,
+        kind: "purchase",
+        reason: "Renewal",
+        createdAt: "",
+      },
+    ];
+    expect(
+      evaluateAutomationRule(
+        { ...rule, key: "package_low", audience: "package_low" },
+        { package: data.packages[0] },
+        data,
+        now,
+      ).suppressedReason,
+    ).toBe("package_renewed");
+  });
   it("supports multiple configurable PAYG stages without replaying all missed stages", () => {
     const { data, lesson } = fixture();
     const result = evaluateAutomationRule(rule, { lesson }, data, now);

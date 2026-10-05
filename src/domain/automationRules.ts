@@ -181,7 +181,7 @@ export function evaluateAutomationRule(
           other.definitionId === pkg.definitionId &&
           (!other.expiresAt || Date.parse(other.expiresAt) > now) &&
           forecastPackages(pkg.studentId, data, now).some(
-            (item) => item.packageId === other.id && item.currentCredits > 1,
+            (item) => item.packageId === other.id && item.currentCredits > 0,
           ),
       );
       if (renewed)
@@ -220,6 +220,23 @@ export function evaluateAutomationRule(
       "The rule's condition is no longer true.",
       readiness?.financial.state,
     );
+  // Arrears are a separate, once-per-lesson follow-up, not a missed pre-lesson reminder.
+  // The stable stage/dedupe key prevents a five-minute worker from repeatedly billing.
+  if (rule.key === "payment_past_due") {
+    stages.push({ key: "past-due", sendAt: new Date(now).toISOString() });
+    if (rule.mode === "automatic_with_escalation" && rule.escalation.coach)
+      stages.push({
+        key: "coach-escalation",
+        sendAt: new Date(now).toISOString(),
+        coachEscalation: true,
+      });
+    return {
+      eligible: true,
+      explanation,
+      financialState: readiness?.financial.state,
+      stages,
+    };
+  }
   if (
     lesson &&
     ["lesson_reminder", "payment_due", "payment_past_due"].includes(rule.key)

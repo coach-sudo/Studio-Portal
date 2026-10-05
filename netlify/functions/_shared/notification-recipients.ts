@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
 import type { Database } from "../../../src/types/database.generated";
 import type {
   LinkedContact,
@@ -75,7 +76,63 @@ export async function resolveEventRecipients(
   options: { mandatory?: boolean } = {},
 ) {
   const context = await notificationRecipientContext(db, studentId);
-  return resolvePolicy(context.student, context.contacts, intent, options);
+  const resolution = resolvePolicy(
+    context.student,
+    context.contacts,
+    intent,
+    options,
+  );
+  // Record *why* a compatible producer could not reach the payer (or excluded a contact),
+  // even when it generated zero outbox rows. This is the same decision boundary at dispatch.
+  if (resolution.suppressed.length || resolution.unresolved.length) {
+    const key =
+      intent === "lesson_confirmation" ? "booking_confirmation" : intent;
+    const client = db as SupabaseClient<Database>;
+    const rule = await client
+      .from("automation_rules")
+      .select("id,mode")
+      .eq("studio_id", context.student.studioId)
+      .eq("rule_key", key)
+      .maybeSingle();
+    if (rule.error) throw rule.error;
+    if (rule.data) {
+      const decisionKey = createHash("sha256")
+        .update(
+          JSON.stringify({ rule: rule.data.id, studentId, intent, resolution }),
+        )
+        .digest("hex");
+      const recorded = await client.from("automation_runs").upsert(
+        {
+          studio_id: context.student.studioId,
+          rule_id: rule.data.id,
+          entity_type: "student",
+          entity_id: studentId,
+          result: resolution.recipients.length ? "not_due" : "unresolved",
+          explanation: resolution.recipients.length
+            ? "Recipient policy selected permitted recipients and excluded ineligible contacts."
+            : "No eligible recipient was resolved; review payer responsibility, permissions and notification preferences.",
+          suppressed_reason: resolution.recipients.length
+            ? null
+            : "recipient_unresolved",
+          correlation_id: crypto.randomUUID(),
+          outbox_ids: [],
+          decision: {
+            trigger: intent,
+            mode: rule.data.mode,
+            recipients: resolution.recipients.map((recipient) => ({
+              ...recipient,
+            })),
+            suppressedRecipients: resolution.suppressed,
+            unresolvedRecipients: resolution.unresolved,
+          },
+          decision_key: `recipient:${decisionKey}`,
+        },
+        { onConflict: "decision_key", ignoreDuplicates: true },
+      );
+      if (recorded.error) throw recorded.error;
+    }
+  }
+  return resolution;
 }
 
 /** Category compatibility for existing producers, using the same permissions/payer policy. */

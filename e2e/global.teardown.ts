@@ -23,6 +23,12 @@ export default async function globalTeardown() {
     }),
   });
   if (!response.ok) {
-    throw new Error(`Fixture cleanup failed with HTTP ${response.status}.`);
+    const body = await response.json().catch(() => ({}));
+    const code = /^E2E_FIXTURE_[A-Z_]+:[A-Z0-9_]+$/.test(body.message ?? "")
+      ? body.message
+      : "UNKNOWN";
+    throw new Error(
+      `Fixture cleanup failed with HTTP ${response.status}: ${code}.`,
+    );
   }
 }

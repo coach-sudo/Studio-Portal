@@ -86,13 +86,17 @@ export async function queuePresentedMessages(
   });
   const result = await db
     .from("outbox_messages")
-    .upsert(decorated, { onConflict: "dedupe_key", ignoreDuplicates: true })
-    .select("id,status,event_key");
+    .upsert(decorated, {
+      onConflict: "dedupe_key",
+      ignoreDuplicates: true,
+      defaultToNull: false,
+    })
+    .select("id,status,event_key,dedupe_key");
   if (result.error) throw result.error;
   for (const message of messages)
     if (message.automation_rule_id) {
       const queued = result.data?.find(
-        (item) => item.event_key === message.event_key,
+        (item) => item.dedupe_key === message.dedupe_key,
       );
       const recorded = await db.from("automation_runs").upsert(
         {

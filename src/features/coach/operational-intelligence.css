@@ -97,3 +97,14 @@
   overflow-wrap: anywhere;
   min-width: 0;
 }
+/* Expanded operational coverage exposed these existing coach-route contrast defects. */
+.today-lesson-row .status.good {
+  color: #2b6042;
+  font-size: 12px;
+}
+.today-lesson-row .row-actions > button.primary-button {
+  color: var(--ink, #17211d);
+}
+.activity-bell > span {
+  background: #9b3146;
+}

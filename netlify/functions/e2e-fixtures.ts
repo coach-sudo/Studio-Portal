@@ -263,6 +263,14 @@ async function cleanup(
   if (messageError) throwFixtureError("message_cleanup", messageError);
   await deleteIds("conversations", [fixture.conversation]);
   await deleteIds("payment_entries", [fixture.payment]);
+  // This feature adds real fixture reservations. The canonical ledger intentionally
+  // RESTRICTs package deletion; remove only entries owned by these fixture packages.
+  const creditCleanup = await db
+    .from("package_credit_entries")
+    .delete()
+    .in("package_id", [fixture.package, fixture.operationalPackage]);
+  if (creditCleanup.error)
+    throwFixtureError("credit_cleanup", creditCleanup.error);
   await deleteIds("packages", [fixture.package, fixture.operationalPackage]);
   await deleteIds("package_definitions", [fixture.packageDefinition]);
   const { error: detachRevisionError } = await db
@@ -770,16 +778,14 @@ async function setup(
   });
   if (operationalPackage.error)
     throwFixtureError("operational_package", operationalPackage.error);
-  const operationalCredit = await db
-    .from("package_credit_entries")
-    .upsert({
-      id: fixture.operationalCredit,
-      package_id: fixture.operationalPackage,
-      kind: "purchase",
-      quantity: 1,
-      reason: `${runId} deterministic credit purchase`,
-      idempotency_key: `${runId}:operational-credit`,
-    });
+  const operationalCredit = await db.from("package_credit_entries").upsert({
+    id: fixture.operationalCredit,
+    package_id: fixture.operationalPackage,
+    kind: "purchase",
+    quantity: 1,
+    reason: `${runId} deterministic credit purchase`,
+    idempotency_key: `${runId}:operational-credit`,
+  });
   if (operationalCredit.error)
     throwFixtureError("operational_credit", operationalCredit.error);
   const opsBase = {

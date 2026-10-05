@@ -67,9 +67,11 @@ language sql security definer set search_path='' as $$
 insert into public.automation_rules (studio_id, rule_key, enabled, mode, trigger, audience, timing, suppressions)
 select s.id, r.key,
   r.key in ('booking_confirmation','lesson_reminder','payment_failed','package_low','package_expiration') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
-    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true) else true end,
+    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true)
+             when r.key='booking_confirmation' then coalesce((s.settings->'emailAutomations'->>'studentConfirmation')::boolean,true) else true end,
   case when r.key in ('booking_confirmation','lesson_reminder','payment_failed','package_low','package_expiration') and coalesce((s.settings->'emailAutomations'->>'enabled')::boolean,true)
-    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true) else true end then 'automatic' else 'off' end,
+    and case when r.key='lesson_reminder' then coalesce((s.settings->'emailAutomations'->>'reminders')::boolean,true)
+             when r.key='booking_confirmation' then coalesce((s.settings->'emailAutomations'->>'studentConfirmation')::boolean,true) else true end then 'automatic' else 'off' end,
   r.trigger, r.audience,
   case when r.key='lesson_reminder' then jsonb_build_object('hoursBefore',coalesce(s.settings->'reminderHours','[72,24,2]'::jsonb))
        when r.key in ('payment_due','payment_past_due') then '{"hoursBefore":[72,24,2]}'::jsonb
