@@ -438,6 +438,7 @@ test.describe("Stateful operational acceptance", () => {
             status: response.status,
             code: body.code,
             message: body.message,
+            details: body.details,
           };
         },
         {

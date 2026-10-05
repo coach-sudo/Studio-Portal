@@ -95,7 +95,7 @@ Unresolved/group financial information is intentionally marked for reconciliatio
 
 The authoritative exact-head workflows are **Production checks** (`verify`, `migrations`) and **Deployed browser checks** (`smoke`, `deployed-suite`) on PR #26. The latter runs the original thirteen journeys plus the fifteen-step operational coach journey and a mobile operational surface journey.
 
-Browser requests exposed a run-local Netlify routing case where the dynamic domain parameter was missing. V2 accepts a strictly matched `/api/v2/:domain` request path as fallback, retaining its allowlist and authorization; no Origin/header supplies the domain. HTTP tests cover missing/present platform params and reject nested/untrusted paths before any database access. Visual review also corrected Today status overlap and cramped Account household/timeline controls, with desktop/mobile name-width assertions.
+Local reproduction established a Netlify CLI 27.8.0 proxy defect: a valid API 403 was retried as `.html` and `/index.html` static paths, obscuring the original authorization response with 404. The isolated workflow applies a version/source-guarded patch only to its disposable CLI, excluding `/api/` from static retry. Application routing/authorization remains unchanged, and the guardian assertion still requires 403 before privileged access. Patch tests retain non-API fallback, check idempotence, and reject unknown runtime source. Visual review also corrected Today status overlap and cramped Account household/timeline controls, with desktop/mobile name-width assertions.
 
 Operational checkpoints cover paid/credit/due readiness, primary payer and minor protection, independent contact permissions, shortfall, timeline, payment/cancellation/reschedule suppression, draft/automatic queueing, retained audit, canonical preview CTA, guardian RLS/API denial, keyboard focus restoration, axe and mobile reflow. No axe rule is disabled. The cancellation checkpoint is not undone to test rescheduling: a separate scheduled fixture goes through the normal tracked SQL command and production queue helper. Google provider interaction is isolated there, not claimed as a real Calendar test.
 
@@ -111,7 +111,7 @@ Full-page Account mobile evidence includes its communication timeline. Screensho
 
 | Gate                                  | Evidence                                                                                                       |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 417 tests |
+| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 420 tests |
 | TypeScript / ESLint / Prettier        | Required; lint passes with existing repository warnings, not zero warnings                                     |
 | Production build / bundle gate        | Required in production-shaped CI, unchanged warning/failure limits                                             |
 | Secret scan                           | Required, no backup/password/provider credential in Git                                                        |
