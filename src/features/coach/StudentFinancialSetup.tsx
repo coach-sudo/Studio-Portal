@@ -6,7 +6,7 @@ import type { Student } from "../../domain/model";
 import { studentFinancialSummary } from "../../domain/studentFinancialSummary";
 import { packageCoverageRecommendations } from "../../domain/packageRecommendations";
 import { formatStudioDateTime } from "../../domain/presentation";
-import { coverageLabels } from "./LessonReadinessPanel";
+import { coverageLabels } from "./readinessPresentation";
 import "./operational-intelligence.css";
 
 export function StudentFinancialSetup({

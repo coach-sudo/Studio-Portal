@@ -17,7 +17,6 @@ export async function queueBookingEmails(
   client: SupabaseClient,
   bookingId: string,
   manageToken?: string,
-  _origin?: string,
 ) {
   const db = client as SupabaseClient<Database>;
   const { data: booking, error } = await db

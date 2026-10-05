@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
@@ -76,7 +76,7 @@ export function AutomationSettings({
       return result.data;
     },
   });
-  async function save(event: React.FormEvent<HTMLFormElement>) {
+  async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!edit) return;
     setBusy(true);

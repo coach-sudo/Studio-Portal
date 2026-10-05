@@ -832,7 +832,6 @@ async function createBooking(request: Request) {
         db,
         booking.id,
         manageToken,
-        new URL(request.url).origin,
       );
       try {
         await ensureBookingPortalAccess(

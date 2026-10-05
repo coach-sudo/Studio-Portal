@@ -91,6 +91,12 @@ Timeline queries use exact counts, server filtering/order, page size 25, abort s
 
 Unresolved/group financial information is intentionally marked for reconciliation instead of assigning an arbitrary participant's booking/payer. The Account timeline is student-associated mail; shared class-wide rows without a student remain in the existing global outbox/lesson workflow. No portal user receives the internal timeline or rule history.
 
+## Stale/redundant element audit
+
+The feature and its adjacent coach surfaces were reviewed for unused controls, stale queued actions, duplicate presentation and obsolete code. Confirmed unused `.automation-card`/card-header/action selectors and duplicate preview/card declarations were removed. Shared financial labels now live in one presentation module, rather than making one React component depend on another for constants. The booking-email API no longer accepts an unused request-origin argument: all four producers use the trusted origin boundary. The Settings form uses an explicit React event type. The expanded axe suite also exposed the coach monogram's white-on-gold contrast; it now uses the existing dark ink without changing layout or branding.
+
+Necessary compatibility is deliberately retained: the collapsed legacy templates/master switch still govern established email behavior; existing recovery/outbox controls have a different scope from the student timeline; canceled/suppressed rows remain delivery history. New rule editors show only relevant fields. No unused second queue, alert table, household model or payment ledger was introduced. This is a scoped audit, not a claim that every pre-existing repository warning or historical feature is obsolete. Existing unrelated lint warnings remain reported; no historical records, plugins or old PRs were removed.
+
 ## Verification and visual evidence
 
 The authoritative exact-head workflows are **Production checks** (`verify`, `migrations`) and **Deployed browser checks** (`smoke`, `deployed-suite`) on PR #26. The latter runs the original thirteen journeys plus the fifteen-step operational coach journey and a mobile operational surface journey.

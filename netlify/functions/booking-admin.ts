@@ -250,7 +250,6 @@ export default async (request: Request, context: Context) => {
           service,
           booking.id,
           token,
-          new URL(request.url).origin,
         );
         try {
           await ensureBookingPortalAccess(
