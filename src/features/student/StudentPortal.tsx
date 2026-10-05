@@ -172,7 +172,7 @@ export function StudentPortal({
         </div>
         <nav>
           {tabs.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={`${base}/${to}`} end={!to}>
+            <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
               <Icon />
               <span>{label}</span>
             </NavLink>
@@ -373,7 +373,7 @@ export function StudentPortal({
       />
       <nav className="mobile-nav student-mobile">
         {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={`${base}/${to}`} end={!to}>
+          <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
             <Icon />
             <span>{label}</span>
           </NavLink>

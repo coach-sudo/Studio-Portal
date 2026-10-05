@@ -1,4 +1,4 @@
-/* global document, innerWidth */
+/* global document, innerWidth, console */
 import assert from "node:assert/strict";
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -23,6 +23,7 @@ const routes = [
   ["actor-admin", "/coach/actor-pages"],
   ["campaigns", "/coach/campaigns"],
   ["coach-referrals", "/coach/referrals"],
+  ["coach-class", "/coach/classes/offering-scene-night"],
   ["student-home", "/portal"],
   ["student-work", "/portal/work"],
   ["student-schedule", "/portal/bookings"],
@@ -34,6 +35,11 @@ const routes = [
   ["student-referrals", "/portal/referrals"],
   ["public-booking", "/book"],
   ["booking-flow", "/book/private-acting-coaching"],
+  ["booking-management", "/booking/demo-maya"],
+  ["public-package", "/package/package-definition-private-coaching-4"],
+  ["gift-purchase", "/gift/package-definition-private-coaching-4"],
+  ["gift-claim", "/gift/claim/local-visual-fixture"],
+  ["gift-confirmation", "/gift/thanks"],
   ["public-actor", "/actors/maya-kim"],
   ["login", "/login"],
   ["terms", "/terms"],
@@ -53,6 +59,33 @@ for (const [size, viewport] of [
     reducedMotion: "reduce",
   });
   const page = await context.newPage();
+  // Deterministic catalog response for visual review only; no checkout is submitted.
+  await page.route(
+    "http://127.0.0.1:5173/api/v2/public/package-gifts/catalog?*",
+    (route) =>
+      route.fulfill({
+        json: {
+          studio: { name: "Stage & Story Studio" },
+          package: {
+            id: "package-definition-private-coaching-4",
+            name: "Four private coaching sessions",
+            description:
+              "Four flexible private coaching sessions purchased together.",
+            sessionCount: 4,
+            sessionDurationMinutes: 60,
+            priceMinor: 32000,
+            currency: "USD",
+            deliveryFormat: "google_meet",
+            expirationDays: 180,
+            discountType: "none",
+            discountMinor: 0,
+            discountBasisPoints: 0,
+            recurringEligible: true,
+            giftable: true,
+          },
+        },
+      }),
+  );
   await page.clock.install({ time: new Date("2026-10-05T14:00:00-04:00") });
   for (const [name, route] of routes) {
     const errors = [];

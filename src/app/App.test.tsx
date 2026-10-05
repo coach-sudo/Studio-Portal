@@ -47,6 +47,10 @@ describe("studio surfaces", () => {
     expect(
       screen.getByRole("link", { name: "Message coach" }),
     ).toBeInTheDocument();
+    for (const home of screen.getAllByRole("link", { name: "Home" })) {
+      expect(home).toHaveAttribute("aria-current", "page");
+      expect(home).toHaveClass("active");
+    }
   });
   it("does not publish draft actor profiles", async () => {
     renderApp("/actors/maya-kim");

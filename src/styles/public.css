@@ -1,7 +1,8 @@
 /* Public experiences share controls, but retain portfolio and checkout composition. */
 .booking-public,
 .legal-page,
-.login-page {
+.login-page,
+.gift-page {
   background: var(--app-canvas);
 }
 .booking-topbar {
@@ -63,6 +64,33 @@
 }
 .login-card {
   padding: clamp(24px, 3vw, 40px);
+}
+.gift-card {
+  padding: clamp(24px, 3vw, 40px);
+}
+.gift-card > small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.gift-card h1 {
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 500;
+  line-height: 1.12;
+}
+.gift-card .workflow-form > .full {
+  grid-column: 1 / -1;
+}
+.gift-card .workflow-form > button {
+  justify-self: start;
+  min-height: var(--control-md);
+  padding: 12px 20px;
+}
+.gift-package-summary {
+  border: 0;
+  background: var(--app-surface-soft);
+}
+.gift-package-summary span {
+  font-size: 12px;
 }
 .actor-public {
   background: var(--app-canvas);
