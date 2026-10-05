@@ -66,6 +66,8 @@ customer email. Production is not published and PR #28 is not merged.
   desktop/mobile, keyboard trapping/Escape/focus return, preparing drafts and
   approving a scheduled reminder in Payments. Its fixtures restore rule snapshots
   and preserve the existing public/storage/auth cleanup checks.
+  Cleanup includes approval audits for generated message IDs discovered only
+  within the namespaced test students.
 
 Deployed browser and migration/RLS results are recorded on PR #28 after CI.
 Remaining visual debt: live provider/permission/error states continue using

@@ -206,6 +206,7 @@ async function cleanup(
     throwFixtureError("conversation_message_lookup", conversationMessageError);
   const auditEntityIds = [
     ...Object.values(fixture),
+    ...messageIds,
     ...(assets || []).map((asset) => asset.id),
     ...(uploadedMaterials || []).map((material) => material.id),
     ...(conversationMessages || []).map((message) => message.id),
