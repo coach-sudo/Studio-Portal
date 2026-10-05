@@ -1,3 +1,4 @@
+import "../../styles/public.css";
 import { UserRound } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";

@@ -5,7 +5,7 @@ import {
 } from "../../../domain/automationRules";
 import type { Tables } from "../../../types/database.generated";
 import type { FormEvent } from "react";
-import { Dialog } from "../../../components/Primitives";
+import { Drawer } from "../../../components/Primitives";
 export function AutomationRuleEditor({
   edit,
   busy,
@@ -22,7 +22,7 @@ export function AutomationRuleEditor({
   const timed = ["lesson_reminder", "payment_due"].includes(edit.rule_key);
   const escalation = timed || edit.rule_key === "payment_past_due";
   return (
-    <Dialog
+    <Drawer
       title={`Edit ${automationRuleLabels[edit.rule_key as AutomationRuleKey]}`}
       onClose={onClose}
     >
@@ -152,6 +152,6 @@ export function AutomationRuleEditor({
           {busy ? "Saving…" : "Save rule"}
         </button>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }

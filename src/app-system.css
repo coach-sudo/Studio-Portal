@@ -1,24 +1,6 @@
 /* Coach'D app-wide visual system. Shared primitives keep every role and route
    visually consistent without coupling the design to individual screens. */
-:root {
-  --app-canvas: color-mix(in srgb, var(--wash), white 34%);
-  --app-surface: #fffefb;
-  --app-surface-soft: color-mix(in srgb, var(--wash), white 58%);
-  --app-border: color-mix(in srgb, var(--forest), transparent 86%);
-  --app-border-strong: color-mix(in srgb, var(--sage), transparent 58%);
-  --app-focus: color-mix(in srgb, var(--gold), transparent 28%);
-  --app-radius-control: 11px;
-  --app-radius-card: 18px;
-  --app-radius-panel: 26px;
-  --app-shadow-card: 0 1px 2px #102c2410, 0 12px 34px #102c240a;
-  --app-shadow-float: 0 24px 70px #102c2424;
-  --app-page-gap: clamp(16px, 2vw, 24px);
-  --app-card-pad: clamp(16px, 2.25vw, 26px);
-}
 
-body {
-  background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 87%), transparent 24rem), var(--app-canvas);
-}
 
 .app-shell-main, .student-shell-main { background: transparent; }
 
@@ -40,42 +22,7 @@ body {
 .sidebar-collapsed .identity { padding: 8px; justify-content: center; }
 .sidebar-collapsed .identity > span { flex: 0 0 40px; width: 40px; height: 40px; }
 
-.page, .student-page {
-  width: min(100%, 1240px);
-  margin-inline: auto;
-  padding: clamp(18px, 2.8vw, 36px);
-}
-
-.page-header, .student-header {
-  position: relative;
-  isolation: isolate;
-  overflow: hidden;
-  min-height: 126px;
-  margin: 0 0 var(--app-page-gap);
-  padding: clamp(22px, 3vw, 34px);
-  border: 1px solid var(--app-border);
-  border-radius: var(--app-radius-panel);
-  background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 62%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), color-mix(in srgb, var(--wash), white 48%));
-  box-shadow: var(--app-shadow-card);
-  align-items: center;
-  gap: 18px;
-}
-
-.page-header::after, .student-header::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  right: 9%;
-  bottom: -62px;
-  width: 142px;
-  height: 142px;
-  border: 1px solid color-mix(in srgb, var(--coral), transparent 68%);
-  border-radius: 50%;
-  pointer-events: none;
-}
-
 .page-header > div:first-child, .student-header > div:first-child { min-width: 0; }
-.page-header h1, .student-header h1 { margin: 0; font-size: clamp(30px, 4vw, 46px); line-height: 1.04; letter-spacing: -.035em; }
 .page-header p, .student-header p, .section-intro { max-width: 760px; color: var(--muted); line-height: 1.55; }
 .workflow-form label.material-upload, .workflow-form label.material-upload > small, .settings-form label.material-upload, .settings-form label.material-upload > small { color: var(--ink); }
 .page-actions, .header-actions, .form-actions, .student-quick-actions, .lesson-primary-actions { gap: 9px; }

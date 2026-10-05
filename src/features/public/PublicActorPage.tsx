@@ -1,3 +1,4 @@
+import "../../styles/public.css";
 import { ArrowLeft, FileText, Mail, MapPin, Phone } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";

@@ -9,6 +9,7 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
+import { Dialog } from "./Primitives";
 import { ActivityCenter } from "./ActivityCenter";
 import { coachNavigation } from "../app/coachNavigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
@@ -18,6 +19,10 @@ import "./IdentityActions.css";
 export function AppShell() {
   const { data } = useStudioRoute("coach", undefined, ["identity"]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const destinations = coachNavigation.filter(({ label }) =>
+    label.toLowerCase().includes(query.toLowerCase()),
+  );
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();
   useEffect(() => {
@@ -68,6 +73,19 @@ export function AppShell() {
             {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
           </button>
         </div>
+        <button
+          type="button"
+          className="shell-search"
+          onClick={() => {
+            setQuery("");
+            setSearchOpen(true);
+          }}
+          aria-label="Search studio workflows"
+        >
+          <Search aria-hidden="true" />
+          <span>Find a workflow</span>
+          <kbd>Ctrl K</kbd>
+        </button>
         <nav aria-label="Coach navigation">
           {coachNavigation.map(({ to, label, icon: Icon }) => (
             <NavLink key={to} to={to} end={to === "/coach"}>
@@ -132,52 +150,49 @@ export function AppShell() {
         </button>
       </nav>
       {searchOpen && (
-        <div
-          className="dialog-backdrop"
-          onMouseDown={(event) =>
-            event.target === event.currentTarget && setSearchOpen(false)
-          }
+        <Dialog
+          title="Go to"
+          description="Find your next studio workflow."
+          onClose={() => setSearchOpen(false)}
         >
-          <section
-            className="command-dialog"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Go to"
-          >
-            <header>
-              <Search />
+          <div className="command-search">
+            <label>
+              <Search aria-hidden="true" />
               <input
                 autoFocus
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
                 placeholder="Find a workflow…"
                 aria-label="Find a workflow"
                 onKeyDown={(event) => {
-                  const match = coachNavigation.find(
-                    ({ label }) =>
-                      label.toLowerCase() ===
-                      event.currentTarget.value.toLowerCase(),
-                  );
-                  if (event.key === "Enter" && match) {
-                    navigate(match.to);
+                  if (event.key === "Enter" && destinations[0]) {
+                    navigate(destinations[0].to);
                     setSearchOpen(false);
                   }
-                  if (event.key === "Escape") setSearchOpen(false);
                 }}
               />
-            </header>
-            {coachNavigation.map(({ to, label, icon: Icon }) => (
-              <button
-                key={to}
-                onClick={() => {
-                  navigate(to);
-                  setSearchOpen(false);
-                }}
-              >
-                <Icon />
-                <span>{label}</span>
-              </button>
-            ))}
-          </section>
-        </div>
+            </label>
+            <div>
+              {destinations.map(({ to, label, icon: Icon }) => (
+                <button
+                  key={to}
+                  onClick={() => {
+                    navigate(to);
+                    setSearchOpen(false);
+                  }}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+              {!destinations.length && (
+                <p role="status">
+                  No workflows match. Try a page name like Students or Bookings.
+                </p>
+              )}
+            </div>
+          </div>
+        </Dialog>
       )}
     </div>
   );

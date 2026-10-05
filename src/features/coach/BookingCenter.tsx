@@ -9,9 +9,10 @@ import {
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Dialog,
+  Drawer,
   EmptyState,
   PageHeader,
+  PageSkeleton,
   Status,
 } from "../../components/Primitives";
 import {
@@ -97,7 +98,7 @@ export function BookingCenter() {
     if (booking) setDialog({ type: "booking", item: booking });
   }, [data, requestedRecord]);
   if (isLoading || !data)
-    return <div className="loading">Opening booking center…</div>;
+    return <PageSkeleton label="Opening booking center…" />;
 
   async function run(
     resource: BookingAdminResource,
@@ -570,387 +571,404 @@ function ServiceDialog({
       ? [...new Set([...items, item])]
       : items.filter((current) => current !== item);
   return (
-    <Dialog
+    <Drawer
       title={service ? "Edit service" : "Add service"}
       description="Pricing and policy edits apply only to future bookings."
       onClose={onClose}
     >
-      <form className="workflow-form" onSubmit={submit}>
-        <label>
-          Name
-          <input
-            required
-            value={value.name}
-            onChange={(event) =>
-              setValue({ ...value, name: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Category
-          <select
-            value={value.category}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                category: event.target.value as BookingService["category"],
-              })
-            }
-          >
-            <option value="private">Private</option>
-            <option value="group_class">Group class</option>
-            {service?.category === "course" && (
-              <option value="course" disabled>
-                Course (existing only)
-              </option>
-            )}
-          </select>
-        </label>
-        <label className="full">
-          Description
-          <textarea
-            required
-            value={value.description}
-            onChange={(event) =>
-              setValue({ ...value, description: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Duration (minutes)
-          <input
-            type="number"
-            min="15"
-            max="480"
-            required
-            value={value.durationMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                durationMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Price (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            value={value.priceMinor / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                priceMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-        </label>
-        <label>
-          Extra charge for in-person lessons (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={Number(value.locationPriceAdjustments.in_person || 0) / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                locationPriceAdjustments: {
-                  ...value.locationPriceAdjustments,
-                  in_person: Math.round(Number(event.target.value) * 100),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Deposit (USD)
-          <input
-            type="number"
-            min="0"
-            max={value.priceMinor / 100}
-            step="0.01"
-            value={value.depositMinor / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                depositMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-        </label>
-        <label>
-          Capacity
-          <input
-            type="number"
-            min="1"
-            disabled={value.category === "private"}
-            value={value.capacity}
-            onChange={(event) =>
-              setValue({ ...value, capacity: Number(event.target.value) })
-            }
-          />
-        </label>
-        <label>
-          How soon someone can book (hours)
-          <input
-            type="number"
-            min="0"
-            value={value.minimumNoticeHours}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                minimumNoticeHours: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          How far ahead people can book (days)
-          <input
-            type="number"
-            min="1"
-            max="730"
-            value={value.bookingHorizonDays}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bookingHorizonDays: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Break before this lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={value.bufferBeforeMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bufferBeforeMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Break after this lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={value.bufferAfterMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bufferAfterMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          How often available start times appear (minutes)
-          <input
-            type="number"
-            min="5"
-            max="120"
-            value={value.slotIntervalMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                slotIntervalMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Notice required to cancel or reschedule (hours)
-          <input
-            type="number"
-            min="0"
-            value={value.policy.cancellationWindowHours}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  cancellationWindowHours: Number(event.target.value),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Times a client can reschedule themselves
-          <input
-            type="number"
-            min="0"
-            max="10"
-            value={value.policy.rescheduleLimit}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  rescheduleLimit: Number(event.target.value),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          On-time settlement
-          <select
-            value={value.policy.settlement}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  settlement: event.target
-                    .value as BookingService["policy"]["settlement"],
-                },
-              })
-            }
-          >
-            <option value="original_payment">Original payment</option>
-            <option value="studio_credit">Studio credit</option>
-            <option value="manual">Manual</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-        <label>
-          Late settlement
-          <select
-            value={value.policy.lateSettlement}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  lateSettlement: event.target
-                    .value as BookingService["policy"]["lateSettlement"],
-                },
-              })
-            }
-          >
-            <option value="none">None</option>
-            <option value="studio_credit">Studio credit</option>
-            <option value="manual">Manual</option>
-            <option value="original_payment">Original payment</option>
-          </select>
-        </label>
-        <fieldset className="full option-fieldset">
-          <legend>Delivery</legend>
-          {(["google_meet", "in_person"] as const).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.locationOptions.includes(item)}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    locationOptions: toggle(
-                      value.locationOptions,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
+      <form className="workflow-form service-editor" onSubmit={submit}>
+        <fieldset className="editor-group full">
+          <legend>Basics</legend>
+          <label>
+            Name
+            <input
+              required
+              value={value.name}
+              onChange={(event) =>
+                setValue({ ...value, name: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Category
+            <select
+              value={value.category}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  category: event.target.value as BookingService["category"],
+                })
+              }
+            >
+              <option value="private">Private</option>
+              <option value="group_class">Group class</option>
+              {service?.category === "course" && (
+                <option value="course" disabled>
+                  Course (existing only)
+                </option>
+              )}
+            </select>
+          </label>
+          <label className="full">
+            Description
+            <textarea
+              required
+              value={value.description}
+              onChange={(event) =>
+                setValue({ ...value, description: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Duration (minutes)
+            <input
+              type="number"
+              min="15"
+              max="480"
+              required
+              value={value.durationMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  durationMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
         </fieldset>
-        <label>
-          Default delivery
-          <select
-            value={value.defaultLocation}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                defaultLocation: event.target
-                  .value as BookingService["defaultLocation"],
-              })
-            }
-          >
-            {value.locationOptions.map((item) => (
-              <option key={item} value={item}>
+        <fieldset className="editor-group full">
+          <legend>Pricing</legend>
+          <label>
+            Price (USD)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value={value.priceMinor / 100}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  priceMinor: Math.round(Number(event.target.value) * 100),
+                })
+              }
+            />
+          </label>
+          <label>
+            Extra charge for in-person lessons (USD)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={
+                Number(value.locationPriceAdjustments.in_person || 0) / 100
+              }
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  locationPriceAdjustments: {
+                    ...value.locationPriceAdjustments,
+                    in_person: Math.round(Number(event.target.value) * 100),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Deposit (USD)
+            <input
+              type="number"
+              min="0"
+              max={value.priceMinor / 100}
+              step="0.01"
+              value={value.depositMinor / 100}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  depositMinor: Math.round(Number(event.target.value) * 100),
+                })
+              }
+            />
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Scheduling</legend>
+          <label>
+            Capacity
+            <input
+              type="number"
+              min="1"
+              disabled={value.category === "private"}
+              value={value.capacity}
+              onChange={(event) =>
+                setValue({ ...value, capacity: Number(event.target.value) })
+              }
+            />
+          </label>
+          <label>
+            How soon someone can book (hours)
+            <input
+              type="number"
+              min="0"
+              value={value.minimumNoticeHours}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  minimumNoticeHours: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            How far ahead people can book (days)
+            <input
+              type="number"
+              min="1"
+              max="730"
+              value={value.bookingHorizonDays}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bookingHorizonDays: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            Break before this lesson (minutes)
+            <input
+              type="number"
+              min="0"
+              value={value.bufferBeforeMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bufferBeforeMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            Break after this lesson (minutes)
+            <input
+              type="number"
+              min="0"
+              value={value.bufferAfterMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bufferAfterMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            How often available start times appear (minutes)
+            <input
+              type="number"
+              min="5"
+              max="120"
+              value={value.slotIntervalMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  slotIntervalMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Cancellation</legend>
+          <label>
+            Notice required to cancel or reschedule (hours)
+            <input
+              type="number"
+              min="0"
+              value={value.policy.cancellationWindowHours}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    cancellationWindowHours: Number(event.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Times a client can reschedule themselves
+            <input
+              type="number"
+              min="0"
+              max="10"
+              value={value.policy.rescheduleLimit}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    rescheduleLimit: Number(event.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            On-time settlement
+            <select
+              value={value.policy.settlement}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    settlement: event.target
+                      .value as BookingService["policy"]["settlement"],
+                  },
+                })
+              }
+            >
+              <option value="original_payment">Original payment</option>
+              <option value="studio_credit">Studio credit</option>
+              <option value="manual">Manual</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label>
+            Late settlement
+            <select
+              value={value.policy.lateSettlement}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    lateSettlement: event.target
+                      .value as BookingService["policy"]["lateSettlement"],
+                  },
+                })
+              }
+            >
+              <option value="none">None</option>
+              <option value="studio_credit">Studio credit</option>
+              <option value="manual">Manual</option>
+              <option value="original_payment">Original payment</option>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Location & payment</legend>
+          <fieldset className="full option-fieldset">
+            <legend>Delivery</legend>
+            {(["google_meet", "in_person"] as const).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.locationOptions.includes(item)}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      locationOptions: toggle(
+                        value.locationOptions,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
                 {item.replaceAll("_", " ")}
-              </option>
+              </label>
             ))}
-          </select>
-        </label>
-        <fieldset className="full option-fieldset">
-          <legend>Recurrence</legend>
-          {(["none", "weekly", "biweekly"] as const).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.recurrenceOptions.includes(item)}
-                disabled={item === "none"}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    recurrenceOptions: toggle(
-                      value.recurrenceOptions,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
+          </fieldset>
+          <label>
+            Default delivery
+            <select
+              value={value.defaultLocation}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  defaultLocation: event.target
+                    .value as BookingService["defaultLocation"],
+                })
+              }
+            >
+              {value.locationOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="full option-fieldset">
+            <legend>Recurrence</legend>
+            {(["none", "weekly", "biweekly"] as const).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.recurrenceOptions.includes(item)}
+                  disabled={item === "none"}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      recurrenceOptions: toggle(
+                        value.recurrenceOptions,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
+                {item.replaceAll("_", " ")}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="full option-fieldset">
+            <legend>Payment options</legend>
+            {(
+              [
+                "pay_now",
+                "pay_later",
+                "deposit",
+                "credits",
+                "installments",
+                "subscription",
+              ] as const
+            ).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.paymentPolicies.includes(item)}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      paymentPolicies: toggle(
+                        value.paymentPolicies,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
+                {item.replaceAll("_", " ")}
+              </label>
+            ))}
+          </fieldset>
+          <label className="check-row full">
+            <input
+              type="checkbox"
+              checked={value.published}
+              onChange={(event) =>
+                setValue({ ...value, published: event.target.checked })
+              }
+            />
+            Published in public catalog
+          </label>
         </fieldset>
-        <fieldset className="full option-fieldset">
-          <legend>Payment options</legend>
-          {(
-            [
-              "pay_now",
-              "pay_later",
-              "deposit",
-              "credits",
-              "installments",
-              "subscription",
-            ] as const
-          ).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.paymentPolicies.includes(item)}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    paymentPolicies: toggle(
-                      value.paymentPolicies,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
-        </fieldset>
-        <label className="check-row full">
-          <input
-            type="checkbox"
-            checked={value.published}
-            onChange={(event) =>
-              setValue({ ...value, published: event.target.checked })
-            }
-          />
-          Published in public catalog
-        </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function RuleDialog({
@@ -964,7 +982,7 @@ function RuleDialog({
 }) {
   const [value, setValue] = useState(rule);
   return (
-    <Dialog
+    <Drawer
       title="Weekly availability"
       description="Times are interpreted in the studio timezone and keep their wall time through daylight-saving changes."
       onClose={onClose}
@@ -1027,7 +1045,7 @@ function RuleDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function ExceptionDialog({
@@ -1044,7 +1062,7 @@ function ExceptionDialog({
     new Date(tomorrow.getTime() + 86400000).toISOString().slice(0, 16),
   );
   return (
-    <Dialog title="Add availability exception" onClose={onClose}>
+    <Drawer title="Add availability exception" onClose={onClose}>
       <form
         className="workflow-form"
         onSubmit={(event) => {
@@ -1090,7 +1108,7 @@ function ExceptionDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function OfferingDialog({
@@ -1114,7 +1132,7 @@ function OfferingDialog({
   const selected = services.find((item) => item.id === serviceId);
   const count = 1;
   return (
-    <Dialog
+    <Drawer
       title="Create group class"
       description="Create one class occurrence with its own page, roster, resources, assignments, and shared inbox."
       onClose={onClose}
@@ -1233,7 +1251,7 @@ function OfferingDialog({
         </p>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function RosterDialog({
@@ -1254,7 +1272,7 @@ function RosterDialog({
     ...new Map(participants.map((part) => [part.email, part])).values(),
   ];
   return (
-    <Dialog
+    <Drawer
       title={`${offering.title} roster`}
       description={`${unique.length} of ${offering.capacity} seats reserved.`}
       onClose={onClose}
@@ -1320,7 +1338,7 @@ function RosterDialog({
           </button>
         </div>
       </div>
-    </Dialog>
+    </Drawer>
   );
 }
 function SeriesDialog({
@@ -1334,7 +1352,7 @@ function SeriesDialog({
 }) {
   const [status, setStatus] = useState(series.status);
   return (
-    <Dialog
+    <Drawer
       title="Manage recurring series"
       description="Pausing protects existing occurrences. Cancellation ends future unearned occurrences."
       onClose={onClose}
@@ -1364,7 +1382,7 @@ function SeriesDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function BookingDialog({
@@ -1396,7 +1414,7 @@ function BookingDialog({
       (participant) => participant.bookingId === booking.id,
     )?.studentId;
   return (
-    <Dialog
+    <Drawer
       title={booking.reference}
       description={`${booking.guestName} · ${serviceName(data, booking.serviceId)}`}
       onClose={onClose}
@@ -1481,7 +1499,7 @@ function BookingDialog({
           </button>
         </div>
       </div>
-    </Dialog>
+    </Drawer>
   );
 }
 function FormActions({ onClose }: { onClose: () => void }) {

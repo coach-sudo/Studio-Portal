@@ -3,7 +3,7 @@ import { Mail, MessageSquare, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import {
-  Dialog,
+  Drawer,
   EmptyState,
   Section,
   Status,
@@ -348,7 +348,7 @@ function LinkedContacts({
         />
       )}
       {(adding || editing) && (
-        <Dialog
+        <Drawer
           title={editing ? `Edit ${editing.fullName}` : "Add linked contact"}
           description="Access and optional email preferences can be changed at any time."
           onClose={() => {
@@ -514,7 +514,7 @@ function LinkedContacts({
               <button className="primary">Save contact</button>
             </div>
           </form>
-        </Dialog>
+        </Drawer>
       )}
     </Section>
   );

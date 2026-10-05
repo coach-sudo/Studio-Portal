@@ -1,0 +1,76 @@
+/* Semantic aliases intentionally follow studio branding and portal appearance. */
+:root {
+  --muted: #526258;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --radius-sm: 8px;
+  --radius-control: 12px;
+  --radius-card: 16px;
+  --radius-panel: 20px;
+  --radius-feature: 24px;
+  --text-meta: 12px;
+  --text-body: 15px;
+  --text-card: 17px;
+  --text-section: 24px;
+  --text-title: clamp(30px, 3.2vw, 42px);
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-strong: 600;
+  --control-sm: 36px;
+  --control-md: 44px;
+  --control-lg: 52px;
+  --page-coach: 1280px;
+  --page-portal: 1120px;
+  --sidebar-width: 248px;
+  --motion-fast: 140ms;
+  --motion-standard: 180ms;
+  --layer-nav: 40;
+  --layer-menu: 60;
+  --layer-overlay: 100;
+  --layer-toast: 110;
+  --color-success: #31634c;
+  --color-warning: #815917;
+  --color-danger: #963c4f;
+  --color-info: #41636a;
+  --surface-success: #edf4ee;
+  --surface-warning: #faf2e2;
+  --surface-danger: #faeef0;
+  --surface-info: #edf3f3;
+  --app-canvas: #f7f8f5;
+  --app-surface: #ffffff;
+  --app-surface-soft: #f3f6f1;
+  --app-border: color-mix(in srgb, var(--forest), transparent 90%);
+  --app-border-strong: color-mix(in srgb, var(--forest), transparent 76%);
+  --app-focus: color-mix(in srgb, var(--forest), white 35%);
+  --app-radius-control: var(--radius-control);
+  --app-radius-card: var(--radius-card);
+  --app-radius-panel: var(--radius-feature);
+  --app-shadow-card: 0 2px 5px #18372a04, 0 8px 28px #18372a06;
+  --app-shadow-float: 0 24px 80px #102c2433;
+  --app-shadow-dialog: var(--app-shadow-float);
+  --app-page-gap: 24px;
+  --app-card-pad: clamp(20px, 2vw, 28px);
+}
+
+:root[data-portal-theme="dark"] {
+  --app-canvas: #101c18;
+  --app-surface: #192922;
+  --app-surface-soft: #20332b;
+  --app-border: #ffffff15;
+  --app-border-strong: #ffffff38;
+  --app-focus: #b8cda1;
+  --color-success: #b5d8bc;
+  --color-warning: #e4c388;
+  --color-danger: #f1b6be;
+  --color-info: #b8d2d2;
+  --surface-success: #263e30;
+  --surface-warning: #403823;
+  --surface-danger: #432a31;
+  --surface-info: #253b3e;
+}

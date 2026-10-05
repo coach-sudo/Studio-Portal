@@ -1,3 +1,4 @@
+import "../../styles/public.css";
 import { CircleDollarSign, Gift, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";

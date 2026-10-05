@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { useParams } from "react-router-dom";
-import { PageHeader } from "../../components/Primitives";
+import { PageHeader, PageSkeleton } from "../../components/Primitives";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { StudioSettings } from "./StudioSettings";
 import { StudentsIndex } from "./StudentsIndex";
@@ -61,9 +61,9 @@ export function CoachSection() {
       coachSectionDomains(section),
     );
   if (!data)
-    return <div className="loading">Loading {config.title.toLowerCase()}…</div>;
+    return <PageSkeleton label={`Loading ${config.title.toLowerCase()}…`} />;
   return (
-    <div className="page">
+    <div className={`page page-${section}`}>
       <PageHeader title={config.title}>{config.description}</PageHeader>
       {isDemo && (
         <p className="portal-notice">

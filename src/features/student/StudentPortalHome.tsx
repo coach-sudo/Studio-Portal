@@ -77,6 +77,11 @@ export function StudentHome({ data, base }: { data: Snapshot; base: string }) {
     <div className="student-page">
       <Header data={data} />
       <JoinLessonBanner lessons={data.lessons} />
+      <HomePriorities
+        data={data}
+        base={base}
+        showAccount={!data.students[0]?.isMinor}
+      />
       <div className="student-quick-actions">
         {data.settings.showContactButtons && (
           <Link className="primary-contact-action" to={`${base}/inbox`}>
@@ -110,11 +115,6 @@ export function StudentHome({ data, base }: { data: Snapshot; base: string }) {
           </a>
         )}
       </div>
-      <HomePriorities
-        data={data}
-        base={base}
-        showAccount={!data.students[0]?.isMinor}
-      />
     </div>
   );
 }
@@ -224,14 +224,14 @@ function HomePriorities({
           </Section>
         )}
         {showAccount && pkg && student && (
-          <details className="portal-account-summary">
-            <summary>
+          <section className="portal-account-summary" aria-label="Your package">
+            <header>
               <span>Your package</span>
               <strong>
                 {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
                 sessions remaining
               </strong>
-            </summary>
+            </header>
             <PortalRow
               icon={CircleDollarSign}
               title={pkg.name}
@@ -239,7 +239,7 @@ function HomePriorities({
               action="View payments"
               onClick={() => navigate(`${base}/payments`)}
             />
-          </details>
+          </section>
         )}
       </div>
     </div>

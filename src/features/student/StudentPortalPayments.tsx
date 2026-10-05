@@ -208,7 +208,11 @@ export function Payments({
       {student && (
         <Section title="Current balance" marked>
           <div className="account-balance-card" role="status">
-            <span>Amount due</span>
+            <span>
+              {studentBalanceMinor(student.id, data.payments) > 0
+                ? "Balance due"
+                : "No balance due"}
+            </span>
             <strong>
               {formatMoney(
                 Math.max(0, studentBalanceMinor(student.id, data.payments)),

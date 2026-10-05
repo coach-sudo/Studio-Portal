@@ -3,7 +3,7 @@ import { UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 import "../../components/IdentityActions.css";
-import { Dialog, Section, Status } from "../../components/Primitives";
+import { Drawer, Section, Status } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -133,7 +133,7 @@ export function ActorPage({
       </p>
       <Materials data={data} isDemo={isDemo} embedded actorOnly />
       {previewing && (
-        <Dialog
+        <Drawer
           title="Private actor-page preview"
           description="Preview the current draft before sending it for review."
           onClose={() => setPreviewing(false)}
@@ -146,7 +146,7 @@ export function ActorPage({
             studioName={data.settings.studioName}
             logoUrl={data.settings.branding.logoUrl}
           />
-        </Dialog>
+        </Drawer>
       )}
       {editing && (
         <ActorDialog
@@ -207,7 +207,7 @@ function ActorDialog({
     onSave(name, bio, portfolio, submit);
   };
   return (
-    <Dialog title="Edit actor profile" onClose={onClose}>
+    <Drawer title="Edit actor profile" onClose={onClose}>
       <form className="workflow-form" onSubmit={save}>
         <h3 className="full actor-form-section">Identity</h3>
         <label className="full">
@@ -420,6 +420,6 @@ function ActorDialog({
           <button className="primary">Save</button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }

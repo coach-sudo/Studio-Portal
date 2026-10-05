@@ -1,6 +1,7 @@
 import {
   useEffect,
   useMemo,
+  useId,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -293,59 +294,16 @@ export function ExplanationDialog({
   onClose: () => void;
   onAction?: () => void;
 }) {
-  const dialog = useRef<HTMLElement>(null);
-  const closeRef = useRef(onClose);
-  useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    dialog.current?.querySelector<HTMLElement>("button")?.focus();
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-      if (event.key !== "Tab") return;
-      const controls = [
-        ...(dialog.current?.querySelectorAll<HTMLElement>(
-          'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
-        ) ?? []),
-      ];
-      if (!controls.length) return;
-      const edge = event.shiftKey ? controls[0] : controls.at(-1);
-      if (document.activeElement === edge) {
-        event.preventDefault();
-        (event.shiftKey ? controls.at(-1) : controls[0])?.focus();
-      }
-    };
-    document.addEventListener("keydown", keydown);
-    return () => {
-      document.removeEventListener("keydown", keydown);
-      document.body.style.overflow = overflow;
-      previous?.focus();
-    };
-  }, []);
   return (
-    <div
-      className="dialog-backdrop"
-      onMouseDown={(event) => event.target === event.currentTarget && onClose()}
-    >
-      <section
-        ref={dialog}
-        className="explanation-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="reason-title"
-      >
-        <h2 id="reason-title">{title}</h2>
-        <p>{explanation}</p>
+    <Dialog title={title} description={explanation} onClose={onClose}>
+      <div className="workflow-content">
         <h3>Why this is here</h3>
         <ul>
           {evidence.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
-        <div>
+        <div className="form-actions">
           <button onClick={onClose}>Not now</button>
           <button
             className="primary"
@@ -357,46 +315,75 @@ export function ExplanationDialog({
             {action.replaceAll("_", " ")}
           </button>
         </div>
-      </section>
-    </div>
+      </div>
+    </Dialog>
   );
 }
 
-export function Dialog({
-  title,
-  description,
-  children,
-  onClose,
-}: {
-  title: string;
-  description?: string;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  const dialog = useRef<HTMLElement>(null);
+const overlayStack: Array<{ token: symbol; element: HTMLElement | null }> = [];
+let originalOverflow = "";
+
+/** Shared keyboard behavior for dialogs and side sheets, including nested overlays. */
+function useOverlayFocus(onClose: () => void) {
+  const ref = useRef<HTMLElement>(null);
   const closeRef = useRef(onClose);
   useEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
-    const overflow = document.body.style.overflow;
+    const token = Symbol("overlay");
+    if (!overlayStack.length) originalOverflow = document.body.style.overflow;
+    overlayStack.push({ token, element: ref.current });
     document.body.style.overflow = "hidden";
-    dialog.current
-      ?.querySelector<HTMLElement>("input,select,textarea,button")
-      ?.focus();
-    const keydown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") closeRef.current();
-      if (event.key !== "Tab") return;
-      const controls = [
-        ...(dialog.current?.querySelectorAll<HTMLElement>(
-          'button,[href],input,select,textarea,[tabindex]:not([tabindex="-1"])',
+    const controls = () =>
+      [
+        ...(ref.current?.querySelectorAll<HTMLElement>(
+          'button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"]):not(:disabled)',
         ) ?? []),
-      ];
-      if (!controls.length) return;
-      const first = controls[0],
-        last = controls.at(-1);
+      ]
+        .filter(
+          (element) =>
+            !element.closest('[hidden],[inert],[aria-hidden="true"]') &&
+            getComputedStyle(element).display !== "none" &&
+            getComputedStyle(element).visibility !== "hidden",
+        )
+        .sort((a, b) =>
+          a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
+            ? -1
+            : 1,
+        );
+    if (!ref.current?.querySelector('[role="dialog"]'))
+      (controls()[0] ?? ref.current)?.focus();
+    const keydown = (event: KeyboardEvent) => {
+      const top = overlayStack
+        .filter(
+          (entry) =>
+            !overlayStack.some(
+              (other) =>
+                other !== entry &&
+                other.element &&
+                entry.element?.contains(other.element),
+            ),
+        )
+        .at(-1);
+      if (top?.token !== token) return;
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        closeRef.current();
+      }
+      if (event.key !== "Tab") return;
+      const items = controls(),
+        first = items[0],
+        last = items.at(-1);
+      if (!first) {
+        event.preventDefault();
+        ref.current?.focus();
+        return;
+      }
       if (
+        !ref.current?.contains(document.activeElement) ||
         (!event.shiftKey && document.activeElement === last) ||
         (event.shiftKey && document.activeElement === first)
       ) {
@@ -404,29 +391,54 @@ export function Dialog({
         (event.shiftKey ? last : first)?.focus();
       }
     };
-    document.addEventListener("keydown", keydown);
+    document.addEventListener("keydown", keydown, true);
     return () => {
-      document.removeEventListener("keydown", keydown);
-      document.body.style.overflow = overflow;
-      previous?.focus();
+      document.removeEventListener("keydown", keydown, true);
+      overlayStack.splice(
+        overlayStack.findIndex((entry) => entry.token === token),
+        1,
+      );
+      if (!overlayStack.length) document.body.style.overflow = originalOverflow;
+      if (previous?.isConnected) previous.focus();
     };
   }, []);
+  return ref;
+}
+
+type OverlayProps = {
+  title: string;
+  description?: string;
+  children: ReactNode;
+  onClose: () => void;
+};
+
+export function Dialog({
+  title,
+  description,
+  children,
+  onClose,
+  presentation = "dialog",
+}: OverlayProps & { presentation?: "dialog" | "drawer" }) {
+  const ref = useOverlayFocus(onClose);
+  const id = useId();
   return (
     <div
-      className="dialog-backdrop"
+      className={`dialog-backdrop ${presentation === "drawer" ? "drawer-backdrop" : ""}`}
       onMouseDown={(event) => event.target === event.currentTarget && onClose()}
     >
       <section
-        ref={dialog}
-        className="workflow-dialog"
+        ref={ref}
+        className={`workflow-dialog ${presentation === "drawer" ? "workflow-drawer" : ""}`}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="workflow-dialog-title"
+        aria-labelledby={`${id}-title`}
+        aria-describedby={description ? `${id}-description` : undefined}
+        tabIndex={-1}
       >
         <header>
           <div>
-            <h2 id="workflow-dialog-title">{title}</h2>
-            {description && <p>{description}</p>}
+            <h2 id={`${id}-title`}>{title}</h2>
+            {description && <p id={`${id}-description`}>{description}</p>}
           </div>
           <button type="button" aria-label="Close" onClick={onClose}>
             ×
@@ -434,6 +446,29 @@ export function Dialog({
         </header>
         {children}
       </section>
+    </div>
+  );
+}
+
+export function Drawer(props: OverlayProps) {
+  return <Dialog {...props} presentation="drawer" />;
+}
+
+export function PageSkeleton({
+  label = "Opening your workspace…",
+}: {
+  label?: string;
+}) {
+  return (
+    <div className="page-skeleton" role="status" aria-label={label}>
+      <span className="visually-hidden">{label}</span>
+      <div className="skeleton-heading" aria-hidden="true" />
+      <div className="skeleton-subheading" aria-hidden="true" />
+      <div className="skeleton-panels" aria-hidden="true">
+        <div />
+        <div />
+        <div />
+      </div>
     </div>
   );
 }
