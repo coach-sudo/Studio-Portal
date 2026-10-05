@@ -44,9 +44,17 @@ export async function checkOutboxEligibility(
   client: SupabaseClient,
   message: Tables<"outbox_messages">,
   now = Date.now(),
+  options: { requireApproval?: boolean } = {},
 ): Promise<OutboxEligibility> {
   const db = client as SupabaseClient<Database>,
     intent = messageIntent(message);
+  if (
+    options.requireApproval &&
+    intent &&
+    ["payment_due", "payment_past_due"].includes(intent) &&
+    !(message.entity_snapshot as { approvedAt?: string } | null)?.approvedAt
+  )
+    return { allowed: false, reason: "approval_required" };
   if (message.campaign_id) {
     const result = await db
       .from("mailing_list_contacts")
@@ -114,6 +122,7 @@ export async function checkOutboxEligibility(
     endsAt?: string;
     entityId?: string;
     coverageKey?: string;
+    amountDueMinor?: number;
   };
   let studentId = message.student_id;
   if (message.lesson_id) {
@@ -259,6 +268,11 @@ export async function checkOutboxEligibility(
       ].includes(readiness.financial.state)
     )
       return { allowed: false, reason: "financial_condition_resolved" };
+    if (
+      snapshot.amountDueMinor != null &&
+      snapshot.amountDueMinor !== readiness.financial.amountDueMinor
+    )
+      return { allowed: false, reason: "financial_amount_changed" };
   }
   if (message.automation_rule_id && snapshot.entityId) {
     const result = await db

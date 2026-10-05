@@ -6,6 +6,7 @@ import {
 import type { Tables } from "../../../types/database.generated";
 import { Status } from "../../../components/Primitives";
 import { ruleDescriptions } from "./ruleDescriptions";
+import { paymentReminderNeedsApproval } from "../../../domain/paymentReminder";
 export function AutomationRuleCard({
   rule,
   last,
@@ -26,6 +27,12 @@ export function AutomationRuleCard({
         <Status>{rule.mode.replaceAll("_", " ")}</Status>
       </div>
       <dl>
+        {paymentReminderNeedsApproval(rule.rule_key) && (
+          <>
+            <dt>Approval</dt>
+            <dd>Coach approval is required before payer reminders are sent.</dd>
+          </>
+        )}
         <dt>When</dt>
         <dd>
           {description.when}

@@ -292,6 +292,7 @@ test.describe("Stateful operational acceptance", () => {
       template: object;
       escalation: object;
     };
+    let approvedMessageId = "";
     await test.step("10 Draft mode creates reviewable outbox, never sends", async () => {
       [rule] = await read(
         page,
@@ -313,15 +314,52 @@ test.describe("Stateful operational acceptance", () => {
           escalation: {},
         },
       );
-      await command(
-        page,
-        runtime,
-        "automations",
-        "run_rule",
-        rule.id,
-        rule.version + 1,
-        { studentId: ids.operationalStudent, entityId: ids.lessonShortfall },
-      );
+      await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      const lessonCard = page
+        .locator("article.communication-card")
+        .filter({ hasText: `${runtime.runId} Package shortfall readiness` });
+      const review = lessonCard.getByRole("button", {
+        name: "Review payment reminder",
+      });
+      await review.focus();
+      await page.keyboard.press("Enter");
+      const drawer = page.getByRole("dialog", {
+        name: "Review payment reminder",
+      });
+      await expect(
+        drawer.getByRole("button", { name: "Prepare reminder drafts" }),
+      ).toBeVisible();
+      await expect(drawer).toContainText(runtime.accounts!.guardian.email);
+      await expectNoSeriousAxeViolations(page);
+      await page.screenshot({
+        path: testInfo.outputPath("payment-reminder-drawer-desktop.png"),
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expectNoHorizontalOverflow(page);
+      await expectNoSeriousAxeViolations(page);
+      await page.screenshot({
+        path: testInfo.outputPath("payment-reminder-drawer-mobile.png"),
+      });
+      for (let i = 0; i < 12; i++) {
+        await page.keyboard.press("Tab");
+        expect(
+          await drawer.evaluate((el) => el.contains(document.activeElement)),
+        ).toBe(true);
+      }
+      await page.keyboard.press("Escape");
+      await expect(drawer).toBeHidden();
+      await expect(review).toBeFocused();
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      await review.click();
+      await drawer
+        .getByRole("button", { name: "Prepare reminder drafts" })
+        .click();
+      await expect(drawer).toBeHidden();
+      await expect(
+        lessonCard
+          .getByRole("button", { name: "Approve scheduled reminder" })
+          .first(),
+      ).toBeVisible();
       const messages = await read(
         page,
         "outbox_messages",
@@ -332,7 +370,7 @@ test.describe("Stateful operational acceptance", () => {
         messages.every((item: { status: string }) => item.status === "draft"),
       ).toBeTruthy();
     });
-    await test.step("11 Automatic mode creates queued outbox entries without Gmail", async () => {
+    await test.step("11 Automatic evaluation prepares drafts; coach approval retains scheduling without Gmail", async () => {
       const [current] = await read(
         page,
         "automation_rules",
@@ -362,8 +400,45 @@ test.describe("Stateful operational acceptance", () => {
         current.version + 1,
         { studentId: ids.operationalStudent, entityId: ids.lessonShortfall },
       );
-      expect(result.resource.result).toBe("queued");
+      expect(result.resource.result).toBe("draft");
       expect(result.resource.outboxIds.length).toBeGreaterThan(0);
+      const messageId = result.resource.outboxIds[0];
+      approvedMessageId = messageId;
+      const [before] = await read(
+        page,
+        "outbox_messages",
+        `select=status,send_at,entity_snapshot&id=eq.${messageId}`,
+      );
+      expect(before.status).toBe("draft");
+      await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      const reminder = page.locator(`[data-message-id="${messageId}"]`);
+      await expect(reminder).toContainText("Awaiting coach approval");
+      await reminder
+        .getByRole("button", { name: "Approve scheduled reminder" })
+        .click();
+      await expect(reminder).toContainText("Reminder scheduled to be sent on");
+      const [after] = await read(
+        page,
+        "outbox_messages",
+        `select=status,send_at,entity_snapshot&id=eq.${messageId}`,
+      );
+      expect(after.status).toBe("queued");
+      expect(Date.parse(after.send_at)).toBe(Date.parse(before.send_at));
+      expect(after.entity_snapshot.approvedAt).toBeTruthy();
+      await expectNoHorizontalOverflow(page);
+      await expectNoSeriousAxeViolations(page);
+      await page.screenshot({
+        path: testInfo.outputPath("payment-approval-desktop.png"),
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 390, height: 844 });
+      await expectNoHorizontalOverflow(page);
+      await expectNoSeriousAxeViolations(page);
+      await page.screenshot({
+        path: testInfo.outputPath("payment-approval-mobile.png"),
+        fullPage: true,
+      });
+      await page.setViewportSize({ width: 1440, height: 1000 });
     });
     await test.step("12 Outbox audit and suppression history remain visible", async () => {
       await page.goto(`/coach/students/${ids.operationalStudent}/account`);
@@ -384,8 +459,16 @@ test.describe("Stateful operational acceptance", () => {
       expect(
         runs.some((item: { result: string }) => item.result === "draft"),
       ).toBeTruthy();
+      const approvals = await read(
+        page,
+        "audit_events",
+        `select=action&entity_id=eq.${approvedMessageId}`,
+      );
       expect(
-        runs.some((item: { result: string }) => item.result === "queued"),
+        approvals.some(
+          (item: { action: string }) =>
+            item.action === "outbox.approve_message",
+        ),
       ).toBeTruthy();
     });
     await test.step("13 Canonical CTA uses this isolated deployed origin; rule preview never queues", async () => {

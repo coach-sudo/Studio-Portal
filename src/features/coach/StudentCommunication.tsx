@@ -116,7 +116,8 @@ export function StudentCommunication({
     : query.data;
   async function act(
     message: OutboxMessage,
-    command: "cancel_message" | "send_now" | "retry_message",
+    command:
+      "cancel_message" | "approve_message" | "send_now" | "retry_message",
   ) {
     setBusy(true);
     setNotice("");
@@ -285,6 +286,15 @@ export function StudentCommunication({
             selected.status,
           ) && (
             <div className="action-row">
+              {selected.status === "draft" && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  onClick={() => void act(selected, "approve_message")}
+                >
+                  Approve scheduled delivery
+                </button>
+              )}
               <button
                 type="button"
                 disabled={busy}

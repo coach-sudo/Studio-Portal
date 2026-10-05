@@ -41,6 +41,30 @@ function fixture() {
   return { data, lesson };
 }
 describe("constrained automation decisions", () => {
+  it.each(["lesson_reminder", "payment_due"] as const)(
+    "stops %s at lesson start even with coach escalation",
+    (key) => {
+      const { data, lesson } = fixture();
+      const current = {
+        ...rule,
+        key,
+        mode: "automatic_with_escalation" as const,
+        escalation: { coach: true, hoursBefore: 1 },
+      };
+      expect(
+        evaluateAutomationRule(
+          current,
+          { lesson },
+          data,
+          Date.parse(lesson.startsAt),
+        ),
+      ).toMatchObject({
+        eligible: false,
+        suppressedReason: "lesson_started",
+        stages: [],
+      });
+    },
+  );
   it("past-due follow-up has one stable stage and stops immediately on resolution", () => {
     const { data, lesson } = fixture();
     data.bookings = [

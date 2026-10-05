@@ -96,6 +96,7 @@ describe("V2 route data contracts", () => {
   it("loads invitation delivery for Account and contact profiles, not every student tab", () => {
     for (const path of [
       "/coach/students/student-maya/account",
+      "/coach/students/student-maya/payments",
       "/coach/students/student-maya/contacts/contact-dana",
     ]) {
       const domains = studentWorkspaceDomains(path);

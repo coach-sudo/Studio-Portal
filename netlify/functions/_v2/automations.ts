@@ -5,11 +5,13 @@ import { automationConfigSchema } from "../_shared/automation-config";
 import { evaluateAndQueueRule } from "../_shared/automation-engine";
 import {
   checkOutboxEligibility,
+  messageIntent,
   suppressOutbox,
 } from "../_shared/outbox-eligibility";
 import { AppError, json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
+import { paymentReminderNeedsApproval } from "../../../src/domain/paymentReminder";
 
 export async function handleAutomationCommands(
   ctx: V2CommandContext,
@@ -112,7 +114,9 @@ export async function handleAutomationCommands(
     });
   }
   if (
-    ["cancel_message", "send_now", "retry_message"].includes(ctx.input.command)
+    ["cancel_message", "approve_message", "send_now", "retry_message"].includes(
+      ctx.input.command,
+    )
   ) {
     const result = await db
       .from("outbox_messages")
@@ -131,6 +135,19 @@ export async function handleAutomationCommands(
       throw AppError.validation({
         message: "This message cannot be changed after delivery has started.",
       });
+    const pendingPaymentApproval =
+      message.status === "queued" &&
+      paymentReminderNeedsApproval(messageIntent(message) ?? "") &&
+      !(message.entity_snapshot as { approvedAt?: string } | null)?.approvedAt;
+    if (
+      ctx.input.command === "approve_message" &&
+      message.status !== "draft" &&
+      !pendingPaymentApproval
+    )
+      throw AppError.validation({
+        message:
+          "Only an unapproved draft or queued payer reminder can be approved.",
+      });
     if (ctx.input.command === "cancel_message")
       await suppressOutbox(client, message, "coach_cancelled");
     else {
@@ -143,20 +160,37 @@ export async function handleAutomationCommands(
           details: { reason: eligible.reason },
         });
       }
+      const sendAt =
+        ctx.input.command === "approve_message" && message.send_at
+          ? new Date(
+              Math.max(Date.now(), Date.parse(message.send_at)),
+            ).toISOString()
+          : new Date().toISOString();
       const updated = await db
         .from("outbox_messages")
         .update({
           status: "queued",
-          send_at: new Date().toISOString(),
-          next_attempt_at: new Date().toISOString(),
+          send_at: sendAt,
+          next_attempt_at: sendAt,
           last_error: null,
+          entity_snapshot: {
+            ...((message.entity_snapshot as Record<string, Json>) ?? {}),
+            approvedAt: new Date().toISOString(),
+          },
           updated_at: new Date().toISOString(),
           version: message.version + 1,
         })
         .eq("id", message.id)
         .eq("version", message.version)
-        .in("status", ["queued", "failed", "draft", "approved"]);
+        .eq("status", message.status)
+        .select("id")
+        .maybeSingle();
       if (updated.error) throw updated.error;
+      if (!updated.data)
+        throw new AppError("VERSION_CONFLICT", {
+          status: 409,
+          message: "The message changed. Refresh before continuing.",
+        });
     }
     return json({
       resource: { id: message.id },

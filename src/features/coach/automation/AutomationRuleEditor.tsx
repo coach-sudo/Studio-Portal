@@ -6,6 +6,7 @@ import {
 import type { Tables } from "../../../types/database.generated";
 import type { FormEvent } from "react";
 import { Drawer } from "../../../components/Primitives";
+import { paymentReminderNeedsApproval } from "../../../domain/paymentReminder";
 export function AutomationRuleEditor({
   edit,
   busy,
@@ -27,6 +28,13 @@ export function AutomationRuleEditor({
       onClose={onClose}
     >
       <form className="settings-form" onSubmit={onSave}>
+        {paymentReminderNeedsApproval(edit.rule_key) && (
+          <p className="full">
+            Payer reminders always wait for coach approval. Automatic mode
+            evaluates and prepares drafts; coach escalation follows the rule
+            settings.
+          </p>
+        )}
         {notice && (
           <p className="full" role="alert">
             {notice}
@@ -145,8 +153,11 @@ export function AutomationRuleEditor({
         <p className="full">
           Template fields:{" "}
           {"{{studioName}}, {{studentName}}, {{manageUrl}}, {{renewUrl}}"}.
-          Lesson rules also support {"{{serviceName}} and {{startsAt}}"}. Leave
-          blank to retain the current/default message.
+          Lesson rules also support {"{{serviceName}}, {{startsAt}},"}
+          {
+            " {{recipientName}}, {{hours}}, {{amountDue}}, {{timezone}} and {{location}}"
+          }{" "}
+          . Leave blank to retain the current/default message.
         </p>
         <button disabled={busy} type="submit">
           {busy ? "Saving…" : "Save rule"}

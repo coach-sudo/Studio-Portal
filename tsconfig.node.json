@@ -30,6 +30,7 @@
     "src/domain/finance.ts",
     "src/domain/automationRules.ts",
     "src/domain/automationCopy.ts",
+    "src/domain/paymentReminder.ts",
     "src/security/e2eSafety.ts"
   ]
 }

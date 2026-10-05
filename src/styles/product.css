@@ -31,6 +31,14 @@ summary:focus-visible {
 }
 
 /* Shell: quiet forest navigation with an independent identity area. */
+.app-shell,
+.student-shell {
+  position: relative;
+}
+.app-shell > .activity-center,
+.student-shell > .activity-center {
+  position: absolute;
+}
 .sidebar,
 .student-shell > aside {
   width: var(--sidebar-width);
@@ -38,6 +46,13 @@ summary:focus-visible {
   background: var(--app-surface);
   color: var(--ink);
   border-right: 1px solid var(--app-border);
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+}
+.sidebar > *,
+.student-shell > aside > * {
+  flex-shrink: 0;
 }
 .main,
 .student-shell > main {
@@ -164,7 +179,7 @@ summary:focus-visible {
 .page-header,
 .student-header {
   min-height: 100px;
-  padding: 0 0 24px;
+  padding: 0 56px 24px 0;
   border: 0;
   border-radius: 0;
   background: transparent;
@@ -241,6 +256,33 @@ summary:focus-visible {
   border: 0;
   padding-bottom: 16px;
   min-height: 44px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.section,
+.coach-panel,
+.settings-content,
+.workflow-form > *,
+.settings-form > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.header-actions,
+.page-actions,
+.form-actions {
+  flex-wrap: wrap;
+  max-width: 100%;
+}
+.header-actions > *,
+.form-actions > * {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.primary-button {
+  position: static;
+  inset: auto;
 }
 .section h2,
 .coach-panel h2 {
@@ -708,6 +750,13 @@ input[type="radio"] {
   min-height: 44px;
   padding: 0 0 16px;
 }
+.automation-rule-card .action-row > button,
+.communication-card .action-row > button {
+  width: auto;
+  max-width: 100%;
+  font-size: 14px;
+  white-space: normal;
+}
 .automation-rule-card h3 {
   font-size: 18px;
   font-weight: 500;
@@ -876,7 +925,7 @@ input[type="radio"] {
   padding: 28px;
 }
 .workflow-dialog .form-actions {
-  position: sticky;
+  position: static;
   background: var(--app-surface);
   padding: 18px 0;
   border-top: 1px solid var(--app-border);
@@ -1001,9 +1050,6 @@ input[type="radio"] {
 }
 .editor-group > label {
   align-content: start;
-}
-.workflow-dialog .form-actions {
-  bottom: 0;
 }
 .editor-group > .full {
   grid-column: 1 / -1;
@@ -1139,7 +1185,31 @@ input[type="radio"] {
     position: static;
   }
 }
-@media (max-width: 700px) {
+@media (max-width: 900px) {
+  .settings-nav {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+    overflow: visible;
+  }
+  .settings-nav button {
+    min-width: 0;
+  }
+  .settings-nav span,
+  .settings-nav strong,
+  .settings-nav small {
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+@media (max-width: 768px) {
+  html {
+    scroll-padding-bottom: calc(90px + env(safe-area-inset-bottom));
+  }
+  .main :is(button, a, input, select, textarea),
+  .student-shell > main :is(button, a, input, select, textarea) {
+    scroll-margin-block: 80px;
+  }
   .portal-home-prioritized .portal-priority-stack {
     grid-template-columns: minmax(0, 1fr);
     gap: 18px;
@@ -1153,7 +1223,9 @@ input[type="radio"] {
     display: none;
   }
   .main,
-  .student-shell > main {
+  .student-shell > main,
+  .app-shell.sidebar-collapsed .main,
+  .student-shell.sidebar-collapsed > main {
     width: 100%;
     margin-left: 0;
   }
@@ -1263,7 +1335,6 @@ input[type="radio"] {
     padding: 20px;
   }
   .workflow-dialog .form-actions {
-    bottom: 0;
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
   }
   .workflow-dialog .appointment-actions {

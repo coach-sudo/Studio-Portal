@@ -24,6 +24,7 @@ import { useStudioStore } from "../../state/StudioStore";
 
 import { now, uid, type Data } from "./StudentWorkspace.shared";
 import { StudentFinancialSetup } from "./StudentFinancialSetup";
+import { PaymentReminderSteps } from "./PaymentReminderSteps";
 
 export function Payments({
   data,
@@ -276,7 +277,8 @@ export function Payments({
         </p>
       )}
       <StudentFinancialSetup data={data} student={student} />
-      <div className="two-section-grid">
+      <PaymentReminderSteps data={data} student={student} isDemo={isDemo} />
+      <div className="two-section-grid" id="payment-arrangements">
         <Section
           title="Packages"
           marked

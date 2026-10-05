@@ -71,6 +71,21 @@ describe("trusted email origins", () => {
   });
 });
 describe("shared branded email presentation", () => {
+  it("retains authored payment instructions when a CTA URL appears inside a sentence", () => {
+    const email = presentOutboxMessage(
+      {
+        body: "Hi Jordan,\n\nPlease open https://preview.example.test/portal/payments before Tuesday to review your balance.",
+        event_key: "automation.payment_due.hours-24",
+      },
+      { name: "Studio" },
+      "https://preview.example.test",
+    );
+    expect(email.text).toContain("before Tuesday to review your balance.");
+    expect(email.html).toContain("Payment reminder</h1>");
+    expect(email.html).toContain('role="presentation"');
+    expect(email.html).toContain('name="viewport"');
+    expect(email.html).toContain("display:inline-block;padding:14px 22px");
+  });
   it("presents SQL note emails and repeated dispatch without duplicating the signoff", () => {
     const studio = {
       name: "Coach’D",

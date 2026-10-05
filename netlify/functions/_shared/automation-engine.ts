@@ -24,6 +24,9 @@ import { bookingForLesson } from "../../../src/domain/packageForecast";
 import { AppError } from "./http";
 import { packageWarningKey } from "../../../src/domain/packageWarningKey";
 import { automationInstruction } from "../../../src/domain/automationCopy";
+import { paymentReminderNeedsApproval } from "../../../src/domain/paymentReminder";
+import { formatMoney } from "../../../src/domain/finance";
+import { evaluateLessonReadiness } from "../../../src/domain/lessonReadiness";
 
 /** Queue only. Gmail delivery remains exclusively owned by the existing outbox worker. */
 export async function evaluateAndQueueRule(
@@ -58,6 +61,9 @@ export async function evaluateAndQueueRule(
     throw AppError.forbidden();
   if (rule.key === "delivery_failure") studentId = entity.message?.studentId;
   const decision = evaluateAutomationRule(rule, entity, data, now);
+  const financial =
+    entity.lesson &&
+    evaluateLessonReadiness(entity.lesson, data, now).financial;
   const studioResult = await db
     .from("studios")
     .select("name,settings")
@@ -123,6 +129,7 @@ export async function evaluateAndQueueRule(
                 url: portalActionUrl(origin, "lesson", entity.lesson?.id),
               };
   const outboxIds: string[] = [];
+  const queuedStatuses: string[] = [];
   if (!preview && decision.eligible)
     for (const stage of decision.stages) {
       const recipients = stage.coachEscalation
@@ -145,7 +152,7 @@ export async function evaluateAndQueueRule(
               data.students[0]?.fullName ||
               "there");
         const context = entity.lesson
-          ? `${data.students[0].preferredName || data.students[0].fullName}'s ${entity.lesson.topic} session on ${new Intl.DateTimeFormat("en-US", { timeZone: data.settings.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(entity.lesson.startsAt))}`
+          ? `${data.students[0].preferredName || data.students[0].fullName}'s ${entity.lesson.topic} session on ${new Intl.DateTimeFormat("en-US", { timeZone: data.settings.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(entity.lesson.startsAt))} (${data.settings.timezone})`
           : entity.package?.name;
         const booking = entity.lesson && bookingForLesson(entity.lesson, data);
         const email = recipient.email.toLowerCase();
@@ -171,7 +178,7 @@ export async function evaluateAndQueueRule(
                 ? `booking:${booking.id}:payment-failed:${email}`
                 : coverageKey
                   ? `${coverageKey}:${email}`
-                  : `automation:${rule.key}:${entityId}:${entity.lesson?.startsAt ?? entity.package?.expiresAt ?? entity.message?.updatedAt ?? "initial"}:${stage.key}:${email}`;
+                  : `automation:${rule.key}:${entityId}:${entity.lesson?.startsAt ?? entity.package?.expiresAt ?? entity.message?.updatedAt ?? "initial"}:${stage.key}${paymentReminderNeedsApproval(rule.key) && !stage.coachEscalation ? `:balance-${financial?.amountDueMinor}` : ""}:${email}`;
         const queued = await queuePresentedMessages(
           client,
           [
@@ -185,8 +192,13 @@ export async function evaluateAndQueueRule(
               subject: rule.template.subject || automationRuleLabels[rule.key],
               body:
                 rule.template.body ||
-                `Hi ${greetingName},\n\n${context ? `A quick note about ${context}. ` : ""}${decision.explanation}\n\n${automationInstruction(rule.key, stage.key, rule.audience === "coach" || !!stage.coachEscalation)}`,
-              status: rule.mode === "draft" ? "draft" : "queued",
+                `Hi ${greetingName},\n\n${context ? `A quick note about ${context}. ` : ""}${decision.explanation}${paymentReminderNeedsApproval(rule.key) && financial ? ` Remaining balance: ${formatMoney(financial.amountDueMinor, data.settings.currency)}.` : ""}\n\n${automationInstruction(rule.key, stage.key, rule.audience === "coach" || !!stage.coachEscalation)}`,
+              status:
+                rule.mode === "draft" ||
+                (paymentReminderNeedsApproval(rule.key) &&
+                  !stage.coachEscalation)
+                  ? "draft"
+                  : "queued",
               send_at: stage.sendAt,
               next_attempt_at: stage.sendAt,
               dedupe_key: key,
@@ -205,6 +217,9 @@ export async function evaluateAndQueueRule(
                 stage: stage.key,
                 ruleVersion: rule.version,
                 coverageKey,
+                ...(paymentReminderNeedsApproval(rule.key) && financial
+                  ? { amountDueMinor: financial.amountDueMinor }
+                  : {}),
               } as Json,
             },
           ],
@@ -232,9 +247,16 @@ export async function evaluateAndQueueRule(
                 }).format(new Date(entity.lesson.startsAt))
               : "",
             packageName: entity.package?.name ?? "",
+            hours: stage.key.startsWith("hours-") ? stage.key.slice(6) : "",
+            amountDue: financial
+              ? formatMoney(financial.amountDueMinor, data.settings.currency)
+              : "",
+            timezone: data.settings.timezone,
+            location: entity.lesson?.locationLabel ?? "",
           },
         );
         outboxIds.push(...queued.map((item) => item.id));
+        queuedStatuses.push(...queued.map((item) => item.status));
       }
     }
   const recipientUnresolved = !resolution.recipients.length;
@@ -248,7 +270,7 @@ export async function evaluateAndQueueRule(
     : !decision.eligible
       ? "suppressed"
       : outboxIds.length
-        ? rule.mode === "draft"
+        ? queuedStatuses.includes("draft")
           ? "draft"
           : "queued"
         : recipientUnresolved && !escalationRecipientAvailable

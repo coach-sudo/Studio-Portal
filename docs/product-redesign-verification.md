@@ -3,8 +3,10 @@
 Branch: `codex/product-design-modernization`. Implementation started at
 `bf22833`, with PR #26 operational intelligence already present. PR #26 is now
 merged. The review branch is based on current main, including PR #27's fixture
-safety correction. The redesign changes no server, schema, provider, payment,
-authorization, recipient, or automation logic. The focused corrections follow
+safety correction. The initial redesign changed presentation only; the later
+coach-approved payment-reminder work is recorded in the follow-up section below.
+Schema, booking policy, financial ledgers and recipient authorization are unchanged.
+The focused corrections follow
 reviewed head `132a3d83a1fd5ca06877da668877f23cbe9cf7b8`.
 
 ## Results
@@ -103,7 +105,7 @@ The machine-readable results are `test-results/redesign/verification.json`.
 | Calendar booking drawer | calendar-drawer      | Appointment selected by keyboard; contextual booking and readiness; full-screen mobile sheet |
 | Unbooked lesson drawer  | calendar-lesson      | Honest lesson detail with existing routes and no fabricated booking actions                  |
 | Service catalog         | services             | Service cards and consistent actions                                                         |
-| Service edit            | service-drawer       | Right-side sheet, grouped settings, accessible keyboard and sticky actions                   |
+| Service edit            | service-drawer       | Right-side sheet, grouped settings, accessible keyboard and scrollable actions               |
 | Availability            | availability         | Weekly hours and exception surfaces                                                          |
 | Coach payments          | payments             | Financial grouping and consistent package controls                                           |
 | Coach Inbox             | coach-inbox          | Split conversation view, message bubbles and composer                                        |

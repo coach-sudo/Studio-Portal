@@ -30,6 +30,15 @@ const message = {
   campaign_id: null,
 } as unknown as Tables<"outbox_messages">;
 const now = Date.parse("2026-10-05T12:00:00Z");
+describe("payment reminder approval", () => {
+  it("blocks dispatch of a queued payer reminder without reading credentials or accepting automatic rule mode", async () => {
+    const db = { from: vi.fn() } as unknown as SupabaseClient;
+    expect(
+      await checkOutboxEligibility(db, message, now, { requireApproval: true }),
+    ).toEqual({ allowed: false, reason: "approval_required" });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+});
 function client(rows: Record<string, unknown>) {
   return {
     from: (table: string) => {
@@ -123,6 +132,26 @@ beforeEach(() => {
   });
 });
 describe("dispatch-time authoritative suppression", () => {
+  it("invalidates a quoted balance after a partial payment", async () => {
+    const current = data();
+    current.lessons[0].paidMinor = 3500;
+    vi.mocked(loadOperationalData).mockResolvedValue(current);
+    expect(
+      await checkOutboxEligibility(
+        client(rows),
+        {
+          ...message,
+          entity_snapshot: {
+            ...(message.entity_snapshot as object),
+            amountDueMinor: 8500,
+            approvedAt: "2026-10-05T12:00:00Z",
+          },
+        },
+        now,
+        { requireApproval: true },
+      ),
+    ).toEqual({ allowed: false, reason: "financial_amount_changed" });
+  });
   it("accepts equivalent UTC representations without false reschedule suppression", async () => {
     expect(await checkOutboxEligibility(client(rows), message, now)).toEqual({
       allowed: true,

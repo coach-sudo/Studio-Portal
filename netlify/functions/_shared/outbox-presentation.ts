@@ -85,7 +85,16 @@ export function presentOutboxMessage(
     : text;
   const body = withoutFooter
     .split("\n")
-    .filter((line) => !line.includes(primary.url))
+    .filter((line) => {
+      // Remove a standalone CTA only; retain authored sentences containing the URL.
+      const clean = line.trim();
+      const index = clean.indexOf(primary.url);
+      if (index < 0) return true;
+      const prefix = clean.slice(0, index).trim();
+      const suffix = clean.slice(index + primary.url.length).trim();
+      const standalone = !prefix || /^[A-Za-z /]{1,60}:$/.test(prefix);
+      return !standalone || Boolean(suffix && !/^[?#]\S*$/.test(suffix));
+    })
     .join("\n")
     .trim();
   const greeting = /^(?:Hi|Hello)[^\n]*[,:]/.exec(body)?.[0] ?? "Hello,";
@@ -94,6 +103,15 @@ export function presentOutboxMessage(
     : body;
   return renderStudioEmail({
     greeting,
+    heading: /payment[._](?:due|past_due)|automation\.payment/.test(event)
+      ? "Payment reminder"
+      : /reminder/.test(event)
+        ? "Upcoming lesson reminder"
+        : /confirmed/.test(event)
+          ? "Booking confirmed"
+          : /note/.test(event)
+            ? "Your lesson notes"
+            : undefined,
     message,
     primaryAction: primary,
     coachName: studio.settings?.coachName || "Darius",

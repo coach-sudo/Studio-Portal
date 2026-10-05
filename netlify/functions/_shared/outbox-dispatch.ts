@@ -30,8 +30,26 @@ export async function dispatchOutbox(
     token: string | undefined;
   for (const message of messages)
     try {
-      const eligibility = await checkOutboxEligibility(client, message);
+      const eligibility = await checkOutboxEligibility(
+        client,
+        message,
+        Date.now(),
+        { requireApproval: true },
+      );
       if (!eligibility.allowed) {
+        if (eligibility.reason === "approval_required") {
+          const restored = await db
+            .from("outbox_messages")
+            .update({
+              status: "draft",
+              updated_at: new Date().toISOString(),
+              version: message.version + 1,
+            })
+            .eq("id", message.id)
+            .eq("status", "sending");
+          if (restored.error) throw restored.error;
+          continue;
+        }
         await suppressOutbox(client, message, eligibility.reason);
         suppressed++;
         continue;
@@ -61,7 +79,12 @@ export async function dispatchOutbox(
         .single();
       if (current.error) throw current.error;
       if (current.data.status !== "sending") continue;
-      const final = await checkOutboxEligibility(client, current.data);
+      const final = await checkOutboxEligibility(
+        client,
+        current.data,
+        Date.now(),
+        { requireApproval: true },
+      );
       if (!final.allowed) {
         await suppressOutbox(client, current.data, final.reason);
         suppressed++;

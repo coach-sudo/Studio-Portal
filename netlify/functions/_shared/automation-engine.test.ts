@@ -211,11 +211,25 @@ function expectUnresolvedEvidence(run: TablesInsert<"automation_runs">) {
 }
 
 describe("automation engine audit results", () => {
+  it("prepares a new approval draft when the balance changes, retaining old history and deduplicating unchanged balances", async () => {
+    const f = fixture();
+    await f.evaluate();
+    f.data.lessons[0].paidMinor = 3500;
+    expect((await f.evaluate()).result).toBe("draft");
+    expect(f.messages).toHaveLength(2);
+    expect(f.messages[0].body).toContain("$85.00");
+    expect(f.messages[1].body).toContain("$50.00");
+    expect(f.messages[1].entity_snapshot).toMatchObject({
+      amountDueMinor: 5000,
+    });
+    expect((await f.evaluate()).result).toBe("duplicate");
+    expect(f.messages).toHaveLength(2);
+  });
   it.each(["automatic", "draft"])(
     "records successful payer %s queueing",
     async (mode) => {
       const f = fixture({ mode });
-      const expected = mode === "draft" ? "draft" : "queued";
+      const expected = "draft";
       expect(await f.evaluate()).toMatchObject({
         result: expected,
         outboxIds: ["outbox-1"],
@@ -296,7 +310,9 @@ describe("automation engine audit results", () => {
         payerResolved,
         mode: payerResolved ? "automatic" : "automatic_with_escalation",
       });
-      expect((await f.evaluate()).result).toBe("queued");
+      expect((await f.evaluate()).result).toBe(
+        payerResolved ? "draft" : "queued",
+      );
       const original = structuredClone(f.messages);
       expect(await f.evaluate()).toMatchObject({
         result: "duplicate",

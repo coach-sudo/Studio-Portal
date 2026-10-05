@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   EmptyState,
   ListControls,
@@ -56,10 +57,13 @@ export function StudioSettings({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  const [searchParams] = useSearchParams();
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     settingsMutation = useStudioMutation(),
-    [panel, setPanel] = useState<Panel>("studio"),
+    [panel, setPanel] = useState<Panel>(() =>
+      searchParams.get("panel") === "email" ? "email" : "studio",
+    ),
     [notice, setNotice] = useState(""),
     [health, setHealth] = useState<PlatformHealth>({
       mode: "demo",

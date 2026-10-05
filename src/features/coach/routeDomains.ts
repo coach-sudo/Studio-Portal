@@ -73,7 +73,9 @@ export function studentWorkspaceDomains(
   if (/^\/coach\/students\/[^/]+\/actor-page\/?$/.test(pathname))
     return [...shared, "actorProfiles"];
   if (
-    /^\/coach\/students\/[^/]+\/(?:account|contacts\/[^/]+)\/?$/.test(pathname)
+    /^\/coach\/students\/[^/]+\/(?:account|payments|contacts\/[^/]+)\/?$/.test(
+      pathname,
+    )
   )
     return [...shared, "booking", "messaging"];
   if (/^\/coach\/students\/[^/]+\/lessons(?:\/[^/]+)?\/?$/.test(pathname))
