@@ -3,13 +3,32 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { BookingCenter } from "../features/coach/BookingCenter";
 import { StudioStoreProvider, useStudioStore } from "../state/StudioStore";
 type FixtureMutation = Parameters<
   ReturnType<typeof useStudioStore>["transact"]
 >[0];
+
+const liveSnapshots = vi.hoisted(() => ({ fresh: false }));
+vi.mock("../hooks/useStudio", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../hooks/useStudio")>();
+  return {
+    ...actual,
+    useStudioRoute: (...args: Parameters<typeof actual.useStudioRoute>) => {
+      const result = actual.useStudioRoute(...args);
+      return {
+        ...result,
+        data:
+          result.data && liveSnapshots.fresh ? { ...result.data } : result.data,
+      };
+    },
+  };
+});
+afterEach(() => {
+  liveSnapshots.fresh = false;
+});
 
 function LocationProbe() {
   const location = useLocation();
@@ -50,6 +69,20 @@ function renderBookings(path = "/coach/bookings", seed?: FixtureMutation) {
 }
 
 describe("calendar appointment details", () => {
+  it.each(["booking=booking-maya", "lesson=lesson-maya-next"])(
+    "dismisses %s when live query snapshots change identity on every render",
+    async (query) => {
+      liveSnapshots.fresh = true;
+      const user = userEvent.setup();
+      renderBookings(`/coach/bookings?${query}`);
+      const drawer = await screen.findByRole("dialog", { name: "SS-1048" });
+      await user.click(within(drawer).getByRole("button", { name: "Done" }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(screen.getByTestId("location").textContent).toBe(
+        "/coach/bookings",
+      );
+    },
+  );
   it("keeps the selected recurring occurrence rather than the first booked lesson", async () => {
     renderBookings("/coach/bookings?lesson=second-occurrence", (draft) => {
       const first = draft.lessons.find(

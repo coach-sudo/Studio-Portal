@@ -11,7 +11,7 @@ reviewed head `132a3d83a1fd5ca06877da668877f23cbe9cf7b8`.
 
 | Check                  | Result                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest                 | 79 files, 445 tests passed (`npm run test -- --maxWorkers=4`); six calendar-specific tests cover booking selection, both deep links, unbooked lessons, selected recurring occurrences, and group participant choices/focus return.                                                                                                       |
+| Vitest                 | 79 files, 447 tests passed (`npm run test -- --maxWorkers=4`); eight calendar-specific tests cover booking selection, both deep links, unbooked lessons, selected recurring occurrences, and group participant choices/focus return.                                                                                                     |
 | TypeScript             | Passed, including production build                                                                                                                                                                                                                                                                                                       |
 | ESLint                 | 0 errors; pre-existing migration warnings and label-style warnings remain                                                                                                                                                                                                                                                                |
 | Prettier               | Passed                                                                                                                                                                                                                                                                                                                                   |
@@ -43,6 +43,11 @@ Message links appear only for an existing direct conversation. The location fiel
 uses existing form primitives, and the mobile booking footer uses two columns
 with a full-width Done action. The existing invalid booking-summary definition
 list was corrected without changing the commands.
+
+Live query snapshots can change identity on every render. Deep links are opened
+once per requested booking/lesson pair, so snapshot updates cannot reopen a
+dismissed drawer during navigation. Two regression tests exercise fresh snapshots
+on every render for both deep-link forms.
 
 CSS gzip: **24,967 → 22,739 bytes**, a **2,228-byte reduction** and **2,261-byte
 margin** below the unchanged 25,000-byte hard budget. The 22,000-byte warning is

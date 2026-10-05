@@ -6,7 +6,7 @@ import {
   Plus,
   Users,
 } from "lucide-react";
-import { useEffect, useId, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Drawer,
@@ -76,7 +76,7 @@ function calendarBookings(lesson: Lesson, data: StudioSnapshot): Booking[] {
 
 export function BookingCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const requestedRecord = searchParams.toString();
+  const openedAppointmentRequest = useRef("");
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useState<Tab>(() =>
     tabs.some(([id]) => id === requestedView)
@@ -112,12 +112,21 @@ export function BookingCenter() {
     if (!data) return;
     const bookingId = searchParams.get("booking");
     const lessonId = searchParams.get("lesson");
+    if (!bookingId && !lessonId) {
+      openedAppointmentRequest.current = "";
+      return;
+    }
+    const request = JSON.stringify([bookingId, lessonId]);
+    // Live snapshots can change identity on every render. Open each deep link
+    // once so a data refresh cannot reopen a dismissed drawer during navigation.
+    if (openedAppointmentRequest.current === request) return;
     const lesson = data.lessons.find((item) => item.id === lessonId);
     const related = lesson ? calendarBookings(lesson, data) : [];
     const booking =
       data.bookings.find((item) => item.id === bookingId) ||
       (related.length === 1 ? related[0] : undefined);
-    if (booking)
+    if (booking) {
+      openedAppointmentRequest.current = request;
       setDialog({
         type: "booking",
         item: booking,
@@ -125,8 +134,11 @@ export function BookingCenter() {
           ? lesson?.id
           : undefined,
       });
-    else if (lesson) setDialog({ type: "lesson", item: lesson });
-  }, [data, requestedRecord]);
+    } else if (lesson) {
+      openedAppointmentRequest.current = request;
+      setDialog({ type: "lesson", item: lesson });
+    }
+  }, [data, searchParams]);
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
 
