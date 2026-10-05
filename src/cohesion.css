@@ -460,9 +460,6 @@
     width: 100%;
     justify-content: center;
   }
-  .section {
-    padding-top: 22px;
-  }
   .table-list article,
   .workflow-list article {
     gap: 10px;

@@ -267,6 +267,16 @@ summary:focus-visible {
   min-width: 0;
   overflow-wrap: anywhere;
 }
+.section {
+  padding: var(--app-card-pad);
+}
+.record-overview > div,
+.record-side {
+  display: grid;
+  align-content: start;
+  gap: var(--app-page-gap);
+  min-width: 0;
+}
 .header-actions,
 .page-actions,
 .form-actions {
@@ -574,7 +584,6 @@ input[type="radio"] {
   color: #c9d6bc;
 }
 .home-dashboard-grid > .section {
-  padding: var(--app-card-pad);
   margin: 0;
 }
 .dashboard-rail {
@@ -655,6 +664,15 @@ input[type="radio"] {
 .workflow-list > article strong {
   font-size: 15px;
   font-weight: 500;
+}
+.table-list > article {
+  flex-wrap: wrap;
+}
+.table-list > article > div {
+  flex-basis: 180px;
+}
+.table-list > article > .status {
+  flex-shrink: 0;
 }
 .table-list > article small,
 .workflow-list > article small {
@@ -1277,6 +1295,9 @@ input[type="radio"] {
   .section,
   .coach-panel {
     border-radius: 16px;
+  }
+  .section {
+    padding: 16px 14px;
   }
   .workflow-list > .today-lesson-row {
     padding: 16px;

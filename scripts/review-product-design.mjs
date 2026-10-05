@@ -94,6 +94,7 @@ for (const [size, viewport] of [
     page.on("pageerror", listener);
     await page.goto("http://127.0.0.1:5173" + route);
     await page.locator("h1").first().waitFor({ timeout: 15000 });
+    await page.locator(".loading").first().waitFor({ state: "hidden" });
     await page.screenshot({
       path: `${out}/${name}-${size}.png`,
       fullPage: true,

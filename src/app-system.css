@@ -31,7 +31,7 @@
   box-shadow: var(--app-shadow-card);
 }
 
-.page > .section, .student-page > .section, .portal-priority-stack > .section, .lesson-hub-grid > .section, .two-section-grid > .section, .settings-content > .section { margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
+.page > .section, .student-page > .section, .portal-priority-stack > .section, .lesson-hub-grid > .section, .two-section-grid > .section, .settings-content > .section { margin-top: var(--app-page-gap); }
 
 .section > header, .section-heading, .disclosure-section > summary, .lesson-command-section > header { gap: 12px; }
 .section > header h2, .section-heading h2, .disclosure-section > summary strong { letter-spacing: -.015em; }
@@ -141,7 +141,7 @@ input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { bord
 .class-description { margin: 16px 0; line-height: 1.7; white-space: pre-wrap; }
 .class-resources { display: flex; flex-wrap: wrap; gap: 8px; }
 .class-content-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--app-page-gap); }
-.class-content-grid > .section { min-width: 0; margin-top: var(--app-page-gap); padding: var(--app-card-pad); }
+.class-content-grid > .section { min-width: 0; margin-top: var(--app-page-gap); }
 .class-assignment-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 14px 0; }
 .class-assignment-form label { min-width: 0; display: grid; }
 .class-assignment-form input, .class-assignment-form textarea { width: 100%; min-height: 44px; padding: 9px 11px; border: 1px solid var(--app-border-strong); }
@@ -220,7 +220,6 @@ input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { bord
   .page, .student-page { overflow-x: clip; }
   .page-actions, .header-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; justify-content: stretch; }
   .page-actions > *, .header-actions > * { min-width: 0; min-height: 44px; justify-content: center; white-space: normal; text-align: center; }
-  .page > .section, .student-page > .section, .portal-priority-stack > .section, .lesson-hub-grid > .section, .two-section-grid > .section, .settings-content > .section { padding: 16px 14px; border-radius: 15px; }
   .table-list > article, .workflow-list > article, .student-bookings > article, .portal-row, .lesson-note-index > button, .booking-table-row { padding: 12px; }
   .form-actions, .student-booking-actions, .lesson-primary-actions { width: 100%; }
   .form-actions > button, .form-actions > .button-link, .student-booking-actions > button, .student-booking-actions > .button-link, .lesson-primary-actions > button, .lesson-primary-actions > .button-link { min-height: 44px; }

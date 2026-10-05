@@ -13,6 +13,13 @@ They explicitly selected **coach approval, with visible scheduled/sent status**.
   labels remain visible. Drawer action groups scroll with their content instead
   of overlapping one another. Mobile controls have scroll clearance above the
   fixed navigation.
+- Shared Section cards have side padding at every nesting depth. Campaign
+  recipients stack name/email instead of squeezing both into a narrow row.
+  Student contact/overview cards have consistent separation. Automation and
+  communication cards retain their system padding after lazy stylesheet loads.
+  Package/material rows wrap links, statuses and actions while reserving space
+  for the name. The spacing sweep waits for lazy record content to finish loading
+  and also measures long email addresses without changing any studio records.
 - Student Payments loads booking and reminder context. Next steps show the next
   five upcoming lessons, real financial coverage, pending approval, scheduled
   date, sent, failed and cancelled states. Paid PAYG, package-covered, waived,
@@ -52,9 +59,9 @@ customer email. Production is not published and PR #28 is not merged.
   scheduling retention, stale balances, dedupe and email content preservation.
 - TypeScript, ESLint (0 errors; existing 618 warnings), Prettier, production build,
   secret scan and bundle budgets passed locally.
-- Main CSS: **22,739 → 22,967 gzip bytes**, retaining **2,033 bytes** below the
+- Main CSS: **22,739 → 22,989 gzip bytes**, retaining **2,011 bytes** below the
   unchanged 25,000-byte hard budget. The unchanged 22,000-byte warning remains.
-  Relative to the original reviewed redesign: **24,967 → 22,967**, a 2,000-byte
+  Relative to the original reviewed redesign: **24,967 → 22,989**, a 1,978-byte
   reduction. Entry JavaScript is approximately 94.8 KB gzip.
 - `scripts/review-responsive-workflows.mjs`: 58 checks passed. All seven Settings
   panels at 320, 390, 700, 768, 900, 1024 and 1440px (600px height), short-sidebar
@@ -62,6 +69,15 @@ customer email. Production is not published and PR #28 is not merged.
   overflow; serious/critical axe checks at every width and both email widths.
 - Existing 90-state local desktop/mobile route, drawer, keyboard and axe review
   passed. Evidence: `test-results/redesign/` and `test-results/responsive/`.
+- `scripts/review-page-spacing.mjs`: **455 scenarios passed**, with no card-edge
+  text violations or horizontal overflow. It covers every route in the design inventory,
+  all record and Bookings tabs, minor-student/household views, all seven Settings
+  panels and long-address stress cases at 320, 390, 700, 768, 900, 1024 and 1440px.
+  It measures text line boxes against card content edges, requires Section side
+  insets and checks document overflow; deliberate ellipsis and horizontal scroll
+  controls retain their behavior. Screenshots and the result manifest are saved
+  under `test-results/page-spacing/`. This sweep caught and corrected the package
+  and material action overflow at 1024px that document-overflow checks missed.
 - The deployed operational journey now covers the payment-preview drawer on
   desktop/mobile, keyboard trapping/Escape/focus return, preparing drafts and
   approving a scheduled reminder in Payments. Its fixtures restore rule snapshots
