@@ -454,7 +454,7 @@ test.describe("Stateful operational acceptance", () => {
       );
       expect(
         denied,
-        "Guardian automation API must reject before rule/data access",
+        `Guardian automation API must reject before rule/data access: ${JSON.stringify(denied)}`,
       ).toMatchObject({ status: 403, code: "FORBIDDEN" });
       await guardian.context.close();
     });

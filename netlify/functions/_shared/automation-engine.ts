@@ -23,6 +23,7 @@ import type { ReadinessData } from "../../../src/domain/lessonReadiness";
 import { bookingForLesson } from "../../../src/domain/packageForecast";
 import { AppError } from "./http";
 import { packageWarningKey } from "../../../src/domain/packageWarningKey";
+import { automationInstruction } from "../../../src/domain/automationCopy";
 
 /** Queue only. Gmail delivery remains exclusively owned by the existing outbox worker. */
 export async function evaluateAndQueueRule(
@@ -184,7 +185,7 @@ export async function evaluateAndQueueRule(
               subject: rule.template.subject || automationRuleLabels[rule.key],
               body:
                 rule.template.body ||
-                `Hi ${greetingName},\n\n${context ? `A quick note about ${context}. ` : ""}${decision.explanation}\n\nPlease open the portal for the details.`,
+                `Hi ${greetingName},\n\n${context ? `A quick note about ${context}. ` : ""}${decision.explanation}\n\n${automationInstruction(rule.key, stage.key, rule.audience === "coach" || !!stage.coachEscalation)}`,
               status: rule.mode === "draft" ? "draft" : "queued",
               send_at: stage.sendAt,
               next_attempt_at: stage.sendAt,

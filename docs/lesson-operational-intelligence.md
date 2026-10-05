@@ -74,6 +74,8 @@ Shared presentation provides escaped HTML and meaningful plain text, one relevan
 
 Blank structured templates retain default/current content. Common variables are `{{studioName}}`, `{{studentName}}`, `{{manageUrl}}`, `{{renewUrl}}`; lesson producers also supply their service/time context and reminder hours, and package producers their package/credit/expiry context. Destination and recipient policy are not user-editable escape hatches. Coach alerts link to the coach workspace, not the student's finance route.
 
+Default PAYG copy becomes a stronger, still courteous request at the final two-hour stage: settle the recorded balance or contact the coach about an arrangement. It never threatens automatic cancellation, adds a charge, or invents a penalty. Coach escalation retains separate review instructions; custom authored copy remains authoritative.
+
 ## Coach surfaces and query ownership
 
 | Surface          | Before                                      | Now                                                                                                                                |

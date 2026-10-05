@@ -29,6 +29,7 @@
     "src/domain/packageWarningKey.ts",
     "src/domain/finance.ts",
     "src/domain/automationRules.ts",
+    "src/domain/automationCopy.ts",
     "src/security/e2eSafety.ts"
   ]
 }

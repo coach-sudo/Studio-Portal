@@ -20,7 +20,7 @@ export function AutomationRuleCard({
   const timing = rule.timing as AutomationRule["timing"];
   const description = ruleDescriptions[rule.rule_key as AutomationRuleKey];
   return (
-    <article className="communication-card">
+    <article className="communication-card automation-rule-card">
       <div className="action-row">
         <h3>{automationRuleLabels[rule.rule_key as AutomationRuleKey]}</h3>
         <Status>{rule.mode.replaceAll("_", " ")}</Status>
