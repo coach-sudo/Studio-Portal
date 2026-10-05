@@ -169,6 +169,9 @@ test.describe("Stateful operational acceptance", () => {
         is_primary_payer: true,
         can_view_work: false,
       });
+      const payerName = page.locator(".household-contact-row strong");
+      await expect(payerName).toHaveText("E2E Primary payer");
+      expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     });
     await test.step("05 Package shortfall surfaced without consuming forecast credits", async () => {
       await expect(
@@ -520,6 +523,11 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
     if (name === "settings")
       await page.getByRole("button", { name: /Email automations/ }).click();
     await expect(page.locator("main")).toBeVisible();
+    if (name === "account") {
+      const payerName = page.locator(".household-contact-row strong");
+      await expect(payerName).toHaveText("E2E Primary payer");
+      expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
+    }
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page);
     await page.screenshot({

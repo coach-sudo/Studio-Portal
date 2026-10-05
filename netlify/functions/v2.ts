@@ -50,8 +50,12 @@ const commandHandlers: V2CommandHandler[] = [
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
   try {
-    const domain = context.params.domain;
-    if (!domains.has(domain))
+    // The run-local router can omit dynamic route metadata for browser requests.
+    // Accept only this exact API path as fallback, never a caller-supplied header.
+    const domain =
+      context.params?.domain ??
+      new URL(request.url).pathname.match(/^\/api\/v2\/([^/]+)\/?$/)?.[1];
+    if (!domain || !domains.has(domain))
       throw new AppError("NOT_FOUND", {
         status: 404,
         message: "Unknown API domain.",

@@ -95,6 +95,8 @@ Unresolved/group financial information is intentionally marked for reconciliatio
 
 The authoritative exact-head workflows are **Production checks** (`verify`, `migrations`) and **Deployed browser checks** (`smoke`, `deployed-suite`) on PR #26. The latter runs the original thirteen journeys plus the fifteen-step operational coach journey and a mobile operational surface journey.
 
+Browser requests exposed a run-local Netlify routing case where the dynamic domain parameter was missing. V2 accepts a strictly matched `/api/v2/:domain` request path as fallback, retaining its allowlist and authorization; no Origin/header supplies the domain. HTTP tests cover missing/present platform params and reject nested/untrusted paths before any database access. Visual review also corrected Today status overlap and cramped Account household/timeline controls, with desktop/mobile name-width assertions.
+
 Operational checkpoints cover paid/credit/due readiness, primary payer and minor protection, independent contact permissions, shortfall, timeline, payment/cancellation/reschedule suppression, draft/automatic queueing, retained audit, canonical preview CTA, guardian RLS/API denial, keyboard focus restoration, axe and mobile reflow. No axe rule is disabled. The cancellation checkpoint is not undone to test rescheduling: a separate scheduled fixture goes through the normal tracked SQL command and production queue helper. Google provider interaction is isolated there, not claimed as a real Calendar test.
 
 The stateful operational journey does not retry against its own already-mutated fixture. Existing journeys retain their retry policy. Each isolated coach visual context has its own login/session; the future Today clock is limited to that view and then restored to real time. Failed-run diagnostics upload only SQLSTATE/static categories, never raw Function logs or credential files.
@@ -107,16 +109,16 @@ Evidence filenames in the full deployed-browser artifact:
 
 Full-page Account mobile evidence includes its communication timeline. Screenshots/traces use only ephemeral namespaced records. Cleanup compares exact public, Storage, Auth-user and Auth-identity baselines, restoring rule edits and leaving zero E2E identities.
 
-| Gate                                  | Evidence                                                                                                                        |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output (407 passed before the final recorded-due-date assertion) |
-| TypeScript / ESLint / Prettier        | Required; lint passes with existing repository warnings, not zero warnings                                                      |
-| Production build / bundle gate        | Required in production-shaped CI, unchanged warning/failure limits                                                              |
-| Secret scan                           | Required, no backup/password/provider credential in Git                                                                         |
-| Dependency audit                      | High-severity gate passes; one LOW existing DOMPurify advisory remains, documented below                                        |
-| Reset/lint/pgTAP/RLS/types            | Required isolated GitHub Docker chain; generated types must match                                                               |
-| Desktop/mobile/axe/15 new checkpoints | Required `deployed-suite`; blocked provider tests must remain explicit                                                          |
-| Exact fixture cleanup                 | Required, including zero E2E Auth users                                                                                         |
+| Gate                                  | Evidence                                                                                                       |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 417 tests |
+| TypeScript / ESLint / Prettier        | Required; lint passes with existing repository warnings, not zero warnings                                     |
+| Production build / bundle gate        | Required in production-shaped CI, unchanged warning/failure limits                                             |
+| Secret scan                           | Required, no backup/password/provider credential in Git                                                        |
+| Dependency audit                      | High-severity gate passes; one LOW existing DOMPurify advisory remains, documented below                       |
+| Reset/lint/pgTAP/RLS/types            | Required isolated GitHub Docker chain; generated types must match                                              |
+| Desktop/mobile/axe/15 new checkpoints | Required `deployed-suite`; blocked provider tests must remain explicit                                         |
+| Exact fixture cleanup                 | Required, including zero E2E Auth users                                                                        |
 
 **BLOCKED — isolated Stripe test-mode credential unavailable.** Journey 08's deterministic payment/package UI still runs, but actual Stripe Checkout is not reported as passed. No production Stripe credential or live charge is used. Real staging Gmail/Calendar delivery is not configured; queue transitions/shared provider mocks are verified instead of sending uncontrolled mail.
 

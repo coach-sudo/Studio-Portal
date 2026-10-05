@@ -271,7 +271,7 @@ function LinkedContacts({
           return (
             <article
               key={contact.id}
-              className={!contact.portalEnabled ? "disabled-row" : ""}
+              className={`household-contact-row${!contact.portalEnabled ? " disabled-row" : ""}`}
             >
               <UserRound />
               <div>
@@ -307,34 +307,36 @@ function LinkedContacts({
                         ? "Sending"
                         : "Not invited"}
               </Status>
-              <Link
-                className="button-link"
-                to={`/coach/students/${student.id}/contacts/${contact.id}`}
-              >
-                Open profile
-              </Link>
-              <button onClick={() => setEditing(contact)}>
-                {contact.portalEnabled ? "Edit access" : "Restore access"}
-              </button>
-              {contact.portalEnabled && (
-                <button
-                  className="primary-button"
-                  disabled={busy}
-                  onClick={() => void onInvite("guardian", contact.id)}
+              <div className="household-contact-actions">
+                <Link
+                  className="button-link"
+                  to={`/coach/students/${student.id}/contacts/${contact.id}`}
                 >
-                  {delivery?.status === "failed"
-                    ? "Retry invite"
-                    : "Send invite"}
+                  Open profile
+                </Link>
+                <button onClick={() => setEditing(contact)}>
+                  {contact.portalEnabled ? "Edit access" : "Restore access"}
                 </button>
-              )}
-              {contact.portalEnabled && (
-                <button
-                  className="danger-button"
-                  onClick={() => void disable(contact)}
-                >
-                  Remove
-                </button>
-              )}
+                {contact.portalEnabled && (
+                  <button
+                    className="primary-button"
+                    disabled={busy}
+                    onClick={() => void onInvite("guardian", contact.id)}
+                  >
+                    {delivery?.status === "failed"
+                      ? "Retry invite"
+                      : "Send invite"}
+                  </button>
+                )}
+                {contact.portalEnabled && (
+                  <button
+                    className="danger-button"
+                    onClick={() => void disable(contact)}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
             </article>
           );
         })}
