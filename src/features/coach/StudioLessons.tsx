@@ -19,9 +19,11 @@ import { sourceLabel, studentName } from "./StudioOperations.shared";
 export function LessonsView({
   data,
   isDemo,
+  onOpenLesson,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
+  onOpenLesson?: (lesson: Lesson) => void;
 }) {
   const navigate = useNavigate(),
     store = useStudioStore(),
@@ -386,7 +388,7 @@ export function LessonsView({
         timezone={data.settings.timezone}
         studentName={(id) => studentName(data, id)}
         sourceName={sourceLabel}
-        onOpen={openLesson}
+        onOpen={onOpenLesson || openLesson}
       />
       {selected && (
         <Dialog

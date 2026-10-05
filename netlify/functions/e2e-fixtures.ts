@@ -50,6 +50,8 @@ const ids = [
   "bookingPending",
   "bookingEarned",
   "bookingRedeemed",
+  "calendarLesson",
+  "calendarParticipant",
   "referralPending",
   "referralEarned",
   "referralRedeemed",
@@ -247,6 +249,8 @@ async function cleanup(
     fixture.referralEarned,
     fixture.referralRedeemed,
   ]);
+  await deleteIds("lesson_participants", [fixture.calendarParticipant]);
+  await deleteIds("lessons", [fixture.calendarLesson]);
   await deleteIds("bookings", [
     fixture.bookingPending,
     fixture.bookingEarned,
@@ -1016,6 +1020,36 @@ async function setup(
   })) satisfies InsertRow<"bookings">[];
   const { error: bookingError } = await db.from("bookings").upsert(bookingRows);
   if (bookingError) throwFixtureError("bookings", bookingError);
+  // Read-only calendar review uses a real relationship to an existing isolated booking.
+  // No provider work, mail or booking commands are queued by this fixture.
+  const { error: calendarLessonError } = await db.from("lessons").upsert({
+    ...lessonBase,
+    id: fixture.calendarLesson,
+    student_id: fixture.referredPending,
+    service_id: fixture.paidService,
+    topic: `${runId} Calendar booking`,
+    starts_at: bookingRows[0].starts_at,
+    ends_at: bookingRows[0].ends_at,
+    status: "scheduled",
+    payment_status: "due",
+    paid_minor: 0,
+    join_url: null,
+  });
+  if (calendarLessonError)
+    throwFixtureError("calendar_lesson", calendarLessonError);
+  const { error: calendarParticipantError } = await db
+    .from("lesson_participants")
+    .upsert({
+      id: fixture.calendarParticipant,
+      lesson_id: fixture.calendarLesson,
+      booking_id: fixture.bookingPending,
+      student_id: fixture.referredPending,
+      display_name: bookingRows[0].guest_name,
+      email: bookingRows[0].guest_email,
+      status: "confirmed",
+    });
+  if (calendarParticipantError)
+    throwFixtureError("calendar_participant", calendarParticipantError);
   const referralRows = [
     fixture.referralPending,
     fixture.referralEarned,

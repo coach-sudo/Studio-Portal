@@ -231,10 +231,6 @@ summary:focus-visible {
 .coach-panel,
 .record-card,
 .dashboard-rail,
-.settings-card,
-.portal-card,
-.summary-card,
-.metric-card,
 .inbox-email-history {
   border: 1px solid var(--app-border);
   background: var(--app-surface);
@@ -449,8 +445,7 @@ input[type="radio"] {
   color: var(--forest);
   box-shadow: 0 2px 8px #153a2710;
 }
-.settings-layout > aside,
-.settings-sidebar {
+.settings-layout > aside {
   background: transparent;
   border: 0;
   box-shadow: none;
@@ -689,7 +684,6 @@ input[type="radio"] {
 }
 .availability-windows > span {
   background: var(--surface-success);
-  color: var(--color-success);
   border-radius: 10px;
   padding: 8px 12px;
   font-size: 14px;
@@ -701,13 +695,6 @@ input[type="radio"] {
 .hours-list > article.off .availability-windows span {
   background: transparent;
   color: var(--muted);
-}
-.finance-metrics > article,
-.financial-summary > article,
-.package-summary-card {
-  border: 0;
-  border-radius: var(--radius-card);
-  background: var(--app-surface-soft);
 }
 .communication-card,
 .automation-rule-card {
@@ -773,8 +760,7 @@ input[type="radio"] {
   border-radius: var(--radius-card);
 }
 .assignment-instructions,
-.published-note-body,
-.lesson-note-body {
+.published-note-body {
   font-size: 15px;
   line-height: 1.8;
 }
@@ -845,11 +831,6 @@ input[type="radio"] {
   min-height: 44px;
   font-size: 13px;
 }
-.household-context {
-  background: var(--app-surface-soft);
-  border-color: var(--app-border);
-  border-radius: 14px;
-}
 
 /* Overlays: named, keyboard-managed side sheets, scrollable body and sticky actions. */
 .dialog-backdrop {
@@ -896,7 +877,6 @@ input[type="radio"] {
 }
 .workflow-dialog .form-actions {
   position: sticky;
-  bottom: -28px;
   background: var(--app-surface);
   padding: 18px 0;
   border-top: 1px solid var(--app-border);
@@ -1132,9 +1112,6 @@ input[type="radio"] {
   color: var(--muted);
   opacity: 1;
 }
-.campaign-template-grid article > span {
-  color: var(--muted);
-}
 .coach-panel > header > .small-primary {
   color: white;
 }
@@ -1288,6 +1265,13 @@ input[type="radio"] {
   .workflow-dialog .form-actions {
     bottom: 0;
     padding-bottom: calc(18px + env(safe-area-inset-bottom));
+  }
+  .workflow-dialog .appointment-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workflow-dialog .appointment-actions > .primary {
+    grid-column: 1 / -1;
   }
   .mobile-nav {
     background: var(--app-surface);

@@ -14,6 +14,7 @@ const routes = [
   ["student-detail", "/coach/students/student-maya"],
   ["coach-lesson", "/coach/students/student-maya/lessons/lesson-maya-next"],
   ["calendar", "/coach/bookings"],
+  ["calendar-lesson", "/coach/bookings?lesson=lesson-liam-next"],
   ["services", "/coach/bookings?view=services"],
   ["availability", "/coach/bookings?view=availability"],
   ["payments", "/coach/finance"],
@@ -123,6 +124,54 @@ for (const [size, viewport] of [
     );
     page.off("pageerror", listener);
   }
+  await page.goto("http://127.0.0.1:5173/coach/bookings");
+  const appointment = page
+    .locator(".calendar-event")
+    .filter({ hasText: "Maya Kim" })
+    .filter({ hasText: "Scene Study" })
+    .first();
+  await appointment.focus();
+  await page.keyboard.press("Enter");
+  const appointmentDrawer = page.getByRole("dialog", { name: "SS-1048" });
+  await appointmentDrawer.waitFor();
+  await page.screenshot({
+    path: `${out}/calendar-drawer-${size}.png`,
+    animations: "disabled",
+  });
+  const appointmentAxe = await new AxeBuilder({ page })
+    .withTags(["wcag2a", "wcag2aa"])
+    .analyze();
+  const appointmentBounds = await appointmentDrawer.boundingBox();
+  const appointmentFocus = [];
+  for (const key of ["Tab", "Shift+Tab"]) {
+    for (let i = 0; i < 30; i++) {
+      await page.keyboard.press(key);
+      appointmentFocus.push(
+        await appointmentDrawer.evaluate((el) =>
+          el.contains(document.activeElement),
+        ),
+      );
+    }
+  }
+  const appointmentOverflow = await page.evaluate(
+    () => document.documentElement.scrollWidth > innerWidth + 1,
+  );
+  await page.keyboard.press("Escape");
+  report.push({
+    name: "calendar-drawer",
+    size,
+    bounds: appointmentBounds,
+    focusContained: appointmentFocus.every(Boolean),
+    focusReturned: await appointment.evaluate(
+      (el) => el === document.activeElement,
+    ),
+    closed: (await appointmentDrawer.count()) === 0,
+    overflow: appointmentOverflow,
+    violations: appointmentAxe.violations
+      .filter((v) => ["serious", "critical"].includes(v.impact))
+      .map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
+  });
+  console.log("calendar-drawer", size, JSON.stringify(report.at(-1)));
   await page.goto("http://127.0.0.1:5173/coach/bookings?view=services");
   await page.getByRole("button", { name: "Edit", exact: true }).first().click();
   await page.screenshot({
@@ -211,6 +260,7 @@ assert.equal(
       r.errors?.length ||
       r.violations?.length ||
       r.focusContained === false ||
+      r.focusReturned === false ||
       r.closed === false,
   ).length,
   0,

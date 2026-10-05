@@ -1,24 +1,4 @@
 /* Unified lesson work and editorial actor portfolio */
-.lesson-prep-list {
-  display: grid;
-  gap: 8px;
-}
-.lesson-prep-list > article {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) repeat(3, auto);
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
-}
-.lesson-prep-list > article > div {
-  display: grid;
-}
-.lesson-prep-list small {
-  color: var(--muted);
-}
 .compact-check {
   display: flex;
   align-items: center;
@@ -32,9 +12,6 @@
 }
 .lesson-note-stack > article {
   padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
 }
 .lesson-note-stack > article > header {
   display: flex;
@@ -64,7 +41,6 @@
   border: 1px solid #cfe0d3;
   border-radius: 10px;
   background: #f2f8f3;
-  display: flex;
   align-items: flex-start;
   gap: 10px;
 }
@@ -83,16 +59,7 @@
   grid-column: 2;
   justify-self: start;
 }
-@media (max-width: 760px) {
-  .lesson-prep-list > article {
-    grid-template-columns: 1fr repeat(3, auto);
-    gap: 9px;
-  }
-}
 @media (max-width: 520px) {
-  .lesson-prep-list > article {
-    grid-template-columns: 1fr;
-  }
   .compact-check {
     min-height: 34px;
   }
@@ -103,9 +70,6 @@
   display: block !important;
   margin: 12px 0;
   padding: 0 !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px;
-  background: white;
   overflow: hidden;
 }
 .assignment-card > header,
@@ -152,8 +116,6 @@
 .assignment-instructions {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
-  line-height: 1.6;
   white-space: pre-wrap;
 }
 .assignment-activity > label {
@@ -194,10 +156,7 @@
 .current-script-card {
   display: block !important;
   padding: 0 !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px;
   overflow: hidden;
-  background: white;
 }
 .material-preview {
   padding: 13px 15px;
@@ -289,7 +248,6 @@
 }
 @media (max-width: 700px) {
   .section > header {
-    align-items: flex-start;
     flex-direction: column;
   }
   .section > header .header-actions {
@@ -306,7 +264,6 @@
     grid-column: 1 !important;
   }
   .form-actions {
-    width: 100%;
     justify-content: stretch;
     flex-wrap: wrap;
   }
@@ -345,16 +302,6 @@
   }
   .header-actions > button {
     flex-basis: 100%;
-  }
-  .dialog-backdrop {
-    padding: 0;
-  }
-  .workflow-dialog,
-  .command-dialog,
-  .explanation-dialog {
-    width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
   }
   .workflow-dialog > header,
   .workflow-form,
@@ -395,7 +342,6 @@
   .student-header {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
     gap: 14px;
   }
   .page-header > div,
@@ -430,10 +376,6 @@
     min-height: 44px;
     white-space: normal;
     line-height: 1.25;
-  }
-  .section > header {
-    min-height: auto;
-    gap: 10px;
   }
   .section > header > .count {
     flex: 0 0 auto;
@@ -502,18 +444,6 @@
   }
 }
 @media (max-width: 600px) {
-  .page,
-  .student-page {
-    padding-top: 18px;
-  }
-  .page-header,
-  .student-header {
-    padding-bottom: 18px;
-  }
-  .page-header h1,
-  .student-header h1 {
-    font-size: clamp(28px, 9vw, 33px);
-  }
   .page-header > .header-actions,
   .page-header > .primary-button {
     width: 100%;
@@ -524,7 +454,6 @@
   .header-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
   .header-actions > button,
   .header-actions > .button-link {
@@ -533,9 +462,6 @@
   }
   .section {
     padding-top: 22px;
-  }
-  .section > header {
-    padding-bottom: 11px;
   }
   .table-list article,
   .workflow-list article {
@@ -547,7 +473,6 @@
     flex: 0 0 auto;
   }
   .settings-layout {
-    gap: 18px;
     margin-top: 18px;
   }
   .settings-nav {
@@ -558,7 +483,6 @@
   }
   .settings-nav button {
     min-width: 0;
-    min-height: 66px;
     padding: 10px;
     align-items: flex-start;
   }
@@ -617,7 +541,6 @@
   .form-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
   .form-actions > button {
     width: 100%;
@@ -731,8 +654,6 @@
   }
   .portal-notice {
     margin-top: 12px;
-    padding: 10px 11px;
-    line-height: 1.4;
   }
   .portal-notice + .section {
     padding-top: 16px;
@@ -763,7 +684,6 @@
   }
   .workflow-dialog > header > button {
     flex: 0 0 44px;
-    min-height: 44px;
   }
   .workflow-form,
   .workflow-content {
@@ -771,17 +691,11 @@
     padding-bottom: 20px;
   }
   .workflow-dialog .form-actions {
-    position: sticky;
-    z-index: 4;
-    bottom: 0;
     margin-inline: -16px;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-    background: #fffdf8;
     box-shadow: 0 -8px 18px #17211d12;
   }
   .record-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
   .record-actions > button,
@@ -791,13 +705,6 @@
     justify-content: center;
     white-space: normal;
     line-height: 1.2;
-  }
-  .explanation-dialog > div {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-  .explanation-dialog button {
-    min-height: 44px;
   }
   .booking-topbar {
     gap: 10px;
@@ -819,9 +726,6 @@
   }
   .service-catalog {
     width: calc(100% - 26px);
-  }
-  .service-card {
-    padding: 20px;
   }
   .login-page {
     place-items: start center;
@@ -987,15 +891,10 @@
   .main,
   .student-shell > main {
     min-width: 0;
-    width: 100%;
   }
   .page,
   .student-page {
     max-width: 100%;
-  }
-  .page-header,
-  .student-header {
-    padding-right: 52px;
   }
   .subnav,
   .record-tabs {
@@ -1004,7 +903,6 @@
     margin-inline: -13px;
     padding-inline: 13px;
     overflow-x: auto;
-    gap: 5px;
   }
   .subnav > button,
   .record-tabs > a {
@@ -1017,13 +915,6 @@
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
-  }
-  .metric-card {
-    min-height: 92px;
-    padding: 12px;
-  }
-  .metric-card strong {
-    font-size: 20px;
   }
   .booking-table-head {
     display: none !important;
@@ -1086,8 +977,6 @@
   }
   .student-quick-actions {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
   .student-quick-actions > a {
     min-width: 0;
@@ -1116,22 +1005,11 @@
   }
   .workflow-dialog {
     max-width: 100%;
-    max-height: calc(100dvh - 12px);
   }
 }
 @media (max-width: 420px) {
   .metric-grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .metric-card {
-    min-height: 84px;
-  }
-  .student-quick-actions {
-    grid-template-columns: 1fr;
-  }
-  .page-header h1,
-  .student-header h1 {
-    line-height: 1.05;
   }
   .student-record-identity {
     grid-template-columns: 52px minmax(0, 1fr) !important;
@@ -1163,12 +1041,6 @@
 /* Coach workspace hierarchy: compact orientation, lesson-first action queue, and calendar-first booking administration */
 .home-today-link {
   width: 100%;
-  min-height: 64px;
-  margin-top: 18px;
-  padding: 11px 14px;
-  border: 1px solid color-mix(in srgb, var(--sage), var(--line) 55%);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--wash), white 45%);
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
@@ -1177,35 +1049,24 @@
 }
 .home-today-link > svg {
   width: 21px;
-  color: var(--sage);
 }
 .home-today-link > span {
   min-width: 0;
   display: grid;
   gap: 2px;
 }
-.home-today-link strong {
-  font-size: 12px;
-}
 .home-today-link small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted);
-  font-size: 10px;
 }
 .home-today-link b {
   min-height: 40px;
   padding: 0 12px;
   border-radius: 7px;
   background: var(--forest);
-  color: white;
   display: flex;
   align-items: center;
-  font-size: 10px;
-}
-.home-dashboard-single {
-  grid-template-columns: 1fr;
 }
 .today-lesson-row {
   display: grid !important;
@@ -1227,12 +1088,10 @@
 .today-prep-checks {
   display: flex;
   align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
   padding-top: 4px;
 }
 .today-prep-checks .compact-check {
-  min-height: 30px;
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 99px;
@@ -1335,17 +1194,6 @@
 
 .portal-priority-stack .section {
   margin: 0;
-}
-
-.portal-context-line {
-  width: fit-content;
-  margin: 0 0 12px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: var(--wash);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
 }
 
 .portal-account-summary,
@@ -1472,21 +1320,10 @@
 
 .page-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.disclosure-section {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
 }
 
 .disclosure-section > summary {
-  min-height: var(--control-height);
-  padding: 10px 13px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -1501,13 +1338,9 @@
 .inline-notice {
   min-height: var(--control-height);
   margin: 0 0 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
   display: flex;
   align-items: center;
   gap: 9px;
-  background: var(--wash);
 }
 
 .inline-notice > svg {
@@ -1586,11 +1419,6 @@
 
 .portal-home-prioritized {
   grid-template-columns: minmax(0, 1fr);
-}
-
-.portal-home-prioritized .portal-priority-stack {
-  display: grid;
-  gap: var(--studio-gap, 18px);
 }
 
 .guardian-context {
@@ -1695,10 +1523,6 @@
 }
 
 .account-balance-card {
-  padding: clamp(16px, 3vw, 26px);
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--forest), #1e5043);
-  color: white;
   display: grid;
   gap: 5px;
 }
@@ -1770,10 +1594,6 @@
   flex: 1 1 auto;
 }
 
-.status.neutral {
-  color: #526059;
-}
-
 .lesson-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1794,7 +1614,6 @@
 }
 
 .lesson-facts small {
-  color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1932,29 +1751,19 @@
   position: sticky;
   top: 18px;
   padding: var(--studio-card-padding);
-  border: 1px solid var(--line);
-  border-radius: var(--studio-radius-md);
-  background: color-mix(in srgb, var(--surface), white 60%);
-  box-shadow: var(--studio-shadow-sm);
   display: grid;
   gap: 8px;
 }
 .dashboard-rail header {
   padding: 2px 2px 12px;
-  border-bottom: 1px solid var(--line);
   display: grid;
   gap: 3px;
 }
 .dashboard-rail header small {
   color: var(--muted);
-  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-}
-.dashboard-rail header strong {
-  font-family: Oswald, sans-serif;
-  font-size: 20px;
 }
 .dashboard-rail > button {
   width: 100%;
@@ -1983,7 +1792,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
 }
 .dashboard-rail > button small {
   color: var(--muted);
@@ -1993,7 +1801,6 @@
   min-width: 0;
 }
 .portal-priority-stack > .section {
-  padding: var(--studio-card-padding);
   border: 1px solid var(--line);
   border-radius: var(--studio-radius-md);
   background: white;
@@ -2183,15 +1990,6 @@
 .workflow-form select {
   min-height: 44px;
 }
-.workflow-form textarea,
-.settings-form textarea {
-  min-height: 104px;
-}
-.command-dialog,
-.workflow-dialog {
-  border-radius: var(--studio-radius-lg);
-  box-shadow: var(--studio-shadow-md);
-}
 @media (max-width: 900px) {
   .creative-home-grid,
   .portal-home-grid {
@@ -2209,18 +2007,11 @@
   }
 }
 @media (max-width: 700px) {
-  .creative-welcome {
-    min-height: 210px;
-    padding: 24px 20px;
-  }
   .creative-welcome > i {
     width: 165px;
     height: 165px;
     right: -80px;
     top: -90px;
-  }
-  .creative-welcome > b {
-    display: none;
   }
   .creative-welcome .header-actions {
     display: grid;
@@ -2271,13 +2062,9 @@
 @media (max-width: 420px) {
   .creative-welcome {
     margin-inline: -3px;
-    border-radius: 18px;
   }
   .creative-welcome .header-actions {
     grid-template-columns: 1fr;
-  }
-  .creative-welcome h1 {
-    font-size: 32px;
   }
   .dashboard-rail,
   .portal-priority-stack > .section {

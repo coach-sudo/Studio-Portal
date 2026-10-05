@@ -6,13 +6,14 @@ import {
   Plus,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Drawer,
   EmptyState,
   PageHeader,
   PageSkeleton,
+  Section,
   Status,
 } from "../../components/Primitives";
 import {
@@ -28,13 +29,18 @@ import type {
   AvailabilityRule,
   Booking,
   BookingService,
+  Lesson,
   MeetingProvider,
   RecurringSeries,
   ServiceOffering,
   StudioSettings,
   StudioSnapshot,
 } from "../../domain/model";
-import { formatStudioDateTime } from "../../domain/presentation";
+import {
+  formatStudioDateTime,
+  formatStudioTime,
+} from "../../domain/presentation";
+import { bookingForLesson } from "../../domain/packageForecast";
 import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { LessonsView } from "./StudioOperations";
@@ -53,9 +59,23 @@ import { Series } from "./BookingSeries";
 import { Services } from "./BookingServices";
 import { BookingSetup } from "./BookingSetup";
 import { bookingCenterDomains } from "./routeDomains";
+import { LessonReadinessPanel } from "./LessonReadinessPanel";
+
+function calendarBookings(lesson: Lesson, data: StudioSnapshot): Booking[] {
+  const linked = data.bookings.filter((booking) =>
+    data.lessonParticipants.some(
+      (participant) =>
+        participant.lessonId === lesson.id &&
+        participant.bookingId === booking.id,
+    ),
+  );
+  if (linked.length) return linked;
+  const booking = bookingForLesson(lesson, data);
+  return booking ? [booking] : [];
+}
 
 export function BookingCenter() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const requestedRecord = searchParams.toString();
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useState<Tab>(() =>
@@ -71,7 +91,11 @@ export function BookingCenter() {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<{ type: string; item?: any }>();
+  const [dialog, setDialog] = useState<{
+    type: string;
+    item?: any;
+    lessonId?: string;
+  }>();
   const [notice, setNotice] = useState("");
   const [health, setHealth] = useState<PlatformHealth>({
     mode: "demo",
@@ -88,17 +112,42 @@ export function BookingCenter() {
     if (!data) return;
     const bookingId = searchParams.get("booking");
     const lessonId = searchParams.get("lesson");
+    const lesson = data.lessons.find((item) => item.id === lessonId);
+    const related = lesson ? calendarBookings(lesson, data) : [];
     const booking =
       data.bookings.find((item) => item.id === bookingId) ||
-      data.bookings.find((item) =>
-        data.lessonParticipants.some(
-          (part) => part.lessonId === lessonId && part.bookingId === item.id,
-        ),
-      );
-    if (booking) setDialog({ type: "booking", item: booking });
+      (related.length === 1 ? related[0] : undefined);
+    if (booking)
+      setDialog({
+        type: "booking",
+        item: booking,
+        lessonId: related.some((item) => item.id === booking.id)
+          ? lesson?.id
+          : undefined,
+      });
+    else if (lesson) setDialog({ type: "lesson", item: lesson });
   }, [data, requestedRecord]);
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
+
+  function openCalendarLesson(lesson: Lesson) {
+    const bookings = calendarBookings(lesson, data!);
+    setDialog(
+      bookings.length === 1
+        ? { type: "booking", item: bookings[0], lessonId: lesson.id }
+        : { type: "lesson", item: lesson },
+    );
+  }
+
+  function closeAppointment() {
+    setDialog(undefined);
+    if (searchParams.has("booking") || searchParams.has("lesson")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("booking");
+      next.delete("lesson");
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   async function run(
     resource: BookingAdminResource,
@@ -119,7 +168,9 @@ export function BookingCenter() {
         });
         await invalidateStudioDomains(queryClient, ["booking"]);
       }
-      setDialog(undefined);
+      if (dialog?.type === "booking" || dialog?.type === "lesson")
+        closeAppointment();
+      else setDialog(undefined);
       setNotice("Saved. The booking workspace has been updated.");
     } catch (reason) {
       setNotice(
@@ -225,7 +276,13 @@ export function BookingCenter() {
       {tab === "setup" && (
         <BookingSetup value={data.settings} onSave={saveBookingSettings} />
       )}
-      {tab === "calendar" && <LessonsView data={data} isDemo={isDemo} />}
+      {tab === "calendar" && (
+        <LessonsView
+          data={data}
+          isDemo={isDemo}
+          onOpenLesson={openCalendarLesson}
+        />
+      )}
       {tab === "services" && (
         <Services
           data={data}
@@ -438,7 +495,8 @@ export function BookingCenter() {
         <BookingDialog
           booking={dialog.item}
           data={data}
-          onClose={() => setDialog(undefined)}
+          lessonId={dialog.lessonId}
+          onClose={closeAppointment}
           onAction={(command, payload = {}) =>
             run("bookings", command, payload, dialog.item, (draft) => {
               if (command === "confirm_location") {
@@ -461,6 +519,20 @@ export function BookingCenter() {
                       (lesson.locationLabel = String(payload.location)),
                   );
               } else changeDemoBooking(draft, dialog.item.id, command);
+            })
+          }
+        />
+      )}
+      {dialog?.type === "lesson" && (
+        <CalendarLessonDrawer
+          lesson={dialog.item}
+          data={data}
+          onClose={closeAppointment}
+          onBooking={(booking) =>
+            setDialog({
+              type: "booking",
+              item: booking,
+              lessonId: dialog.item.id,
             })
           }
         />
@@ -1388,26 +1460,31 @@ function SeriesDialog({
 function BookingDialog({
   booking,
   data,
+  lessonId,
   onClose,
   onAction,
 }: {
   booking: Booking;
   data: StudioSnapshot;
+  lessonId?: string;
   onClose: () => void;
   onAction: (command: string, payload?: Record<string, unknown>) => void;
 }) {
+  const locationId = useId();
   const [location, setLocation] = useState(
     booking.inPersonLocation ||
       data.settings.meetingFormats.in_person?.location ||
       "",
   );
-  const lesson = data.lessons.find((item) =>
-    data.lessonParticipants.some(
-      (participant) =>
-        participant.lessonId === item.id &&
-        participant.bookingId === booking.id,
-    ),
-  );
+  const lesson = lessonId
+    ? data.lessons.find((item) => item.id === lessonId)
+    : data.lessons.find((item) =>
+        data.lessonParticipants.some(
+          (participant) =>
+            participant.lessonId === item.id &&
+            participant.bookingId === booking.id,
+        ),
+      );
   const relatedStudentId =
     booking.studentId ||
     data.lessonParticipants.find(
@@ -1420,12 +1497,20 @@ function BookingDialog({
       onClose={onClose}
     >
       <div className="workflow-content">
-        <dl className="integration-detail">
+        <div className="integration-detail">
           <article>
             <div>
               <strong>Schedule</strong>
               <small>
-                {formatStudioDateTime(booking.startsAt, data.settings.timezone)}{" "}
+                {formatStudioDateTime(
+                  lesson?.startsAt || booking.startsAt,
+                  data.settings.timezone,
+                )}{" "}
+                –{" "}
+                {formatStudioTime(
+                  lesson?.endsAt || booking.endsAt,
+                  data.settings.timezone,
+                )}{" "}
                 · {booking.location.replaceAll("_", " ")}
                 {booking.inPersonLocation
                   ? ` · ${booking.inPersonLocation}`
@@ -1448,22 +1533,30 @@ function BookingDialog({
               {booking.paymentStatus.replaceAll("_", " ")}
             </Status>
           </article>
-        </dl>
+        </div>
+        {lesson &&
+          lesson.studentId &&
+          lesson.studentId === relatedStudentId && (
+            <LessonReadinessPanel lesson={lesson} data={data} />
+          )}
         {booking.location === "in_person" && (
-          <label>
-            Confirmed lesson location
-            <input
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              placeholder="Studio address or meeting place"
-            />
-            <small>
-              Saving updates the lesson and sends a Google Calendar event update
-              to the student.
-            </small>
-          </label>
+          <div className="workflow-form" style={{ padding: 0 }}>
+            <label className="full" htmlFor={locationId}>
+              Confirmed lesson location
+              <input
+                id={locationId}
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+                placeholder="Studio address or meeting place"
+              />
+              <small>
+                Saving updates the lesson and sends a Google Calendar event
+                update to the student.
+              </small>
+            </label>
+          </div>
         )}
-        <div className="form-actions">
+        <div className="form-actions appointment-actions">
           {relatedStudentId && (
             <Link
               className="button-link"
@@ -1480,6 +1573,18 @@ function BookingDialog({
               Open lesson
             </Link>
           )}
+          {relatedStudentId &&
+            data.conversations.some(
+              (item) =>
+                item.kind === "direct" && item.studentId === relatedStudentId,
+            ) && (
+              <Link
+                className="button-link"
+                to={`/coach/inbox?student=${relatedStudentId}`}
+              >
+                Message
+              </Link>
+            )}
           {booking.location === "in_person" && (
             <button
               disabled={!location.trim()}
@@ -1495,6 +1600,136 @@ function BookingDialog({
             <button onClick={() => onAction("cancel")}>Cancel</button>
           )}
           <button className="primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+function CalendarLessonDrawer({
+  lesson,
+  data,
+  onClose,
+  onBooking,
+}: {
+  lesson: Lesson;
+  data: StudioSnapshot;
+  onClose: () => void;
+  onBooking: (booking: Booking) => void;
+}) {
+  const student = data.students.find((item) => item.id === lesson.studentId);
+  const bookings = calendarBookings(lesson, data);
+  return (
+    <Drawer
+      title={lesson.topic}
+      description={
+        student?.fullName ||
+        (lesson.offeringId ? "Class appointment" : "Lesson appointment")
+      }
+      onClose={onClose}
+    >
+      <div className="workflow-content">
+        <dl className="detail-grid">
+          <div>
+            <dt>Date & time</dt>
+            <dd>
+              {formatStudioDateTime(lesson.startsAt, data.settings.timezone)}
+            </dd>
+          </div>
+          <div>
+            <dt>Duration</dt>
+            <dd>
+              {Math.round(
+                (new Date(lesson.endsAt).getTime() -
+                  new Date(lesson.startsAt).getTime()) /
+                  60000,
+              )}{" "}
+              minutes
+            </dd>
+          </div>
+          <div>
+            <dt>Delivery / location</dt>
+            <dd>{lesson.locationLabel}</dd>
+          </div>
+          <div>
+            <dt>Lesson status</dt>
+            <dd>{lesson.status.replaceAll("_", " ")}</dd>
+          </div>
+          {lesson.paymentStatus && (
+            <div>
+              <dt>Payment status</dt>
+              <dd>{lesson.paymentStatus.replaceAll("_", " ")}</dd>
+            </div>
+          )}
+          {lesson.priceMinor != null && (
+            <div>
+              <dt>Payment</dt>
+              <dd>
+                {formatMoney(lesson.paidMinor || 0, data.settings.currency)}{" "}
+                paid of {formatMoney(lesson.priceMinor, data.settings.currency)}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {student && <LessonReadinessPanel lesson={lesson} data={data} />}
+        {bookings.length > 1 && (
+          <Section title="Participant bookings">
+            <div className="table-list">
+              {bookings.map((booking) => (
+                <article key={booking.id}>
+                  <div>
+                    <strong>{booking.guestName}</strong>
+                    <small>
+                      {booking.reference} ·{" "}
+                      {booking.status.replaceAll("_", " ")}
+                    </small>
+                  </div>
+                  <button type="button" onClick={() => onBooking(booking)}>
+                    View booking
+                  </button>
+                </article>
+              ))}
+            </div>
+          </Section>
+        )}
+        <div className="form-actions">
+          {student && (
+            <>
+              <Link
+                className="button-link"
+                to={`/coach/students/${student.id}`}
+              >
+                Open student
+              </Link>
+              <Link
+                className="button-link"
+                to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+              >
+                Open lesson
+              </Link>
+            </>
+          )}
+          {student &&
+            data.conversations.some(
+              (item) => item.kind === "direct" && item.studentId === student.id,
+            ) && (
+              <Link
+                className="button-link"
+                to={`/coach/inbox?student=${student.id}`}
+              >
+                Message
+              </Link>
+            )}
+          {lesson.offeringId && (
+            <Link
+              className="button-link"
+              to={`/coach/classes/${lesson.offeringId}`}
+            >
+              Open class
+            </Link>
+          )}
+          <button type="button" className="primary" onClick={onClose}>
             Done
           </button>
         </div>

@@ -52,6 +52,13 @@ hidden control exclusion, Escape, scroll lock, and focus restoration. Drawers
 become full-height sheets on mobile; action footers remain reachable. Route
 destinations remain unchanged. Command search reuses existing navigation.
 
+Coach Bookings calendar selection opens the related booking in a contextual
+drawer, retaining the selected occurrence's date and lesson link. Group
+appointments offer explicit participant booking choices. Unbooked lessons have
+their own detail drawer. Booking/lesson deep links remain supported; dismissal
+returns to Bookings. Existing student, lesson, message, location, refund and cancel
+capabilities remain authoritative; no new booking command is introduced.
+
 Controls have visible focus and touch-friendly heights. Reduced motion disables
 transitions. Portal dark appearance uses the same semantic tokens. Mobile uses
 stacked layouts, scrollable local navigation, safe-area spacing, and readable
