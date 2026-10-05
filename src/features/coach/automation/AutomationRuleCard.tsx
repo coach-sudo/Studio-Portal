@@ -36,6 +36,9 @@ export function AutomationRuleCard({
           {rule.rule_key === "package_expiration"
             ? ` · within ${timing.daysBefore ?? 30} days`
             : ""}
+          {rule.rule_key === "package_low"
+            ? ` · ${timing.lowThreshold ?? 1} credit(s) or fewer`
+            : ""}
         </dd>
         <dt>Send to</dt>
         <dd>{description.audience}</dd>
@@ -60,6 +63,12 @@ export function AutomationRuleCard({
           {last
             ? `${last.result}: ${last.explanation}`
             : "No recent evaluation"}
+        </dd>
+        <dt>Content</dt>
+        <dd>
+          {(rule.template as AutomationRule["template"]).subject ||
+            "Current/default subject and message"}
+          . Destination is fixed to the relevant portal action.
         </dd>
       </dl>
       <div className="action-row">

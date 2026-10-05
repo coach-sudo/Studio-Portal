@@ -40,6 +40,7 @@ export async function queuePresentedMessages(
   studio: EmailStudio,
   origin: string,
   action?: { label: string; url: string },
+  templateVariables: Record<string, string> = {},
 ) {
   if (!messages.length) return [];
   const db = client as SupabaseClient<Database>;
@@ -64,6 +65,11 @@ export async function queuePresentedMessages(
       studentName: message.body?.match(/^Hi ([^,\n]+)/)?.[1] ?? "there",
       manageUrl: action?.url ?? origin,
       renewUrl: action?.url ?? origin,
+      ...templateVariables,
+      hours:
+        message.dedupe_key?.match(/:reminder:([0-9.]+):/)?.[1] ??
+        templateVariables.hours ??
+        "",
     };
     const content = {
       ...message,

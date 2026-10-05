@@ -218,5 +218,7 @@ export async function queueLessonChangeEmails(
     messages,
     { name: studio!.name, settings },
     origin,
+    undefined,
+    values,
   );
 }

@@ -35,7 +35,14 @@ describe("compatible structured queue", () => {
           ? {
               select: () => ({
                 in: async () => ({
-                  data: [{ id: "rule", template: {} }],
+                  data: [
+                    {
+                      id: "rule",
+                      template: {
+                        subject: "For {{studentName}} at {{studioName}}",
+                      },
+                    },
+                  ],
                   error: null,
                 }),
               }),
@@ -66,9 +73,14 @@ describe("compatible structured queue", () => {
       messages,
       { name: "Coach’D" },
       "https://preview.example.test",
+      undefined,
+      { studentName: "Alex" },
     );
     expect(insert).toHaveBeenCalledTimes(2);
     expect(insert.mock.calls[0][0]).not.toHaveProperty("entity_snapshot");
+    expect(insert.mock.calls[0][0]).toMatchObject({
+      subject: "For Alex at Coach’D",
+    });
     expect(
       audit.mock.calls.map(
         (call) => (call[0] as { outbox_ids: string[] }).outbox_ids,

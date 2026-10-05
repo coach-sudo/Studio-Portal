@@ -56,6 +56,9 @@ export function studentFinancialSummary(
     next: next
       ? { lesson: next, readiness: evaluateLessonReadiness(next, data, now) }
       : undefined,
+    nextPaymentDueAt: next
+      ? bookingForLesson(next, data)?.balanceDueAt
+      : undefined,
     forecasts: forecastPackages(student.id, data, now),
     currentRate,
     outstandingMinor,

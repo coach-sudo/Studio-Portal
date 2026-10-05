@@ -142,6 +142,12 @@ export function AutomationRuleEditor({
           Recipients, canonical destination and mandatory suppressions cannot be
           bypassed by template edits. Meet links are not included.
         </p>
+        <p className="full">
+          Template fields:{" "}
+          {"{{studioName}}, {{studentName}}, {{manageUrl}}, {{renewUrl}}"}.
+          Lesson rules also support {"{{serviceName}} and {{startsAt}}"}. Leave
+          blank to retain the current/default message.
+        </p>
         <button disabled={busy} type="submit">
           {busy ? "Saving…" : "Save rule"}
         </button>

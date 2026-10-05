@@ -215,6 +215,23 @@ export async function evaluateAndQueueRule(
                 url: `${origin}/coach/students/${studentId}/lessons/${entityId}`,
               }
             : { ...action, label: rule.template.ctaLabel || action.label },
+          {
+            studentName:
+              data.students[0]?.preferredName ||
+              data.students[0]?.fullName ||
+              "there",
+            recipientName: greetingName,
+            studioName: studio.name,
+            serviceName: entity.lesson?.topic ?? "",
+            startsAt: entity.lesson
+              ? new Intl.DateTimeFormat("en-US", {
+                  timeZone: data.settings.timezone,
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }).format(new Date(entity.lesson.startsAt))
+              : "",
+            packageName: entity.package?.name ?? "",
+          },
         );
         outboxIds.push(...queued.map((item) => item.id));
       }

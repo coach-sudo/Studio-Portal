@@ -26,6 +26,26 @@ function fixture() {
   return { data, student };
 }
 describe("student financial setup summary", () => {
+  it("uses the recorded booking due date and never invents a payment deadline", () => {
+    const { data, student } = fixture();
+    expect(
+      studentFinancialSummary(student, data, now).nextPaymentDueAt,
+    ).toBeUndefined();
+    const lesson = data.lessons[0];
+    data.bookings = [
+      {
+        id: "booking",
+        studentId: student.id,
+        startsAt: lesson.startsAt,
+        endsAt: lesson.endsAt,
+        paymentStatus: "due",
+        balanceDueAt: "2026-10-05T18:00:00Z",
+      } as Booking,
+    ];
+    expect(studentFinancialSummary(student, data, now).nextPaymentDueAt).toBe(
+      "2026-10-05T18:00:00Z",
+    );
+  });
   it("counts past due lessons as outstanding, not only future lessons", () => {
     const { data, student } = fixture();
     data.lessons[0].startsAt = "2026-10-01T12:00:00Z";

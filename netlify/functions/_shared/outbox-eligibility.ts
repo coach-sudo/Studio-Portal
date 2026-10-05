@@ -36,6 +36,7 @@ export function messageIntent(
   if (event.includes("confirmed.student")) return "lesson_confirmation";
   if (event.startsWith("assignment")) return "assignment";
   if (event.startsWith("note")) return "lesson_content";
+  if (/credentials|invite|account/.test(event)) return "account_access";
   return undefined;
 }
 /** Fail closed on obsolete automated content; human-authored email remains a separate explicit action. */
@@ -172,7 +173,14 @@ export async function checkOutboxEligibility(
       return { allowed: false, reason: "booking_cancelled" };
   }
   if (studentId && intent !== "coach") {
-    const resolved = await resolveEventRecipients(client, studentId, intent);
+    const resolved = await resolveEventRecipients(client, studentId, intent, {
+      mandatory: [
+        "lesson_confirmation",
+        "cancellation",
+        "schedule_change",
+        "payment_failed",
+      ].includes(intent),
+    });
     if (
       !resolved.recipients.some(
         (recipient) =>

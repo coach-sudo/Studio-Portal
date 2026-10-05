@@ -1,4 +1,4 @@
-import { openAs, accessToken } from "./support/auth";
+import { accessToken } from "./support/auth";
 import { expectNoSeriousAxeViolations } from "./support/axe";
 import {
   test,
@@ -10,7 +10,11 @@ import type { Page } from "@playwright/test";
 import type { Browser } from "@playwright/test";
 import type { E2ERuntime } from "./support/runtime";
 
-async function openOperationalCoach(browser: Browser, runtime: E2ERuntime) {
+async function openOperationalCoach(
+  browser: Browser,
+  runtime: E2ERuntime,
+  role: "coach" | "guardian" = "coach",
+) {
   // The Today-only clock must not refresh/rotate a session shared by other parallel tests.
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
@@ -18,8 +22,8 @@ async function openOperationalCoach(browser: Browser, runtime: E2ERuntime) {
   });
   const page = await context.newPage();
   await page.goto("/login");
-  await page.getByLabel("Username").fill(runtime.accounts!.coach.username);
-  await page.getByLabel("Password").fill(runtime.accounts!.coach.password);
+  await page.getByLabel("Username").fill(runtime.accounts![role].username);
+  await page.getByLabel("Password").fill(runtime.accounts![role].password);
   await Promise.all([
     page.waitForURL(/\/(portal|coach)(?:\/|$)/),
     page.getByRole("button", { name: "Sign in", exact: true }).click(),
@@ -406,7 +410,7 @@ test.describe("Stateful operational acceptance", () => {
       ).toBe(before);
     });
     await test.step("14 Guardian remains isolated from operational minor and unrelated student", async () => {
-      const guardian = await openAs(browser, "guardian");
+      const guardian = await openOperationalCoach(browser, runtime, "guardian");
       await guardian.page.goto("/portal");
       const result = await read(
         guardian.page,
@@ -416,23 +420,42 @@ test.describe("Stateful operational acceptance", () => {
       expect(result).toEqual([]);
       const rules = await read(guardian.page, "automation_rules", "select=id");
       expect(rules).toEqual([]);
-      const denied = await guardian.page.request.post("/api/v2/automations", {
-        headers: {
-          Authorization: `Bearer ${await accessToken(guardian.page)}`,
+      const denied = await guardian.page.evaluate(
+        async ({ token, data }) => {
+          const response = await fetch("/api/v2/automations", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(data),
+          });
+          const body = await response.json();
+          return {
+            status: response.status,
+            code: body.code,
+            message: body.message,
+          };
         },
-        data: {
-          command: "test_rule",
-          entityId: rule.id,
-          expectedVersion: rule.version + 2,
-          idempotencyKey: crypto.randomUUID(),
-          reason: "Isolated guardian role denial",
-          payload: {
-            studentId: ids.operationalStudent,
-            entityId: ids.lessonDue,
+        {
+          token: await accessToken(guardian.page),
+          data: {
+            command: "test_rule",
+            entityId: rule.id,
+            expectedVersion: rule.version + 2,
+            idempotencyKey: crypto.randomUUID(),
+            reason: "Isolated guardian role denial",
+            payload: {
+              studentId: ids.operationalStudent,
+              entityId: ids.lessonDue,
+            },
           },
         },
-      });
-      expect(denied.status()).toBe(403);
+      );
+      expect(
+        denied,
+        "Guardian automation API must reject before rule/data access",
+      ).toMatchObject({ status: 403, code: "FORBIDDEN" });
       await guardian.context.close();
     });
     await test.step("15 Keyboard/axe/reflow on Today, Account, Payments, timeline and Settings", async () => {

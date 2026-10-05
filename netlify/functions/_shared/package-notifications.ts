@@ -11,6 +11,7 @@ import { loadOperationalData } from "./operational-data";
 import { mapAutomationRule } from "./automation-config";
 import { evaluateAutomationRule } from "../../../src/domain/automationRules";
 import { packageWarningKey } from "../../../src/domain/packageWarningKey";
+import { creditBalance } from "../../../src/domain/finance";
 
 export async function queuePackageWarning(
   client: SupabaseClient,
@@ -33,6 +34,7 @@ export async function queuePackageWarning(
     status = compatibleQueueStatus(rule, input.legacyEnabled);
   if (!status) return [];
   let dedupe = input.dedupe;
+  const templateVariables: Record<string, string> = {};
   if (rule) {
     const data = await loadOperationalData(
       client,
@@ -50,6 +52,25 @@ export async function queuePackageWarning(
     if (!decision.eligible) return [];
     const pkg = data.packages.find((item) => item.id === input.packageId)!;
     dedupe = packageWarningKey(pkg, data.creditEntries, input.key, Date.now());
+    Object.assign(templateVariables, {
+      studentName: data.students[0].preferredName || data.students[0].fullName,
+      packageName: pkg.name,
+      credits: String(creditBalance(pkg.id, data.creditEntries)),
+      days: pkg.expiresAt
+        ? String(
+            Math.max(
+              1,
+              Math.ceil((Date.parse(pkg.expiresAt) - Date.now()) / 86400000),
+            ),
+          )
+        : "",
+      expiresAt: pkg.expiresAt
+        ? new Intl.DateTimeFormat("en-US", {
+            timeZone: data.settings.timezone,
+            dateStyle: "medium",
+          }).format(new Date(pkg.expiresAt))
+        : "",
+    });
   }
   const resolution = await resolveEventRecipients(
       client,
@@ -75,8 +96,15 @@ export async function queuePackageWarning(
       entity_snapshot: { entityId: input.packageId, coverageKey: dedupe },
     }),
   );
-  return queuePresentedMessages(client, messages, input.studio, origin, {
-    label: "View packages",
-    url: portalActionUrl(origin, "packages"),
-  });
+  return queuePresentedMessages(
+    client,
+    messages,
+    input.studio,
+    origin,
+    {
+      label: "View packages",
+      url: portalActionUrl(origin, "packages"),
+    },
+    templateVariables,
+  );
 }

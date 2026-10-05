@@ -105,5 +105,7 @@ export async function queuePaymentFailedEmail(
     })),
     { name: studio!.name, settings },
     portalOrigin(),
+    undefined,
+    values,
   );
 }

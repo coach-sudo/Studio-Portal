@@ -196,6 +196,7 @@ export async function queueBookingEmails(
       { name: studio!.name, settings },
       origin,
       { label: "View / Manage Booking", url: manageUrl },
+      values,
     )),
     ...(await queuePresentedMessages(
       client,
@@ -205,6 +206,10 @@ export async function queueBookingEmails(
       {
         label: "View Lesson",
         url: portalActionUrl(origin, "lesson", participant?.lesson_id),
+      },
+      {
+        ...values,
+        manageUrl: portalActionUrl(origin, "lesson", participant?.lesson_id),
       },
     )),
   ];

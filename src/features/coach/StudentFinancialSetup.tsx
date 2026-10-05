@@ -26,6 +26,7 @@ export function StudentFinancialSetup({
     next,
     outstandingMinor,
     requiresReconciliation,
+    nextPaymentDueAt,
   } = studentFinancialSummary(student, data, now);
   return (
     <div className="financial-setup">
@@ -89,6 +90,16 @@ export function StudentFinancialSetup({
               {next
                 ? `${formatStudioDateTime(next.lesson.startsAt, data.settings.timezone)} · ${coverageLabels[next.readiness.financial.state]}${next.readiness.financial.amountDueMinor ? ` · ${formatMoney(next.readiness.financial.amountDueMinor, data.settings.currency)}` : ""}`
                 : "None scheduled"}
+            </dd>
+          </div>
+          <div>
+            <dt>Next payment timing</dt>
+            <dd>
+              {nextPaymentDueAt
+                ? formatStudioDateTime(nextPaymentDueAt, data.settings.timezone)
+                : next?.readiness.financial.amountDueMinor
+                  ? "No separate due date recorded; review before the lesson."
+                  : "No recorded payment due for the next lesson."}
             </dd>
           </div>
         </dl>

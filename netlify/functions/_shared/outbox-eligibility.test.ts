@@ -208,6 +208,12 @@ describe("dispatch-time authoritative suppression", () => {
     expect(
       messageIntent({
         recipient_intent: null,
+        event_key: "portal.credentials",
+      }),
+    ).toBe("account_access");
+    expect(
+      messageIntent({
+        recipient_intent: null,
         event_key: "booking.reminder.student",
       }),
     ).toBe("lesson_reminder");
