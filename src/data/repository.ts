@@ -572,6 +572,7 @@ export async function loadStudioSnapshot(
     }),
     packages: (packages.data ?? []).map((r: any) => ({
       id: r.id,
+      definitionId: r.definition_id || undefined,
       studentId: r.student_id,
       name: r.name,
       expiresAt: r.expires_at,
@@ -659,6 +660,9 @@ export async function loadStudioSnapshot(
     })),
     linkedContacts: (linkedContacts.data ?? []).map((r: any) => ({
       id: r.id,
+      isPrimaryPayer: Boolean(r.is_primary_payer),
+      isPrimarySchedulingContact: Boolean(r.is_primary_scheduling_contact),
+      receivesFinancialEscalations: Boolean(r.receives_financial_escalations),
       studioId: r.studio_id,
       studentId: r.student_id,
       userId: r.user_id,

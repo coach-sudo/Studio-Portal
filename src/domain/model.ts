@@ -404,6 +404,7 @@ export interface Material extends Versioned {
   sortOrder?: number;
 }
 export interface PackageAccount extends Versioned {
+  definitionId?: UUID;
   studentId: UUID;
   name: string;
   expiresAt?: string;
@@ -495,6 +496,10 @@ export interface NotificationPreferences {
   accountAccess: boolean;
 }
 export interface LinkedContact extends Versioned {
+  /** Responsibility is independent of access permission. Legacy contacts default to false. */
+  isPrimaryPayer?: boolean;
+  isPrimarySchedulingContact?: boolean;
+  receivesFinancialEscalations?: boolean;
   studioId: UUID;
   studentId: UUID;
   userId?: UUID;
