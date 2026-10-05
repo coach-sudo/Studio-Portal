@@ -593,6 +593,7 @@ export interface ActorProfile extends Versioned {
 }
 export interface OutboxMessage extends Versioned {
   approvedAt?: string;
+  quotedAmountDueMinor?: number;
   bookingId?: UUID;
   suppressionReason?: string;
   recipientIntent?: string;

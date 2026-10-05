@@ -14,6 +14,7 @@ import type {
 import {
   lessonPaymentReminders,
   paymentReminderRequired,
+  paymentReminderMatchesBalance,
 } from "../../domain/paymentReminder";
 import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
@@ -107,6 +108,9 @@ export function PaymentReminderSteps({
         suppressionReason: row.suppression_reason ?? undefined,
         approvedAt: (row.entity_snapshot as { approvedAt?: string } | null)
           ?.approvedAt,
+        quotedAmountDueMinor: (
+          row.entity_snapshot as { amountDueMinor?: number } | null
+        )?.amountDueMinor,
       }));
     },
   });
@@ -196,7 +200,12 @@ export function PaymentReminderSteps({
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Approval failed.");
     } finally {
-      await invalidateStudioDomains(client, ["messaging"]);
+      await invalidateStudioDomains(client, [
+        "messaging",
+        "finance",
+        "lessons",
+        "booking",
+      ]);
       setBusy(false);
     }
   }
@@ -225,6 +234,17 @@ export function PaymentReminderSteps({
         const readiness = evaluateLessonReadiness(lesson, data, now);
         const required = paymentReminderRequired(readiness);
         const reminders = lessonPaymentReminders(lesson, outbox);
+        const currentReminders = reminders.filter(
+          (message) =>
+            paymentReminderMatchesBalance(
+              message,
+              readiness.financial.amountDueMinor,
+            ) &&
+            !(
+              message.status === "cancelled" &&
+              message.suppressionReason === "financial_amount_changed"
+            ),
+        );
         const rule = availableRules.find(
           (row) =>
             row.rule_key ===
@@ -257,19 +277,28 @@ export function PaymentReminderSteps({
                 data-message-id={message.id}
               >
                 <p>
-                  {message.status === "draft" ||
-                  (message.status === "queued" && !message.approvedAt)
-                    ? "Awaiting coach approval"
-                    : message.status === "sent"
-                      ? "Reminder sent"
-                      : message.status === "sending"
-                        ? "Reminder sending"
-                        : message.status === "failed"
-                          ? "Reminder failed — review delivery"
-                          : message.status === "cancelled"
-                            ? "Reminder cancelled"
-                            : "Reminder scheduled to be sent"}
+                  {!paymentReminderMatchesBalance(
+                    message,
+                    readiness.financial.amountDueMinor,
+                  ) && required
+                    ? "Balance changed — review a fresh reminder"
+                    : message.status === "draft" ||
+                        (message.status === "queued" && !message.approvedAt)
+                      ? "Awaiting coach approval"
+                      : message.status === "sent"
+                        ? "Reminder sent"
+                        : message.status === "sending"
+                          ? "Reminder sending"
+                          : message.status === "failed"
+                            ? "Reminder failed — review delivery"
+                            : message.status === "cancelled"
+                              ? "Reminder cancelled"
+                              : "Reminder scheduled to be sent"}
                   {message.sendAt &&
+                  paymentReminderMatchesBalance(
+                    message,
+                    readiness.financial.amountDueMinor,
+                  ) &&
                   ["draft", "approved", "queued"].includes(message.status)
                     ? ` on ${formatStudioDateTime(message.sendAt, data.settings.timezone)}`
                     : ""}{" "}
@@ -277,7 +306,11 @@ export function PaymentReminderSteps({
                 </p>
                 {(message.status === "draft" ||
                   (message.status === "queued" && !message.approvedAt)) &&
-                  required && (
+                  required &&
+                  paymentReminderMatchesBalance(
+                    message,
+                    readiness.financial.amountDueMinor,
+                  ) && (
                     <>
                       <pre className="communication-preview">
                         {message.body}
@@ -306,7 +339,7 @@ export function PaymentReminderSteps({
                 Open lesson
               </Link>
               {required &&
-                !reminders.length &&
+                !currentReminders.length &&
                 !rules.isError &&
                 !messages.isError &&
                 (rule?.enabled &&

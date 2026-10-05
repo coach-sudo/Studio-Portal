@@ -191,4 +191,35 @@ describe("coach payment reminder workflow", () => {
       screen.queryByRole("button", { name: "Review payment reminder" }),
     ).not.toBeInTheDocument();
   });
+  it("offers a fresh review after a partial payment invalidates the old quoted balance", async () => {
+    mock.rows = [
+      {
+        id: "old",
+        version: 1,
+        status: "queued",
+        recipient_intent: "payment_due",
+        event_key: "automation.payment_due.hours-24",
+        recipient: "payer@example.test",
+        lesson_id: demoSnapshot.lessons[0].id,
+        body: "Old quoted balance",
+        subject: "Reminder",
+        attempts: 0,
+        updated_at: "2026-10-05T12:00:00Z",
+        entity_snapshot: {
+          amountDueMinor: 10000,
+          approvedAt: "2026-10-05T12:00:00Z",
+        },
+      },
+    ];
+    setup();
+    expect(
+      await screen.findByText(/Balance changed — review a fresh reminder/),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Review payment reminder" }),
+    ).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Approve scheduled reminder" }),
+    ).not.toBeInTheDocument();
+  });
 });

@@ -47,7 +47,7 @@ customer email. Production is not published and PR #28 is not merged.
 
 ## Verification
 
-- Vitest: 81 files / 469 tests passed locally, including workflow separation,
+- Vitest: 81 files / 470 tests passed locally, including workflow separation,
   financial truth, recipient/permission suppression, approval/version/race handling,
   scheduling retention, stale balances, dedupe and email content preservation.
 - TypeScript, ESLint (0 errors; existing 618 warnings), Prettier, production build,

@@ -34,3 +34,13 @@ export function lessonPaymentReminders(
 export function paymentReminderNeedsApproval(key: string) {
   return key === "payment_due" || key === "payment_past_due";
 }
+
+export function paymentReminderMatchesBalance(
+  message: OutboxMessage,
+  amountDueMinor: number,
+) {
+  return (
+    message.quotedAmountDueMinor == null ||
+    message.quotedAmountDueMinor === amountDueMinor
+  );
+}
