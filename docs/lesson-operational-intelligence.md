@@ -97,6 +97,8 @@ The feature and its adjacent coach surfaces were reviewed for unused controls, s
 
 Necessary compatibility is deliberately retained: the collapsed legacy templates/master switch still govern established email behavior; existing recovery/outbox controls have a different scope from the student timeline; canceled/suppressed rows remain delivery history. New rule editors show only relevant fields. No unused second queue, alert table, household model or payment ledger was introduced. This is a scoped audit, not a claim that every pre-existing repository warning or historical feature is obsolete. Existing unrelated lint warnings remain reported; no historical records, plugins or old PRs were removed.
 
+The existing seven-day delivered-credential retention job now clears both plain text and the new stored HTML rendering, retaining the outbox row/status/history. Regression tests preserve queued/recent credential messages and unrelated email, and require purge failures to surface. No production retention job or manual data cleanup was run during implementation.
+
 ## Verification and visual evidence
 
 The authoritative exact-head workflows are **Production checks** (`verify`, `migrations`) and **Deployed browser checks** (`smoke`, `deployed-suite`) on PR #26. The latter runs the original thirteen journeys plus the fifteen-step operational coach journey and a mobile operational surface journey.
@@ -117,7 +119,7 @@ Full-page Account mobile evidence includes its communication timeline. Screensho
 
 | Gate                                  | Evidence                                                                                                       |
 | ------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 420 tests |
+| Vitest/component/domain/server tests  | Full suite required; exact final total is recorded in PR/check output; final implementation contains 422 tests |
 | TypeScript / ESLint / Prettier        | Required; lint passes with existing repository warnings, not zero warnings                                     |
 | Production build / bundle gate        | Required in production-shaped CI, unchanged warning/failure limits                                             |
 | Secret scan                           | Required, no backup/password/provider credential in Git                                                        |

@@ -331,7 +331,6 @@ export async function provisionPortalAccount(
 export async function ensureBookingPortalAccess(
   db: SupabaseClient,
   bookingId: string,
-  _origin: string,
 ) {
   const { data: booking, error } = await db
     .from("bookings")

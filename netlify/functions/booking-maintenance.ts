@@ -5,6 +5,7 @@ import { queueLessonChangeEmails } from "./_shared/booking-email";
 import { resolveNotificationRecipients } from "./_shared/notification-recipients";
 import { portalActionUrl, portalOrigin } from "./_shared/portal-url";
 import { queuePackageWarning } from "./_shared/package-notifications";
+import { clearDeliveredPortalCredentials } from "./_shared/outbox-retention";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
@@ -31,14 +32,7 @@ export default async () => {
     const credentialRetention = new Date(
       Date.now() - 7 * 86400000,
     ).toISOString();
-    await db
-      .from("outbox_messages")
-      .update({
-        body: "Temporary portal credentials removed after delivery retention period.",
-      })
-      .eq("event_key", "portal.credentials")
-      .eq("status", "sent")
-      .lt("updated_at", credentialRetention);
+    await clearDeliveredPortalCredentials(db, credentialRetention);
   }
   const grace = new Date(Date.now() - 7 * 86400000).toISOString(),
     now = new Date().toISOString();
