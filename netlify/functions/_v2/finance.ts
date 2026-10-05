@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { json } from "../_shared/http";
 import { derivePackageValues } from "../_shared/package-pricing";
 import { serviceClient } from "../_shared/supabase";
+import { portalOrigin } from "../_shared/portal-url";
 import type { V2CommandContext } from "./types";
 
 export async function handleFinanceCommands(
@@ -835,7 +836,7 @@ export async function handleFinanceCommands(
       const stripe = new Stripe(stripeKey, {
         apiVersion: "2026-07-29.dahlia",
       });
-      const origin = new URL(request.url).origin;
+      const origin = portalOrigin();
       const scheduled = ["weekly", "biweekly", "monthly"].includes(
         requestedMode,
       );
@@ -992,7 +993,7 @@ export async function handleFinanceCommands(
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
-    const origin = new URL(request.url).origin;
+    const origin = portalOrigin();
     const checkout = await stripe.checkout.sessions.create({
       mode: "payment",
       line_items: [{ price: pkg.stripe_price_id, quantity: 1 }],

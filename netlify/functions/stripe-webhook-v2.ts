@@ -1,3 +1,4 @@
+import { portalOrigin } from "./_shared/portal-url";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
@@ -43,7 +44,7 @@ export default async (request: Request, context: Context) => {
         await db.from("package_gifts").update({status:"purchased",updated_at:new Date().toISOString()}).eq("id",gift.id).eq("status","pending_payment");
         const deliversLater=Boolean(gift.deliver_at&&new Date(gift.deliver_at)>new Date());
         if(recipient&&!deliversLater){const claimed=await db.rpc("claim_package_gift",{target_gift:gift.id,target_student:recipient.id,apply_automatically:false});if(claimed.error)throw claimed.error;}
-        const claimUrl=`${Netlify.env.get("URL")||new URL(request.url).origin}/gift/claim/${object.metadata?.claim_token}`;
+        const claimUrl=`${portalOrigin()}/gift/claim/${object.metadata?.claim_token}`;
         await db.from("outbox_messages").upsert({studio_id:gift.studio_id,channel:"email",recipient:gift.recipient_email,subject:`${gift.purchaser_name} sent you a Coach'D lesson package`,body:[`Hello ${gift.recipient_name},`,"",`${gift.purchaser_name} sent you ${definition.name}.`,gift.message?`Message: ${gift.message}`:"",recipient?(deliversLater?"The credits will be added to your portal on the delivery date.":"The credits are already in your portal."):`Claim your gift: ${claimUrl}`,"","Gifts never create recurring charges."].filter(Boolean).join("\n"),status:"queued",send_at:gift.deliver_at||new Date().toISOString(),event_key:"package.gift",dedupe_key:`package-gift:${gift.id}:delivery`,priority:85},{onConflict:"dedupe_key",ignoreDuplicates:true});
         return done({packageGift:true});
       }
@@ -59,8 +60,8 @@ export default async (request: Request, context: Context) => {
         }
         const manageToken = object.metadata?.manage_token;
         if(object.customer){const {data:confirmed}=await db.from("bookings").update({stripe_customer_id:String(object.customer)}).eq("id",bookingId).select("student_id").single();if(confirmed?.student_id)await db.from("students").update({stripe_customer_id:String(object.customer),updated_at:new Date().toISOString()}).eq("id",confirmed.student_id);}
-        await queueBookingEmails(db,bookingId,manageToken,new URL(request.url).origin);
-        try { const access=await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids})); } catch (inviteError) { await db.from("recommendations").upsert({ studio_id: (await db.from("bookings").select("studio_id").eq("id", bookingId).single()).data?.studio_id, entity_type: "booking", entity_id: bookingId, reason_code: "portal_invitation_failed", title: "Portal invitation needs retry", explanation: "The booking is confirmed, but Supabase could not send or link portal access.", evidence: [String(inviteError)], urgency: 4, suggested_action: "retry_portal_invitation", requires_confirmation: false, status: "open", dedupe_key: `booking:${bookingId}:portal-invite` }, { onConflict: "dedupe_key" }); }
+        await queueBookingEmails(db,bookingId,manageToken);
+        try { const access=await ensureBookingPortalAccess(db, bookingId);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids})); } catch (inviteError) { await db.from("recommendations").upsert({ studio_id: (await db.from("bookings").select("studio_id").eq("id", bookingId).single()).data?.studio_id, entity_type: "booking", entity_id: bookingId, reason_code: "portal_invitation_failed", title: "Portal invitation needs retry", explanation: "The booking is confirmed, but Supabase could not send or link portal access.", evidence: [String(inviteError)], urgency: 4, suggested_action: "retry_portal_invitation", requires_confirmation: false, status: "open", dedupe_key: `booking:${bookingId}:portal-invite` }, { onConflict: "dedupe_key" }); }
         return done(data as Record<string, unknown>);
       }
       const studentId = object.metadata?.student_id, packageId = object.metadata?.package_id;
@@ -129,8 +130,8 @@ export default async (request: Request, context: Context) => {
         if (current && current.status !== "confirmed") {
           const { error } = await db.rpc("confirm_booking", { target_booking: bookingId, target_hold: metadata.hold_id, amount_paid: object.amount_paid || 0, provider_reference: object.id });
           if (error) throw error;
-          await queueBookingEmails(db, bookingId, metadata.manage_token, new URL(request.url).origin);
-          const access=await ensureBookingPortalAccess(db, bookingId, new URL(request.url).origin);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids}));
+          await queueBookingEmails(db, bookingId, metadata.manage_token);
+          const access=await ensureBookingPortalAccess(db, bookingId);const accounts=Array.isArray((access as any).accounts)?(access as any).accounts:[access];const ids=accounts.map((account:any)=>account?.outboxMessageId).filter(Boolean);if(ids.length)context.waitUntil(dispatchOutbox({ids}));
         }
       }
       if (subscriptionId) {

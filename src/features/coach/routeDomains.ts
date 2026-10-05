@@ -17,7 +17,15 @@ export function coachSectionDomains(
         ? ["identity", "students", "lessons"]
         : ["identity", "students", "work"];
     case "lessons":
-      return ["identity", "students", "lessons", "booking", "work", "finance"];
+      return [
+        "identity",
+        "students",
+        "lessons",
+        "booking",
+        "work",
+        "finance",
+        "messaging",
+      ];
     case "finance":
       return ["identity", "students", "finance", "booking"];
     case "actor-pages":
@@ -33,6 +41,8 @@ export function coachSectionDomains(
         "work",
         "administration",
         "actorProfiles",
+        "finance",
+        "messaging",
       ];
   }
 }
@@ -44,7 +54,9 @@ export function bookingCenterDomains(tab: Tab): readonly StudioDomain[] {
     "booking",
     "lessons",
   ];
-  return tab === "calendar" ? [...shared, "work", "finance"] : shared;
+  return tab === "calendar"
+    ? [...shared, "work", "finance", "messaging"]
+    : shared;
 }
 
 export function studentWorkspaceDomains(
@@ -64,5 +76,7 @@ export function studentWorkspaceDomains(
     /^\/coach\/students\/[^/]+\/(?:account|contacts\/[^/]+)\/?$/.test(pathname)
   )
     return [...shared, "booking", "messaging"];
+  if (/^\/coach\/students\/[^/]+\/lessons(?:\/[^/]+)?\/?$/.test(pathname))
+    return [...shared, "messaging"];
   return shared;
 }

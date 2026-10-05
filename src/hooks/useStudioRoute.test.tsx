@@ -179,6 +179,85 @@ describe("V2 domain query behavior", () => {
     route.unmount();
   });
 
+  it("keeps readiness routes within eight reads and targets grouped finance/messaging refresh", async () => {
+    const [
+      {
+        useStudioRoute,
+        useStudioActivity,
+        invalidateStudioDomains,
+        countActiveDomainRefetches,
+      },
+      { StudioStoreProvider },
+      { coachSectionDomains },
+    ] = await Promise.all([
+      import("./useStudio"),
+      import("../state/StudioStore"),
+      import("../features/coach/routeDomains"),
+    ]);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+    const hook = renderHook(
+      () => {
+        const page = useStudioRoute(
+          "coach",
+          undefined,
+          coachSectionDomains("today", true),
+        );
+        const activity = useStudioActivity("coach");
+        return { page, activity };
+      },
+      { wrapper: wrapperFor(client, StudioStoreProvider) },
+    );
+    await waitFor(() => expect(hook.result.current.page.data).toBeDefined());
+    await waitFor(() =>
+      expect(hook.result.current.activity.data).toBeDefined(),
+    );
+    expect(loadStudioSnapshot).toHaveBeenCalledTimes(8);
+    expect(
+      loadStudioSnapshot.mock.calls.some(
+        (call) =>
+          call[2].includes("finance") &&
+          call[2].includes("messaging") &&
+          call[2].includes("booking"),
+      ),
+    ).toBe(true);
+    expect(
+      countActiveDomainRefetches(client, ["lessons", "finance", "messaging"]),
+    ).toBe(2);
+    const changed = structuredClone(demoSnapshot);
+    changed.outbox = [
+      {
+        id: "fresh",
+        studentId: changed.students[0].id,
+        channel: "email",
+        recipient: "fixture@example.test",
+        subject: "Paid",
+        body: "Suppressed",
+        status: "cancelled",
+        attempts: 0,
+        version: 1,
+        updatedAt: "",
+      },
+    ];
+    loadStudioSnapshot.mockClear();
+    loadStudioSnapshot.mockResolvedValue(changed);
+    await act(async () => {
+      await invalidateStudioDomains(client, [
+        "lessons",
+        "finance",
+        "messaging",
+      ]);
+    });
+    expect(loadStudioSnapshot).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(hook.result.current.page.data?.outbox[0]?.status).toBe(
+        "cancelled",
+      ),
+    );
+    hook.unmount();
+  });
+
   it("updates the global activity snapshot from targeted domain refetches", async () => {
     const [
       { useStudioRoute, useStudioActivity, invalidateStudioDomains },

@@ -2,6 +2,11 @@ import { json } from "../_shared/http";
 import { dispatchOutbox } from "../_shared/outbox-dispatch";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
+import {
+  checkOutboxEligibility,
+  suppressOutbox,
+} from "../_shared/outbox-eligibility";
+import type { Tables } from "../../../src/types/database.generated";
 
 export async function handleMessagingCommands(
   ctx: V2CommandContext,
@@ -304,6 +309,26 @@ export async function handleMessagingCommands(
   }
 
   if (domain === "outbox" && input.command === "retry_failed") {
+    const authorizedStudio = await requireCoach(),
+      service = serviceClient();
+    const failed = await service
+      .from("outbox_messages")
+      .select("*")
+      .eq("studio_id", authorizedStudio)
+      .eq("status", "failed");
+    if (failed.error) throw failed.error;
+    for (const message of failed.data ?? []) {
+      const eligible = await checkOutboxEligibility(
+        service,
+        message as Tables<"outbox_messages">,
+      );
+      if (!eligible.allowed)
+        await suppressOutbox(
+          service,
+          message as Tables<"outbox_messages">,
+          eligible.reason,
+        );
+    }
     const studioId = await requireCoach(),
       { data, error } = await serviceClient()
         .from("outbox_messages")
@@ -388,6 +413,7 @@ export async function handleMessagingCommands(
     let body = String(input.payload.body || "").trim();
     let studentId = String(input.payload.studentId || "") || null;
     let lessonId = String(input.payload.lessonId || "") || null;
+    let sourceMessage: Tables<"outbox_messages"> | undefined;
     if (input.command === "resend") {
       const { data: source, error: sourceError } = await service
         .from("outbox_messages")
@@ -403,11 +429,20 @@ export async function handleMessagingCommands(
         throw new Error(
           "VALIDATION_FAILED: Campaign email must be sent from Campaigns so unsubscribes are respected.",
         );
+      const eligibility = await checkOutboxEligibility(
+        service,
+        source as Tables<"outbox_messages">,
+      );
+      if (!eligibility.allowed)
+        throw new Error(
+          "VALIDATION_FAILED: The original message's condition is no longer true. Compose a new human message instead.",
+        );
       recipient = source.recipient;
       subject = source.subject;
       body = source.body;
       studentId = source.student_id;
       lessonId = source.lesson_id;
+      sourceMessage = source;
     }
     if (!recipient.includes("@") || subject.length < 2 || body.length < 2)
       throw new Error(
@@ -424,11 +459,19 @@ export async function handleMessagingCommands(
         recipient,
         subject,
         body,
+        ...(sourceMessage
+          ? {
+              booking_id: sourceMessage.booking_id,
+              recipient_intent: sourceMessage.recipient_intent,
+              automation_rule_id: sourceMessage.automation_rule_id,
+              entity_snapshot: sourceMessage.entity_snapshot,
+              html_body: sourceMessage.html_body,
+            }
+          : {}),
         status: "queued",
         send_at: sendAt,
         next_attempt_at: sendAt,
-        event_key:
-          input.command === "resend" ? "manual.resend" : "manual.email",
+        event_key: sourceMessage?.event_key || "manual.email",
         dedupe_key: `manual:${input.idempotencyKey}`,
         priority: 100,
       })

@@ -21,6 +21,15 @@
     "src/domain/availabilityVisibility.ts",
     "src/domain/intakeRecency.ts",
     "src/domain/campaignTemplates.ts",
+    "src/domain/notificationRecipients.ts",
+    "src/domain/bookingGuestRecipients.ts",
+    "src/domain/paymentResponsibility.ts",
+    "src/domain/lessonReadiness.ts",
+    "src/domain/packageForecast.ts",
+    "src/domain/packageWarningKey.ts",
+    "src/domain/finance.ts",
+    "src/domain/automationRules.ts",
+    "src/domain/automationCopy.ts",
     "src/security/e2eSafety.ts"
   ]
 }

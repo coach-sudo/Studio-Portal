@@ -155,10 +155,12 @@ jobs:
           BROWSER: none
         run: |
           set -euo pipefail
+          export STAGING_BASE_URL=http://127.0.0.1:8888
           npm run build
-          nohup npx --yes netlify-cli@27.8.0 dev --offline --no-open \
-            --context deploy-preview --framework '#static' \
-            --port 8888 --dir dist --functions netlify/functions \
+          # CLI 27.8.0 retries custom Function 403s as .html paths, hiding API denials.
+          # Patch only the disposable CLI proxy, never the application or production.
+          nohup npx --yes --package netlify-cli@27.8.0 -c \
+            "tsx scripts/patch-netlify-dev-api-errors.ts && netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions" \
             > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/netlify-serve.pid"
           for attempt in {1..120}; do
@@ -230,6 +232,9 @@ jobs:
           echo "remaining e2e auth users: $e2e_auth_users" | tee -a test-results/cleanup-verification.txt
           if [ "$e2e_auth_users" != "0" ]; then failed=1; fi
           exit "$failed"
+      - name: Collect credential-free function diagnostics
+        if: failure() && env.USE_EPHEMERAL_STACK == 'true'
+        run: npx tsx scripts/collect-e2e-function-diagnostics.ts
       - name: Upload full browser evidence
         if: always()
         uses: actions/upload-artifact@v4

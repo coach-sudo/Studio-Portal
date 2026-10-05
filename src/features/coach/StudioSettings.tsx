@@ -41,6 +41,7 @@ import {
   studioDomainQueryKey,
 } from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
+import { AutomationSettings } from "./AutomationSettings";
 
 type Panel =
   "studio" | "portal" | "popup" | "pricing" | "email" | "integrations" | "data";
@@ -197,12 +198,18 @@ export function StudioSettings({
           />
         )}{" "}
         {panel === "email" && (
-          <EmailAutomationForm
-            value={data.settings}
-            onSave={(value) =>
-              void save(value, "Email automation settings saved.")
-            }
-          />
+          <>
+            <AutomationSettings data={data} isDemo={isDemo} />
+            <details>
+              <summary>Legacy email defaults and templates</summary>
+              <EmailAutomationForm
+                value={data.settings}
+                onSave={(value) =>
+                  void save(value, "Email automation settings saved.")
+                }
+              />
+            </details>
+          </>
         )}{" "}
         {panel === "integrations" && (
           <Integrations

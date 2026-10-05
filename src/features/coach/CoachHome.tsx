@@ -1,7 +1,9 @@
 import { CalendarDays, CircleDollarSign, Plus, Search, UserRound, Waypoints } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { EmptyState, Section } from "../../components/Primitives";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
+import { coachOperationalSummary } from "../../domain/coachOperationalSummary";
+import "./operational-intelligence.css";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import {
@@ -11,7 +13,7 @@ import {
 } from "../../domain/presentation";
 
 export function CoachHome() {
-  const { data, isLoading, error } = useStudioRoute("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "administration", "booking"]);
+  const { data, isLoading, error } = useStudioRoute("coach", undefined, ["identity", "students", "lessons", "work", "finance", "actorProfiles", "administration", "booking", "messaging"]);
   const navigate = useNavigate();
   if (isLoading) return <div className="loading">Preparing your studio…</div>;
   if (error || !data) return <div className="error-state"><strong>We couldn’t load the studio.</strong><span>{String(error ?? "Unknown error")}</span></div>;
@@ -22,7 +24,8 @@ export function CoachHome() {
   const noteFollowupCount = data.lessons.filter((lesson)=>{const ended=new Date(lesson.endsAt).getTime();return ended<=now&&ended>=now-8*86_400_000&&!(["cancelled","late_cancelled"] as string[]).includes(lesson.status)&&!data.notes.some((note)=>note.lessonId===lesson.id&&note.status==="published");}).length;
   const todayCount = data.lessons.filter((lesson)=>lesson.status==="scheduled"&&studioDateKey(lesson.startsAt,data.settings.timezone)===studioDateKey(new Date(now),data.settings.timezone)).length;
   const reviewCount = data.materials.filter((item)=>item.approvalStatus === "pending_review").length + data.actorProfiles.filter((item)=>item.status === "review_requested").length + data.assignments.filter((item)=>item.helpRequested).length + data.bookings.filter((item)=>item.status === "needs_attention").length;
-  const actionCount = todayCount + noteFollowupCount + importReviewCount + reviewCount;
+  const operational = coachOperationalSummary(data, now);
+  const actionCount = operational.needsAttention + noteFollowupCount + importReviewCount + reviewCount;
   const outstanding = data.students.reduce((total,student)=>total + Math.max(0,studentBalanceMinor(student.id,data.payments)),0);
   return <div className="page home-page creative-dashboard">
     <section className="creative-welcome coach-welcome"><div><small>{formatStudioDate(new Date(now),data.settings.timezone,{weekday:"long"})}</small><h1>{greeting}, {data.displayName}</h1><p>A calm view of what matters in your studio right now.</p><div className="header-actions"><button className="search-button" onClick={() => window.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true }))}><Search />Search<kbd>⌘ K</kbd></button><button className="primary-button" onClick={() => navigate("/coach/students?new=1")}><Plus />Add student</button></div></div><i/><b/></section>
@@ -33,6 +36,7 @@ export function CoachHome() {
       <button onClick={()=>navigate("/coach/today#verification")}><Waypoints/><span><strong>{importReviewCount}</strong><small>imports to verify</small></span></button>
       <button onClick={()=>navigate("/coach/finance")}><CircleDollarSign/><span><strong>{formatMoney(outstanding)}</strong><small>open balances</small></span></button>
     </div>
+    <div className="operational-counts" aria-label="Lesson readiness overview"><Link to="/coach/today">{todayCount} lessons today · {operational.readyCount} ready</Link><Link to="/coach/today">{operational.financialAttention} financial exceptions · {formatMoney(operational.moneyAtRisk,data.settings.currency)} at risk</Link><Link to="/coach/settings">{operational.upcomingCommunication} communications queued</Link></div>
     <button className="home-today-link" onClick={()=>navigate("/coach/today")}>
       <Waypoints />
       <span>

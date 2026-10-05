@@ -78,5 +78,12 @@ jobs:
       - run: npx supabase test db
       - run: npm run supabase:types
       - run: git diff --exit-code -- src/types/database.generated.ts
+      - name: Retain migration verification evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-evidence-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: src/types/database.generated.ts
       - if: always()
         run: npx supabase stop --no-backup

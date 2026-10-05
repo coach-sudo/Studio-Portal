@@ -1,0 +1,167 @@
+.lesson-readiness {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--line, #d8dfda);
+  border-radius: 0.75rem;
+}
+.lesson-readiness summary {
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+}
+.lesson-readiness .detail-grid,
+.financial-setup .detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+  gap: 1rem;
+  margin: 1rem 0;
+}
+.lesson-readiness dd,
+.financial-setup dd {
+  margin: 0.25rem 0 0;
+  overflow-wrap: anywhere;
+}
+.lesson-readiness dt,
+.financial-setup dt {
+  font-weight: 600;
+}
+.readiness-signals {
+  flex-basis: 100%;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink, #17211d);
+}
+.lesson-readiness .form-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.financial-setup {
+  margin-bottom: 1rem;
+}
+.financial-setup > .section {
+  padding: clamp(16px, 2vw, 24px);
+}
+.operational-counts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.5rem;
+  padding: 1rem;
+}
+.operational-counts a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+.communication-card {
+  padding: 1rem 0;
+  border-bottom: 1px solid var(--line, #d8dfda);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+.communication-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.6;
+}
+.automation-rule-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+  gap: 1rem;
+}
+.automation-rule-grid dl {
+  margin: 0;
+}
+.automation-rule-grid dt {
+  font-weight: 650;
+  margin-top: 0.75rem;
+}
+.automation-rule-grid dd {
+  margin: 0.25rem 0;
+}
+.automation-rule-card > .action-row {
+  flex-wrap: wrap;
+  min-height: 44px;
+  gap: 0.5rem;
+}
+.automation-rule-card h3 {
+  margin: 0;
+}
+.communication-card > .action-row {
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.communication-card > .action-row > strong {
+  flex: 1 1 12rem;
+  min-width: 0;
+  white-space: normal;
+}
+.communication-card > .action-row > .status {
+  flex: 0 0 auto;
+}
+.student-record-page .table-list > .household-contact-row {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 0.5rem;
+}
+.student-record-page .household-contact-row > div {
+  grid-column: 2;
+  min-width: 0;
+}
+.student-record-page .household-contact-row > div > strong,
+.student-record-page .household-contact-row > div > small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.student-record-page .household-contact-row > .status,
+.student-record-page .household-contact-row > .household-contact-actions {
+  grid-column: 2;
+  justify-self: start;
+  max-width: 100%;
+}
+.student-record-page .household-contact-row > .household-contact-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+.household-contact-actions > button,
+.household-contact-actions > a {
+  min-height: 44px;
+}
+@media (max-width: 700px) {
+  .today-lesson-row > .status {
+    grid-column: 2;
+    grid-row: auto;
+    margin-top: 0;
+  }
+}
+/* Expanded operational coverage exposed these existing coach-route contrast defects. */
+.today-lesson-row .status.good {
+  color: #2b6042;
+  font-size: 12px;
+}
+.today-lesson-row .row-actions > button:last-child {
+  color: #17211d;
+  background: #c99a45;
+}
+.activity-bell > span {
+  background: #9b3146;
+}
+.student-record-page .status.good {
+  color: #2b6042;
+  font-size: 12px;
+}
+.student-record-page .record-tabs > a.active {
+  color: #fff;
+}
+.student-record-page .primary-button {
+  color: #17211d;
+  background: #c99a45;
+}
+.student-record-page .action-row > button.primary-button {
+  color: #17211d;
+}

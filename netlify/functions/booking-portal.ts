@@ -1,3 +1,4 @@
+import { portalOrigin } from "./_shared/portal-url";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
@@ -20,7 +21,7 @@ export default async (request: Request, context: Context) => {
       if (!financeAllowed) throw new Error("FORBIDDEN");
       const {data:student,error:studentError}=await userDb.from("students").select("id,studio_id,email,guardian_email,stripe_customer_id").eq("id",body.studentId).single();if(studentError||!student)throw new Error("FORBIDDEN");const stripeKey=Netlify.env.get("STRIPE_SECRET_KEY");if(!stripeKey)throw new Error("Stripe is not configured.");const stripe=new Stripe(stripeKey,{apiVersion:"2026-07-29.dahlia"});let customerId=student.stripe_customer_id as string|undefined;
       if(!customerId){const customer=await stripe.customers.create({email:student.guardian_email||student.email||undefined,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:`student-customer:${student.id}`});customerId=customer.id;const {error:updateError}=await serviceClient().from("students").update({stripe_customer_id:customerId,updated_at:new Date().toISOString()}).eq("id",student.id);if(updateError)throw updateError;}
-      const origin=new URL(request.url).origin;
+      const origin=portalOrigin();
       if(action==="payment-method"){const session=await stripe.checkout.sessions.create({mode:"setup",customer:customerId,client_reference_id:student.id,success_url:`${origin}/portal/settings?payment=updated`,cancel_url:`${origin}/portal/settings?payment=cancelled`,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:request.headers.get("idempotency-key")||`setup:${student.id}:${Math.floor(Date.now()/30000)}`});if(!session.url)throw new Error("Stripe did not return a setup URL.");return json({url:session.url});}
       const session=await stripe.billingPortal.sessions.create({customer:customerId,return_url:`${origin}/portal/settings`});return json({url:session.url});
     }

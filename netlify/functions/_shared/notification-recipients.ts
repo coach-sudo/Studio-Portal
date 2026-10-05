@@ -1,31 +1,161 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { createHash } from "node:crypto";
+import type { Database } from "../../../src/types/database.generated";
+import type {
+  LinkedContact,
+  NotificationPreferences,
+  Student,
+} from "../../../src/domain/model";
+import {
+  resolveNotificationRecipients as resolvePolicy,
+  type RecipientIntent,
+} from "../../../src/domain/notificationRecipients";
 
-export type NotificationCategory = "lessonReminders" | "scheduleChanges" | "lessonContent" | "assignments" | "packageBalance" | "payments" | "accountAccess";
+export type NotificationCategory = keyof NotificationPreferences;
 
-const enabled = (preferences: Record<string, unknown> | null | undefined, category: NotificationCategory, fallback = true) =>
-  typeof preferences?.[category] === "boolean" ? Boolean(preferences[category]) : fallback;
+export async function notificationRecipientContext(
+  client: SupabaseClient,
+  studentId: string,
+) {
+  const db = client as SupabaseClient<Database>;
+  const [
+    { data: row, error: studentError },
+    { data: contacts, error: contactError },
+  ] = await Promise.all([
+    db.from("students").select("*").eq("id", studentId).single(),
+    db.from("linked_contacts").select("*").eq("student_id", studentId),
+  ]);
+  if (studentError) throw studentError;
+  if (contactError) throw contactError;
+  const preferences = (value: unknown) =>
+    value as NotificationPreferences | undefined;
+  const student: Student = {
+    id: row.id,
+    studioId: row.studio_id,
+    fullName: row.full_name,
+    email: row.email ?? undefined,
+    isMinor: row.is_minor,
+    status: row.status,
+    portalEnabled: row.portal_enabled,
+    actorPageEligible: row.actor_page_eligible,
+    notificationPreferences: preferences(row.notification_preferences),
+    version: row.version,
+    updatedAt: row.updated_at,
+  };
+  const linked: LinkedContact[] = (contacts ?? []).map((contact) => ({
+    id: contact.id,
+    studentId: contact.student_id,
+    studioId: contact.studio_id,
+    fullName: contact.full_name,
+    email: contact.email,
+    relationshipType:
+      contact.relationship_type as LinkedContact["relationshipType"],
+    portalEnabled: contact.portal_enabled,
+    canViewFinance: contact.can_view_finance,
+    canViewWork: contact.can_view_work,
+    canViewSchedule: contact.can_view_schedule,
+    canManageLessons: contact.can_manage_lessons,
+    canManageProfile: contact.can_manage_profile,
+    canReceiveNotifications: contact.can_receive_notifications,
+    isPrimaryPayer: contact.is_primary_payer,
+    isPrimarySchedulingContact: contact.is_primary_scheduling_contact,
+    receivesFinancialEscalations: contact.receives_financial_escalations,
+    notificationPreferences:
+      preferences(contact.notification_preferences) ??
+      ({} as NotificationPreferences),
+    version: contact.version,
+    updatedAt: contact.updated_at,
+  }));
+  return { student, contacts: linked };
+}
 
+export async function resolveEventRecipients(
+  db: SupabaseClient,
+  studentId: string,
+  intent: RecipientIntent,
+  options: { mandatory?: boolean } = {},
+) {
+  const context = await notificationRecipientContext(db, studentId);
+  const resolution = resolvePolicy(
+    context.student,
+    context.contacts,
+    intent,
+    options,
+  );
+  // Record *why* a compatible producer could not reach the payer (or excluded a contact),
+  // even when it generated zero outbox rows. This is the same decision boundary at dispatch.
+  if (resolution.suppressed.length || resolution.unresolved.length) {
+    const key =
+      intent === "lesson_confirmation" ? "booking_confirmation" : intent;
+    const client = db as SupabaseClient<Database>;
+    const rule = await client
+      .from("automation_rules")
+      .select("id,mode")
+      .eq("studio_id", context.student.studioId)
+      .eq("rule_key", key)
+      .maybeSingle();
+    if (rule.error) throw rule.error;
+    if (rule.data) {
+      const decisionKey = createHash("sha256")
+        .update(
+          JSON.stringify({ rule: rule.data.id, studentId, intent, resolution }),
+        )
+        .digest("hex");
+      const recorded = await client.from("automation_runs").upsert(
+        {
+          studio_id: context.student.studioId,
+          rule_id: rule.data.id,
+          entity_type: "student",
+          entity_id: studentId,
+          result: resolution.recipients.length ? "not_due" : "unresolved",
+          explanation: resolution.recipients.length
+            ? "Recipient policy selected permitted recipients and excluded ineligible contacts."
+            : "No eligible recipient was resolved; review payer responsibility, permissions and notification preferences.",
+          suppressed_reason: resolution.recipients.length
+            ? null
+            : "recipient_unresolved",
+          correlation_id: crypto.randomUUID(),
+          outbox_ids: [],
+          decision: {
+            trigger: intent,
+            mode: rule.data.mode,
+            recipients: resolution.recipients.map((recipient) => ({
+              ...recipient,
+            })),
+            suppressedRecipients: resolution.suppressed,
+            unresolvedRecipients: resolution.unresolved,
+          },
+          decision_key: `recipient:${decisionKey}`,
+        },
+        { onConflict: "decision_key", ignoreDuplicates: true },
+      );
+      if (recorded.error) throw recorded.error;
+    }
+  }
+  return resolution;
+}
+
+/** Category compatibility for existing producers, using the same permissions/payer policy. */
 export async function resolveNotificationRecipients(
   db: SupabaseClient,
   studentId: string,
   category: NotificationCategory,
   options: { mandatory?: boolean; financeOnly?: boolean } = {},
 ) {
-  const [{ data: student, error: studentError }, { data: contacts, error: contactError }] = await Promise.all([
-    db.from("students").select("email,is_minor,notification_preferences").eq("id", studentId).single(),
-    db.from("linked_contacts").select("email,can_view_finance,can_receive_notifications,notification_preferences").eq("student_id", studentId).eq("portal_enabled", true),
-  ]);
-  if (studentError) throw studentError;
-  if (contactError) throw contactError;
-  const recipients = new Set<string>();
-  const studentMayReceiveFinance = !student.is_minor;
-  if (student.email && (!options.financeOnly || studentMayReceiveFinance) && (options.mandatory || enabled(student.notification_preferences, category)))
-    recipients.add(String(student.email).trim().toLowerCase());
-  for (const contact of contacts || []) {
-    if (!contact.email || !contact.can_receive_notifications) continue;
-    if (options.financeOnly && !contact.can_view_finance) continue;
-    if (options.mandatory || enabled(contact.notification_preferences, category))
-      recipients.add(String(contact.email).trim().toLowerCase());
-  }
-  return [...recipients];
+  const intents: Record<NotificationCategory, RecipientIntent> = {
+    lessonReminders: "lesson_reminder",
+    scheduleChanges: "schedule_change",
+    lessonContent: "lesson_content",
+    assignments: "assignment",
+    packageBalance: "package_low",
+    payments: "payment_due",
+    accountAccess: "account_access",
+  };
+  const resolution = await resolveEventRecipients(
+    db,
+    studentId,
+    intents[category],
+    options,
+  );
+  return resolution.recipients.map((recipient) => recipient.email);
 }

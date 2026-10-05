@@ -5,6 +5,7 @@ export type FixtureRole =
   "coach" | "student" | "guardian" | "unrelated" | "signout";
 
 export interface E2ERuntime {
+  ruleSnapshots?: import("../../src/types/database.generated").Tables<"automation_rules">[];
   runId: string;
   baseURL: string;
   fixtureReady: boolean;

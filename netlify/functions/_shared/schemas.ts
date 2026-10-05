@@ -16,6 +16,23 @@ export type CommandInput = z.infer<typeof commandSchema>;
 const uuid = z.string().uuid();
 const dateTime = z.string().datetime();
 const commandPayloadSchemas = {
+  "students:save_linked_contact": z
+    .object({
+      contactId: uuid.optional(),
+      fullName: z.string().trim().min(2).max(120),
+      email: z.string().trim().email(),
+      isPrimaryPayer: z.boolean().optional(),
+      isPrimarySchedulingContact: z.boolean().optional(),
+      receivesFinancialEscalations: z.boolean().optional(),
+      canViewFinance: z.boolean().optional(),
+      canViewWork: z.boolean().optional(),
+      canViewSchedule: z.boolean().optional(),
+      canManageLessons: z.boolean().optional(),
+      canManageProfile: z.boolean().optional(),
+      canReceiveNotifications: z.boolean().optional(),
+      portalEnabled: z.boolean().optional(),
+    })
+    .passthrough(),
   "students:create": z
     .object({
       fullName: z.string().trim().min(2).max(120),

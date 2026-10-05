@@ -99,7 +99,12 @@ export async function googleAccessToken() {
 }
 export async function sendGmail(
   token: string,
-  message: { recipient: string; subject: string; body: string },
+  message: {
+    recipient: string;
+    subject: string;
+    body: string;
+    html_body?: string | null;
+  },
 ) {
   const clean = (value: string) =>
     value
@@ -116,8 +121,21 @@ export async function sendGmail(
     .toString("base64")
     .replace(/.{1,76}/g, "$&\r\n")
     .trim();
+  // New branded mail keeps an independent text alternative. Legacy plain-text mail is unchanged.
+  const boundary = `coachd_${crypto.randomUUID().replaceAll("-", "")}`;
+  const encodedHtml =
+    message.html_body &&
+    Buffer.from(clean(message.html_body), "utf8")
+      .toString("base64")
+      .replace(/.{1,76}/g, "$&\r\n")
+      .trim();
+  const content = encodedHtml
+    ? `Content-Type: multipart/alternative; boundary="${boundary}"\r\n\r\n--${boundary}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${encodedBody}\r\n--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${encodedHtml}\r\n--${boundary}--`
+    : `Content-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${encodedBody}`;
+  if (/[\r\n]/.test(message.recipient))
+    throw new Error("VALIDATION_FAILED: Invalid email recipient.");
   const raw = Buffer.from(
-    `MIME-Version: 1.0\r\nTo: ${message.recipient}\r\nSubject: ${subject}\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n${encodedBody}`,
+    `MIME-Version: 1.0\r\nTo: ${message.recipient}\r\nSubject: ${subject}\r\n${content}`,
   ).toString("base64url");
   const response = await fetch(
     "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",

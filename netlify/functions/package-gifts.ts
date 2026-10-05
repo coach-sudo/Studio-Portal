@@ -6,6 +6,7 @@ import { packageGiftCommandSchema } from "./_shared/schemas";
 import { serviceClient } from "./_shared/supabase";
 import { provisionPortalAccount } from "./_shared/portal-access";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
+import { portalOrigin } from "./_shared/portal-url";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -112,7 +113,7 @@ export default async (request: Request, context: Context) => {
       )
         throw new Error("SERVICE_NOT_FOUND");
       const token = randomBytes(32).toString("base64url"),
-        origin = Netlify.env.get("URL") || new URL(request.url).origin,
+        origin = portalOrigin(),
         expiresAt = new Date(Date.now() + 90 * 86_400_000).toISOString();
       const { data: gift, error: giftError } = await db
         .from("package_gifts")

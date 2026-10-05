@@ -250,13 +250,11 @@ export default async (request: Request, context: Context) => {
           service,
           booking.id,
           token,
-          new URL(request.url).origin,
         );
         try {
           await ensureBookingPortalAccess(
             service,
             booking.id,
-            new URL(request.url).origin,
           );
         } catch (inviteError) {
           await service.from("recommendations").upsert(

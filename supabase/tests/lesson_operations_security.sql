@@ -1,0 +1,50 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(29);
+select has_column('public','linked_contacts','is_primary_payer','Primary payer responsibility is additive');
+select has_column('public','linked_contacts','is_primary_scheduling_contact','Scheduling responsibility is additive');
+select has_column('public','linked_contacts','receives_financial_escalations','Escalation responsibility is additive');
+select ok((select relrowsecurity from pg_class where oid='public.automation_rules'::regclass),'Rules have RLS');
+select ok((select relrowsecurity from pg_class where oid='public.automation_runs'::regclass),'Runs have RLS');
+select ok(not has_table_privilege('anon','public.automation_rules','SELECT'),'Anonymous users cannot read rules');
+select ok(not has_table_privilege('anon','public.automation_runs','SELECT'),'Anonymous users cannot read automation history');
+select ok(not has_table_privilege('authenticated','public.automation_rules','UPDATE'),'Rule writes require the validated coach API');
+select ok(not has_table_privilege('authenticated','public.automation_runs','INSERT'),'Portal users cannot forge run history');
+select ok(has_table_privilege('service_role','public.automation_rules','INSERT'),'Privileged worker can manage rules');
+select ok(has_table_privilege('service_role','public.automation_runs','INSERT'),'Privileged worker can record decisions');
+select ok(not has_function_privilege('anon','public.suppress_obsolete_lesson_automation()','EXECUTE'),'Anonymous users cannot invoke the suppression trigger function');
+select ok(not has_function_privilege('authenticated','public.suppress_resolved_booking_automation()','EXECUTE'),'Booking suppression is not a client RPC');
+select ok((select indisunique and indpred is not null from pg_index where indexrelid='public.linked_contacts_one_primary_payer'::regclass),'Primary payer uniqueness is partial');
+select ok((select indisunique and indpred is not null from pg_index where indexrelid='public.linked_contacts_one_primary_scheduler'::regclass),'Primary scheduler uniqueness is partial');
+select has_column('public','outbox_messages','suppression_reason','Canceled queue history keeps the reason');
+insert into public.studios(id,name,slug) values('61000000-0000-4000-8000-000000000001','Operational SQL fixture','e2e-operational-sql');
+select is((select count(*) from public.automation_rules where studio_id='61000000-0000-4000-8000-000000000001'),10::bigint,'New studios receive all ten constrained rules');
+select is((select count(*) from public.automation_rules where studio_id='61000000-0000-4000-8000-000000000001' and mode='off'),5::bigint,'New PAYG/forecast/coach alert families start off');
+select ok(not has_function_privilege('anon','public.seed_studio_automation_rules(uuid)','EXECUTE'),'Anonymous cannot initialize rules across studios');
+insert into public.students(id,studio_id,full_name,is_minor) values('62000000-0000-4000-8000-000000000001','61000000-0000-4000-8000-000000000001','Minor fixture',true);
+insert into public.linked_contacts(id,studio_id,student_id,full_name,email,is_primary_payer,is_primary_scheduling_contact,can_view_finance,can_view_work)
+values('63000000-0000-4000-8000-000000000001','61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','Payer','e2e-payer@example.test',true,true,true,false);
+select throws_ok($$insert into public.linked_contacts(studio_id,student_id,full_name,email,is_primary_payer) values('61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','Second payer','e2e-second@example.test',true)$$,'23505',null,'A second primary payer is rejected atomically');
+select throws_ok($$insert into public.linked_contacts(studio_id,student_id,full_name,email,is_primary_scheduling_contact) values('61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','Second scheduler','e2e-second@example.test',true)$$,'23505',null,'A second primary scheduler is rejected atomically');
+select is((select can_view_work from public.linked_contacts where id='63000000-0000-4000-8000-000000000001'),false,'Payer responsibility does not grant private work access');
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,payment_status)
+values('64000000-0000-4000-8000-000000000001','61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','Operational fixture',now()+interval '1 day',now()+interval '1 day 1 hour','scheduled','virtual','Meet','due');
+insert into public.outbox_messages(id,studio_id,student_id,lesson_id,channel,recipient,subject,body,status,recipient_intent,dedupe_key)
+values('65000000-0000-4000-8000-000000000001','61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','64000000-0000-4000-8000-000000000001','email','e2e-payer@example.test','Payment','Payment due','queued','payment_due','e2e-operational-payment');
+update public.lessons set payment_status='paid' where id='64000000-0000-4000-8000-000000000001';
+select is((select status::text from public.outbox_messages where id='65000000-0000-4000-8000-000000000001'),'cancelled','Authoritative payment resolution cancels queued billing');
+select is((select suppression_reason from public.outbox_messages where id='65000000-0000-4000-8000-000000000001'),'financial_condition_resolved','Payment suppression retains explanation');
+insert into public.outbox_messages(id,studio_id,student_id,lesson_id,channel,recipient,subject,body,status,recipient_intent,dedupe_key)
+values('65000000-0000-4000-8000-000000000002','61000000-0000-4000-8000-000000000001','62000000-0000-4000-8000-000000000001','64000000-0000-4000-8000-000000000001','email','e2e-payer@example.test','Reminder','Lesson reminder','queued','lesson_reminder','e2e-operational-reminder');
+update public.lessons set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day' where id='64000000-0000-4000-8000-000000000001';
+select is((select suppression_reason from public.outbox_messages where id='65000000-0000-4000-8000-000000000002'),'lesson_rescheduled','Rescheduling cancels obsolete reminder timing');
+update public.outbox_messages set status='queued' where id='65000000-0000-4000-8000-000000000002';
+update public.lessons set status='cancelled' where id='64000000-0000-4000-8000-000000000001';
+select is((select suppression_reason from public.outbox_messages where id='65000000-0000-4000-8000-000000000002'),'lesson_cancelled','Cancellation cancels stale reminder');
+select is((select count(*) from public.outbox_messages where student_id='62000000-0000-4000-8000-000000000001'),2::bigint,'Suppression never deletes history');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000099',true);
+select is((select count(*) from public.automation_rules),0::bigint,'Unrelated portal identity sees no rules');
+select is((select count(*) from public.automation_runs),0::bigint,'Unrelated portal identity sees no decisions');
+select * from finish();
+rollback;

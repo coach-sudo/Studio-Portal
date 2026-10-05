@@ -3,6 +3,7 @@ import { z } from "zod";
 import { unknownCampaignTokens } from "../../src/domain/campaignTemplates";
 import { apiError, json } from "./_shared/http";
 import { serviceClient, userClient } from "./_shared/supabase";
+import { portalOrigin } from "./_shared/portal-url";
 
 const sendSchema = z.object({
   idempotencyKey: z.string().uuid(),
@@ -62,9 +63,7 @@ export default async (request: Request) => {
       throw new Error(
         `VALIDATION_FAILED: Unknown template field${unknown.length === 1 ? "" : "s"}: ${unknown.join(", ")}.`,
       );
-    const baseUrl = (
-      Netlify.env.get("URL") || new URL(request.url).origin
-    ).replace(/\/$/, "");
+    const baseUrl = portalOrigin();
     if (!baseUrl.startsWith("https://"))
       throw new Error(
         "VALIDATION_FAILED: Secure site URL is required for unsubscribe links.",

@@ -98,7 +98,11 @@ export default async function globalSetup(config: FullConfig) {
           "content-type": "application/json",
           "x-e2e-fixture-token": token,
         },
-        body: JSON.stringify({ action: "cleanup", runId: runtime.runId }),
+        body: JSON.stringify({
+          action: "cleanup",
+          runId: runtime.runId,
+          ruleSnapshots: runtime.ruleSnapshots,
+        }),
       });
     } catch {
       // The primary setup error below remains the actionable blocked reason.

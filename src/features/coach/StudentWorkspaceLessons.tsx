@@ -21,6 +21,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { LessonReadinessPanel } from "./LessonReadinessPanel";
 import {
   checkSchedulingConflicts,
   studioCommand,
@@ -468,6 +469,7 @@ export function CoachLessonHub({
             </strong>
           </div>
         </section>
+        <LessonReadinessPanel lesson={lesson} data={data} />
         <details className="lesson-admin-disclosure">
           <summary>Payment, credits &amp; lesson administration</summary>
           <div className="lesson-admin-summary">

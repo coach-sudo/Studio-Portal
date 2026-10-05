@@ -1,4 +1,4 @@
-import { json } from "../_shared/http";
+import { AppError, json } from "../_shared/http";
 import { dispatchOutbox } from "../_shared/outbox-dispatch";
 import { provisionPortalAccount } from "../_shared/portal-access";
 import { mapStudentChanges } from "../_shared/student-updates";
@@ -204,6 +204,21 @@ export async function handleStudentsCommands(
       can_view_work: input.payload.canViewWork !== false,
       can_manage_profile: Boolean(input.payload.canManageProfile),
       can_view_finance: Boolean(input.payload.canViewFinance),
+      ...(input.payload.isPrimaryPayer === undefined
+        ? {}
+        : { is_primary_payer: input.payload.isPrimaryPayer === true }),
+      ...(input.payload.isPrimarySchedulingContact === undefined
+        ? {}
+        : {
+            is_primary_scheduling_contact:
+              input.payload.isPrimarySchedulingContact === true,
+          }),
+      ...(input.payload.receivesFinancialEscalations === undefined
+        ? {}
+        : {
+            receives_financial_escalations:
+              input.payload.receivesFinancialEscalations === true,
+          }),
       can_receive_notifications:
         input.payload.canReceiveNotifications !== false,
       notification_preferences: input.payload.notificationPreferences || {},
@@ -243,6 +258,26 @@ export async function handleStudentsCommands(
       if (found.data) {
         before = found.data;
         contactId = found.data.id;
+      }
+    }
+    for (const field of [
+      "is_primary_payer",
+      "is_primary_scheduling_contact",
+    ] as const) {
+      if (values[field]) {
+        let check = service
+          .from("linked_contacts")
+          .select("id")
+          .eq("student_id", student.id)
+          .eq(field, true);
+        if (contactId) check = check.neq("id", contactId);
+        const existingPrimary = await check.maybeSingle();
+        if (existingPrimary.error) throw existingPrimary.error;
+        if (existingPrimary.data)
+          throw new AppError("VALIDATION_FAILED", {
+            status: 422,
+            message: `Another contact is already the ${field === "is_primary_payer" ? "primary payer" : "primary scheduling contact"}. Remove that assignment before choosing a different person.`,
+          });
       }
     }
     const query = contactId
