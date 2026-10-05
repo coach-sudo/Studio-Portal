@@ -1,9 +1,8 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Dialog, Section, Status } from "../../components/Primitives";
+import { Dialog, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import {
-  automationRuleKeys,
   automationRuleLabels,
   type AutomationRuleKey,
   type AutomationRule,
@@ -12,59 +11,12 @@ import type { StudioSnapshot } from "../../domain/model";
 import type { Tables } from "../../types/database.generated";
 import { supabase } from "../../lib/supabase";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
+import { demoRules } from "./automation/demoRules";
+import { AutomationRuleCard } from "./automation/AutomationRuleCard";
+import { AutomationRuleEditor } from "./automation/AutomationRuleEditor";
 import "./operational-intelligence.css";
 
 type Rule = Tables<"automation_rules">;
-function demoRules(data: StudioSnapshot): Rule[] {
-  return automationRuleKeys.map((key) => ({
-    id: `demo-${key}`,
-    studio_id: data.studioId,
-    rule_key: key,
-    enabled:
-      [
-        "booking_confirmation",
-        "lesson_reminder",
-        "payment_failed",
-        "package_low",
-        "package_expiration",
-      ].includes(key) && data.settings.emailAutomations.enabled,
-    mode:
-      [
-        "booking_confirmation",
-        "lesson_reminder",
-        "payment_failed",
-        "package_low",
-        "package_expiration",
-      ].includes(key) && data.settings.emailAutomations.enabled
-        ? "automatic"
-        : "off",
-    trigger: key.startsWith("package_") ? "package_state" : "lesson_state",
-    audience: ["missing_financial_setup", "delivery_failure"].includes(key)
-      ? "coach"
-      : key === "booking_confirmation"
-        ? "lesson_confirmation"
-        : key,
-    conditions: { scheduledOnly: true },
-    timing: {
-      hoursBefore: data.settings.reminderHours,
-      daysBefore: 30,
-      lowThreshold: 1,
-    },
-    suppressions: [
-      "Payment resolved",
-      "Lesson cancelled/rescheduled",
-      "Preference disabled",
-      "Permission removed",
-      "Duplicate",
-    ],
-    escalation: { coach: false },
-    template: {},
-    priority: 60,
-    version: 1,
-    created_at: "",
-    updated_at: "",
-  }));
-}
 export function AutomationSettings({
   data,
   isDemo,
@@ -313,199 +265,32 @@ export function AutomationSettings({
         <p role="status">Loading rules…</p>
       ) : (
         <div className="automation-rule-grid">
-          {(isDemo ? local : (rules.data ?? [])).map((rule) => {
-            const timing = rule.timing as AutomationRule["timing"],
-              last = runs.data?.find((run) => run.rule_id === rule.id);
-            return (
-              <article key={rule.id} className="communication-card">
-                <div className="action-row">
-                  <h3>
-                    {automationRuleLabels[rule.rule_key as AutomationRuleKey]}
-                  </h3>
-                  <Status>{rule.mode.replaceAll("_", " ")}</Status>
-                </div>
-                <dl>
-                  <dt>When</dt>
-                  <dd>
-                    {rule.trigger.replaceAll("_", " ")}
-                    {timing.hoursBefore?.length
-                      ? ` · ${timing.hoursBefore.join(", ")} hours before lesson`
-                      : ""}
-                    {rule.rule_key === "package_expiration"
-                      ? ` · within ${timing.daysBefore ?? 30} days`
-                      : ""}
-                  </dd>
-                  <dt>Send to</dt>
-                  <dd>
-                    {rule.audience === "coach"
-                      ? "Coach"
-                      : "Eligible recipients only: scheduling contacts for lesson updates; primary payer for finance. Minors never receive billing reminders."}
-                  </dd>
-                  <dt>Only if</dt>
-                  <dd>
-                    The authoritative lesson, booking or package condition still
-                    holds.
-                  </dd>
-                  <dt>Stop when</dt>
-                  <dd>
-                    Paid, covered by credits, waived, cancelled, rescheduled,
-                    renewed, preferences disabled, permission removed, or a
-                    duplicate exists.
-                  </dd>
-                  <dt>Escalation</dt>
-                  <dd>
-                    {(rule.escalation as AutomationRule["escalation"]).coach
-                      ? "Coach alert at configured threshold"
-                      : "None"}
-                  </dd>
-                  <dt>Recent run</dt>
-                  <dd>
-                    {last
-                      ? `${last.result}: ${last.explanation}`
-                      : "No recent evaluation"}
-                  </dd>
-                </dl>
-                <div className="action-row">
-                  <button type="button" onClick={() => setEdit(rule)}>
-                    Edit{" "}
-                    {automationRuleLabels[rule.rule_key as AutomationRuleKey]}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setTesting(rule);
-                      setEntityId("");
-                      setPreview("");
-                    }}
-                  >
-                    Preview / test rule
-                  </button>
-                </div>
-              </article>
-            );
-          })}
+          {(isDemo ? local : (rules.data ?? [])).map((rule) => (
+            <AutomationRuleCard
+              key={rule.id}
+              rule={rule}
+              last={runs.data?.find((run) => run.rule_id === rule.id)}
+              onEdit={() => {
+                setNotice("");
+                setEdit(rule);
+              }}
+              onPreview={() => {
+                setTesting(rule);
+                setEntityId("");
+                setPreview("");
+              }}
+            />
+          ))}
         </div>
       )}
       {edit && (
-        <Dialog
-          title={`Edit ${automationRuleLabels[edit.rule_key as AutomationRuleKey]}`}
+        <AutomationRuleEditor
+          edit={edit}
+          busy={busy}
+          notice={notice}
           onClose={() => setEdit(undefined)}
-        >
-          <form
-            className="settings-form"
-            onSubmit={(event) => void save(event)}
-          >
-            <label>
-              Mode
-              <select name="mode" defaultValue={edit.mode}>
-                <option value="off">Off</option>
-                <option value="draft">Draft</option>
-                <option value="automatic">Automatic</option>
-                <option value="automatic_with_escalation">
-                  Automatic with coach escalation
-                </option>
-              </select>
-            </label>
-            <label>
-              Hours before lesson (comma-separated)
-              <input
-                name="hours"
-                defaultValue={
-                  (edit.timing as AutomationRule["timing"]).hoursBefore?.join(
-                    ", ",
-                  ) ?? "24, 2"
-                }
-              />
-            </label>
-            <label>
-              Expiration warning days
-              <input
-                name="days"
-                type="number"
-                min="1"
-                max="365"
-                defaultValue={
-                  (edit.timing as AutomationRule["timing"]).daysBefore ?? 30
-                }
-              />
-            </label>
-            <label>
-              Low credit threshold
-              <input
-                name="threshold"
-                type="number"
-                min="0"
-                max="100"
-                defaultValue={
-                  (edit.timing as AutomationRule["timing"]).lowThreshold ?? 1
-                }
-              />
-            </label>
-            <label>
-              Coach escalation
-              <input
-                name="coach"
-                type="checkbox"
-                defaultChecked={
-                  (edit.escalation as AutomationRule["escalation"]).coach ??
-                  false
-                }
-              />
-            </label>
-            <label>
-              Escalate hours before lesson
-              <input
-                name="escalationHours"
-                type="number"
-                min="0.1"
-                step="0.1"
-                max="8760"
-                defaultValue={
-                  (edit.escalation as AutomationRule["escalation"])
-                    .hoursBefore ?? 1
-                }
-              />
-            </label>
-            <label>
-              Subject (blank uses existing/default content)
-              <input
-                name="subject"
-                maxLength={200}
-                defaultValue={
-                  (edit.template as AutomationRule["template"]).subject ?? ""
-                }
-              />
-            </label>
-            <label className="full">
-              Message
-              <textarea
-                name="body"
-                maxLength={6000}
-                rows={5}
-                defaultValue={
-                  (edit.template as AutomationRule["template"]).body ?? ""
-                }
-              />
-            </label>
-            <label>
-              Primary button label
-              <input
-                name="cta"
-                maxLength={60}
-                defaultValue={
-                  (edit.template as AutomationRule["template"]).ctaLabel ?? ""
-                }
-              />
-            </label>
-            <p className="full">
-              Recipients, canonical destination and mandatory suppressions
-              cannot be bypassed by template edits. Meet links are not included.
-            </p>
-            <button disabled={busy} type="submit">
-              {busy ? "Saving…" : "Save rule"}
-            </button>
-          </form>
-        </Dialog>
+          onSave={(event) => void save(event)}
+        />
       )}
       {testing && (
         <Dialog

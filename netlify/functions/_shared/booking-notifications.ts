@@ -11,6 +11,7 @@ import {
   queuePresentedMessages,
 } from "./outbox-queue";
 import { portalActionUrl, portalOrigin } from "./portal-url";
+import { resolveBookingGuestRecipients } from "../../../src/domain/bookingGuestRecipients";
 
 export async function queueBookingEmails(
   client: SupabaseClient,
@@ -91,13 +92,10 @@ export async function queueBookingEmails(
           { mandatory: true },
         )
       ).recipients.map((item) => item.email)
-    : [
-        ...new Set(
-          [booking.guest_email, booking.guardian_email]
-            .filter((email): email is string => Boolean(email))
-            .map((email) => email.trim().toLowerCase()),
-        ),
-      ];
+    : resolveBookingGuestRecipients(
+        booking,
+        "lesson_confirmation",
+      ).recipients.map((item) => item.email);
   const reminderRecipients = booking.student_id
     ? (
         await resolveEventRecipients(

@@ -28,6 +28,12 @@
 .financial-setup dt {
   font-weight: 600;
 }
+.readiness-signals {
+  flex-basis: 100%;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink, #17211d);
+}
 .lesson-readiness .form-actions {
   display: flex;
   flex-wrap: wrap;

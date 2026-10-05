@@ -62,6 +62,11 @@ export function LessonReadinessPanel({
             ? ` · ${formatMoney(financial.amountDueMinor, data.settings.currency)} due`
             : ""}
         </span>
+        <span className="readiness-signals">
+          Preparation {prepared ? "ready" : "pending"} · Reminder{" "}
+          {readiness.communication.reminderState.replaceAll("_", " ")} · Meeting{" "}
+          {readiness.logistics.meetingReady ? "ready" : "pending"}
+        </span>
       </summary>
       <dl className="detail-grid">
         <div>
@@ -104,7 +109,9 @@ export function LessonReadinessPanel({
           <dd>
             {readiness.logistics.calendarReady === "unknown"
               ? "Calendar status not verified"
-              : "Calendar ready"}{" "}
+              : readiness.logistics.calendarReady
+                ? "Calendar ready"
+                : "Calendar pending"}{" "}
             ·{" "}
             {readiness.logistics.meetingReady
               ? "Meeting ready"

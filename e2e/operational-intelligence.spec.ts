@@ -7,7 +7,25 @@ import {
   expectNoHorizontalOverflow,
 } from "./support/fixtures";
 import type { Page } from "@playwright/test";
+import type { Browser } from "@playwright/test";
 import type { E2ERuntime } from "./support/runtime";
+
+async function openOperationalCoach(browser: Browser, runtime: E2ERuntime) {
+  // The Today-only clock must not refresh/rotate a session shared by other parallel tests.
+  const context = await browser.newContext({
+    baseURL: runtime.baseURL,
+    bypassCSP: process.env.E2E_EPHEMERAL === "true",
+  });
+  const page = await context.newPage();
+  await page.goto("/login");
+  await page.getByLabel("Username").fill(runtime.accounts!.coach.username);
+  await page.getByLabel("Password").fill(runtime.accounts!.coach.password);
+  await Promise.all([
+    page.waitForURL(/\/(portal|coach)(?:\/|$)/),
+    page.getByRole("button", { name: "Sign in", exact: true }).click(),
+  ]);
+  return { context, page };
+}
 
 async function read(page: Page, table: string, filter: string) {
   const token = await accessToken(page);
@@ -63,7 +81,7 @@ test.describe("Stateful operational acceptance", () => {
   }, testInfo) => {
     requireFixtures(runtime);
     test.setTimeout(180000);
-    const coach = await openAs(browser, "coach"),
+    const coach = await openOperationalCoach(browser, runtime),
       page = coach.page,
       ids = runtime.ids!;
     await page.goto(`/coach/students/${ids.operationalStudent}/account`);
@@ -94,6 +112,7 @@ test.describe("Stateful operational acceptance", () => {
       const panel = page.getByTestId(`readiness-${ids.lessonDue}`);
       await panel.locator("summary").click();
       await expect(panel).toContainText("E2E Primary payer");
+      await page.clock.setFixedTime(Date.now());
     });
     await test.step("03 Minor never becomes the finance recipient", async () => {
       const outbox = await read(
@@ -451,7 +470,7 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
   runtime,
 }, testInfo) => {
   requireFixtures(runtime);
-  const { context, page } = await openAs(browser, "coach");
+  const { context, page } = await openOperationalCoach(browser, runtime);
   await page.setViewportSize({ width: 393, height: 851 });
   await page.goto(`/coach/students/${runtime.ids!.operationalStudent}/account`);
   const [lesson] = await read(
@@ -467,6 +486,9 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
     ["settings", "/coach/settings"],
   ]) {
     await page.goto(path);
+    await expect(page).toHaveURL(
+      new RegExp(`${path.replaceAll("/", "\\/")}(?:\\?|$)`),
+    );
     if (name === "settings")
       await page.getByRole("button", { name: /Email automations/ }).click();
     await expect(page.locator("main")).toBeVisible();
@@ -476,6 +498,7 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       path: testInfo.outputPath(`${name}-mobile.png`),
       fullPage: true,
     });
+    if (name === "today") await page.clock.setFixedTime(Date.now());
   }
   await context.close();
 });

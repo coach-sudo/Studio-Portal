@@ -8,6 +8,7 @@ import {
   queuePresentedMessages,
 } from "./outbox-queue";
 import { portalOrigin } from "./portal-url";
+import { resolveBookingGuestRecipients } from "../../../src/domain/bookingGuestRecipients";
 
 export async function queuePaymentFailedEmail(
   client: SupabaseClient,
@@ -38,10 +39,6 @@ export async function queuePaymentFailedEmail(
     compatibleRule(client, booking.studio_id, "payment_failed"),
   ]);
   if (studioError || serviceError) throw studioError || serviceError;
-  if (!booking.student_id)
-    throw new Error(
-      "VALIDATION_FAILED: A linked payer is required before sending a payment message.",
-    );
   const settings = studio!.settings as {
     emailAutomations?: typeof emailDefaults;
     coachName?: string;
@@ -51,12 +48,40 @@ export async function queuePaymentFailedEmail(
   const status = compatibleQueueStatus(rule, automation.enabled);
   if (!automation.enabled || !status || booking.payment_status !== "failed")
     return [];
-  const resolution = await resolveEventRecipients(
-    client,
-    booking.student_id,
-    "payment_failed",
-    { mandatory: true },
-  );
+  const resolution = booking.student_id
+    ? await resolveEventRecipients(
+        client,
+        booking.student_id,
+        "payment_failed",
+        { mandatory: true },
+      )
+    : resolveBookingGuestRecipients(booking, "payment_failed");
+  if (!resolution.recipients.length && rule) {
+    const recorded = await db
+      .from("automation_runs")
+      .upsert(
+        {
+          studio_id: booking.studio_id,
+          rule_id: rule.id,
+          entity_type: "booking",
+          entity_id: booking.id,
+          result: "unresolved",
+          explanation: "No permitted payer was resolved for this booking.",
+          suppressed_reason: "recipient_unresolved",
+          correlation_id: `booking:${booking.id}`,
+          outbox_ids: [],
+          decision: {
+            trigger: "payment_failed",
+            mode: rule.mode,
+            unresolvedRecipients: resolution.unresolved,
+            suppressedRecipients: resolution.suppressed,
+          },
+          decision_key: `guest-payer:${booking.id}:${rule.version}`,
+        },
+        { onConflict: "decision_key", ignoreDuplicates: true },
+      );
+    if (recorded.error) throw recorded.error;
+  }
   const values = {
     studioName: studio!.name,
     studentName: booking.guest_name,

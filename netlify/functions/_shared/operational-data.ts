@@ -11,6 +11,21 @@ import { emailDefaults } from "./email-templates";
 import { z } from "zod";
 import { AppError } from "./http";
 
+async function completeRows<T>(
+  page: (
+    start: number,
+    end: number,
+  ) => PromiseLike<{ data: T[] | null; error: unknown }>,
+) {
+  const data: T[] = [];
+  for (let start = 0; ; start += 500) {
+    const result = await page(start, start + 499);
+    if (result.error) throw result.error;
+    data.push(...(result.data ?? []));
+    if ((result.data?.length ?? 0) < 500) return { data, error: null };
+  }
+}
+
 // Server projection shares the pure evaluator; no browser client or demo snapshot is imported.
 export async function loadOperationalData(
   client: SupabaseClient,
@@ -22,24 +37,57 @@ export async function loadOperationalData(
   if (context.student.studioId !== studioId) throw AppError.forbidden();
   const results = await Promise.all([
     db.from("studios").select("settings,timezone").eq("id", studioId).single(),
-    db
-      .from("lessons")
-      .select("*")
-      .eq("studio_id", studioId)
-      .eq("student_id", studentId),
-    db
-      .from("bookings")
-      .select("*")
-      .eq("studio_id", studioId)
-      .eq("student_id", studentId),
-    db.from("lesson_participants").select("*").eq("student_id", studentId),
-    db.from("packages").select("*").eq("student_id", studentId),
-    db.from("package_definitions").select("*").eq("studio_id", studioId),
-    db
-      .from("student_pricing_rules")
-      .select("*")
-      .eq("studio_id", studioId)
-      .eq("student_id", studentId),
+    completeRows<Tables<"lessons">>((start, end) =>
+      db
+        .from("lessons")
+        .select("*")
+        .eq("studio_id", studioId)
+        .eq("student_id", studentId)
+        .order("id")
+        .range(start, end),
+    ),
+    completeRows<Tables<"bookings">>((start, end) =>
+      db
+        .from("bookings")
+        .select("*")
+        .eq("studio_id", studioId)
+        .eq("student_id", studentId)
+        .order("id")
+        .range(start, end),
+    ),
+    completeRows<Tables<"lesson_participants">>((start, end) =>
+      db
+        .from("lesson_participants")
+        .select("*")
+        .eq("student_id", studentId)
+        .order("id")
+        .range(start, end),
+    ),
+    completeRows<Tables<"packages">>((start, end) =>
+      db
+        .from("packages")
+        .select("*")
+        .eq("student_id", studentId)
+        .order("id")
+        .range(start, end),
+    ),
+    completeRows<Tables<"package_definitions">>((start, end) =>
+      db
+        .from("package_definitions")
+        .select("*")
+        .eq("studio_id", studioId)
+        .order("id")
+        .range(start, end),
+    ),
+    completeRows<Tables<"student_pricing_rules">>((start, end) =>
+      db
+        .from("student_pricing_rules")
+        .select("*")
+        .eq("studio_id", studioId)
+        .eq("student_id", studentId)
+        .order("id")
+        .range(start, end),
+    ),
     db
       .from("outbox_messages")
       .select("*")

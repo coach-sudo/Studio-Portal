@@ -109,6 +109,20 @@ export async function evaluateAndQueueRule(
           : []
         : resolution.recipients;
       for (const recipient of recipients) {
+        const contact =
+          "linkedContactId" in recipient
+            ? data.linkedContacts.find(
+                (item) => item.id === recipient.linkedContactId,
+              )
+            : undefined;
+        const greetingName =
+          contact?.fullName ||
+          (rule.audience === "coach" || stage.coachEscalation
+            ? settings.coachName || "Coach"
+            : data.students[0].preferredName || data.students[0].fullName);
+        const context = entity.lesson
+          ? `${data.students[0].preferredName || data.students[0].fullName}'s ${entity.lesson.topic} session on ${new Intl.DateTimeFormat("en-US", { timeZone: data.settings.timezone, dateStyle: "medium", timeStyle: "short" }).format(new Date(entity.lesson.startsAt))}`
+          : entity.package?.name;
         const booking = entity.lesson && bookingForLesson(entity.lesson, data);
         const email = recipient.email.toLowerCase();
         // Event producers and explicit rule runs share idempotency for the existing library.
@@ -135,7 +149,7 @@ export async function evaluateAndQueueRule(
               subject: rule.template.subject || automationRuleLabels[rule.key],
               body:
                 rule.template.body ||
-                `Hi there,\n\n${decision.explanation}\n\nPlease open the portal for the details.`,
+                `Hi ${greetingName},\n\n${context ? `A quick note about ${context}. ` : ""}${decision.explanation}\n\nPlease open the portal for the details.`,
               status: rule.mode === "draft" ? "draft" : "queued",
               send_at: stage.sendAt,
               next_attempt_at: stage.sendAt,
@@ -235,12 +249,19 @@ export async function evaluateStudioAutomations(
     .select("*")
     .eq("studio_id", studioId)
     .eq("enabled", true)
-    .neq("mode", "off");
+    .neq("mode", "off")
+    .order("rule_key");
   if (rulesResult.error) throw rulesResult.error;
   let evaluated = 0;
   const now = Date.now();
   const dataCache = new Map<string, ReadinessData>();
-  for (const rule of rulesResult.data) {
+  const offset =
+    Math.floor(now / 300_000) % Math.max(1, rulesResult.data.length);
+  const rotatingRules = [
+    ...rulesResult.data.slice(offset),
+    ...rulesResult.data.slice(0, offset),
+  ];
+  for (const rule of rotatingRules) {
     if (Date.now() >= deadline || evaluated >= 8) break;
     // Existing event producers own confirmation/reminder/failure idempotency during compatibility.
     if (
@@ -280,7 +301,12 @@ export async function evaluateStudioAutomations(
             .from("lessons")
             .select("id,student_id")
             .eq("studio_id", studioId)
-            .eq("status", "scheduled")
+            .in(
+              "status",
+              rule.rule_key === "payment_past_due"
+                ? ["scheduled", "completed"]
+                : ["scheduled"],
+            )
             .gte(
               "starts_at",
               new Date(
@@ -299,21 +325,53 @@ export async function evaluateStudioAutomations(
     for (const entity of entities.data)
       if (entity.student_id) {
         if (Date.now() >= deadline || evaluated >= 8) break;
-        let data = dataCache.get(entity.student_id);
-        if (!data) {
-          data = await loadOperationalData(client, studioId, entity.student_id);
-          dataCache.set(entity.student_id, data);
+        try {
+          let data = dataCache.get(entity.student_id);
+          if (!data) {
+            data = await loadOperationalData(
+              client,
+              studioId,
+              entity.student_id,
+            );
+            dataCache.set(entity.student_id, data);
+          }
+          await evaluateAndQueueRule(
+            client,
+            rule,
+            entity.id,
+            entity.student_id,
+            correlationId,
+            false,
+            now,
+            { data, workerWindow: Math.floor(now / (20 * 60_000)) },
+          );
+        } catch {
+          const recorded = await db.from("automation_runs").upsert(
+            {
+              studio_id: studioId,
+              rule_id: rule.id,
+              entity_type: rule.rule_key.startsWith("package_")
+                ? "package"
+                : rule.rule_key === "delivery_failure"
+                  ? "outbox"
+                  : "lesson",
+              entity_id: entity.id,
+              result: "failed",
+              explanation:
+                "The rule could not be evaluated. Review the provider/database connection and retry.",
+              correlation_id: correlationId,
+              outbox_ids: [],
+              decision: {
+                trigger: rule.trigger,
+                mode: rule.mode,
+                errorCode: "AUTOMATION_EVALUATION_FAILED",
+              },
+              decision_key: `failed:${rule.id}:${entity.id}:${Math.floor(now / (20 * 60_000))}`,
+            },
+            { onConflict: "decision_key", ignoreDuplicates: true },
+          );
+          if (recorded.error) throw recorded.error;
         }
-        await evaluateAndQueueRule(
-          client,
-          rule,
-          entity.id,
-          entity.student_id,
-          correlationId,
-          false,
-          now,
-          { data, workerWindow: Math.floor(now / (20 * 60_000)) },
-        );
         evaluated++;
       }
   }

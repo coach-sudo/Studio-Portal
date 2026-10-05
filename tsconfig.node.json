@@ -22,6 +22,7 @@
     "src/domain/intakeRecency.ts",
     "src/domain/campaignTemplates.ts",
     "src/domain/notificationRecipients.ts",
+    "src/domain/bookingGuestRecipients.ts",
     "src/domain/paymentResponsibility.ts",
     "src/domain/lessonReadiness.ts",
     "src/domain/packageForecast.ts",

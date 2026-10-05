@@ -91,7 +91,11 @@ export function evaluateAutomationRule(
     );
   const lesson = entity.lesson;
   const readiness = lesson && evaluateLessonReadiness(lesson, data, now);
-  if (lesson && !readiness?.active)
+  if (
+    lesson &&
+    !readiness?.active &&
+    !(rule.key === "payment_past_due" && lesson.status === "completed")
+  )
     return suppressed(
       "lesson_not_scheduled",
       "The lesson is no longer scheduled.",

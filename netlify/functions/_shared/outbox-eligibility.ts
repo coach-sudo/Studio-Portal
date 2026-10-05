@@ -9,6 +9,7 @@ import {
 import { loadOperationalData } from "./operational-data";
 import { mapAutomationRule } from "./automation-config";
 import { resolveEventRecipients } from "./notification-recipients";
+import { resolveBookingGuestRecipients } from "../../../src/domain/bookingGuestRecipients";
 
 export type OutboxEligibility =
   { allowed: true } | { allowed: false; reason: string };
@@ -170,6 +171,26 @@ export async function checkOutboxEligibility(
       !resolved.recipients.some(
         (recipient) =>
           recipient.email.toLowerCase() === message.recipient.toLowerCase(),
+      )
+    )
+      return { allowed: false, reason: "recipient_no_longer_eligible" };
+  }
+  if (!studentId && message.booking_id && intent !== "coach") {
+    const booking = await db
+      .from("bookings")
+      .select("for_minor,guest_email,guardian_email,status")
+      .eq("id", message.booking_id)
+      .eq("studio_id", message.studio_id)
+      .single();
+    if (booking.error) throw booking.error;
+    if (
+      ["lesson_reminder", "lesson_confirmation"].includes(intent) &&
+      booking.data.status !== "confirmed"
+    )
+      return { allowed: false, reason: "booking_not_confirmed" };
+    if (
+      !resolveBookingGuestRecipients(booking.data, intent).recipients.some(
+        (recipient) => recipient.email === message.recipient.toLowerCase(),
       )
     )
       return { allowed: false, reason: "recipient_no_longer_eligible" };
