@@ -57,29 +57,27 @@ export async function queuePaymentFailedEmail(
       )
     : resolveBookingGuestRecipients(booking, "payment_failed");
   if (!resolution.recipients.length && rule) {
-    const recorded = await db
-      .from("automation_runs")
-      .upsert(
-        {
-          studio_id: booking.studio_id,
-          rule_id: rule.id,
-          entity_type: "booking",
-          entity_id: booking.id,
-          result: "unresolved",
-          explanation: "No permitted payer was resolved for this booking.",
-          suppressed_reason: "recipient_unresolved",
-          correlation_id: `booking:${booking.id}`,
-          outbox_ids: [],
-          decision: {
-            trigger: "payment_failed",
-            mode: rule.mode,
-            unresolvedRecipients: resolution.unresolved,
-            suppressedRecipients: resolution.suppressed,
-          },
-          decision_key: `guest-payer:${booking.id}:${rule.version}`,
+    const recorded = await db.from("automation_runs").upsert(
+      {
+        studio_id: booking.studio_id,
+        rule_id: rule.id,
+        entity_type: "booking",
+        entity_id: booking.id,
+        result: "unresolved",
+        explanation: "No permitted payer was resolved for this booking.",
+        suppressed_reason: "recipient_unresolved",
+        correlation_id: `booking:${booking.id}`,
+        outbox_ids: [],
+        decision: {
+          trigger: "payment_failed",
+          mode: rule.mode,
+          unresolvedRecipients: resolution.unresolved,
+          suppressedRecipients: resolution.suppressed,
         },
-        { onConflict: "decision_key", ignoreDuplicates: true },
-      );
+        decision_key: `guest-payer:${booking.id}:${rule.version}`,
+      },
+      { onConflict: "decision_key", ignoreDuplicates: true },
+    );
     if (recorded.error) throw recorded.error;
   }
   const values = {

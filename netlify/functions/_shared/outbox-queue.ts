@@ -84,18 +84,35 @@ export async function queuePresentedMessages(
     );
     return { ...content, body: presented.text, html_body: presented.html };
   });
-  const result = await db
-    .from("outbox_messages")
-    .upsert(decorated, {
-      onConflict: "dedupe_key",
-      ignoreDuplicates: true,
-      defaultToNull: false,
-    })
-    .select("id,status,event_key,dedupe_key");
-  if (result.error) throw result.error;
+  // The established dedupe index is partial (WHERE dedupe_key IS NOT NULL).
+  // PostgREST upsert cannot infer that predicate. Ordinary INSERT uses the same
+  // atomic unique constraint; ignore only that index's duplicate rejection.
+  // Individual inserts also preserve defaults on heterogeneous producer rows.
+  const queuedRows: {
+    id: string;
+    status: string;
+    event_key: string | null;
+    dedupe_key: string | null;
+  }[] = [];
+  for (const message of decorated) {
+    const inserted = await db
+      .from("outbox_messages")
+      .insert(message)
+      .select("id,status,event_key,dedupe_key")
+      .single();
+    if (inserted.error) {
+      if (
+        inserted.error.code === "23505" &&
+        inserted.error.message.includes("outbox_messages_dedupe_idx")
+      )
+        continue;
+      throw inserted.error;
+    }
+    queuedRows.push(inserted.data);
+  }
   for (const message of messages)
     if (message.automation_rule_id) {
-      const queued = result.data?.find(
+      const queued = queuedRows.find(
         (item) => item.dedupe_key === message.dedupe_key,
       );
       const recorded = await db.from("automation_runs").upsert(
@@ -132,5 +149,5 @@ export async function queuePresentedMessages(
       );
       if (recorded.error) throw recorded.error;
     }
-  return result.data ?? [];
+  return queuedRows;
 }

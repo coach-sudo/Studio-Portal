@@ -109,8 +109,23 @@
   font-size: 12px;
 }
 .today-lesson-row .row-actions > button.primary-button {
-  color: var(--ink, #17211d);
+  color: #17211d;
+  background: #c99a45;
 }
 .activity-bell > span {
   background: #9b3146;
+}
+.student-record-page .status.good {
+  color: #2b6042;
+  font-size: 12px;
+}
+.student-record-page .record-tabs > a.active {
+  color: #fff;
+}
+.student-record-page .primary-button {
+  color: #17211d;
+  background: #c99a45;
+}
+.student-record-page .action-row > button.primary-button {
+  color: #17211d;
 }

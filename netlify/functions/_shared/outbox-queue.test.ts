@@ -43,17 +43,19 @@ describe("compatible structured queue", () => {
           : table === "automation_runs"
             ? { upsert: audit }
             : {
-                upsert: (rows: unknown, options: unknown) => {
-                  insert(rows, options);
+                insert: (row: (typeof messages)[number]) => {
+                  insert(row);
                   return {
-                    select: async () => ({
-                      data: messages.map((m, i) => ({
-                        id: `outbox-${i}`,
-                        status: m.status,
-                        event_key: m.event_key,
-                        dedupe_key: m.dedupe_key,
-                      })),
-                      error: null,
+                    select: () => ({
+                      single: async () => ({
+                        data: {
+                          id: `outbox-${messages.findIndex((m) => m.dedupe_key === row.dedupe_key)}`,
+                          status: row.status,
+                          event_key: row.event_key,
+                          dedupe_key: row.dedupe_key,
+                        },
+                        error: null,
+                      }),
                     }),
                   };
                 },
@@ -65,14 +67,62 @@ describe("compatible structured queue", () => {
       { name: "Coach’D" },
       "https://preview.example.test",
     );
-    expect(insert.mock.calls[0][1]).toMatchObject({
-      defaultToNull: false,
-      ignoreDuplicates: true,
-    });
+    expect(insert).toHaveBeenCalledTimes(2);
+    expect(insert.mock.calls[0][0]).not.toHaveProperty("entity_snapshot");
     expect(
       audit.mock.calls.map(
         (call) => (call[0] as { outbox_ids: string[] }).outbox_ids,
       ),
     ).toEqual([["outbox-0"], ["outbox-1"]]);
+  });
+  it("uses the existing partial unique index for race-safe dedupe, without swallowing other errors", async () => {
+    const message = {
+      studio_id: "studio",
+      channel: "email",
+      recipient: "payer@example.test",
+      subject: "Due",
+      body: "Hi Jordan,",
+      dedupe_key: "same",
+    };
+    const result = {
+      data: null,
+      error: {
+        code: "23505",
+        message:
+          'duplicate key violates unique constraint "outbox_messages_dedupe_idx"',
+      },
+    };
+    const client = {
+      from: () => ({
+        insert: () => ({ select: () => ({ single: async () => result }) }),
+      }),
+    } as unknown as SupabaseClient;
+    await expect(
+      queuePresentedMessages(
+        client,
+        [message],
+        { name: "Coach’D" },
+        "https://preview.example.test",
+      ),
+    ).resolves.toEqual([]);
+    result.error.message =
+      'duplicate key violates unique constraint "unrelated_index"';
+    await expect(
+      queuePresentedMessages(
+        client,
+        [message],
+        { name: "Coach’D" },
+        "https://preview.example.test",
+      ),
+    ).rejects.toMatchObject({ code: "23505" });
+    result.error.code = "42P10";
+    await expect(
+      queuePresentedMessages(
+        client,
+        [message],
+        { name: "Coach’D" },
+        "https://preview.example.test",
+      ),
+    ).rejects.toMatchObject({ code: "42P10" });
   });
 });
