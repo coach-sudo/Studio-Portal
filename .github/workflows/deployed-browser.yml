@@ -155,6 +155,7 @@ jobs:
           BROWSER: none
         run: |
           set -euo pipefail
+          export STAGING_BASE_URL=http://127.0.0.1:8888
           npm run build
           nohup npx --yes netlify-cli@27.8.0 dev --offline --no-open \
             --context deploy-preview --framework '#static' \

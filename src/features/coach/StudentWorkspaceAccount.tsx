@@ -16,6 +16,8 @@ import type { Student } from "../../domain/model";
 import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
+import { StudentFinancialSetup } from "./StudentFinancialSetup";
+import { StudentCommunication } from "./StudentCommunication";
 
 import {
   now,
@@ -129,6 +131,11 @@ function LinkedContacts({
         canManageProfile: values.get("canManageProfile") === "on",
         canViewFinance: values.get("canViewFinance") === "on",
         canReceiveNotifications: values.get("canReceiveNotifications") === "on",
+        isPrimaryPayer: values.get("isPrimaryPayer") === "on",
+        isPrimarySchedulingContact:
+          values.get("isPrimarySchedulingContact") === "on",
+        receivesFinancialEscalations:
+          values.get("receivesFinancialEscalations") === "on",
         notificationPreferences: preferences,
         portalEnabled: values.get("portalEnabled") === "on",
       };
@@ -152,6 +159,9 @@ function LinkedContacts({
             canManageProfile: payload.canManageProfile,
             canViewFinance: payload.canViewFinance,
             canReceiveNotifications: payload.canReceiveNotifications,
+            isPrimaryPayer: payload.isPrimaryPayer,
+            isPrimarySchedulingContact: payload.isPrimarySchedulingContact,
+            receivesFinancialEscalations: payload.receivesFinancialEscalations,
             notificationPreferences:
               preferences as unknown as Data["linkedContacts"][number]["notificationPreferences"],
             portalEnabled: payload.portalEnabled,
@@ -270,6 +280,10 @@ function LinkedContacts({
                   {contact.relationshipLabel ||
                     contact.relationshipType.replaceAll("_", " ")}{" "}
                   · {contact.email}
+                  {contact.isPrimaryPayer ? " · Primary payer" : ""}
+                  {contact.isPrimarySchedulingContact
+                    ? " · Scheduling contact"
+                    : ""}
                 </small>
               </div>
               <Status
@@ -410,6 +424,46 @@ function LinkedContacts({
                   {String(label)}
                 </label>
               ))}
+            </fieldset>
+            <fieldset className="full option-fieldset">
+              <legend>Responsibility</legend>
+              <p>
+                Responsibility chooses who handles an action; it does not grant
+                portal access.
+              </p>
+              {(
+                [
+                  ["isPrimaryPayer", "Primary payer"],
+                  ["isPrimarySchedulingContact", "Primary scheduling contact"],
+                  [
+                    "receivesFinancialEscalations",
+                    "Receive financial escalations",
+                  ],
+                ] as const
+              ).map(([key, label]) => {
+                const primaryElsewhere =
+                  key !== "receivesFinancialEscalations" &&
+                  contacts.some(
+                    (contact) => contact.id !== editing?.id && contact[key],
+                  );
+                return (
+                  <label className="check-row" key={key}>
+                    <input
+                      type="checkbox"
+                      name={key}
+                      defaultChecked={editing?.[key] ?? false}
+                      disabled={primaryElsewhere}
+                    />
+                    {label}
+                    {primaryElsewhere && (
+                      <small>
+                        Another contact already has this assignment. Clear it
+                        there first.
+                      </small>
+                    )}
+                  </label>
+                );
+              })}
             </fieldset>
             <fieldset className="full option-fieldset">
               <legend>Notifications</legend>
@@ -753,6 +807,12 @@ export function Account({
   };
   return (
     <div className="two-section-grid">
+      <StudentFinancialSetup data={data} student={student} />
+      <StudentCommunication
+        data={data}
+        studentId={student.id}
+        isDemo={isDemo}
+      />
       <Section title="Access & visibility" marked>
         <div className="settings-list">
           <div className="profile-identity-card">

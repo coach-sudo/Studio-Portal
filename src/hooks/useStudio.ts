@@ -195,6 +195,29 @@ const domainQueryOptions = (
   refetchInterval: false as const,
 });
 
+// Readiness consumes finance and communication together. One RLS-backed RPC keeps
+// the operational read within the existing route request budget, with both owners
+// represented explicitly in its key and targeted invalidation predicate.
+export function groupStudioDomains(
+  domains: readonly StudioDomain[],
+): readonly StudioDomain[][] {
+  if (!domains.includes("finance") || !domains.includes("messaging"))
+    return domains.map((domain) => [domain]);
+  const operational: StudioDomain[] = [
+    "finance",
+    "messaging",
+    ...(domains.includes("booking") ? ["booking" as const] : []),
+  ];
+  return domains
+    .filter((domain) => !operational.includes(domain) || domain === "finance")
+    .map((domain) => (domain === "finance" ? operational : [domain]));
+}
+function domainKeyOwns(key: unknown, selected: ReadonlySet<StudioDomain>) {
+  return (Array.isArray(key) ? key : [key]).some((domain) =>
+    selected.has(domain as StudioDomain),
+  );
+}
+
 export function useStudioDomain<Domain extends StudioDomain>(
   domain: Domain,
   role: Role = "coach",
@@ -242,7 +265,7 @@ export async function invalidateStudioDomains(
     queryClient.invalidateQueries({
       predicate: (query) =>
         query.queryKey[0] === "studio-domain" &&
-        selected.has(query.queryKey[3] as StudioDomain),
+        domainKeyOwns(query.queryKey[3], selected),
     }),
     queryClient.invalidateQueries({
       predicate: (query) =>
@@ -263,7 +286,13 @@ export async function invalidateStudioDomains(
     let updated = current;
     for (const domain of domains) {
       const domainQuery = queryClient.getQueryCache().find({
-        queryKey: studioDomainQueryKey(role, studentId, domain),
+        queryKey: ["studio-domain"],
+        exact: false,
+        predicate: (candidate) =>
+          candidate.queryKey[0] === "studio-domain" &&
+          candidate.queryKey[1] === role &&
+          candidate.queryKey[2] === (studentId ?? null) &&
+          domainKeyOwns(candidate.queryKey[3], new Set([domain])),
       });
       const snapshot = domainQuery?.getObserversCount()
         ? (domainQuery.state.data as StudioSnapshot | undefined)
@@ -312,7 +341,7 @@ export const countActiveDomainRefetches = (
       (query) =>
         query.getObserversCount() > 0 &&
         ((query.queryKey[0] === "studio-domain" &&
-          selected.has(query.queryKey[3] as StudioDomain)) ||
+          domainKeyOwns(query.queryKey[3], selected)) ||
           (query.queryKey[0] === "studio-page" &&
             selected.has(query.queryKey[1] as StudioDomain))),
     ).length;
@@ -325,9 +354,22 @@ export const useStudioRoute = (
 ) => {
   const store = useStudioStore();
   const domains = [...new Set(requestedDomains)];
+  const groups = groupStudioDomains(domains);
   const domainQueries = useQueries({
-    queries: domains.map((domain) =>
-      domainQueryOptions(role, studentId, domain),
+    queries: groups.map((group) =>
+      group.length === 1
+        ? domainQueryOptions(role, studentId, group[0])
+        : {
+            ...domainQueryOptions(role, studentId, group[0]),
+            queryKey: [
+              "studio-domain",
+              role,
+              studentId ?? null,
+              [...group].sort(),
+            ],
+            queryFn: ({ signal }: { signal: AbortSignal }) =>
+              loadStudioSnapshot(role, studentId, group, signal),
+          },
     ),
   });
   const legacyQuery = useQuery({
@@ -370,8 +412,11 @@ export const useStudioRoute = (
   );
   return {
     data:
-      snapshots.length === domains.length
-        ? mergeStudioDomains(domains, snapshots)
+      snapshots.length === groups.length
+        ? mergeStudioDomains(
+            groups.map((group) => group[0]),
+            snapshots,
+          )
         : undefined,
     isLoading: domainQueries.some((query) => query.isLoading),
     isFetching: domainQueries.some((query) => query.isFetching),

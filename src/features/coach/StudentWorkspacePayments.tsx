@@ -23,6 +23,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { now, uid, type Data } from "./StudentWorkspace.shared";
+import { StudentFinancialSetup } from "./StudentFinancialSetup";
 
 export function Payments({
   data,
@@ -274,6 +275,7 @@ export function Payments({
           {notice}
         </p>
       )}
+      <StudentFinancialSetup data={data} student={student} />
       <div className="two-section-grid">
         <Section
           title="Packages"

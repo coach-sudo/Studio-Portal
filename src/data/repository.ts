@@ -731,6 +731,10 @@ export async function loadStudioSnapshot(
     })),
     outbox: (outbox.data ?? []).map((r: any) => ({
       id: r.id,
+      bookingId: r.booking_id ?? undefined,
+      suppressionReason: r.suppression_reason ?? undefined,
+      recipientIntent: r.recipient_intent ?? undefined,
+      automationRuleId: r.automation_rule_id ?? undefined,
       studentId: r.student_id,
       lessonId: r.lesson_id,
       correlationId: r.correlation_id,

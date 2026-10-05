@@ -385,6 +385,9 @@ const base: StudioSnapshot = {
   linkedContacts: [
     {
       id: "contact-dana",
+      isPrimaryPayer: true,
+      isPrimarySchedulingContact: true,
+      receivesFinancialEscalations: true,
       studioId: "studio-stage-story",
       studentId: "student-sarah",
       fullName: "Dana Patterson",

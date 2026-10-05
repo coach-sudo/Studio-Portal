@@ -17,6 +17,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { LessonReadinessPanel } from "./LessonReadinessPanel";
 import {
   checkSchedulingConflicts,
   studioCommand,
@@ -272,6 +273,7 @@ export function TodayView({
                       </label>
                     ))}
                   </div>
+                  <LessonReadinessPanel lesson={lesson} data={data} now={now} />
                 </div>
                 <Status
                   tone={isActive ? "warn" : isFeatured ? "good" : "neutral"}
