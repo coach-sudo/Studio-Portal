@@ -185,7 +185,8 @@ test.describe("Stateful operational acceptance", () => {
     });
     await test.step("05 Package shortfall surfaced without consuming forecast credits", async () => {
       await expect(
-        page.getByText(/Package shortfall: 1 uncovered/),
+        // Credits now cover any service: the unpaid non-service lesson also counts.
+        page.getByText(/Package shortfall: 2 uncovered/),
       ).toBeVisible();
       await page.screenshot({
         path: testInfo.outputPath("student-account-desktop.png"),

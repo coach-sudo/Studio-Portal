@@ -352,8 +352,8 @@ begin
     values(studio,sid,'INV-'||to_char(now(),'YYYY')||'-'||upper(substr(replace(gen_random_uuid()::text,'-',''),1,10)),case when is_draft then 'draft' when total=0 then 'paid' else 'open' end,
       p_value->>'currency',(p_value->>'issue_date')::date,(p_value->>'due_date')::date,p_value->>'introduction',p_value->>'notes',p_value->>'footer',p_value->'branding',p_value->'recipient',new_items,total,p_key) returning * into inv;
   end if;
-  insert into public.audit_events(studio_id,action,entity_type,entity_id,reason,source,after_state)
-    values(studio,'invoice.saved','invoice',inv.id,'Coach saved invoice','coach_portal',to_jsonb(inv));
+  insert into public.audit_events(studio_id,action,entity_type,entity_id,reason,correlation_id,source,after_state)
+    values(studio,'invoice.saved','invoice',inv.id,'Coach saved invoice',p_key,'coach_portal',to_jsonb(inv));
   if not is_draft then
     for item in select value from jsonb_array_elements(inv.items) loop
       for lid in select value::uuid from jsonb_array_elements_text(item->'lessonIds') loop

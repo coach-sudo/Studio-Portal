@@ -243,7 +243,8 @@ export function Payments({
                     <strong>{pkg.name}</strong>
                     <small>
                       {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                      credits · {formatMoney(pkg.priceMinor, pkg.currency)}
+                      credits available ·{" "}
+                      {formatMoney(pkg.priceMinor, pkg.currency)}
                       {pkg.expiresAt &&
                         ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
                       {subscription &&

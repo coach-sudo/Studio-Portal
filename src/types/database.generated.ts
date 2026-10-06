@@ -4507,6 +4507,8 @@ export type Database = {
           ends_at: string
           id: string
           imported_at: string | null
+          invoice_id: string | null
+          invoice_payment_pending: boolean
           join_url: string | null
           location_label: string
           location_type: string
@@ -4577,10 +4579,7 @@ export type Database = {
         Args: { target_service: string; target_starts: string[] }
         Returns: string[]
       }
-      credit_reconciliation: {
-        Args: never
-        Returns: Json
-      }
+      credit_reconciliation: { Args: never; Returns: Json }
       current_campaign_contacts: {
         Args: { p_studio_id: string }
         Returns: {
@@ -4807,10 +4806,7 @@ export type Database = {
         }
         Returns: Json
       }
-      student_credit_summary: {
-        Args: { p_student: string }
-        Returns: Json
-      }
+      student_credit_summary: { Args: { p_student: string }; Returns: Json }
       student_payment_balance: {
         Args: { target_student: string }
         Returns: number
@@ -4934,7 +4930,8 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -4958,7 +4955,8 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -4982,7 +4980,8 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

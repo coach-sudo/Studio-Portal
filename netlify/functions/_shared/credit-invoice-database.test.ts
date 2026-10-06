@@ -48,6 +48,7 @@ beforeAll(async () => {
  `);
   await db.exec(`create schema extensions;create extension pgcrypto with schema extensions;
     alter table public.calendar_projections add constraint calendar_projections_lesson_id_key unique(lesson_id);
+    alter table public.audit_events alter column correlation_id set not null;
     alter table public.recommendations add column updated_at timestamptz default now();
     alter table public.idempotency_keys add column actor_id uuid,add column command text,add column request_hash text;`);
   await db.exec(

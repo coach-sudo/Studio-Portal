@@ -305,7 +305,7 @@ export function FinanceView({
                   }
                 >
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                  left
+                  available
                 </Status>
                 <button
                   onClick={() =>

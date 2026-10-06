@@ -149,6 +149,9 @@ export function InvoiceWorkspace({
           if (
             !line ||
             line.lessonIds.length !== 1 ||
+            line.cancelled ||
+            line.waivedMinor ||
+            line.unitMinor <= 0 ||
             line.paidMinor ||
             line.creditMinor
           )
@@ -162,7 +165,9 @@ export function InvoiceWorkspace({
               .filter(
                 (p) =>
                   p.studentId === inv.student_id &&
-                  (!p.expiresAt || p.expiresAt > lesson.startsAt) &&
+                  (!p.expiresAt ||
+                    Date.parse(p.expiresAt) >
+                      Math.max(Date.now(), Date.parse(lesson.startsAt))) &&
                   draft.creditEntries
                     .filter((e) => e.packageId === p.id)
                     .reduce((n, e) => n + e.quantity, 0) > 0,
@@ -692,6 +697,9 @@ export function InvoiceWorkspace({
                   (l) =>
                     l.kind === "service" &&
                     l.lessonIds.length === 1 &&
+                    !l.cancelled &&
+                    !l.waivedMinor &&
+                    l.unitMinor > 0 &&
                     !l.paidMinor &&
                     !l.creditMinor,
                 )
