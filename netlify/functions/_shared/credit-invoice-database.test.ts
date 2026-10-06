@@ -8,6 +8,7 @@ const studio = "10000000-0000-4000-8000-000000000001",
   other = "20000000-0000-4000-8000-000000000002",
   coach = "30000000-0000-4000-8000-000000000001";
 let db: PGlite;
+let preservedExplicitBalance: Record<string, unknown>;
 const scalar = async (sql: string, params: unknown[] = []) =>
   (await db.query<Record<string, unknown>>(sql, params)).rows[0];
 beforeAll(async () => {
@@ -45,6 +46,11 @@ beforeAll(async () => {
  insert into public.students(id,studio_id,user_id,full_name) values('${student}','${studio}','${student}','Taylor'),('${other}','${studio}','${other}','Other student');
  insert into public.memberships values('${coach}','${studio}','coach');
  insert into public.payment_entries(student_id,kind,amount_minor,currency,reason) values('${student}','refund',1200,'USD','Legacy credit');
+ insert into public.payment_entries(student_id,kind,amount_minor,currency,external_reference,reason) values
+ ('${other}','payment',10000,'USD','receipt:legacy','Legacy receipt'),
+ ('${other}','refund',10000,'USD','studio-credit:legacy','Legacy cancellation credit'),
+ ('${other}','refund',2500,'USD','account-credit:legacy:add','Legacy manual credit'),
+ ('${other}','adjustment',500,'USD','account-credit:legacy:remove','Legacy manual debit');
  `);
   await db.exec(`create schema extensions;create extension pgcrypto with schema extensions;
     alter table public.calendar_projections add constraint calendar_projections_lesson_id_key unique(lesson_id);
@@ -57,6 +63,13 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  preservedExplicitBalance = (await scalar(
+    `select sum(case when kind='refund' then amount_minor else -amount_minor end) filter(where account_credit) balance,
+    count(*) entries, count(*) filter(where external_reference like 'opening-account-credit:%') openings,
+    sum(amount_minor) filter(where external_reference='receipt:legacy' and not account_credit) receipt
+    from public.payment_entries where student_id=$1`,
+    [other],
+  ))!;
 }, 30000);
 afterAll(async () => {
   await db?.close();
@@ -412,6 +425,10 @@ describe("credit and invoice migration against PostgreSQL", () => {
     expect(
       (await db.query(`select * from public.payment_entries`)).rows,
     ).toHaveLength(2);
+    expect(Number(preservedExplicitBalance.balance)).toBe(12000);
+    expect(Number(preservedExplicitBalance.entries)).toBe(4);
+    expect(Number(preservedExplicitBalance.openings)).toBe(0);
+    expect(Number(preservedExplicitBalance.receipt)).toBe(10000);
   });
   it("sets the total including reservations and rejects stale edits", async () => {
     await reset();

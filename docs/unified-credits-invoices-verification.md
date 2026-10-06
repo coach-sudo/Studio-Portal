@@ -11,6 +11,7 @@ This feature branch is based on approved PR #28 head `ef0b6910e07c3b8a5ab633376d
 - Payments support branded virtual invoices and PDF downloads, drafts, issue, reviewed send, service/package quantities and prices, coverage dates, optional existing lesson links, custom introduction/notes/footer, partial cash/bank/online payments, and account/lesson credits. Fully paid package lines grant their snapshotted credits once. No lesson is automatically created by an invoice.
 - Issued branding, recipient, line pricing, package quantity/expiry, and text are snapshots. Pending Stripe checkout locks overlapping financial actions and can be checked/recovered/cancelled. Provider settlement is amount/session checked and idempotent. Saving never sends email.
 - Payments and campaign cards wrap long text while retaining padding. Mobile financial amounts stay readable.
+- Migration preserves identified historical cancellation/manual dollar credits separately from receipts, then carries forward any additional visible positive balance without duplication. Existing entry amounts and history stay intact.
 
 ## Verification
 
@@ -22,7 +23,7 @@ This feature branch is based on approved PR #28 head `ef0b6910e07c3b8a5ab633376d
 - Targeted browser review: 20 route/journey scenarios at 1440, 768, 390, and 320 px. Payments, campaigns, student payments/contact record, long-address card text bounds, invoice editor/virtual document, zero axe violations, no page overflow, trapped keyboard focus, Escape/focus restoration, PDF download, and reload persistence passed.
 - Production PDF renderer sample was rendered with Poppler and visually inspected: one page, intact font glyphs, branded header, coverage/quantities, totals, custom text and footer. Evidence: `test-results/credit-invoices/sample-invoice.pdf`, `pdf-final-1.png`, route/invoice screenshots, and `report.json` (generated locally; not committed).
 - Added isolated deployed acceptance for draft privacy, issuance/partial payment, student PDF download, unrelated-student denial, direct write denial, accessibility and mobile layout. Fixture cleanup removes invoices, settlements, dynamically granted credit lots, and credit accounts belonging only to fixture students.
-- GitHub Actions has passed the full Supabase reset, SQL lint, and pgTAP/RLS checks. Its generated-type comparison detected a view return-type/format mismatch; the committed types were replaced with the authoritative CI-generated file. The final exact-head comparison and isolated deployed browser execution remain required before rollout. Local Podman is unavailable; PGlite is additional coverage.
+- GitHub Actions passed the full Supabase reset, SQL lint, pgTAP/RLS checks and authoritative generated-type comparison on `e45c4f5828b96ae92116d18e6060daf4267c158b`. Final-head gates remain required before rollout. Local Podman is unavailable; PGlite is additional coverage.
 
 ## Rollout requirements
 

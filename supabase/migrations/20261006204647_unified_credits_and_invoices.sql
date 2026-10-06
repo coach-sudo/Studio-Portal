@@ -1,10 +1,17 @@
 -- Additive: existing credit ledger entries and purchased quantities are never rewritten.
--- Preserve the previously visible dollar balance, then separate receipts from spendable account credit.
+-- Preserve explicitly earned dollar credits even when historical receipts hid them in the old net balance.
 alter table public.payment_entries add column account_credit boolean not null default false;
+update public.payment_entries set account_credit=true
+where external_reference like 'account-credit:%' or external_reference like 'studio-credit:%';
+-- Carry forward any additional previously visible balance without counting identified credits twice.
 insert into public.payment_entries(student_id,kind,amount_minor,currency,external_reference,reason,account_credit)
-select student_id,'refund',sum(case when kind='refund' then amount_minor else -amount_minor end),currency,
+select student_id,'refund',visible_balance-explicit_balance,currency,
  'opening-account-credit:'||student_id::text||':'||currency,'Preserved opening dollar credit balance',true
-from public.payment_entries group by student_id,currency having sum(case when kind='refund' then amount_minor else -amount_minor end)>0;
+from (select student_id,currency,
+ sum(case when kind='refund' then amount_minor else -amount_minor end) visible_balance,
+ sum(case when account_credit then case when kind='refund' then amount_minor else -amount_minor end else 0 end) explicit_balance
+ from public.payment_entries group by student_id,currency) balances
+where visible_balance>0 and visible_balance>explicit_balance;
 create table public.student_credit_accounts (
   student_id uuid primary key references public.students(id) on delete restrict,
   auto_apply boolean default false, -- null preserves mixed legacy package settings until coach review
