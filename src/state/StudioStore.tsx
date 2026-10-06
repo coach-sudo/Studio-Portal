@@ -10,6 +10,7 @@ import {
 import { demoSnapshot } from "../data/demo";
 import { adaptLegacySnapshot } from "../data/legacyAdapter";
 import { mergeStudioSettings } from "../data/settings";
+import { syncDemoInvoices } from "../domain/demoInvoices";
 import type { Role, StudioSnapshot } from "../domain/model";
 
 type Transaction = <T>(mutator: (draft: StudioSnapshot) => T) => T;
@@ -31,6 +32,14 @@ const CORE_KEYS = [
   "actorProfiles",
   "discountCodes",
   "settings",
+  "packages",
+  "creditEntries",
+  "payments",
+  "bookings",
+  "lessonParticipants",
+  "serviceOfferings",
+  "recurringSeries",
+  "invoices",
 ] as const;
 
 function loadLocalSnapshot() {
@@ -86,7 +95,10 @@ function loadLocalSnapshot() {
       if (saved[key] !== undefined)
         (fresh as unknown as Record<string, unknown>)[key] = saved[key];
     if (saved.settings) {
-      fresh.settings=mergeStudioSettings(demoSnapshot.settings,saved.settings);
+      fresh.settings = mergeStudioSettings(
+        demoSnapshot.settings,
+        saved.settings,
+      );
     }
     return fresh;
   } catch {
@@ -107,6 +119,7 @@ export function StudioStoreProvider({ children }: { children: ReactNode }) {
   const transact = useCallback<Transaction>((mutator) => {
     const next = structuredClone(snapshotRef.current);
     const result = mutator(next);
+    syncDemoInvoices(next);
     snapshotRef.current = next;
     setSnapshot(next);
     persistCore(next);
@@ -149,7 +162,9 @@ export function scopeStudioSnapshot(
     requested ??
     (role === "guardian"
       ? snapshot.students.find((row) => row.guardianEmail || row.guardianName)
-      : snapshot.students.find((row) => row.portalEnabled && row.status === "active")) ??
+      : snapshot.students.find(
+          (row) => row.portalEnabled && row.status === "active",
+        )) ??
     snapshot.students.find((row) => row.status === "active") ??
     snapshot.students[0];
   const studentIds = student ? [student.id] : [];
@@ -192,8 +207,11 @@ export function scopeStudioSnapshot(
     displayName:
       role === "guardian"
         ? (student?.guardianName ?? "Guardian")
-        : (student?.preferredName || student?.fullName || "Student"),
+        : student?.preferredName || student?.fullName || "Student",
     students: snapshot.students.filter((row) => studentIds.includes(row.id)),
+    invoices: snapshot.invoices?.filter(
+      (row) => studentIds.includes(row.student_id) && row.status !== "draft",
+    ),
     lessons: scopedLessons,
     notes: snapshot.notes.filter(
       (row) => studentIds.includes(row.studentId) && row.status === "published",
@@ -201,7 +219,9 @@ export function scopeStudioSnapshot(
     assignments: snapshot.assignments.filter((row) =>
       studentIds.includes(row.studentId),
     ),
-    materials: snapshot.materials.filter((row) => studentIds.includes(row.studentId)),
+    materials: snapshot.materials.filter((row) =>
+      studentIds.includes(row.studentId),
+    ),
     packages: snapshot.packages.filter((row) =>
       studentIds.includes(row.studentId),
     ),
@@ -209,7 +229,8 @@ export function scopeStudioSnapshot(
       studentIds.includes(row.studentId),
     ),
     packageGifts: snapshot.packageGifts.filter(
-      (row) => !row.claimedStudentId || studentIds.includes(row.claimedStudentId),
+      (row) =>
+        !row.claimedStudentId || studentIds.includes(row.claimedStudentId),
     ),
     linkedContacts: snapshot.linkedContacts.filter((row) =>
       studentIds.includes(row.studentId),
@@ -264,7 +285,9 @@ export function scopeStudioSnapshot(
       ),
     ),
     conversationStates: snapshot.conversationStates.filter((row) =>
-      snapshot.conversations.some((conversation) => conversation.id === row.conversationId),
+      snapshot.conversations.some(
+        (conversation) => conversation.id === row.conversationId,
+      ),
     ),
     integrationImports: [],
     discountCodes: [],

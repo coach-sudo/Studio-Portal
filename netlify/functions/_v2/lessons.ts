@@ -201,14 +201,11 @@ export async function handleLessonsCommands(
     if (readError || !before) throw new Error("FORBIDDEN");
     const service = serviceClient();
     const { data: changed, error } = await service.rpc(
-      "command_change_lesson_state",
+      "command_cancel_lesson_credit",
       {
-        p_lesson_id: before.id,
-        p_expected_version: input.expectedVersion,
-        p_action: "cancel",
-        p_starts_at: null,
-        p_ends_at: null,
-        p_queue_calendar: true,
+        p_lesson: before.id,
+        p_version: input.expectedVersion,
+        p_use: input.payload.useCredit === true,
       },
     );
     if (error) throw error;

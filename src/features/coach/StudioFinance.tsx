@@ -27,6 +27,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { studentName } from "./StudioOperations.shared";
+import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 
 type PackageBuilderPayload = {
   id?: string;
@@ -216,6 +217,7 @@ export function FinanceView({
           {notice}
         </p>
       )}
+      <InvoiceWorkspace data={data} isDemo={isDemo} />
       <div className="two-section-grid">
         <Section
           title="Package catalog"
@@ -331,7 +333,7 @@ export function FinanceView({
                   <strong>{student.fullName}</strong>
                   <small>Payments, refunds, and adjustments</small>
                 </div>
-                <strong>
+                <strong className="financial-amount">
                   {formatMoney(studentBalanceMinor(student.id, data.payments))}
                 </strong>
                 <button

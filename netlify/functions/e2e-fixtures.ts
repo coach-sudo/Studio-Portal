@@ -228,6 +228,71 @@ async function cleanup(
     const { error } = await db.from(table).delete().in("id", values);
     if (error) throwFixtureError(`delete_${table}`, error);
   };
+  // Only these isolated, non-production fixture owners are eligible for cleanup.
+  const financeOwners = [fixture.student, fixture.operationalStudent];
+  const invoiceLookup = await db
+    .from("studio_invoices")
+    .select("id")
+    .eq("studio_id", studioId)
+    .in("student_id", financeOwners);
+  if (invoiceLookup.error)
+    throwFixtureError("invoice_lookup", invoiceLookup.error);
+  const invoiceIds = (invoiceLookup.data ?? []).map((i) => i.id);
+  if (invoiceIds.length) {
+    const detach = await db
+      .from("lessons")
+      .update({ invoice_id: null, invoice_payment_pending: false })
+      .eq("studio_id", studioId)
+      .in("invoice_id", invoiceIds);
+    if (detach.error) throwFixtureError("invoice_detach", detach.error);
+    const settlements = await db
+      .from("invoice_settlements")
+      .delete()
+      .in("invoice_id", invoiceIds);
+    if (settlements.error)
+      throwFixtureError("invoice_settlement_cleanup", settlements.error);
+    await deleteIds("studio_invoices", invoiceIds);
+    const invoiceAudit = await db
+      .from("audit_events")
+      .delete()
+      .eq("studio_id", studioId)
+      .in("entity_id", invoiceIds);
+    if (invoiceAudit.error)
+      throwFixtureError("invoice_audit_cleanup", invoiceAudit.error);
+  }
+  const fixturePackages = await db
+    .from("packages")
+    .select("id")
+    .in("student_id", financeOwners);
+  if (fixturePackages.error)
+    throwFixtureError("invoice_package_lookup", fixturePackages.error);
+  const packageIds = (fixturePackages.data ?? []).map((p) => p.id);
+  if (packageIds.length) {
+    const ledger = await db
+      .from("package_credit_entries")
+      .delete()
+      .in("package_id", packageIds);
+    if (ledger.error) throwFixtureError("invoice_credit_cleanup", ledger.error);
+    const detached = await db
+      .from("lessons")
+      .update({ package_id: null })
+      .eq("studio_id", studioId)
+      .in("package_id", packageIds);
+    if (detached.error)
+      throwFixtureError("invoice_credit_detach", detached.error);
+    await deleteIds(
+      "packages",
+      packageIds.filter(
+        (id) => ![fixture.package, fixture.operationalPackage].includes(id),
+      ),
+    );
+  }
+  const fixturePayments = await db
+    .from("payment_entries")
+    .delete()
+    .in("student_id", financeOwners);
+  if (fixturePayments.error)
+    throwFixtureError("invoice_payment_cleanup", fixturePayments.error);
 
   if (assets?.length)
     await deleteIds(
@@ -315,6 +380,21 @@ async function cleanup(
     fixture.operationalContact,
   ]);
   await deleteIds("memberships", [fixture.membership]);
+  const creditAccounts = await db
+    .from("student_credit_accounts")
+    .delete()
+    .in("student_id", [
+      fixture.coachStudent,
+      fixture.student,
+      fixture.unrelatedStudent,
+      fixture.signoutStudent,
+      fixture.referredPending,
+      fixture.referredEarned,
+      fixture.referredRedeemed,
+      fixture.operationalStudent,
+    ]);
+  if (creditAccounts.error)
+    throwFixtureError("credit_account_cleanup", creditAccounts.error);
   await deleteIds("students", [
     fixture.coachStudent,
     fixture.student,

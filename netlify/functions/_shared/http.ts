@@ -83,7 +83,42 @@ export function toAppError(error: unknown): AppError {
       error,
     );
 
-  const message = error instanceof Error ? error.message : String(error);
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "object" &&
+          error !== null &&
+          "message" in error &&
+          typeof error.message === "string"
+        ? error.message
+        : String(error);
+  if (message.includes("CREDIT_UNAVAILABLE"))
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "There are not enough usable credits for this action. Review the available balance and expiration dates.",
+      cause: error,
+    });
+  if (
+    message.includes("INVALID_TRANSITION") &&
+    message.toLowerCase().includes("pending")
+  )
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "An online invoice payment is pending. Check or cancel that checkout before changing payment or credit coverage.",
+      cause: error,
+    });
+  if (
+    message.includes("INVALID_TRANSITION") &&
+    /legacy|older reservation|linked series/.test(message)
+  )
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "These older credit reservations cannot be matched safely. No credits were changed. Review the booking and credit history before correcting this balance.",
+      cause: error,
+    });
   if (message.includes("VERSION_CONFLICT")) {
     const expectedVersion = Number(message.split(":")[1]);
     return new AppError("VERSION_CONFLICT", {

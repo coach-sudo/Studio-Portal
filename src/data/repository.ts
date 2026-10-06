@@ -502,6 +502,8 @@ export async function loadStudioSnapshot(
         r.source_confidence == null ? undefined : Number(r.source_confidence),
       importedAt: r.imported_at,
       paymentStatus: r.payment_status,
+      invoicePaymentPending: r.invoice_payment_pending,
+      invoiceId: r.invoice_id,
       priceMinor: r.price_minor == null ? undefined : Number(r.price_minor),
       paidMinor: Number(r.paid_minor || 0),
       preparation: r.preparation ?? {
@@ -712,6 +714,7 @@ export async function loadStudioSnapshot(
       packageId: r.package_id,
       kind: r.kind,
       amountMinor: Number(r.amount_minor),
+      accountCredit: r.account_credit,
       currency: r.currency,
       externalReference: r.external_reference,
       reason: r.reason,

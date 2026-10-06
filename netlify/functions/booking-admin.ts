@@ -54,19 +54,59 @@ export default async (request: Request, context: Context) => {
       );
     const body = bookingAdminCommandSchema.parse(await request.json());
 
-    if (resource === "bookings" && body.command === "check_conflicts" && body.payload) {
-      const { data: membership, error: membershipError } = await db.from("memberships").select("studio_id").eq("role", "coach").limit(1).single();
+    if (
+      resource === "bookings" &&
+      body.command === "check_conflicts" &&
+      body.payload
+    ) {
+      const { data: membership, error: membershipError } = await db
+        .from("memberships")
+        .select("studio_id")
+        .eq("role", "coach")
+        .limit(1)
+        .single();
       if (membershipError || !membership) throw new Error("FORBIDDEN");
       const startsAt = new Date(String(body.payload.starts_at || ""));
       const endsAt = new Date(String(body.payload.ends_at || ""));
-      if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt)
-        throw new Error("VALIDATION_FAILED: Choose a valid start and end time.");
-      const { data: localRows, error: localError } = await db.from("lessons").select("id,topic,starts_at,ends_at").eq("studio_id", membership.studio_id).in("status", ["draft", "scheduled"]).lt("starts_at", endsAt.toISOString()).gt("ends_at", startsAt.toISOString());
+      if (
+        !Number.isFinite(startsAt.getTime()) ||
+        !Number.isFinite(endsAt.getTime()) ||
+        endsAt <= startsAt
+      )
+        throw new Error(
+          "VALIDATION_FAILED: Choose a valid start and end time.",
+        );
+      const { data: localRows, error: localError } = await db
+        .from("lessons")
+        .select("id,topic,starts_at,ends_at")
+        .eq("studio_id", membership.studio_id)
+        .in("status", ["draft", "scheduled"])
+        .lt("starts_at", endsAt.toISOString())
+        .gt("ends_at", startsAt.toISOString());
       if (localError) throw localError;
-      const local = (localRows || []).filter((item) => item.id !== body.payload?.lesson_id).map((item) => ({ id: item.id, summary: item.topic || "Studio lesson", start: item.starts_at, end: item.ends_at, source: "studio" }));
-      const google = (await googleCalendarConflicts(await googleAccessToken(), startsAt.toISOString(), endsAt.toISOString())).map((item) => ({ ...item, source: "google" }));
+      const local = (localRows || [])
+        .filter((item) => item.id !== body.payload?.lesson_id)
+        .map((item) => ({
+          id: item.id,
+          summary: item.topic || "Studio lesson",
+          start: item.starts_at,
+          end: item.ends_at,
+          source: "studio",
+        }));
+      const google = (
+        await googleCalendarConflicts(
+          await googleAccessToken(),
+          startsAt.toISOString(),
+          endsAt.toISOString(),
+        )
+      ).map((item) => ({ ...item, source: "google" }));
       const seen = new Set<string>();
-      const conflicts = [...local, ...google].filter((item) => { const key = `${item.summary}|${item.start}|${item.end}`; if (seen.has(key)) return false; seen.add(key); return true; });
+      const conflicts = [...local, ...google].filter((item) => {
+        const key = `${item.summary}|${item.start}|${item.end}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
       return json({ resource: { conflicts } });
     }
 
@@ -114,21 +154,47 @@ export default async (request: Request, context: Context) => {
           "VALIDATION_FAILED: Choose a future time and supported meeting format.",
         );
       if (!body.payload.allow_conflict) {
-        const conflicts = await googleCalendarConflicts(await googleAccessToken(), startsAt.toISOString(), endsAt.toISOString());
-        const { count: localCount, error: conflictError } = await db.from("lessons").select("id", { count: "exact", head: true }).eq("studio_id", membership.studio_id).in("status", ["draft", "scheduled"]).lt("starts_at", endsAt.toISOString()).gt("ends_at", startsAt.toISOString());
+        const conflicts = await googleCalendarConflicts(
+          await googleAccessToken(),
+          startsAt.toISOString(),
+          endsAt.toISOString(),
+        );
+        const { count: localCount, error: conflictError } = await db
+          .from("lessons")
+          .select("id", { count: "exact", head: true })
+          .eq("studio_id", membership.studio_id)
+          .in("status", ["draft", "scheduled"])
+          .lt("starts_at", endsAt.toISOString())
+          .gt("ends_at", startsAt.toISOString());
         if (conflictError) throw conflictError;
-        if (conflicts.length || Number(localCount || 0) > 0) throw new Error("CALENDAR_CONFLICT: Review the conflicting calendar event before scheduling, or choose Schedule anyway.");
+        if (conflicts.length || Number(localCount || 0) > 0)
+          throw new Error(
+            "CALENDAR_CONFLICT: Review the conflicting calendar event before scheduling, or choose Schedule anyway.",
+          );
       }
       const upcharge = Number(
           serviceRow.location_price_adjustments?.[location] || 0,
         ),
         { data: pricingRule } = student.special_pricing_enabled
-          ? await serviceClient().from("student_pricing_rules").select("*").eq("student_id", student.id).eq("service_id", serviceRow.id).eq("active", true).lte("starts_at", startsAt.toISOString()).or(`ends_at.is.null,ends_at.gte.${startsAt.toISOString()}`).order("updated_at", { ascending: false }).limit(1).maybeSingle()
+          ? await serviceClient()
+              .from("student_pricing_rules")
+              .select("*")
+              .eq("student_id", student.id)
+              .eq("service_id", serviceRow.id)
+              .eq("active", true)
+              .lte("starts_at", startsAt.toISOString())
+              .or(`ends_at.is.null,ends_at.gte.${startsAt.toISOString()}`)
+              .order("updated_at", { ascending: false })
+              .limit(1)
+              .maybeSingle()
           : { data: null },
-        personalizedUpcharge = Number(pricingRule?.location_price_adjustments?.[location] ?? upcharge),
+        personalizedUpcharge = Number(
+          pricingRule?.location_price_adjustments?.[location] ?? upcharge,
+        ),
         totalMinor =
           body.payload.price_minor == null
-            ? Number(pricingRule?.price_minor ?? serviceRow.price_minor) + personalizedUpcharge
+            ? Number(pricingRule?.price_minor ?? serviceRow.price_minor) +
+              personalizedUpcharge
             : Number(body.payload.price_minor),
         paidMinor = body.payload.mark_paid ? totalMinor : 0,
         token = randomBytes(32).toString("base64url"),
@@ -246,16 +312,9 @@ export default async (request: Request, context: Context) => {
           before_state: null,
           after_state: booking,
         });
-        await queueBookingEmails(
-          service,
-          booking.id,
-          token,
-        );
+        await queueBookingEmails(service, booking.id, token);
         try {
-          await ensureBookingPortalAccess(
-            service,
-            booking.id,
-          );
+          await ensureBookingPortalAccess(service, booking.id);
         } catch (inviteError) {
           await service.from("recommendations").upsert(
             {
@@ -335,7 +394,7 @@ export default async (request: Request, context: Context) => {
         .from("bookings")
         .select("id", { count: "exact", head: true })
         .eq("offering_id", offering.id)
-        .not("status", "in", '(cancelled,expired)');
+        .not("status", "in", "(cancelled,expired)");
       if ((count || 0) > 0 || offering.enrolled > 0)
         throw new Error(
           "VALIDATION_FAILED: Cancel or move active enrollments before deleting this offering.",
@@ -436,58 +495,14 @@ export default async (request: Request, context: Context) => {
         throw new Error("INVALID_TRANSITION");
       const service = serviceClient();
       if (body.command === "cancel") {
-        const { data: participants } = await service
-          .from("lesson_participants")
-          .select("lesson_id")
-          .eq("booking_id", visible.id);
-        const lessonIds = (participants ?? []).map((item) => item.lesson_id);
-        if (lessonIds.length) {
-          await Promise.all([
-            service
-              .from("lessons")
-              .update({
-                status: "cancelled",
-                updated_at: new Date().toISOString(),
-              })
-              .in("id", lessonIds),
-            service
-              .from("lesson_participants")
-              .update({ status: "cancelled" })
-              .eq("booking_id", visible.id),
-            service
-              .from("calendar_projections")
-              .update({ status: "queued", last_error: null })
-              .in("lesson_id", lessonIds),
-          ]);
-        }
-        if (visible.offering_id)
-          await service.rpc("release_offering_seat", {
-            target_offering: visible.offering_id,
-          });
-        const { data, error } = await service
-          .from("bookings")
-          .update({
-            status: "cancelled",
-            version: visible.version + 1,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", visible.id)
-          .eq("version", visible.version)
-          .select()
-          .single();
-        if (error) throw error;
-        await service.from("audit_events").insert({
-          studio_id: visible.studio_id,
-          entity_type: "booking",
-          entity_id: visible.id,
-          action: "booking.cancelled_by_coach",
-          reason: "Coach cancelled booking",
-          correlation_id: id,
-          source: "booking_admin",
-          before_state: visible,
-          after_state: data,
+        const { data, error } = await service.rpc("cancel_booking_credit", {
+          p_booking: visible.id,
+          p_version: body.expectedVersion,
+          p_use: body.payload.useCredit === true,
+          p_student_action: false,
         });
-        return json({ resource: data });
+        if (error) throw error;
+        return json({ resource: data.booking });
       }
       if (visible.paid_minor <= 0 || visible.payment_status === "refunded")
         throw new Error(

@@ -5,6 +5,7 @@ import { parseCommand } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { handleAdministrationCommands } from "./_v2/administration";
 import { handleFinanceCommands } from "./_v2/finance";
+import { handleInvoiceCommands } from "./_v2/invoices";
 import { handleLessonsCommands } from "./_v2/lessons";
 import { handleMessagingCommands } from "./_v2/messaging";
 import { handleStudentsCommands } from "./_v2/students";
@@ -15,6 +16,7 @@ import referrals from "./referrals";
 import { handleAutomationCommands } from "./_v2/automations";
 
 const domains = new Set([
+  "invoices",
   "automations",
   "students",
   "lessons",
@@ -38,6 +40,7 @@ const domains = new Set([
 ]);
 
 const commandHandlers: V2CommandHandler[] = [
+  handleInvoiceCommands,
   handleAutomationCommands,
   handleStudentsCommands,
   handleLessonsCommands,

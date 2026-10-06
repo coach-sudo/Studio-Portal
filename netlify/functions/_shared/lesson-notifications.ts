@@ -17,6 +17,7 @@ export async function queueLessonChangeEmails(
   lessonId: string,
   kind: "rescheduled" | "cancelled",
   correlationId: string,
+  scope?: { studentId: string; bookingId: string },
 ) {
   const db = client as SupabaseClient<Database>;
   const { data: lesson, error } = await db
@@ -25,6 +26,7 @@ export async function queueLessonChangeEmails(
     .eq("id", lessonId)
     .single();
   if (error) throw error;
+  const studentId = scope?.studentId ?? lesson.student_id;
   const [
     { data: studio, error: studioError },
     { data: participants, error: participantsError },
@@ -39,12 +41,17 @@ export async function queueLessonChangeEmails(
     db
       .from("lesson_participants")
       .select("booking_id,student_id,email")
-      .eq("lesson_id", lesson.id),
-    lesson.student_id
+      .eq("lesson_id", lesson.id)
+      .match(
+        scope
+          ? { booking_id: scope.bookingId, student_id: scope.studentId }
+          : {},
+      ),
+    studentId
       ? db
           .from("students")
           .select("full_name,preferred_name")
-          .eq("id", lesson.student_id)
+          .eq("id", studentId)
           .single()
       : Promise.resolve({
           data: { full_name: "Class participants", preferred_name: null },
@@ -65,15 +72,15 @@ export async function queueLessonChangeEmails(
   const automation = { ...emailDefaults, ...settings.emailAutomations };
   if (!automation.enabled) return [];
   const origin = portalOrigin();
-  const bookingId = participants?.find(
-    (item) => item.student_id === lesson.student_id,
-  )?.booking_id;
+  const bookingId =
+    scope?.bookingId ??
+    participants?.find((item) => item.student_id === studentId)?.booking_id;
   const recipients = new Set(
-    lesson.student_id
+    studentId
       ? (
           await resolveEventRecipients(
             client,
-            lesson.student_id,
+            studentId,
             kind === "cancelled" ? "cancellation" : "schedule_change",
             { mandatory: true },
           )
@@ -82,7 +89,7 @@ export async function queueLessonChangeEmails(
   );
   // Group participants are resolved through their own identity and permissions, not raw emails.
   for (const participant of participants ?? [])
-    if (participant.student_id && participant.student_id !== lesson.student_id)
+    if (participant.student_id && participant.student_id !== studentId)
       for (const recipient of (
         await resolveEventRecipients(
           client,
@@ -103,7 +110,9 @@ export async function queueLessonChangeEmails(
     .in("status", ["draft", "approved", "queued", "failed"])
     .eq("event_key", "booking.reminder.student")
     .or(
-      `lesson_id.eq.${lesson.id}${bookingId ? `,booking_id.eq.${bookingId}` : ""}`,
+      scope
+        ? `booking_id.eq.${scope.bookingId},and(lesson_id.eq.${lesson.id},student_id.eq.${scope.studentId})`
+        : `lesson_id.eq.${lesson.id}${bookingId ? `,booking_id.eq.${bookingId}` : ""}`,
     );
   if (canceled.error) throw canceled.error;
   const values = {
@@ -135,7 +144,7 @@ export async function queueLessonChangeEmails(
   );
   const base = {
     studio_id: lesson.studio_id,
-    student_id: lesson.student_id,
+    student_id: studentId,
     lesson_id: lesson.id,
     booking_id: bookingId,
     correlation_id: correlationId,
@@ -153,7 +162,7 @@ export async function queueLessonChangeEmails(
         kind === "cancelled" ? "cancellation" : "schedule_change",
       send_at: new Date().toISOString(),
       event_key: `lesson.${kind}.student`,
-      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}:student:${recipient}`,
+      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:student:${recipient}`,
     }),
   );
   if (settings.contactEmail)
@@ -164,7 +173,7 @@ export async function queueLessonChangeEmails(
       body,
       send_at: new Date().toISOString(),
       event_key: `lesson.${kind}.coach`,
-      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}:coach`,
+      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:coach`,
     });
   const reminderStatus = compatibleQueueStatus(rule, automation.reminders);
   if (kind === "rescheduled" && reminderStatus) {

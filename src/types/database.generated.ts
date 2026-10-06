@@ -1529,6 +1529,44 @@ export type Database = {
           },
         ]
       }
+      invoice_settlements: {
+        Row: {
+          allocations: Json
+          amount_minor: number
+          created_at: string
+          id: string
+          invoice_id: string
+          method: string
+          reference: string
+        }
+        Insert: {
+          allocations: Json
+          amount_minor: number
+          created_at?: string
+          id?: string
+          invoice_id: string
+          method: string
+          reference: string
+        }
+        Update: {
+          allocations?: Json
+          amount_minor?: number
+          created_at?: string
+          id?: string
+          invoice_id?: string
+          method?: string
+          reference?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invoice_settlements_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "studio_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lesson_messages: {
         Row: {
           author_role: string
@@ -1636,6 +1674,8 @@ export type Database = {
           ends_at: string
           id: string
           imported_at: string | null
+          invoice_id: string | null
+          invoice_payment_pending: boolean
           join_url: string | null
           location_label: string
           location_type: string
@@ -1665,6 +1705,8 @@ export type Database = {
           ends_at: string
           id?: string
           imported_at?: string | null
+          invoice_id?: string | null
+          invoice_payment_pending?: boolean
           join_url?: string | null
           location_label: string
           location_type: string
@@ -1694,6 +1736,8 @@ export type Database = {
           ends_at?: string
           id?: string
           imported_at?: string | null
+          invoice_id?: string | null
+          invoice_payment_pending?: boolean
           join_url?: string | null
           location_label?: string
           location_type?: string
@@ -1718,6 +1762,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "lessons_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "studio_invoices"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lessons_offering_id_fkey"
             columns: ["offering_id"]
@@ -2866,6 +2917,7 @@ export type Database = {
       }
       payment_entries: {
         Row: {
+          account_credit: boolean
           amount_minor: number
           created_at: string
           created_by: string | null
@@ -2878,6 +2930,7 @@ export type Database = {
           student_id: string
         }
         Insert: {
+          account_credit?: boolean
           amount_minor: number
           created_at?: string
           created_by?: string | null
@@ -2890,6 +2943,7 @@ export type Database = {
           student_id: string
         }
         Update: {
+          account_credit?: boolean
           amount_minor?: number
           created_at?: string
           created_by?: string | null
@@ -3416,6 +3470,35 @@ export type Database = {
           },
         ]
       }
+      student_credit_accounts: {
+        Row: {
+          auto_apply: boolean | null
+          student_id: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          auto_apply?: boolean | null
+          student_id: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          auto_apply?: boolean | null
+          student_id?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "student_credit_accounts_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: true
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       student_pricing_rules: {
         Row: {
           active: boolean
@@ -3693,6 +3776,105 @@ export type Database = {
           },
         ]
       }
+      studio_invoices: {
+        Row: {
+          branding: Json
+          checkout_amount: number | null
+          checkout_key: string | null
+          checkout_session_id: string | null
+          created_at: string
+          credit_minor: number
+          currency: string
+          due_date: string
+          footer: string
+          id: string
+          idempotency_key: string | null
+          introduction: string
+          issue_date: string
+          items: Json
+          notes: string
+          number: string
+          paid_minor: number
+          recipient: Json
+          status: string
+          student_id: string
+          studio_id: string
+          total_minor: number
+          updated_at: string
+          version: number
+          waived_minor: number
+        }
+        Insert: {
+          branding: Json
+          checkout_amount?: number | null
+          checkout_key?: string | null
+          checkout_session_id?: string | null
+          created_at?: string
+          credit_minor?: number
+          currency: string
+          due_date: string
+          footer?: string
+          id?: string
+          idempotency_key?: string | null
+          introduction?: string
+          issue_date: string
+          items: Json
+          notes?: string
+          number: string
+          paid_minor?: number
+          recipient: Json
+          status: string
+          student_id: string
+          studio_id: string
+          total_minor: number
+          updated_at?: string
+          version?: number
+          waived_minor?: number
+        }
+        Update: {
+          branding?: Json
+          checkout_amount?: number | null
+          checkout_key?: string | null
+          checkout_session_id?: string | null
+          created_at?: string
+          credit_minor?: number
+          currency?: string
+          due_date?: string
+          footer?: string
+          id?: string
+          idempotency_key?: string | null
+          introduction?: string
+          issue_date?: string
+          items?: Json
+          notes?: string
+          number?: string
+          paid_minor?: number
+          recipient?: Json
+          status?: string
+          student_id?: string
+          studio_id?: string
+          total_minor?: number
+          updated_at?: string
+          version?: number
+          waived_minor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_invoices_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_invoices_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studios: {
         Row: {
           created_at: string
@@ -3942,6 +4124,14 @@ export type Database = {
       }
     }
     Functions: {
+      apply_invoice_lesson_credit: {
+        Args: { p_invoice: string; p_line: string; p_version: number }
+        Returns: Json
+      }
+      attach_studio_invoice_checkout: {
+        Args: { p_invoice: string; p_key: string; p_session: string }
+        Returns: undefined
+      }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -3984,6 +4174,24 @@ export type Database = {
       can_view_student_work: {
         Args: { target_student: string }
         Returns: boolean
+      }
+      cancel_booking_credit: {
+        Args: {
+          p_booking: string
+          p_student_action?: boolean
+          p_use?: boolean
+          p_version: number
+        }
+        Returns: Json
+      }
+      cancel_invoice_lesson: {
+        Args: {
+          p_lesson: string
+          p_student: string
+          p_student_action: boolean
+          p_use: boolean
+        }
+        Returns: number
       }
       claim_booking_discount:
         | {
@@ -4147,6 +4355,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_studio_invoice_checkout: {
+        Args: {
+          p_amount: number
+          p_invoice: string
+          p_key: string
+          p_version: number
+        }
+        Returns: Json
+      }
       cleanup_transient_studio_data: { Args: never; Returns: Json }
       command_apply_lesson_credit: {
         Args: {
@@ -4165,6 +4382,10 @@ export type Database = {
           message_id: string
           reason: string
         }
+        Returns: Json
+      }
+      command_cancel_lesson_credit: {
+        Args: { p_lesson: string; p_use: boolean; p_version: number }
         Returns: Json
       }
       command_change_lesson_state: {
@@ -4356,6 +4577,10 @@ export type Database = {
         Args: { target_service: string; target_starts: string[] }
         Returns: string[]
       }
+      credit_reconciliation: {
+        Args: never
+        Returns: Json
+      }
       current_campaign_contacts: {
         Args: { p_studio_id: string }
         Returns: {
@@ -4425,6 +4650,10 @@ export type Database = {
         }
         Returns: Json
       }
+      reconcile_student_credit_reservations: {
+        Args: { p_student: string; p_version: number }
+        Returns: Json
+      }
       refund_package_gift: { Args: { target_gift: string }; Returns: Json }
       release_booking_discount: {
         Args: { target_code: string }
@@ -4433,6 +4662,10 @@ export type Database = {
       release_offering_seat: {
         Args: { target_offering: string }
         Returns: number
+      }
+      release_studio_invoice_checkout: {
+        Args: { p_invoice: string; p_key: string }
+        Returns: undefined
       }
       render_campaign_text: {
         Args: {
@@ -4515,9 +4748,68 @@ export type Database = {
         Args: { p_lesson_id: string; p_package_id?: string; p_reason?: string }
         Returns: string
       }
+      reserve_student_lesson_credit: {
+        Args: {
+          p_lesson_id: string
+          p_manual?: boolean
+          p_package_id?: string
+          p_reason?: string
+          p_student: string
+        }
+        Returns: string
+      }
+      reserve_student_upcoming_credits: {
+        Args: { p_student: string }
+        Returns: Json
+      }
+      save_studio_invoice: {
+        Args: { p_key: string; p_value: Json; p_version?: number }
+        Returns: Json
+      }
       seed_studio_automation_rules: {
         Args: { target_studio: string }
         Returns: undefined
+      }
+      set_student_credit_auto: {
+        Args: { p_enabled: boolean; p_student: string; p_version: number }
+        Returns: Json
+      }
+      set_student_credit_total: {
+        Args: {
+          p_key: string
+          p_reason: string
+          p_student: string
+          p_target: number
+          p_version: number
+        }
+        Returns: Json
+      }
+      settle_lesson_credits: {
+        Args: { p_lesson: string; p_student?: string; p_use: boolean }
+        Returns: undefined
+      }
+      settle_studio_invoice: {
+        Args: {
+          p_amount: number
+          p_invoice: string
+          p_method: string
+          p_reference: string
+          p_version?: number
+        }
+        Returns: Json
+      }
+      settle_studio_invoice_checkout: {
+        Args: {
+          p_amount: number
+          p_invoice: string
+          p_key: string
+          p_session: string
+        }
+        Returns: Json
+      }
+      student_credit_summary: {
+        Args: { p_student: string }
+        Returns: Json
       }
       student_payment_balance: {
         Args: { target_student: string }
@@ -4540,6 +4832,14 @@ export type Database = {
           p_student_id: string
         }
         Returns: number
+      }
+      sync_invoice_lesson_credit: {
+        Args: { p_lesson: string; p_student: string }
+        Returns: undefined
+      }
+      void_studio_invoice: {
+        Args: { p_invoice: string; p_version: number }
+        Returns: Json
       }
     }
     Enums: {
@@ -4634,8 +4934,7 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -4659,8 +4958,7 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
@@ -4684,8 +4982,7 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+    keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }

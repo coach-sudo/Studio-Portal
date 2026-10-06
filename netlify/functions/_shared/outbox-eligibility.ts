@@ -46,6 +46,38 @@ export async function checkOutboxEligibility(
   now = Date.now(),
   options: { requireApproval?: boolean } = {},
 ): Promise<OutboxEligibility> {
+  if (message.event_key === "invoice.issued") {
+    const snapshot = message.entity_snapshot as {
+      invoiceId?: string;
+      invoiceVersion?: number;
+      approvedAt?: string;
+    };
+    if (!snapshot.approvedAt || !snapshot.invoiceId)
+      return { allowed: false, reason: "approval_required" };
+    const invoice = await client
+      .from("studio_invoices")
+      .select("student_id,studio_id,status,version")
+      .eq("id", snapshot.invoiceId)
+      .single();
+    if (invoice.error) throw invoice.error;
+    if (
+      !invoice.data ||
+      invoice.data.studio_id !== message.studio_id ||
+      ["void", "draft"].includes(invoice.data.status) ||
+      invoice.data.version !== snapshot.invoiceVersion
+    )
+      return { allowed: false, reason: "invoice_changed" };
+    const recipients = await resolveEventRecipients(
+      client,
+      invoice.data.student_id,
+      "payment_due",
+    );
+    return recipients.recipients.some(
+      (r) => r.email.toLowerCase() === message.recipient.toLowerCase(),
+    )
+      ? { allowed: true }
+      : { allowed: false, reason: "recipient_permission_changed" };
+  }
   const db = client as SupabaseClient<Database>,
     intent = messageIntent(message);
   if (

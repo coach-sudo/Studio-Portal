@@ -225,6 +225,8 @@ export async function loadOperationalData(
           .nullish()
           .parse(row.source_provider) ?? undefined,
       sourceExternalId: row.source_external_id ?? undefined,
+      invoicePaymentPending: row.invoice_payment_pending,
+      invoiceId: row.invoice_id ?? undefined,
       paymentStatus:
         z
           .enum([

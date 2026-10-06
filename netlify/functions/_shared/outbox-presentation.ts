@@ -27,7 +27,7 @@ export function presentOutboxMessage(
     },
   );
   const event = input.event_key ?? "";
-  const defaultAction: PortalAction = /payment|receipt/.test(event)
+  const defaultAction: PortalAction = /payment|receipt|invoice/.test(event)
     ? "payments"
     : /package/.test(event)
       ? "packages"

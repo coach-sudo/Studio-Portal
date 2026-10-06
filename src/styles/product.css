@@ -1401,3 +1401,32 @@ input[type="radio"] {
     scroll-behavior: auto !important;
   }
 }
+.compact-metrics > div,
+.metric-strip > div,
+.header-actions > *,
+.workflow-form > label,
+.table-list article > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.header-actions,
+.form-actions {
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.workflow-form input,
+.workflow-form select,
+.workflow-form textarea {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.compact-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+}
+@media (max-width: 600px) {
+  .table-list > article > .financial-amount {
+    grid-column: 1 / -1;
+    white-space: nowrap !important;
+  }
+}

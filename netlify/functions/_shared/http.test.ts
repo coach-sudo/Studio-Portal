@@ -4,6 +4,21 @@ import { apiError, AppError, toAppError } from "./http";
 afterEach(() => vi.restoreAllMocks());
 
 describe("structured API errors", () => {
+  it("handles structured database credit conflicts as actionable client errors", () => {
+    expect(toAppError({ message: "CREDIT_UNAVAILABLE" })).toMatchObject({
+      code: "VALIDATION_FAILED",
+      status: 422,
+    });
+    expect(toAppError({ message: "VERSION_CONFLICT:7" })).toMatchObject({
+      code: "VERSION_CONFLICT",
+      status: 409,
+    });
+    expect(
+      toAppError({
+        message: "INVALID_TRANSITION: An online payment is pending.",
+      }).message,
+    ).toContain("Check or cancel");
+  });
   it.each([
     ["FORBIDDEN", "FORBIDDEN", 403, false],
     ["VERSION_CONFLICT:7", "VERSION_CONFLICT", 409, false],

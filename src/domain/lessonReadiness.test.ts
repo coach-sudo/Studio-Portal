@@ -448,7 +448,7 @@ describe("package coverage projections", () => {
     data.packages[0].autoApply = false;
     expect(evaluate(data).financial.state).toBe("payment_due");
   });
-  it("checks service, duration, and meeting-provider applicability", () => {
+  it("covers any service and duration with a usable lesson credit", () => {
     const data = packages();
     data.packages[0].definitionId = "definition";
     data.packageDefinitions = [
@@ -461,11 +461,11 @@ describe("package coverage projections", () => {
         meetingProviders: ["google_meet"],
       },
     ];
-    expect(evaluate(data).financial.state).toBe("payment_due");
+    expect(evaluate(data).financial.state).toBe("covered_package");
     data.lessons[0].serviceId = "different-service";
     expect(evaluate(data).financial.state).toBe("covered_package");
     data.packageDefinitions[0].sessionDurationMinutes = 30;
-    expect(evaluate(data).financial.state).toBe("payment_due");
+    expect(evaluate(data).financial.state).toBe("covered_package");
   });
   it("allocates across packages once, in expiry order", () => {
     const data = packages();

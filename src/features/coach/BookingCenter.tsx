@@ -1,3 +1,8 @@
+import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
+import {
+  lessonCreditDebit,
+  settleDemoLessonCredits,
+} from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -178,7 +183,12 @@ export function BookingCenter() {
           expectedVersion: item?.version,
           payload,
         });
-        await invalidateStudioDomains(queryClient, ["booking"]);
+        await invalidateStudioDomains(queryClient, [
+          "booking",
+          "finance",
+          "lessons",
+          "messaging",
+        ]);
       }
       if (dialog?.type === "booking" || dialog?.type === "lesson")
         closeAppointment();
@@ -530,7 +540,21 @@ export function BookingCenter() {
                     (lesson) =>
                       (lesson.locationLabel = String(payload.location)),
                   );
-              } else changeDemoBooking(draft, dialog.item.id, command);
+              } else {
+                if (command === "cancel") {
+                  const ids = draft.lessonParticipants
+                    .filter((p) => p.bookingId === dialog.item.id)
+                    .map((p) => p.lessonId);
+                  for (const id of ids)
+                    settleDemoLessonCredits(
+                      draft,
+                      id,
+                      payload.useCredit === true,
+                      dialog.item.studentId,
+                    );
+                }
+                changeDemoBooking(draft, dialog.item.id, command);
+              }
             })
           }
         />
@@ -1483,6 +1507,8 @@ function BookingDialog({
   onAction: (command: string, payload?: Record<string, unknown>) => void;
 }) {
   const locationId = useId();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [consumeCredit, setConsumeCredit] = useState(false);
   const [location, setLocation] = useState(
     booking.inPersonLocation ||
       data.settings.meetingFormats.in_person?.location ||
@@ -1509,6 +1535,41 @@ function BookingDialog({
       onClose={onClose}
     >
       <div className="workflow-content">
+        {confirmCancel && (
+          <section className="policy-box">
+            <h3>Cancel this booking?</h3>
+            {(booking.paymentPolicy === "credits" ||
+              data.lessonParticipants.some(
+                (part) =>
+                  part.bookingId === booking.id &&
+                  data.packages.some(
+                    (pkg) =>
+                      pkg.studentId === relatedStudentId &&
+                      lessonCreditDebit(
+                        data.creditEntries,
+                        part.lessonId,
+                        pkg.id,
+                      ) > 0,
+                  ),
+              )) && (
+              <CreditCancellationChoice
+                useCredit={consumeCredit}
+                onChange={setConsumeCredit}
+              />
+            )}
+            <div className="form-actions">
+              <button onClick={() => setConfirmCancel(false)}>
+                Keep booking
+              </button>
+              <button
+                className="danger-button"
+                onClick={() => onAction("cancel", { useCredit: consumeCredit })}
+              >
+                Confirm cancellation
+              </button>
+            </div>
+          </section>
+        )}
         <div className="integration-detail">
           <article>
             <div>
@@ -1609,7 +1670,14 @@ function BookingDialog({
             <button onClick={() => onAction("refund")}>Refund</button>
           )}
           {booking.status === "confirmed" && (
-            <button onClick={() => onAction("cancel")}>Cancel</button>
+            <button
+              onClick={() => {
+                setConsumeCredit(false);
+                setConfirmCancel(true);
+              }}
+            >
+              Cancel booking
+            </button>
           )}
           <button className="primary" onClick={onClose}>
             Done

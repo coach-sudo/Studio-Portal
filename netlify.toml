@@ -6,6 +6,10 @@
 [build.environment]
   NODE_VERSION = "22"
 
+[functions."invoice-pdf"]
+  included_files = ["public/fonts/invoice-sans.ttf"]
+  external_node_modules = ["sharp"]
+
 [[headers]]
   for = "/*.html"
   [headers.values]

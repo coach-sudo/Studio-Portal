@@ -118,9 +118,15 @@ export function evaluateLessonReadiness(
     reason: "Financial coverage has not been recorded.",
   };
   const issues: ReadinessIssue[] = [];
-  const price = booking?.totalMinor ?? lesson.priceMinor;
-  const paid = booking?.paidMinor ?? lesson.paidMinor ?? 0;
-  const paymentStatus = booking?.paymentStatus ?? lesson.paymentStatus;
+  const price = lesson.invoiceId
+    ? lesson.priceMinor
+    : (booking?.totalMinor ?? lesson.priceMinor);
+  const paid = lesson.invoiceId
+    ? (lesson.paidMinor ?? 0)
+    : (booking?.paidMinor ?? lesson.paidMinor ?? 0);
+  const paymentStatus = lesson.invoiceId
+    ? lesson.paymentStatus
+    : (booking?.paymentStatus ?? lesson.paymentStatus);
   const pkg = data.packages.find((item) => item.id === lesson.packageId);
   const reserved =
     pkg && reservedForLesson(pkg.id, lesson.id, data.creditEntries);
@@ -133,10 +139,17 @@ export function evaluateLessonReadiness(
   const forecastPkg =
     projected && data.packages.find((item) => item.id === projected.packageId);
 
-  if (lesson.paymentStatus === "waived") {
+  if (lesson.invoicePaymentPending) {
+    financial.state = "payment_processing";
+    financial.reason =
+      "An online invoice payment is pending. Check its status before changing coverage.";
+  } else if (lesson.paymentStatus === "waived") {
     financial.state = "covered_waived";
     financial.reason = "Coach recorded a waiver or arrangement.";
-  } else if (paymentStatus === "paid" && booking?.paymentPolicy !== "credits") {
+  } else if (
+    paymentStatus === "paid" &&
+    (lesson.invoiceId || booking?.paymentPolicy !== "credits")
+  ) {
     financial.state = "covered_paid";
     financial.reason = "Payment is recorded as paid.";
   } else if (paymentStatus === "not_required") {

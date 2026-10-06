@@ -1,3 +1,8 @@
+import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
+import {
+  lessonCreditDebit,
+  settleDemoLessonCredits,
+} from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import {
@@ -153,18 +158,12 @@ export function CoachLessonHub({
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const [notice, setNotice] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [confirmCancellation, setConfirmCancellation] = useState(false);
+  const [consumeCredit, setConsumeCredit] = useState(false);
   const [lessonAction, setLessonAction] = useState<
     "details" | "reschedule" | "credits" | null
   >(null);
   const [actionBusy, setActionBusy] = useState("");
-  const [creditQuantityText, setCreditQuantityText] = useState("1");
-  const creditQuantity = Number(creditQuantityText);
-  const validCreditQuantity =
-    creditQuantityText.trim() !== "" &&
-    Number.isInteger(creditQuantity) &&
-    creditQuantity !== 0 &&
-    Math.abs(creditQuantity) <= 20;
-  const [creditReason, setCreditReason] = useState("Lesson-specific credit");
   const [paymentStatus, setPaymentStatus] = useState<
     NonNullable<Lesson["paymentStatus"]>
   >(lesson?.paymentStatus || "untracked");
@@ -190,29 +189,27 @@ export function CoachLessonHub({
         total + packageSummary(item, data.creditEntries).remainingCredits,
       0,
     );
-  const paidByCredit = data.creditEntries.some(
-    (item) =>
-      item.lessonId === lesson.id &&
-      ["reservation", "consumption"].includes(item.kind),
-  );
+  const paidByCredit = data.packages
+    .filter((p) => p.studentId === student.id)
+    .some((p) => lessonCreditDebit(data.creditEntries, lesson.id, p.id) > 0);
   const durationMinutes = Math.round(
     (new Date(lesson.endsAt).getTime() - new Date(lesson.startsAt).getTime()) /
       60_000,
   );
   const cancelLesson = async () => {
-    if (
-      cancelling ||
-      !window.confirm(
-        "Cancel and remove this lesson from active calendars? Google Calendar will be updated.",
-      )
-    )
-      return;
+    if (cancelling) return;
     setCancelling(true);
     try {
       if (isDemo)
         store.transact((draft) => {
           const current = draft.lessons.find((item) => item.id === lesson.id);
           if (current) {
+            settleDemoLessonCredits(
+              draft,
+              lesson.id,
+              consumeCredit,
+              student.id,
+            );
             current.status = "cancelled";
             current.version += 1;
           }
@@ -222,9 +219,15 @@ export function CoachLessonHub({
           command: "cancel",
           entityId: lesson.id,
           expectedVersion: lesson.version,
+          payload: { useCredit: consumeCredit },
           reason: "Coach cancelled lesson from lesson workspace",
         });
-        await invalidateStudioDomains(queryClient, ["lessons"]);
+        await invalidateStudioDomains(queryClient, [
+          "lessons",
+          "booking",
+          "finance",
+          "messaging",
+        ]);
       }
       navigate(`/coach/students/${student.id}/lessons`);
     } catch (reason) {
@@ -315,35 +318,6 @@ export function CoachLessonHub({
         reason instanceof Error
           ? reason.message
           : "Lesson details could not be saved.",
-      );
-    } finally {
-      setActionBusy("");
-    }
-  };
-  const adjustCredit = async () => {
-    if (actionBusy || !validCreditQuantity || creditReason.trim().length < 3)
-      return;
-    setActionBusy("credit");
-    try {
-      await studioCommand("credits", {
-        command: "grant",
-        expectedVersion: 0,
-        payload: {
-          studentId: student.id,
-          lessonId: lesson.id,
-          quantity: creditQuantity,
-          reason: creditReason.trim(),
-        },
-        reason: "Coach adjusted credit from lesson workspace",
-      });
-      await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
-      setLessonAction(null);
-      setNotice("Credit adjustment saved on this lesson.");
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Credit could not be adjusted.",
       );
     } finally {
       setActionBusy("");
@@ -502,7 +476,10 @@ export function CoachLessonHub({
               <button
                 className="danger-button"
                 disabled={cancelling}
-                onClick={() => void cancelLesson()}
+                onClick={() => {
+                  setConsumeCredit(false);
+                  setConfirmCancellation(true);
+                }}
               >
                 <Trash2 />
                 {cancelling ? "Cancelling…" : "Cancel lesson"}
@@ -515,6 +492,36 @@ export function CoachLessonHub({
         <p className="portal-notice" role="status">
           {notice}
         </p>
+      )}
+      {confirmCancellation && (
+        <Dialog
+          title="Cancel lesson"
+          description="This removes the lesson from active calendars and updates Google Calendar."
+          onClose={() => !cancelling && setConfirmCancellation(false)}
+        >
+          {paidByCredit && (
+            <CreditCancellationChoice
+              useCredit={consumeCredit}
+              onChange={setConsumeCredit}
+            />
+          )}
+          <div className="form-actions">
+            <button
+              disabled={cancelling}
+              onClick={() => setConfirmCancellation(false)}
+            >
+              Keep lesson
+            </button>
+            <button
+              className="danger-button"
+              disabled={cancelling}
+              onClick={() => void cancelLesson()}
+            >
+              Confirm cancellation
+            </button>
+          </div>
+          {notice && <p role="alert">{notice}</p>}
+        </Dialog>
       )}
       {lessonAction === "details" && (
         <Dialog
@@ -586,39 +593,15 @@ export function CoachLessonHub({
             </div>
             <section className="lesson-command-section">
               <p>
-                Positive numbers add credits; negative numbers remove them. The
-                reason stays attached to this lesson.
+                Set the student’s remaining total in their payment workspace.
               </p>
-              <div className="inline-command">
-                <label>
-                  Credits
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={creditQuantityText}
-                    onChange={(event) =>
-                      setCreditQuantityText(event.target.value)
-                    }
-                  />
-                </label>
-                <label>
-                  Reason
-                  <input
-                    value={creditReason}
-                    onChange={(event) => setCreditReason(event.target.value)}
-                  />
-                </label>
-                <button
-                  disabled={
-                    Boolean(actionBusy) ||
-                    !validCreditQuantity ||
-                    creditReason.trim().length < 3
-                  }
-                  onClick={() => void adjustCredit()}
-                >
-                  {actionBusy === "credit" ? "Saving…" : "Save adjustment"}
-                </button>
-              </div>
+              <button
+                onClick={() =>
+                  navigate(`/coach/students/${student.id}/payments`)
+                }
+              >
+                Manage credit balance
+              </button>
             </section>
             {!paidByCredit && (
               <button
