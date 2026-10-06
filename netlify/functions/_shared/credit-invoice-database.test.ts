@@ -55,6 +55,8 @@ beforeAll(async () => {
   await db.exec(`create schema extensions;create extension pgcrypto with schema extensions;
     alter table public.calendar_projections add constraint calendar_projections_lesson_id_key unique(lesson_id);
     alter table public.audit_events alter column correlation_id set not null;
+    alter table public.audit_events enable row level security;
+    create policy audit_coach_access on public.audit_events for select to authenticated using(public.is_studio_coach(studio_id));
     alter table public.recommendations add column updated_at timestamptz default now();
     alter table public.idempotency_keys add column actor_id uuid,add column command text,add column request_hash text;`);
   await db.exec(
@@ -728,6 +730,9 @@ describe("credit and invoice migration against PostgreSQL", () => {
         ])
       ).rows,
     ).toHaveLength(1);
+    expect(
+      (await db.query(`select * from public.audit_events`)).rows,
+    ).toHaveLength(0);
     await expect(
       db.query(`update public.studio_invoices set total_minor=1 where id=$1`, [
         inv.id,
@@ -749,6 +754,12 @@ describe("credit and invoice migration against PostgreSQL", () => {
         ])
       ).rows,
     ).toHaveLength(0);
+    await db.exec(
+      `reset role;select set_config('app.uid','${coach}',false);set role authenticated;`,
+    );
+    expect(
+      (await db.query(`select * from public.audit_events`)).rows.length,
+    ).toBeGreaterThan(0);
     await db.exec(`reset role;set role anon;`);
     await expect(
       db.query(`select * from public.studio_invoices`),

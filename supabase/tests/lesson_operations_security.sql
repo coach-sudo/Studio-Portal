@@ -1,6 +1,8 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(32);
+select ok(has_table_privilege('authenticated','public.audit_events','SELECT'),'Coach audit read has ordinary table privileges');
+select ok((select relrowsecurity from pg_class where oid='public.audit_events'::regclass),'Coach audit read retains RLS');
 select has_column('public','linked_contacts','is_primary_payer','Primary payer responsibility is additive');
 select has_column('public','linked_contacts','is_primary_scheduling_contact','Scheduling responsibility is additive');
 select has_column('public','linked_contacts','receives_financial_escalations','Escalation responsibility is additive');
@@ -46,5 +48,6 @@ set local role authenticated;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000099',true);
 select is((select count(*) from public.automation_rules),0::bigint,'Unrelated portal identity sees no rules');
 select is((select count(*) from public.automation_runs),0::bigint,'Unrelated portal identity sees no decisions');
+select is((select count(*) from public.audit_events),0::bigint,'Unrelated portal identity sees no coach audit history');
 select * from finish();
 rollback;

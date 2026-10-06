@@ -1,4 +1,6 @@
 -- Additive: existing credit ledger entries and purchased quantities are never rewritten.
+-- The existing audit_coach_access policy remains authoritative; table access is also required.
+grant select on public.audit_events to authenticated;
 -- Preserve explicitly earned dollar credits even when historical receipts hid them in the old net balance.
 alter table public.payment_entries add column account_credit boolean not null default false;
 update public.payment_entries set account_credit=true
