@@ -434,7 +434,7 @@ begin
   for item in select value from jsonb_array_elements(inv.items) loop
     for lid in select value::uuid from jsonb_array_elements_text(item->'lessonIds') loop
       update public.lessons set invoice_id=null,price_minor=(item->'originalLesson'->>'priceMinor')::bigint,payment_status=coalesce(item->'originalLesson'->>'paymentStatus','untracked'),service_id=(item->'originalLesson'->>'serviceId')::uuid,version=version+1,updated_at=now()
-      where id=lid and invoice_id=inv.id and student_id=inv.student_id and paid_minor=0 and payment_status='due';
+      where id=lid and invoice_id=inv.id and student_id=inv.student_id and paid_minor=0 and payment_status in ('due','waived');
     end loop;
   end loop;
   update public.studio_invoices set status='void',version=version+1,updated_at=now() where id=inv.id returning * into inv;

@@ -2,9 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
 import type { Invoice } from "../domain/invoices";
-export function useInvoices(isDemo: boolean, demoInvoices: Invoice[] = []) {
+export function useInvoices(
+  isDemo: boolean,
+  demoInvoices: Invoice[] = [],
+  readOnly = false,
+) {
   const query = useQuery({
-    queryKey: ["invoices", isDemo ? "demo" : "live"],
+    queryKey: [
+      "invoices",
+      isDemo ? "demo" : "live",
+      readOnly ? "student" : "coach",
+    ],
     enabled: !isDemo,
     queryFn: async () => {
       const auth = await supabase?.auth.getSession();

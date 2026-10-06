@@ -618,52 +618,69 @@ export function CoachLessonHub({
             )}
             <section className="lesson-command-section">
               <h3>Payment status</h3>
-              <div className="inline-command payment-status-command">
-                <label>
-                  Status
-                  <select
-                    value={paymentStatus}
-                    onChange={(event) =>
-                      setPaymentStatus(
-                        event.target.value as typeof paymentStatus,
-                      )
-                    }
-                  >
-                    <option value="untracked">Not tracked</option>
-                    <option value="due">Due</option>
-                    <option value="partially_paid">Partially paid</option>
-                    <option value="paid">Paid</option>
-                    <option value="waived">Waived</option>
-                    <option value="refunded">Refunded</option>
-                  </select>
-                </label>
-                <label>
-                  Lesson price (USD)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={lessonPrice}
-                    onChange={(event) => setLessonPrice(event.target.value)}
-                  />
-                </label>
-                <label>
-                  Amount paid (USD)
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={lessonPaid}
-                    onChange={(event) => setLessonPaid(event.target.value)}
-                  />
-                </label>
+              {lesson.invoiceId ? (
                 <button
-                  disabled={Boolean(actionBusy)}
-                  onClick={() => void savePaymentStatus()}
+                  onClick={() =>
+                    navigate(`/coach/finance?invoice=${lesson.invoiceId}`)
+                  }
                 >
-                  {actionBusy === "payment" ? "Saving…" : "Save payment status"}
+                  Manage invoice payment
                 </button>
-              </div>
+              ) : paidByCredit ? (
+                <p>
+                  A lesson credit is attached. Cancellation lets you return or
+                  use it.
+                </p>
+              ) : (
+                <div className="inline-command payment-status-command">
+                  <label>
+                    Status
+                    <select
+                      value={paymentStatus}
+                      onChange={(event) =>
+                        setPaymentStatus(
+                          event.target.value as typeof paymentStatus,
+                        )
+                      }
+                    >
+                      <option value="untracked">Not tracked</option>
+                      <option value="due">Due</option>
+                      <option value="partially_paid">Partially paid</option>
+                      <option value="paid">Paid</option>
+                      <option value="waived">Waived</option>
+                      <option value="refunded">Refunded</option>
+                    </select>
+                  </label>
+                  <label>
+                    Lesson price (USD)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={lessonPrice}
+                      onChange={(event) => setLessonPrice(event.target.value)}
+                    />
+                  </label>
+                  <label>
+                    Amount paid (USD)
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={lessonPaid}
+                      onChange={(event) => setLessonPaid(event.target.value)}
+                    />
+                  </label>
+                  <button
+                    disabled={Boolean(actionBusy)}
+                    onClick={() => void savePaymentStatus()}
+                  >
+                    {actionBusy === "payment"
+                      ? "Saving…"
+                      : "Save payment status"}
+                  </button>
+                </div>
+              )}
             </section>
           </div>
         </Dialog>

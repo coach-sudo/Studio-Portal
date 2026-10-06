@@ -275,6 +275,32 @@ export async function handleLessonsCommands(
       .eq("studio_id", studioId)
       .single();
     if (readError || !before) throw new Error("FORBIDDEN");
+    if (before.invoice_id)
+      throw new Error(
+        "INVALID_TRANSITION: Record payments and credits through the linked invoice.",
+      );
+    if (before.student_id) {
+      const coverage = await service
+        .from("package_credit_entries")
+        .select("quantity,packages!inner(student_id)")
+        .eq("lesson_id", before.id)
+        .eq("packages.student_id", before.student_id);
+      if (coverage.error) throw coverage.error;
+      if (
+        (coverage.data ?? []).reduce(
+          (total: number, entry: { quantity: number }) =>
+            total + entry.quantity,
+          0,
+        ) < 0
+      )
+        throw new Error(
+          "INVALID_TRANSITION: A lesson credit is attached. Cancellation lets you return or use that credit.",
+        );
+    }
+    if (paymentStatus === "paid_by_credit")
+      throw new Error(
+        "VALIDATION_FAILED: Apply a lesson credit using the credit action.",
+      );
     if (Number(before.version) !== Number(input.expectedVersion))
       throw new Error("VERSION_CONFLICT");
     const { data, error } = await service

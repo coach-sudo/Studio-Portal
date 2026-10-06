@@ -42,8 +42,12 @@ async function read(page: Page, table: string, filter: string) {
       },
     },
   );
-  expect(response.ok()).toBeTruthy();
-  return response.json();
+  const result = await response.json();
+  expect(
+    response.ok(),
+    `Read ${table}: HTTP ${response.status()} ${result.code ?? ""} ${result.message ?? ""}`,
+  ).toBeTruthy();
+  return result;
 }
 
 async function expectFinancialInset(page: Page) {

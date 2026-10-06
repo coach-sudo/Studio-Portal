@@ -21,14 +21,12 @@ import {
   type InvoiceLine,
 } from "../../domain/invoices";
 import type { StudioSnapshot } from "../../domain/model";
+import { studioDateKey } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { InvoiceDocument } from "./InvoiceDocument";
 import "./InvoiceWorkspace.css";
 
-const today = () => new Date().toISOString().slice(0, 10);
-const dueDate = () =>
-  new Date(Date.now() + 14 * 86400000).toISOString().slice(0, 10);
 export function InvoiceWorkspace({
   data,
   isDemo,
@@ -40,7 +38,7 @@ export function InvoiceWorkspace({
   studentId?: string;
   readOnly?: boolean;
 }) {
-  const query = useInvoices(isDemo, data.invoices),
+  const query = useInvoices(isDemo, data.invoices, readOnly),
     client = useQueryClient(),
     store = useStudioStore();
   const [params, setParams] = useSearchParams(),
@@ -51,7 +49,9 @@ export function InvoiceWorkspace({
     [method, setMethod] = useState<"cash" | "bank">("cash"),
     [review, setReview] = useState<string[]>();
   const invoices = (query.data ?? []).filter(
-    (i) => !studentId || i.student_id === studentId,
+    (i) =>
+      (!studentId || i.student_id === studentId) &&
+      (!readOnly || i.status !== "draft"),
   );
   const selected = invoices.find((i) => i.id === params.get("invoice"));
   const logo = useQuery({
@@ -134,7 +134,7 @@ export function InvoiceWorkspace({
                 if (
                   lesson &&
                   !lesson.paidMinor &&
-                  lesson.paymentStatus === "due"
+                  ["due", "waived"].includes(lesson.paymentStatus ?? "")
                 ) {
                   lesson.priceMinor = line.originalLesson?.priceMinor;
                   lesson.paymentStatus = line.originalLesson
@@ -786,8 +786,16 @@ function InvoiceEditor({
   const [student, setStudent] = useState(
       initial?.student_id ?? studentId ?? "",
     ),
-    [issue, setIssue] = useState(initial?.issue_date ?? today()),
-    [due, setDue] = useState(initial?.due_date ?? dueDate()),
+    [issue, setIssue] = useState(
+      initial?.issue_date ?? studioDateKey(new Date(), data.settings.timezone),
+    ),
+    [due, setDue] = useState(
+      initial?.due_date ??
+        studioDateKey(
+          new Date(Date.now() + 14 * 86400000),
+          data.settings.timezone,
+        ),
+    ),
     [intro, setIntro] = useState(
       initial?.introduction ??
         "Thank you for choosing our studio. Here are the details of your upcoming services.",
