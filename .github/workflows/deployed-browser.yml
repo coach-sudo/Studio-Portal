@@ -56,7 +56,7 @@ jobs:
       - run: npm run playwright:smoke
       - name: Upload browser evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployed-browser-evidence-${{ github.run_id }}
           if-no-files-found: ignore
@@ -238,7 +238,7 @@ jobs:
         run: npx tsx scripts/collect-e2e-function-diagnostics.ts
       - name: Upload full browser evidence
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: deployed-browser-full-evidence-${{ github.run_id }}
           if-no-files-found: ignore
