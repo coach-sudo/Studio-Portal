@@ -357,8 +357,8 @@ export function StudentBookings({
                           booking.startsAt,
                           booking.policySnapshot.cancellationWindowHours,
                         )
-                          ? `Online changes close ${booking.policySnapshot.cancellationWindowHours} hours before the lesson`
-                          : "Choose another available time"
+                          ? "Contact the studio to reschedule inside the notice window."
+                          : undefined
                       }
                       onClick={() => {
                         setSelected(booking);
@@ -525,26 +525,19 @@ export function StudentBookings({
                     selected.startsAt,
                     selected.policySnapshot.cancellationWindowHours,
                   )
-                    ? `Online cancellation and rescheduling closed ${selected.policySnapshot.cancellationWindowHours} hours before this lesson. Contact the studio if you need help.`
-                    : `Eligible settlement: ${selected.policySnapshot.settlement.replaceAll("_", " ")}.`}
+                    ? "Late cancellation: no refund. An applied lesson credit will be used; paid amounts are retained."
+                    : "On-time cancellation: an applied lesson credit returns to your balance. Any amount paid returns as dollar account credit."}
                 </p>
               </div>
               <div className="form-actions">
                 <button onClick={() => setSelected(undefined)}>
                   Keep booking
                 </button>
-                {selected.status === "confirmed" &&
-                  !isLateChange(
-                    selected.startsAt,
-                    selected.policySnapshot.cancellationWindowHours,
-                  ) && (
-                    <button
-                      className="primary"
-                      onClick={() => change("cancel")}
-                    >
-                      Cancel booking
-                    </button>
-                  )}
+                {selected.status === "confirmed" && (
+                  <button className="primary" onClick={() => change("cancel")}>
+                    Cancel booking
+                  </button>
+                )}
               </div>
             </div>
           )}

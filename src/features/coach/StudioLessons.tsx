@@ -1,3 +1,8 @@
+import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
+import {
+  lessonCreditDebit,
+  settleDemoLessonCredits,
+} from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -19,9 +24,11 @@ import { sourceLabel, studentName } from "./StudioOperations.shared";
 export function LessonsView({
   data,
   isDemo,
+  onOpenLesson,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
+  onOpenLesson?: (lesson: Lesson) => void;
 }) {
   const navigate = useNavigate(),
     store = useStudioStore(),
@@ -33,10 +40,9 @@ export function LessonsView({
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(""),
     [confirmCancel, setConfirmCancel] = useState(false),
+    [consumeCredit, setConsumeCredit] = useState(false),
     [cadence, setCadence] = useState<"weekly" | "biweekly">("weekly"),
     [occurrences, setOccurrences] = useState(6),
-    [creditQuantityText, setCreditQuantityText] = useState("1"),
-    [creditReason, setCreditReason] = useState("Lesson-specific credit"),
     [paymentStatus, setPaymentStatus] =
       useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
     [lessonPrice, setLessonPrice] = useState(""),
@@ -45,6 +51,7 @@ export function LessonsView({
     setSelected(lesson);
     setPanel("details");
     setConfirmCancel(false);
+    setConsumeCredit(false);
     setPaymentStatus(lesson.paymentStatus || "untracked");
     setLessonPrice(
       lesson.priceMinor == null ? "" : String(lesson.priceMinor / 100),
@@ -58,6 +65,8 @@ export function LessonsView({
       if (isDemo)
         store.transact((draft) => {
           const item = draft.lessons.find((i) => i.id === selected.id)!;
+          if (status === "cancelled")
+            settleDemoLessonCredits(draft, item.id, consumeCredit);
           item.status = status;
           item.version += 1;
           item.updatedAt = new Date().toISOString();
@@ -67,9 +76,15 @@ export function LessonsView({
           command: status === "completed" ? "complete" : "cancel",
           entityId: selected.id,
           expectedVersion: selected.version,
+          payload: { useCredit: consumeCredit },
           reason: `Coach marked lesson ${status}`,
         });
-        await invalidateStudioDomains(queryClient, ["lessons"]);
+        await invalidateStudioDomains(queryClient, [
+          "lessons",
+          "finance",
+          "booking",
+          "messaging",
+        ]);
       }
       setSelected(undefined);
       setNotice(
@@ -181,76 +196,6 @@ export function LessonsView({
       setBusy("");
     }
   };
-  const creditQuantity = Number(creditQuantityText);
-  const validCreditQuantity =
-    creditQuantityText.trim() !== "" &&
-    Number.isInteger(creditQuantity) &&
-    creditQuantity !== 0 &&
-    Math.abs(creditQuantity) <= 20;
-  const adjustLessonCredit = async () => {
-    if (
-      !selected ||
-      !validCreditQuantity ||
-      creditReason.trim().length < 3 ||
-      busy
-    )
-      return;
-    setBusy("credit");
-    try {
-      if (isDemo) {
-        store.transact((draft) => {
-          let pkg = draft.packages.find(
-            (item) =>
-              item.studentId === selected.studentId &&
-              item.name === "Studio lesson credits",
-          );
-          if (!pkg) {
-            pkg = {
-              id: `package-${crypto.randomUUID()}`,
-              studentId: selected.studentId,
-              name: "Studio lesson credits",
-              priceMinor: 0,
-              currency: "USD",
-              version: 1,
-              updatedAt: new Date().toISOString(),
-            };
-            draft.packages.push(pkg);
-          }
-          draft.creditEntries.push({
-            id: `credit-${crypto.randomUUID()}`,
-            packageId: pkg.id,
-            lessonId: selected.id,
-            kind: "adjustment",
-            quantity: creditQuantity,
-            reason: creditReason,
-            createdAt: new Date().toISOString(),
-          });
-        });
-      } else {
-        await studioCommand("credits", {
-          command: "grant",
-          expectedVersion: 0,
-          payload: {
-            studentId: selected.studentId,
-            lessonId: selected.id,
-            quantity: creditQuantity,
-            reason: creditReason,
-          },
-          reason: "Coach adjusted credit for a specific lesson",
-        });
-        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
-      }
-      setNotice(`Credit adjustment attached to ${selected.topic}.`);
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Lesson credit could not be adjusted.",
-      );
-    } finally {
-      setBusy("");
-    }
-  };
   const payWithCredit = async () => {
     if (!selected || busy) return;
     setBusy("pay-credit");
@@ -352,11 +297,7 @@ export function LessonsView({
         )
     : 0;
   const paidByCredit = selected
-    ? data.creditEntries.some(
-        (entry) =>
-          entry.lessonId === selected.id &&
-          ["reservation", "consumption"].includes(entry.kind),
-      )
+    ? lessonCreditDebit(data.creditEntries, selected.id) > 0
     : false;
   const selectedNotes = selected
     ? data.notes.filter((item) => item.lessonId === selected.id).length
@@ -386,7 +327,7 @@ export function LessonsView({
         timezone={data.settings.timezone}
         studentName={(id) => studentName(data, id)}
         sourceName={sourceLabel}
-        onOpen={openLesson}
+        onOpen={onOpenLesson || openLesson}
       />
       {selected && (
         <Dialog
@@ -478,7 +419,7 @@ export function LessonsView({
                     className="text-button"
                     onClick={() => setPanel("credits")}
                   >
-                    Adjust credits
+                    Credits & payments
                   </button>
                 )}
                 <button
@@ -611,42 +552,16 @@ export function LessonsView({
                 <section className="lesson-command-section">
                   <h3>Credits & payment</h3>
                   <p>
-                    Adjust the student’s balance and attach the reason to this
-                    lesson. Positive numbers add credits; negative numbers
-                    remove them.
+                    One credit covers one lesson. Set the remaining total in the
+                    student’s payments workspace.
                   </p>
-                  <div className="inline-command">
-                    <label>
-                      Credits
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={creditQuantityText}
-                        onChange={(event) =>
-                          setCreditQuantityText(event.target.value)
-                        }
-                      />
-                    </label>
-                    <label>
-                      Reason
-                      <input
-                        value={creditReason}
-                        onChange={(event) =>
-                          setCreditReason(event.target.value)
-                        }
-                      />
-                    </label>
-                    <button
-                      disabled={
-                        Boolean(busy) ||
-                        !validCreditQuantity ||
-                        creditReason.trim().length < 3
-                      }
-                      onClick={() => void adjustLessonCredit()}
-                    >
-                      {busy === "credit" ? "Saving…" : "Add adjustment"}
-                    </button>
-                  </div>
+                  <button
+                    onClick={() =>
+                      navigate(`/coach/students/${selected.studentId}/payments`)
+                    }
+                  >
+                    Manage credit balance
+                  </button>
                   {!paidByCredit && (
                     <button
                       className="primary"
@@ -660,52 +575,71 @@ export function LessonsView({
                           : "No credit available"}
                     </button>
                   )}
-                  <div className="inline-command payment-status-command">
-                    <label>
-                      Status
-                      <select
-                        value={paymentStatus}
-                        onChange={(event) =>
-                          setPaymentStatus(
-                            event.target.value as typeof paymentStatus,
-                          )
-                        }
-                      >
-                        <option value="untracked">Not tracked</option>
-                        <option value="due">Due</option>
-                        <option value="partially_paid">Partially paid</option>
-                        <option value="paid">Paid</option>
-                        <option value="waived">Waived</option>
-                        <option value="refunded">Refunded</option>
-                      </select>
-                    </label>
-                    <label>
-                      Lesson price (USD)
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={lessonPrice}
-                        onChange={(event) => setLessonPrice(event.target.value)}
-                      />
-                    </label>
-                    <label>
-                      Amount paid (USD)
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={lessonPaid}
-                        onChange={(event) => setLessonPaid(event.target.value)}
-                      />
-                    </label>
+                  {selected.invoiceId ? (
                     <button
-                      disabled={Boolean(busy)}
-                      onClick={() => void savePaymentStatus()}
+                      onClick={() =>
+                        navigate(`/coach/finance?invoice=${selected.invoiceId}`)
+                      }
                     >
-                      {busy === "payment" ? "Saving…" : "Save payment status"}
+                      Manage invoice payment
                     </button>
-                  </div>
+                  ) : paidByCredit ? (
+                    <p>
+                      A lesson credit is attached. Cancellation lets you return
+                      or use it.
+                    </p>
+                  ) : (
+                    <div className="inline-command payment-status-command">
+                      <label>
+                        Status
+                        <select
+                          value={paymentStatus}
+                          onChange={(event) =>
+                            setPaymentStatus(
+                              event.target.value as typeof paymentStatus,
+                            )
+                          }
+                        >
+                          <option value="untracked">Not tracked</option>
+                          <option value="due">Due</option>
+                          <option value="partially_paid">Partially paid</option>
+                          <option value="paid">Paid</option>
+                          <option value="waived">Waived</option>
+                          <option value="refunded">Refunded</option>
+                        </select>
+                      </label>
+                      <label>
+                        Lesson price (USD)
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={lessonPrice}
+                          onChange={(event) =>
+                            setLessonPrice(event.target.value)
+                          }
+                        />
+                      </label>
+                      <label>
+                        Amount paid (USD)
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={lessonPaid}
+                          onChange={(event) =>
+                            setLessonPaid(event.target.value)
+                          }
+                        />
+                      </label>
+                      <button
+                        disabled={Boolean(busy)}
+                        onClick={() => void savePaymentStatus()}
+                      >
+                        {busy === "payment" ? "Saving…" : "Save payment status"}
+                      </button>
+                    </div>
+                  )}
                 </section>
               )}
               {panel === "details" && selected.status === "scheduled" && (
@@ -719,6 +653,12 @@ export function LessonsView({
                   </button>
                   {confirmCancel ? (
                     <>
+                      {paidByCredit && (
+                        <CreditCancellationChoice
+                          useCredit={consumeCredit}
+                          onChange={setConsumeCredit}
+                        />
+                      )}
                       <span>
                         This removes it from active calendars and sends the
                         cancellation to Google.

@@ -210,6 +210,10 @@ export default async () => {
       apply_automatically: false,
     });
     if (claimError) throw claimError;
+    const coverage = await db.rpc("reserve_student_upcoming_credits", {
+      p_student: recipient.id,
+    });
+    if (coverage.error) throw coverage.error;
     packageGiftsDelivered += 1;
   }
 

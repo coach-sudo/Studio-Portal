@@ -1,0 +1,46 @@
+/* Portal-only appearance overrides, loaded with the authenticated portal. */
+:root[data-portal-theme="dark"] body {
+  background: var(--app-canvas);
+}
+:root[data-portal-theme="dark"] .page-header,
+:root[data-portal-theme="dark"] .student-header {
+  background: transparent;
+}
+:root[data-portal-theme="dark"] .student-quick-actions a,
+:root[data-portal-theme="dark"] .search-button,
+:root[data-portal-theme="dark"] .button-link {
+  background: var(--app-surface);
+  color: var(--ink);
+  border-color: var(--app-border-strong);
+}
+:root[data-portal-theme="dark"] .status.good {
+  background: var(--surface-success);
+  color: var(--color-success);
+}
+:root[data-portal-theme="dark"] .status.warn {
+  background: var(--surface-warning);
+  color: var(--color-warning);
+}
+:root[data-portal-theme="dark"] .status.danger {
+  background: var(--surface-danger);
+  color: var(--color-danger);
+}
+:root[data-portal-theme="dark"] .shell-mark,
+:root[data-portal-theme="dark"] .student-shell > aside nav a.active,
+:root[data-portal-theme="dark"] .mobile-nav .active {
+  color: #bfd4bc;
+}
+:root[data-portal-theme="dark"] .settings-section-index,
+:root[data-portal-theme="dark"] .data-summary {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border);
+}
+:root[data-portal-theme="dark"] .settings-section-index a {
+  color: var(--ink);
+}
+:root[data-portal-theme="dark"] .data-summary strong {
+  color: var(--ink);
+}
+:root[data-portal-theme="dark"] .data-summary small {
+  color: var(--muted);
+}

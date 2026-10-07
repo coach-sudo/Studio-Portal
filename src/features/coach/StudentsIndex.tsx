@@ -11,6 +11,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
+  Drawer,
   EmptyState,
   ListControls,
   Section,
@@ -407,6 +408,7 @@ export function StudentsIndex({
           ref={fileInput}
           className="visually-hidden"
           type="file"
+          aria-label="Import student roster CSV"
           accept=".csv,text/csv"
           onChange={loadCsv}
         />
@@ -707,7 +709,7 @@ function StudentForm({
     }
   };
   return (
-    <Dialog
+    <Drawer
       title="Add student"
       description="Start with the essentials. Everything else lives in the student record."
       onClose={onClose}
@@ -799,6 +801,6 @@ function StudentForm({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }

@@ -1,3 +1,4 @@
+import "../../styles/public.css";
 import { CircleDollarSign, Gift, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, useParams } from "react-router-dom";
@@ -68,7 +69,6 @@ export default function PackageGift() {
                 ...values,
                 token,
                 createPortalProfile: values.createPortalProfile === "on",
-                autoApply: values.autoApply === "on",
               }
             : { ...values, definitionId },
         ),
@@ -127,10 +127,10 @@ export default function PackageGift() {
               Email
               <input name="email" type="email" required />
             </label>
-            <label className="check-row full">
-              <input name="autoApply" type="checkbox" />
-              Apply credits to eligible upcoming unpaid lessons
-            </label>
+            <p className="full">
+              Your coach manages automatic credit use. Gift credits follow that
+              setting.
+            </p>
             <label className="check-row full">
               <input
                 name="createPortalProfile"

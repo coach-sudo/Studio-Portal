@@ -10,6 +10,67 @@ export async function handleFinanceCommands(
 ): Promise<Response | null> {
   const { audit, db, domain, input, request, requireCoach } = ctx;
 
+  if (
+    domain === "credits" &&
+    ["set_total", "set_auto", "reconcile"].includes(input.command)
+  ) {
+    const studioId = await requireCoach();
+    const studentId = String(input.payload.studentId || "");
+    const student = await db
+      .from("students")
+      .select("id")
+      .eq("id", studentId)
+      .eq("studio_id", studioId)
+      .is("deleted_at", null)
+      .single();
+    if (student.error || !student.data) throw new Error("FORBIDDEN");
+    const service = serviceClient();
+    if (
+      input.command === "set_total" &&
+      (!Number.isInteger(input.payload.total) ||
+        Number(input.payload.total) < 0 ||
+        String(input.payload.reason || "").trim().length < 3)
+    )
+      throw new Error("VALIDATION_FAILED");
+    if (
+      input.command === "set_auto" &&
+      typeof input.payload.enabled !== "boolean"
+    )
+      throw new Error("VALIDATION_FAILED");
+    const result = await service.rpc(
+      input.command === "set_total"
+        ? "set_student_credit_total"
+        : input.command === "reconcile"
+          ? "reconcile_student_credit_reservations"
+          : "set_student_credit_auto",
+      input.command === "set_total"
+        ? {
+            p_student: studentId,
+            p_target: input.payload.total,
+            p_version: input.expectedVersion,
+            p_reason: input.payload.reason,
+            p_key: `credit-total:${input.idempotencyKey}`,
+          }
+        : input.command === "reconcile"
+          ? { p_student: studentId, p_version: input.expectedVersion }
+          : {
+              p_student: studentId,
+              p_enabled: input.payload.enabled,
+              p_version: input.expectedVersion,
+            },
+    );
+    if (result.error) throw result.error;
+    await audit(
+      studioId,
+      "student",
+      studentId,
+      `credits.${input.command}`,
+      null,
+      result.data,
+    );
+    return json({ resource: result.data });
+  }
+
   if (domain === "packages" && input.command === "assign") {
     const studioId = await requireCoach(),
       definitionId = String(input.payload.definitionId || ""),
@@ -53,7 +114,14 @@ export async function handleFinanceCommands(
           expires_at: expiresAt,
           stripe_price_id: definition.stripe_price_id,
           credit_quantity: definition.session_count,
-          auto_apply: input.payload.autoApply === true,
+          auto_apply:
+            (
+              await service
+                .from("student_credit_accounts")
+                .select("auto_apply")
+                .eq("student_id", student.id)
+                .maybeSingle()
+            ).data?.auto_apply === true,
         })
         .select()
         .single();
@@ -74,28 +142,11 @@ export async function handleFinanceCommands(
     let applied = 0;
     let autoApplyPending = false;
     if (pkg.auto_apply) {
-      const { data: upcoming, error: upcomingError } = await service
-        .from("lessons")
-        .select("id")
-        .eq("student_id", student.id)
-        .eq("status", "scheduled")
-        .is("package_id", null)
-        .gte("starts_at", new Date().toISOString())
-        .order("starts_at")
-        .limit(50);
-      if (upcomingError) autoApplyPending = true;
-      else
-        for (const lesson of upcoming || []) {
-          const { data: packageId, error: applyError } = await service.rpc(
-            "reserve_package_credit_for_lesson",
-            { p_lesson_id: lesson.id, p_package_id: pkg.id },
-          );
-          if (applyError) {
-            autoApplyPending = true;
-            break;
-          }
-          if (packageId) applied += 1;
-        }
+      const coverage = await service.rpc("reserve_student_upcoming_credits", {
+        p_student: student.id,
+      });
+      autoApplyPending = !!coverage.error;
+      applied = Number(coverage.data?.applied ?? 0);
     }
     return json({
       resource: { ...pkg, applied, autoApplyPending },
@@ -376,53 +427,9 @@ export async function handleFinanceCommands(
       .eq("id", input.entityId)
       .single();
     if (readError || !before) throw new Error("FORBIDDEN");
-    const enabled = Boolean(input.payload.enabled);
-    const service = serviceClient();
-    const { data, error } = await service
-      .from("packages")
-      .update({
-        auto_apply: enabled,
-        version: input.expectedVersion + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", before.id)
-      .eq("version", input.expectedVersion)
-      .select()
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-    let applied = 0;
-    if (enabled) {
-      const { data: lessons } = await service
-        .from("lessons")
-        .select("id")
-        .eq("student_id", before.student_id)
-        .eq("status", "scheduled")
-        .is("package_id", null)
-        .gte("starts_at", new Date().toISOString())
-        .order("starts_at")
-        .limit(50);
-      for (const lesson of lessons || []) {
-        const { data: packageId } = await service.rpc(
-          "reserve_package_credit_for_lesson",
-          { p_lesson_id: lesson.id, p_package_id: before.id },
-        );
-        if (packageId) applied += 1;
-      }
-    }
-    return json({
-      resource: { ...data, applied },
-      recommendations: [],
-      auditEventId: await audit(
-        before.students.studio_id,
-        "package",
-        before.id,
-        enabled ? "package.auto_apply_enabled" : "package.auto_apply_disabled",
-        before,
-        data,
-      ),
-      queuedSideEffects: applied ? [`credits_applied:${applied}`] : [],
-    });
+    throw new Error(
+      "VALIDATION_FAILED: Review automatic credit use in the student’s payment workspace.",
+    );
   }
 
   if (domain === "credits" && input.command === "grant") {
@@ -768,7 +775,6 @@ export async function handleFinanceCommands(
   if (domain === "finance" && input.command === "checkout_definition") {
     const definitionId = String(input.payload.packageDefinitionId || "");
     const requestedMode = String(input.payload.renewalMode || "one_time");
-    const autoApply = Boolean(input.payload.autoApply);
     const [
       { data: student, error: studentError },
       { data: definition, error: definitionError },
@@ -813,6 +819,13 @@ export async function handleFinanceCommands(
           Date.now() + Number(definition.expiration_days) * 86400000,
         ).toISOString()
       : null;
+    const creditAccount = await db
+      .from("student_credit_accounts")
+      .select("auto_apply")
+      .eq("student_id", student.id)
+      .maybeSingle();
+    if (creditAccount.error) throw creditAccount.error;
+    const autoApply = creditAccount.data?.auto_apply === true;
     const { data: pkg, error: packageError } = await service
       .from("packages")
       .insert({
@@ -961,6 +974,7 @@ export async function handleFinanceCommands(
         amount_minor: Math.abs(amountMinor),
         currency: String(input.payload.currency || "USD").toUpperCase(),
         external_reference: reference,
+        account_credit: true,
         reason,
       })
       .select()

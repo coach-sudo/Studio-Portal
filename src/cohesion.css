@@ -1,24 +1,4 @@
 /* Unified lesson work and editorial actor portfolio */
-.lesson-prep-list {
-  display: grid;
-  gap: 8px;
-}
-.lesson-prep-list > article {
-  display: grid;
-  grid-template-columns: minmax(180px, 1fr) repeat(3, auto);
-  align-items: center;
-  gap: 14px;
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
-}
-.lesson-prep-list > article > div {
-  display: grid;
-}
-.lesson-prep-list small {
-  color: var(--muted);
-}
 .compact-check {
   display: flex;
   align-items: center;
@@ -32,9 +12,6 @@
 }
 .lesson-note-stack > article {
   padding: 16px;
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: white;
 }
 .lesson-note-stack > article > header {
   display: flex;
@@ -64,7 +41,6 @@
   border: 1px solid #cfe0d3;
   border-radius: 10px;
   background: #f2f8f3;
-  display: flex;
   align-items: flex-start;
   gap: 10px;
 }
@@ -83,16 +59,7 @@
   grid-column: 2;
   justify-self: start;
 }
-@media (max-width: 760px) {
-  .lesson-prep-list > article {
-    grid-template-columns: 1fr repeat(3, auto);
-    gap: 9px;
-  }
-}
 @media (max-width: 520px) {
-  .lesson-prep-list > article {
-    grid-template-columns: 1fr;
-  }
   .compact-check {
     min-height: 34px;
   }
@@ -103,12 +70,10 @@
   display: block !important;
   margin: 12px 0;
   padding: 0 !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px;
-  background: white;
   overflow: hidden;
 }
-.assignment-card > header, .current-script-card > header {
+.assignment-card > header,
+.current-script-card > header {
   min-height: 64px;
   padding: 12px 14px;
   display: flex;
@@ -117,23 +82,29 @@
   background: color-mix(in srgb, var(--wash), white 55%);
   border-bottom: 1px solid var(--line);
 }
-.assignment-card > header > svg, .current-script-card > header > svg {
+.assignment-card > header > svg,
+.current-script-card > header > svg {
   flex: 0 0 auto;
   width: 21px;
   color: var(--sage);
 }
-.assignment-card > header > div, .current-script-card > header > div {
+.assignment-card > header > div,
+.current-script-card > header > div {
   min-width: 0;
   flex: 1;
   display: grid;
   gap: 3px;
 }
-.assignment-card > header strong, .assignment-card > header small, .current-script-card > header strong, .current-script-card > header small {
+.assignment-card > header strong,
+.assignment-card > header small,
+.current-script-card > header strong,
+.current-script-card > header small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.assignment-card > header small, .current-script-card > header small {
+.assignment-card > header small,
+.current-script-card > header small {
   color: var(--muted);
   font-size: 10px;
 }
@@ -145,8 +116,6 @@
 .assignment-instructions {
   margin: 0;
   color: var(--ink);
-  font-size: 13px;
-  line-height: 1.6;
   white-space: pre-wrap;
 }
 .assignment-activity > label {
@@ -187,10 +156,7 @@
 .current-script-card {
   display: block !important;
   padding: 0 !important;
-  border: 1px solid var(--line) !important;
-  border-radius: 12px;
   overflow: hidden;
-  background: white;
 }
 .material-preview {
   padding: 13px 15px;
@@ -200,7 +166,9 @@
   font-size: 12px;
   font-weight: 800;
 }
-.material-preview img, .material-preview video, .material-preview object {
+.material-preview img,
+.material-preview video,
+.material-preview object {
   display: block;
   width: 100%;
   max-height: 70vh;
@@ -255,13 +223,16 @@
 .table-list article > a {
   flex: 0 0 auto;
 }
-.table-list article button, .table-list article a {
+.table-list article button,
+.table-list article a {
   white-space: nowrap;
 }
 .workflow-form > * {
   min-width: 0;
 }
-.workflow-form input, .workflow-form select, .workflow-form textarea {
+.workflow-form input,
+.workflow-form select,
+.workflow-form textarea {
   max-width: 100%;
 }
 @media (max-width: 900px) {
@@ -277,7 +248,6 @@
 }
 @media (max-width: 700px) {
   .section > header {
-    align-items: flex-start;
     flex-direction: column;
   }
   .section > header .header-actions {
@@ -294,14 +264,14 @@
     grid-column: 1 !important;
   }
   .form-actions {
-    width: 100%;
     justify-content: stretch;
     flex-wrap: wrap;
   }
   .form-actions > button {
     flex: 1 1 140px;
   }
-  .assignment-card > header, .current-script-card > header {
+  .assignment-card > header,
+  .current-script-card > header {
     align-items: flex-start;
   }
   .assignment-card > header .status {
@@ -315,14 +285,16 @@
   }
 }
 @media (max-width: 420px) {
-  .student-page, .page {
+  .student-page,
+  .page {
     padding-left: 13px !important;
     padding-right: 13px !important;
   }
   .assignment-activity {
     padding: 12px;
   }
-  .assignment-card > header, .current-script-card > header {
+  .assignment-card > header,
+  .current-script-card > header {
     padding: 11px;
   }
   .metric-strip {
@@ -331,15 +303,9 @@
   .header-actions > button {
     flex-basis: 100%;
   }
-  .dialog-backdrop {
-    padding: 0;
-  }
-  .workflow-dialog, .command-dialog, .explanation-dialog {
-    width: 100%;
-    max-height: 100vh;
-    border-radius: 0;
-  }
-  .workflow-dialog > header, .workflow-form, .workflow-content {
+  .workflow-dialog > header,
+  .workflow-form,
+  .workflow-content {
     padding-left: 16px;
     padding-right: 16px;
   }
@@ -372,23 +338,30 @@
   white-space: nowrap;
 }
 @media (max-width: 768px) {
-  .page-header, .student-header {
+  .page-header,
+  .student-header {
     display: flex;
     flex-direction: column;
-    align-items: stretch;
     gap: 14px;
   }
-  .page-header > div, .student-header > div {
+  .page-header > div,
+  .student-header > div {
     min-width: 0;
   }
-  .page-header h1, .student-header h1, .section h2 {
+  .page-header h1,
+  .student-header h1,
+  .section h2 {
     overflow-wrap: anywhere;
   }
-  .page-header .primary-button, .page-header > .primary-button, .header-actions .primary-button, .workflow-dialog .primary-button {
+  .page-header .primary-button,
+  .page-header > .primary-button,
+  .header-actions .primary-button,
+  .workflow-dialog .primary-button {
     position: static !important;
     inset: auto !important;
   }
-  .page-header > .header-actions, .page-header > .primary-button {
+  .page-header > .header-actions,
+  .page-header > .primary-button {
     align-self: flex-start;
   }
   .header-actions {
@@ -397,53 +370,68 @@
     align-items: stretch;
     justify-content: flex-start;
   }
-  .header-actions > button, .header-actions > .button-link {
+  .header-actions > button,
+  .header-actions > .button-link {
     min-width: 0;
     min-height: 44px;
     white-space: normal;
     line-height: 1.25;
   }
-  .section > header {
-    min-height: auto;
-    gap: 10px;
-  }
   .section > header > .count {
     flex: 0 0 auto;
     align-self: flex-start;
   }
-  .mobile-nav a, .mobile-nav button {
+  .mobile-nav a,
+  .mobile-nav button {
     min-width: 0;
     padding: 4px 2px;
     line-height: 1.15;
     text-align: center;
   }
-  .table-list article > div, .workflow-list article > div {
+  .table-list article > div,
+  .workflow-list article > div {
     min-width: 0 !important;
   }
-  .table-list article button, .table-list article a, .workflow-list article button, .workflow-list article a {
+  .table-list article button,
+  .table-list article a,
+  .workflow-list article button,
+  .workflow-list article a {
     max-width: 100%;
   }
-  .student-booking-actions, .record-actions, .row-actions, .manage-actions, .assignment-actions {
+  .student-booking-actions,
+  .record-actions,
+  .row-actions,
+  .manage-actions,
+  .assignment-actions {
     flex-wrap: wrap;
   }
-  .student-booking-actions > button, .student-booking-actions > a, .record-actions > button, .row-actions > button, .manage-actions > button, .assignment-actions > button {
+  .student-booking-actions > button,
+  .student-booking-actions > a,
+  .record-actions > button,
+  .row-actions > button,
+  .manage-actions > button,
+  .assignment-actions > button {
     min-height: 44px;
   }
   .list-controls {
     align-items: stretch;
   }
-  .list-controls label, .list-controls > div {
+  .list-controls label,
+  .list-controls > div {
     min-height: 38px;
   }
-  .subnav, .record-tabs {
+  .subnav,
+  .record-tabs {
     scrollbar-width: none;
     scroll-snap-type: x proximity;
     overscroll-behavior-inline: contain;
   }
-  .subnav::-webkit-scrollbar, .record-tabs::-webkit-scrollbar {
+  .subnav::-webkit-scrollbar,
+  .record-tabs::-webkit-scrollbar {
     display: none;
   }
-  .subnav > *, .record-tabs > * {
+  .subnav > *,
+  .record-tabs > * {
     scroll-snap-align: start;
   }
   .workflow-form .check-row input[type="checkbox"] {
@@ -456,16 +444,8 @@
   }
 }
 @media (max-width: 600px) {
-  .page, .student-page {
-    padding-top: 18px;
-  }
-  .page-header, .student-header {
-    padding-bottom: 18px;
-  }
-  .page-header h1, .student-header h1 {
-    font-size: clamp(28px, 9vw, 33px);
-  }
-  .page-header > .header-actions, .page-header > .primary-button {
+  .page-header > .header-actions,
+  .page-header > .primary-button {
     width: 100%;
   }
   .page-header > .primary-button {
@@ -474,27 +454,22 @@
   .header-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
-  .header-actions > button, .header-actions > .button-link {
+  .header-actions > button,
+  .header-actions > .button-link {
     width: 100%;
     justify-content: center;
   }
-  .section {
-    padding-top: 22px;
-  }
-  .section > header {
-    padding-bottom: 11px;
-  }
-  .table-list article, .workflow-list article {
+  .table-list article,
+  .workflow-list article {
     gap: 10px;
     padding-block: 12px;
   }
-  .table-list article > svg, .workflow-list article > svg {
+  .table-list article > svg,
+  .workflow-list article > svg {
     flex: 0 0 auto;
   }
   .settings-layout {
-    gap: 18px;
     margin-top: 18px;
   }
   .settings-nav {
@@ -505,14 +480,14 @@
   }
   .settings-nav button {
     min-width: 0;
-    min-height: 66px;
     padding: 10px;
     align-items: flex-start;
   }
   .settings-nav button span {
     min-width: 0;
   }
-  .settings-nav strong, .settings-nav small {
+  .settings-nav strong,
+  .settings-nav small {
     white-space: normal;
     overflow-wrap: anywhere;
     line-height: 1.25;
@@ -544,12 +519,17 @@
   .setting-toggle > span {
     min-width: 0;
   }
-  .student-booking-actions, .row-actions, .manage-actions {
+  .student-booking-actions,
+  .row-actions,
+  .manage-actions {
     display: grid !important;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
-  .student-booking-actions > button, .student-booking-actions > a, .row-actions > button, .manage-actions > button {
+  .student-booking-actions > button,
+  .student-booking-actions > a,
+  .row-actions > button,
+  .manage-actions > button {
     width: 100%;
     justify-content: center;
     white-space: normal;
@@ -558,7 +538,6 @@
   .form-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
   .form-actions > button {
     width: 100%;
@@ -607,7 +586,10 @@
     margin: 0;
     line-height: 1.35;
   }
-  .booking-hero h1, .catalog-heading h2, .step-panel h2, .manage-page h1 {
+  .booking-hero h1,
+  .catalog-heading h2,
+  .step-panel h2,
+  .manage-page h1 {
     overflow-wrap: anywhere;
   }
   .booking-summary {
@@ -640,7 +622,8 @@
     flex: 0 0 100% !important;
     width: 100%;
   }
-  .profile-actions > button, .profile-actions > .button-link {
+  .profile-actions > button,
+  .profile-actions > .button-link {
     width: 100%;
     min-width: 0;
     min-height: 44px;
@@ -668,22 +651,26 @@
   }
   .portal-notice {
     margin-top: 12px;
-    padding: 10px 11px;
-    line-height: 1.4;
   }
   .portal-notice + .section {
     padding-top: 16px;
   }
 }
 @media (max-width: 420px) {
-  .page, .student-page {
+  .page,
+  .student-page {
     padding-top: 15px !important;
     padding-bottom: 82px !important;
   }
-  .header-actions, .student-booking-actions, .row-actions, .manage-actions, .form-actions {
+  .header-actions,
+  .student-booking-actions,
+  .row-actions,
+  .manage-actions,
+  .form-actions {
     grid-template-columns: 1fr;
   }
-  .header-actions > button, .header-actions > .button-link {
+  .header-actions > button,
+  .header-actions > .button-link {
     min-height: 44px;
   }
   .workflow-dialog > header {
@@ -694,39 +681,27 @@
   }
   .workflow-dialog > header > button {
     flex: 0 0 44px;
-    min-height: 44px;
   }
-  .workflow-form, .workflow-content {
+  .workflow-form,
+  .workflow-content {
     padding-top: 16px;
     padding-bottom: 20px;
   }
   .workflow-dialog .form-actions {
-    position: sticky;
-    z-index: 4;
-    bottom: 0;
     margin-inline: -16px;
-    padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
-    background: #fffdf8;
     box-shadow: 0 -8px 18px #17211d12;
   }
   .record-actions {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
-  .record-actions > button, .record-actions > .button-link {
+  .record-actions > button,
+  .record-actions > .button-link {
     width: 100%;
     min-width: 0;
     justify-content: center;
     white-space: normal;
     line-height: 1.2;
-  }
-  .explanation-dialog > div {
-    display: grid;
-    grid-template-columns: 1fr;
-  }
-  .explanation-dialog button {
-    min-height: 44px;
   }
   .booking-topbar {
     gap: 10px;
@@ -748,9 +723,6 @@
   }
   .service-catalog {
     width: calc(100% - 26px);
-  }
-  .service-card {
-    padding: 20px;
   }
   .login-page {
     place-items: start center;
@@ -900,32 +872,37 @@
   border-top: 1px solid var(--line);
 }
 @media (max-width: 768px) {
-  html, body, #root {
+  html,
+  body,
+  #root {
     max-width: 100%;
     overflow-x: hidden;
   }
-  button, a, input, select, textarea {
+  button,
+  a,
+  input,
+  select,
+  textarea {
     touch-action: manipulation;
   }
-  .main, .student-shell > main {
+  .main,
+  .student-shell > main {
     min-width: 0;
-    width: 100%;
   }
-  .page, .student-page {
+  .page,
+  .student-page {
     max-width: 100%;
   }
-  .page-header, .student-header {
-    padding-right: 52px;
-  }
-  .subnav, .record-tabs {
+  .subnav,
+  .record-tabs {
     display: flex !important;
     width: calc(100% + 26px);
     margin-inline: -13px;
     padding-inline: 13px;
     overflow-x: auto;
-    gap: 5px;
   }
-  .subnav > button, .record-tabs > a {
+  .subnav > button,
+  .record-tabs > a {
     flex: 0 0 auto;
     min-height: 44px;
     padding: 0 13px;
@@ -935,13 +912,6 @@
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
-  }
-  .metric-card {
-    min-height: 92px;
-    padding: 12px;
-  }
-  .metric-card strong {
-    font-size: 20px;
   }
   .booking-table-head {
     display: none !important;
@@ -1004,8 +974,6 @@
   }
   .student-quick-actions {
     display: grid !important;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
   }
   .student-quick-actions > a {
     min-width: 0;
@@ -1028,26 +996,17 @@
     height: calc(66px + env(safe-area-inset-bottom));
     padding-bottom: env(safe-area-inset-bottom);
   }
-  .mobile-nav a, .mobile-nav button {
+  .mobile-nav a,
+  .mobile-nav button {
     min-height: 58px;
   }
   .workflow-dialog {
     max-width: 100%;
-    max-height: calc(100dvh - 12px);
   }
 }
 @media (max-width: 420px) {
   .metric-grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .metric-card {
-    min-height: 84px;
-  }
-  .student-quick-actions {
-    grid-template-columns: 1fr;
-  }
-  .page-header h1, .student-header h1 {
-    line-height: 1.05;
   }
   .student-record-identity {
     grid-template-columns: 52px minmax(0, 1fr) !important;
@@ -1067,7 +1026,8 @@
   }
 }
 @media (max-width: 600px) {
-  .booking-table-row > span:nth-of-type(1), .booking-table-row > span:nth-of-type(2) {
+  .booking-table-row > span:nth-of-type(1),
+  .booking-table-row > span:nth-of-type(2) {
     display: block !important;
   }
   .booking-table-row > button {
@@ -1078,12 +1038,6 @@
 /* Coach workspace hierarchy: compact orientation, lesson-first action queue, and calendar-first booking administration */
 .home-today-link {
   width: 100%;
-  min-height: 64px;
-  margin-top: 18px;
-  padding: 11px 14px;
-  border: 1px solid color-mix(in srgb, var(--sage), var(--line) 55%);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--wash), white 45%);
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   align-items: center;
@@ -1092,35 +1046,24 @@
 }
 .home-today-link > svg {
   width: 21px;
-  color: var(--sage);
 }
 .home-today-link > span {
   min-width: 0;
   display: grid;
   gap: 2px;
 }
-.home-today-link strong {
-  font-size: 12px;
-}
 .home-today-link small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--muted);
-  font-size: 10px;
 }
 .home-today-link b {
   min-height: 40px;
   padding: 0 12px;
   border-radius: 7px;
   background: var(--forest);
-  color: white;
   display: flex;
   align-items: center;
-  font-size: 10px;
-}
-.home-dashboard-single {
-  grid-template-columns: 1fr;
 }
 .today-lesson-row {
   display: grid !important;
@@ -1142,12 +1085,10 @@
 .today-prep-checks {
   display: flex;
   align-items: center;
-  gap: 6px;
   flex-wrap: wrap;
   padding-top: 4px;
 }
 .today-prep-checks .compact-check {
-  min-height: 30px;
   padding: 0 8px;
   border: 1px solid var(--line);
   border-radius: 99px;
@@ -1201,7 +1142,8 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
   }
-  .today-lesson-row .row-actions > button, .today-prep-checks .compact-check {
+  .today-lesson-row .row-actions > button,
+  .today-prep-checks .compact-check {
     min-height: 44px;
   }
   .today-prep-checks {
@@ -1251,24 +1193,16 @@
   margin: 0;
 }
 
-.portal-context-line {
-  width: fit-content;
-  margin: 0 0 12px;
-  padding: 7px 10px;
-  border-radius: 999px;
-  background: var(--wash);
-  color: var(--muted);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.portal-account-summary, .lesson-admin-disclosure {
+.portal-account-summary,
+.lesson-admin-disclosure {
   border: 1px solid var(--line);
   border-radius: 10px;
   background: color-mix(in srgb, var(--wash), white 60%);
 }
 
-.portal-account-summary > summary, .lesson-admin-disclosure > summary, .lesson-delivery-receipt > summary {
+.portal-account-summary > summary,
+.lesson-admin-disclosure > summary,
+.lesson-delivery-receipt > summary {
   min-height: var(--control-height);
   padding: 10px 13px;
   cursor: pointer;
@@ -1292,7 +1226,8 @@
   margin-top: 14px;
 }
 
-.lesson-admin-disclosure > .form-actions, .lesson-admin-summary {
+.lesson-admin-disclosure > .form-actions,
+.lesson-admin-summary {
   margin: 0;
   padding: 12px 14px;
   border-top: 1px solid var(--line);
@@ -1382,21 +1317,10 @@
 
 .page-actions {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
-  gap: 8px;
-}
-
-.disclosure-section {
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  background: var(--surface);
 }
 
 .disclosure-section > summary {
-  min-height: var(--control-height);
-  padding: 10px 13px;
   display: flex;
   align-items: center;
   cursor: pointer;
@@ -1411,13 +1335,9 @@
 .inline-notice {
   min-height: var(--control-height);
   margin: 0 0 12px;
-  padding: 10px 12px;
-  border: 1px solid var(--line);
-  border-radius: 9px;
   display: flex;
   align-items: center;
   gap: 9px;
-  background: var(--wash);
 }
 
 .inline-notice > svg {
@@ -1436,17 +1356,24 @@
 }
 
 @media (max-width: 768px) {
-  button, .button-link, input, select {
+  button,
+  .button-link,
+  input,
+  select {
     min-height: var(--control-height);
   }
 
-  .student-quick-actions, .lesson-primary-actions, .lesson-admin-disclosure > .form-actions {
+  .student-quick-actions,
+  .lesson-primary-actions,
+  .lesson-admin-disclosure > .form-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
   }
 
-  .student-quick-actions > *, .lesson-primary-actions > *, .lesson-admin-disclosure > .form-actions > * {
+  .student-quick-actions > *,
+  .lesson-primary-actions > *,
+  .lesson-admin-disclosure > .form-actions > * {
     min-width: 0;
     justify-content: center;
     white-space: normal;
@@ -1455,7 +1382,10 @@
 }
 
 @media (max-width: 420px) {
-  .student-quick-actions, .lesson-primary-actions, .lesson-admin-disclosure > .form-actions, .lesson-admin-summary {
+  .student-quick-actions,
+  .lesson-primary-actions,
+  .lesson-admin-disclosure > .form-actions,
+  .lesson-admin-summary {
     grid-template-columns: 1fr;
   }
 
@@ -1488,11 +1418,6 @@
   grid-template-columns: minmax(0, 1fr);
 }
 
-.portal-home-prioritized .portal-priority-stack {
-  display: grid;
-  gap: var(--studio-gap, 18px);
-}
-
 .guardian-context {
   margin: 0 0 16px;
   padding: 13px 16px;
@@ -1511,7 +1436,8 @@
   gap: 3px;
 }
 
-.guardian-context small, .lesson-delivery-status {
+.guardian-context small,
+.lesson-delivery-status {
   color: var(--muted);
 }
 
@@ -1539,7 +1465,8 @@
   font-weight: 750;
 }
 
-.settings-section-index a:hover, .settings-section-index a:focus-visible {
+.settings-section-index a:hover,
+.settings-section-index a:focus-visible {
   background: var(--wash);
 }
 
@@ -1580,7 +1507,8 @@
   text-align: left;
 }
 
-.timezone-options button.active, .timezone-options button[aria-selected="true"] {
+.timezone-options button.active,
+.timezone-options button[aria-selected="true"] {
   background: var(--wash);
   color: var(--forest);
 }
@@ -1592,10 +1520,6 @@
 }
 
 .account-balance-card {
-  padding: clamp(16px, 3vw, 26px);
-  border-radius: 16px;
-  background: linear-gradient(135deg, var(--forest), #1e5043);
-  color: white;
   display: grid;
   gap: 5px;
 }
@@ -1640,7 +1564,8 @@
   gap: 6px;
 }
 
-.lesson-hub-grid .empty-state, .portal-home-prioritized .empty-state {
+.lesson-hub-grid .empty-state,
+.portal-home-prioritized .empty-state {
   min-height: 0;
   padding-block: 18px;
 }
@@ -1656,17 +1581,14 @@
   text-decoration: none;
 }
 
-.table-list > a:hover, .table-list > a:focus-visible {
+.table-list > a:hover,
+.table-list > a:focus-visible {
   background: var(--wash);
 }
 
 .lesson-history-row > div {
   min-width: 0;
   flex: 1 1 auto;
-}
-
-.status.neutral {
-  color: #526059;
 }
 
 .lesson-facts {
@@ -1689,7 +1611,6 @@
 }
 
 .lesson-facts small {
-  color: var(--muted);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.04em;
@@ -1718,7 +1639,8 @@
     grid-column: 1;
   }
 
-  .payment-history-row > div, .payment-history-amount {
+  .payment-history-row > div,
+  .payment-history-amount {
     grid-column: 2;
   }
 
@@ -1748,7 +1670,8 @@
     grid-column: 2 / -1;
   }
 
-  .lesson-history-row strong, .lesson-history-row small {
+  .lesson-history-row strong,
+  .lesson-history-row small {
     display: block;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -1810,104 +1733,12 @@
   --studio-card-padding: clamp(14px, 2vw, 22px);
   --studio-gap: clamp(12px, 2vw, 22px);
 }
-.creative-dashboard, .student-page {
+.creative-dashboard,
+.student-page {
   container-type: inline-size;
 }
-.creative-welcome {
-  position: relative;
-  isolation: isolate;
-  min-height: 230px;
-  margin: 0 0 22px;
-  padding: clamp(24px, 4vw, 48px);
-  border-radius: var(--studio-radius-lg);
-  overflow: hidden;
-  background: linear-gradient(
-    130deg,
-    var(--forest),
-    color-mix(in srgb, var(--forest), var(--sage) 32%)
-  );
-  color: white;
-  box-shadow: var(--studio-shadow-md);
-  display: flex;
-  align-items: center;
-}
-.creative-welcome > div {
-  position: relative;
-  z-index: 2;
-  max-width: 720px;
-}
-.creative-welcome small {
-  color: color-mix(in srgb, white, transparent 25%);
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-.creative-welcome h1 {
-  margin: 7px 0 8px;
-  color: white;
-  font-size: clamp(32px, 5vw, 58px);
-  line-height: 1.02;
-  letter-spacing: -0.045em;
-}
-.creative-welcome p {
-  max-width: 610px;
-  margin: 0;
-  color: color-mix(in srgb, white, transparent 15%);
-  font-size: 14px;
-  line-height: 1.55;
-}
-.creative-welcome .header-actions {
-  position: relative;
-  z-index: 3;
-  margin-top: 22px;
-  justify-content: flex-start;
-}
-.creative-welcome .header-actions button {
-  border-color: color-mix(in srgb, white, transparent 60%);
-  background: color-mix(in srgb, white, transparent 88%);
-  color: white;
-}
-.creative-welcome .header-actions .primary-button {
-  border-color: var(--gold);
-  background: var(--gold);
-  color: var(--forest);
-}
-.creative-welcome > i, .creative-welcome > b {
-  position: absolute;
-  z-index: 0;
-  display: block;
-  border-radius: 50%;
-  pointer-events: none;
-}
-.creative-welcome > i {
-  width: 250px;
-  height: 250px;
-  right: -40px;
-  top: -100px;
-  background: color-mix(in srgb, var(--gold), transparent 18%);
-  box-shadow: -125px 172px 0 -62px
-    color-mix(in srgb, var(--coral), transparent 10%);
-}
-.creative-welcome > b {
-  width: 155px;
-  height: 155px;
-  right: 120px;
-  bottom: -105px;
-  border: 2px solid color-mix(in srgb, white, transparent 60%);
-}
-.student-welcome {
-  min-height: 205px;
-  background: linear-gradient(
-    125deg,
-    var(--forest),
-    color-mix(in srgb, var(--forest), var(--secondary, #c99a45) 18%)
-  );
-}
-.student-welcome h1 {
-  font-size: clamp(30px, 4.4vw, 48px);
-}
-.creative-home-grid, .portal-home-grid {
+.creative-home-grid,
+.portal-home-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
   gap: var(--studio-gap);
@@ -1917,29 +1748,19 @@
   position: sticky;
   top: 18px;
   padding: var(--studio-card-padding);
-  border: 1px solid var(--line);
-  border-radius: var(--studio-radius-md);
-  background: color-mix(in srgb, var(--surface), white 60%);
-  box-shadow: var(--studio-shadow-sm);
   display: grid;
   gap: 8px;
 }
 .dashboard-rail header {
   padding: 2px 2px 12px;
-  border-bottom: 1px solid var(--line);
   display: grid;
   gap: 3px;
 }
 .dashboard-rail header small {
   color: var(--muted);
-  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-}
-.dashboard-rail header strong {
-  font-family: Oswald, sans-serif;
-  font-size: 20px;
 }
 .dashboard-rail > button {
   width: 100%;
@@ -1968,7 +1789,6 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
 }
 .dashboard-rail > button small {
   color: var(--muted);
@@ -1978,7 +1798,6 @@
   min-width: 0;
 }
 .portal-priority-stack > .section {
-  padding: var(--studio-card-padding);
   border: 1px solid var(--line);
   border-radius: var(--studio-radius-md);
   background: white;
@@ -2060,7 +1879,8 @@
   grid-template-columns: 64px minmax(0, 1fr);
   gap: 13px;
 }
-.profile-identity-card > span, .profile-photo-preview > img {
+.profile-identity-card > span,
+.profile-photo-preview > img {
   width: 64px;
   height: 64px;
   border-radius: 50%;
@@ -2108,7 +1928,8 @@
   height: 100%;
   object-fit: cover;
 }
-.profile-photo-field input[type="file"], .material-upload input[type="file"] {
+.profile-photo-field input[type="file"],
+.material-upload input[type="file"] {
   padding: 8px;
   background: white;
 }
@@ -2156,21 +1977,19 @@
 .table-list > article > div {
   min-width: 0;
 }
-.table-list > article > div strong, .table-list > article > div small {
+.table-list > article > div strong,
+.table-list > article > div small {
   overflow-wrap: anywhere;
 }
-.settings-form input, .settings-form select, .workflow-form input, .workflow-form select {
+.settings-form input,
+.settings-form select,
+.workflow-form input,
+.workflow-form select {
   min-height: 44px;
 }
-.workflow-form textarea, .settings-form textarea {
-  min-height: 104px;
-}
-.command-dialog, .workflow-dialog {
-  border-radius: var(--studio-radius-lg);
-  box-shadow: var(--studio-shadow-md);
-}
 @media (max-width: 900px) {
-  .creative-home-grid, .portal-home-grid {
+  .creative-home-grid,
+  .portal-home-grid {
     grid-template-columns: 1fr;
   }
   .dashboard-rail {
@@ -2185,18 +2004,11 @@
   }
 }
 @media (max-width: 700px) {
-  .creative-welcome {
-    min-height: 210px;
-    padding: 24px 20px;
-  }
   .creative-welcome > i {
     width: 165px;
     height: 165px;
     right: -80px;
     top: -90px;
-  }
-  .creative-welcome > b {
-    display: none;
   }
   .creative-welcome .header-actions {
     display: grid;
@@ -2232,7 +2044,8 @@
   .table-list > article {
     flex-wrap: wrap;
   }
-  .table-list > article > button, .table-list > article > .button-link {
+  .table-list > article > button,
+  .table-list > article > .button-link {
     min-height: 44px;
   }
   .profile-identity-card {
@@ -2246,18 +2059,16 @@
 @media (max-width: 420px) {
   .creative-welcome {
     margin-inline: -3px;
-    border-radius: 18px;
   }
   .creative-welcome .header-actions {
     grid-template-columns: 1fr;
   }
-  .creative-welcome h1 {
-    font-size: 32px;
-  }
-  .dashboard-rail, .portal-priority-stack > .section {
+  .dashboard-rail,
+  .portal-priority-stack > .section {
     border-radius: 13px;
   }
-  .table-list > article > button, .table-list > article > .button-link {
+  .table-list > article > button,
+  .table-list > article > .button-link {
     flex: 1 1 130px;
     justify-content: center;
   }
@@ -2374,7 +2185,8 @@
 }
 
 @media (max-width: 768px) {
-  .student-page .section > header h2, .page .section > header h2 {
+  .student-page .section > header h2,
+  .page .section > header h2 {
     flex: 0 1 auto;
   }
 }

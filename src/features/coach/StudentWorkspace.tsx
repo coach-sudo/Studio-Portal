@@ -27,7 +27,7 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { Dialog, Status, Toggle } from "../../components/Primitives";
+import { Dialog, Drawer, Status, Toggle } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import type {
@@ -926,7 +926,7 @@ function StudentEditor({
     });
   };
   return (
-    <Dialog
+    <Drawer
       title={`Edit ${student.fullName}`}
       description="Contact, coaching context, and studio status."
       onClose={onClose}
@@ -1072,7 +1072,7 @@ function StudentEditor({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function LessonForm({
@@ -1098,7 +1098,7 @@ function LessonForm({
     [occurrenceCount, setOccurrenceCount] = useState(6),
     [locationLabel, setLocationLabel] = useState("");
   return (
-    <Dialog title="Add lesson" description={student.fullName} onClose={onClose}>
+    <Drawer title="Add lesson" description={student.fullName} onClose={onClose}>
       <form
         className="workflow-form"
         onSubmit={(e) => {
@@ -1224,7 +1224,7 @@ function LessonForm({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function AssignmentForm({
@@ -1252,7 +1252,7 @@ function AssignmentForm({
     [activityItems, setActivityItems] = useState(""),
     [lessonId, setLessonId] = useState(initialLessonId || lessons[0]?.id || "");
   return (
-    <Dialog
+    <Drawer
       title="Assign practice"
       description={student.fullName}
       onClose={onClose}
@@ -1391,7 +1391,7 @@ function AssignmentForm({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function MaterialForm({
@@ -1423,7 +1423,7 @@ function MaterialForm({
     [file, setFile] = useState<File>(),
     [uploading, setUploading] = useState(false);
   return (
-    <Dialog
+    <Drawer
       title="Add material"
       description={student.fullName}
       onClose={onClose}
@@ -1563,7 +1563,7 @@ function MaterialForm({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function NoteForm({
@@ -1602,7 +1602,7 @@ function NoteForm({
     setBody(editorRef.current?.innerHTML || "");
   };
   return (
-    <Dialog
+    <Drawer
       title={note ? "Edit note" : "New note"}
       description={student.fullName}
       onClose={onClose}
@@ -1757,6 +1757,6 @@ function NoteForm({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }

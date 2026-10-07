@@ -37,6 +37,19 @@ beforeEach(() => {
   vi.stubGlobal("Netlify", { env: { get: () => undefined } });
 });
 describe("outbox remains the sole delivery boundary", () => {
+  it("returns an unapproved legacy payer reminder to draft without provider access", async () => {
+    mocks.eligibility.mockResolvedValue({
+      allowed: false,
+      reason: "approval_required",
+    });
+    expect(await dispatchOutbox()).toMatchObject({ processed: 1, sent: 0 });
+    expect(mocks.db.from().update).toHaveBeenCalledWith(
+      expect.objectContaining({ status: "draft" }),
+    );
+    expect(mocks.suppress).not.toHaveBeenCalled();
+    expect(mocks.token).not.toHaveBeenCalled();
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
   it.each([
     "financial_condition_resolved",
     "recipient_no_longer_eligible",

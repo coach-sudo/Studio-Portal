@@ -3,7 +3,7 @@ import { CheckCircle2, CircleDollarSign } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Dialog,
+  Drawer,
   EmptyState,
   Section,
   Status,
@@ -27,6 +27,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { studentName } from "./StudioOperations.shared";
+import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 
 type PackageBuilderPayload = {
   id?: string;
@@ -216,6 +217,7 @@ export function FinanceView({
           {notice}
         </p>
       )}
+      <InvoiceWorkspace data={data} isDemo={isDemo} />
       <div className="two-section-grid">
         <Section
           title="Package catalog"
@@ -303,7 +305,7 @@ export function FinanceView({
                   }
                 >
                   {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                  left
+                  available
                 </Status>
                 <button
                   onClick={() =>
@@ -331,7 +333,7 @@ export function FinanceView({
                   <strong>{student.fullName}</strong>
                   <small>Payments, refunds, and adjustments</small>
                 </div>
-                <strong>
+                <strong className="financial-amount">
                   {formatMoney(studentBalanceMinor(student.id, data.payments))}
                 </strong>
                 <button
@@ -446,7 +448,7 @@ function DiscountDialog({
         : form.serviceIds.filter((item) => item !== id),
     });
   return (
-    <Dialog
+    <Drawer
       title={value ? `Edit ${value.code}` : "Create discount code"}
       description="Codes are validated on the server and snapshotted on each booking."
       onClose={onClose}
@@ -570,7 +572,7 @@ function DiscountDialog({
           <button className="primary">Save discount</button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 
@@ -638,7 +640,7 @@ function PackageDefinitionDialog({
     form.sessionCounts.length *
     form.deliveryFormats.length;
   return (
-    <Dialog
+    <Drawer
       title={value ? "Edit and recalculate package" : "Create packages"}
       description="Choose services, lesson counts, and formats. Coach’D calculates every price from your current service catalog—there is no editable price field."
       onClose={onClose}
@@ -995,6 +997,6 @@ function PackageDefinitionDialog({
           </button>
         </div>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }

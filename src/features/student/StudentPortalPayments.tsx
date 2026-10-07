@@ -8,7 +8,6 @@ import {
   EmptyState,
   Section,
   Status,
-  Toggle,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import {
@@ -26,6 +25,8 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { CreditAccount } from "../coach/CreditAccount";
 
 export function Payments({
   data,
@@ -76,7 +77,6 @@ export function Payments({
   const [purchaseDefinition, setPurchaseDefinition] =
     useState<Snapshot["packageDefinitions"][number]>();
   const [renewalMode, setRenewalMode] = useState("one_time");
-  const [purchaseAutoApply, setPurchaseAutoApply] = useState(false);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   useEffect(() => {
@@ -98,7 +98,6 @@ export function Payments({
         payload: {
           packageDefinitionId: id,
           renewalMode,
-          autoApply: purchaseAutoApply,
         },
         reason: "Student started package checkout",
       });
@@ -109,43 +108,6 @@ export function Payments({
           ? reason.message
           : "Checkout could not be opened.",
       );
-    }
-  };
-  const toggleAutoApply = async (pkg: Snapshot["packages"][number]) => {
-    if (packageBusy) return;
-    setPackageBusy(pkg.id);
-    try {
-      if (isDemo)
-        store.transact((draft) => {
-          const current = draft.packages.find((item) => item.id === pkg.id);
-          if (!current) return;
-          current.autoApply = !pkg.autoApply;
-          current.version += 1;
-          current.updatedAt = new Date().toISOString();
-        });
-      else {
-        const result = await studioCommand("packages", {
-          command: "toggle_auto_apply",
-          entityId: pkg.id,
-          expectedVersion: pkg.version,
-          payload: { enabled: !pkg.autoApply },
-          reason: "Student changed automatic credit preference",
-        });
-        await invalidateStudioDomains(queryClient, ["finance"]);
-        setNotice(
-          !pkg.autoApply
-            ? `Automatic credits enabled${result.resource.applied ? `; ${result.resource.applied} upcoming lesson${result.resource.applied === 1 ? "" : "s"} updated` : ""}.`
-            : "Automatic credits disabled. Existing lesson allocations are unchanged.",
-        );
-      }
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "The package preference could not be saved.",
-      );
-    } finally {
-      setPackageBusy("");
     }
   };
   const cancelRenewal = async (
@@ -206,9 +168,25 @@ export function Payments({
         </p>
       )}
       {student && (
+        <>
+          <CreditAccount
+            data={data}
+            studentId={student.id}
+            isDemo={isDemo}
+            readOnly
+          />
+          <InvoiceWorkspace
+            data={data}
+            isDemo={isDemo}
+            studentId={student.id}
+            readOnly
+          />
+        </>
+      )}
+      {student && (
         <Section title="Current balance" marked>
           <div className="account-balance-card" role="status">
-            <span>Amount due</span>
+            <span>Available dollar account credit</span>
             <strong>
               {formatMoney(
                 Math.max(0, studentBalanceMinor(student.id, data.payments)),
@@ -265,7 +243,8 @@ export function Payments({
                     <strong>{pkg.name}</strong>
                     <small>
                       {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                      credits · {formatMoney(pkg.priceMinor, pkg.currency)}
+                      credits available ·{" "}
+                      {formatMoney(pkg.priceMinor, pkg.currency)}
                       {pkg.expiresAt &&
                         ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
                       {subscription &&
@@ -275,16 +254,7 @@ export function Payments({
                   <Status tone={expired ? "danger" : "good"}>
                     {expired ? "expired" : "active"}
                   </Status>
-                  {!expired &&
-                    packageSummary(pkg, data.creditEntries).remainingCredits >
-                      0 && (
-                      <Toggle
-                        checked={Boolean(pkg.autoApply)}
-                        label="Auto-apply"
-                        detail="Use this package for eligible upcoming lessons."
-                        onChange={() => void toggleAutoApply(pkg)}
-                      />
-                    )}
+
                   {subscription && renewalActive && (
                     <button
                       disabled={
@@ -360,7 +330,6 @@ export function Payments({
                   onClick={() => {
                     setPurchaseDefinition(definition);
                     setRenewalMode("one_time");
-                    setPurchaseAutoApply(false);
                   }}
                 >
                   Choose package
@@ -410,12 +379,11 @@ export function Payments({
                 ))}
             </select>
           </label>
-          <Toggle
-            checked={purchaseAutoApply}
-            label="Apply to upcoming lessons"
-            detail="After payment, use credits only for eligible unpaid lessons. Paid, cancelled, and incompatible lessons are skipped."
-            onChange={() => setPurchaseAutoApply((current) => !current)}
-          />
+          <p>
+            New credits follow the automatic-use preference your coach manages
+            on your student account. One credit covers one lesson of any service
+            or duration.
+          </p>
           {renewalMode === "balance_threshold" && (
             <p className="portal-notice">
               By continuing, you authorize Coach’D to charge the saved payment

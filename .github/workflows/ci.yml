@@ -11,6 +11,7 @@ on:
         codex/pr5-server-contracts,
         codex/pr6-product-polish,
         codex/pr7-performance-styles,
+        codex/product-design-modernization,
       ]
 
 permissions:

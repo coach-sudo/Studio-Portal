@@ -57,7 +57,7 @@ export function reservedForLesson(
 
 export function packageApplies(
   pkg: PackageAccount,
-  definition: PackageDefinition | undefined,
+  _definition: PackageDefinition | undefined,
   lesson: Lesson,
   checkExpiry = true,
 ) {
@@ -68,21 +68,7 @@ export function packageApplies(
     Date.parse(pkg.expiresAt) <= Date.parse(lesson.startsAt)
   )
     return false;
-  if (!pkg.definitionId) return true; // Existing generic studio-credit packages.
-  if (!definition?.active) return false;
-  return (
-    (definition.eligibleServiceIds.length === 0 ||
-      Boolean(
-        lesson.serviceId &&
-        definition.eligibleServiceIds.includes(lesson.serviceId),
-      )) &&
-    definition.sessionDurationMinutes ===
-      (Date.parse(lesson.endsAt) - Date.parse(lesson.startsAt)) / 60_000 &&
-    definition.meetingProviders.includes(
-      lesson.meetingProvider ??
-        (lesson.locationType === "in_person" ? "in_person" : "google_meet"),
-    )
-  );
+  return true; // One credit covers any lesson; purchase pricing remains unchanged.
 }
 
 export interface PackageForecast {

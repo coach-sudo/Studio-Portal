@@ -44,9 +44,49 @@ export async function checkOutboxEligibility(
   client: SupabaseClient,
   message: Tables<"outbox_messages">,
   now = Date.now(),
+  options: { requireApproval?: boolean } = {},
 ): Promise<OutboxEligibility> {
+  if (message.event_key === "invoice.issued") {
+    const snapshot = message.entity_snapshot as {
+      invoiceId?: string;
+      invoiceVersion?: number;
+      approvedAt?: string;
+    };
+    if (!snapshot.approvedAt || !snapshot.invoiceId)
+      return { allowed: false, reason: "approval_required" };
+    const invoice = await client
+      .from("studio_invoices")
+      .select("student_id,studio_id,status,version")
+      .eq("id", snapshot.invoiceId)
+      .single();
+    if (invoice.error) throw invoice.error;
+    if (
+      !invoice.data ||
+      invoice.data.studio_id !== message.studio_id ||
+      ["void", "draft"].includes(invoice.data.status) ||
+      invoice.data.version !== snapshot.invoiceVersion
+    )
+      return { allowed: false, reason: "invoice_changed" };
+    const recipients = await resolveEventRecipients(
+      client,
+      invoice.data.student_id,
+      "payment_due",
+    );
+    return recipients.recipients.some(
+      (r) => r.email.toLowerCase() === message.recipient.toLowerCase(),
+    )
+      ? { allowed: true }
+      : { allowed: false, reason: "recipient_permission_changed" };
+  }
   const db = client as SupabaseClient<Database>,
     intent = messageIntent(message);
+  if (
+    options.requireApproval &&
+    intent &&
+    ["payment_due", "payment_past_due"].includes(intent) &&
+    !(message.entity_snapshot as { approvedAt?: string } | null)?.approvedAt
+  )
+    return { allowed: false, reason: "approval_required" };
   if (message.campaign_id) {
     const result = await db
       .from("mailing_list_contacts")
@@ -114,6 +154,7 @@ export async function checkOutboxEligibility(
     endsAt?: string;
     entityId?: string;
     coverageKey?: string;
+    amountDueMinor?: number;
   };
   let studentId = message.student_id;
   if (message.lesson_id) {
@@ -259,6 +300,11 @@ export async function checkOutboxEligibility(
       ].includes(readiness.financial.state)
     )
       return { allowed: false, reason: "financial_condition_resolved" };
+    if (
+      snapshot.amountDueMinor != null &&
+      snapshot.amountDueMinor !== readiness.financial.amountDueMinor
+    )
+      return { allowed: false, reason: "financial_amount_changed" };
   }
   if (message.automation_rule_id && snapshot.entityId) {
     const result = await db

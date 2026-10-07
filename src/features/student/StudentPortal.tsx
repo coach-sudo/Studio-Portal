@@ -1,3 +1,4 @@
+import "../../styles/appearance.css";
 import {
   LogOut,
   Menu,
@@ -15,6 +16,7 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { portalNavigation } from "../../app/portalNavigation";
+import { Dialog } from "../../components/Primitives";
 import { ActivityCenter } from "../../components/ActivityCenter";
 import { DailyPopup } from "../../components/DailyPopup";
 import "../../components/IdentityActions.css";
@@ -170,7 +172,7 @@ export function StudentPortal({
         </div>
         <nav>
           {tabs.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={`${base}/${to}`} end={!to}>
+            <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
               <Icon />
               <span>{label}</span>
             </NavLink>
@@ -371,7 +373,7 @@ export function StudentPortal({
       />
       <nav className="mobile-nav student-mobile">
         {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={`${base}/${to}`} end={!to}>
+          <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
             <Icon />
             <span>{label}</span>
           </NavLink>
@@ -384,44 +386,28 @@ export function StudentPortal({
         )}
       </nav>
       {mobileMenuOpen && (
-        <div
-          className="dialog-backdrop"
-          onMouseDown={(event) =>
-            event.target === event.currentTarget && setMobileMenuOpen(false)
-          }
+        <Dialog
+          title="Student portal menu"
+          onClose={() => setMobileMenuOpen(false)}
         >
-          <section
-            className="command-dialog mobile-workspace-menu"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Student portal menu"
-          >
-            <header>
-              <Menu />
-              <strong>Portal menu</strong>
-              <button
-                type="button"
-                aria-label="Close portal menu"
-                onClick={() => setMobileMenuOpen(false)}
-              >
-                ×
-              </button>
-            </header>
-            {tabs.map(({ to, label, icon: Icon }) => (
-              <button
-                type="button"
-                key={to}
-                onClick={() => {
-                  navigatePortal(`${base}${to ? `/${to}` : ""}`);
-                  setMobileMenuOpen(false);
-                }}
-              >
-                <Icon />
-                <span>{label}</span>
-              </button>
-            ))}
-          </section>
-        </div>
+          <div className="command-search">
+            <div>
+              {tabs.map(({ to, label, icon: Icon }) => (
+                <button
+                  type="button"
+                  key={to}
+                  onClick={() => {
+                    navigatePortal(`${base}${to ? `/${to}` : ""}`);
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  <Icon aria-hidden="true" />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </Dialog>
       )}
     </div>
   );

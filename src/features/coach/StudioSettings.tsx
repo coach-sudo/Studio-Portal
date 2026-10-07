@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import {
   EmptyState,
   ListControls,
@@ -56,10 +57,13 @@ export function StudioSettings({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  const [searchParams] = useSearchParams();
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     settingsMutation = useStudioMutation(),
-    [panel, setPanel] = useState<Panel>("studio"),
+    [panel, setPanel] = useState<Panel>(() =>
+      searchParams.get("panel") === "email" ? "email" : "studio",
+    ),
     [notice, setNotice] = useState(""),
     [health, setHealth] = useState<PlatformHealth>({
       mode: "demo",
@@ -254,6 +258,13 @@ function StudioForm({
       setUploading(true);
       let branding = form.branding;
       if (logo) {
+        if (
+          !["image/png", "image/jpeg", "image/webp"].includes(logo.type) ||
+          logo.size > 5 * 1024 * 1024
+        )
+          throw new Error(
+            "Choose a PNG, JPEG or WebP studio logo smaller than 5 MB.",
+          );
         const uploaded = await uploadStudioFile({
           studioId,
           entityType: "studio",
@@ -414,7 +425,7 @@ function StudioForm({
           />
           <small>
             The uploaded logo is used in the booking header, footer, and public
-            actor pages.
+            actor pages and invoices. PNG, JPEG or WebP, up to 5 MB.
           </small>
         </label>
         <label className="full material-upload">

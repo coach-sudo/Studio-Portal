@@ -1,3 +1,4 @@
+import type { Invoice } from "./invoices";
 export type UUID = string;
 export type Role = "coach" | "student" | "guardian";
 export type StudentStatus =
@@ -119,6 +120,8 @@ export interface Student extends Versioned {
   deletedAt?: string;
 }
 export interface Lesson extends Versioned {
+  invoicePaymentPending?: boolean;
+  invoiceId?: string;
   studioId: UUID;
   studentId: UUID;
   topic: string;
@@ -563,6 +566,7 @@ export interface PaymentEntry {
   currency: string;
   externalReference?: string;
   reason: string;
+  accountCredit?: boolean;
   createdAt: string;
 }
 export interface ActorProfile extends Versioned {
@@ -592,6 +596,8 @@ export interface ActorProfile extends Versioned {
   };
 }
 export interface OutboxMessage extends Versioned {
+  approvedAt?: string;
+  quotedAmountDueMinor?: number;
   bookingId?: UUID;
   suppressionReason?: string;
   recipientIntent?: string;
@@ -750,6 +756,7 @@ export interface StudioSettings {
   };
 }
 export interface StudioSnapshot {
+  invoices?: Invoice[];
   studioId: UUID;
   role: Role;
   displayName: string;

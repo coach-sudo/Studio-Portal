@@ -90,6 +90,15 @@ export function evaluateAutomationRule(
       "The studio automated-email master switch is off.",
     );
   const lesson = entity.lesson;
+  if (
+    lesson &&
+    ["lesson_reminder", "payment_due"].includes(rule.key) &&
+    Date.parse(lesson.startsAt) <= now
+  )
+    return suppressed(
+      "lesson_started",
+      "The pre-lesson reminder window has ended.",
+    );
   const readiness = lesson && evaluateLessonReadiness(lesson, data, now);
   if (
     lesson &&

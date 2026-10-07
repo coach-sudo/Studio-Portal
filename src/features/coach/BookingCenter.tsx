@@ -1,3 +1,8 @@
+import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
+import {
+  lessonCreditDebit,
+  settleDemoLessonCredits,
+} from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarClock,
@@ -6,12 +11,14 @@ import {
   Plus,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
-  Dialog,
+  Drawer,
   EmptyState,
   PageHeader,
+  PageSkeleton,
+  Section,
   Status,
 } from "../../components/Primitives";
 import {
@@ -27,13 +34,18 @@ import type {
   AvailabilityRule,
   Booking,
   BookingService,
+  Lesson,
   MeetingProvider,
   RecurringSeries,
   ServiceOffering,
   StudioSettings,
   StudioSnapshot,
 } from "../../domain/model";
-import { formatStudioDateTime } from "../../domain/presentation";
+import {
+  formatStudioDateTime,
+  formatStudioTime,
+} from "../../domain/presentation";
+import { bookingForLesson } from "../../domain/packageForecast";
 import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { LessonsView } from "./StudioOperations";
@@ -52,10 +64,24 @@ import { Series } from "./BookingSeries";
 import { Services } from "./BookingServices";
 import { BookingSetup } from "./BookingSetup";
 import { bookingCenterDomains } from "./routeDomains";
+import { LessonReadinessPanel } from "./LessonReadinessPanel";
+
+function calendarBookings(lesson: Lesson, data: StudioSnapshot): Booking[] {
+  const linked = data.bookings.filter((booking) =>
+    data.lessonParticipants.some(
+      (participant) =>
+        participant.lessonId === lesson.id &&
+        participant.bookingId === booking.id,
+    ),
+  );
+  if (linked.length) return linked;
+  const booking = bookingForLesson(lesson, data);
+  return booking ? [booking] : [];
+}
 
 export function BookingCenter() {
-  const [searchParams] = useSearchParams();
-  const requestedRecord = searchParams.toString();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const openedAppointmentRequest = useRef("");
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useState<Tab>(() =>
     tabs.some(([id]) => id === requestedView)
@@ -70,7 +96,11 @@ export function BookingCenter() {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [dialog, setDialog] = useState<{ type: string; item?: any }>();
+  const [dialog, setDialog] = useState<{
+    type: string;
+    item?: any;
+    lessonId?: string;
+  }>();
   const [notice, setNotice] = useState("");
   const [health, setHealth] = useState<PlatformHealth>({
     mode: "demo",
@@ -87,17 +117,54 @@ export function BookingCenter() {
     if (!data) return;
     const bookingId = searchParams.get("booking");
     const lessonId = searchParams.get("lesson");
+    if (!bookingId && !lessonId) {
+      openedAppointmentRequest.current = "";
+      return;
+    }
+    const request = JSON.stringify([bookingId, lessonId]);
+    // Live snapshots can change identity on every render. Open each deep link
+    // once so a data refresh cannot reopen a dismissed drawer during navigation.
+    if (openedAppointmentRequest.current === request) return;
+    const lesson = data.lessons.find((item) => item.id === lessonId);
+    const related = lesson ? calendarBookings(lesson, data) : [];
     const booking =
       data.bookings.find((item) => item.id === bookingId) ||
-      data.bookings.find((item) =>
-        data.lessonParticipants.some(
-          (part) => part.lessonId === lessonId && part.bookingId === item.id,
-        ),
-      );
-    if (booking) setDialog({ type: "booking", item: booking });
-  }, [data, requestedRecord]);
+      (related.length === 1 ? related[0] : undefined);
+    if (booking) {
+      openedAppointmentRequest.current = request;
+      setDialog({
+        type: "booking",
+        item: booking,
+        lessonId: related.some((item) => item.id === booking.id)
+          ? lesson?.id
+          : undefined,
+      });
+    } else if (lesson) {
+      openedAppointmentRequest.current = request;
+      setDialog({ type: "lesson", item: lesson });
+    }
+  }, [data, searchParams]);
   if (isLoading || !data)
-    return <div className="loading">Opening booking center…</div>;
+    return <PageSkeleton label="Opening booking center…" />;
+
+  function openCalendarLesson(lesson: Lesson) {
+    const bookings = calendarBookings(lesson, data!);
+    setDialog(
+      bookings.length === 1
+        ? { type: "booking", item: bookings[0], lessonId: lesson.id }
+        : { type: "lesson", item: lesson },
+    );
+  }
+
+  function closeAppointment() {
+    setDialog(undefined);
+    if (searchParams.has("booking") || searchParams.has("lesson")) {
+      const next = new URLSearchParams(searchParams);
+      next.delete("booking");
+      next.delete("lesson");
+      setSearchParams(next, { replace: true });
+    }
+  }
 
   async function run(
     resource: BookingAdminResource,
@@ -116,9 +183,16 @@ export function BookingCenter() {
           expectedVersion: item?.version,
           payload,
         });
-        await invalidateStudioDomains(queryClient, ["booking"]);
+        await invalidateStudioDomains(queryClient, [
+          "booking",
+          "finance",
+          "lessons",
+          "messaging",
+        ]);
       }
-      setDialog(undefined);
+      if (dialog?.type === "booking" || dialog?.type === "lesson")
+        closeAppointment();
+      else setDialog(undefined);
       setNotice("Saved. The booking workspace has been updated.");
     } catch (reason) {
       setNotice(
@@ -224,7 +298,13 @@ export function BookingCenter() {
       {tab === "setup" && (
         <BookingSetup value={data.settings} onSave={saveBookingSettings} />
       )}
-      {tab === "calendar" && <LessonsView data={data} isDemo={isDemo} />}
+      {tab === "calendar" && (
+        <LessonsView
+          data={data}
+          isDemo={isDemo}
+          onOpenLesson={openCalendarLesson}
+        />
+      )}
       {tab === "services" && (
         <Services
           data={data}
@@ -437,7 +517,8 @@ export function BookingCenter() {
         <BookingDialog
           booking={dialog.item}
           data={data}
-          onClose={() => setDialog(undefined)}
+          lessonId={dialog.lessonId}
+          onClose={closeAppointment}
           onAction={(command, payload = {}) =>
             run("bookings", command, payload, dialog.item, (draft) => {
               if (command === "confirm_location") {
@@ -459,7 +540,35 @@ export function BookingCenter() {
                     (lesson) =>
                       (lesson.locationLabel = String(payload.location)),
                   );
-              } else changeDemoBooking(draft, dialog.item.id, command);
+              } else {
+                if (command === "cancel") {
+                  const ids = draft.lessonParticipants
+                    .filter((p) => p.bookingId === dialog.item.id)
+                    .map((p) => p.lessonId);
+                  for (const id of ids)
+                    settleDemoLessonCredits(
+                      draft,
+                      id,
+                      payload.useCredit === true,
+                      dialog.item.studentId,
+                    );
+                }
+                changeDemoBooking(draft, dialog.item.id, command);
+              }
+            })
+          }
+        />
+      )}
+      {dialog?.type === "lesson" && (
+        <CalendarLessonDrawer
+          lesson={dialog.item}
+          data={data}
+          onClose={closeAppointment}
+          onBooking={(booking) =>
+            setDialog({
+              type: "booking",
+              item: booking,
+              lessonId: dialog.item.id,
             })
           }
         />
@@ -570,387 +679,404 @@ function ServiceDialog({
       ? [...new Set([...items, item])]
       : items.filter((current) => current !== item);
   return (
-    <Dialog
+    <Drawer
       title={service ? "Edit service" : "Add service"}
       description="Pricing and policy edits apply only to future bookings."
       onClose={onClose}
     >
-      <form className="workflow-form" onSubmit={submit}>
-        <label>
-          Name
-          <input
-            required
-            value={value.name}
-            onChange={(event) =>
-              setValue({ ...value, name: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Category
-          <select
-            value={value.category}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                category: event.target.value as BookingService["category"],
-              })
-            }
-          >
-            <option value="private">Private</option>
-            <option value="group_class">Group class</option>
-            {service?.category === "course" && (
-              <option value="course" disabled>
-                Course (existing only)
-              </option>
-            )}
-          </select>
-        </label>
-        <label className="full">
-          Description
-          <textarea
-            required
-            value={value.description}
-            onChange={(event) =>
-              setValue({ ...value, description: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Duration (minutes)
-          <input
-            type="number"
-            min="15"
-            max="480"
-            required
-            value={value.durationMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                durationMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Price (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            value={value.priceMinor / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                priceMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-        </label>
-        <label>
-          Extra charge for in-person lessons (USD)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={Number(value.locationPriceAdjustments.in_person || 0) / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                locationPriceAdjustments: {
-                  ...value.locationPriceAdjustments,
-                  in_person: Math.round(Number(event.target.value) * 100),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Deposit (USD)
-          <input
-            type="number"
-            min="0"
-            max={value.priceMinor / 100}
-            step="0.01"
-            value={value.depositMinor / 100}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                depositMinor: Math.round(Number(event.target.value) * 100),
-              })
-            }
-          />
-        </label>
-        <label>
-          Capacity
-          <input
-            type="number"
-            min="1"
-            disabled={value.category === "private"}
-            value={value.capacity}
-            onChange={(event) =>
-              setValue({ ...value, capacity: Number(event.target.value) })
-            }
-          />
-        </label>
-        <label>
-          How soon someone can book (hours)
-          <input
-            type="number"
-            min="0"
-            value={value.minimumNoticeHours}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                minimumNoticeHours: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          How far ahead people can book (days)
-          <input
-            type="number"
-            min="1"
-            max="730"
-            value={value.bookingHorizonDays}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bookingHorizonDays: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Break before this lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={value.bufferBeforeMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bufferBeforeMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Break after this lesson (minutes)
-          <input
-            type="number"
-            min="0"
-            value={value.bufferAfterMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                bufferAfterMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          How often available start times appear (minutes)
-          <input
-            type="number"
-            min="5"
-            max="120"
-            value={value.slotIntervalMinutes}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                slotIntervalMinutes: Number(event.target.value),
-              })
-            }
-          />
-        </label>
-        <label>
-          Notice required to cancel or reschedule (hours)
-          <input
-            type="number"
-            min="0"
-            value={value.policy.cancellationWindowHours}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  cancellationWindowHours: Number(event.target.value),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          Times a client can reschedule themselves
-          <input
-            type="number"
-            min="0"
-            max="10"
-            value={value.policy.rescheduleLimit}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  rescheduleLimit: Number(event.target.value),
-                },
-              })
-            }
-          />
-        </label>
-        <label>
-          On-time settlement
-          <select
-            value={value.policy.settlement}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  settlement: event.target
-                    .value as BookingService["policy"]["settlement"],
-                },
-              })
-            }
-          >
-            <option value="original_payment">Original payment</option>
-            <option value="studio_credit">Studio credit</option>
-            <option value="manual">Manual</option>
-            <option value="none">None</option>
-          </select>
-        </label>
-        <label>
-          Late settlement
-          <select
-            value={value.policy.lateSettlement}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                policy: {
-                  ...value.policy,
-                  lateSettlement: event.target
-                    .value as BookingService["policy"]["lateSettlement"],
-                },
-              })
-            }
-          >
-            <option value="none">None</option>
-            <option value="studio_credit">Studio credit</option>
-            <option value="manual">Manual</option>
-            <option value="original_payment">Original payment</option>
-          </select>
-        </label>
-        <fieldset className="full option-fieldset">
-          <legend>Delivery</legend>
-          {(["google_meet", "in_person"] as const).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.locationOptions.includes(item)}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    locationOptions: toggle(
-                      value.locationOptions,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
+      <form className="workflow-form service-editor" onSubmit={submit}>
+        <fieldset className="editor-group full">
+          <legend>Basics</legend>
+          <label>
+            Name
+            <input
+              required
+              value={value.name}
+              onChange={(event) =>
+                setValue({ ...value, name: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Category
+            <select
+              value={value.category}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  category: event.target.value as BookingService["category"],
+                })
+              }
+            >
+              <option value="private">Private</option>
+              <option value="group_class">Group class</option>
+              {service?.category === "course" && (
+                <option value="course" disabled>
+                  Course (existing only)
+                </option>
+              )}
+            </select>
+          </label>
+          <label className="full">
+            Description
+            <textarea
+              required
+              value={value.description}
+              onChange={(event) =>
+                setValue({ ...value, description: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            Duration (minutes)
+            <input
+              type="number"
+              min="15"
+              max="480"
+              required
+              value={value.durationMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  durationMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
         </fieldset>
-        <label>
-          Default delivery
-          <select
-            value={value.defaultLocation}
-            onChange={(event) =>
-              setValue({
-                ...value,
-                defaultLocation: event.target
-                  .value as BookingService["defaultLocation"],
-              })
-            }
-          >
-            {value.locationOptions.map((item) => (
-              <option key={item} value={item}>
+        <fieldset className="editor-group full">
+          <legend>Pricing</legend>
+          <label>
+            Price (USD)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              required
+              value={value.priceMinor / 100}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  priceMinor: Math.round(Number(event.target.value) * 100),
+                })
+              }
+            />
+          </label>
+          <label>
+            Extra charge for in-person lessons (USD)
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={
+                Number(value.locationPriceAdjustments.in_person || 0) / 100
+              }
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  locationPriceAdjustments: {
+                    ...value.locationPriceAdjustments,
+                    in_person: Math.round(Number(event.target.value) * 100),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Deposit (USD)
+            <input
+              type="number"
+              min="0"
+              max={value.priceMinor / 100}
+              step="0.01"
+              value={value.depositMinor / 100}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  depositMinor: Math.round(Number(event.target.value) * 100),
+                })
+              }
+            />
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Scheduling</legend>
+          <label>
+            Capacity
+            <input
+              type="number"
+              min="1"
+              disabled={value.category === "private"}
+              value={value.capacity}
+              onChange={(event) =>
+                setValue({ ...value, capacity: Number(event.target.value) })
+              }
+            />
+          </label>
+          <label>
+            How soon someone can book (hours)
+            <input
+              type="number"
+              min="0"
+              value={value.minimumNoticeHours}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  minimumNoticeHours: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            How far ahead people can book (days)
+            <input
+              type="number"
+              min="1"
+              max="730"
+              value={value.bookingHorizonDays}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bookingHorizonDays: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            Break before this lesson (minutes)
+            <input
+              type="number"
+              min="0"
+              value={value.bufferBeforeMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bufferBeforeMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            Break after this lesson (minutes)
+            <input
+              type="number"
+              min="0"
+              value={value.bufferAfterMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  bufferAfterMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+          <label>
+            How often available start times appear (minutes)
+            <input
+              type="number"
+              min="5"
+              max="120"
+              value={value.slotIntervalMinutes}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  slotIntervalMinutes: Number(event.target.value),
+                })
+              }
+            />
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Cancellation</legend>
+          <label>
+            Notice required to cancel or reschedule (hours)
+            <input
+              type="number"
+              min="0"
+              value={value.policy.cancellationWindowHours}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    cancellationWindowHours: Number(event.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            Times a client can reschedule themselves
+            <input
+              type="number"
+              min="0"
+              max="10"
+              value={value.policy.rescheduleLimit}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    rescheduleLimit: Number(event.target.value),
+                  },
+                })
+              }
+            />
+          </label>
+          <label>
+            On-time settlement
+            <select
+              value={value.policy.settlement}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    settlement: event.target
+                      .value as BookingService["policy"]["settlement"],
+                  },
+                })
+              }
+            >
+              <option value="original_payment">Original payment</option>
+              <option value="studio_credit">Studio credit</option>
+              <option value="manual">Manual</option>
+              <option value="none">None</option>
+            </select>
+          </label>
+          <label>
+            Late settlement
+            <select
+              value={value.policy.lateSettlement}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  policy: {
+                    ...value.policy,
+                    lateSettlement: event.target
+                      .value as BookingService["policy"]["lateSettlement"],
+                  },
+                })
+              }
+            >
+              <option value="none">None</option>
+              <option value="studio_credit">Studio credit</option>
+              <option value="manual">Manual</option>
+              <option value="original_payment">Original payment</option>
+            </select>
+          </label>
+        </fieldset>
+        <fieldset className="editor-group full">
+          <legend>Location & payment</legend>
+          <fieldset className="full option-fieldset">
+            <legend>Delivery</legend>
+            {(["google_meet", "in_person"] as const).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.locationOptions.includes(item)}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      locationOptions: toggle(
+                        value.locationOptions,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
                 {item.replaceAll("_", " ")}
-              </option>
+              </label>
             ))}
-          </select>
-        </label>
-        <fieldset className="full option-fieldset">
-          <legend>Recurrence</legend>
-          {(["none", "weekly", "biweekly"] as const).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.recurrenceOptions.includes(item)}
-                disabled={item === "none"}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    recurrenceOptions: toggle(
-                      value.recurrenceOptions,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
+          </fieldset>
+          <label>
+            Default delivery
+            <select
+              value={value.defaultLocation}
+              onChange={(event) =>
+                setValue({
+                  ...value,
+                  defaultLocation: event.target
+                    .value as BookingService["defaultLocation"],
+                })
+              }
+            >
+              {value.locationOptions.map((item) => (
+                <option key={item} value={item}>
+                  {item.replaceAll("_", " ")}
+                </option>
+              ))}
+            </select>
+          </label>
+          <fieldset className="full option-fieldset">
+            <legend>Recurrence</legend>
+            {(["none", "weekly", "biweekly"] as const).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.recurrenceOptions.includes(item)}
+                  disabled={item === "none"}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      recurrenceOptions: toggle(
+                        value.recurrenceOptions,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
+                {item.replaceAll("_", " ")}
+              </label>
+            ))}
+          </fieldset>
+          <fieldset className="full option-fieldset">
+            <legend>Payment options</legend>
+            {(
+              [
+                "pay_now",
+                "pay_later",
+                "deposit",
+                "credits",
+                "installments",
+                "subscription",
+              ] as const
+            ).map((item) => (
+              <label className="check-row" key={item}>
+                <input
+                  type="checkbox"
+                  checked={value.paymentPolicies.includes(item)}
+                  onChange={(event) =>
+                    setValue({
+                      ...value,
+                      paymentPolicies: toggle(
+                        value.paymentPolicies,
+                        item,
+                        event.target.checked,
+                      ),
+                    })
+                  }
+                />
+                {item.replaceAll("_", " ")}
+              </label>
+            ))}
+          </fieldset>
+          <label className="check-row full">
+            <input
+              type="checkbox"
+              checked={value.published}
+              onChange={(event) =>
+                setValue({ ...value, published: event.target.checked })
+              }
+            />
+            Published in public catalog
+          </label>
         </fieldset>
-        <fieldset className="full option-fieldset">
-          <legend>Payment options</legend>
-          {(
-            [
-              "pay_now",
-              "pay_later",
-              "deposit",
-              "credits",
-              "installments",
-              "subscription",
-            ] as const
-          ).map((item) => (
-            <label className="check-row" key={item}>
-              <input
-                type="checkbox"
-                checked={value.paymentPolicies.includes(item)}
-                onChange={(event) =>
-                  setValue({
-                    ...value,
-                    paymentPolicies: toggle(
-                      value.paymentPolicies,
-                      item,
-                      event.target.checked,
-                    ),
-                  })
-                }
-              />
-              {item.replaceAll("_", " ")}
-            </label>
-          ))}
-        </fieldset>
-        <label className="check-row full">
-          <input
-            type="checkbox"
-            checked={value.published}
-            onChange={(event) =>
-              setValue({ ...value, published: event.target.checked })
-            }
-          />
-          Published in public catalog
-        </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function RuleDialog({
@@ -964,7 +1090,7 @@ function RuleDialog({
 }) {
   const [value, setValue] = useState(rule);
   return (
-    <Dialog
+    <Drawer
       title="Weekly availability"
       description="Times are interpreted in the studio timezone and keep their wall time through daylight-saving changes."
       onClose={onClose}
@@ -1027,7 +1153,7 @@ function RuleDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function ExceptionDialog({
@@ -1044,7 +1170,7 @@ function ExceptionDialog({
     new Date(tomorrow.getTime() + 86400000).toISOString().slice(0, 16),
   );
   return (
-    <Dialog title="Add availability exception" onClose={onClose}>
+    <Drawer title="Add availability exception" onClose={onClose}>
       <form
         className="workflow-form"
         onSubmit={(event) => {
@@ -1090,7 +1216,7 @@ function ExceptionDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function OfferingDialog({
@@ -1114,7 +1240,7 @@ function OfferingDialog({
   const selected = services.find((item) => item.id === serviceId);
   const count = 1;
   return (
-    <Dialog
+    <Drawer
       title="Create group class"
       description="Create one class occurrence with its own page, roster, resources, assignments, and shared inbox."
       onClose={onClose}
@@ -1233,7 +1359,7 @@ function OfferingDialog({
         </p>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function RosterDialog({
@@ -1254,7 +1380,7 @@ function RosterDialog({
     ...new Map(participants.map((part) => [part.email, part])).values(),
   ];
   return (
-    <Dialog
+    <Drawer
       title={`${offering.title} roster`}
       description={`${unique.length} of ${offering.capacity} seats reserved.`}
       onClose={onClose}
@@ -1320,7 +1446,7 @@ function RosterDialog({
           </button>
         </div>
       </div>
-    </Dialog>
+    </Drawer>
   );
 }
 function SeriesDialog({
@@ -1334,7 +1460,7 @@ function SeriesDialog({
 }) {
   const [status, setStatus] = useState(series.status);
   return (
-    <Dialog
+    <Drawer
       title="Manage recurring series"
       description="Pausing protects existing occurrences. Cancellation ends future unearned occurrences."
       onClose={onClose}
@@ -1364,50 +1490,100 @@ function SeriesDialog({
         </label>
         <FormActions onClose={onClose} />
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
 function BookingDialog({
   booking,
   data,
+  lessonId,
   onClose,
   onAction,
 }: {
   booking: Booking;
   data: StudioSnapshot;
+  lessonId?: string;
   onClose: () => void;
   onAction: (command: string, payload?: Record<string, unknown>) => void;
 }) {
+  const locationId = useId();
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [consumeCredit, setConsumeCredit] = useState(false);
   const [location, setLocation] = useState(
     booking.inPersonLocation ||
       data.settings.meetingFormats.in_person?.location ||
       "",
   );
-  const lesson = data.lessons.find((item) =>
-    data.lessonParticipants.some(
-      (participant) =>
-        participant.lessonId === item.id &&
-        participant.bookingId === booking.id,
-    ),
-  );
+  const lesson = lessonId
+    ? data.lessons.find((item) => item.id === lessonId)
+    : data.lessons.find((item) =>
+        data.lessonParticipants.some(
+          (participant) =>
+            participant.lessonId === item.id &&
+            participant.bookingId === booking.id,
+        ),
+      );
   const relatedStudentId =
     booking.studentId ||
     data.lessonParticipants.find(
       (participant) => participant.bookingId === booking.id,
     )?.studentId;
   return (
-    <Dialog
+    <Drawer
       title={booking.reference}
       description={`${booking.guestName} · ${serviceName(data, booking.serviceId)}`}
       onClose={onClose}
     >
       <div className="workflow-content">
-        <dl className="integration-detail">
+        {confirmCancel && (
+          <section className="policy-box">
+            <h3>Cancel this booking?</h3>
+            {(booking.paymentPolicy === "credits" ||
+              data.lessonParticipants.some(
+                (part) =>
+                  part.bookingId === booking.id &&
+                  data.packages.some(
+                    (pkg) =>
+                      pkg.studentId === relatedStudentId &&
+                      lessonCreditDebit(
+                        data.creditEntries,
+                        part.lessonId,
+                        pkg.id,
+                      ) > 0,
+                  ),
+              )) && (
+              <CreditCancellationChoice
+                useCredit={consumeCredit}
+                onChange={setConsumeCredit}
+              />
+            )}
+            <div className="form-actions">
+              <button onClick={() => setConfirmCancel(false)}>
+                Keep booking
+              </button>
+              <button
+                className="danger-button"
+                onClick={() => onAction("cancel", { useCredit: consumeCredit })}
+              >
+                Confirm cancellation
+              </button>
+            </div>
+          </section>
+        )}
+        <div className="integration-detail">
           <article>
             <div>
               <strong>Schedule</strong>
               <small>
-                {formatStudioDateTime(booking.startsAt, data.settings.timezone)}{" "}
+                {formatStudioDateTime(
+                  lesson?.startsAt || booking.startsAt,
+                  data.settings.timezone,
+                )}{" "}
+                –{" "}
+                {formatStudioTime(
+                  lesson?.endsAt || booking.endsAt,
+                  data.settings.timezone,
+                )}{" "}
                 · {booking.location.replaceAll("_", " ")}
                 {booking.inPersonLocation
                   ? ` · ${booking.inPersonLocation}`
@@ -1430,22 +1606,30 @@ function BookingDialog({
               {booking.paymentStatus.replaceAll("_", " ")}
             </Status>
           </article>
-        </dl>
+        </div>
+        {lesson &&
+          lesson.studentId &&
+          lesson.studentId === relatedStudentId && (
+            <LessonReadinessPanel lesson={lesson} data={data} />
+          )}
         {booking.location === "in_person" && (
-          <label>
-            Confirmed lesson location
-            <input
-              value={location}
-              onChange={(event) => setLocation(event.target.value)}
-              placeholder="Studio address or meeting place"
-            />
-            <small>
-              Saving updates the lesson and sends a Google Calendar event update
-              to the student.
-            </small>
-          </label>
+          <div className="workflow-form" style={{ padding: 0 }}>
+            <label className="full" htmlFor={locationId}>
+              Confirmed lesson location
+              <input
+                id={locationId}
+                value={location}
+                onChange={(event) => setLocation(event.target.value)}
+                placeholder="Studio address or meeting place"
+              />
+              <small>
+                Saving updates the lesson and sends a Google Calendar event
+                update to the student.
+              </small>
+            </label>
+          </div>
         )}
-        <div className="form-actions">
+        <div className="form-actions appointment-actions">
           {relatedStudentId && (
             <Link
               className="button-link"
@@ -1462,6 +1646,18 @@ function BookingDialog({
               Open lesson
             </Link>
           )}
+          {relatedStudentId &&
+            data.conversations.some(
+              (item) =>
+                item.kind === "direct" && item.studentId === relatedStudentId,
+            ) && (
+              <Link
+                className="button-link"
+                to={`/coach/inbox?student=${relatedStudentId}`}
+              >
+                Message
+              </Link>
+            )}
           {booking.location === "in_person" && (
             <button
               disabled={!location.trim()}
@@ -1474,14 +1670,151 @@ function BookingDialog({
             <button onClick={() => onAction("refund")}>Refund</button>
           )}
           {booking.status === "confirmed" && (
-            <button onClick={() => onAction("cancel")}>Cancel</button>
+            <button
+              onClick={() => {
+                setConsumeCredit(false);
+                setConfirmCancel(true);
+              }}
+            >
+              Cancel booking
+            </button>
           )}
           <button className="primary" onClick={onClose}>
             Done
           </button>
         </div>
       </div>
-    </Dialog>
+    </Drawer>
+  );
+}
+function CalendarLessonDrawer({
+  lesson,
+  data,
+  onClose,
+  onBooking,
+}: {
+  lesson: Lesson;
+  data: StudioSnapshot;
+  onClose: () => void;
+  onBooking: (booking: Booking) => void;
+}) {
+  const student = data.students.find((item) => item.id === lesson.studentId);
+  const bookings = calendarBookings(lesson, data);
+  return (
+    <Drawer
+      title={lesson.topic}
+      description={
+        student?.fullName ||
+        (lesson.offeringId ? "Class appointment" : "Lesson appointment")
+      }
+      onClose={onClose}
+    >
+      <div className="workflow-content">
+        <dl className="detail-grid">
+          <div>
+            <dt>Date & time</dt>
+            <dd>
+              {formatStudioDateTime(lesson.startsAt, data.settings.timezone)}
+            </dd>
+          </div>
+          <div>
+            <dt>Duration</dt>
+            <dd>
+              {Math.round(
+                (new Date(lesson.endsAt).getTime() -
+                  new Date(lesson.startsAt).getTime()) /
+                  60000,
+              )}{" "}
+              minutes
+            </dd>
+          </div>
+          <div>
+            <dt>Delivery / location</dt>
+            <dd>{lesson.locationLabel}</dd>
+          </div>
+          <div>
+            <dt>Lesson status</dt>
+            <dd>{lesson.status.replaceAll("_", " ")}</dd>
+          </div>
+          {lesson.paymentStatus && (
+            <div>
+              <dt>Payment status</dt>
+              <dd>{lesson.paymentStatus.replaceAll("_", " ")}</dd>
+            </div>
+          )}
+          {lesson.priceMinor != null && (
+            <div>
+              <dt>Payment</dt>
+              <dd>
+                {formatMoney(lesson.paidMinor || 0, data.settings.currency)}{" "}
+                paid of {formatMoney(lesson.priceMinor, data.settings.currency)}
+              </dd>
+            </div>
+          )}
+        </dl>
+        {student && <LessonReadinessPanel lesson={lesson} data={data} />}
+        {bookings.length > 1 && (
+          <Section title="Participant bookings">
+            <div className="table-list">
+              {bookings.map((booking) => (
+                <article key={booking.id}>
+                  <div>
+                    <strong>{booking.guestName}</strong>
+                    <small>
+                      {booking.reference} ·{" "}
+                      {booking.status.replaceAll("_", " ")}
+                    </small>
+                  </div>
+                  <button type="button" onClick={() => onBooking(booking)}>
+                    View booking
+                  </button>
+                </article>
+              ))}
+            </div>
+          </Section>
+        )}
+        <div className="form-actions">
+          {student && (
+            <>
+              <Link
+                className="button-link"
+                to={`/coach/students/${student.id}`}
+              >
+                Open student
+              </Link>
+              <Link
+                className="button-link"
+                to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+              >
+                Open lesson
+              </Link>
+            </>
+          )}
+          {student &&
+            data.conversations.some(
+              (item) => item.kind === "direct" && item.studentId === student.id,
+            ) && (
+              <Link
+                className="button-link"
+                to={`/coach/inbox?student=${student.id}`}
+              >
+                Message
+              </Link>
+            )}
+          {lesson.offeringId && (
+            <Link
+              className="button-link"
+              to={`/coach/classes/${lesson.offeringId}`}
+            >
+              Open class
+            </Link>
+          )}
+          <button type="button" className="primary" onClick={onClose}>
+            Done
+          </button>
+        </div>
+      </div>
+    </Drawer>
   );
 }
 function FormActions({ onClose }: { onClose: () => void }) {

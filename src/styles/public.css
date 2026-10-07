@@ -1,0 +1,108 @@
+/* Public experiences share controls, but retain portfolio and checkout composition. */
+.booking-public,
+.legal-page,
+.login-page,
+.gift-page {
+  background: var(--app-canvas);
+}
+.booking-topbar {
+  background: var(--app-surface);
+  border: 0;
+  box-shadow: 0 1px 0 var(--app-border);
+}
+.booking-hero {
+  background: transparent;
+  padding-block: 56px;
+}
+.booking-hero h1 {
+  font-size: clamp(34px, 5vw, 60px);
+  letter-spacing: -0.045em;
+  font-weight: 500;
+}
+.booking-hero p {
+  font-size: 16px;
+  line-height: 1.7;
+}
+.service-card h3 {
+  font-size: 24px;
+  font-weight: 500;
+}
+.service-card p {
+  font-size: 15px;
+  line-height: 1.7;
+}
+.booking-step,
+.booking-summary,
+.booking-confirmation,
+.login-card,
+.gift-card,
+.package-landing-card {
+  border: 0;
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+  border-radius: var(--radius-feature);
+}
+.booking-step {
+  padding: 32px;
+}
+.booking-summary {
+  background: var(--app-surface-soft);
+}
+.booking-progress {
+  font-size: 13px;
+}
+.booking-time-list {
+  gap: 10px;
+}
+.booking-time-list button {
+  border-radius: 12px;
+  min-height: 48px;
+  font-size: 14px;
+}
+.booking-confirmation {
+  padding: clamp(24px, 5vw, 48px);
+}
+.login-card {
+  padding: clamp(24px, 3vw, 40px);
+}
+.gift-card {
+  padding: clamp(24px, 3vw, 40px);
+}
+.gift-card > small {
+  color: var(--muted);
+  font-weight: 600;
+}
+.gift-card h1 {
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 500;
+  line-height: 1.12;
+}
+.gift-card .workflow-form > .full {
+  grid-column: 1 / -1;
+}
+.gift-card .workflow-form > button {
+  justify-self: start;
+  min-height: var(--control-md);
+  padding: 12px 20px;
+}
+.gift-package-summary {
+  border: 0;
+  background: var(--app-surface-soft);
+}
+.gift-package-summary span {
+  font-size: 12px;
+}
+.actor-public {
+  background: var(--app-canvas);
+}
+.actor-public-intro h1 {
+  font-weight: 500;
+  letter-spacing: -0.04em;
+}
+.actor-public-intro p {
+  line-height: 1.8;
+}
+.actor-media-card {
+  border-color: var(--app-border);
+  border-radius: var(--radius-card);
+}

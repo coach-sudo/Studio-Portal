@@ -1,5 +1,4 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import Stripe from "stripe";
 import { queueLessonChangeEmails } from "./booking-email";
 
 type BookingForCancellation = {
@@ -24,60 +23,13 @@ export async function cancelConfirmedBooking(input: {
   correlationId: string;
   stripeIdempotencyPrefix: string;
 }) {
-  const { db, booking, correlationId, stripeIdempotencyPrefix } = input;
+  const { db, booking, correlationId } = input;
   if (booking.status !== "confirmed") throw new Error("INVALID_TRANSITION");
-  const windowHours = Number(booking.policy_snapshot.cancellationWindowHours || 0);
-  const late = new Date(booking.starts_at).getTime() - Date.now() < windowHours * 3_600_000;
-  if (late)
-    throw new Error(
-      `VALIDATION_FAILED: Online cancellation closes ${windowHours} hours before the lesson. Contact the studio if you need help.`,
-    );
-
-  let refundReference: string | null = null;
-  let refundAmount = 0;
-  const settlement = String(booking.policy_snapshot.settlement || "original_payment");
-  // Provider money moves first. The following RPC atomically applies every
-  // authoritative local consequence only after Stripe accepted the refund.
-  if (
-    settlement === "original_payment" &&
-    booking.paid_minor > 0 &&
-    booking.stripe_checkout_session_id
-  ) {
-    const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
-    if (!stripeKey) throw new Error("Stripe is not configured.");
-    const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
-    const session = await stripe.checkout.sessions.retrieve(
-      booking.stripe_checkout_session_id,
-    );
-    const paymentIntent =
-      typeof session.payment_intent === "string"
-        ? session.payment_intent
-        : session.payment_intent?.id;
-    if (!paymentIntent)
-      throw new Error(
-        "PAYMENT_PROVIDER_ERROR: The original payment could not be located. No cancellation was applied.",
-      );
-    const refund = await stripe.refunds.create(
-      {
-        payment_intent: paymentIntent,
-        amount: booking.paid_minor,
-        metadata: { booking_id: booking.id },
-      },
-      {
-        idempotencyKey: `${stripeIdempotencyPrefix}:${booking.id}:${booking.version}`,
-      },
-    );
-    refundReference = refund.id;
-    refundAmount = Number(refund.amount || booking.paid_minor);
-  }
-
-  const { data, error } = await db.rpc("finalize_booking_cancellation", {
-    target_booking: booking.id,
-    expected_version: booking.version,
-    target_status: "cancelled",
-    refund_reference: refundReference,
-    refund_amount: refundAmount,
-    correlation_id: correlationId,
+  const { data, error } = await db.rpc("cancel_booking_credit", {
+    p_booking: booking.id,
+    p_version: booking.version,
+    p_use: false,
+    p_student_action: true,
   });
   if (error) throw error;
 
@@ -93,6 +45,9 @@ export async function cancelConfirmedBooking(input: {
           lessonId,
           "cancelled",
           correlationId,
+          booking.student_id
+            ? { studentId: booking.student_id, bookingId: booking.id }
+            : undefined,
         )) as Array<{ id: string }>),
       );
     } catch (emailError) {

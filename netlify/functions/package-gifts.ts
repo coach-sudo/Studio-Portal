@@ -249,12 +249,22 @@ export default async (request: Request, context: Context) => {
         if (created.error) throw created.error;
         student = created.data;
       }
+      const preference = await db
+        .from("student_credit_accounts")
+        .select("auto_apply")
+        .eq("student_id", student.id)
+        .maybeSingle();
+      if (preference.error) throw preference.error;
       const claimed = await db.rpc("claim_package_gift", {
         target_gift: gift.id,
         target_student: student.id,
-        apply_automatically: Boolean(body.autoApply),
+        apply_automatically: preference.data?.auto_apply === true,
       });
       if (claimed.error) throw claimed.error;
+      const coverage = await db.rpc("reserve_student_upcoming_credits", {
+        p_student: student.id,
+      });
+      if (coverage.error) throw coverage.error;
       if (body.createPortalProfile) {
         const account = await provisionPortalAccount(db, {
           studioId: gift.studio_id,

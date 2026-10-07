@@ -37,6 +37,32 @@
 .campaigns-side {
   display: grid;
   gap: 16px;
+  min-width: 0;
+}
+.campaigns-page .section,
+.campaigns-page .section-body,
+.campaigns-page .section-content,
+.campaign-recipient-list li,
+.campaign-template-picker label {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.campaigns-page .section p,
+.campaigns-page .section strong,
+.campaigns-page .section label {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.campaigns-page input,
+.campaigns-page textarea,
+.campaigns-page select {
+  min-width: 0;
+  max-width: 100%;
+  width: 100%;
+}
+.campaigns-page .campaign-email-preview p {
+  white-space: pre-wrap;
 }
 .campaign-template-picker {
   display: grid;
@@ -74,9 +100,8 @@
   gap: 0;
 }
 .campaign-recipient-list li {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
+  display: grid;
+  gap: 4px;
   padding: 9px 0;
   border-bottom: 1px solid var(--line);
 }

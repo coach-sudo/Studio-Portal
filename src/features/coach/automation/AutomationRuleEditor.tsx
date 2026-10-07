@@ -5,7 +5,8 @@ import {
 } from "../../../domain/automationRules";
 import type { Tables } from "../../../types/database.generated";
 import type { FormEvent } from "react";
-import { Dialog } from "../../../components/Primitives";
+import { Drawer } from "../../../components/Primitives";
+import { paymentReminderNeedsApproval } from "../../../domain/paymentReminder";
 export function AutomationRuleEditor({
   edit,
   busy,
@@ -22,11 +23,18 @@ export function AutomationRuleEditor({
   const timed = ["lesson_reminder", "payment_due"].includes(edit.rule_key);
   const escalation = timed || edit.rule_key === "payment_past_due";
   return (
-    <Dialog
+    <Drawer
       title={`Edit ${automationRuleLabels[edit.rule_key as AutomationRuleKey]}`}
       onClose={onClose}
     >
       <form className="settings-form" onSubmit={onSave}>
+        {paymentReminderNeedsApproval(edit.rule_key) && (
+          <p className="full">
+            Payer reminders always wait for coach approval. Automatic mode
+            evaluates and prepares drafts; coach escalation follows the rule
+            settings.
+          </p>
+        )}
         {notice && (
           <p className="full" role="alert">
             {notice}
@@ -145,13 +153,16 @@ export function AutomationRuleEditor({
         <p className="full">
           Template fields:{" "}
           {"{{studioName}}, {{studentName}}, {{manageUrl}}, {{renewUrl}}"}.
-          Lesson rules also support {"{{serviceName}} and {{startsAt}}"}. Leave
-          blank to retain the current/default message.
+          Lesson rules also support {"{{serviceName}}, {{startsAt}},"}
+          {
+            " {{recipientName}}, {{hours}}, {{amountDue}}, {{timezone}} and {{location}}"
+          }{" "}
+          . Leave blank to retain the current/default message.
         </p>
         <button disabled={busy} type="submit">
           {busy ? "Saving…" : "Save rule"}
         </button>
       </form>
-    </Dialog>
+    </Drawer>
   );
 }
