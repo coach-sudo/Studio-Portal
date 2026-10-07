@@ -11,7 +11,6 @@ import {
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { useInvoices } from "../../data/invoices";
-import { getSignedMaterialUrl } from "../../data/repository";
 import { lessonCreditDebit, reserveDemoCredits } from "../../domain/credits";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import {
@@ -55,10 +54,16 @@ export function InvoiceWorkspace({
   );
   const selected = invoices.find((i) => i.id === params.get("invoice"));
   const logo = useQuery({
-    queryKey: ["invoice-logo", selected?.branding.logoStoragePath],
+    queryKey: [
+      "invoice-logo",
+      readOnly,
+      selected?.id,
+      selected?.branding.logoStoragePath,
+    ],
     enabled: !!selected?.branding.logoStoragePath && !isDemo,
     staleTime: 30 * 60000,
-    queryFn: () => getSignedMaterialUrl(selected!.branding.logoStoragePath!),
+    queryFn: async () =>
+      (await import("./downloadInvoice")).invoiceLogoUrl(selected!.id),
   });
   const logoUrl = selected?.branding.logoStoragePath
     ? isDemo
@@ -533,7 +538,8 @@ export function InvoiceWorkspace({
           <div className="header-actions">
             <button
               disabled={
-                busy || (!!selected.branding.logoStoragePath && !logoUrl)
+                busy ||
+                (isDemo && !!selected.branding.logoStoragePath && !logoUrl)
               }
               onClick={async () => {
                 setBusy(true);

@@ -1,6 +1,24 @@
 import { supabase } from "../../lib/supabase";
 import { readApiClientError } from "../../data/apiClientError";
 import type { Invoice } from "../../domain/invoices";
+export async function invoiceLogoUrl(invoiceId: string) {
+  const auth = await supabase?.auth.getSession();
+  if (!auth?.data.session) throw new Error("Sign in to view invoices.");
+  const response = await fetch("/api/invoice-pdf", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${auth.data.session.access_token}`,
+    },
+    body: JSON.stringify({ invoiceId, format: "logo" }),
+  });
+  if (!response.ok)
+    throw await readApiClientError(
+      response,
+      "The studio logo could not be loaded.",
+    );
+  return (await response.json()).url as string | undefined;
+}
 async function logoPng(url: string) {
   const img = new Image();
   img.crossOrigin = "anonymous";

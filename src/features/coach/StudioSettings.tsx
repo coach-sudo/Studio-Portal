@@ -258,6 +258,13 @@ function StudioForm({
       setUploading(true);
       let branding = form.branding;
       if (logo) {
+        if (
+          !["image/png", "image/jpeg", "image/webp"].includes(logo.type) ||
+          logo.size > 5 * 1024 * 1024
+        )
+          throw new Error(
+            "Choose a PNG, JPEG or WebP studio logo smaller than 5 MB.",
+          );
         const uploaded = await uploadStudioFile({
           studioId,
           entityType: "studio",
@@ -418,7 +425,7 @@ function StudioForm({
           />
           <small>
             The uploaded logo is used in the booking header, footer, and public
-            actor pages.
+            actor pages and invoices. PNG, JPEG or WebP, up to 5 MB.
           </small>
         </label>
         <label className="full material-upload">
