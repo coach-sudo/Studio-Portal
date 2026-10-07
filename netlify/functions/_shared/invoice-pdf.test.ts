@@ -7,14 +7,14 @@ const mock = vi.hoisted(() => ({
   download: vi.fn(),
   service: vi.fn(),
 }));
-vi.mock("./_shared/supabase", () => ({
+vi.mock("./supabase", () => ({
   userClient: () => ({
     auth: { getUser: async () => ({ data: { user: { id: "student" } } }) },
     from: () => ({ select: () => ({ eq: () => ({ single: mock.invoice }) }) }),
   }),
   serviceClient: mock.service,
 }));
-import handler from "./invoice-pdf";
+import handler from "../invoice-pdf";
 const studio = "10000000-0000-4000-8000-000000000001";
 const request = (format = "logo") =>
   new Request("https://example.test/api/invoice-pdf", {
