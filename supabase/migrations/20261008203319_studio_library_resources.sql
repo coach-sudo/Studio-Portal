@@ -112,6 +112,17 @@ select auth.uid() is not null and exists(select 1 from public.materials m where 
 $$;
 revoke all on function library_internal.can_read_material_path(text) from public,anon;
 grant execute on function library_internal.can_read_material_path(text) to authenticated,service_role;
+create function library_internal.can_read_profile_photo_path(target_path text) returns boolean
+language sql stable security definer set search_path='' as $$
+select auth.uid() is not null and exists(
+ select 1 from public.file_assets f join public.students s on s.profile_photo_asset_id=f.id and s.id=f.owner_student_id and s.studio_id=f.studio_id
+ where f.storage_path=target_path and f.bucket_id='studio-materials' and split_part(target_path,'/',1)=f.studio_id::text and public.can_view_student_work(s.id)
+);
+$$;
+revoke all on function library_internal.can_read_profile_photo_path(text) from public,anon;
+grant execute on function library_internal.can_read_profile_photo_path(text) to authenticated,service_role;
+create policy material_objects_profile_photo_read on storage.objects for select to authenticated
+using(bucket_id='studio-materials' and library_internal.can_read_profile_photo_path(name));
 -- Add a reference-based path for reused studio objects; retain original ownership paths.
 create policy material_objects_assigned_read on storage.objects for select to authenticated using(bucket_id='studio-materials' and library_internal.can_read_material_path(name));
 drop policy if exists material_objects_read on storage.objects;
@@ -120,7 +131,7 @@ create policy material_objects_read on storage.objects for select to authenticat
  or (split_part(name,'/',3)<>'private' and exists(select 1 from public.students s where s.id::text=split_part(name,'/',2) and s.studio_id::text=split_part(name,'/',1) and public.can_view_student_work(s.id)))
 ));
 drop policy if exists file_assets_access on public.file_assets;
-create policy file_assets_access on public.file_assets for select to authenticated using(public.is_studio_coach(studio_id) or (owner_student_id is not null and public.can_view_student_work(owner_student_id) and (visibility<>'private' or uploaded_by=(select auth.uid()) or library_internal.can_read_material_path(storage_path))));
+create policy file_assets_access on public.file_assets for select to authenticated using(public.is_studio_coach(studio_id) or library_internal.can_read_profile_photo_path(storage_path) or (owner_student_id is not null and public.can_view_student_work(owner_student_id) and (visibility<>'private' or uploaded_by=(select auth.uid()) or library_internal.can_read_material_path(storage_path))));
 
 drop policy if exists file_assets_insert on public.file_assets;
 create policy file_assets_insert on public.file_assets for insert to authenticated with check(

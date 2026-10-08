@@ -64,7 +64,7 @@ beforeAll(async () => {
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.user',true),'')::uuid$$;
  create table auth.users(id uuid primary key);
  create table public.studios(id uuid primary key);
- create table public.students(id uuid primary key,studio_id uuid,user_id uuid,deleted_at timestamptz,full_name text default 'Student');
+ create table public.students(id uuid primary key,studio_id uuid,user_id uuid,deleted_at timestamptz,full_name text default 'Student',profile_photo_asset_id uuid);
  create table public.memberships(studio_id uuid,user_id uuid,role text);
  create table public.lessons(id uuid primary key,studio_id uuid,student_id uuid,topic text default 'Lesson');
  create table public.lesson_participants(lesson_id uuid,student_id uuid,topic text default 'Lesson');
@@ -102,6 +102,7 @@ beforeAll(async () => {
 afterAll(async () => {
   await db?.close();
 });
+
 it("stores a resource once and assigns it to two students without duplicating its file", async () => {
   await db.exec("reset role");
   const asset = (
@@ -551,4 +552,31 @@ it("preserves legacy owner-only resources, their vaulted status and original add
       })
     ).total,
   ).toBe(0);
+});
+
+it("keeps a coach-uploaded private profile photo accessible only through its authorized student reference", async () => {
+  const photo = "90000000-0000-4000-8000-000000000099";
+  const path = `${studio}/${studentA}/private/profile.png`;
+  await db.exec(`reset role; insert into public.file_assets(id,studio_id,owner_student_id,storage_path,mime_type,file_size_bytes,uploaded_by,bucket_id,visibility) values('${photo}','${studio}','${studentA}','${path}','image/png',32,'${coach}','studio-materials','private');
+    insert into storage.objects(name,bucket_id) values('${path}','studio-materials');
+    update public.students set profile_photo_asset_id='${photo}' where id='${studentA}';`);
+  await as(userA);
+  expect(
+    (await db.query("select id from public.file_assets where id=$1", [photo]))
+      .rows,
+  ).toHaveLength(1);
+  expect(
+    (await db.query("select name from storage.objects where name=$1", [path]))
+      .rows,
+  ).toHaveLength(1);
+  await as(userB);
+  expect(
+    (await db.query("select id from public.file_assets where id=$1", [photo]))
+      .rows,
+  ).toHaveLength(0);
+  expect(
+    (await db.query("select name from storage.objects where name=$1", [path]))
+      .rows,
+  ).toHaveLength(0);
+  await as(coach);
 });
