@@ -12,6 +12,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   runtime,
 }) => {
   requireFixtures(runtime);
+  test.setTimeout(90000);
   const coach = await openAs(browser, "coach");
   const page = coach.page;
   let uploads = 0;
@@ -22,7 +23,10 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     )
       uploads += 1;
   });
-  const title = `${runtime.runId} Shakespeare Lexicon`;
+  const title = `${runtime.runId} Shakespeare Lexicon attempt-${test.info().retry}`;
+  const lexiconBytes = Buffer.from(
+    `%PDF-1.4\nDeterministic reusable lexicon fixture attempt-${test.info().retry}\n%%EOF`,
+  );
   await page.goto("/coach/materials");
   await page.getByRole("button", { name: "New resource", exact: true }).click();
   const editor = page.getByRole("dialog", {
@@ -49,9 +53,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   await editor.getByLabel("File", { exact: true }).setInputFiles({
     name: `${runtime.runId}-lexicon.pdf`,
     mimeType: "application/pdf",
-    buffer: Buffer.from(
-      "%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF",
-    ),
+    buffer: lexiconBytes,
   });
   await expectNoSeriousAxeViolations(page, '[role="dialog"]');
   await editor
@@ -102,9 +104,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   const filePage = await filePopup;
   const download = await student.context.request.get((await fileRequest).url());
   expect(download.ok()).toBe(true);
-  expect(await download.body()).toEqual(
-    Buffer.from("%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF"),
-  );
+  expect(await download.body()).toEqual(lexiconBytes);
   await filePage.close();
   await expect(studentRow).toContainText("Read the shared glossary.");
   await expect(

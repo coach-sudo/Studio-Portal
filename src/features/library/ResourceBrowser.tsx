@@ -477,7 +477,11 @@ export function ResourceBrowser({
         canManage && (
           <div className="page-actions">
             <button type="button" onClick={() => setAdding(true)}>
-              {catalog ? "New resource" : "Add material"}
+              {catalog
+                ? "New resource"
+                : lessonId
+                  ? "Attach resource"
+                  : "Add material"}
             </button>
             {coach && catalog && (
               <button type="button" onClick={() => setCollections(true)}>
@@ -521,7 +525,11 @@ export function ResourceBrowser({
         )}
         <label>
           Sort
-          <select value={sort} onChange={(e) => setSort(e.target.value)}>
+          <select
+            aria-label="Sort"
+            value={sort}
+            onChange={(e) => setSort(e.target.value)}
+          >
             <option value="title">Title</option>
             <option value="date">Date added</option>
             {!catalog && <option value="pinned">Pinned first</option>}
@@ -529,7 +537,11 @@ export function ResourceBrowser({
         </label>
         <label>
           {catalog ? "Catalog state" : "Materials"}
-          <select value={status} onChange={(e) => setStatus(e.target.value)}>
+          <select
+            aria-label={catalog ? "Catalog state" : "Materials"}
+            value={status}
+            onChange={(e) => setStatus(e.target.value)}
+          >
             <option value="active">{catalog ? "Active" : "Current"}</option>
             <option value="vaulted">Vaulted</option>
             <option value="archived">Archived</option>

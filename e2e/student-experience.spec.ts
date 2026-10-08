@@ -140,6 +140,7 @@ test("@journey Journey 06: current work exposes allowed assignment/material only
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/work");
   await expect(page.getByText(`${runtime.runId} Current work`)).toBeVisible();
+  await page.getByText("Current script upload", { exact: true }).click();
   await expect(
     page.getByText(`${runtime.runId} Fixture material`),
   ).toBeVisible();
@@ -158,7 +159,10 @@ test("@journey Journey 07: student uploads and removes a namespaced safe fixture
   await page.goto("/portal/work");
   await page.getByText("Current script upload", { exact: true }).click();
   await page.getByRole("button", { name: "Submit material" }).click();
-  await page.getByLabel("Title").fill(`${runtime.runId} uploaded material`);
+  await page
+    .getByRole("dialog", { name: "Submit material" })
+    .getByLabel("Title", { exact: true })
+    .fill(`${runtime.runId} uploaded material`);
   await page.getByLabel("Upload file").setInputFiles({
     name: `${runtime.runId}-safe.txt`,
     mimeType: "text/plain",
