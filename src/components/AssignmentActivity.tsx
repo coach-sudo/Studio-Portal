@@ -1,3 +1,4 @@
+import { WritingArea } from "./WritingArea";
 import { useEffect, useState } from "react";
 import type { Assignment } from "../domain/model";
 
@@ -35,7 +36,7 @@ export function AssignmentActivity({
       {type === "journal" && (
         <label>
           Your reflection
-          <textarea
+          <WritingArea
             rows={6}
             value={String(responses.journal || "")}
             onChange={(event) => set("journal", event.target.value)}
@@ -43,16 +44,17 @@ export function AssignmentActivity({
           />
         </label>
       )}
-      {type === "qa" && (config.prompts || []).map((prompt, index) => (
-        <label key={`${prompt}-${index}`}>
-          {prompt}
-          <textarea
-            rows={3}
-            value={String(responses[`answer-${index}`] || "")}
-            onChange={(event) => set(`answer-${index}`, event.target.value)}
-          />
-        </label>
-      ))}
+      {type === "qa" &&
+        (config.prompts || []).map((prompt, index) => (
+          <label key={`${prompt}-${index}`}>
+            {prompt}
+            <WritingArea
+              rows={3}
+              value={String(responses[`answer-${index}`] || "")}
+              onChange={(event) => set(`answer-${index}`, event.target.value)}
+            />
+          </label>
+        ))}
       {type === "multiple_choice" && (
         <fieldset className="option-fieldset">
           <legend>Choose one</legend>
@@ -94,11 +96,20 @@ export function AssignmentActivity({
           </button>
         )}
         {assignment.status !== "completed" && (
-          <button type="button" className="primary" disabled={busy} onClick={onComplete}>
+          <button
+            type="button"
+            className="primary"
+            disabled={busy}
+            onClick={onComplete}
+          >
             Complete &amp; archive
           </button>
         )}
-        <button type="button" disabled={busy || assignment.helpRequested} onClick={onHelp}>
+        <button
+          type="button"
+          disabled={busy || assignment.helpRequested}
+          onClick={onHelp}
+        >
           {assignment.helpRequested ? "Help requested" : "Ask coach"}
         </button>
       </div>

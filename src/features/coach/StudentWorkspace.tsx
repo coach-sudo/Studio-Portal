@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import {
@@ -30,6 +31,7 @@ import {
 import { Dialog, Drawer, Status, Toggle } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
+import { AddResourceFlow } from "../library/ResourceBrowser";
 import type {
   Assignment,
   Lesson,
@@ -107,6 +109,8 @@ export function StudentWorkspace() {
     | "lesson"
     | "assignment"
     | "material"
+    | "script-material"
+    | "note-resource"
     | "actor-material"
     | "note"
     | null
@@ -364,8 +368,9 @@ export function StudentWorkspace() {
       );
     }
   };
-  const addNote = async (note: Note) => {
+  const addNote = async (note: Note, attach = false) => {
     try {
+      let savedNote = note;
       const existing = data.notes.find((item) => item.id === note.id);
       if (isDemo)
         store.transact((draft) => {
@@ -375,7 +380,7 @@ export function StudentWorkspace() {
           else draft.notes.push(note);
         });
       else {
-        await studioCommand("notes", {
+        const result = await studioCommand("notes", {
           command: existing ? "update" : "create",
           entityId: existing?.id,
           expectedVersion: existing?.version ?? 0,
@@ -390,11 +395,16 @@ export function StudentWorkspace() {
           },
           reason: "Coach created student note",
         });
-        void invalidateStudioDomains(queryClient, ["work"]);
+        savedNote = {
+          ...note,
+          id: result.resource.id,
+          version: result.resource.version,
+        };
+        await invalidateStudioDomains(queryClient, ["work"]);
       }
-      setDialog(null);
-      setWorkflowLessonId(undefined);
-      setEditingNote(undefined);
+      setDialog(attach ? "note-resource" : null);
+      setWorkflowLessonId(attach ? savedNote.lessonId : undefined);
+      setEditingNote(attach ? savedNote : undefined);
       setNotice(
         note.status === "published"
           ? "Note published to the student."
@@ -469,7 +479,7 @@ export function StudentWorkspace() {
   const deleteMaterial = async (material: Material) => {
     if (
       !window.confirm(
-        `Permanently delete “${material.title}”? The uploaded file will also be removed.`,
+        `Permanently delete “${material.title}”? The material record is removed. Uploaded files are retained for safe cleanup.`,
       )
     )
       return;
@@ -489,7 +499,7 @@ export function StudentWorkspace() {
         });
         await invalidateStudioDomains(queryClient, ["work"]);
       }
-      setNotice("Material and uploaded file deleted.");
+      setNotice("Material removed. Uploaded files retained for safe cleanup.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -672,8 +682,9 @@ export function StudentWorkspace() {
               <Work
                 data={data}
                 student={student}
+                isDemo={isDemo}
                 onAddAssignment={() => setDialog("assignment")}
-                onAddMaterial={() => setDialog("material")}
+                onAddMaterial={() => setDialog("script-material")}
                 onArchiveMaterial={updateMaterialStatus}
                 onDeleteMaterial={deleteMaterial}
               />
@@ -831,11 +842,34 @@ export function StudentWorkspace() {
         />
       )}
       {dialog === "material" && (
+        <AddResourceFlow
+          data={data}
+          isDemo={isDemo}
+          studentId={student.id}
+          lessonId={workflowLessonId}
+          onClose={() => {
+            setDialog(null);
+            setWorkflowLessonId(undefined);
+          }}
+        />
+      )}
+      {dialog === "note-resource" && editingNote && (
+        <AddResourceFlow
+          data={data}
+          isDemo={isDemo}
+          studentId={student.id}
+          lessonId={editingNote.lessonId}
+          noteId={editingNote.id}
+          onClose={() => setDialog("note")}
+        />
+      )}
+      {dialog === "script-material" && (
         <MaterialForm
           student={student}
           lessons={studentLessons}
           timezone={data.settings.timezone}
           isDemo={isDemo}
+          fixedRole="current_script"
           initialLessonId={workflowLessonId}
           onClose={() => {
             setDialog(null);
@@ -1011,14 +1045,14 @@ function StudentEditor({
         </label>
         <label className="full">
           Goals
-          <textarea
+          <WritingArea
             value={form.goals || ""}
             onChange={(e) => setForm({ ...form, goals: e.target.value })}
           />
         </label>
         <label className="full">
           Private coach notes
-          <textarea
+          <WritingArea
             value={form.privateNotes || ""}
             onChange={(e) => setForm({ ...form, privateNotes: e.target.value })}
           />
@@ -1325,7 +1359,7 @@ function AssignmentForm({
         </label>
         <label className="full">
           Instructions
-          <textarea
+          <WritingArea
             required
             value={details}
             onChange={(e) => setDetails(e.target.value)}
@@ -1357,7 +1391,7 @@ function AssignmentForm({
               : activityType === "multiple_choice"
                 ? "Choices"
                 : "Checklist items"}
-            <textarea
+            <WritingArea
               required
               value={activityItems}
               onChange={(event) => setActivityItems(event.target.value)}
@@ -1575,7 +1609,7 @@ function NoteForm({
   note?: Note;
   initialLessonId?: string;
   onClose: () => void;
-  onSave: (n: Note) => void;
+  onSave: (n: Note, attach?: boolean) => Promise<void>;
 }) {
   const [title, setTitle] = useState(note?.title || "Lesson note"),
     [body, setBody] = useState(note?.bodyHtml || note?.body || ""),
@@ -1583,6 +1617,7 @@ function NoteForm({
     [lessonId, setLessonId] = useState(
       note?.lessonId || initialLessonId || lessons[0]?.id || "",
     );
+  const [saving, setSaving] = useState(false);
   const editorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!editorRef.current) return;
@@ -1603,40 +1638,51 @@ function NoteForm({
     >
       <form
         className="workflow-form"
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          onSave({
-            id: note?.id || uid("note"),
-            studentId: student.id,
-            lessonId,
-            title,
-            body: (
-              editorRef.current?.innerText ||
-              editorRef.current?.textContent ||
-              ""
-            ).trim(),
-            bodyHtml: DOMPurify.sanitize(body, {
-              ALLOWED_TAGS: [
-                "p",
-                "div",
-                "br",
-                "strong",
-                "b",
-                "em",
-                "i",
-                "u",
-                "a",
-                "ul",
-                "ol",
-                "li",
-                "span",
-              ],
-              ALLOWED_ATTR: ["href", "target", "rel", "style"],
-            }),
-            status: published ? "published" : "draft",
-            version: note?.version || 1,
-            updatedAt: now(),
-          });
+          if (saving) return;
+          setSaving(true);
+          try {
+            await onSave(
+              {
+                id: note?.id || uid("note"),
+                studentId: student.id,
+                lessonId,
+                title,
+                body: (
+                  editorRef.current?.innerText ||
+                  editorRef.current?.textContent ||
+                  ""
+                ).trim(),
+                bodyHtml: DOMPurify.sanitize(body, {
+                  ALLOWED_TAGS: [
+                    "p",
+                    "div",
+                    "br",
+                    "strong",
+                    "b",
+                    "em",
+                    "i",
+                    "u",
+                    "a",
+                    "ul",
+                    "ol",
+                    "li",
+                    "span",
+                  ],
+                  ALLOWED_ATTR: ["href", "target", "rel", "style"],
+                }),
+                status: published ? "published" : "draft",
+                version: note?.version || 1,
+                updatedAt: now(),
+              },
+              (e.nativeEvent as SubmitEvent).submitter?.getAttribute(
+                "data-attach",
+              ) === "true",
+            );
+          } finally {
+            setSaving(false);
+          }
         }}
       >
         <label className="full">
@@ -1746,8 +1792,18 @@ function NoteForm({
           <button type="button" onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={!body.trim() || !lessonId}>
+          <button
+            className="primary"
+            disabled={saving || !body.trim() || !lessonId}
+          >
             {note ? "Save changes" : "Save note"}
+          </button>
+          <button
+            type="submit"
+            data-attach="true"
+            disabled={saving || !body.trim() || !lessonId}
+          >
+            Save & attach resource
           </button>
         </div>
       </form>

@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
   lessonCreditDebit,
@@ -716,7 +717,7 @@ function ServiceDialog({
           </label>
           <label className="full">
             Description
-            <textarea
+            <WritingArea
               required
               value={value.description}
               onChange={(event) =>
@@ -1322,7 +1323,7 @@ function OfferingDialog({
         </label>
         <label className="full">
           Description
-          <textarea
+          <WritingArea
             value={description}
             onChange={(event) => setDescription(event.target.value)}
             placeholder="What students should know about this class."
@@ -1339,7 +1340,7 @@ function OfferingDialog({
         </label>
         <label className="full">
           Resources
-          <textarea
+          <WritingArea
             value={resourceText}
             onChange={(event) => setResourceText(event.target.value)}
             placeholder={"Warm-up | https://…\nScript | https://…"}

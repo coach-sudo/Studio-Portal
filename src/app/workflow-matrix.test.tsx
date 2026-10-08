@@ -185,20 +185,30 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(within(dialog).getByRole("button", { name: "Assign" }));
       expect(await screen.findByText(/Practice assigned/i)).toBeInTheDocument();
     });
-    it("08 adds current material", async () => {
+    it("08 adds a private student resource", async () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-liam");
       await user.click(
         await screen.findByRole("button", { name: /Add material/i }),
       );
+      await user.click(
+        screen.getByRole("button", { name: "Add New Resource" }),
+      );
       const dialog = screen.getByRole("dialog");
       await user.type(within(dialog).getByLabelText("Title"), "Hamlet sides");
-      await user.click(
-        within(dialog).getByRole("button", { name: "Add material" }),
+      await user.selectOptions(
+        within(dialog).getByLabelText("Resource type"),
+        "text",
       );
-      expect(
-        await screen.findByText("Material added to the student record."),
-      ).toBeInTheDocument();
+      await user.type(
+        within(dialog).getByLabelText("Resource text"),
+        "Read Hamlet act one.",
+      );
+      await user.click(
+        within(dialog).getByRole("button", { name: "Add resource" }),
+      );
+      await user.click(screen.getByRole("link", { name: "Current work" }));
+      expect(await screen.findByText("Hamlet sides")).toBeInTheDocument();
     });
     it("09 saves a private coach note", async () => {
       const user = userEvent.setup();

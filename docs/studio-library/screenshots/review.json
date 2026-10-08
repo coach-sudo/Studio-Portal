@@ -1,0 +1,32 @@
+[
+  {
+    "name": "desktop",
+    "viewport": {
+      "width": 1440,
+      "height": 1000
+    },
+    "initialResourceRows": 25,
+    "descriptionHeight": 120,
+    "overflow": false
+  },
+  {
+    "name": "tablet",
+    "viewport": {
+      "width": 768,
+      "height": 1024
+    },
+    "initialResourceRows": 25,
+    "descriptionHeight": 120,
+    "overflow": false
+  },
+  {
+    "name": "mobile",
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "initialResourceRows": 25,
+    "descriptionHeight": 120,
+    "overflow": false
+  }
+]

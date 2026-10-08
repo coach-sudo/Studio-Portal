@@ -157,7 +157,17 @@ test.describe("coach product-review evidence", () => {
     ] as const) {
       await page.getByRole("button", { name: action }).click();
       const workflow = page.getByRole("dialog", { name: dialog });
-      await expect(workflow.getByLabel("Related lesson")).toHaveValue(lesson!);
+      if (action === "Attach resource") {
+        await expect(
+          workflow.getByRole("button", { name: "Choose from Library" }),
+        ).toBeVisible();
+        await expect(
+          workflow.getByRole("button", { name: "Add New Resource" }),
+        ).toBeVisible();
+      } else
+        await expect(workflow.getByLabel("Related lesson")).toHaveValue(
+          lesson!,
+        );
       await page.screenshot({ path: testInfo.outputPath(`${filename}.png`) });
       await page.keyboard.press("Escape");
       await expect(workflow).toBeHidden();

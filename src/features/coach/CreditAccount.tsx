@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { useState } from "react";
@@ -403,7 +404,7 @@ export function CreditAccount({
             </label>
             <label className="full">
               Reason
-              <textarea
+              <WritingArea
                 required
                 minLength={3}
                 maxLength={500}

@@ -1,11 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BookOpen,
   Clapperboard,
   ExternalLink,
   FolderOpen,
   Images,
-  LibraryBig,
   MoreHorizontal,
   Search,
   Trash2,
@@ -33,6 +31,7 @@ import {
 } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import "./StudioMaterials.css";
+import { ResourceBrowser } from "../library/ResourceBrowser";
 
 import { studentName } from "./StudioOperations.shared";
 
@@ -57,25 +56,39 @@ export function MaterialsView({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  return (
+    <>
+      <ResourceBrowser data={data} isDemo={isDemo} />
+      <details className="disclosure-section">
+        <summary>Student uploads & actor media</summary>
+        <LegacyMaterialsView data={data} isDemo={isDemo} />
+      </details>
+    </>
+  );
+}
+
+function LegacyMaterialsView({
+  data,
+  isDemo,
+}: {
+  data: StudioSnapshot;
+  isDemo: boolean;
+}) {
   const navigate = useNavigate(),
     store = useStudioStore(),
     queryClient = useQueryClient(),
     [notice, setNotice] = useState(""),
     [deleting, setDeleting] = useState(""),
     [query, setQuery] = useState(""),
-    [role, setRole] = useState<
-      | "all"
-      | "current_script"
-      | "lesson_material"
-      | "library"
-      | "actor_material"
-    >("all"),
+    [role, setRole] = useState<"all" | "current_script" | "actor_material">(
+      "all",
+    ),
     [status, setStatus] = useState<
       "all" | "active" | "archived" | "vaulted" | "pending_review"
     >("all");
   const [serverPage, setServerPage] = useState(1);
   const [serverPageSize, setServerPageSize] = useState(coachPageSize);
-  const serverPaging = queryLayerV2Enabled && !isDemo;
+  const serverPaging = !isDemo;
   const remoteMaterials = usePaginatedStudioRows(
     {
       domain: "work",
@@ -95,7 +108,7 @@ export function MaterialsView({
           }
         : undefined,
       filters: {
-        link_role: role === "all" ? undefined : role,
+        link_role: role === "all" ? ["current_script", "actor_material"] : role,
         status:
           status === "all" || status === "pending_review" ? undefined : status,
         approval_status:
@@ -109,19 +122,12 @@ export function MaterialsView({
     "current_script",
     serverPaging,
   );
-  const lessonMaterialCount = useMaterialRoleCount(
-    "lesson_material",
-    serverPaging,
-  );
-  const libraryCount = useMaterialRoleCount("library", serverPaging);
   const actorMaterialCount = useMaterialRoleCount(
     "actor_material",
     serverPaging,
   );
   const remoteRoleCounts = {
     current_script: currentScriptCount.data?.total ?? 0,
-    lesson_material: lessonMaterialCount.data?.total ?? 0,
-    library: libraryCount.data?.total ?? 0,
     actor_material: actorMaterialCount.data?.total ?? 0,
   };
   useEffect(() => setServerPage(1), [query, role, status]);
@@ -131,18 +137,6 @@ export function MaterialsView({
       label: "Current scripts",
       detail: "The scripts students are actively preparing",
       icon: Clapperboard,
-    },
-    {
-      value: "lesson_material" as const,
-      label: "Lesson resources",
-      detail: "Files attached to a specific lesson",
-      icon: BookOpen,
-    },
-    {
-      value: "library" as const,
-      label: "Shared library",
-      detail: "Reusable resources that are not lesson-specific",
-      icon: LibraryBig,
     },
     {
       value: "actor_material" as const,
@@ -157,6 +151,10 @@ export function MaterialsView({
   );
   const materials = serverPaging ? remoteMaterialRows : data.materials;
   const filtered = materials
+    .filter(
+      (item) =>
+        item.role === "current_script" || item.role === "actor_material",
+    )
     .filter((item) => role === "all" || item.role === role)
     .filter((item) => {
       if (status === "all") return true;
@@ -268,7 +266,7 @@ export function MaterialsView({
       !current ||
       deleting ||
       !window.confirm(
-        `Permanently delete “${current.title}”? The uploaded file will also be removed and this cannot be undone.`,
+        `Permanently delete “${current.title}”? The material record is removed. Uploaded files are retained for safe cleanup.`,
       )
     )
       return;
@@ -287,7 +285,7 @@ export function MaterialsView({
         });
         await invalidateStudioDomains(queryClient, ["work"]);
       }
-      setNotice("Material and uploaded file deleted.");
+      setNotice("Material removed. Uploaded files retained for safe cleanup.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -305,7 +303,7 @@ export function MaterialsView({
   };
   return (
     <Section
-      title="Material library"
+      title="Scripts and actor media"
       marked
       aside={
         <button type="button" onClick={() => navigate("/coach/students")}>
@@ -533,7 +531,7 @@ export function MaterialsView({
             detail={
               materials.length
                 ? "Clear the filters or choose another material category."
-                : "Choose a student above, then add a script, lesson resource, library file, or actor-page asset."
+                : "Choose a student above to manage current scripts or actor-page media."
             }
           />
         )}

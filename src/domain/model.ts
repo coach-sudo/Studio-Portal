@@ -390,6 +390,16 @@ export interface Assignment extends Versioned {
   studentResponse?: string;
 }
 export interface Material extends Versioned {
+  resourceId?: UUID;
+  inLibrary?: boolean;
+  catalogVisibility?: "assigned" | "studio";
+  resourceOptions?: import("./library").ResourceOption[];
+  textContent?: string;
+  keywords?: string[];
+  source?: string;
+  pinned?: boolean;
+  instructions?: string;
+  noteId?: UUID;
   studentId: UUID;
   lessonId?: UUID;
   title: string;
@@ -756,6 +766,8 @@ export interface StudioSettings {
   };
 }
 export interface StudioSnapshot {
+  materialCollections?: import("./library").ResourceCollection[];
+  materialOptions?: import("./library").ResourceOption[];
   invoices?: Invoice[];
   studioId: UUID;
   role: Role;

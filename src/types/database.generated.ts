@@ -1354,6 +1354,7 @@ export type Database = {
       file_assets: {
         Row: {
           bucket_id: string
+          content_sha256: string | null
           created_at: string
           entity_id: string | null
           entity_type: string
@@ -1370,6 +1371,7 @@ export type Database = {
         }
         Insert: {
           bucket_id?: string
+          content_sha256?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type: string
@@ -1386,6 +1388,7 @@ export type Database = {
         }
         Update: {
           bucket_id?: string
+          content_sha256?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string
@@ -1953,32 +1956,222 @@ export type Database = {
           },
         ]
       }
-      material_links: {
+      material_assignment_private: {
         Row: {
+          coach_notes: string
+          link_id: string
+        }
+        Insert: {
+          coach_notes?: string
+          link_id: string
+        }
+        Update: {
+          coach_notes?: string
+          link_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_assignment_private_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: true
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["link_id"]
+          },
+          {
+            foreignKeyName: "material_assignment_private_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: true
+            referencedRelation: "material_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_collection_assignments: {
+        Row: {
+          assigned_by: string
+          collection_id: string
+          collection_version: number
           created_at: string
           id: string
+          resource_ids: string[]
+          student_id: string
+          studio_id: string
+        }
+        Insert: {
+          assigned_by: string
+          collection_id: string
+          collection_version: number
+          created_at?: string
+          id?: string
+          resource_ids: string[]
+          student_id: string
+          studio_id: string
+        }
+        Update: {
+          assigned_by?: string
+          collection_id?: string
+          collection_version?: number
+          created_at?: string
+          id?: string
+          resource_ids?: string[]
+          student_id?: string
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_collection_assignments_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "material_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_collection_assignments_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_collection_assignments_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_collection_members: {
+        Row: {
+          collection_id: string
+          material_id: string
+        }
+        Insert: {
+          collection_id: string
+          material_id: string
+        }
+        Update: {
+          collection_id?: string
+          material_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_collection_members_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "material_collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_collection_members_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_collection_members_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_collections: {
+        Row: {
+          archived: boolean
+          created_at: string
+          description: string
+          id: string
+          search_document: unknown
+          studio_id: string
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          search_document?: unknown
+          studio_id: string
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          description?: string
+          id?: string
+          search_document?: unknown
+          studio_id?: string
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_collections_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_links: {
+        Row: {
+          assigned_by: string | null
+          assignment_key: string | null
+          created_at: string
+          id: string
+          instructions: string
           lesson_id: string | null
           material_id: string
+          note_id: string | null
+          pinned: boolean
           role: string
+          status: Database["public"]["Enums"]["material_status"]
           student_id: string | null
+          updated_at: string
+          version: number
           visible_to_student: boolean
         }
         Insert: {
+          assigned_by?: string | null
+          assignment_key?: string | null
           created_at?: string
           id?: string
+          instructions?: string
           lesson_id?: string | null
           material_id: string
+          note_id?: string | null
+          pinned?: boolean
           role: string
+          status?: Database["public"]["Enums"]["material_status"]
           student_id?: string | null
+          updated_at?: string
+          version?: number
           visible_to_student?: boolean
         }
         Update: {
+          assigned_by?: string | null
+          assignment_key?: string | null
           created_at?: string
           id?: string
+          instructions?: string
           lesson_id?: string | null
           material_id?: string
+          note_id?: string | null
+          pinned?: boolean
           role?: string
+          status?: Database["public"]["Enums"]["material_status"]
           student_id?: string | null
+          updated_at?: string
+          version?: number
           visible_to_student?: boolean
         }
         Relationships: [
@@ -2004,6 +2197,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "material_links_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "material_links_student_id_fkey"
             columns: ["student_id"]
             isOneToOne: false
@@ -2012,23 +2212,106 @@ export type Database = {
           },
         ]
       }
+      material_option_links: {
+        Row: {
+          material_id: string
+          option_id: string
+        }
+        Insert: {
+          material_id: string
+          option_id: string
+        }
+        Update: {
+          material_id?: string
+          option_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_option_links_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_option_links_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_option_links_option_id_fkey"
+            columns: ["option_id"]
+            isOneToOne: false
+            referencedRelation: "material_options"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_options: {
+        Row: {
+          archived: boolean
+          created_at: string
+          id: string
+          kind: string
+          name: string
+          normalized_name: string | null
+          studio_id: string
+        }
+        Insert: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          kind: string
+          name: string
+          normalized_name?: string | null
+          studio_id: string
+        }
+        Update: {
+          archived?: boolean
+          created_at?: string
+          id?: string
+          kind?: string
+          name?: string
+          normalized_name?: string | null
+          studio_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_options_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"]
+          assignment_only: boolean
           caption: string
+          catalog_visibility: string
           category: string
           created_at: string
           external_url: string | null
+          file_asset_id: string | null
           file_size_bytes: number | null
           id: string
+          in_library: boolean
+          keywords: string[]
           media_kind: string
           mime_type: string | null
           owner_student_id: string | null
           public_embed: boolean
+          search_document: unknown
           sort_order: number
+          source: string
           status: Database["public"]["Enums"]["material_status"]
           storage_path: string | null
           studio_id: string
+          text_content: string
           thumbnail_path: string | null
           title: string
           updated_at: string
@@ -2036,20 +2319,28 @@ export type Database = {
         }
         Insert: {
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          assignment_only?: boolean
           caption?: string
+          catalog_visibility?: string
           category?: string
           created_at?: string
           external_url?: string | null
+          file_asset_id?: string | null
           file_size_bytes?: number | null
           id?: string
+          in_library?: boolean
+          keywords?: string[]
           media_kind?: string
           mime_type?: string | null
           owner_student_id?: string | null
           public_embed?: boolean
+          search_document?: unknown
           sort_order?: number
+          source?: string
           status?: Database["public"]["Enums"]["material_status"]
           storage_path?: string | null
           studio_id: string
+          text_content?: string
           thumbnail_path?: string | null
           title: string
           updated_at?: string
@@ -2057,26 +2348,41 @@ export type Database = {
         }
         Update: {
           approval_status?: Database["public"]["Enums"]["approval_status"]
+          assignment_only?: boolean
           caption?: string
+          catalog_visibility?: string
           category?: string
           created_at?: string
           external_url?: string | null
+          file_asset_id?: string | null
           file_size_bytes?: number | null
           id?: string
+          in_library?: boolean
+          keywords?: string[]
           media_kind?: string
           mime_type?: string | null
           owner_student_id?: string | null
           public_embed?: boolean
+          search_document?: unknown
           sort_order?: number
+          source?: string
           status?: Database["public"]["Enums"]["material_status"]
           storage_path?: string | null
           studio_id?: string
+          text_content?: string
           thumbnail_path?: string | null
           title?: string
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "materials_file_asset_id_fkey"
+            columns: ["file_asset_id"]
+            isOneToOne: false
+            referencedRelation: "file_assets"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "materials_owner_student_id_fkey"
             columns: ["owner_student_id"]
@@ -4612,10 +4918,21 @@ export type Database = {
         }
         Returns: Json
       }
+      get_material_assignment: { Args: { p_id: string }; Returns: Json }
+      get_material_collection: { Args: { p_id: string }; Returns: Json }
+      get_material_resource: { Args: { p_id: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
+      }
+      manage_material_resources: {
+        Args: {
+          p_command: string
+          p_expected_version?: number
+          p_payload: Json
+        }
+        Returns: Json
       }
       merge_studio_students: {
         Args: { keep_student_id: string; remove_student_id: string }
@@ -4763,6 +5080,41 @@ export type Database = {
       }
       save_studio_invoice: {
         Args: { p_key: string; p_value: Json; p_version?: number }
+        Returns: Json
+      }
+      search_material_collections: {
+        Args: {
+          p_include_archived?: boolean
+          p_page?: number
+          p_search?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
+      search_material_options: {
+        Args: {
+          p_include_archived?: boolean
+          p_kind: string
+          p_page?: number
+          p_search?: string
+          p_studio_id: string
+        }
+        Returns: Json
+      }
+      search_material_resources: {
+        Args: {
+          p_catalog?: boolean
+          p_filters?: Json
+          p_lesson_id?: string
+          p_limit?: number
+          p_page?: number
+          p_pinned?: boolean
+          p_search?: string
+          p_sort?: string
+          p_status?: string
+          p_student_id?: string
+          p_studio_id: string
+        }
         Returns: Json
       }
       seed_studio_automation_rules: {

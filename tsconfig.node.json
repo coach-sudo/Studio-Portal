@@ -18,6 +18,7 @@
     "netlify/functions/**/*.ts",
     "src/types/database.generated.ts",
     "src/domain/model.ts",
+    "src/domain/library.ts",
     "src/domain/packagePricing.ts",
     "src/domain/availabilityVisibility.ts",
     "src/domain/intakeRecency.ts",

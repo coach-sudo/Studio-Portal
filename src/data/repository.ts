@@ -38,23 +38,26 @@ function selectedQuery(
 }
 
 async function signedUrlsForPaths(database: any, paths: string[]) {
+  const { data: sessionData } = await database.auth.getSession();
+  const identity = sessionData?.session?.user?.id;
+  if (!identity) return new Map<string, string>();
   const now = Date.now();
   const urls = new Map<string, string>();
   const missing: string[] = [];
   for (const path of [...new Set(paths)]) {
-    const cached = signedUrlCache.get(path);
+    const cached = signedUrlCache.get(`${identity}:${path}`);
     if (cached && cached.refreshAfter > now) urls.set(path, cached.url);
     else missing.push(path);
   }
   if (missing.length) {
     const { data } = await database.storage
       .from("studio-materials")
-      .createSignedUrls(missing, 3600);
+      .createSignedUrls(missing, 300);
     for (const row of data ?? []) {
       if (!row.path || !row.signedUrl) continue;
-      signedUrlCache.set(row.path, {
+      signedUrlCache.set(`${identity}:${row.path}`, {
         url: row.signedUrl,
-        refreshAfter: now + 55 * 60_000,
+        refreshAfter: now + 4 * 60_000,
       });
       urls.set(row.path, row.signedUrl);
     }
@@ -213,10 +216,18 @@ export async function loadStudioSnapshot(
       database.from("assignments").select("*"),
     ),
     pick("materials", wants("work", "actorProfiles"), () =>
-      database.from("materials").select("*"),
+      database
+        .from("materials")
+        .select("*,material_links!inner(role)")
+        .in("material_links.role", ["actor_material", "current_script"])
+        .order("created_at", { ascending: false }),
     ),
     pick("links", wants("work", "actorProfiles"), () =>
-      database.from("material_links").select("*"),
+      database
+        .from("material_links")
+        .select("*")
+        .in("role", ["actor_material", "current_script"])
+        .order("created_at", { ascending: false }),
     ),
     pick("packages", wants("finance"), () =>
       database.from("packages").select("*"),
@@ -236,7 +247,7 @@ export async function loadStudioSnapshot(
     pick("linkedContacts", wants("identity", "households", "messaging"), () =>
       database.from("linked_contacts").select("*"),
     ),
-    pick("profileAssets", wants("identity", "work", "actorProfiles"), () =>
+    pick("profileAssets", false, () =>
       database.from("file_assets").select("id,storage_path,mime_type"),
     ),
     pick("pricingRules", wants("finance"), () =>
@@ -356,12 +367,34 @@ export async function loadStudioSnapshot(
   );
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];
+  let profileAssetRows = profileAssets.data ?? [];
+  if (!aggregate && wants("identity", "work", "actorProfiles")) {
+    const photoIds = [
+      ...new Set(
+        [
+          member?.profile_photo_asset_id,
+          ...studentRows.map((row: any) => row.profile_photo_asset_id),
+        ].filter(Boolean),
+      ),
+    ];
+    const photos = await selectedQuery(
+      photoIds.length > 0,
+      () =>
+        database
+          .from("file_assets")
+          .select("id,storage_path,mime_type")
+          .in("id", photoIds),
+      signal,
+    );
+    if (photos.error) throw photos.error;
+    profileAssetRows = photos.data ?? [];
+  }
   const storagePaths = [
     ...(materials.data ?? []).map((row: any) => row.storage_path),
-    ...(profileAssets.data ?? []).map((row: any) => row.storage_path),
+    ...profileAssetRows.map((row: any) => row.storage_path),
   ].filter((value: any): value is string => Boolean(value));
   const profileAssetPaths = new Map<string, string>(
-    (profileAssets.data ?? []).map(
+    profileAssetRows.map(
       (row: any) => [row.id, row.storage_path] as [string, string],
     ),
   );

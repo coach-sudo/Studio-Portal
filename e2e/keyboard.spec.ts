@@ -43,6 +43,9 @@ test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and 
   await timezone.press("Enter");
   await expect(timezone).toHaveValue(/Asia\/Tokyo/);
   await student.page.goto("/portal/work");
+  await student.page
+    .getByText("Current script upload", { exact: true })
+    .click();
   const opener = student.page.getByRole("button", { name: "Submit material" });
   await opener.focus();
   await student.page.keyboard.press("Enter");

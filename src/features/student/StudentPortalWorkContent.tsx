@@ -13,6 +13,7 @@ import {
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
+import { ResourceBrowser } from "../library/ResourceBrowser";
 import {
   lessonDateLabel,
   sortAssignments,
@@ -217,7 +218,30 @@ export function Practice({
     </div>
   );
 }
-export function Materials({
+export function Materials(props: {
+  data: Snapshot;
+  isDemo: boolean;
+  embedded?: boolean;
+  actorOnly?: boolean;
+}) {
+  if (props.actorOnly) return <LegacyMaterials {...props} />;
+  return (
+    <>
+      <ResourceBrowser
+        data={props.data}
+        isDemo={props.isDemo}
+        studentId={props.data.students[0]?.id}
+        catalog={false}
+      />
+      <details className="disclosure-section">
+        <summary>Current script upload</summary>
+        <LegacyMaterials {...props} />
+      </details>
+    </>
+  );
+}
+
+function LegacyMaterials({
   data,
   isDemo,
   embedded = false,
@@ -241,7 +265,7 @@ export function Materials({
             (item) =>
               item.role === "lesson_material" || item.role === "library",
           )
-        : data.materials.filter((item) => item.role !== "actor_material"),
+        : data.materials.filter((item) => item.role === "current_script"),
   );
   const add = async (
     title: string,
@@ -377,7 +401,7 @@ export function Materials({
     if (
       busyId ||
       !window.confirm(
-        `Permanently delete “${material.title}”? The uploaded file will also be removed.`,
+        `Permanently delete “${material.title}”? The material record is removed. Uploaded files are retained for safe cleanup.`,
       )
     )
       return;
@@ -397,7 +421,7 @@ export function Materials({
           reason: "Student permanently deleted own material",
         });
       await invalidateStudioDomains(queryClient, ["work"]);
-      setNotice("Material and uploaded file deleted.");
+      setNotice("Material removed. Uploaded files retained for safe cleanup.");
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -488,7 +512,7 @@ export function Materials({
           onClose={() => setAdding(false)}
           onSave={add}
           lessons={data.lessons}
-          fixedRole={actorOnly ? "actor_material" : undefined}
+          fixedRole={actorOnly ? "actor_material" : "current_script"}
         />
       )}
     </div>
@@ -509,7 +533,7 @@ function MaterialSubmission({
     lessonId?: string,
     file?: File,
   ) => void;
-  fixedRole?: "actor_material";
+  fixedRole?: "actor_material" | "current_script";
   lessons: Snapshot["lessons"];
 }) {
   const [title, setTitle] = useState(""),

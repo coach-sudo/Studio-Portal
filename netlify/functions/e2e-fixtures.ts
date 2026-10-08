@@ -33,6 +33,7 @@ const ids = [
   "message",
   "assignment",
   "material",
+  "materialLink",
   "packageDefinition",
   "package",
   "payment",
@@ -197,6 +198,22 @@ async function cleanup(
     .ilike("title", `${runId}%`);
   if (uploadedMaterialError)
     throwFixtureError("material_lookup", uploadedMaterialError);
+  const { data: libraryOptions, error: optionError } = await db
+    .from("material_options")
+    .select("id")
+    .eq("studio_id", studioId)
+    .ilike("name", `${runId}%`);
+  if (optionError) throwFixtureError("library_option_lookup", optionError);
+  const { data: libraryLinks, error: linkError } = uploadedMaterials?.length
+    ? await db
+        .from("material_links")
+        .select("id")
+        .in(
+          "material_id",
+          uploadedMaterials.map((material) => material.id),
+        )
+    : { data: [], error: null };
+  if (linkError) throwFixtureError("library_link_lookup", linkError);
   const { data: conversationMessages, error: conversationMessageError } =
     await db
       .from("conversation_messages")
@@ -209,6 +226,8 @@ async function cleanup(
     ...messageIds,
     ...(assets || []).map((asset) => asset.id),
     ...(uploadedMaterials || []).map((material) => material.id),
+    ...(libraryOptions || []).map((option) => option.id),
+    ...(libraryLinks || []).map((link) => link.id),
     ...(conversationMessages || []).map((message) => message.id),
   ];
   const { error: auditError } = await db
@@ -294,17 +313,22 @@ async function cleanup(
   if (fixturePayments.error)
     throwFixtureError("invoice_payment_cleanup", fixturePayments.error);
 
-  if (assets?.length)
-    await deleteIds(
-      "file_assets",
-      assets.map((asset) => asset.id),
-    );
   const { error: materialError } = await db
     .from("materials")
     .delete()
     .eq("studio_id", studioId)
     .ilike("title", `${runId}%`);
   if (materialError) throwFixtureError("material_cleanup", materialError);
+  if (libraryOptions?.length)
+    await deleteIds(
+      "material_options",
+      libraryOptions.map((option) => option.id),
+    );
+  if (assets?.length)
+    await deleteIds(
+      "file_assets",
+      assets.map((asset) => asset.id),
+    );
 
   await deleteIds("referral_rewards", [
     fixture.rewardEarned,
@@ -817,6 +841,15 @@ async function setup(
     approval_status: "not_public",
   });
   if (materialError) throwFixtureError("material", materialError);
+  const { error: materialLinkError } = await db.from("material_links").upsert({
+    id: fixture.materialLink,
+    material_id: fixture.material,
+    student_id: fixture.student,
+    role: "library",
+    visible_to_student: true,
+    status: "active",
+  });
+  if (materialLinkError) throwFixtureError("material_link", materialLinkError);
 
   const { error: packageDefinitionError } = await db
     .from("package_definitions")

@@ -1,6 +1,8 @@
 import { lazy, useEffect, useState, type ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { isDemoMode, isSupabaseConfigured, supabase } from "../lib/supabase";
+import { useQueryClient } from "@tanstack/react-query";
+import { ensureQueryIdentityIsolation } from "../data/queryIdentity";
 
 const StudentPortal = lazy(() =>
   import("../features/student/StudentPortal").then((module) => ({
@@ -138,6 +140,10 @@ export function AuthGate({
   role: "coach" | "portal";
   children: ReactNode;
 }) {
+  const queryClient = useQueryClient();
+  useEffect(() => {
+    if (supabase) ensureQueryIdentityIsolation(queryClient, supabase.auth);
+  }, [queryClient]);
   const [state, setState] = useState<
     "checking" | "allowed" | "login" | "role_home"
   >(isSupabaseConfigured ? "checking" : isDemoMode ? "allowed" : "login");

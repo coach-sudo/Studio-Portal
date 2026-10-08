@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { Mail, Plus, RefreshCw, Send, Trash2, Users } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
@@ -297,7 +298,8 @@ export function Campaigns() {
             </label>
             <label className="full">
               Email body
-              <textarea
+              <WritingArea
+                writingSize="long"
                 required
                 rows={11}
                 maxLength={10000}

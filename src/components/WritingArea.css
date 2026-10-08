@@ -1,0 +1,34 @@
+/* Shared paragraph-writing surfaces retain the existing form controls and typography. */
+textarea.writing-area {
+  min-height: 160px;
+  resize: vertical;
+  line-height: 1.6;
+  padding: 12px 14px;
+  max-height: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+textarea.writing-area-description {
+  min-height: 120px;
+}
+textarea.writing-area-long {
+  min-height: 280px;
+}
+.workflow-form textarea.writing-area,
+.settings-form textarea.writing-area {
+  min-height: 160px;
+}
+.workflow-form textarea.writing-area-description,
+.settings-form textarea.writing-area-description {
+  min-height: 120px;
+}
+.workflow-form textarea.writing-area-long,
+.settings-form textarea.writing-area-long {
+  min-height: 280px;
+}
+.rich-editor .rich-editor-body {
+  min-height: 280px;
+  padding: 16px;
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}

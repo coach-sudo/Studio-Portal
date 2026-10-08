@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useState, type FormEvent } from "react";
 import { Section, Toggle } from "../../components/Primitives";
 import type { StudioSettings } from "../../domain/model";
@@ -95,7 +96,7 @@ export function BookingSetup({
         </label>
         <label className="full">
           Introduction
-          <textarea
+          <WritingArea
             value={form.bookingCopy.intro}
             onChange={(event) =>
               setForm({
@@ -107,7 +108,7 @@ export function BookingSetup({
         </label>
         <label className="full">
           Message shown after a booking is confirmed
-          <textarea
+          <WritingArea
             value={form.bookingDefaults.confirmationMessage}
             onChange={(event) =>
               updateDefaults({ confirmationMessage: event.target.value })

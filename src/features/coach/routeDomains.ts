@@ -11,8 +11,9 @@ export function coachSectionDomains(
       return v2
         ? ["identity"]
         : ["identity", "students", "lessons", "work", "households"];
-    case "notes":
     case "materials":
+      return ["identity", "students", "lessons"];
+    case "notes":
       return v2
         ? ["identity", "students", "lessons"]
         : ["identity", "students", "work"];

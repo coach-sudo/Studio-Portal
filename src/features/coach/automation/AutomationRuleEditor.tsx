@@ -1,3 +1,4 @@
+import { WritingArea } from "../../../components/WritingArea";
 import {
   automationRuleLabels,
   type AutomationRuleKey,
@@ -136,7 +137,7 @@ export function AutomationRuleEditor({
         </label>
         <label className="full">
           Message
-          <textarea
+          <WritingArea
             name="body"
             maxLength={6000}
             rows={5}

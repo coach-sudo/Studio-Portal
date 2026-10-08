@@ -1,3 +1,5 @@
+import { ResourceBrowser } from "../library/ResourceBrowser";
+import { useResourceSearch } from "../../data/library";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
   lessonCreditDebit,
@@ -155,6 +157,22 @@ export function CoachLessonHub({
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const store = useStudioStore();
+  const resourceQuery = useResourceSearch(
+    {
+      studioId: data.studioId,
+      studentId: student.id,
+      catalog: false,
+      search: "",
+      filters: { category: [], topic: [], level: [], medium: [], tag: [] },
+      visibility: "all",
+      status: "active",
+      pinned: false,
+      sort: "title",
+      lessonId,
+    },
+    isDemo ? store.snapshot : data,
+    isDemo,
+  );
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const [notice, setNotice] = useState("");
   const [cancelling, setCancelling] = useState(false);
@@ -177,9 +195,6 @@ export function CoachLessonHub({
     return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
   const assignments = data.assignments.filter(
-    (item) => item.lessonId === lesson.id,
-  );
-  const materials = data.materials.filter(
     (item) => item.lessonId === lesson.id,
   );
   const availableCredits = data.packages
@@ -438,7 +453,7 @@ export function CoachLessonHub({
             <small>Lesson work</small>
             <strong>
               {notes.length} notes · {assignments.length} practice ·{" "}
-              {materials.length} files
+              {resourceQuery.data?.pages[0]?.total ?? "…"} resources
             </strong>
           </div>
         </section>
@@ -747,42 +762,14 @@ export function CoachLessonHub({
             )}
           </div>
         </Section>
-        <Section
+        <ResourceBrowser
+          data={data}
+          isDemo={isDemo}
+          studentId={student.id}
+          lessonId={lesson.id}
+          catalog={false}
           title="Attachments"
-          aside={
-            <button onClick={() => onAddMaterial(lesson.id)}>
-              <Plus /> Attach resource
-            </button>
-          }
-        >
-          <div className="table-list">
-            {materials.map((item) => (
-              <article key={item.id}>
-                <FolderOpen />
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>{item.category}</small>
-                </div>
-                {item.externalUrl && (
-                  <a
-                    className="button-link"
-                    href={item.externalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open
-                  </a>
-                )}
-              </article>
-            ))}
-            {!materials.length && (
-              <EmptyState
-                title="No attachments"
-                detail="Attach a private file or link without leaving the lesson."
-              />
-            )}
-          </div>
-        </Section>
+        />
         <Section title="Conversation">
           <Link
             className="button-link primary"
