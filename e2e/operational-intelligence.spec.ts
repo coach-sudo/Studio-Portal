@@ -19,6 +19,8 @@ async function openOperationalCoach(
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
     bypassCSP: process.env.E2E_EPHEMERAL === "true",
+    // Frozen operational clocks must not leave dialog/color transitions midway.
+    reducedMotion: "reduce",
   });
   const page = await context.newPage();
   await page.goto("/login");
@@ -603,8 +605,6 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
   requireFixtures(runtime);
   const { context, page } = await openOperationalCoach(browser, runtime);
   await page.setViewportSize({ width: 393, height: 851 });
-  // A frozen clock can leave color transitions at an intermediate contrast.
-  await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto(`/coach/students/${runtime.ids!.operationalStudent}/account`);
   const [lesson] = await read(
     page,
