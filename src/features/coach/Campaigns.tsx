@@ -299,6 +299,7 @@ export function Campaigns() {
             <label className="full">
               Email body
               <WritingArea
+                writingSize="long"
                 required
                 rows={11}
                 maxLength={10000}

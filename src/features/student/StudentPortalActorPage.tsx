@@ -395,6 +395,7 @@ function ActorDialog({
         <label className="full">
           Bio
           <WritingArea
+            writingSize="long"
             required
             value={bio}
             onChange={(event) => setBio(event.target.value)}

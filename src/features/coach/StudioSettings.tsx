@@ -506,6 +506,7 @@ function PortalForm({
         <label className="full">
           Welcome message
           <WritingArea
+            writingSize="long"
             value={form.welcomeMessage}
             onChange={(e) =>
               setForm({ ...form, welcomeMessage: e.target.value })
@@ -730,6 +731,7 @@ function EmailAutomationForm({
         <label className="full">
           Student confirmation body
           <WritingArea
+            writingSize="long"
             rows={6}
             value={form.confirmationBody}
             onChange={(event) =>
@@ -749,6 +751,7 @@ function EmailAutomationForm({
         <label className="full">
           Coach notification body
           <WritingArea
+            writingSize="long"
             rows={5}
             value={form.coachBody}
             onChange={(event) =>
@@ -768,6 +771,7 @@ function EmailAutomationForm({
         <label className="full">
           Reminder body
           <WritingArea
+            writingSize="long"
             rows={5}
             value={form.reminderBody}
             onChange={(event) =>
@@ -787,6 +791,7 @@ function EmailAutomationForm({
         <label className="full">
           Reschedule body
           <WritingArea
+            writingSize="long"
             rows={4}
             value={form.rescheduleBody}
             onChange={(event) =>
@@ -806,6 +811,7 @@ function EmailAutomationForm({
         <label className="full">
           Cancellation body
           <WritingArea
+            writingSize="long"
             rows={4}
             value={form.cancellationBody}
             onChange={(event) =>
@@ -825,6 +831,7 @@ function EmailAutomationForm({
         <label className="full">
           Package-expiry body
           <WritingArea
+            writingSize="long"
             rows={4}
             value={form.packageExpiryBody}
             onChange={(event) =>
@@ -844,6 +851,7 @@ function EmailAutomationForm({
         <label className="full">
           Failed-payment body
           <WritingArea
+            writingSize="long"
             rows={4}
             value={form.paymentFailedBody}
             onChange={(event) =>

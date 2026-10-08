@@ -364,6 +364,7 @@ export function ResourceEditor({
             <input
               type="checkbox"
               checked={library}
+              disabled={!!resource?.inLibrary && !resource.ownerStudentId}
               onChange={(e) => setLibrary(e.target.checked)}
             />
             Also add to Studio Library
