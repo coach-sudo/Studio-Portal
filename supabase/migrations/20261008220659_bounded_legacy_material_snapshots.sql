@@ -1,5 +1,8 @@
 -- Keep route snapshots limited to legacy script/actor records and referenced profile photos.
 -- Ordinary resources, assignment metadata and file paths are requested through paged Library RPCs.
+-- Recent activity uses a separate 25-row RLS query without bodies or storage paths.
+create index material_links_activity_idx on public.material_links(updated_at desc,id desc)
+where role in ('library','lesson_material');
 create or replace function public.studio_route_snapshot(requested_domains text[])
 returns jsonb
 language sql

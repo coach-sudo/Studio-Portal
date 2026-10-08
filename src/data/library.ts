@@ -8,8 +8,65 @@ import type {
   ResourcePage,
   ResourceSearch,
 } from "../domain/library";
-import type { StudioSnapshot } from "../domain/model";
+import type { Material, StudioSnapshot } from "../domain/model";
 import { studioCommand } from "./bookingCommands";
+
+export async function loadMaterialActivity(
+  studioId: string,
+  studentId?: string,
+  signal?: AbortSignal,
+): Promise<Material[]> {
+  if (!supabase) throw new Error("Database configuration is unavailable.");
+  let request = supabase
+    .from("material_links")
+    .select(
+      "id,student_id,lesson_id,role,status,version,updated_at,materials!inner(id,title,category,owner_student_id,in_library,approval_status,version,updated_at,studio_id)",
+    )
+    .eq("materials.studio_id", studioId)
+    .in("role", ["library", "lesson_material"])
+    .gte("updated_at", new Date(Date.now() - 30 * 86400000).toISOString())
+    .order("updated_at", { ascending: false })
+    .order("id", { ascending: false })
+    .limit(25);
+  if (studentId) request = request.eq("student_id", studentId);
+  const { data, error } = await (signal
+    ? request.abortSignal(signal)
+    : request);
+  if (error) throw new Error(error.message);
+  return (data || []).map((row) => ({
+    id:
+      row.materials.owner_student_id && !row.materials.in_library
+        ? row.materials.id
+        : row.id,
+    studentId: row.student_id || row.materials.owner_student_id || "",
+    lessonId: row.lesson_id || undefined,
+    role: row.role as Material["role"],
+    title: row.materials.title,
+    category: row.materials.category,
+    status: row.status,
+    approvalStatus: row.materials.approval_status,
+    version: row.version + row.materials.version - 1,
+    updatedAt: new Date(
+      Math.max(
+        Date.parse(row.updated_at),
+        Date.parse(row.materials.updated_at),
+      ),
+    ).toISOString(),
+  }));
+}
+
+export function useMaterialActivity(
+  studioId: string,
+  studentId: string | undefined,
+  enabled: boolean,
+) {
+  return useQuery({
+    queryKey: ["material-resources", "activity", studioId, studentId || null],
+    queryFn: ({ signal }) => loadMaterialActivity(studioId, studentId, signal),
+    enabled: enabled && !!supabase && !!studioId,
+    staleTime: 30000,
+  });
+}
 
 export function useDebouncedValue<T>(value: T, delay = 300) {
   const [debounced, setDebounced] = useState(value);

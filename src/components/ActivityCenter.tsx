@@ -16,6 +16,7 @@ import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { formatStudioDateTime } from "../domain/presentation";
 import { queryLayerV2Enabled, useStudioActivity } from "../hooks/useStudio";
 import "./ActivityCenter.css";
+import { useMaterialActivity } from "../data/library";
 
 const icons = {
   booking: CalendarCheck2,
@@ -41,9 +42,28 @@ export function ActivityCenter({
   const activity = useStudioActivity(audience, studentId);
   const activityData =
     queryLayerV2Enabled && isSupabaseConfigured ? activity.data : data;
+  const materialActivity = useMaterialActivity(
+    data.studioId,
+    audience === "coach"
+      ? undefined
+      : studentId || activityData?.students[0]?.id,
+    isSupabaseConfigured && !!activityData,
+  );
   const feed = useMemo(
-    () => (activityData ? buildActivityFeed(activityData, audience) : []),
-    [activityData, audience],
+    () =>
+      activityData
+        ? buildActivityFeed(
+            {
+              ...activityData,
+              materials: [
+                ...activityData.materials,
+                ...(materialActivity.data || []),
+              ],
+            },
+            audience,
+          )
+        : [],
+    [activityData, audience, materialActivity.data],
   );
   const [read, setRead] = useState<Set<string>>(new Set());
   const [open, setOpen] = useState(false);
