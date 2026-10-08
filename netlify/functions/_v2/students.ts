@@ -4,6 +4,7 @@ import { provisionPortalAccount } from "../_shared/portal-access";
 import { mapStudentChanges } from "../_shared/student-updates";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
+import { requireAccessibleProfilePhoto } from "../_shared/profile-photo-access";
 
 export async function handleStudentsCommands(
   ctx: V2CommandContext,
@@ -497,6 +498,16 @@ export async function handleStudentsCommands(
       }
     }
     Object.assign(changes, mapStudentChanges(payload, allowed, columns));
+    if (
+      payload.profilePhotoAssetId &&
+      payload.profilePhotoAssetId !== before.profile_photo_asset_id
+    )
+      await requireAccessibleProfilePhoto(
+        db,
+        String(payload.profilePhotoAssetId),
+        before.id,
+        before.studio_id,
+      );
     if (Object.prototype.hasOwnProperty.call(payload, "timezone"))
       changes.timezone_confirmed = true;
     const { data, error } = await serviceClient()
