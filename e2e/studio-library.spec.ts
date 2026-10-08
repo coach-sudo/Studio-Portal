@@ -92,10 +92,15 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     studentRow.getByRole("button", { name: "Open file" }),
   ).toBeVisible();
   const filePopup = student.page.waitForEvent("popup");
+  const fileRequest = student.context.waitForEvent("request", {
+    predicate: (request) =>
+      request.method() === "GET" &&
+      request.url().includes("/storage/v1/object/sign/studio-materials/") &&
+      new URL(request.url()).searchParams.has("token"),
+  });
   await studentRow.getByRole("button", { name: "Open file" }).click();
   const filePage = await filePopup;
-  await filePage.waitForURL(/\/storage\/v1\/object\/sign\/studio-materials\//);
-  const download = await student.context.request.get(filePage.url());
+  const download = await student.context.request.get((await fileRequest).url());
   expect(download.ok()).toBe(true);
   expect(await download.body()).toEqual(
     Buffer.from("%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF"),
