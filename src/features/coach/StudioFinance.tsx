@@ -21,7 +21,7 @@ import type {
 } from "../../domain/model";
 import {
   calculatePackagePrice,
-  packagePricingChanged,
+  packageOffer,
 } from "../../domain/packagePricing";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -120,9 +120,10 @@ export function FinanceView({
                 if (!service) continue;
                 const unitPrice =
                   service.priceMinor +
-                  (deliveryFormat === "in_person"
-                    ? draft.settings.bookingDefaults.inPersonUpchargeMinor
-                    : 0);
+                  (service.locationPriceAdjustments[deliveryFormat] ??
+                    (deliveryFormat === "in_person"
+                      ? draft.settings.bookingDefaults.inPersonUpchargeMinor
+                      : 0));
                 const price = calculatePackagePrice({
                   unitPriceMinor: unitPrice,
                   sessionCount,
@@ -225,58 +226,58 @@ export function FinanceView({
           aside={<button onClick={() => setDialog("new")}>Add package</button>}
         >
           <div className="table-list">
-            {data.packageDefinitions.map((definition) => (
-              <article key={definition.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{definition.name}</strong>
-                  <small>
-                    {definition.sessionCount} ×{" "}
-                    {definition.sessionDurationMinutes} minutes ·{" "}
-                    {formatMoney(definition.priceMinor, definition.currency)}
-                  </small>
-                </div>
-                <Status
-                  tone={
-                    definition.active
-                      ? definition.visibility === "public"
-                        ? "good"
-                        : "warn"
-                      : "neutral"
-                  }
-                >
-                  {definition.active ? definition.visibility : "archived"}
-                </Status>
-                {packagePricingChanged(
-                  definition,
-                  data.bookingServices.find(
-                    (service) => service.id === definition.pricingServiceId,
-                  ),
-                ) && <Status tone="warn">Pricing changed</Status>}
-                {definition.giftable && definition.visibility === "public" && (
-                  <a
-                    className="button-link"
-                    href={`/gift/${definition.id}`}
-                    target="_blank"
-                    rel="noreferrer"
+            {data.packageDefinitions.map((definition) => {
+              const offer = packageOffer(definition, data);
+              return (
+                <article key={definition.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{definition.name}</strong>
+                    <small>
+                      {definition.sessionCount} ×{" "}
+                      {definition.sessionDurationMinutes} minutes ·{" "}
+                      {offer
+                        ? formatMoney(offer.priceMinor, offer.currency)
+                        : "Price unavailable"}
+                    </small>
+                  </div>
+                  <Status
+                    tone={
+                      definition.active
+                        ? definition.visibility === "public"
+                          ? "good"
+                          : "warn"
+                        : "neutral"
+                    }
                   >
-                    Gift link
-                  </a>
-                )}
-                {definition.visibility === "public" &&
-                  definition.directPurchase && (
-                    <a
-                      className="button-link"
-                      href={`/package/${definition.id}`}
-                      target="_blank"
-                      rel="noreferrer"
-                    >
-                      Direct link
-                    </a>
-                  )}
-                <button onClick={() => setDialog(definition)}>Edit</button>
-              </article>
-            ))}
+                    {definition.active ? definition.visibility : "archived"}
+                  </Status>
+                  {definition.giftable &&
+                    definition.visibility === "public" && (
+                      <a
+                        className="button-link"
+                        href={`/gift/${definition.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Gift link
+                      </a>
+                    )}
+                  {definition.visibility === "public" &&
+                    definition.directPurchase && (
+                      <a
+                        className="button-link"
+                        href={`/package/${definition.id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Direct link
+                      </a>
+                    )}
+                  <button onClick={() => setDialog(definition)}>Edit</button>
+                </article>
+              );
+            })}
             {!data.packageDefinitions.length && (
               <EmptyState
                 title="No package products"
@@ -625,9 +626,10 @@ function PackageDefinitionDialog({
   const previewCount = form.sessionCounts[0] || 1;
   const previewUnit =
     (previewService?.priceMinor || 0) +
-    (form.deliveryFormats[0] === "in_person"
-      ? data.settings.bookingDefaults.inPersonUpchargeMinor
-      : 0);
+    (previewService?.locationPriceAdjustments[form.deliveryFormats[0]] ??
+      (form.deliveryFormats[0] === "in_person"
+        ? data.settings.bookingDefaults.inPersonUpchargeMinor
+        : 0));
   const preview = calculatePackagePrice({
     unitPriceMinor: previewUnit,
     sessionCount: previewCount,
@@ -642,7 +644,7 @@ function PackageDefinitionDialog({
   return (
     <Drawer
       title={value ? "Edit and recalculate package" : "Create packages"}
-      description="Choose services, lesson counts, and formats. Coach’D calculates every price from your current service catalog—there is no editable price field."
+      description="Offers follow current service rates. Existing purchases and renewals keep their price."
       onClose={onClose}
     >
       <form

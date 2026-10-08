@@ -314,10 +314,6 @@ export function MaterialsView({
         </button>
       }
     >
-      <p className="section-intro material-library-intro">
-        Find active scripts, lesson attachments, reusable resources, and
-        actor-page media without mixing their different jobs together.
-      </p>
       {notice && (
         <p className="portal-notice" role="status">
           {notice}

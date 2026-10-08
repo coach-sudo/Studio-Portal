@@ -12,6 +12,7 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { useInvoices } from "../../data/invoices";
 import { lessonCreditDebit, reserveDemoCredits } from "../../domain/credits";
+import { packageOffer } from "../../domain/packagePricing";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import {
   invoiceDue,
@@ -390,11 +391,6 @@ export function InvoiceWorkspace({
           )
         }
       >
-        <p className="section-intro">
-          {readOnly
-            ? "View your invoices, download a PDF, and pay securely."
-            : "Create a branded invoice, track its balance, and keep everything together in the student’s payment record."}
-        </p>
         {query.isLoading && <p role="status">Loading invoices…</p>}
         {query.error && <p role="alert">{query.error.message}</p>}
         <div className="table-list">
@@ -856,7 +852,12 @@ function InvoiceEditor({
     const source =
       kind === "service"
         ? data.bookingServices[0]
-        : data.packageDefinitions.find((p) => p.active);
+        : (() => {
+            const definition = data.packageDefinitions.find((p) => p.active);
+            return definition
+              ? packageOffer(definition, data, recipient)
+              : undefined;
+          })();
     if (!source) {
       setError(`Add a ${kind} before invoicing it.`);
       return;
@@ -938,7 +939,28 @@ function InvoiceEditor({
                   onChange={(e) => {
                     setStudent(e.target.value);
                     setItems((rows) =>
-                      rows.map((l) => ({ ...l, lessonIds: [] })),
+                      rows.map((l) => {
+                        const definition =
+                          l.kind === "package" && !initial
+                            ? data.packageDefinitions.find(
+                                (item) => item.id === l.referenceId,
+                              )
+                            : undefined;
+                        const offer = definition
+                          ? packageOffer(
+                              definition,
+                              data,
+                              data.students.find(
+                                (item) => item.id === e.target.value,
+                              ),
+                            )
+                          : undefined;
+                        return {
+                          ...l,
+                          ...(offer ? { unitMinor: offer.priceMinor } : {}),
+                          lessonIds: [],
+                        };
+                      }),
                     );
                   }}
                 >
@@ -995,11 +1017,19 @@ function InvoiceEditor({
                             ? data.bookingServices
                             : data.packageDefinitions
                         ).find((s) => s.id === e.target.value);
-                        if (source)
+                        const priced =
+                          source && l.kind === "package"
+                            ? packageOffer(
+                                source as StudioSnapshot["packageDefinitions"][number],
+                                data,
+                                recipient,
+                              )
+                            : source;
+                        if (priced)
                           change(l.id, {
-                            referenceId: source.id,
-                            description: source.name,
-                            unitMinor: source.priceMinor,
+                            referenceId: priced.id,
+                            description: priced.name,
+                            unitMinor: priced.priceMinor,
                             lessonIds: [],
                           });
                       }}

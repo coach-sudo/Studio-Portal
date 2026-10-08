@@ -39,8 +39,7 @@ export function BookingSetup({
   return (
     <Section title="Public booking setup" marked>
       <p className="section-intro">
-        Control what people see, when they can book, and the defaults used when
-        you create a new service. A service can still override these defaults.
+        New services use these defaults; individual services can override them.
       </p>
       <form className="settings-form booking-setup-form" onSubmit={submit}>
         <h3 className="full">Page content</h3>

@@ -244,11 +244,13 @@ export function AutomationSettings({
   }
   return (
     <Section title="Automation rules" marked>
-      <p>
-        Structured, explainable rules. Draft creates reviewable email only;
-        automatic queues through the existing delivery worker. New billing and
-        forecast rules start off.
-      </p>
+      <details className="disclosure-section">
+        <summary>Automation modes</summary>
+        <p>
+          Draft creates email for review; automatic queues delivery. New billing
+          and forecast rules start off.
+        </p>
+      </details>
       <p role="status">{notice}</p>
       {rules.isError && (
         <p role="alert">

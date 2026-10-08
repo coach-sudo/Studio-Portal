@@ -130,7 +130,6 @@ export function Practice({
       {!compact && (
         <header className="student-header">
           <h1>Practice</h1>
-          <p>Published assignments you can complete or ask about.</p>
         </header>
       )}
       {notice && (
@@ -414,7 +413,6 @@ export function Materials({
       {!embedded && (
         <header className="student-header">
           <h1>Materials</h1>
-          <p>Shared studio materials and actor-page submissions.</p>
         </header>
       )}
       {notice && (

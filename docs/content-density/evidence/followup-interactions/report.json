@@ -1,0 +1,770 @@
+[
+  {
+    "size": "desktop",
+    "name": "coach-home-summary",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "payment-history-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "package-offer-quote",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "welcome-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "long-note-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "requested-full-note",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "notes-empty-search",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "add-student-focus",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "campaign-field-error",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "desktop",
+    "name": "campaign-full-review",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "desktop",
+    "name": "remove-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "desktop",
+    "name": "financial-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-lessons",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "coach-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "desktop",
+    "name": "workspace-lesson",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "workspace-account",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "workspace-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "desktop",
+    "name": "student-work",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-practice",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-schedule",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-actor",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-referrals",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "student-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "settings-daily-popup",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "settings-automations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "desktop",
+    "name": "settings-integrations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-home-summary",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "payment-history-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "package-offer-quote",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "welcome-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "long-note-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "requested-full-note",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "notes-empty-search",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "add-student-focus",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "campaign-field-error",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "tablet",
+    "name": "campaign-full-review",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "tablet",
+    "name": "remove-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "tablet",
+    "name": "financial-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-lessons",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "coach-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "tablet",
+    "name": "workspace-lesson",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "workspace-account",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "workspace-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "tablet",
+    "name": "student-work",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-practice",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-schedule",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-actor",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-referrals",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "student-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "settings-daily-popup",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "settings-automations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "tablet",
+    "name": "settings-integrations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-home-summary",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "payment-history-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "package-offer-quote",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "welcome-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "long-note-keyboard",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "requested-full-note",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "notes-empty-search",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "add-student-focus",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "campaign-field-error",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "mobile",
+    "name": "campaign-full-review",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "mobile",
+    "name": "remove-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "mobile",
+    "name": "financial-warning",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-lessons",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "coach-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "mobile",
+    "name": "workspace-lesson",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "workspace-account",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "workspace-notes",
+    "overflow": false,
+    "clipped": [],
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "size": "mobile",
+    "name": "student-work",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-practice",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-materials",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-schedule",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-payments",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-settings",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-actor",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-referrals",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "student-inbox",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "settings-daily-popup",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "settings-automations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  },
+  {
+    "size": "mobile",
+    "name": "settings-integrations",
+    "overflow": false,
+    "clipped": [],
+    "violations": []
+  }
+]

@@ -906,10 +906,7 @@ function Inbox({
           <header>
             <div>
               <strong>Recent email</strong>
-              <small>
-                Individual emails can be sent again. Campaign delivery is
-                managed in Campaigns.
-              </small>
+              <small>Campaign delivery is managed in Campaigns.</small>
             </div>
           </header>
           <div className="table-list">
@@ -957,7 +954,7 @@ function Inbox({
       {newMessageOpen && (
         <Dialog
           title="New message"
-          description="Search by student, guardian, support person, email, or group class. Household messages stay together in one private thread."
+          description="Household messages share one private thread."
           onClose={() => setNewMessageOpen(false)}
         >
           <div className="recipient-picker">

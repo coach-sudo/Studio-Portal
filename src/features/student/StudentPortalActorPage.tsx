@@ -89,7 +89,6 @@ export function ActorPage({
     <div className="student-page">
       <header className="student-header">
         <h1>Actor Page</h1>
-        <p>Edit a draft and submit it for coach review before publishing.</p>
       </header>
       {notice && (
         <p className="portal-notice" role="status">
@@ -102,9 +101,7 @@ export function ActorPage({
             <UserRound />
             <div>
               <strong>{profile.displayName}</strong>
-              <small>
-                /actors/{profile.slug} · {profile.bio}
-              </small>
+              <small>/actors/{profile.slug}</small>
             </div>
             <Status tone={profile.status === "published" ? "good" : "warn"}>
               {profile.status.replaceAll("_", " ")}
@@ -127,15 +124,12 @@ export function ActorPage({
         </div>
       </Section>
       <p className="section-intro">
-        Actor-page uploads live here—not in Current Work. Your coach reviews
-        each headshot, gallery image, reel, performance clip, and PDF résumé
-        before it appears publicly.
+        Upload actor-page media here. Your coach reviews it before publication.
       </p>
       <Materials data={data} isDemo={isDemo} embedded actorOnly />
       {previewing && (
         <Drawer
           title="Private actor-page preview"
-          description="Preview the current draft before sending it for review."
           onClose={() => setPreviewing(false)}
         >
           <ActorProfilePreview
@@ -412,6 +406,7 @@ function ActorDialog({
             onChange={(event) => setSubmit(event.target.checked)}
           />
           Submit for coach review
+          <small>Your coach must approve changes before publication.</small>
         </label>
         <div className="form-actions">
           <button type="button" onClick={onClose}>

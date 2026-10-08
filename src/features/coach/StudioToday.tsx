@@ -294,7 +294,7 @@ export function TodayView({
           {!lessons.length && (
             <EmptyState
               title="The rest of today is clear"
-              detail="Only today’s scheduled lessons appear here. Use Home for the week ahead."
+              detail="See Home for the week ahead."
             />
           )}
         </div>
@@ -362,11 +362,6 @@ export function TodayView({
       {reviewGroups.length > 0 && (
         <div id="verification">
           <Section title="Verify imported lessons">
-            <p className="section-intro">
-              These are provider signals waiting for one clear decision.
-              Confirming links the lesson to the student profile; matching
-              series can be handled together.
-            </p>
             <div className="table-list">
               {importPage.visible.map((group) => {
                 const item = group[0];
@@ -412,10 +407,6 @@ export function TodayView({
         helpRequests.length > 0 ||
         bookingAttention.length > 0) && (
         <Section title="Approve & resolve" marked>
-          <p className="section-intro">
-            Everything waiting for a coach decision is collected here; the full
-            record remains in its natural workspace.
-          </p>
           <div className="table-list">
             {pendingMaterials.map((item) => (
               <article key={`material-${item.id}`}>
@@ -685,12 +676,13 @@ function ImportReviewDialog({
                 ? formatStudioTime(candidate.endsAt, data.settings.timezone)
                 : "end time unavailable"}
             </span>
-            <small>
-              {candidate.locationLabel || "Provider booking"}. Confirming
-              creates or links this lesson in the selected student profile.
-            </small>
+            <small>{candidate.locationLabel || "Provider booking"}</small>
           </div>
         )}
+        <p className="full">
+          Confirming creates or links this lesson in the selected student
+          profile.
+        </p>
         <div className="settings-list full">
           <button
             type="button"

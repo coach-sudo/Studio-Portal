@@ -63,11 +63,6 @@ export function DailyPopupForm({
   };
   return (
     <Section title="Daily portal popup" marked>
-      <p className="section-intro">
-        Students and linked contacts see this when they first open their portal
-        each day. They can close it immediately, and it stays hidden as they
-        move between pages.
-      </p>
       <form className="settings-form" onSubmit={(event) => void submit(event)}>
         {error && (
           <p className="inline-error full" role="alert">
@@ -77,7 +72,7 @@ export function DailyPopupForm({
         <div className="settings-list full">
           <Toggle
             label="Show daily popup"
-            detail="Turn this off whenever you want to pause the message."
+            detail="Shown to students and linked contacts on their first portal visit each day; dismissible for the day."
             checked={form.enabled}
             onChange={(enabled) => setForm({ ...form, enabled })}
           />

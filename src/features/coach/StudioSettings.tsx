@@ -953,10 +953,6 @@ function Integrations({
   ] as const;
   return (
     <Section title="Integration health" marked>
-      <p className="section-intro">
-        The studio remains usable without every provider. Each card says exactly
-        what becomes live when connected.
-      </p>
       {health.issues?.map((issue) => (
         <p className="inline-error" key={issue}>
           {issue}

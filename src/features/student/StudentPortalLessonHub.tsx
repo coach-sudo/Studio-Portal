@@ -121,10 +121,9 @@ export function StudentNotes({
   return (
     <div className="student-page">
       <header className="student-header">
-        <h1>Notes</h1>
-        <p>Published coaching notes, organized by lesson.</p>
+        <h1 id="student-notes-title">Notes</h1>
       </header>
-      <Section title="Lesson notes" marked>
+      <section className="section marked" aria-labelledby="student-notes-title">
         <div className="library-toolbar">
           <label>
             <FileText />
@@ -236,7 +235,7 @@ export function StudentNotes({
             </div>
           </Dialog>
         )}
-      </Section>
+      </section>
     </div>
   );
 }
@@ -440,10 +439,7 @@ export function LessonHub({
       )}
       {offering && (
         <Section title="Class information" marked>
-          <p>
-            {offering.description ||
-              "Your enrollment details and shared class resources live here."}
-          </p>
+          {offering.description && <p>{offering.description}</p>}
           <div className="student-quick-actions">
             {(offering.meetingUrl || lesson.joinUrl) && (
               <a
@@ -481,20 +477,19 @@ export function LessonHub({
             <div className="note-cards">
               {notes.map((note) => (
                 <article key={note.id}>
-                  <header>
-                    <strong>{note.title}</strong>
-                    <Status tone="good">published</Status>
-                  </header>
-                  {note.bodyHtml ? (
-                    <div
-                      className="published-note-body"
-                      dangerouslySetInnerHTML={{
-                        __html: DOMPurify.sanitize(note.bodyHtml),
-                      }}
-                    />
-                  ) : (
-                    <p>{note.body}</p>
-                  )}
+                  <details className="disclosure-section">
+                    <summary>Read {note.title}</summary>
+                    {note.bodyHtml ? (
+                      <div
+                        className="published-note-body"
+                        dangerouslySetInnerHTML={{
+                          __html: DOMPurify.sanitize(note.bodyHtml),
+                        }}
+                      />
+                    ) : (
+                      <p>{note.body}</p>
+                    )}
+                  </details>
                 </article>
               ))}
               {!notes.length && (
@@ -569,9 +564,6 @@ export function LessonHub({
             </div>
           </Section>
           <Section title="Conversation" marked>
-            <p className="section-intro">
-              Continue privately with your coach without leaving the studio.
-            </p>
             <Link className="button-link primary" to="/portal/inbox">
               <MessageSquare />
               Message coach

@@ -520,6 +520,9 @@ input[type="radio"] {
   background: var(--app-surface-soft);
   box-shadow: none;
 }
+.settings-nav button.active small {
+  color: inherit;
+}
 .disclosure-section {
   border: 0;
   box-shadow: none;
@@ -1201,6 +1204,9 @@ input[type="radio"] {
   }
   .dashboard-rail {
     position: static;
+  }
+  .creative-home-grid > .dashboard-rail {
+    order: -1;
   }
 }
 @media (max-width: 900px) {

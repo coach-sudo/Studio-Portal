@@ -382,7 +382,7 @@ export default async (request: Request, context: Context) => {
         const { data: packageSubscription, error: packageSubscriptionError } =
           await db
             .from("package_subscriptions")
-            .select("*,package_definitions(session_count,currency,name)")
+            .select("*,packages(credit_quantity,currency)")
             .eq("id", packageSubscriptionId)
             .single();
         if (packageSubscriptionError || !packageSubscription)
@@ -428,16 +428,18 @@ export default async (request: Request, context: Context) => {
               { onConflict: "dedupe_key", ignoreDuplicates: true },
             );
         } else {
-          const definition = Array.isArray(
-            packageSubscription.package_definitions,
-          )
-            ? packageSubscription.package_definitions[0]
-            : packageSubscription.package_definitions;
+          const purchased = Array.isArray(packageSubscription.packages)
+            ? packageSubscription.packages[0]
+            : packageSubscription.packages;
+          if (!purchased?.credit_quantity)
+            throw new Error(
+              "Purchased package renewal credits are unavailable.",
+            );
           await db.from("package_credit_entries").upsert(
             {
               package_id: packageSubscription.package_id,
               kind: "purchase",
-              quantity: Number(definition?.session_count || 1),
+              quantity: Number(purchased.credit_quantity),
               reason: `Package renewal · ${object.id}`,
               idempotency_key: `package-subscription-invoice:${object.id}`,
             },
@@ -467,7 +469,7 @@ export default async (request: Request, context: Context) => {
                 kind: "payment",
                 amount_minor: Number(object.amount_paid),
                 currency: String(
-                  object.currency || definition?.currency || "USD",
+                  object.currency || purchased.currency || "USD",
                 ).toUpperCase(),
                 external_reference: object.id,
                 reason: "Package subscription renewal",

@@ -25,7 +25,6 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
     <div className="student-page">
       <header className="student-header">
         <h1>Current Work</h1>
-        <p>Your active scripts and lesson-connected materials.</p>
       </header>
       <Section title="Active script" marked>
         <div className="table-list">

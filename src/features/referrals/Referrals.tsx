@@ -296,12 +296,8 @@ export function StudentReferrals({
   return (
     <div className="student-page referrals-page">
       <header className="student-header">
-        <small>Share and save</small>
         <h1>Refer a friend</h1>
-        <p>
-          Give a friend your personal booking link. Your rewards stay here,
-          ready to use.
-        </p>
+        <p>Share your booking link to earn rewards.</p>
       </header>
       <Section title="Your referral link">
         {loading && !overview ? (

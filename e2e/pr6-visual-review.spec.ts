@@ -67,6 +67,9 @@ test.describe("student product-review evidence", () => {
         );
       }
       if (name === "payments" && testInfo.project.name === "mobile-chromium") {
+        await page
+          .locator("summary", { hasText: "Receipts & adjustments" })
+          .click();
         const amount = page.locator(".payment-history-amount").first();
         await expect(amount).toBeVisible();
         const bounds = await amount.boundingBox();

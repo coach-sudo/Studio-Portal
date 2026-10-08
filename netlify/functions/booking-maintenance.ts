@@ -230,27 +230,21 @@ export default async () => {
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
     for (const renewal of dueRenewals) {
       try {
-        const [{ data: definition }, { data: option }] = await Promise.all([
-          db
-            .from("package_definitions")
-            .select("name,price_minor,currency")
-            .eq("id", renewal.definition_id)
-            .single(),
-          db
-            .from("package_billing_options")
-            .select("stripe_price_id")
-            .eq("id", renewal.billing_option_id)
-            .single(),
-        ]);
-        if (!definition || !option?.stripe_price_id)
+        const { data: purchased, error: purchasedError } = await db
+          .from("packages")
+          .select("name,price_minor,currency")
+          .eq("id", renewal.package_id)
+          .eq("student_id", renewal.student_id)
+          .single();
+        if (purchasedError || !purchased)
           throw new Error("Package renewal pricing is unavailable.");
         const attemptKey = String(renewal.renewal_attempt_key || renewal.id);
         await stripe.invoiceItems.create(
           {
             customer: renewal.stripe_customer_id,
-            amount: Number(definition.price_minor),
-            currency: String(definition.currency).toLowerCase(),
-            description: `${definition.name} automatic renewal`,
+            amount: Number(purchased.price_minor),
+            currency: String(purchased.currency).toLowerCase(),
+            description: `${purchased.name} automatic renewal`,
             metadata: {
               billing_kind: "package_subscription",
               package_subscription_id: renewal.id,

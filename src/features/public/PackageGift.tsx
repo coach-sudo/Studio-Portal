@@ -70,7 +70,12 @@ export default function PackageGift() {
                 token,
                 createPortalProfile: values.createPortalProfile === "on",
               }
-            : { ...values, definitionId },
+            : {
+                ...values,
+                definitionId,
+                expectedPriceMinor: catalog?.package.priceMinor,
+                expectedCurrency: catalog?.package.currency,
+              },
         ),
       });
       const body = await response.json();

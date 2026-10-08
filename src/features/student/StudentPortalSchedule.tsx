@@ -220,10 +220,6 @@ export function StudentBookings({
       <header className="student-header">
         <div>
           <h1>Schedule</h1>
-          <p>
-            Every lesson in one place, including studio bookings and imported
-            provider appointments.
-          </p>
         </div>
         <a className="button-link primary" href="/book">
           <CalendarDays />

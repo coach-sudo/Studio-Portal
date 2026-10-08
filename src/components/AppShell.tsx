@@ -152,7 +152,6 @@ export function AppShell() {
       {searchOpen && (
         <Dialog
           title="Go to"
-          description="Find your next studio workflow."
           onClose={() => setSearchOpen(false)}
         >
           <div className="command-search">

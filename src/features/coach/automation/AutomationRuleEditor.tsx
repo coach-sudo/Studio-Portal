@@ -42,7 +42,11 @@ export function AutomationRuleEditor({
         )}
         <label>
           Mode
-          <select name="mode" defaultValue={edit.mode}>
+          <select
+            name="mode"
+            defaultValue={edit.mode}
+            aria-describedby="automation-mode-help"
+          >
             <option value="off">Off</option>
             <option value="draft">Draft</option>
             <option value="automatic">Automatic</option>
@@ -51,6 +55,11 @@ export function AutomationRuleEditor({
             </option>
           </select>
         </label>
+        <small id="automation-mode-help" className="full">
+          {paymentReminderNeedsApproval(edit.rule_key)
+            ? "Automatic mode prepares payer drafts for coach approval."
+            : "Draft creates email for review; automatic queues delivery."}
+        </small>
         <label hidden={!timed}>
           Hours before lesson (comma-separated)
           <input

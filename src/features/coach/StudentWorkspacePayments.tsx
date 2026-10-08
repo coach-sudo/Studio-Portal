@@ -27,6 +27,7 @@ import { StudentFinancialSetup } from "./StudentFinancialSetup";
 import { PaymentReminderSteps } from "./PaymentReminderSteps";
 import { CreditAccount } from "./CreditAccount";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { packageOffer } from "../../domain/packagePricing";
 import { reserveDemoCredits } from "../../domain/credits";
 
 export function Payments({
@@ -42,7 +43,12 @@ export function Payments({
     payments = data.payments.filter((i) => i.studentId === student.id),
     preferredDuration = recentLessonDuration(data.lessons, student.id),
     availableDefinitions = sortPackageDefinitions(
-      data.packageDefinitions.filter((item) => item.active),
+      data.packageDefinitions
+        .filter((item) => item.active)
+        .map((item) => packageOffer(item, data, student))
+        .filter((item): item is Data["packageDefinitions"][number] =>
+          Boolean(item),
+        ),
       preferredDuration,
     );
   const store = useStudioStore(),
@@ -107,7 +113,7 @@ export function Payments({
   };
   const assign = async (event: FormEvent) => {
     event.preventDefault();
-    const definition = data.packageDefinitions.find(
+    const definition = availableDefinitions.find(
       (item) => item.id === definitionId,
     );
     if (!definition) return;
@@ -146,6 +152,8 @@ export function Payments({
           expectedVersion: 0,
           payload: {
             definitionId,
+            expectedPriceMinor: definition.priceMinor,
+            expectedCurrency: definition.currency,
             studentId: student.id,
             autoApply: autoApplyOnAssign,
             reason: "Coach assigned package",
@@ -243,38 +251,30 @@ export function Payments({
                 )}
               </strong>
             </div>
-            <div>
-              <small>Available lesson credits</small>
-              <strong>
-                {pkgs.reduce(
-                  (total, pkg) =>
-                    total +
-                    packageSummary(pkg, data.creditEntries).remainingCredits,
-                  0,
-                )}
-              </strong>
+          </div>
+          <details className="disclosure-section">
+            <summary>Payment history ({payments.length})</summary>
+            <div className="table-list">
+              {payments.map((p) => (
+                <article key={p.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{p.reason}</strong>
+                    <small>
+                      {formatStudioDate(p.createdAt, data.settings.timezone)}
+                    </small>
+                  </div>
+                  <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
+                </article>
+              ))}
+              {!payments.length && (
+                <EmptyState
+                  title="No ledger entries"
+                  detail="Payments and adjustments will appear here."
+                />
+              )}
             </div>
-          </div>
-          <div className="table-list">
-            {payments.map((p) => (
-              <article key={p.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{p.reason}</strong>
-                  <small>
-                    {formatStudioDate(p.createdAt, data.settings.timezone)}
-                  </small>
-                </div>
-                <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
-              </article>
-            ))}
-            {!payments.length && (
-              <EmptyState
-                title="No ledger entries"
-                detail="Payments and adjustments will appear here."
-              />
-            )}
-          </div>
+          </details>
         </Section>
       </div>
       {assigning && (

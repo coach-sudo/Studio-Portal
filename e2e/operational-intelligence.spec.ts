@@ -19,6 +19,8 @@ async function openOperationalCoach(
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
     bypassCSP: process.env.E2E_EPHEMERAL === "true",
+    // Frozen operational clocks must not leave dialog/color transitions midway.
+    reducedMotion: "reduce",
   });
   const page = await context.newPage();
   await page.goto("/login");

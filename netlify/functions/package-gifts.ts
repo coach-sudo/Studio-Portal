@@ -7,6 +7,11 @@ import { serviceClient } from "./_shared/supabase";
 import { provisionPortalAccount } from "./_shared/portal-access";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { portalOrigin } from "./_shared/portal-url";
+import { quotePackageDefinition } from "./_shared/package-pricing";
+import {
+  assertPackageQuote,
+  packageStripePrice,
+} from "./_shared/package-stripe-price";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -43,6 +48,7 @@ export default async (request: Request, context: Context) => {
         .eq("direct_purchase", true)
         .single();
       if (error || !data) throw new Error("SERVICE_NOT_FOUND");
+      const quote = await quotePackageDefinition(db, data);
       return json({
         package: {
           id: data.id,
@@ -50,13 +56,13 @@ export default async (request: Request, context: Context) => {
           description: data.description,
           sessionCount: data.session_count,
           sessionDurationMinutes: data.session_duration_minutes,
-          priceMinor: Number(data.price_minor),
-          currency: data.currency,
+          priceMinor: Number(quote.price_minor),
+          currency: quote.currency,
           deliveryFormat: data.delivery_format,
           giftable: Boolean(data.giftable),
           expirationDays: data.expiration_days || undefined,
           discountType: data.discount_type,
-          discountMinor: Number(data.discount_minor || 0),
+          discountMinor: Number(quote.discount_minor || 0),
           discountBasisPoints: Number(data.discount_basis_points || 0),
           recurringEligible: Boolean(data.recurring_eligible),
           benefitText: data.benefit_text || undefined,
@@ -98,7 +104,7 @@ export default async (request: Request, context: Context) => {
       const { data: definition, error } = await db
         .from("package_definitions")
         .select(
-          "id,studio_id,name,price_minor,currency,stripe_price_id,giftable,active,visibility,direct_purchase",
+          "id,studio_id,name,price_minor,currency,stripe_price_id,giftable,active,visibility,direct_purchase,pricing_service_id,session_count,delivery_format,discount_type,discount_minor,discount_basis_points",
         )
         .eq("id", definitionId)
         .single();
@@ -112,6 +118,14 @@ export default async (request: Request, context: Context) => {
         !definition.stripe_price_id
       )
         throw new Error("SERVICE_NOT_FOUND");
+      const quote = await quotePackageDefinition(db, definition);
+      assertPackageQuote(quote, {
+        ...body,
+        expectedPriceMinor: body.expectedPriceMinor ?? Number.NaN,
+      });
+      const key = Netlify.env.get("STRIPE_SECRET_KEY");
+      if (!key) throw new Error("Stripe is not configured.");
+      const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });
       const token = randomBytes(32).toString("base64url"),
         origin = portalOrigin(),
         expiresAt = new Date(Date.now() + 90 * 86_400_000).toISOString();
@@ -134,15 +148,17 @@ export default async (request: Request, context: Context) => {
         .select("id")
         .single();
       if (giftError) throw giftError;
-      const key = Netlify.env.get("STRIPE_SECRET_KEY");
-      if (!key) throw new Error("Stripe is not configured.");
-      const checkout = await new Stripe(key, {
-        apiVersion: "2026-07-29.dahlia",
-      }).checkout.sessions.create(
+      const priceId = await packageStripePrice(
+        stripe,
+        definition.stripe_price_id,
+        quote,
+        `gift:${gift.id}`,
+      );
+      const checkout = await stripe.checkout.sessions.create(
         {
           mode: "payment",
           customer_email: purchaserEmail,
-          line_items: [{ price: definition.stripe_price_id, quantity: 1 }],
+          line_items: [{ price: priceId, quantity: 1 }],
           client_reference_id: gift.id,
           success_url: `${origin}/gift/thanks`,
           cancel_url: `${origin}/gift/${definition.id}?checkout=cancelled`,
@@ -157,6 +173,8 @@ export default async (request: Request, context: Context) => {
             package_gift_id: gift.id,
             claim_token: token,
             definition_id: definition.id,
+            package_price_minor: String(quote.price_minor),
+            package_currency: String(quote.currency),
             studio_id: definition.studio_id,
             integration_identifier: "coachd_package_gifts",
           },

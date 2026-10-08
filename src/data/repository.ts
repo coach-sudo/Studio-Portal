@@ -692,6 +692,7 @@ export async function loadStudioSnapshot(
       studentId: r.student_id,
       serviceId: r.service_id,
       priceMinor: Number(r.price_minor),
+      locationPriceAdjustments: r.location_price_adjustments ?? {},
       reason: r.reason,
       startsAt: r.starts_at,
       endsAt: r.ends_at,

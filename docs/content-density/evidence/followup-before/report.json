@@ -1,0 +1,284 @@
+[
+  {
+    "name": "coach-home",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "student-payments",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-payments",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-lesson",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson-dialog",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "actor-preview",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "today",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "students",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace",
+    "size": "desktop",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "campaigns",
+    "size": "desktop",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "home",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "notes",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "booking",
+    "size": "desktop",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "coach-home",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "student-payments",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-payments",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-lesson",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson-dialog",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "actor-preview",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "today",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "students",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace",
+    "size": "tablet",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "campaigns",
+    "size": "tablet",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "home",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "notes",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "booking",
+    "size": "tablet",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "coach-home",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "student-payments",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-payments",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace-lesson",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson-dialog",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "actor-preview",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "today",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "students",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "workspace",
+    "size": "mobile",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "campaigns",
+    "size": "mobile",
+    "overflow": false,
+    "violations": [
+      {
+        "id": "color-contrast",
+        "targets": [[".activity-bell > span"]]
+      }
+    ]
+  },
+  {
+    "name": "home",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "notes",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "lesson",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  },
+  {
+    "name": "booking",
+    "size": "mobile",
+    "overflow": false,
+    "violations": []
+  }
+]

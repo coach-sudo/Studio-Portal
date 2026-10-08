@@ -13,10 +13,7 @@ import {
   unknownCampaignTokens,
 } from "../../domain/campaignTemplates";
 import type { StudioSettings, StudioSnapshot } from "../../domain/model";
-import {
-  invalidateStudioDomains,
-  useStudioRoute,
-} from "../../hooks/useStudio";
+import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import "./Campaigns.css";
 
@@ -51,7 +48,11 @@ function demoOverview(data: StudioSnapshot): CampaignOverview {
 }
 
 export function Campaigns() {
-  const { data, isDemo } = useStudioRoute("coach", undefined, ["identity", "students", "households"]);
+  const { data, isDemo } = useStudioRoute("coach", undefined, [
+    "identity",
+    "students",
+    "households",
+  ]);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [overview, setOverview] = useState<CampaignOverview>();
@@ -226,10 +227,7 @@ export function Campaigns() {
   if (!data) return <div className="loading">Opening campaigns…</div>;
   return (
     <div className="page campaigns-page">
-      <PageHeader title="Campaigns">
-        Send one personalized email to every contact address on the mailing
-        list.
-      </PageHeader>
+      <PageHeader title="Campaigns" />
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
@@ -254,10 +252,6 @@ export function Campaigns() {
       </div>
       <div className="campaigns-grid">
         <Section title="Compose campaign" marked>
-          <p className="section-intro">
-            Write a reusable template, preview the personalized message, then
-            review the mailing-list count before queuing delivery.
-          </p>
           <div className="campaign-template-picker">
             <label>
               Saved template
@@ -314,13 +308,17 @@ export function Campaigns() {
                 }
               />
             </label>
-            <p className="campaign-token-help full">
-              Personalize with{" "}
-              {
-                "{{firstName}}, {{fullName}}, {{email}}, {{studioName}}, {{portalUrl}}, {{unsubscribeUrl}}"
-              }
-              . An unsubscribe link is added automatically if you leave it out.
-            </p>
+            <details className="disclosure-section full">
+              <summary>Personalization fields</summary>
+              <p className="campaign-token-help">
+                {
+                  "{{firstName}}, {{fullName}}, {{email}}, {{studioName}}, {{portalUrl}}, {{unsubscribeUrl}}"
+                }
+              </p>
+              <p className="campaign-token-help">
+                An unsubscribe link is added automatically if you leave it out.
+              </p>
+            </details>
             {unknown.length > 0 && (
               <p className="inline-error full">
                 Unknown fields: {unknown.join(", ")}
@@ -360,10 +358,13 @@ export function Campaigns() {
         </Section>
         <div className="campaigns-side">
           <Section title="Recipient preview">
-            <p className="section-intro">
-              Addresses from students, guardian records, and linked contacts are
-              deduplicated. Unsubscribed addresses are excluded.
-            </p>
+            <details className="disclosure-section">
+              <summary>Recipient details</summary>
+              <p>
+                Student, guardian, and linked-contact addresses are
+                deduplicated. Unsubscribed addresses are excluded.
+              </p>
+            </details>
             {loading ? (
               <p>Loading mailing list…</p>
             ) : recipients.length ? (
@@ -383,27 +384,30 @@ export function Campaigns() {
             )}
           </Section>
           <Section title="Email preview">
-            <div className="campaign-email-preview">
-              <small>To: {previewValues.email}</small>
-              <strong>
-                {renderCampaignTemplate(
-                  draft.subject || "Your subject",
-                  previewValues,
+            <details className="disclosure-section" open={reviewing}>
+              <summary>Personalized message</summary>
+              <div className="campaign-email-preview">
+                <small>To: {previewValues.email}</small>
+                <strong>
+                  {renderCampaignTemplate(
+                    draft.subject || "Your subject",
+                    previewValues,
+                  )}
+                </strong>
+                <p>
+                  {renderCampaignTemplate(
+                    draft.body || "Your message will appear here.",
+                    previewValues,
+                  )}
+                </p>
+                {!draft.body.includes("{{unsubscribeUrl}}") && (
+                  <small>
+                    Unsubscribe from studio email campaigns:{" "}
+                    {previewValues.unsubscribeUrl}
+                  </small>
                 )}
-              </strong>
-              <p>
-                {renderCampaignTemplate(
-                  draft.body || "Your message will appear here.",
-                  previewValues,
-                )}
-              </p>
-              {!draft.body.includes("{{unsubscribeUrl}}") && (
-                <small>
-                  Unsubscribe from studio email campaigns:{" "}
-                  {previewValues.unsubscribeUrl}
-                </small>
-              )}
-            </div>
+              </div>
+            </details>
           </Section>
         </div>
       </div>
@@ -418,8 +422,9 @@ export function Campaigns() {
               {recipients.length === 1 ? "" : "es"}?
             </strong>
             <p>
-              Each message is personalized and includes an unsubscribe link. The
-              studio outbox will deliver them in batches.
+              Addresses are deduplicated; unsubscribed addresses are excluded.
+              Each email is personalized and includes an unsubscribe link.
+              Delivery is queued in batches.
             </p>
           </div>
           <button type="button" onClick={() => setReviewing(false)}>

@@ -161,7 +161,7 @@ export function StudentCommunication({
   }
   return (
     <Section title="Communication timeline" marked>
-      <p>Coach-only email history. Human conversations remain in Inbox.</p>
+      <p>Coach-only email history. Conversations are in Inbox.</p>
       <div className="action-row">
         <button
           type="button"

@@ -19,6 +19,7 @@ import {
   recentLessonDuration,
   sortPackageDefinitions,
 } from "../../domain/packageSelection";
+import { packageOffer } from "../../domain/packagePricing";
 import { packageBenefitLines } from "../../domain/packagePresentation";
 import { formatStudioDate } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
@@ -39,10 +40,15 @@ export function Payments({
   const preferredDuration = student
     ? recentLessonDuration(data.lessons, student.id)
     : undefined;
-  const purchasableDefinitions = data.packageDefinitions.filter(
+  const sourceDefinitions = data.packageDefinitions.filter(
     (item) =>
       item.active && item.visibility === "public" && item.directPurchase,
   );
+  const purchasableDefinitions = sourceDefinitions
+    .map((item) => packageOffer(item, data, student))
+    .filter((item): item is Snapshot["packageDefinitions"][number] =>
+      Boolean(item),
+    );
   const durationOptions = [
     ...new Set(
       purchasableDefinitions.map((item) => item.sessionDurationMinutes),
@@ -84,8 +90,9 @@ export function Payments({
     const definition = data.packageDefinitions.find(
       (item) => item.id === definitionId && item.active && item.directPurchase,
     );
-    if (definition) setPurchaseDefinition(definition);
-  }, [data.packageDefinitions, params]);
+    if (definition)
+      setPurchaseDefinition(packageOffer(definition, data, student));
+  }, [data, student, params]);
   const purchase = async (id: string) => {
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
@@ -98,6 +105,8 @@ export function Payments({
         payload: {
           packageDefinitionId: id,
           renewalMode,
+          expectedPriceMinor: purchaseDefinition?.priceMinor,
+          expectedCurrency: purchaseDefinition?.currency,
         },
         reason: "Student started package checkout",
       });
@@ -160,7 +169,6 @@ export function Payments({
     <div className="student-page">
       <header className="student-header">
         <h1>Payments</h1>
-        <p>See your balance, payment history, and available lesson packages.</p>
       </header>
       {notice && (
         <p className="portal-notice" role="status">
@@ -184,44 +192,49 @@ export function Payments({
         </>
       )}
       {student && (
-        <Section title="Current balance" marked>
-          <div className="account-balance-card" role="status">
-            <span>Available dollar account credit</span>
+        <Section title="Account credit" marked>
+          <div
+            className="account-balance-card"
+            role="status"
+            aria-label="Available dollar account credit"
+          >
             <strong>
               {formatMoney(
                 Math.max(0, studentBalanceMinor(student.id, data.payments)),
               )}
             </strong>
-            <small>Payments and adjustments are listed below.</small>
           </div>
         </Section>
       )}
-      <Section title="Receipts & adjustments">
-        <div className="table-list">
-          {data.payments.map((entry) => (
-            <article key={entry.id} className="payment-history-row">
-              <FileText />
-              <div>
-                <strong>{entry.reason}</strong>
-                <small>
-                  {formatStudioDate(entry.createdAt, data.settings.timezone)} ·{" "}
-                  {entry.externalReference ?? "Studio ledger"}
-                </small>
-              </div>
-              <strong className="payment-history-amount">
-                {entry.kind === "refund" ? "+" : "−"}
-                {formatMoney(entry.amountMinor, entry.currency)}
-              </strong>
-            </article>
-          ))}
-          {!data.payments.length && (
-            <EmptyState
-              title="No payment history"
-              detail="Receipts, refunds, and adjustments will appear here."
-            />
-          )}
-        </div>
-      </Section>
+      <details className="disclosure-section">
+        <summary>Receipts & adjustments ({data.payments.length})</summary>
+        <Section title="Receipts & adjustments">
+          <div className="table-list">
+            {data.payments.map((entry) => (
+              <article key={entry.id} className="payment-history-row">
+                <FileText />
+                <div>
+                  <strong>{entry.reason}</strong>
+                  <small>
+                    {formatStudioDate(entry.createdAt, data.settings.timezone)}{" "}
+                    · {entry.externalReference ?? "Studio ledger"}
+                  </small>
+                </div>
+                <strong className="payment-history-amount">
+                  {entry.kind === "refund" ? "+" : "−"}
+                  {formatMoney(entry.amountMinor, entry.currency)}
+                </strong>
+              </article>
+            ))}
+            {!data.payments.length && (
+              <EmptyState
+                title="No payment history"
+                detail="Receipts, refunds, and adjustments will appear here."
+              />
+            )}
+          </div>
+        </Section>
+      </details>
       {data.packages.length > 0 && (
         <Section title="Your packages">
           <div className="table-list">
@@ -272,6 +285,11 @@ export function Payments({
             })}
           </div>
         </Section>
+      )}
+      {sourceDefinitions.length !== purchasableDefinitions.length && (
+        <p role="status" className="portal-notice">
+          Some package prices are unavailable. Try again later.
+        </p>
       )}
       {purchasableDefinitions.length > 0 && (
         <Section title="Available packages">
@@ -342,7 +360,6 @@ export function Payments({
       {purchaseDefinition && (
         <Dialog
           title={purchaseDefinition.name}
-          description="Choose how this package should renew and whether its credits should cover eligible upcoming lessons automatically."
           onClose={() => setPurchaseDefinition(undefined)}
         >
           <div className="package-purchase-summary">
@@ -380,9 +397,8 @@ export function Payments({
             </select>
           </label>
           <p>
-            New credits follow the automatic-use preference your coach manages
-            on your student account. One credit covers one lesson of any service
-            or duration.
+            One credit covers one lesson of any service or duration. Your
+            account’s automatic-use preference applies.
           </p>
           {renewalMode === "balance_threshold" && (
             <p className="portal-notice">
@@ -404,7 +420,7 @@ export function Payments({
           </div>
           {purchaseDefinition.giftable && (
             <Link className="button-link" to={`/gift/${purchaseDefinition.id}`}>
-              Purchase this package as a gift
+              Gift at studio pricing
             </Link>
           )}
         </Dialog>

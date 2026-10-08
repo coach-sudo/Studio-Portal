@@ -270,7 +270,7 @@ export function StudentsIndex({
   return (
     <>
       <Section
-        title="Studio roster"
+        title="Roster"
         marked
         aside={
           <button className="primary-button" onClick={() => setAdding(true)}>
@@ -400,9 +400,7 @@ export function StudentsIndex({
         <Upload />
         <div>
           <strong>Bringing in an existing roster?</strong>
-          <small>
-            CSV import includes a duplicate review before anything is added.
-          </small>
+          <small>Review duplicates before importing a CSV.</small>
         </div>
         <input
           ref={fileInput}
@@ -709,11 +707,7 @@ function StudentForm({
     }
   };
   return (
-    <Drawer
-      title="Add student"
-      description="Start with the essentials. Everything else lives in the student record."
-      onClose={onClose}
-    >
+    <Drawer title="Add student" onClose={onClose}>
       <form className="workflow-form" onSubmit={submit}>
         {error && (
           <p className="portal-notice" role="alert">
@@ -723,7 +717,6 @@ function StudentForm({
         <label>
           Full name
           <input
-            autoFocus
             required
             value={name}
             onChange={(event) => setName(event.target.value)}

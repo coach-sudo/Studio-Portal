@@ -1,6 +1,13 @@
 import Stripe from "stripe";
 import { json } from "../_shared/http";
-import { derivePackageValues } from "../_shared/package-pricing";
+import {
+  derivePackageValues,
+  quotePackageDefinition,
+} from "../_shared/package-pricing";
+import {
+  packageStripePrice,
+  assertPackageQuote,
+} from "../_shared/package-stripe-price";
 import { serviceClient } from "../_shared/supabase";
 import { portalOrigin } from "../_shared/portal-url";
 import type { V2CommandContext } from "./types";
@@ -98,6 +105,19 @@ export async function handleFinanceCommands(
       throw new Error(
         "VALIDATION_FAILED: Choose an active package and studio student.",
       );
+    const quote = await quotePackageDefinition(service, definition, student.id);
+    assertPackageQuote(quote, input.payload);
+    let stripePriceId = definition.stripe_price_id;
+    if (stripePriceId) {
+      const key = Netlify.env.get("STRIPE_SECRET_KEY");
+      if (!key) throw new Error("Stripe is not configured.");
+      stripePriceId = await packageStripePrice(
+        new Stripe(key, { apiVersion: "2026-07-29.dahlia" }),
+        stripePriceId,
+        quote,
+        input.idempotencyKey,
+      );
+    }
     const expiresAt = definition.expiration_days
         ? new Date(
             Date.now() + Number(definition.expiration_days) * 86400000,
@@ -109,10 +129,10 @@ export async function handleFinanceCommands(
           student_id: student.id,
           definition_id: definition.id,
           name: definition.name,
-          price_minor: definition.price_minor,
-          currency: definition.currency,
+          price_minor: quote.price_minor,
+          currency: quote.currency,
           expires_at: expiresAt,
-          stripe_price_id: definition.stripe_price_id,
+          stripe_price_id: stripePriceId,
           credit_quantity: definition.session_count,
           auto_apply:
             (
@@ -814,6 +834,17 @@ export async function handleFinanceCommands(
         "VALIDATION_FAILED: This package is not available for direct purchase.",
       );
     const service = serviceClient();
+    const quote = await quotePackageDefinition(service, definition, student.id);
+    assertPackageQuote(quote, input.payload);
+    const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey) throw new Error("Stripe is not configured.");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
+    const stripePriceId = await packageStripePrice(
+      stripe,
+      billingOption.stripe_price_id,
+      quote,
+      input.idempotencyKey,
+    );
     const expiresAt = definition.expiration_days
       ? new Date(
           Date.now() + Number(definition.expiration_days) * 86400000,
@@ -832,10 +863,10 @@ export async function handleFinanceCommands(
         student_id: student.id,
         definition_id: definition.id,
         name: definition.name,
-        price_minor: definition.price_minor,
-        currency: definition.currency,
+        price_minor: quote.price_minor,
+        currency: quote.currency,
         expires_at: expiresAt,
-        stripe_price_id: definition.stripe_price_id,
+        stripe_price_id: stripePriceId,
         credit_quantity: definition.session_count,
         auto_apply: autoApply,
       })
@@ -844,11 +875,6 @@ export async function handleFinanceCommands(
     if (packageError) throw packageError;
     let packageSubscriptionId: string | undefined;
     try {
-      const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
-      if (!stripeKey) throw new Error("Stripe is not configured.");
-      const stripe = new Stripe(stripeKey, {
-        apiVersion: "2026-07-29.dahlia",
-      });
       const origin = portalOrigin();
       const scheduled = ["weekly", "biweekly", "monthly"].includes(
         requestedMode,
@@ -881,7 +907,7 @@ export async function handleFinanceCommands(
         {
           mode: scheduled ? "subscription" : "payment",
           integration_identifier: integrationIdentifier,
-          line_items: [{ price: billingOption.stripe_price_id, quantity: 1 }],
+          line_items: [{ price: stripePriceId, quantity: 1 }],
           client_reference_id: `${student.id}:${pkg.id}`,
           success_url: `${origin}/portal/payments?checkout=processing`,
           cancel_url: `${origin}/portal/payments?checkout=cancelled`,
