@@ -91,6 +91,16 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   await expect(
     studentRow.getByRole("button", { name: "Open file" }),
   ).toBeVisible();
+  const filePopup = student.page.waitForEvent("popup");
+  await studentRow.getByRole("button", { name: "Open file" }).click();
+  const filePage = await filePopup;
+  await filePage.waitForURL(/\/storage\/v1\/object\/sign\/studio-materials\//);
+  const download = await student.context.request.get(filePage.url());
+  expect(download.ok()).toBe(true);
+  expect(await download.body()).toEqual(
+    Buffer.from("%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF"),
+  );
+  await filePage.close();
   await expect(studentRow).toContainText("Read the shared glossary.");
   await expect(
     student.page.getByText("Private assessment; never student-visible."),
