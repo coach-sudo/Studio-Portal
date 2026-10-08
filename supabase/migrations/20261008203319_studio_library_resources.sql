@@ -30,6 +30,10 @@ alter table public.material_links
   add column updated_at timestamptz not null default now(),
   add column assignment_key text unique;
 update public.material_links l set status=m.status from public.materials m where m.id=l.material_id;
+-- Legacy owner-only rows were visible before relationships were mandatory for the paged view.
+insert into public.material_links(material_id,student_id,role,visible_to_student,status,created_at)
+select m.id,m.owner_student_id,'library',true,m.status,m.created_at from public.materials m
+where m.owner_student_id is not null and not exists(select 1 from public.material_links l where l.material_id=m.id);
 update public.materials m set file_asset_id=f.id from public.file_assets f where f.storage_path=m.storage_path and f.studio_id=m.studio_id;
 create index material_links_student_status_idx on public.material_links(student_id,status,created_at desc,id);
 create index material_links_note_idx on public.material_links(note_id) where note_id is not null;

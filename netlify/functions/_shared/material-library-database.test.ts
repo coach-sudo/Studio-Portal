@@ -89,6 +89,7 @@ beforeAll(async () => {
  insert into auth.users values('${coach}'),('${userA}'),('${userB}');
  insert into public.students(id,studio_id,user_id,deleted_at) values('${studentA}','${studio}','${userA}',null),('${studentB}','${studio}','${userB}',null);
  insert into public.memberships values('${studio}','${coach}','coach');
+ insert into public.materials(studio_id,owner_student_id,title,external_url,status,created_at) values('${studio}','${studentA}','Legacy vaulted study guide','https://example.test/legacy','vaulted','2025-01-01T00:00:00Z');
  `);
   await db.exec(
     readFileSync(
@@ -143,7 +144,8 @@ it("stores a resource once and assigns it to two students without duplicating it
   expect(
     (
       await db.query<{ count: number }>(
-        "select count(*)::int count from public.material_links",
+        "select count(*)::int count from public.material_links where material_id=$1",
+        [resource],
       )
     ).rows[0].count,
   ).toBe(2);
@@ -173,8 +175,14 @@ it("vaulting and pinning are isolated and students never receive private coach n
   );
   expect((await search({ catalog: false, studentId: studentA })).total).toBe(0);
   expect(
-    (await search({ catalog: false, studentId: studentA, status: "vaulted" }))
-      .total,
+    (
+      await search({
+        catalog: false,
+        studentId: studentA,
+        status: "vaulted",
+        search: "Shakespeare",
+      })
+    ).total,
   ).toBe(1);
   expect(
     (await search({ catalog: false, studentId: studentB, status: "all" }))
@@ -518,4 +526,27 @@ it("removing an assignment preserves the canonical resource and another student'
   expect(
     (await search({ search: "Shakes" })).items.some((i) => i.id === resource),
   ).toBe(true);
+});
+it("preserves legacy owner-only resources, their vaulted status and original added date", async () => {
+  await as(userA);
+  const rows = await search({
+    catalog: false,
+    studentId: studentA,
+    status: "vaulted",
+    search: "Legacy",
+  });
+  expect(rows.total).toBe(1);
+  expect(rows.items[0].title).toBe("Legacy vaulted study guide");
+  expect(String(rows.items[0].assignedAt)).toContain("2025-01-01");
+  await as(userB);
+  expect(
+    (
+      await search({
+        catalog: false,
+        studentId: studentA,
+        status: "all",
+        search: "Legacy",
+      })
+    ).total,
+  ).toBe(0);
 });
