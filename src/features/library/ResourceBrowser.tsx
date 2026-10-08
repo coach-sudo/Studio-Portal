@@ -355,6 +355,12 @@ export function ResourceBrowser({
     queryClient = useQueryClient(),
     coach = data.role === "coach";
   const source = isDemo ? { ...store.snapshot, role: data.role } : data;
+  const canManage =
+    coach ||
+    data.role === "student" ||
+    !!data.linkedContacts.find(
+      (contact) => contact.id === data.currentLinkedContactId,
+    )?.canManageProfile;
   const [search, setSearch] = useState(""),
     [visibility, setVisibility] = useState("all"),
     [filters, setFilters] = useState<ResourceOption[]>([]),
@@ -467,7 +473,8 @@ export function ResourceBrowser({
     <Section
       title={title || (catalog ? "Studio Library" : "My Materials")}
       aside={
-        showActions && (
+        showActions &&
+        canManage && (
           <div className="page-actions">
             <button type="button" onClick={() => setAdding(true)}>
               {catalog ? "New resource" : "Add material"}
@@ -487,6 +494,18 @@ export function ResourceBrowser({
       }
     >
       <div className="resource-search">
+        <label>
+          Search resources
+          <input
+            type="search"
+            value={search}
+            placeholder="Title, topic, level, or keyword"
+            onKeyDown={(event) => {
+              if (event.key === "Enter") event.preventDefault();
+            }}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </label>
         {coach && catalog && (
           <label>
             Access
@@ -500,15 +519,6 @@ export function ResourceBrowser({
             </select>
           </label>
         )}
-        <label>
-          Search resources
-          <input
-            type="search"
-            value={search}
-            placeholder="Title, description, topic, level, or keyword"
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </label>
         <label>
           Sort
           <select value={sort} onChange={(e) => setSort(e.target.value)}>
@@ -632,7 +642,7 @@ export function ResourceBrowser({
                 </button>
               ) : catalog ? (
                 <>
-                  {(coach || studentId) && (
+                  {canManage && (coach || studentId) && (
                     <button
                       type="button"
                       disabled={resource.resourceStatus !== "active"}
@@ -661,7 +671,7 @@ export function ResourceBrowser({
                     </>
                   )}
                 </>
-              ) : (
+              ) : canManage ? (
                 <>
                   <button
                     type="button"
@@ -698,7 +708,7 @@ export function ResourceBrowser({
                     </button>
                   )}
                 </>
-              )}
+              ) : null}
             </div>
             {expanded === (resource.assignmentId || resource.id) && (
               <ResourceDetailView

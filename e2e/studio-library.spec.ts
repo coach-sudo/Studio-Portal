@@ -36,13 +36,9 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     ["Levels", "Advanced"],
     ["Mediums", "PDF"],
   ]) {
-    const picker = editor
-      .locator("details")
-      .filter({
-        has: page
-          .locator("summary")
-          .filter({ hasText: new RegExp(`^${kind}`) }),
-      });
+    const picker = editor.locator("details").filter({
+      has: page.locator("summary").filter({ hasText: new RegExp(`^${kind}`) }),
+    });
     if (!(await picker.getAttribute("open")))
       await picker.locator("summary").click();
     await picker.getByRole("searchbox").fill(`${runtime.runId} ${name}`);
@@ -50,15 +46,13 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     await expect(picker.locator("summary")).toContainText(name);
     await picker.locator("summary").click();
   }
-  await editor
-    .getByLabel("File", { exact: true })
-    .setInputFiles({
-      name: `${runtime.runId}-lexicon.pdf`,
-      mimeType: "application/pdf",
-      buffer: Buffer.from(
-        "%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF",
-      ),
-    });
+  await editor.getByLabel("File", { exact: true }).setInputFiles({
+    name: `${runtime.runId}-lexicon.pdf`,
+    mimeType: "application/pdf",
+    buffer: Buffer.from(
+      "%PDF-1.4\nDeterministic reusable lexicon fixture\n%%EOF",
+    ),
+  });
   await expectNoSeriousAxeViolations(page, '[role="dialog"]');
   await editor
     .getByRole("button", { name: "Add resource", exact: true })

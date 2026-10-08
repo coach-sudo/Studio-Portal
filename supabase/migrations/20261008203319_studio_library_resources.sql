@@ -71,7 +71,7 @@ select m.id,o.id from public.materials m join public.material_options o on o.stu
 -- Private helpers avoid a recursive materials -> links -> materials RLS policy.
 create function library_internal.can_read_material(target uuid) returns boolean
 language sql stable security definer set search_path='' as $$
-select exists(select 1 from public.materials m where m.id=target and (
+select auth.uid() is not null and exists(select 1 from public.materials m where m.id=target and (
  public.is_studio_coach(m.studio_id)
  or (not m.in_library and not m.assignment_only and m.owner_student_id is not null and public.can_view_student_work(m.owner_student_id))
  or (m.in_library and m.catalog_visibility='studio' and m.status='active' and exists(select 1 from public.students s where s.studio_id=m.studio_id and public.can_view_student_work(s.id)))
@@ -80,7 +80,7 @@ select exists(select 1 from public.materials m where m.id=target and (
 $$;
 create function library_internal.can_read_material_link(target uuid) returns boolean
 language sql stable security definer set search_path='' as $$
-select exists(select 1 from public.material_links l join public.materials m on m.id=l.material_id where l.id=target and (
+select auth.uid() is not null and exists(select 1 from public.material_links l join public.materials m on m.id=l.material_id where l.id=target and (
  public.is_studio_coach(m.studio_id) or (l.visible_to_student and public.can_view_student_work(coalesce(l.student_id,(select student_id from public.lessons where id=l.lesson_id))) and (l.note_id is null or exists(select 1 from public.notes n where n.id=l.note_id and n.status='published')))
 ));
 $$;
@@ -104,7 +104,7 @@ create policy material_links_access on public.material_links for select to authe
 
 create function library_internal.can_read_material_path(target_path text) returns boolean
 language sql stable security definer set search_path='' as $$
-select exists(select 1 from public.materials m where m.storage_path=target_path and split_part(target_path,'/',1)=m.studio_id::text and library_internal.can_read_material(m.id));
+select auth.uid() is not null and exists(select 1 from public.materials m where m.storage_path=target_path and split_part(target_path,'/',1)=m.studio_id::text and library_internal.can_read_material(m.id));
 $$;
 revoke all on function library_internal.can_read_material_path(text) from public,anon;
 grant execute on function library_internal.can_read_material_path(text) to authenticated,service_role;
@@ -130,7 +130,7 @@ create policy file_assets_insert on public.file_assets for insert to authenticat
 -- Canonical objects are immutable while referenced. Assignment removal never deletes a file.
 create function library_internal.material_path_referenced(target_path text) returns boolean
 language sql stable security definer set search_path='' as $$
-select exists(select 1 from public.materials where storage_path=target_path);
+select auth.uid() is not null and exists(select 1 from public.materials where storage_path=target_path);
 $$;
 revoke all on function library_internal.material_path_referenced(text) from public,anon;
 grant execute on function library_internal.material_path_referenced(text) to authenticated,service_role;
