@@ -24,6 +24,8 @@ interface StudioStoreValue {
 const StudioStoreContext = createContext<StudioStoreValue | null>(null);
 const STORAGE_KEY = "stage-story-studio-core-v2";
 const CORE_KEYS = [
+  "materialOptions",
+  "materialCollections",
   "students",
   "lessons",
   "notes",

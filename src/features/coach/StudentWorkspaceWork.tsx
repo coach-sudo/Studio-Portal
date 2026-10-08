@@ -4,10 +4,12 @@ import type { Material, Student } from "../../domain/model";
 import { formatStudioDate } from "../../domain/presentation";
 
 import { type Data } from "./StudentWorkspace.shared";
+import { ResourceBrowser } from "../library/ResourceBrowser";
 
 export function Work({
   data,
   student,
+  isDemo,
   onAddAssignment,
   onAddMaterial,
   onArchiveMaterial,
@@ -15,6 +17,7 @@ export function Work({
 }: {
   data: Data;
   student: Student;
+  isDemo: boolean;
   onAddAssignment: () => void;
   onAddMaterial: () => void;
   onArchiveMaterial: (material: Material) => void;
@@ -27,7 +30,7 @@ export function Work({
       (i) => i.studentId === student.id && i.role !== "actor_material",
     );
   return (
-    <div className="two-section-grid">
+    <div className="resource-workspace">
       <Section
         title="Practice"
         aside={
@@ -63,54 +66,64 @@ export function Work({
           )}
         </div>
       </Section>
-      <Section
-        title="Scripts & lesson materials"
-        aside={
-          <button onClick={onAddMaterial}>
-            <Plus />
-            Add
-          </button>
-        }
-      >
-        <div className="table-list">
-          {materials.map((item) => (
-            <article key={item.id}>
-              <FolderOpen />
-              <div>
-                <strong>{item.title}</strong>
-                <small>
-                  {item.category} · {item.role.replaceAll("_", " ")}
-                </small>
-              </div>
-              <Status tone={item.status === "active" ? "good" : "neutral"}>
-                {item.status}
-              </Status>
-              {item.externalUrl && (
-                <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                  Open
-                </a>
-              )}
-              <button type="button" onClick={() => onArchiveMaterial(item)}>
-                {item.status === "active" ? "Archive" : "Restore"}
-              </button>
-              <button
-                type="button"
-                className="danger-button"
-                onClick={() => onDeleteMaterial(item)}
-              >
-                <Trash2 />
-                Delete
-              </button>
-            </article>
-          ))}
-          {!materials.length && (
-            <EmptyState
-              title="No materials yet"
-              detail="Add a script, worksheet, or reference."
-            />
-          )}
-        </div>
-      </Section>
+      <ResourceBrowser
+        data={data}
+        isDemo={isDemo}
+        studentId={student.id}
+        catalog={false}
+        title="Student materials"
+      />
+      <details className="disclosure-section">
+        <summary>Current script tools</summary>
+        <Section
+          title="Scripts & lesson materials"
+          aside={
+            <button onClick={onAddMaterial}>
+              <Plus />
+              Add
+            </button>
+          }
+        >
+          <div className="table-list">
+            {materials.map((item) => (
+              <article key={item.id}>
+                <FolderOpen />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.category} · {item.role.replaceAll("_", " ")}
+                  </small>
+                </div>
+                <Status tone={item.status === "active" ? "good" : "neutral"}>
+                  {item.status}
+                </Status>
+                {item.externalUrl && (
+                  <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                )}
+                <button type="button" onClick={() => onArchiveMaterial(item)}>
+                  {item.status === "active" ? "Archive" : "Restore"}
+                </button>
+                <button
+                  type="button"
+                  className="danger-button"
+                  onClick={() => onDeleteMaterial(item)}
+                >
+                  <Trash2 />
+                  Delete
+                </button>
+              </article>
+            ))}
+            {!materials.length && (
+              <EmptyState
+                title="No materials yet"
+                detail="Add a script, worksheet, or reference."
+              />
+            )}
+          </div>
+        </Section>
+      </details>
     </div>
   );
 }

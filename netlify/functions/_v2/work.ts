@@ -1,4 +1,4 @@
-import { json } from "../_shared/http";
+import { AppError, json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 
@@ -7,6 +7,28 @@ export async function handleWorkCommands(
 ): Promise<Response | null> {
   const { audit, db, domain, input, requireCoach, requireMaterialManager } =
     ctx;
+
+  if (
+    domain === "materials" &&
+    /^(resource_|assignment_|option_|collection_)/.test(input.command)
+  ) {
+    const { data, error } = await db.rpc(
+      "manage_material_resources" as never,
+      {
+        p_command: input.command,
+        p_payload: { ...input.payload, id: input.entityId || input.payload.id },
+        p_expected_version: input.expectedVersion,
+      } as never,
+    );
+    if (error) {
+      if (error.code === "42501") throw AppError.forbidden(error);
+      throw new AppError("VALIDATION_FAILED", {
+        status: 422,
+        message: error.message,
+      });
+    }
+    return json({ resource: data, recommendations: [], queuedSideEffects: [] });
+  }
 
   if (
     domain === "offerings" &&
@@ -272,6 +294,20 @@ export async function handleWorkCommands(
         .eq("id", studentId)
         .single();
     if (studentError || !student) throw new Error("FORBIDDEN");
+    if (input.payload.storagePath) {
+      const { data: asset, error: assetError } = await db
+        .from("file_assets")
+        .select("owner_student_id,studio_id,storage_path")
+        .eq("storage_path", String(input.payload.storagePath))
+        .single();
+      if (
+        assetError ||
+        !asset ||
+        asset.studio_id !== student.studio_id ||
+        asset.owner_student_id !== student.id
+      )
+        throw AppError.forbidden(assetError);
+    }
     const materialRole = String(input.payload.role || "library");
     if (materialRole === "current_script") {
       const { data: currentLinks } = await serviceClient()
@@ -288,7 +324,17 @@ export async function handleWorkCommands(
             updated_at: new Date().toISOString(),
           })
           .in("id", currentIds)
+          .eq("in_library", false)
           .eq("status", "active");
+      if (currentIds.length) {
+        const { error: linkError } = await serviceClient()
+          .from("material_links")
+          .update({ status: "archived", updated_at: new Date().toISOString() })
+          .eq("student_id", student.id)
+          .eq("role", "current_script")
+          .eq("status", "active");
+        if (linkError) throw linkError;
+      }
     }
     const { data, error } = await serviceClient()
       .from("materials")
@@ -381,6 +427,11 @@ export async function handleWorkCommands(
     input.entityId
   ) {
     const { studioId, before } = await requireMaterialManager(input.entityId);
+    if (
+      ("in_library" in before && before.in_library) ||
+      ("assignment_only" in before && before.assignment_only)
+    )
+      throw AppError.forbidden();
     const status = String(input.payload.status || "");
     if (!["active", "archived"].includes(status))
       throw new Error("VALIDATION_FAILED");
@@ -397,6 +448,11 @@ export async function handleWorkCommands(
       .maybeSingle();
     if (error) throw error;
     if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+    const { error: linkError } = await serviceClient()
+      .from("material_links")
+      .update({ status, updated_at: new Date().toISOString() })
+      .eq("material_id", before.id);
+    if (linkError) throw linkError;
     return json({
       resource: data,
       auditEventId: await audit(
@@ -414,6 +470,11 @@ export async function handleWorkCommands(
 
   if (domain === "materials" && input.command === "delete" && input.entityId) {
     const { studioId, before } = await requireMaterialManager(input.entityId);
+    if (
+      ("in_library" in before && before.in_library) ||
+      ("assignment_only" in before && before.assignment_only)
+    )
+      throw AppError.forbidden();
     const service = serviceClient();
     if (before.version !== input.expectedVersion)
       throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
@@ -426,20 +487,7 @@ export async function handleWorkCommands(
       .maybeSingle();
     if (deleteError) throw deleteError;
     if (!deleted) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-    let storageWarning = false;
-    if (before.storage_path) {
-      const storageResult = await service.storage
-        .from("studio-materials")
-        .remove([before.storage_path]);
-      storageWarning = Boolean(storageResult.error);
-      if (!storageWarning) {
-        const { error: assetDeleteError } = await service
-          .from("file_assets")
-          .delete()
-          .eq("storage_path", before.storage_path);
-        if (assetDeleteError) storageWarning = true;
-      }
-    }
+    const storageWarning = false; // Retain uploaded objects until an inspected cleanup verifies every reference and backup.
     return json({
       resource: { id: before.id, deleted: true, storageWarning },
       auditEventId: await audit(

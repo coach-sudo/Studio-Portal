@@ -33,6 +33,7 @@ import {
 } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import "./StudioMaterials.css";
+import { ResourceBrowser } from "../library/ResourceBrowser";
 
 import { studentName } from "./StudioOperations.shared";
 
@@ -57,6 +58,24 @@ export function MaterialsView({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  return (
+    <>
+      <ResourceBrowser data={data} isDemo={isDemo} />
+      <details className="disclosure-section">
+        <summary>Student uploads & actor media</summary>
+        <LegacyMaterialsView data={data} isDemo={isDemo} />
+      </details>
+    </>
+  );
+}
+
+function LegacyMaterialsView({
+  data,
+  isDemo,
+}: {
+  data: StudioSnapshot;
+  isDemo: boolean;
+}) {
   const navigate = useNavigate(),
     store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -75,7 +94,7 @@ export function MaterialsView({
     >("all");
   const [serverPage, setServerPage] = useState(1);
   const [serverPageSize, setServerPageSize] = useState(coachPageSize);
-  const serverPaging = queryLayerV2Enabled && !isDemo;
+  const serverPaging = !isDemo;
   const remoteMaterials = usePaginatedStudioRows(
     {
       domain: "work",
@@ -268,7 +287,7 @@ export function MaterialsView({
       !current ||
       deleting ||
       !window.confirm(
-        `Permanently delete “${current.title}”? The uploaded file will also be removed and this cannot be undone.`,
+        `Permanently delete “${current.title}”? The material record is removed. Uploaded files are retained for safe cleanup.`,
       )
     )
       return;
@@ -287,7 +306,7 @@ export function MaterialsView({
         });
         await invalidateStudioDomains(queryClient, ["work"]);
       }
-      setNotice("Material and uploaded file deleted.");
+      setNotice("Material removed. Uploaded files retained for safe cleanup.");
     } catch (reason) {
       setNotice(
         reason instanceof Error

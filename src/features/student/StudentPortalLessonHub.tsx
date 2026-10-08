@@ -1,3 +1,4 @@
+import { ResourceBrowser } from "../library/ResourceBrowser";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import {
@@ -539,30 +540,15 @@ export function LessonHub({
               )}
             </div>
           </Section>
-          <Section title="Attachments & resources">
-            <div className="table-list">
-              {materials.map((item) => (
-                <article key={item.id}>
-                  <FolderOpen />
-                  <div>
-                    <strong>{item.title}</strong>
-                    <small>{item.category}</small>
-                  </div>
-                  {item.externalUrl && (
-                    <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                      Open
-                    </a>
-                  )}
-                </article>
-              ))}
-              {!materials.length && (
-                <EmptyState
-                  title="No lesson resources"
-                  detail="Scripts and files attached to this lesson appear here."
-                />
-              )}
-            </div>
-          </Section>
+          <ResourceBrowser
+            data={data}
+            isDemo={isDemo}
+            studentId={data.students[0]?.id}
+            lessonId={lesson.id}
+            catalog={false}
+            showActions={false}
+            title="Attachments & resources"
+          />
           <Section title="Conversation" marked>
             <Link className="button-link primary" to="/portal/inbox">
               <MessageSquare />
