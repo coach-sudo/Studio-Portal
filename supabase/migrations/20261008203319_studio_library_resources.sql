@@ -145,7 +145,11 @@ create policy file_assets_insert on public.file_assets for insert to authenticat
 -- Canonical objects are immutable while referenced. Assignment removal never deletes a file.
 create function library_internal.material_path_referenced(target_path text) returns boolean
 language sql stable security definer set search_path='' as $$
-select auth.uid() is not null and exists(select 1 from public.materials where storage_path=target_path);
+select auth.uid() is not null and (
+ exists(select 1 from public.materials where storage_path=target_path)
+ or exists(select 1 from public.file_assets f join public.students s on s.profile_photo_asset_id=f.id where f.storage_path=target_path)
+ or exists(select 1 from public.file_assets f join public.memberships m on m.profile_photo_asset_id=f.id where f.storage_path=target_path)
+);
 $$;
 revoke all on function library_internal.material_path_referenced(text) from public,anon;
 grant execute on function library_internal.material_path_referenced(text) to authenticated,service_role;

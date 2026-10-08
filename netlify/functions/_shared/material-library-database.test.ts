@@ -65,7 +65,7 @@ beforeAll(async () => {
  create table auth.users(id uuid primary key);
  create table public.studios(id uuid primary key);
  create table public.students(id uuid primary key,studio_id uuid,user_id uuid,deleted_at timestamptz,full_name text default 'Student',profile_photo_asset_id uuid);
- create table public.memberships(studio_id uuid,user_id uuid,role text);
+ create table public.memberships(studio_id uuid,user_id uuid,role text,profile_photo_asset_id uuid);
  create table public.lessons(id uuid primary key,studio_id uuid,student_id uuid,topic text default 'Lesson');
  create table public.lesson_participants(lesson_id uuid,student_id uuid,topic text default 'Lesson');
  create table public.notes(id uuid primary key,lesson_id uuid,student_id uuid,status text);
@@ -88,7 +88,7 @@ beforeAll(async () => {
  insert into public.studios values('${studio}');
  insert into auth.users values('${coach}'),('${userA}'),('${userB}');
  insert into public.students(id,studio_id,user_id,deleted_at) values('${studentA}','${studio}','${userA}',null),('${studentB}','${studio}','${userB}',null);
- insert into public.memberships values('${studio}','${coach}','coach');
+ insert into public.memberships(studio_id,user_id,role) values('${studio}','${coach}','coach');
  insert into public.materials(studio_id,owner_student_id,title,external_url,status,created_at) values('${studio}','${studentA}','Legacy vaulted study guide','https://example.test/legacy','vaulted','2025-01-01T00:00:00Z');
  `);
   await db.exec(
@@ -569,6 +569,14 @@ it("keeps a coach-uploaded private profile photo accessible only through its aut
     (await db.query("select name from storage.objects where name=$1", [path]))
       .rows,
   ).toHaveLength(1);
+  expect(
+    (
+      await db.query(
+        "delete from storage.objects where name=$1 returning name",
+        [path],
+      )
+    ).rows,
+  ).toHaveLength(0);
   await as(userB);
   expect(
     (await db.query("select id from public.file_assets where id=$1", [photo]))
