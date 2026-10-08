@@ -537,7 +537,9 @@ it("preserves legacy owner-only resources, their vaulted status and original add
   });
   expect(rows.total).toBe(1);
   expect(rows.items[0].title).toBe("Legacy vaulted study guide");
-  expect(String(rows.items[0].assignedAt)).toContain("2025-01-01");
+  expect(new Date(String(rows.items[0].assignedAt)).toISOString()).toBe(
+    "2025-01-01T00:00:00.000Z",
+  );
   await as(userB);
   expect(
     (
