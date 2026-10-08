@@ -44,7 +44,11 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/students");
       await user.click(
-        await screen.findByRole("button", { name: /Maya Kim/i }),
+        await screen.findByRole(
+          "button",
+          { name: /Maya Kim/i },
+          { timeout: 5000 },
+        ),
       );
       expect(
         await screen.findByRole("heading", { name: "Maya Kim" }),

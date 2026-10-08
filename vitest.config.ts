@@ -6,6 +6,7 @@ export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, "e2e/**"],
     environment: "jsdom",
+    maxWorkers: 2,
     setupFiles: ["./src/test/setup.ts"],
     coverage: { reporter: ["text", "json-summary"] },
   },
