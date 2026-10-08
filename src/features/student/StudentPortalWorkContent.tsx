@@ -512,7 +512,7 @@ function LegacyMaterials({
           onClose={() => setAdding(false)}
           onSave={add}
           lessons={data.lessons}
-          fixedRole={actorOnly ? "actor_material" : undefined}
+          fixedRole={actorOnly ? "actor_material" : "current_script"}
         />
       )}
     </div>
@@ -533,7 +533,7 @@ function MaterialSubmission({
     lessonId?: string,
     file?: File,
   ) => void;
-  fixedRole?: "actor_material";
+  fixedRole?: "actor_material" | "current_script";
   lessons: Snapshot["lessons"];
 }) {
   const [title, setTitle] = useState(""),

@@ -92,7 +92,17 @@ test("@journey PR6 coach lesson workspace opens linked work in context", async (
   ] as const) {
     await page.getByRole("button", { name: button }).click();
     const workflow = page.getByRole("dialog", { name: dialog });
-    await expect(workflow.getByLabel("Related lesson")).toHaveValue(lessonId!);
+    if (button === "Attach resource") {
+      await expect(
+        workflow.getByRole("button", { name: "Choose from Library" }),
+      ).toBeVisible();
+      await expect(
+        workflow.getByRole("button", { name: "Add New Resource" }),
+      ).toBeVisible();
+    } else
+      await expect(workflow.getByLabel("Related lesson")).toHaveValue(
+        lessonId!,
+      );
     await page.keyboard.press("Escape");
     await expect(workflow).toBeHidden();
   }
@@ -146,6 +156,7 @@ test("@journey Journey 07: student uploads and removes a namespaced safe fixture
   requireFixtures(runtime);
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/work");
+  await page.getByText("Current script upload", { exact: true }).click();
   await page.getByRole("button", { name: "Submit material" }).click();
   await page.getByLabel("Title").fill(`${runtime.runId} uploaded material`);
   await page.getByLabel("Upload file").setInputFiles({

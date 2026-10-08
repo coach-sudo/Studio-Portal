@@ -396,7 +396,9 @@ it("draft attachments hide metadata and downloads until published; deleting a no
     })
   ).id;
   await as(userA);
-  await expect(command("resource_assign",{id:draft,studentIds:[studentA]})).rejects.toThrow("FORBIDDEN");
+  await expect(
+    command("resource_assign", { id: draft, studentIds: [studentA] }),
+  ).rejects.toThrow("FORBIDDEN");
   expect(
     (
       await search({ studentId: studentA, catalog: false, status: "all" })
