@@ -1202,6 +1202,9 @@ input[type="radio"] {
   .dashboard-rail {
     position: static;
   }
+  .creative-home-grid > .dashboard-rail {
+    order: -1;
+  }
 }
 @media (max-width: 900px) {
   .settings-nav {

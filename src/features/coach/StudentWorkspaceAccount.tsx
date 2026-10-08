@@ -348,7 +348,6 @@ function LinkedContacts({
       {(adding || editing) && (
         <Drawer
           title={editing ? `Edit ${editing.fullName}` : "Add linked contact"}
-          description="Access and optional email preferences can be changed at any time."
           onClose={() => {
             setAdding(false);
             setEditing(undefined);
@@ -427,10 +426,7 @@ function LinkedContacts({
             </fieldset>
             <fieldset className="full option-fieldset">
               <legend>Responsibility</legend>
-              <p>
-                Responsibility chooses who handles an action; it does not grant
-                portal access.
-              </p>
+              <p>Responsibility does not grant portal access.</p>
               {(
                 [
                   ["isPrimaryPayer", "Primary payer"],
@@ -879,7 +875,7 @@ export function Account({
           />
           <SettingToggle
             title="Special pricing"
-            detail="Use student-specific prices and delivery add-ons when this student books while signed in."
+            detail="Use this student’s rates for new bookings and packages. Existing purchases and renewals keep their price."
             checked={Boolean(student.specialPricingEnabled)}
             onChange={() =>
               void onSave({
@@ -899,8 +895,7 @@ export function Account({
       {student.specialPricingEnabled && (
         <Section title="Student-specific pricing" marked>
           <p className="section-intro">
-            Customized services override public prices. Other services keep
-            public pricing.
+            Uncustomized services use studio pricing.
           </p>
           {rateNotice && (
             <p className="portal-notice" role="status">

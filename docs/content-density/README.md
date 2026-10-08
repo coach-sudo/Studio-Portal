@@ -2,6 +2,8 @@
 
 Baseline: `main` at `3f1e4c3d103cd6a98834df0135ffa1a15b10627e`. Implementation branch: `codex/content-density-reduction`. The completed Phase 1 audit supplied the inventory and IDs below. PR #28 was closed without merging; this change preserves the visual work already present in the baseline.
 
+This report records the initial content pass (`90d9789`). The [follow-up report](FOLLOWUP.md) covers the broader Home, payment, student, and lesson changes, the subsequently requested automatic package pricing, and current validation results.
+
 ## Page-by-page disposition
 
 | Page / workflow                          | Audit IDs               | Significant problem and implemented disposition                                                                                                                                                                                                  |
@@ -31,7 +33,7 @@ Baseline: `main` at `3f1e4c3d103cd6a98834df0135ffa1a15b10627e`. Implementation b
 | Inbox / referrals                        | E05, E06, E08           | Shortened interface guidance. Household privacy, email undo window, delivery actions, reward amounts, and qualification rules remain.                                                                                                            |
 | Public booking, authentication, invoices | E03, E04, E07, E09, E10 | Retained configured service/marketing copy, delivery undo, sign-in guidance, financial recipient restrictions, legal text, and public checkout.                                                                                                  |
 
-No schemas, API contracts, calculations, mutation payloads, permissions, routes, dependencies, theme, or typography were changed. No stored notes, messages, welcome text, bios, or other authored records were rewritten or truncated. No new general-purpose component interfaces were introduced.
+The initial content pass changed no schemas, API contracts, calculations, mutation payloads, permissions, routes, dependencies, theme, or typography. The subsequent pricing request is documented separately in the follow-up report. Neither pass rewrites or truncates stored notes, messages, welcome text, bios, or other authored records.
 
 The Add student focus test exposed an existing `autoFocus` interaction: the input became the overlay's return target before its focus effect ran. Removing that attribute lets the existing overlay focus handling capture and restore the Add student opener. Focus trapping and Escape behavior pass both component and browser checks.
 

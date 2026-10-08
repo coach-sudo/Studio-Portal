@@ -10,6 +10,12 @@ await mkdir(out, { recursive: true });
 const browser = await chromium.launch();
 const report = [];
 const routes = [
+  ["coach-home", "/coach"],
+  ["student-payments", "/portal/payments"],
+  ["workspace-payments", "/coach/students/student-maya/payments"],
+  ["workspace-lesson", "/coach/students/student-maya/lessons/lesson-maya-next"],
+  ["lesson-dialog", "/coach/lessons"],
+  ["actor-preview", "/portal/actor-page"],
   ["today", "/coach/today"],
   ["students", "/coach/students"],
   ["workspace", "/coach/students/student-maya"],
@@ -72,6 +78,16 @@ try {
           .click();
         await page.getByRole("dialog").waitFor();
       }
+      if (name === "lesson-dialog") {
+        await page.locator(".calendar-event").first().click();
+        await page.getByRole("dialog").waitFor();
+      }
+      if (name === "actor-preview") {
+        await page
+          .getByRole("button", { name: "Preview draft", exact: true })
+          .click();
+        await page.getByRole("dialog").waitFor();
+      }
       await page.screenshot({
         path: `${out}/${name}-${size}.png`,
         fullPage: true,
@@ -88,7 +104,7 @@ try {
           .filter((v) => ["serious", "critical"].includes(v.impact))
           .map((v) => ({ id: v.id, targets: v.nodes.map((n) => n.target) })),
       });
-      if (phase === "after") {
+      if (phase.endsWith("after")) {
         if (name === "home" || name === "lesson" || name === "campaigns") {
           for (const summary of await page
             .locator(

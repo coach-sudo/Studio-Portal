@@ -439,10 +439,7 @@ export function LessonHub({
       )}
       {offering && (
         <Section title="Class information" marked>
-          <p>
-            {offering.description ||
-              "Your enrollment details and shared class resources live here."}
-          </p>
+          {offering.description && <p>{offering.description}</p>}
           <div className="student-quick-actions">
             {(offering.meetingUrl || lesson.joinUrl) && (
               <a
@@ -480,10 +477,6 @@ export function LessonHub({
             <div className="note-cards">
               {notes.map((note) => (
                 <article key={note.id}>
-                  <header>
-                    <strong>{note.title}</strong>
-                    <Status tone="good">published</Status>
-                  </header>
                   <details className="disclosure-section">
                     <summary>Read {note.title}</summary>
                     {note.bodyHtml ? (

@@ -6,7 +6,7 @@ import {
   UserRound,
   Waypoints,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { EmptyState, PageSkeleton, Section } from "../../components/Primitives";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import { coachOperationalSummary } from "../../domain/coachOperationalSummary";
@@ -115,12 +115,6 @@ export function CoachHome() {
           <h1>
             {greeting}, {data.displayName}
           </h1>
-          <p>
-            {todayCount} lesson{todayCount === 1 ? "" : "s"} today.{" "}
-            {operational.needsAttention
-              ? `${operational.needsAttention} need attention.`
-              : "Your studio is ready for the day."}
-          </p>
           <div className="header-actions">
             <button
               className="search-button"
@@ -151,35 +145,6 @@ export function CoachHome() {
           `${data.students.find((item) => item.id === lesson.studentId)?.preferredName || data.students.find((item) => item.id === lesson.studentId)?.fullName || "Student"} · ${lesson.topic}`
         }
       />
-      <div
-        className="operational-counts"
-        aria-label="Lesson readiness overview"
-      >
-        <Link to="/coach/today">
-          {todayCount} lessons today · {operational.readyCount} ready
-        </Link>
-        <Link to="/coach/today">
-          {operational.financialAttention} financial exceptions ·{" "}
-          {formatMoney(operational.moneyAtRisk, data.settings.currency)} at risk
-        </Link>
-        <Link to="/coach/settings">
-          {operational.upcomingCommunication} communications queued
-        </Link>
-      </div>
-      <button
-        className="home-today-link"
-        onClick={() => navigate("/coach/today")}
-      >
-        <Waypoints />
-        <span>
-          <strong>
-            {actionCount} {actionCount === 1 ? "item" : "items"} need attention
-            today
-          </strong>
-          <small>Preparation, follow-up, verification, and approvals</small>
-        </span>
-        <b>Open Today</b>
-      </button>
       <div className="studio-pulse-grid" aria-label="Studio overview">
         <button onClick={() => navigate("/coach/students?status=active")}>
           <UserRound />
@@ -211,18 +176,7 @@ export function CoachHome() {
         </button>
       </div>
       <div className="home-dashboard-grid creative-home-grid">
-        <Section
-          title="Coming up this week"
-          marked
-          aside={
-            <button
-              className="text-button"
-              onClick={() => navigate("/coach/today")}
-            >
-              Open Today
-            </button>
-          }
-        >
+        <Section title="Coming up this week" marked>
           <div className="timeline">
             {upcoming.slice(0, 6).map((lesson) => {
               const student = data.students.find(
@@ -271,10 +225,7 @@ export function CoachHome() {
           <header>
             <small>Today at a glance</small>
             <strong>
-              {formatStudioDate(new Date(now), data.settings.timezone, {
-                weekday: "long",
-                month: "short",
-              })}
+              {actionCount ? `${actionCount} need attention` : "All clear"}
             </strong>
           </header>
           <button onClick={() => navigate("/coach/today")}>
@@ -283,27 +234,62 @@ export function CoachHome() {
               <strong>
                 {todayCount} lesson{todayCount === 1 ? "" : "s"}
               </strong>
-              <small>Teaching schedule</small>
+              <small>
+                {todayCount > 0 ? `${operational.readyCount} ready · ` : ""}Open
+                Today
+              </small>
             </span>
           </button>
-          <button onClick={() => navigate("/coach/today#notes")}>
-            <Waypoints />
-            <span>
-              <strong>
-                {noteFollowupCount} note{noteFollowupCount === 1 ? "" : "s"} due
-              </strong>
-              <small>Recent lesson follow-up</small>
-            </span>
-          </button>
-          <button onClick={() => navigate("/coach/today#approvals")}>
-            <UserRound />
-            <span>
-              <strong>
-                {reviewCount} approval{reviewCount === 1 ? "" : "s"}
-              </strong>
-              <small>Waiting for you</small>
-            </span>
-          </button>
+          {noteFollowupCount > 0 && (
+            <button onClick={() => navigate("/coach/today#notes")}>
+              <Waypoints />
+              <span>
+                <strong>
+                  {noteFollowupCount} note{noteFollowupCount === 1 ? "" : "s"}{" "}
+                  due
+                </strong>
+              </span>
+            </button>
+          )}
+          {reviewCount > 0 && (
+            <button onClick={() => navigate("/coach/today#approvals")}>
+              <UserRound />
+              <span>
+                <strong>
+                  {reviewCount} approval{reviewCount === 1 ? "" : "s"}
+                </strong>
+              </span>
+            </button>
+          )}
+          {operational.financialAttention > 0 && (
+            <button onClick={() => navigate("/coach/today")}>
+              <CircleDollarSign />
+              <span>
+                <strong>
+                  {operational.financialAttention} financial exceptions
+                </strong>
+                {operational.moneyAtRisk > 0 && (
+                  <small>
+                    {formatMoney(
+                      operational.moneyAtRisk,
+                      data.settings.currency,
+                    )}{" "}
+                    at risk
+                  </small>
+                )}
+              </span>
+            </button>
+          )}
+          {operational.upcomingCommunication > 0 && (
+            <button onClick={() => navigate("/coach/settings")}>
+              <Waypoints />
+              <span>
+                <strong>
+                  {operational.upcomingCommunication} communications queued
+                </strong>
+              </span>
+            </button>
+          )}
         </aside>
       </div>
     </div>

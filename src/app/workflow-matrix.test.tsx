@@ -302,9 +302,9 @@ describe("50 start-to-finish studio workflows", () => {
     });
     it("16 keeps Home oriented around the week and one Today action", async () => {
       renderApp("/coach");
-      expect((await screen.findAllByText("Open Today")).length).toBeGreaterThan(
-        0,
-      );
+      expect(
+        (await screen.findAllByRole("button", { name: /Open Today/ })).length,
+      ).toBeGreaterThan(0);
       expect(screen.getByText("Coming up this week")).toBeInTheDocument();
       expect(screen.queryByText("Run today")).not.toBeInTheDocument();
     });
@@ -474,7 +474,7 @@ describe("50 start-to-finish studio workflows", () => {
         screen.getByRole("heading", { name: "Your packages" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Current balance" }),
+        screen.getByRole("heading", { name: "Account credit" }),
       ).toBeInTheDocument();
     });
     it("26 sees one primary action and related workspace actions on Home", async () => {
@@ -709,7 +709,9 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "Payments" }),
       ).toBeInTheDocument();
-      expect(screen.getByText(/Current balance/i)).toBeInTheDocument();
+      expect(
+        screen.getByRole("heading", { name: "Account credit" }),
+      ).toBeInTheDocument();
     });
     it("G4 can open the linked actor-page workspace", async () => {
       renderGuardian("/portal/actor-page");

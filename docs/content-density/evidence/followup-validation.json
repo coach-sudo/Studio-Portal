@@ -1,0 +1,179 @@
+{
+  "vitest": {
+    "command": "npm test -- --maxWorkers=2",
+    "tests": 532,
+    "passed": 532,
+    "files": 88,
+    "success": true
+  },
+  "matchedViews": {
+    "pairs": 42,
+    "beforeOverflow": 0,
+    "afterOverflow": 0,
+    "beforeFindings": [
+      {
+        "name": "workspace",
+        "size": "desktop",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "desktop",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "workspace",
+        "size": "tablet",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "tablet",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "workspace",
+        "size": "mobile",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "mobile",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      }
+    ],
+    "afterFindings": [
+      {
+        "name": "workspace",
+        "size": "desktop",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "desktop",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "workspace",
+        "size": "tablet",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "tablet",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "workspace",
+        "size": "mobile",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "size": "mobile",
+        "overflow": false,
+        "violations": [
+          {
+            "id": "color-contrast",
+            "targets": [[".activity-bell > span"]]
+          }
+        ]
+      }
+    ]
+  },
+  "checks": {
+    "typecheck": "passed",
+    "lint": {
+      "errors": 0,
+      "warnings": 633
+    },
+    "format": "passed",
+    "secretScan": "passed",
+    "build": "passed",
+    "bundle": "passed with existing stylesheet warning",
+    "cssGzipBytes": 23095
+  },
+  "limits": [
+    "Docker unavailable: isolated authenticated/provider journeys and full Supabase stack blocked locally",
+    "Mocked Stripe tests and demo fixtures do not establish live provider correctness",
+    "Existing notification-badge contrast findings remain"
+  ],
+  "browser": {
+    "states": 99,
+    "overflow": 0,
+    "clipped": 0
+  },
+  "initialCommitCI": {
+    "verify": "passed",
+    "migrations": "passed",
+    "smoke": "passed",
+    "authenticated": "blocked by E2E_FIXTURE_OPERATIONAL_LESSONS:23P01; missing auth storage-state errors",
+    "url": "https://github.com/coach-sudo/Studio-Portal/actions/runs/37797200219"
+  }
+}

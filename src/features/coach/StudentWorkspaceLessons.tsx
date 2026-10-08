@@ -525,7 +525,6 @@ export function CoachLessonHub({
       {lessonAction === "details" && (
         <Dialog
           title="Edit lesson information"
-          description="Update the topic, confirmed location, or joining link."
           onClose={() => !actionBusy && setLessonAction(null)}
         >
           <LessonDetailsForm
@@ -591,9 +590,6 @@ export function CoachLessonHub({
               </span>
             </div>
             <section className="lesson-command-section">
-              <p>
-                Set the student’s remaining total in their payment workspace.
-              </p>
               <button
                 onClick={() =>
                   navigate(`/coach/students/${student.id}/payments`)
@@ -788,9 +784,6 @@ export function CoachLessonHub({
           </div>
         </Section>
         <Section title="Conversation">
-          <p className="section-intro">
-            Keep lesson follow-up in the student’s private studio conversation.
-          </p>
           <Link
             className="button-link primary"
             to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}

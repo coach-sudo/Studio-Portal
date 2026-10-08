@@ -11,11 +11,8 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
-import {
-  formatMoney,
-  packageSummary,
-  studentBalanceMinor,
-} from "../../domain/finance";
+import { formatMoney, studentBalanceMinor } from "../../domain/finance";
+import { creditTotals } from "../../domain/credits";
 import {
   isJoinableLesson,
   sortAssignments,
@@ -68,7 +65,7 @@ function PortalRow({
       <Icon />
       <div>
         <strong>{title}</strong>
-        <small>{detail}</small>
+        {detail && <small>{detail}</small>}
       </div>
       <button onClick={onClick}>
         {action}
@@ -150,8 +147,20 @@ function HomePriorities({
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
   const practice = sortAssignments(data.assignments).active[0];
-  const pkg = data.packages[0];
   const student = data.students[0];
+  const credits = student
+    ? creditTotals(
+        data.packages,
+        data.creditEntries,
+        data.lessons,
+        student.id,
+        Date.now(),
+        data.lessonParticipants,
+      )
+    : undefined;
+  const balance = student
+    ? studentBalanceMinor(student.id, data.payments, data.settings.currency)
+    : 0;
   const lessonIsJoinable = Boolean(lesson && isJoinableLesson(lesson));
   const actions = [
     !lessonIsJoinable && lesson
@@ -179,7 +188,7 @@ function HomePriorities({
           key: "work",
           icon: FileText,
           title: work.title,
-          detail: "Your active script and lesson materials.",
+          detail: "Current script",
           action: "Open work",
           route: `${base}/work`,
         }
@@ -213,7 +222,7 @@ function HomePriorities({
           )}
         </Section>
         {secondary.length > 0 && (
-          <Section title="Also in your workspace">
+          <Section title="Current work">
             <div className="portal-action-queue">
               {secondary.map((item) => (
                 <PortalRow
@@ -228,19 +237,19 @@ function HomePriorities({
             </div>
           </Section>
         )}
-        {showAccount && pkg && student && (
-          <section className="portal-account-summary" aria-label="Your package">
-            <header>
-              <span>Your package</span>
-              <strong>
-                {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                sessions remaining
-              </strong>
-            </header>
+        {showAccount && student && credits && (
+          <section className="portal-account-summary" aria-label="Account">
             <PortalRow
               icon={CircleDollarSign}
-              title={pkg.name}
-              detail={`${formatMoney(Math.max(0, studentBalanceMinor(student.id, data.payments)))} open balance`}
+              title={`${credits.available} lesson credits available`}
+              detail={[
+                credits.reserved ? `${credits.reserved} reserved` : "",
+                balance
+                  ? `${formatMoney(Math.abs(balance), data.settings.currency)} ${balance > 0 ? "account credit" : "balance"}`
+                  : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
               action="View payments"
               onClick={() => navigate(`${base}/payments`)}
             />

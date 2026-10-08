@@ -383,15 +383,16 @@ export function LessonsView({
                 >
                   {selected.status}
                 </Status>
-                <span>{selected.locationLabel}</span>
                 <span>
                   {selected.seriesId ? "Recurring series" : "Single lesson"}
                 </span>
-                <span>
-                  {paidByCredit
-                    ? "Paid by credit"
-                    : `${availableCredits} credits available`}
-                </span>
+                {panel === "credits" && (
+                  <span>
+                    {paidByCredit
+                      ? "Paid by credit"
+                      : `${availableCredits} credits available`}
+                  </span>
+                )}
               </div>
               <div className="form-actions">
                 {panel === "credits" && (
@@ -457,25 +458,12 @@ export function LessonsView({
                   aria-label="Lesson information"
                 >
                   <div>
-                    <small>Date & time</small>
-                    <strong>
-                      {formatStudioDateTime(
-                        selected.startsAt,
-                        data.settings.timezone,
-                      )}
-                    </strong>
-                  </div>
-                  <div>
                     <small>Duration</small>
                     <strong>{selectedDuration} minutes</strong>
                   </div>
                   <div>
                     <small>Delivery</small>
                     <strong>{selected.locationLabel}</strong>
-                  </div>
-                  <div>
-                    <small>Source</small>
-                    <strong>{sourceLabel(selected.sourceProvider)}</strong>
                   </div>
                   <div>
                     <small>Lesson work</small>
@@ -506,7 +494,8 @@ export function LessonsView({
                   <section className="lesson-command-section">
                     <h3>Make recurring</h3>
                     <p>
-                      Create the remaining occurrences in one DST-safe series.
+                      Keeps the studio’s local time through daylight-saving
+                      changes.
                     </p>
                     <div className="inline-command">
                       <label>
@@ -547,10 +536,7 @@ export function LessonsView({
               {panel === "credits" && (
                 <section className="lesson-command-section">
                   <h3>Credits & payment</h3>
-                  <p>
-                    One credit covers one lesson. Set the remaining total in the
-                    student’s payments workspace.
-                  </p>
+                  <p>One credit covers one lesson.</p>
                   <button
                     onClick={() =>
                       navigate(`/coach/students/${selected.studentId}/payments`)

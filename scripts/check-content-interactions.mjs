@@ -73,6 +73,56 @@ try {
       assert.deepEqual(clipped, [], `${size} ${name} clipped controls`);
     };
 
+    await visit("/coach");
+    assert.equal(
+      await page.locator(".operational-counts, .home-today-link").count(),
+      0,
+    );
+    await expect(
+      page
+        .locator(".dashboard-rail")
+        .getByRole("button", { name: /Open Today/ }),
+    ).toBeVisible();
+    await evidence("coach-home-summary");
+
+    await page.evaluate(() => {
+      const saved = JSON.parse(
+        localStorage.getItem("stage-story-studio-core-v2") || "{}",
+      );
+      saved.payments = [
+        {
+          id: "density-receipt",
+          studentId: "student-maya",
+          kind: "payment",
+          amountMinor: 5000,
+          currency: "USD",
+          accountCredit: false,
+          reason: "Matched payment receipt",
+          createdAt: "2026-10-05T10:00:00Z",
+        },
+      ];
+      localStorage.setItem("stage-story-studio-core-v2", JSON.stringify(saved));
+    });
+    await visit("/portal/payments");
+    const history = page.getByText(/^Receipts & adjustments \(\d+\)$/);
+    await history.focus();
+    await page.keyboard.press("Enter");
+    await expect(history.locator("..")).toHaveAttribute("open", "");
+    await expect(
+      history.locator("..").locator(".payment-history-row").first(),
+    ).toBeVisible();
+    await evidence("payment-history-keyboard");
+    await page
+      .getByRole("button", { name: "Choose package", exact: true })
+      .first()
+      .click();
+    await expect(page.getByRole("dialog")).toContainText("$500.00");
+    await expect(page.getByRole("dialog")).toContainText(
+      "One credit covers one lesson",
+    );
+    await evidence("package-offer-quote");
+    await page.keyboard.press("Escape");
+
     await visit("/portal");
     const welcome = page.getByText("Studio welcome message", { exact: true });
     await welcome.focus();

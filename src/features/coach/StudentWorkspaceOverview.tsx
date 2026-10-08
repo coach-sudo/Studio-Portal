@@ -7,11 +7,8 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Section } from "../../components/Primitives";
-import {
-  formatMoney,
-  packageSummary,
-  studentBalanceMinor,
-} from "../../domain/finance";
+import { formatMoney, studentBalanceMinor } from "../../domain/finance";
+import { creditTotals } from "../../domain/credits";
 import type { Student } from "../../domain/model";
 import {
   formatStudioDate,
@@ -49,6 +46,19 @@ export function Overview({
       item.status === "active",
   );
   const pkg = data.packages.find((item) => item.studentId === student.id);
+  const credits = creditTotals(
+    data.packages,
+    data.creditEntries,
+    data.lessons,
+    student.id,
+    Date.now(),
+    data.lessonParticipants,
+  );
+  const balance = studentBalanceMinor(
+    student.id,
+    data.payments,
+    data.settings.currency,
+  );
   return (
     <div className="record-overview">
       <div className="record-main">
@@ -88,11 +98,13 @@ export function Overview({
               icon={CircleDollarSign}
               label="Account"
               value={
-                pkg
-                  ? `${packageSummary(pkg, data.creditEntries).remainingCredits} sessions left`
-                  : "Pay as you go"
+                pkg ? `${credits.available} credits available` : "Pay as you go"
               }
-              detail={`Balance ${formatMoney(Math.max(0, studentBalanceMinor(student.id, data.payments)))}`}
+              detail={
+                balance
+                  ? `${formatMoney(Math.abs(balance), data.settings.currency)} ${balance > 0 ? "account credit" : "balance"}`
+                  : ""
+              }
               link={`/coach/students/${student.id}/payments`}
             />
           </div>
@@ -186,7 +198,7 @@ function RecordCard({
       <Icon />
       <span>{label}</span>
       <strong>{value}</strong>
-      <small>{detail}</small>
+      {detail && <small>{detail}</small>}
     </Link>
   );
 }

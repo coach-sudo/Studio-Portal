@@ -101,9 +101,7 @@ export function ActorPage({
             <UserRound />
             <div>
               <strong>{profile.displayName}</strong>
-              <small>
-                /actors/{profile.slug} · {profile.bio}
-              </small>
+              <small>/actors/{profile.slug}</small>
             </div>
             <Status tone={profile.status === "published" ? "good" : "warn"}>
               {profile.status.replaceAll("_", " ")}
@@ -132,7 +130,6 @@ export function ActorPage({
       {previewing && (
         <Drawer
           title="Private actor-page preview"
-          description="Preview the current draft before sending it for review."
           onClose={() => setPreviewing(false)}
         >
           <ActorProfilePreview

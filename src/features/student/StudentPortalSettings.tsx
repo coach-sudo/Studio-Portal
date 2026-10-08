@@ -418,9 +418,8 @@ export function StudentSettings({
       <div id="preferences-notifications" className="settings-anchor">
         <Section title="Preferences & notifications">
           <p className="section-intro">
-            Choose optional updates. Security messages, credentials, receipts,
-            cancellations, and critical payment failures are always sent to the
-            responsible recipient.
+            Security, login, receipt, cancellation, and critical payment
+            messages are always sent to the responsible recipient.
           </p>
           <div className="settings-list">
             {Object.entries(portalNotificationLabels).map(([key, label]) => (
@@ -435,7 +434,7 @@ export function StudentSettings({
                 detail={
                   key === "lessonReminders"
                     ? "Students receive lesson reminders by default."
-                    : "Email and in-app updates when applicable."
+                    : ""
                 }
                 onChange={(checked) =>
                   setForm({

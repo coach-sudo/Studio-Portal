@@ -678,7 +678,7 @@ function ServiceDialog({
   return (
     <Drawer
       title={service ? "Edit service" : "Add service"}
-      description="Pricing and policy edits apply only to future bookings."
+      description="Pricing and policies affect new bookings. Rates also update package offers; existing purchases and renewals keep their price."
       onClose={onClose}
     >
       <form className="workflow-form service-editor" onSubmit={submit}>
@@ -1237,11 +1237,7 @@ function OfferingDialog({
   const selected = services.find((item) => item.id === serviceId);
   const count = 1;
   return (
-    <Drawer
-      title="Create group class"
-      description="Create one class occurrence with its own page, roster, resources, assignments, and shared inbox."
-      onClose={onClose}
-    >
+    <Drawer title="Create group class" onClose={onClose}>
       <form
         className="workflow-form"
         onSubmit={(event) => {

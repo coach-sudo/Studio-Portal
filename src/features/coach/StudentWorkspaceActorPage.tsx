@@ -122,8 +122,7 @@ export function ActorPage({
         }
       >
         <p className="section-intro">
-          These uploads are reserved for the public actor page and its review
-          workflow.
+          Actor-page uploads require review before publication.
         </p>
         <div className="table-list">
           {actorMaterials.map((item) => (
@@ -153,7 +152,6 @@ export function ActorPage({
       {previewing && profile && (
         <Dialog
           title="Private actor-page preview"
-          description="This uses the current draft and is not a public link."
           onClose={() => setPreviewing(false)}
         >
           <ActorProfilePreview

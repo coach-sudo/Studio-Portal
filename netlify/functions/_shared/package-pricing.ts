@@ -58,7 +58,9 @@ export async function derivePackageValues(
   ] = await Promise.all([
     db
       .from("booking_services")
-      .select("id,name,duration_minutes,price_minor,currency,version,published")
+      .select(
+        "id,name,duration_minutes,price_minor,currency,version,published,location_price_adjustments",
+      )
       .eq("id", serviceId)
       .eq("studio_id", studioId)
       .single(),
@@ -71,21 +73,46 @@ export async function derivePackageValues(
       new Error("Service pricing is unavailable.")
     );
   let unitPriceMinor = Number(service.price_minor);
+  let locationAdjustment: number | undefined;
   if (studentId) {
-    const { data: rule } = await db
-      .from("student_pricing_rules")
-      .select("price_minor")
-      .eq("student_id", studentId)
-      .eq("service_id", serviceId)
-      .eq("active", true)
-      .is("ends_at", null)
-      .maybeSingle();
-    if (rule) unitPriceMinor = Number(rule.price_minor);
+    const { data: student, error: studentError } = await db
+      .from("students")
+      .select("id,special_pricing_enabled")
+      .eq("id", studentId)
+      .eq("studio_id", studioId)
+      .single();
+    if (studentError || !student)
+      throw studentError || new Error("Student pricing is unavailable.");
+    if (student.special_pricing_enabled) {
+      const now = new Date().toISOString();
+      const { data: rule, error: ruleError } = await db
+        .from("student_pricing_rules")
+        .select("price_minor,location_price_adjustments")
+        .eq("studio_id", studioId)
+        .eq("student_id", studentId)
+        .eq("service_id", serviceId)
+        .eq("active", true)
+        .lte("starts_at", now)
+        .or(`ends_at.is.null,ends_at.gte.${now}`)
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ruleError) throw ruleError;
+      if (rule) {
+        unitPriceMinor = Number(rule.price_minor);
+        locationAdjustment = rule.location_price_adjustments?.[deliveryFormat];
+      }
+    }
   }
-  if (deliveryFormat === "in_person")
-    unitPriceMinor += Number(
-      studio.settings?.bookingDefaults?.inPersonUpchargeMinor || 0,
-    );
+  unitPriceMinor += Number(
+    locationAdjustment ??
+      service.location_price_adjustments?.[deliveryFormat] ??
+      (deliveryFormat === "in_person"
+        ? studio.settings?.bookingDefaults?.inPersonUpchargeMinor || 0
+        : 0),
+  );
+  if (!Number.isSafeInteger(unitPriceMinor) || unitPriceMinor < 0)
+    throw new Error("Service pricing is invalid.");
   const discountType = (
     ["none", "fixed", "percent"].includes(String(payload.discountType))
       ? payload.discountType
@@ -136,5 +163,44 @@ export async function derivePackageValues(
       pricing_service_version: service.version,
       pricing_status: "current",
     },
+  };
+}
+
+/** Read the source afresh at purchase time; never update a definition or purchased record. */
+export async function quotePackageDefinition(
+  db: SupabaseClient,
+  definition: {
+    studio_id: string;
+    price_minor: number;
+    currency: string;
+    pricing_service_id?: string | null;
+    session_count?: number;
+    delivery_format?: string | null;
+    discount_type?: string | null;
+    discount_minor?: number | null;
+    discount_basis_points?: number | null;
+  },
+  studentId?: string,
+) {
+  if (!definition.pricing_service_id) return definition;
+  const { values } = await derivePackageValues(
+    db,
+    String(definition.studio_id),
+    {
+      pricingServiceId: definition.pricing_service_id,
+      sessionCount: definition.session_count,
+      deliveryFormat: definition.delivery_format,
+      discountType: definition.discount_type,
+      discountMinor: definition.discount_minor,
+      discountBasisPoints: definition.discount_basis_points,
+    },
+    studentId,
+  );
+  return {
+    ...definition,
+    price_minor: values.price_minor,
+    base_price_minor: values.base_price_minor,
+    discount_minor: values.discount_minor,
+    currency: values.currency,
   };
 }

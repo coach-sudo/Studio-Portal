@@ -16,7 +16,7 @@ const renderApp = (path = "/") =>
     </QueryClientProvider>,
   );
 describe("studio surfaces", () => {
-  it("separates the weekly home overview from today's compact action link", async () => {
+  it("keeps the weekly overview and a consolidated Today summary", async () => {
     renderApp();
     expect(
       await screen.findByRole("heading", {
@@ -27,7 +27,7 @@ describe("studio surfaces", () => {
       screen.getByRole("heading", { name: "Coming up this week" }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: /items? need attention today/i }),
+      screen.getByRole("button", { name: /lessons?.*Open Today/i }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "Today is your action queue" }),

@@ -6,6 +6,8 @@ import { describe, expect, it } from "vitest";
 import { App } from "./App";
 import { demoSnapshot } from "../data/demo";
 import { TodayView } from "../features/coach/StudioToday";
+import { StudentHome } from "../features/student/StudentPortalHome";
+import { Payments } from "../features/student/StudentPortalPayments";
 import { StudioStoreProvider } from "../state/StudioStore";
 
 function renderApp(path: string) {
@@ -45,6 +47,115 @@ function seedNote() {
 }
 
 describe("content disclosure and decision context", () => {
+  it("summarizes credits across packages without repeating zero dollar balances", () => {
+    const data = structuredClone(demoSnapshot);
+    const student = data.students[0];
+    student.isMinor = false;
+    data.payments = [];
+    data.lessons = [];
+    data.packages = [1, 2].map((index) => ({
+      id: `lot-${index}`,
+      studentId: student.id,
+      name: `Purchased package ${index}`,
+      priceMinor: 10000,
+      currency: "USD",
+      version: 1,
+      updatedAt: "2026-10-05T00:00:00Z",
+    }));
+    data.creditEntries = data.packages.map((pkg) => ({
+      id: `credit-${pkg.id}`,
+      packageId: pkg.id,
+      kind: "purchase",
+      quantity: 2,
+      reason: "Purchase",
+      createdAt: "2026-10-05T00:00:00Z",
+    }));
+    render(
+      <MemoryRouter>
+        <StudentHome data={data} base="/portal" />
+      </MemoryRouter>,
+    );
+    const account = screen.getByRole("region", { name: "Account" });
+    expect(account).toHaveTextContent("4 lesson credits available");
+    expect(account).not.toHaveTextContent("$0.00");
+    expect(
+      within(account).getByRole("button", { name: /View payments/ }),
+    ).toBeVisible();
+  });
+  it("keeps the complete payment history accessible on request", async () => {
+    const user = userEvent.setup();
+    const data = structuredClone(demoSnapshot);
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <StudioStoreProvider>
+            <Payments data={data} isDemo />
+          </StudioStoreProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const summary = screen.getByText(
+      `Receipts & adjustments (${data.payments.length})`,
+    );
+    const details = summary.closest("details")!;
+    expect(details).not.toHaveAttribute("open");
+    await user.click(summary);
+    expect(details).toHaveAttribute("open");
+    for (const entry of data.payments)
+      expect(details).toHaveTextContent(entry.reason);
+  });
+  it("consolidates coach readiness and queued communications in Today at a glance", async () => {
+    renderApp("/coach");
+    const heading = await screen.findByText("Today at a glance");
+    const rail = heading.closest("aside")!;
+    expect(document.querySelector(".operational-counts")).toBeNull();
+    expect(document.querySelector(".home-today-link")).toBeNull();
+    expect(
+      within(rail).getByRole("button", { name: /Open Today/ }),
+    ).toBeVisible();
+    expect(rail).not.toHaveTextContent("$0.00 at risk");
+  });
+  it("keeps saved-method renewal consent visible before checkout", async () => {
+    const user = userEvent.setup();
+    const data = structuredClone(demoSnapshot);
+    const definition = data.packageDefinitions[0];
+    data.packageBillingOptions = [
+      {
+        id: "renewal-option",
+        studioId: data.studioId,
+        definitionId: definition.id,
+        renewalMode: "balance_threshold",
+        balanceThreshold: 1,
+        active: true,
+        version: 1,
+        updatedAt: "2026-10-05T00:00:00Z",
+      },
+    ];
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <MemoryRouter>
+          <StudioStoreProvider>
+            <Payments data={data} isDemo />
+          </StudioStoreProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await user.click(screen.getByRole("button", { name: "Choose package" }));
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Purchase option" }),
+      "balance_threshold",
+    );
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(
+      "you authorize Coach’D to charge the saved payment method",
+    );
+    expect(dialog).toHaveTextContent("You can turn this off later.");
+    expect(
+      within(dialog).getByRole("button", {
+        name: "Continue to secure checkout",
+      }),
+    ).toBeVisible();
+  });
   it("keeps import consequences visible even when the provider has no date", async () => {
     const user = userEvent.setup();
     const data = structuredClone(demoSnapshot);
@@ -106,7 +217,7 @@ describe("content disclosure and decision context", () => {
     const summary = await screen.findByText("Read Scene work");
     const details = summary.closest("details")!;
     expect(details).not.toHaveAttribute("open");
-    expect(screen.getByText("Scene work", { exact: true })).toBeInTheDocument();
+    expect(summary).toBeVisible();
     await user.click(summary);
     expect(details).toHaveAttribute("open");
     expect(within(details).getByText(body)).toBeInTheDocument();
