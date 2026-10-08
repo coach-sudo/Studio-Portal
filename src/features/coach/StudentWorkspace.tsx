@@ -550,7 +550,6 @@ export function StudentWorkspace() {
               .join("")}
           </span>
           <div>
-            <div className="eyebrow">Student record</div>
             <h1>{student.fullName}</h1>
             <p>
               {student.focusArea || "Focus not set"} ·{" "}
@@ -777,7 +776,6 @@ export function StudentWorkspace() {
       {recordMenuOpen && (
         <Dialog
           title="Student actions"
-          description={`Secondary actions for ${student.preferredName || student.fullName}.`}
           onClose={() => setRecordMenuOpen(false)}
         >
           <div className="stack-actions student-overflow-actions">
@@ -926,11 +924,7 @@ function StudentEditor({
     });
   };
   return (
-    <Drawer
-      title={`Edit ${student.fullName}`}
-      description="Contact, coaching context, and studio status."
-      onClose={onClose}
-    >
+    <Drawer title={`Edit ${student.fullName}`} onClose={onClose}>
       <form className="workflow-form" onSubmit={submit}>
         <label>
           Full name

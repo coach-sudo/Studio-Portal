@@ -14,43 +14,15 @@ import {
 } from "./StudioOperations";
 import { coachSectionDomains } from "./routeDomains";
 
-const configs: Record<string, { title: string; description: string }> = {
-  today: {
-    title: "Today",
-    description:
-      "Preparation, teaching, notes, and follow-up in one continuous flow.",
-  },
-  students: {
-    title: "Students",
-    description:
-      "People, relationships, access, current work, and the next meaningful action.",
-  },
-  lessons: {
-    title: "Lessons",
-    description: "The complete schedule and every lesson’s current state.",
-  },
-  notes: {
-    title: "Notes",
-    description:
-      "Private drafts and intentionally published student follow-up.",
-  },
-  materials: {
-    title: "Materials",
-    description: "One library with clear ownership, visibility, and history.",
-  },
-  finance: {
-    title: "Payments",
-    description: "Balances, package credits, payments, and adjustments.",
-  },
-  "actor-pages": {
-    title: "Actor Pages",
-    description: "Draft, review, approval, and publishing.",
-  },
-  settings: {
-    title: "Settings",
-    description:
-      "Studio identity, student experience, pricing, connections, and recovery.",
-  },
+const configs: Record<string, { title: string }> = {
+  today: { title: "Today" },
+  students: { title: "Students" },
+  lessons: { title: "Lessons" },
+  notes: { title: "Notes" },
+  materials: { title: "Materials" },
+  finance: { title: "Payments" },
+  "actor-pages": { title: "Actor Pages" },
+  settings: { title: "Settings" },
 };
 export function CoachSection() {
   const { section = "today" } = useParams(),
@@ -64,7 +36,7 @@ export function CoachSection() {
     return <PageSkeleton label={`Loading ${config.title.toLowerCase()}…`} />;
   return (
     <div className={`page page-${section}`}>
-      <PageHeader title={config.title}>{config.description}</PageHeader>
+      <PageHeader title={config.title} />
       {isDemo && (
         <p className="portal-notice">
           <ShieldCheck />

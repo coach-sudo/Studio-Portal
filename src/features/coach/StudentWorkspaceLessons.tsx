@@ -396,10 +396,9 @@ export function CoachLessonHub({
         <ArrowLeft /> Lesson history
       </Link>
       <Section title={lesson.topic} marked>
-        <p className="section-intro">
-          {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}
-          {lesson.locationLabel} · {lesson.status}
-        </p>
+        <Status tone={lesson.status === "scheduled" ? "good" : "neutral"}>
+          {lesson.status}
+        </Status>
         <div className="form-actions lesson-primary-actions">
           {lesson.joinUrl && (
             <a

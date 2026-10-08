@@ -38,7 +38,12 @@ export function Header({ data }: { data: Snapshot }) {
           })}
         </small>
         <h1>Welcome back, {data.displayName}</h1>
-        <p>{data.settings.welcomeMessage}</p>
+        {data.settings.welcomeMessage && (
+          <details className="disclosure-section">
+            <summary>Studio welcome message</summary>
+            <p>{data.settings.welcomeMessage}</p>
+          </details>
+        )}
       </div>
       <i />
       <b />

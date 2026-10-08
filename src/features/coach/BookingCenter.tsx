@@ -253,10 +253,7 @@ export function BookingCenter() {
             </button>
           </div>
         }
-      >
-        Services, availability, classes, payments, and every occurrence in one
-        place.
-      </PageHeader>
+      />
       {isDemo && (
         <p className="portal-notice">
           <CheckCircle2 />

@@ -276,7 +276,6 @@ export function StudentSettings({
     <div className="student-page">
       <header className="student-header">
         <h1>Settings</h1>
-        <p>Contact details, payment methods, and your portal experience.</p>
       </header>
       {notice && (
         <p className="portal-notice" role="status">

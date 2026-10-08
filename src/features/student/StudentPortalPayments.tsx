@@ -160,7 +160,6 @@ export function Payments({
     <div className="student-page">
       <header className="student-header">
         <h1>Payments</h1>
-        <p>See your balance, payment history, and available lesson packages.</p>
       </header>
       {notice && (
         <p className="portal-notice" role="status">
@@ -192,7 +191,6 @@ export function Payments({
                 Math.max(0, studentBalanceMinor(student.id, data.payments)),
               )}
             </strong>
-            <small>Payments and adjustments are listed below.</small>
           </div>
         </Section>
       )}

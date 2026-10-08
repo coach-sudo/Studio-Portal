@@ -267,7 +267,7 @@ export function ManualBookingDialog({
   return (
     <Dialog
       title="Create a booking"
-      description="Coach bookings may override public notice and price rules. The action is audited and still creates calendar and email work."
+      description="May override public notice and pricing. Bookings are audited and create calendar and email work."
       onClose={onClose}
     >
       <form

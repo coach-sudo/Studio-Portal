@@ -503,7 +503,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "Notes" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("Lesson notes")).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: "Notes" })).toBeInTheDocument();
       expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
     });
     it("29 updates portal timezone without losing the form", async () => {

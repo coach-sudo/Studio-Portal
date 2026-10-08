@@ -318,10 +318,6 @@ export function LessonsView({
   return (
     <Section title="Lesson calendar" marked>
       {notice && <p className="portal-notice">{notice}</p>}
-      <p className="section-intro">
-        Day, week, month, and year views share one searchable schedule.
-        Cancelled lessons stay out of the way unless you choose to show them.
-      </p>
       <LessonCalendar
         lessons={data.lessons}
         timezone={data.settings.timezone}

@@ -256,9 +256,7 @@ function LinkedContacts({
       }
     >
       <p className="section-intro">
-        Add guardians for minors or support people for students of any age. Each
-        person gets only the schedule, work, profile, payment, and notification
-        access you choose.
+        Guardians and support people receive only the access you choose.
       </p>
       {notice && (
         <p className="portal-notice" role="status">
@@ -901,8 +899,8 @@ export function Account({
       {student.specialPricingEnabled && (
         <Section title="Student-specific pricing" marked>
           <p className="section-intro">
-            Only services you customize are overridden. Everything else
-            continues to use the public booking price.
+            Customized services override public prices. Other services keep
+            public pricing.
           </p>
           {rateNotice && (
             <p className="portal-notice" role="status">

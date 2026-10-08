@@ -642,7 +642,7 @@ function PackageDefinitionDialog({
   return (
     <Drawer
       title={value ? "Edit and recalculate package" : "Create packages"}
-      description="Choose services, lesson counts, and formats. Coach’D calculates every price from your current service catalog—there is no editable price field."
+      description="Prices are calculated from your current service catalog and cannot be edited here."
       onClose={onClose}
     >
       <form
