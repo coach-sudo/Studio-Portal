@@ -1,6 +1,9 @@
 import { QueryClient } from "@tanstack/react-query";
 import { expect, it, vi } from "vitest";
-import { isolateQueryIdentity } from "./queryIdentity";
+import {
+  isolateQueryIdentity,
+  ensureQueryIdentityIsolation,
+} from "./queryIdentity";
 it("retains query results on token refresh but clears private data on sign-out or account change", () => {
   const client = new QueryClient();
   let listener: (
@@ -25,4 +28,11 @@ it("retains query results on token refresh but clears private data on sign-out o
   client.setQueryData(["private"], "coach information");
   listener("SIGNED_IN", { user: { id: "student" } });
   expect(client.getQueryCache().getAll()).toHaveLength(0);
+});
+it("registers once for a query client across workspace navigation", () => {
+  const client = new QueryClient(),
+    auth = { onAuthStateChange: vi.fn() };
+  ensureQueryIdentityIsolation(client, auth as never);
+  ensureQueryIdentityIsolation(client, auth as never);
+  expect(auth.onAuthStateChange).toHaveBeenCalledOnce();
 });
