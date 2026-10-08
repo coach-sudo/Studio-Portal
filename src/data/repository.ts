@@ -220,16 +220,14 @@ export async function loadStudioSnapshot(
         .from("materials")
         .select("*,material_links!inner(role)")
         .in("material_links.role", ["actor_material", "current_script"])
-        .order("created_at", { ascending: false })
-        .limit(100),
+        .order("created_at", { ascending: false }),
     ),
     pick("links", wants("work", "actorProfiles"), () =>
       database
         .from("material_links")
         .select("*")
         .in("role", ["actor_material", "current_script"])
-        .order("created_at", { ascending: false })
-        .limit(100),
+        .order("created_at", { ascending: false }),
     ),
     pick("packages", wants("finance"), () =>
       database.from("packages").select("*"),
