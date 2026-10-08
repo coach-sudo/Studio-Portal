@@ -247,7 +247,7 @@ export async function loadStudioSnapshot(
     pick("linkedContacts", wants("identity", "households", "messaging"), () =>
       database.from("linked_contacts").select("*"),
     ),
-    pick("profileAssets", wants("identity", "work", "actorProfiles"), () =>
+    pick("profileAssets", false, () =>
       database.from("file_assets").select("id,storage_path,mime_type"),
     ),
     pick("pricingRules", wants("finance"), () =>
@@ -367,12 +367,34 @@ export async function loadStudioSnapshot(
   );
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];
+  let profileAssetRows = profileAssets.data ?? [];
+  if (!aggregate && wants("identity", "work", "actorProfiles")) {
+    const photoIds = [
+      ...new Set(
+        [
+          member?.profile_photo_asset_id,
+          ...studentRows.map((row: any) => row.profile_photo_asset_id),
+        ].filter(Boolean),
+      ),
+    ];
+    const photos = await selectedQuery(
+      photoIds.length > 0,
+      () =>
+        database
+          .from("file_assets")
+          .select("id,storage_path,mime_type")
+          .in("id", photoIds),
+      signal,
+    );
+    if (photos.error) throw photos.error;
+    profileAssetRows = photos.data ?? [];
+  }
   const storagePaths = [
     ...(materials.data ?? []).map((row: any) => row.storage_path),
-    ...(profileAssets.data ?? []).map((row: any) => row.storage_path),
+    ...profileAssetRows.map((row: any) => row.storage_path),
   ].filter((value: any): value is string => Boolean(value));
   const profileAssetPaths = new Map<string, string>(
-    (profileAssets.data ?? []).map(
+    profileAssetRows.map(
       (row: any) => [row.id, row.storage_path] as [string, string],
     ),
   );

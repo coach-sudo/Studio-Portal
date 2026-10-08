@@ -23,7 +23,9 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     )
       uploads += 1;
   });
-  const title = `${runtime.runId} Shakespeare Lexicon attempt-${test.info().retry}`;
+  const attempt =
+    ["alpha", "beta", "gamma"][test.info().retry] || crypto.randomUUID();
+  const title = `${runtime.runId} Shakespeare Lexicon ${attempt}`;
   const lexiconBytes = Buffer.from(
     `%PDF-1.4\nDeterministic reusable lexicon fixture attempt-${test.info().retry}\n%%EOF`,
   );
@@ -140,6 +142,8 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   });
   await choose.getByRole("searchbox", { name: "Search resources" }).fill(title);
   await choose
+    .locator(".resource-results article")
+    .filter({ has: page.getByText(title, { exact: true }) })
     .getByRole("button", { name: "Choose resource", exact: true })
     .click();
   await choose
@@ -148,7 +152,11 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   await expect(choose).toBeHidden();
   expect(uploads).toBe(1);
   await unrelated.page.reload();
-  await expect(unrelated.page.getByText(title, { exact: true })).toBeVisible();
+  await expect(
+    unrelated.page
+      .locator(".resource-results article")
+      .filter({ has: unrelated.page.getByText(title, { exact: true }) }),
+  ).toBeVisible();
   await expectNoHorizontalOverflow(student.page);
   await student.context.close();
   await unrelated.context.close();

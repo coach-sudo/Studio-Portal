@@ -19,9 +19,11 @@ Branch: `codex/studio-library`, based on main `81610b510774`. Review: [draft PR 
 
 ## Database and existing files
 
-Migration: `supabase/migrations/20261008203319_studio_library_resources.sql`.
+Migrations: `supabase/migrations/20261008203319_studio_library_resources.sql` and `supabase/migrations/20261008220659_bounded_legacy_material_snapshots.sql`.
 
 It extends `materials`, `material_links`, and `file_assets`; adds metadata relationships, private assignment notes, collections, collection membership and immutable collection-assignment snapshots; and adds explicit grants, RLS policies, search indexes, and transactional commands. Security-definer mutation helpers live in the non-exposed `library_internal` schema and check the caller's identity and studio permissions. Read RPCs enforce RLS.
+
+The existing route snapshot RPC and fallback reads retain only legacy script/actor records and referenced profile photos. Ordinary resources and their storage paths are retrieved through the bounded Library queries instead. Database regression assertions verify that resources remain searchable while being excluded from eager snapshots. Legacy script/actor controls exclude ordinary resources, so the same resource does not appear in both interfaces. The shared notification badge uses the existing coach contrast correction on student routes as well.
 
 Existing resource IDs, student ownership, paths, external URLs, actor-publication flags and lesson relationships are retained. Existing Current/Vault/Archived states are copied onto assignments. Legacy owner-only rows receive a matching assignment so they remain discoverable. File-asset references are backfilled from existing matching studio/path records. Nothing moves, deletes, overwrites or promotes existing production files into the shared catalog.
 

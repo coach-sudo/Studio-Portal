@@ -265,7 +265,7 @@ function LegacyMaterials({
             (item) =>
               item.role === "lesson_material" || item.role === "library",
           )
-        : data.materials.filter((item) => item.role !== "actor_material"),
+        : data.materials.filter((item) => item.role === "current_script"),
   );
   const add = async (
     title: string,

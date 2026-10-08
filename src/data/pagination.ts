@@ -77,7 +77,11 @@ export async function loadPaginatedRows<Table extends StudioTable>(
     request.filters as Record<string, unknown> | undefined,
   )) {
     if (value === undefined) continue;
-    query = value === null ? query.is(column, null) : query.eq(column, value);
+    query = Array.isArray(value)
+      ? query.in(column, value)
+      : value === null
+        ? query.is(column, null)
+        : query.eq(column, value);
   }
   const search = request.search?.value.trim();
   if (search) {

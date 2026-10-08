@@ -1,11 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  BookOpen,
   Clapperboard,
   ExternalLink,
   FolderOpen,
   Images,
-  LibraryBig,
   MoreHorizontal,
   Search,
   Trash2,
@@ -82,13 +80,9 @@ function LegacyMaterialsView({
     [notice, setNotice] = useState(""),
     [deleting, setDeleting] = useState(""),
     [query, setQuery] = useState(""),
-    [role, setRole] = useState<
-      | "all"
-      | "current_script"
-      | "lesson_material"
-      | "library"
-      | "actor_material"
-    >("all"),
+    [role, setRole] = useState<"all" | "current_script" | "actor_material">(
+      "all",
+    ),
     [status, setStatus] = useState<
       "all" | "active" | "archived" | "vaulted" | "pending_review"
     >("all");
@@ -114,7 +108,7 @@ function LegacyMaterialsView({
           }
         : undefined,
       filters: {
-        link_role: role === "all" ? undefined : role,
+        link_role: role === "all" ? ["current_script", "actor_material"] : role,
         status:
           status === "all" || status === "pending_review" ? undefined : status,
         approval_status:
@@ -128,19 +122,12 @@ function LegacyMaterialsView({
     "current_script",
     serverPaging,
   );
-  const lessonMaterialCount = useMaterialRoleCount(
-    "lesson_material",
-    serverPaging,
-  );
-  const libraryCount = useMaterialRoleCount("library", serverPaging);
   const actorMaterialCount = useMaterialRoleCount(
     "actor_material",
     serverPaging,
   );
   const remoteRoleCounts = {
     current_script: currentScriptCount.data?.total ?? 0,
-    lesson_material: lessonMaterialCount.data?.total ?? 0,
-    library: libraryCount.data?.total ?? 0,
     actor_material: actorMaterialCount.data?.total ?? 0,
   };
   useEffect(() => setServerPage(1), [query, role, status]);
@@ -150,18 +137,6 @@ function LegacyMaterialsView({
       label: "Current scripts",
       detail: "The scripts students are actively preparing",
       icon: Clapperboard,
-    },
-    {
-      value: "lesson_material" as const,
-      label: "Lesson resources",
-      detail: "Files attached to a specific lesson",
-      icon: BookOpen,
-    },
-    {
-      value: "library" as const,
-      label: "Shared library",
-      detail: "Reusable resources that are not lesson-specific",
-      icon: LibraryBig,
     },
     {
       value: "actor_material" as const,
@@ -176,6 +151,10 @@ function LegacyMaterialsView({
   );
   const materials = serverPaging ? remoteMaterialRows : data.materials;
   const filtered = materials
+    .filter(
+      (item) =>
+        item.role === "current_script" || item.role === "actor_material",
+    )
     .filter((item) => role === "all" || item.role === role)
     .filter((item) => {
       if (status === "all") return true;
@@ -324,7 +303,7 @@ function LegacyMaterialsView({
   };
   return (
     <Section
-      title="Material library"
+      title="Scripts and actor media"
       marked
       aside={
         <button type="button" onClick={() => navigate("/coach/students")}>
@@ -552,7 +531,7 @@ function LegacyMaterialsView({
             detail={
               materials.length
                 ? "Clear the filters or choose another material category."
-                : "Choose a student above, then add a script, lesson resource, library file, or actor-page asset."
+                : "Choose a student above to manage current scripts or actor-page media."
             }
           />
         )}

@@ -1,7 +1,7 @@
 begin;
 
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(15);
 
 select ok(
   has_function_privilege('authenticated', 'public.studio_route_snapshot(text[])', 'EXECUTE'),
@@ -115,6 +115,22 @@ select is(
   1::bigint,
   'paginated material view preserves student RLS'
 );
+
+reset role;
+insert into public.materials(id,studio_id,owner_student_id,title,external_url)
+values ('50000000-0000-0000-0000-000000000003','20000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','Ordinary Library resource','https://example.test/library');
+insert into public.material_links(material_id,student_id,role,visible_to_student)
+values ('50000000-0000-0000-0000-000000000003','30000000-0000-0000-0000-000000000001','library',true);
+insert into public.file_assets(id,studio_id,owner_student_id,uploaded_by,entity_type,storage_path,original_name,mime_type,file_size_bytes,visibility)
+values
+ ('60000000-0000-0000-0000-000000000001','20000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','material','20000000-0000-0000-0000-000000000001/30000000-0000-0000-0000-000000000001/material.pdf','material.pdf','application/pdf',32,'student'),
+ ('60000000-0000-0000-0000-000000000002','20000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','student','20000000-0000-0000-0000-000000000001/30000000-0000-0000-0000-000000000001/photo.png','photo.png','image/png',32,'student');
+update public.students set profile_photo_asset_id='60000000-0000-0000-0000-000000000002' where id='30000000-0000-0000-0000-000000000001';
+set local role authenticated;
+select is(jsonb_array_length(public.studio_route_snapshot(array['work'])->'materials'),1,'work snapshots load legacy scripts and exclude ordinary resources');
+select is(jsonb_array_length(public.studio_route_snapshot(array['work'])->'links'),1,'work snapshots exclude ordinary assignments');
+select is(public.studio_route_snapshot(array['identity'])->'profileAssets'->0->>'id','60000000-0000-0000-0000-000000000002','identity snapshots retrieve referenced profile photos only');
+select is((public.search_material_resources('20000000-0000-0000-0000-000000000001','30000000-0000-0000-0000-000000000001',false)->>'total')::integer,2,'ordinary resources remain available through the bounded search RPC');
 
 select * from finish();
 rollback;
