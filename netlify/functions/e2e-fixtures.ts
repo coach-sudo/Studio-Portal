@@ -33,6 +33,7 @@ const ids = [
   "message",
   "assignment",
   "material",
+  "materialLink",
   "packageDefinition",
   "package",
   "payment",
@@ -840,6 +841,15 @@ async function setup(
     approval_status: "not_public",
   });
   if (materialError) throwFixtureError("material", materialError);
+  const { error: materialLinkError } = await db.from("material_links").upsert({
+    id: fixture.materialLink,
+    material_id: fixture.material,
+    student_id: fixture.student,
+    role: "library",
+    visible_to_student: true,
+    status: "active",
+  });
+  if (materialLinkError) throwFixtureError("material_link", materialLinkError);
 
   const { error: packageDefinitionError } = await db
     .from("package_definitions")

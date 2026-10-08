@@ -140,9 +140,10 @@ test("@journey Journey 06: current work exposes allowed assignment/material only
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/work");
   await expect(page.getByText(`${runtime.runId} Current work`)).toBeVisible();
-  await page.getByText("Current script upload", { exact: true }).click();
   await expect(
-    page.getByText(`${runtime.runId} Fixture material`),
+    page.locator(".resource-results article").filter({
+      has: page.getByText(`${runtime.runId} Fixture material`, { exact: true }),
+    }),
   ).toBeVisible();
   await expect(
     page.getByText(`${runtime.runId} Unrelated`, { exact: false }),
