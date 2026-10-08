@@ -26,7 +26,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   await page.goto("/coach/materials");
   await page.getByRole("button", { name: "New resource", exact: true }).click();
   const editor = page.getByRole("dialog", {
-    name: "New resource",
+    name: "Add New Resource",
     exact: true,
   });
   await editor.getByLabel("Title", { exact: true }).fill(title);
@@ -39,7 +39,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     const picker = editor.locator("details").filter({
       has: page.locator("summary").filter({ hasText: new RegExp(`^${kind}`) }),
     });
-    if (!(await picker.getAttribute("open")))
+    if ((await picker.getAttribute("open")) === null)
       await picker.locator("summary").click();
     await picker.getByRole("searchbox").fill(`${runtime.runId} ${name}`);
     await picker.getByRole("button", { name: /\+ Add New/ }).click();
