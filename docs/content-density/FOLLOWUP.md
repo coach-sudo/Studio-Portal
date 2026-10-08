@@ -60,3 +60,11 @@ The evidence directories also contain Today, Students, Notes, Campaigns, booking
 - Docker remains unavailable. Full local Supabase reset/lint/type regeneration and isolated authenticated/provider/Stripe sandbox journeys are blocked. PGlite and mocked server/Stripe tests do not establish live provider behavior; demo screenshots do not establish authenticated workflow correctness. Existing PR CI runs the isolated database and browser stack.
 - The initial commit's CI verification, migration, and smoke jobs passed; its authenticated suite was blocked by fixture setup (`E2E_FIXTURE_OPERATIONAL_LESSONS:23P01`), followed by missing storage-state errors. [Initial CI run](https://github.com/coach-sudo/Studio-Portal/actions/runs/37797200219). This is not a passing authenticated result. Review the new commit's CI separately.
 - No live charges, provider writes, migration application, merge, publication, or production deployment occurred. The branch is committed and pushed for draft review only.
+
+## Release follow-up
+
+The user subsequently authorized merge and production deployment. Release preparation fixed operational fixture timing, enabled reduced motion for frozen-clock browser checks, and updated payment-history assertions for the intended disclosure. The exact-head authenticated CI suite now passes **45 tests**, with one Stripe sandbox check skipped because its test key is not configured. The isolated migration and production verification checks also pass.
+
+Automated review identified a stale public gift quote: gift checkout now sends the displayed amount/currency and rejects changed or missing quotes before creating a gift or Stripe session. The purchaser receives an actionable refresh/review message. Handler regression tests cover stale amounts, changed currencies, missing quotes, and matching-price checkout while preserving the authored gift message.
+
+Production preparation applied only migration `20261008120000_preserve_package_gift_price.sql`. The linked migration ledger is current; the claim function remains service-role-only. Existing purchases, invoices, credits, and recurring agreements are preserved. Application publication and final live checks are reported separately after the exact-head release gates pass.

@@ -1,4 +1,5 @@
 import type Stripe from "stripe";
+import { AppError } from "./http";
 
 /** Stripe prices are immutable. A new quote must not change a shared catalog price or subscription. */
 export async function packageStripePrice(
@@ -47,8 +48,10 @@ export function assertPackageQuote(
     (Number(payload.expectedPriceMinor) !== Number(quote.price_minor) ||
       payload.expectedCurrency !== quote.currency)
   ) {
-    throw new Error(
-      "VALIDATION_FAILED: Package pricing changed. Refresh and review the current price before continuing.",
-    );
+    throw new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "Package pricing changed. Refresh and review the current price before continuing.",
+    });
   }
 }

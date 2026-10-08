@@ -8,7 +8,10 @@ import { provisionPortalAccount } from "./_shared/portal-access";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { portalOrigin } from "./_shared/portal-url";
 import { quotePackageDefinition } from "./_shared/package-pricing";
-import { packageStripePrice } from "./_shared/package-stripe-price";
+import {
+  assertPackageQuote,
+  packageStripePrice,
+} from "./_shared/package-stripe-price";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -116,6 +119,10 @@ export default async (request: Request, context: Context) => {
       )
         throw new Error("SERVICE_NOT_FOUND");
       const quote = await quotePackageDefinition(db, definition);
+      assertPackageQuote(quote, {
+        ...body,
+        expectedPriceMinor: body.expectedPriceMinor ?? Number.NaN,
+      });
       const key = Netlify.env.get("STRIPE_SECRET_KEY");
       if (!key) throw new Error("Stripe is not configured.");
       const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });
