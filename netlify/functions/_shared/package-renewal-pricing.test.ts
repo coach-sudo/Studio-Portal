@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import maintenance from "./booking-maintenance";
-import webhook from "./stripe-webhook-v2";
+import maintenance from "../booking-maintenance";
+import webhook from "../stripe-webhook-v2";
 
 const mocks = vi.hoisted(() => ({
   service: vi.fn(),
@@ -9,7 +9,7 @@ const mocks = vi.hoisted(() => ({
   invoice: vi.fn(),
   event: vi.fn(),
 }));
-vi.mock("./_shared/supabase", () => ({ serviceClient: mocks.service }));
+vi.mock("./supabase", () => ({ serviceClient: mocks.service }));
 vi.mock("stripe", () => ({
   default: class {
     invoiceItems = { create: mocks.item };

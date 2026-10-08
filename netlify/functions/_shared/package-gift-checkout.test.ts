@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from "vitest";
-import handler from "./package-gifts";
+import handler from "../package-gifts";
 
 const mocks = vi.hoisted(() => ({
   service: vi.fn(),
@@ -9,15 +9,15 @@ const mocks = vi.hoisted(() => ({
   checkout: vi.fn(),
   insert: vi.fn(),
 }));
-vi.mock("./_shared/supabase", () => ({ serviceClient: mocks.service }));
-vi.mock("./_shared/package-pricing", () => ({
+vi.mock("./supabase", () => ({ serviceClient: mocks.service }));
+vi.mock("./package-pricing", () => ({
   quotePackageDefinition: mocks.quote,
 }));
-vi.mock("./_shared/package-stripe-price", async (original) => ({
-  ...(await original<typeof import("./_shared/package-stripe-price")>()),
+vi.mock("./package-stripe-price", async (original) => ({
+  ...(await original<typeof import("./package-stripe-price")>()),
   packageStripePrice: mocks.price,
 }));
-vi.mock("./_shared/portal-url", () => ({
+vi.mock("./portal-url", () => ({
   portalOrigin: () => "https://example.test",
 }));
 vi.mock("stripe", () => ({
