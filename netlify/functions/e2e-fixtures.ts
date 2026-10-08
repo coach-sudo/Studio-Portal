@@ -480,8 +480,8 @@ async function setup(
     new Date(now + minutes * 60_000).toISOString();
   const operationalDay = new Date(now);
   operationalDay.setUTCHours(16, 0, 0, 0);
-  if (operationalDay.getTime() <= now)
-    operationalDay.setUTCDate(operationalDay.getUTCDate() + 1);
+  // Keep these slots separate from the joining lesson at now + 10 minutes.
+  operationalDay.setUTCDate(operationalDay.getUTCDate() + 1);
   const operationalIso = (minutes: number) =>
     new Date(operationalDay.getTime() + minutes * 60000).toISOString();
   const studentRows = [

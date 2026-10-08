@@ -18,6 +18,9 @@ test("@journey Journey 08: package and payment context is usable without a provi
   await expect(
     page.getByText(`${runtime.runId} Four-session package`).first(),
   ).toBeVisible();
+  await expect(page.getByText(`${runtime.runId} fixture payment`)).toBeHidden();
+  await page.locator("summary", { hasText: "Receipts & adjustments" }).focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByText(`${runtime.runId} fixture payment`),
   ).toBeVisible();
