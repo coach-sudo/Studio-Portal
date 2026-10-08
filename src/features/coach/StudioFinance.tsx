@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDollarSign } from "lucide-react";
 import { useState } from "react";
@@ -889,7 +890,7 @@ function PackageDefinitionDialog({
         </label>
         <label className="full">
           Description
-          <textarea
+          <WritingArea
             value={form.description}
             onChange={(event) =>
               setForm({ ...form, description: event.target.value })
@@ -898,7 +899,7 @@ function PackageDefinitionDialog({
         </label>
         <label className="full">
           Student-facing package benefit
-          <textarea
+          <WritingArea
             maxLength={240}
             value={form.benefitText || ""}
             onChange={(event) =>

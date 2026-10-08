@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -393,7 +394,7 @@ function ActorDialog({
         <h3 className="full actor-form-section">Biography & review</h3>
         <label className="full">
           Bio
-          <textarea
+          <WritingArea
             required
             value={bio}
             onChange={(event) => setBio(event.target.value)}

@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useState, type FormEvent } from "react";
 import { Section, Toggle } from "../../components/Primitives";
 import { DailyPopupCard } from "../../components/DailyPopup";
@@ -91,7 +92,7 @@ export function DailyPopupForm({
         </label>
         <label className="full">
           Body
-          <textarea
+          <WritingArea
             required={form.enabled}
             rows={5}
             maxLength={1600}

@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import "../../styles/public.css";
 import { CircleDollarSign, Gift, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
@@ -218,7 +219,7 @@ export default function PackageGift() {
             </label>
             <label className="full">
               Optional message
-              <textarea name="message" maxLength={500} />
+              <WritingArea name="message" maxLength={500} />
             </label>
             <p className="portal-notice full">
               This is a one-time gift. It never starts a subscription or

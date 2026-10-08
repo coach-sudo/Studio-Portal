@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import {
   ArrowLeft,
   Mail,
@@ -880,7 +881,7 @@ function Inbox({
               </div>
               <form className="inbox-composer" onSubmit={sendMessage}>
                 <label htmlFor="inbox-message">Message</label>
-                <textarea
+                <WritingArea
                   id="inbox-message"
                   maxLength={4000}
                   value={body}
@@ -1038,7 +1039,7 @@ function Inbox({
             </label>
             <label className="full">
               Message
-              <textarea
+              <WritingArea
                 rows={8}
                 required
                 value={email.body}

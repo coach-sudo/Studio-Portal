@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Plus } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -1156,7 +1157,7 @@ function InvoiceEditor({
             <div className="workflow-form">
               <label className="full">
                 Introduction
-                <textarea
+                <WritingArea
                   maxLength={3000}
                   value={intro}
                   onChange={(e) => setIntro(e.target.value)}
@@ -1164,7 +1165,7 @@ function InvoiceEditor({
               </label>
               <label className="full">
                 Notes / payment instructions
-                <textarea
+                <WritingArea
                   maxLength={5000}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
@@ -1172,7 +1173,7 @@ function InvoiceEditor({
               </label>
               <label className="full">
                 Footer
-                <textarea
+                <WritingArea
                   maxLength={2000}
                   value={footer}
                   onChange={(e) => setFooter(e.target.value)}

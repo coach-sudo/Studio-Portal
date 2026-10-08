@@ -1,3 +1,4 @@
+import { WritingArea } from "../../components/WritingArea";
 import {
   CalendarClock,
   CheckCircle2,
@@ -504,7 +505,7 @@ function PortalForm({
         </label>
         <label className="full">
           Welcome message
-          <textarea
+          <WritingArea
             value={form.welcomeMessage}
             onChange={(e) =>
               setForm({ ...form, welcomeMessage: e.target.value })
@@ -728,7 +729,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Student confirmation body
-          <textarea
+          <WritingArea
             rows={6}
             value={form.confirmationBody}
             onChange={(event) =>
@@ -747,7 +748,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Coach notification body
-          <textarea
+          <WritingArea
             rows={5}
             value={form.coachBody}
             onChange={(event) =>
@@ -766,7 +767,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Reminder body
-          <textarea
+          <WritingArea
             rows={5}
             value={form.reminderBody}
             onChange={(event) =>
@@ -785,7 +786,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Reschedule body
-          <textarea
+          <WritingArea
             rows={4}
             value={form.rescheduleBody}
             onChange={(event) =>
@@ -804,7 +805,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Cancellation body
-          <textarea
+          <WritingArea
             rows={4}
             value={form.cancellationBody}
             onChange={(event) =>
@@ -823,7 +824,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Package-expiry body
-          <textarea
+          <WritingArea
             rows={4}
             value={form.packageExpiryBody}
             onChange={(event) =>
@@ -842,7 +843,7 @@ function EmailAutomationForm({
         </label>
         <label className="full">
           Failed-payment body
-          <textarea
+          <WritingArea
             rows={4}
             value={form.paymentFailedBody}
             onChange={(event) =>
