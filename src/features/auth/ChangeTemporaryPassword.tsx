@@ -107,28 +107,22 @@ export function ChangeTemporaryPassword({
             ? "Choose a portal password for your existing account. Use it with your email on any device."
             : "Your temporary password worked. Replace it now with one only you know; your coach will not be able to view it."}
         </p>
-        <label>
-          New password
-          <PasswordInput
-            aria-label="New password"
-            required
-            minLength={12}
-            autoComplete="new-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
-        </label>
-        <label>
-          Confirm new password
-          <PasswordInput
-            aria-label="Confirm new password"
-            required
-            minLength={12}
-            autoComplete="new-password"
-            value={confirmation}
-            onChange={(event) => setConfirmation(event.target.value)}
-          />
-        </label>
+        <PasswordInput
+          label="New password"
+          required
+          minLength={12}
+          autoComplete="new-password"
+          value={password}
+          onChange={(event) => setPassword(event.target.value)}
+        />
+        <PasswordInput
+          label="Confirm new password"
+          required
+          minLength={12}
+          autoComplete="new-password"
+          value={confirmation}
+          onChange={(event) => setConfirmation(event.target.value)}
+        />
         <small>
           Use at least 12 characters. A passphrase is a good choice.
         </small>

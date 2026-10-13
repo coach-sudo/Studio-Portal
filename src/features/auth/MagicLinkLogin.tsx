@@ -1,6 +1,6 @@
 import "../../styles/public.css";
 import { UserRound } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { readApiClientError } from "../../data/apiClientError";
 import { isSupabaseConfigured, supabase } from "../../lib/supabase";
@@ -51,7 +51,7 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
       : fallback;
   };
 
-  async function passwordSignIn(event: React.FormEvent) {
+  async function passwordSignIn(event: FormEvent) {
     event.preventDefault();
     setStatus("signing");
     setErrorMessage(
@@ -97,7 +97,7 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
     }
   }
 
-  async function emailSignIn(event: React.FormEvent) {
+  async function emailSignIn(event: FormEvent) {
     event.preventDefault();
     setStatus("sending");
     if (!isSupabaseConfigured || !supabase) {
@@ -121,7 +121,7 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
     }
   }
 
-  async function resetPassword(event: React.FormEvent) {
+  async function resetPassword(event: FormEvent) {
     event.preventDefault();
     if (!supabase) {
       setStatus("demo");
@@ -231,16 +231,13 @@ export function MagicLinkLogin({ coachOnly = false }: { coachOnly?: boolean }) {
               }
             />
           </label>
-          <label>
-            Password
-            <PasswordInput
-              aria-label="Password"
-              required
-              autoComplete="current-password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <PasswordInput
+            label="Password"
+            required
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+          />
           <button disabled={busy}>
             {status === "signing" ? "Signing in…" : "Sign in"}
           </button>

@@ -1,4 +1,4 @@
-import { StrictMode } from "react";
+import { StrictMode, type ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -22,7 +22,7 @@ vi.mock("../../lib/supabase", () => ({
 }));
 const session = { access_token: "test-access", user: { id: "coach" } };
 const fetchMock = vi.fn();
-function renderAuth(path: string, element: React.ReactNode) {
+function renderAuth(path: string, element: ReactNode) {
   return render(
     <StrictMode>
       <MemoryRouter initialEntries={[path]}>
