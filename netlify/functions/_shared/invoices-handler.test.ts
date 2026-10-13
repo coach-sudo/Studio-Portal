@@ -6,7 +6,7 @@ const mocked = vi.hoisted(() => ({
   ids: vi.fn(),
   service: vi.fn(),
 }));
-vi.mock("./_shared/supabase", () => ({
+vi.mock("./supabase", () => ({
   userClient: () => ({
     auth: { getUser: mocked.user },
     from: () => {
@@ -29,7 +29,7 @@ vi.mock("./_shared/supabase", () => ({
     return { from: () => q };
   },
 }));
-import handler from "./invoices";
+import handler from "../invoices";
 beforeEach(() => {
   vi.clearAllMocks();
   mocked.user.mockResolvedValue({ data: { user: { id: "payer" } } });
