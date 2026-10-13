@@ -55,6 +55,8 @@ export async function downloadInvoice(
       invoice,
       undefined,
       logo ? Uint8Array.from(atob(logo), (c) => c.charCodeAt(0)) : undefined,
+      undefined,
+      `${window.location.origin}/portal/payments?invoice=${encodeURIComponent(invoice.id)}`,
     );
     blob = new Blob([new Uint8Array(bytes)], { type: "application/pdf" });
   } else {

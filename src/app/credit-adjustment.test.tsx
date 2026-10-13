@@ -24,25 +24,34 @@ describe("coach credit adjustments", () => {
     await user.click(
       await screen.findByRole(
         "button",
-        { name: "Set remaining credits" },
+        { name: "Adjust credits" },
         { timeout: 10000 },
       ),
     );
     const dialog = within(await screen.findByRole("dialog"));
+    await user.selectOptions(
+      dialog.getByRole("combobox", { name: "Adjustment" }),
+      "set_total",
+    );
     const credits = dialog.getByRole("spinbutton", {
       name: /New remaining total/i,
     });
     await user.clear(credits);
     await user.type(credits, "4");
     expect(credits).toHaveValue(4);
-    expect(dialog.getByRole("button", { name: "Save total" })).toBeDisabled();
+    await user.clear(dialog.getByRole("textbox", { name: "Reason" }));
+    expect(
+      dialog.getByRole("button", { name: "Save credit adjustment" }),
+    ).toBeDisabled();
     await user.type(
       dialog.getByRole("textbox", { name: "Reason" }),
       "Balance reconciled with student",
     );
-    await user.click(dialog.getByRole("button", { name: "Save total" }));
+    await user.click(
+      dialog.getByRole("button", { name: "Save credit adjustment" }),
+    );
     expect(
-      await screen.findByText(/Remaining credit total updated/),
+      await screen.findByText(/Credit balance updated/),
     ).toBeInTheDocument();
   });
   it("saves a 75% public slot visibility preference", async () => {

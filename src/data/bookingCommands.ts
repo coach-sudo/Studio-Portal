@@ -168,6 +168,7 @@ export function studioCommand(
   domain: string,
   input: {
     command: string;
+    idempotencyKey?: string;
     entityType?: string;
     entityId?: string;
     expectedVersion: number;
@@ -190,6 +191,7 @@ async function executeStudioCommand(
   domain: string,
   input: {
     command: string;
+    idempotencyKey?: string;
     entityType?: string;
     entityId?: string;
     expectedVersion: number;
@@ -208,7 +210,10 @@ async function executeStudioCommand(
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.session.access_token}`,
     },
-    body: JSON.stringify({ ...input, idempotencyKey: crypto.randomUUID() }),
+    body: JSON.stringify({
+      ...input,
+      idempotencyKey: input.idempotencyKey ?? crypto.randomUUID(),
+    }),
   });
   if (!response.ok)
     throw await readApiClientError(response, "The studio command failed.");

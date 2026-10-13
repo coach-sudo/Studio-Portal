@@ -3,9 +3,13 @@ import { invoiceDue, type Invoice } from "../../domain/invoices";
 export function InvoiceDocument({
   invoice,
   logoUrl,
+  onPay,
+  paymentBusy = false,
 }: {
   invoice: Invoice;
   logoUrl?: string;
+  onPay?: () => void;
+  paymentBusy?: boolean;
 }) {
   return (
     <article className="invoice-paper" aria-label={`Invoice ${invoice.number}`}>
@@ -35,6 +39,9 @@ export function InvoiceDocument({
           <span className="invoice-eyebrow">BILL TO</span>
           <strong>{invoice.recipient.name}</strong>
           {invoice.recipient.email && <small>{invoice.recipient.email}</small>}
+          {invoice.recipient.studentName && (
+            <small>For student: {invoice.recipient.studentName}</small>
+          )}
         </div>
         <dl>
           <div>
@@ -46,6 +53,20 @@ export function InvoiceDocument({
             <dd>{invoice.due_date}</dd>
           </div>
         </dl>
+      </div>
+      <div className="form-actions">
+        <button
+          type="button"
+          className="primary"
+          onClick={onPay}
+          disabled={!onPay || paymentBusy || invoiceDue(invoice) <= 0}
+        >
+          {invoice.status === "paid"
+            ? "Paid in full"
+            : paymentBusy
+              ? "Please wait…"
+              : "Pay invoice"}
+        </button>
       </div>
       {invoice.introduction && (
         <p className="invoice-copy">{invoice.introduction}</p>

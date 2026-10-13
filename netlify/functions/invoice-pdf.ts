@@ -7,6 +7,7 @@ import { serviceClient, userClient } from "./_shared/supabase";
 import { apiError, json } from "./_shared/http";
 import { createInvoicePdf } from "../../src/features/finance/invoicePdf";
 import type { Invoice } from "../../src/domain/invoices";
+import { portalOrigin } from "./_shared/portal-url";
 export default async (request: Request) => {
   try {
     if (request.method !== "POST")
@@ -66,6 +67,7 @@ export default async (request: Request) => {
       font,
       logo,
       fontkit,
+      `${portalOrigin()}/portal/payments?invoice=${encodeURIComponent(invoice.data.id)}`,
     );
     return new Response(new Uint8Array(bytes), {
       headers: {

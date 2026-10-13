@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { beforeEach, expect, it, vi } from "vitest";
 import sharp from "sharp";
+vi.mock("./portal-url", () => ({ portalOrigin: () => "https://studio.test" }));
 const mock = vi.hoisted(() => ({
   invoice: vi.fn(),
   signed: vi.fn(),

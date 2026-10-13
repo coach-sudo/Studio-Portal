@@ -58,7 +58,7 @@ test.describe("Unified invoice acceptance", () => {
         .click();
       await coach.page
         .getByRole("dialog")
-        .getByRole("button", { name: "Save invoice", exact: true })
+        .getByRole("button", { name: "Issue and send invoice", exact: true })
         .click();
       drawer = coach.page.getByRole("dialog");
       await expect(

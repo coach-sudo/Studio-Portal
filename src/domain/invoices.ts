@@ -40,7 +40,20 @@ export interface Invoice {
     logoUrl?: string;
     logoStoragePath?: string;
   };
-  recipient: { name: string; email?: string };
+  recipient: { name: string; email?: string; studentName?: string };
+  delivery?: {
+    status:
+      | "not_sent"
+      | "queued"
+      | "sending"
+      | "sent"
+      | "failed"
+      | "suppressed"
+      | "cancelled"
+      | "unknown";
+    error?: string;
+    updatedAt?: string;
+  };
   items: InvoiceLine[];
   total_minor: number;
   paid_minor: number;

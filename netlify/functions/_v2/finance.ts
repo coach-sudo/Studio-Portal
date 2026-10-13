@@ -19,7 +19,9 @@ export async function handleFinanceCommands(
 
   if (
     domain === "credits" &&
-    ["set_total", "set_auto", "reconcile"].includes(input.command)
+    ["set_total", "set_auto", "reconcile", "apply_upcoming"].includes(
+      input.command,
+    )
   ) {
     const studioId = await requireCoach();
     const studentId = String(input.payload.studentId || "");
@@ -32,6 +34,18 @@ export async function handleFinanceCommands(
       .single();
     if (student.error || !student.data) throw new Error("FORBIDDEN");
     const service = serviceClient();
+    let beforeCreditSummary: Record<string, any> | undefined;
+    if (input.command === "apply_upcoming" || input.command === "set_auto") {
+      const summary = await service.rpc("student_credit_summary", {
+        p_student: studentId,
+      });
+      if (summary.error) throw summary.error;
+      beforeCreditSummary = summary.data;
+      if (input.command === "apply_upcoming" && summary.data.autoApply !== true)
+        throw new Error(
+          "VALIDATION_FAILED: Enable automatic credit use before applying upcoming credits.",
+        );
+    }
     if (
       input.command === "set_total" &&
       (!Number.isInteger(input.payload.total) ||
@@ -62,7 +76,10 @@ export async function handleFinanceCommands(
           ? { p_student: studentId, p_version: input.expectedVersion }
           : {
               p_student: studentId,
-              p_enabled: input.payload.enabled,
+              p_enabled:
+                input.command === "apply_upcoming"
+                  ? true
+                  : input.payload.enabled,
               p_version: input.expectedVersion,
             },
     );
@@ -75,7 +92,20 @@ export async function handleFinanceCommands(
       null,
       result.data,
     );
-    return json({ resource: result.data });
+    return json({
+      resource: {
+        ...result.data,
+        ...(beforeCreditSummary
+          ? {
+              applied: Math.max(
+                0,
+                Number(result.data.reserved) -
+                  Number(beforeCreditSummary.reserved),
+              ),
+            }
+          : {}),
+      },
+    });
   }
 
   if (domain === "packages" && input.command === "assign") {

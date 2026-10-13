@@ -6,6 +6,7 @@ import { resolveNotificationRecipients } from "./_shared/notification-recipients
 import { portalActionUrl, portalOrigin } from "./_shared/portal-url";
 import { queuePackageWarning } from "./_shared/package-notifications";
 import { clearDeliveredPortalCredentials } from "./_shared/outbox-retention";
+import { applyAutomaticCredits } from "./_shared/auto-credits";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
@@ -142,25 +143,7 @@ export default async () => {
     noteReminders++;
   }
 
-  const upcomingLimit = new Date(Date.now() + 45 * 86400000).toISOString();
-  const { data: autoLessons } = await db
-    .from("lessons")
-    .select("id")
-    .eq("status", "scheduled")
-    .is("package_id", null)
-    .gte("starts_at", now)
-    .lte("starts_at", upcomingLimit)
-    .order("starts_at")
-    .limit(100);
-  let autoCreditsApplied = 0;
-  for (const lesson of autoLessons || []) {
-    const { data: packageId, error: creditError } = await db.rpc(
-      "reserve_package_credit_for_lesson",
-      { p_lesson_id: lesson.id },
-    );
-    if (creditError) throw creditError;
-    if (packageId) autoCreditsApplied += 1;
-  }
+  const autoCreditsApplied = await applyAutomaticCredits(db);
 
   const { data: dueGifts, error: dueGiftError } = await db
     .from("package_gifts")

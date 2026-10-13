@@ -9,7 +9,12 @@ export interface EmailStudio {
   };
 }
 export function presentOutboxMessage(
-  input: { body: string; event_key?: string | null; lesson_id?: string | null },
+  input: {
+    body: string;
+    event_key?: string | null;
+    lesson_id?: string | null;
+    entity_snapshot?: unknown;
+  },
   studio: EmailStudio,
   origin: string,
   action?: { label: string; url: string },
@@ -27,6 +32,13 @@ export function presentOutboxMessage(
     },
   );
   const event = input.event_key ?? "";
+  const invoiceId =
+    event === "invoice.issued" &&
+    input.entity_snapshot &&
+    typeof input.entity_snapshot === "object" &&
+    "invoiceId" in input.entity_snapshot
+      ? input.entity_snapshot.invoiceId
+      : undefined;
   const defaultAction: PortalAction = /payment|receipt|invoice/.test(event)
     ? "payments"
     : /package/.test(event)
@@ -68,6 +80,12 @@ export function presentOutboxMessage(
     : undefined;
   const primary =
     action ??
+    (typeof invoiceId === "string"
+      ? {
+          label: "Pay invoice",
+          url: `${origin}/portal/payments?invoice=${encodeURIComponent(invoiceId)}`,
+        }
+      : undefined) ??
     (bookingLink
       ? { label: "View / Manage Booking", url: bookingLink }
       : {
@@ -103,15 +121,18 @@ export function presentOutboxMessage(
     : body;
   return renderStudioEmail({
     greeting,
-    heading: /payment[._](?:due|past_due)|automation\.payment/.test(event)
-      ? "Payment reminder"
-      : /reminder/.test(event)
-        ? "Upcoming lesson reminder"
-        : /confirmed/.test(event)
-          ? "Booking confirmed"
-          : /note/.test(event)
-            ? "Your lesson notes"
-            : undefined,
+    heading:
+      event === "invoice.issued"
+        ? "Your invoice"
+        : /payment[._](?:due|past_due)|automation\.payment/.test(event)
+          ? "Payment reminder"
+          : /reminder/.test(event)
+            ? "Upcoming lesson reminder"
+            : /confirmed/.test(event)
+              ? "Booking confirmed"
+              : /note/.test(event)
+                ? "Your lesson notes"
+                : undefined,
     message,
     primaryAction: primary,
     coachName: studio.settings?.coachName || "Darius",
