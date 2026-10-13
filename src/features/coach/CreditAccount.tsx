@@ -6,6 +6,8 @@ import { Dialog, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import {
   creditTotals,
+  creditAdjustmentTarget,
+  type CreditAdjustmentMode,
   lessonCreditDebit,
   reserveDemoCredits,
   setDemoCreditTotal,
@@ -33,6 +35,7 @@ export function CreditAccount({
     [reconciling, setReconciling] = useState(false),
     [automatic, setAutomatic] = useState<boolean>(),
     [target, setTarget] = useState(""),
+    [adjustmentMode, setAdjustmentMode] = useState<CreditAdjustmentMode>("add"),
     [reason, setReason] = useState(""),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
@@ -71,6 +74,19 @@ export function CreditAccount({
     },
   });
   const totals = { ...localTotals, ...account.data };
+  let adjustment: ReturnType<typeof creditAdjustmentTarget> | undefined;
+  let adjustmentError = "";
+  try {
+    if (target.trim())
+      adjustment = creditAdjustmentTarget(
+        totals,
+        adjustmentMode,
+        Number(target),
+      );
+  } catch (error) {
+    adjustmentError =
+      error instanceof Error ? error.message : "Check the credit amount.";
+  }
   const enabled = isDemo
     ? packages.length
       ? packages.every((p) => p.autoApply)
@@ -123,16 +139,26 @@ export function CreditAccount({
       )
       .map((e) => e.lessonId),
   );
-  async function save(kind: "set_total" | "set_auto" | "reconcile") {
+  async function save(
+    kind: "set_total" | "set_auto" | "reconcile" | "apply_upcoming",
+  ) {
     if (busy) return;
     setBusy(true);
     setNotice("");
     try {
+      if (kind === "set_total" && !adjustment)
+        throw new Error(adjustmentError || "Enter a credit amount.");
+      let applied = 0;
       if (isDemo)
         store.transact((draft) => {
           if (kind === "set_total")
-            setDemoCreditTotal(draft, studentId, Number(target), reason.trim());
-          else {
+            setDemoCreditTotal(
+              draft,
+              studentId,
+              adjustment!.total,
+              reason.trim(),
+            );
+          else if (kind !== "apply_upcoming") {
             if (!draft.packages.some((p) => p.studentId === studentId))
               draft.packages.push({
                 id: crypto.randomUUID(),
@@ -153,19 +179,20 @@ export function CreditAccount({
           }
           if (
             (kind === "set_auto" && automatic) ||
-            (kind === "set_total" && enabled)
+            (kind === "set_total" && enabled) ||
+            kind === "apply_upcoming"
           )
-            reserveDemoCredits(draft, studentId);
+            applied = reserveDemoCredits(draft, studentId);
         });
       else {
         if (!account.data)
           throw new Error("Wait for the current balance to load.");
-        await studioCommand("credits", {
+        const result = await studioCommand("credits", {
           command: kind,
           expectedVersion: account.data.version,
           payload: {
             studentId,
-            total: Number(target),
+            total: adjustment?.total,
             reason: reason.trim(),
             enabled: automatic,
           },
@@ -174,6 +201,7 @@ export function CreditAccount({
               ? reason.trim()
               : "Coach reviewed automatic credit use",
         });
+        applied = Number(result.resource?.applied ?? 0);
         await invalidateStudioDomains(client, [
           "finance",
           "lessons",
@@ -191,11 +219,15 @@ export function CreditAccount({
       setNotice(
         kind === "reconcile"
           ? "Legacy series reservations matched to their lessons. The available balance is unchanged."
-          : kind === "set_total"
-            ? "Remaining credit total updated. Existing reservations are preserved."
-            : automatic
-              ? "Automatic use enabled. Upcoming lessons have been checked for coverage."
-              : "Automatic use disabled. Existing reservations are preserved.",
+          : kind === "apply_upcoming"
+            ? applied
+              ? `Applied ${applied} credit(s) to upcoming lessons.`
+              : "No additional lessons could use a credit. Check available credits, expiration dates, and existing payment coverage."
+            : kind === "set_total"
+              ? "Credit balance updated. Existing reservations are preserved."
+              : automatic
+                ? "Automatic use enabled. Upcoming lessons have been checked for coverage."
+                : "Automatic use disabled. Existing reservations are preserved.",
       );
     } catch (error) {
       setNotice(
@@ -216,12 +248,13 @@ export function CreditAccount({
           <button
             disabled={!isDemo && (!account.data || account.data.needsReview)}
             onClick={() => {
-              setTarget(String(totals.remaining));
-              setReason("");
+              setAdjustmentMode("add");
+              setTarget("1");
+              setReason("Coach credit adjustment");
               setEditing(true);
             }}
           >
-            Set remaining credits
+            Adjust credits
           </button>
         )
       }
@@ -231,9 +264,9 @@ export function CreditAccount({
       </p>
       <div className="metric-strip compact-metrics">
         {[
-          ["Remaining", totals.remaining],
-          ["Reserved", totals.reserved],
-          ["Available", totals.available],
+          ["Available to use", totals.available],
+          ["Reserved for lessons", totals.reserved],
+          ["Total remaining", totals.remaining],
         ].map(([label, value]) => (
           <div key={label}>
             <small>{label}</small>
@@ -241,6 +274,10 @@ export function CreditAccount({
           </div>
         ))}
       </div>
+      <p>
+        {totals.available} available to apply now. {totals.reserved} credits are
+        already assigned to lessons and are included in the remaining total.
+      </p>
       {totals.expired > 0 && (
         <p>{totals.expired} expired credit(s), excluded from available.</p>
       )}
@@ -305,6 +342,18 @@ export function CreditAccount({
           >
             {enabled === true ? "Turn off" : "Review and turn on"}
           </button>
+          {enabled === true && (
+            <button
+              disabled={
+                busy ||
+                (!isDemo && (!account.data || account.data.needsReview)) ||
+                totals.available <= 0
+              }
+              onClick={() => void save("apply_upcoming")}
+            >
+              {busy ? "Applying…" : "Apply available credits now"}
+            </button>
+          )}
         </div>
       )}
       {readOnly && (
@@ -374,8 +423,8 @@ export function CreditAccount({
       )}
       {editing && (
         <Dialog
-          title="Set remaining credits"
-          description="Remaining includes credits reserved for upcoming lessons."
+          title="Adjust lesson credits"
+          description="Add or remove available credits, or set a balance. Credits already reserved for lessons are preserved."
           onClose={() => !busy && setEditing(false)}
         >
           <form
@@ -386,10 +435,46 @@ export function CreditAccount({
             }}
           >
             <label className="full">
-              New remaining total
+              Adjustment
+              <select
+                value={adjustmentMode}
+                onChange={(event) => {
+                  const mode = event.target.value as CreditAdjustmentMode;
+                  setAdjustmentMode(mode);
+                  setTarget(
+                    String(
+                      mode === "set_available"
+                        ? Math.max(0, totals.available)
+                        : mode === "set_total"
+                          ? totals.remaining
+                          : 1,
+                    ),
+                  );
+                }}
+              >
+                <option value="add">Add credits</option>
+                <option value="remove">Remove available credits</option>
+                <option value="set_available">Set available balance</option>
+                <option value="set_total">Set remaining total</option>
+              </select>
+            </label>
+            <label className="full">
+              {adjustmentMode === "add"
+                ? "Credits to add"
+                : adjustmentMode === "remove"
+                  ? "Credits to remove"
+                  : adjustmentMode === "set_available"
+                    ? "New available balance"
+                    : "New remaining total"}
               <input
                 type="number"
-                min={Math.max(0, totals.reserved)}
+                min={
+                  adjustmentMode === "set_total"
+                    ? Math.max(0, totals.reserved)
+                    : adjustmentMode === "set_available"
+                      ? 0
+                      : 1
+                }
                 max={100000}
                 step={1}
                 required
@@ -397,9 +482,12 @@ export function CreditAccount({
                 onChange={(e) => setTarget(e.target.value)}
               />
               <small>
-                Current: {totals.remaining}. After saving: {totals.reserved}{" "}
-                reserved + {Math.max(0, Number(target) - totals.reserved)}{" "}
-                available.
+                Current: {totals.available} available + {totals.reserved}{" "}
+                reserved.{" "}
+                {adjustment &&
+                  `After adjustment: ${adjustment.available} available + ${totals.reserved} reserved = ${adjustment.total} remaining.`}{" "}
+                {enabled &&
+                  "Automatic use may then reserve available credits for upcoming lessons."}
               </small>
             </label>
             <label className="full">
@@ -427,17 +515,16 @@ export function CreditAccount({
               </button>
               <button
                 className="primary"
-                disabled={
-                  busy ||
-                  !target ||
-                  !Number.isInteger(Number(target)) ||
-                  Number(target) < totals.reserved ||
-                  reason.trim().length < 3
-                }
+                disabled={busy || !adjustment || reason.trim().length < 3}
               >
-                {busy ? "Saving…" : "Save total"}
+                {busy ? "Saving…" : "Save credit adjustment"}
               </button>
             </div>
+            {adjustmentError && (
+              <p className="full" role="alert">
+                {adjustmentError}
+              </p>
+            )}
             {notice && (
               <p className="full" role="alert">
                 {notice}

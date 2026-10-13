@@ -1,4 +1,10 @@
-import { PDFDocument, rgb, StandardFonts, type PDFFont } from "pdf-lib";
+import {
+  PDFDocument,
+  PDFString,
+  rgb,
+  StandardFonts,
+  type PDFFont,
+} from "pdf-lib";
 import { invoiceDue, type Invoice } from "../../domain/invoices";
 import { formatMoney } from "../../domain/finance";
 
@@ -40,6 +46,7 @@ export async function createInvoicePdf(
   fontBytes?: Uint8Array,
   logoBytes?: Uint8Array,
   customFontkit?: Parameters<PDFDocument["registerFontkit"]>[0],
+  paymentUrl?: string,
 ) {
   const pdf = await PDFDocument.create();
   if (customFontkit) pdf.registerFontkit(customFontkit);
@@ -131,6 +138,8 @@ export async function createInvoicePdf(
   block(invoice.recipient.name, 48, 290, 13);
   if (invoice.recipient.email)
     block(invoice.recipient.email, 48, 290, 10, muted);
+  if (invoice.recipient.studentName)
+    block(`For student: ${invoice.recipient.studentName}`, 48, 290, 10, muted);
   y -= 12;
   if (invoice.introduction) {
     block(invoice.introduction, 48, 516);
@@ -196,6 +205,40 @@ export async function createInvoicePdf(
   );
   text(due, 564 - font.widthOfTextAtSize(due, 20), y - 4, 20, forest);
   y -= 44;
+  if (paymentUrl && invoice.status !== "draft") {
+    const url = new URL(paymentUrl);
+    if (!["https:", "http:"].includes(url.protocol))
+      throw new Error("Invalid invoice payment URL.");
+    ensure(70);
+    const buttonY = y - 32;
+    page.drawRectangle({
+      x: 48,
+      y: buttonY,
+      width: 155,
+      height: 34,
+      color: forest,
+    });
+    text("Pay invoice", 78, buttonY + 12, 12, rgb(1, 1, 1));
+    const link = pdf.context.register(
+      pdf.context.obj({
+        Type: "Annot",
+        Subtype: "Link",
+        Rect: [48, buttonY, 203, buttonY + 34],
+        Border: [0, 0, 0],
+        A: { Type: "Action", S: "URI", URI: PDFString.of(url.href) },
+      }),
+    );
+    page.node.addAnnot(link);
+    y = buttonY - 17;
+    block(
+      "Open your secure portal to view the current balance and pay.",
+      48,
+      516,
+      9,
+      muted,
+    );
+    y -= 12;
+  }
   if (invoice.notes) {
     ensure(35);
     text("NOTES & PAYMENT DETAILS", 48, y, 9, muted);

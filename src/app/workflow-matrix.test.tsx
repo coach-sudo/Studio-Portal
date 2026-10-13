@@ -643,7 +643,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         screen.queryByRole("button", { name: /Continue with Google/i }),
       ).not.toBeInTheDocument();
-      expect(screen.getByLabelText("Username")).toBeInTheDocument();
+      expect(screen.getByLabelText("Email or username")).toBeInTheDocument();
       expect(screen.getByRole("link", { name: "Coach login" })).toHaveAttribute(
         "href",
         "/coach/login",

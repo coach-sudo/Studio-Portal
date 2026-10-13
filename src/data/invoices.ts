@@ -14,6 +14,12 @@ export function useInvoices(
       readOnly ? "student" : "coach",
     ],
     enabled: !isDemo,
+    refetchInterval: (query) =>
+      query.state.data?.some((invoice) =>
+        ["queued", "sending"].includes(invoice.delivery?.status ?? ""),
+      )
+        ? 5000
+        : false,
     queryFn: async () => {
       const auth = await supabase?.auth.getSession();
       if (!auth?.data.session) throw new Error("Sign in to view invoices.");

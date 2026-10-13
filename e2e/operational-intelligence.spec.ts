@@ -24,8 +24,12 @@ async function openOperationalCoach(
   });
   const page = await context.newPage();
   await page.goto("/login");
-  await page.getByLabel("Username").fill(runtime.accounts![role].username);
-  await page.getByLabel("Password").fill(runtime.accounts![role].password);
+  await page
+    .getByLabel("Email or username", { exact: true })
+    .fill(runtime.accounts![role].username);
+  await page
+    .getByLabel("Password", { exact: true })
+    .fill(runtime.accounts![role].password);
   await Promise.all([
     page.waitForURL(/\/(portal|coach)(?:\/|$)/),
     page.getByRole("button", { name: "Sign in", exact: true }).click(),

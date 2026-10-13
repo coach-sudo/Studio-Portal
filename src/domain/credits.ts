@@ -6,6 +6,40 @@ import type {
   LessonParticipant,
 } from "./model";
 
+export type CreditAdjustmentMode =
+  "add" | "remove" | "set_available" | "set_total";
+export function creditAdjustmentTarget(
+  totals: { remaining: number; reserved: number; available: number },
+  mode: CreditAdjustmentMode,
+  amount: number,
+) {
+  if (!Number.isSafeInteger(amount) || amount < 0 || amount > 100000)
+    throw new Error("Enter a whole number between 0 and 100,000.");
+  if ((mode === "add" || mode === "remove") && amount === 0)
+    throw new Error("Enter at least one credit.");
+  if (mode === "remove" && amount > Math.max(0, totals.available))
+    throw new Error(
+      "You can only remove available credits. Reserved credits stay with their lessons.",
+    );
+  const total =
+    mode === "add"
+      ? totals.remaining + amount
+      : mode === "remove"
+        ? totals.remaining - amount
+        : mode === "set_available"
+          ? totals.reserved + amount
+          : amount;
+  if (total < totals.reserved || total > 100000)
+    throw new Error(
+      `Keep at least ${totals.reserved} reserved credits and no more than 100,000 total credits.`,
+    );
+  return {
+    total,
+    available: total - totals.reserved,
+    difference: total - totals.remaining,
+  };
+}
+
 export function lessonCreditDebit(
   entries: CreditEntry[],
   lessonId: string,

@@ -142,7 +142,9 @@ describe("studio surfaces", () => {
   });
   it("offers password login and the current terms", async () => {
     renderApp("/login");
-    expect(await screen.findByLabelText("Username")).toBeInTheDocument();
+    expect(
+      await screen.findByLabelText("Email or username"),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Password")).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: "Terms and Conditions" }),

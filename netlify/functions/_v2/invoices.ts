@@ -3,13 +3,71 @@ import { z } from "zod";
 import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import { portalOrigin } from "../_shared/portal-url";
-import { resolveEventRecipients } from "../_shared/notification-recipients";
+import { notificationRecipientContext } from "../_shared/notification-recipients";
+import { invoiceBilling } from "../../../src/domain/invoiceBilling";
+import { dispatchOutbox } from "../_shared/outbox-dispatch";
 import {
   invoiceDue,
   invoiceLineTotal,
   type Invoice,
 } from "../../../src/domain/invoices";
 import type { V2CommandContext } from "./types";
+
+async function queueInvoiceEmail(
+  service: ReturnType<typeof serviceClient>,
+  invoice: Invoice,
+  recipients: string[],
+  key: string,
+  correlationId: string,
+) {
+  const ids: string[] = [];
+  for (const recipient of recipients) {
+    const result = await service
+      .from("outbox_messages")
+      .upsert(
+        {
+          studio_id: invoice.studio_id,
+          student_id: invoice.student_id,
+          channel: "email",
+          recipient,
+          subject: `${invoice.branding.studioName} · Invoice ${invoice.number}`,
+          body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}\n\n${invoice.footer}`,
+          status: "queued",
+          send_at: new Date().toISOString(),
+          event_key: "invoice.issued",
+          dedupe_key: `${key}:${recipient}`,
+          recipient_intent: "payment_due",
+          entity_snapshot: {
+            invoiceId: invoice.id,
+            invoiceVersion: invoice.version,
+            approvedAt: new Date().toISOString(),
+          },
+          correlation_id: correlationId,
+        },
+        { onConflict: "dedupe_key", ignoreDuplicates: true },
+      )
+      .select("id");
+    if (result.error) throw result.error;
+    ids.push(
+      ...(result.data ?? []).map((message: { id: string }) => message.id),
+    );
+  }
+  return ids;
+}
+
+function startInvoiceDelivery(ctx: V2CommandContext, ids: string[]) {
+  if (ids.length && ctx.context?.waitUntil)
+    ctx.context.waitUntil(
+      dispatchOutbox({ ids }).catch(() => {
+        console.error(
+          JSON.stringify({
+            event: "invoice.dispatch_failed",
+            correlationId: ctx.id,
+          }),
+        );
+      }),
+    );
+}
 
 const lineSchema = z
   .object({
@@ -60,6 +118,18 @@ export async function handleInvoiceCommands(
     ]);
     if (student.error || studio.error || !student.data || !studio.data)
       throw new Error("FORBIDDEN");
+    const billingContext = await notificationRecipientContext(
+      service,
+      value.student_id,
+    );
+    const billing = invoiceBilling(
+      billingContext.student,
+      billingContext.contacts,
+    );
+    if (value.status === "open" && billing.issueError)
+      throw new Error(
+        `VALIDATION_FAILED: ${billing.issueError} Save a draft or update the household payer settings.`,
+      );
     const settings = studio.data.settings ?? {};
     const items = [];
     for (const line of value.items) {
@@ -107,13 +177,53 @@ export async function handleInvoiceCommands(
             ? undefined
             : settings.branding?.logoUrl,
         },
-        recipient: { name: student.data.full_name, email: student.data.email },
+        recipient: billing.recipient,
       },
       p_key: `invoice:${input.idempotencyKey}`,
       p_version: input.expectedVersion,
     });
     if (result.error) throw result.error;
-    return json({ resource: result.data });
+    const saved = result.data as Invoice;
+    if (saved.status === "draft")
+      return json({ resource: saved, delivery: { status: "draft" } });
+    try {
+      if (
+        saved.status === "void" ||
+        !saved.recipient.email ||
+        !billing.recipients.includes(saved.recipient.email)
+      )
+        throw new Error("Invoice payer changed");
+      await audit(
+        studioId,
+        "invoice",
+        saved.id,
+        "invoice.send_approved",
+        saved,
+        { recipients: [saved.recipient.email], automatic: true },
+      );
+      const ids = await queueInvoiceEmail(
+        service,
+        saved,
+        [saved.recipient.email],
+        `invoice-issued:${saved.id}`,
+        ctx.id,
+      );
+      startInvoiceDelivery(ctx, ids);
+      return json({
+        resource: saved,
+        delivery: { status: "queued", recipients: [saved.recipient.email] },
+      });
+    } catch {
+      // Saving succeeded. A delivery failure must not make the coach create a duplicate invoice.
+      return json({
+        resource: saved,
+        delivery: {
+          status: "failed",
+          message:
+            "Invoice saved, but its email could not be queued. Review the payer settings and use Review and send to retry.",
+        },
+      });
+    }
   }
   if (!input.entityId) throw new Error("VALIDATION_FAILED");
   const visible = await db
@@ -273,14 +383,20 @@ export async function handleInvoiceCommands(
   if (input.command === "preview_recipients" || input.command === "send") {
     if (invoice.status === "draft" || invoice.status === "void")
       throw new Error("INVALID_TRANSITION");
-    const resolution = await resolveEventRecipients(
+    const context = await notificationRecipientContext(
       service,
       invoice.student_id,
-      "payment_due",
     );
-    const recipients = resolution.recipients.map((r) => r.email);
+    const billing = invoiceBilling(context.student, context.contacts);
+    const recipients = billing.recipients;
     if (input.command === "preview_recipients")
-      return json({ resource: { recipients } });
+      return json({
+        resource: {
+          recipients,
+          payer: billing.recipient,
+          issueError: billing.issueError,
+        },
+      });
     const approved = z
       .array(z.string().email())
       .parse(input.payload.recipients)
@@ -293,40 +409,45 @@ export async function handleInvoiceCommands(
         "VERSION_CONFLICT: Review the invoice and recipients again.",
       );
     if (!recipients.length)
-      throw new Error("VALIDATION_FAILED: No permitted invoice recipient.");
-    for (const recipient of recipients) {
-      const result = await service.from("outbox_messages").upsert(
-        {
-          studio_id: studioId,
-          student_id: invoice.student_id,
-          channel: "email",
-          recipient,
-          subject: `${invoice.branding.studioName} · Invoice ${invoice.number}`,
-          body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}\n\n${invoice.footer}`,
-          status: "queued",
-          send_at: new Date().toISOString(),
-          event_key: "invoice.issued",
-          dedupe_key: `invoice-send:${input.idempotencyKey}:${recipient}`,
-          recipient_intent: "payment_due",
-          entity_snapshot: {
-            invoiceId: invoice.id,
-            invoiceVersion: invoice.version,
-            approvedAt: new Date().toISOString(),
-          },
-          correlation_id: ctx.id,
-        },
-        { onConflict: "dedupe_key", ignoreDuplicates: true },
+      throw new Error(
+        `VALIDATION_FAILED: ${billing.issueError || "No permitted invoice recipient."}`,
       );
-      if (result.error) throw result.error;
+    let addressed = invoice;
+    if (
+      JSON.stringify(invoice.recipient) !== JSON.stringify(billing.recipient)
+    ) {
+      const corrected = await service
+        .from("studio_invoices")
+        .update({
+          recipient: billing.recipient,
+          version: invoice.version + 1,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", invoice.id)
+        .eq("version", invoice.version)
+        .select("*")
+        .maybeSingle();
+      if (corrected.error) throw corrected.error;
+      if (!corrected.data)
+        throw new Error("VERSION_CONFLICT: Review the invoice again.");
+      addressed = corrected.data as Invoice;
     }
+    const ids = await queueInvoiceEmail(
+      service,
+      addressed,
+      recipients,
+      `invoice-send:${input.idempotencyKey}`,
+      ctx.id,
+    );
     await audit(
       studioId,
       "invoice",
       invoice.id,
       "invoice.send_approved",
       invoice,
-      { recipients },
+      { recipients, recipient: addressed.recipient },
     );
+    startInvoiceDelivery(ctx, ids);
     return json({ resource: { recipients, status: "approved" } });
   }
   throw new Error("UNKNOWN_COMMAND");

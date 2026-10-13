@@ -69,8 +69,12 @@ export default async function globalSetup(config: FullConfig) {
       try {
         const page = await context.newPage();
         await page.goto("/login");
-        await page.getByLabel("Username").fill(account.username);
-        await page.getByLabel("Password").fill(account.password);
+        await page
+          .getByLabel("Email or username", { exact: true })
+          .fill(account.username);
+        await page
+          .getByLabel("Password", { exact: true })
+          .fill(account.password);
         await Promise.all([
           page.waitForURL(/\/(portal|coach)(?:\/|$)/, { timeout: 30_000 }),
           page.getByRole("button", { name: "Sign in" }).click(),

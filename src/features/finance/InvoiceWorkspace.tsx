@@ -1,7 +1,7 @@
 import { WritingArea } from "../../components/WritingArea";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Plus } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
@@ -26,6 +26,7 @@ import { studioDateKey } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { InvoiceDocument } from "./InvoiceDocument";
+import { invoiceBilling } from "../../domain/invoiceBilling";
 import "./InvoiceWorkspace.css";
 
 export function InvoiceWorkspace({
@@ -55,6 +56,16 @@ export function InvoiceWorkspace({
       (!readOnly || i.status !== "draft"),
   );
   const selected = invoices.find((i) => i.id === params.get("invoice"));
+  const deliveryLabels = {
+    not_sent: "Email not sent yet",
+    queued: "Email queued",
+    sending: "Email sending",
+    sent: "Email sent",
+    failed: "Email delivery failed",
+    suppressed: "Email stopped; review invoice or payer settings",
+    cancelled: "Email cancelled",
+    unknown: "Email status unavailable",
+  };
   const logo = useQuery({
     queryKey: [
       "invoice-logo",
@@ -405,6 +416,9 @@ export function InvoiceWorkspace({
                 <small>
                   Due {inv.due_date} · {inv.items.length} item(s)
                 </small>
+                {!isDemo && inv.delivery && (
+                  <small>{deliveryLabels[inv.delivery.status]}</small>
+                )}
               </div>
               <Status
                 tone={
@@ -444,7 +458,7 @@ export function InvoiceWorkspace({
           studentId={studentId}
           initial={editing === "new" ? undefined : editing}
           onClose={() => setEditing(undefined)}
-          onSave={async (value, status) => {
+          onSave={async (value, status, idempotencyKey) => {
             if (isDemo) {
               const existing = editing === "new" ? undefined : editing;
               const now = new Date().toISOString();
@@ -511,6 +525,11 @@ export function InvoiceWorkspace({
               });
               setEditing(undefined);
               open(invoice.id);
+              setNotice(
+                status === "draft"
+                  ? "Draft saved. No email was sent."
+                  : `Demo invoice issued for ${invoice.recipient.name}. No email was sent.`,
+              );
             } else {
               const result = await studioCommand("invoices", {
                 command: "save",
@@ -518,10 +537,18 @@ export function InvoiceWorkspace({
                 expectedVersion: editing === "new" ? 0 : editing.version,
                 payload: { ...value, status },
                 reason: "Coach saved invoice",
+                idempotencyKey,
               });
               await refresh();
               setEditing(undefined);
               open(result.resource.id);
+              setNotice(
+                result.delivery?.status === "failed"
+                  ? result.delivery.message
+                  : status === "draft"
+                    ? "Draft saved. No email was sent."
+                    : `Invoice issued and queued for ${result.resource.recipient.name} (${result.resource.recipient.email}).`,
+              );
             }
           }}
         />
@@ -595,7 +622,20 @@ export function InvoiceWorkspace({
               downloading the PDF.
             </p>
           )}
-          <InvoiceDocument invoice={selected} logoUrl={logoUrl} />
+          <InvoiceDocument
+            invoice={selected}
+            logoUrl={logoUrl}
+            paymentBusy={busy || Boolean(selected.checkout_key)}
+            onPay={() =>
+              void command("checkout", { amountMinor: invoiceDue(selected) })
+            }
+          />
+          {!isDemo && selected.delivery && (
+            <p role="status" className="portal-notice">
+              {deliveryLabels[selected.delivery.status]}
+              {selected.delivery.error ? `. ${selected.delivery.error}` : ""}
+            </p>
+          )}
           {selected.checkout_key && (
             <Section title="Online payment pending">
               <p>
@@ -736,7 +776,7 @@ export function InvoiceWorkspace({
       {review && (
         <Dialog
           title="Review invoice email"
-          description="Only the permitted financial recipients below will receive this invoice link."
+          description="This invoice will be addressed to the current household payer and emailed with a Pay invoice button."
           onClose={() => !busy && setReview(undefined)}
         >
           <p>
@@ -784,8 +824,13 @@ function InvoiceEditor({
   studentId?: string;
   initial?: Invoice;
   onClose: () => void;
-  onSave: (invoice: Invoice, status: "draft" | "open") => Promise<void>;
+  onSave: (
+    invoice: Invoice,
+    status: "draft" | "open",
+    idempotencyKey: string,
+  ) => Promise<void>;
 }) {
+  const saveAttempt = useRef<{ signature: string; key: string } | null>(null);
   const [student, setStudent] = useState(
       initial?.student_id ?? studentId ?? "",
     ),
@@ -815,6 +860,9 @@ function InvoiceEditor({
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const recipient = data.students.find((s) => s.id === student);
+  const billing = recipient
+    ? invoiceBilling(recipient, data.linkedContacts)
+    : undefined;
   const document: Invoice = {
     id: initial?.id ?? "",
     studio_id: data.studioId,
@@ -833,10 +881,7 @@ function InvoiceEditor({
       logoStoragePath: data.settings.branding.logoStoragePath,
       logoUrl: data.settings.branding.logoUrl,
     },
-    recipient: {
-      name: recipient?.fullName ?? "Choose a student",
-      email: recipient?.email,
-    },
+    recipient: billing?.recipient ?? { name: "Choose a student" },
     items,
     total_minor: items.reduce((n, l) => n + l.quantity * l.unitMinor, 0),
     paid_minor: 0,
@@ -885,6 +930,8 @@ function InvoiceEditor({
     try {
       if (!recipient || !items.length)
         throw new Error("Choose a student and add at least one item.");
+      if (status === "open" && billing?.issueError)
+        throw new Error(billing.issueError);
       if (!issue || !due) throw new Error("Choose issue and due dates.");
       if (due < issue)
         throw new Error("The due date must follow the issue date.");
@@ -904,7 +951,21 @@ function InvoiceEditor({
           throw new Error("Use one line for each linked lesson.");
       }
       setBusy(true);
-      await onSave(document, status);
+      const signature = JSON.stringify([
+        student,
+        status,
+        issue,
+        due,
+        intro,
+        notes,
+        footer,
+        items,
+        initial?.id,
+        initial?.version,
+      ]);
+      if (saveAttempt.current?.signature !== signature)
+        saveAttempt.current = { signature, key: crypto.randomUUID() };
+      await onSave(document, status, saveAttempt.current.key);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Invoice could not be saved.");
     } finally {
@@ -914,10 +975,25 @@ function InvoiceEditor({
   return (
     <Drawer
       title={initial ? "Edit draft invoice" : "Create invoice"}
-      description="Save a draft, or issue the invoice to add it to the student’s payment record. Sending is a separate reviewed action."
+      description="Save a draft, or issue and email the invoice to the household’s primary payer. It stays on this student’s payment record."
       onClose={() => !busy && onClose()}
     >
       <div className="invoice-editor">
+        {billing && (
+          <div className="portal-notice">
+            <strong>Bill to: {billing.recipient.name}</strong>
+            {billing.recipient.email && <p>{billing.recipient.email}</p>}
+            {billing.issueError ? (
+              <p>
+                {billing.issueError} Update the household’s primary payer and
+                payment notification settings before sending. You can still save
+                a draft.
+              </p>
+            ) : (
+              <p>Issuing this invoice automatically emails the payer above.</p>
+            )}
+          </div>
+        )}
         <div className="header-actions">
           <button onClick={() => setPreview(!preview)}>
             {preview ? "Back to editing" : "Preview invoice"}
@@ -1196,10 +1272,10 @@ function InvoiceEditor({
           </button>
           <button
             className="primary"
-            disabled={busy}
+            disabled={busy || Boolean(billing?.issueError)}
             onClick={() => void save("open")}
           >
-            {busy ? "Saving…" : "Save invoice"}
+            {busy ? "Saving…" : "Issue and send invoice"}
           </button>
         </div>
       </div>

@@ -207,7 +207,7 @@ export function AuthGate({
   if (state === "login")
     return (
       <Navigate
-        to={`/${role === "coach" ? "coach/login" : "login"}?returnTo=${encodeURIComponent(location.pathname)}`}
+        to={`/${role === "coach" ? "coach/login" : "login"}?returnTo=${encodeURIComponent(location.pathname + location.search)}`}
         replace
       />
     );

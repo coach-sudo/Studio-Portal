@@ -35,7 +35,9 @@ describe("interactive booking flows", () => {
       "jordan@example.com",
     );
     await user.click(screen.getByRole("button", { name: /review payment/i }));
-    await user.click(screen.getByRole("checkbox", { name: /terms and conditions/i }));
+    await user.click(
+      screen.getByRole("checkbox", { name: /terms and conditions/i }),
+    );
     await user.click(
       screen.getByRole("button", { name: /^confirm booking$/i }),
     );
@@ -82,7 +84,10 @@ describe("interactive booking flows", () => {
   it("does not pretend to send a magic link in demo mode", async () => {
     const user = userEvent.setup();
     renderApp("/login");
-    await user.type(await screen.findByLabelText(/email/i), "maya@example.com");
+    await user.click(
+      await screen.findByText("Use an email sign-in link instead"),
+    );
+    await user.type(screen.getByLabelText("Profile email"), "maya@example.com");
     await user.click(screen.getByRole("button", { name: /email me/i }));
     expect(
       await screen.findByText(/demo mode does not send email/i),
@@ -129,8 +134,15 @@ describe("interactive booking flows", () => {
       await screen.findByRole("button", { name: "Add package" }),
     );
     const dialog = screen.getByRole("dialog", { name: "Create packages" });
-    await user.click(within(dialog).getByRole("checkbox", { name: /Private Acting Coaching/i }));
-    await user.type(within(dialog).getByPlaceholderText("Leave blank for automatic names"), "Four 60-minute sessions");
+    await user.click(
+      within(dialog).getByRole("checkbox", {
+        name: /Private Acting Coaching/i,
+      }),
+    );
+    await user.type(
+      within(dialog).getByPlaceholderText("Leave blank for automatic names"),
+      "Four 60-minute sessions",
+    );
     await user.click(
       within(dialog).getByRole("button", { name: "Create 1 package" }),
     );
