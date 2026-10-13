@@ -123,7 +123,13 @@ export const portalLoginSchema = z.object({
   username: z
     .string()
     .trim()
-    .regex(/^[a-z][a-z0-9._-]{2,31}$/),
+    .toLowerCase()
+    .pipe(
+      z.union([
+        z.string().email().max(254),
+        z.string().regex(/^[a-z][a-z0-9._-]{2,31}$/),
+      ]),
+    ),
   password: z.string().min(8).max(200),
 });
 

@@ -107,6 +107,10 @@ function AppRoutes() {
         <Route path="/coach/login" element={<MagicLinkLogin coachOnly />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
         <Route
+          path="/auth/reset-password"
+          element={<ChangeTemporaryPassword recovery />}
+        />
+        <Route
           path="/change-password"
           element={
             <AuthGate role="portal">
