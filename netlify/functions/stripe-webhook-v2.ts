@@ -438,7 +438,7 @@ export default async (request: Request, context: Context) => {
             },
           });
           if (fulfilled.error) throw fulfilled.error;
-          await db
+          const agreementUpdated = await db
             .from("package_subscriptions")
             .update({
               status: "active",
@@ -454,8 +454,9 @@ export default async (request: Request, context: Context) => {
               updated_at: new Date().toISOString(),
             })
             .eq("id", packageSubscription.id);
-          if (Number(object.amount_paid || 0) > 0)
-            await db.from("payment_entries").upsert(
+          if (agreementUpdated.error) throw agreementUpdated.error;
+          if (Number(object.amount_paid || 0) > 0) {
+            const paymentRecorded = await db.from("payment_entries").upsert(
               {
                 student_id: packageSubscription.student_id,
                 package_id: packageSubscription.package_id,
@@ -469,6 +470,8 @@ export default async (request: Request, context: Context) => {
               },
               { onConflict: "external_reference", ignoreDuplicates: true },
             );
+            if (paymentRecorded.error) throw paymentRecorded.error;
+          }
         }
         return done({ packageSubscription: true });
       }
