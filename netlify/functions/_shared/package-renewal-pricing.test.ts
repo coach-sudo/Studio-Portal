@@ -92,7 +92,7 @@ function database() {
     },
   };
   mocks.service.mockReturnValue(db);
-  return { writes };
+  return { writes, rpc: db.rpc };
 }
 
 beforeEach(() => {
@@ -127,7 +127,7 @@ describe("existing package renewal agreements", () => {
     );
   });
   it("credits the purchased quantity rather than an edited definition on a paid renewal", async () => {
-    const { writes } = database();
+    const { writes, rpc } = database();
     mocks.event.mockReturnValue({
       id: "event",
       type: "invoice.paid",
@@ -149,15 +149,19 @@ describe("existing package renewal agreements", () => {
       { requestId: "test" } as never,
     );
     expect(response.status).toBe(200);
-    expect(
-      writes.find((write) => write.table === "package_credit_entries")?.values,
-    ).toEqual(
-      expect.objectContaining({
-        package_id: "original-purchase",
+    expect(rpc).toHaveBeenCalledWith("command_grant_student_credits", {
+      p_student: "student",
+      p_key: "package-subscription-invoice:invoice",
+      p_value: {
+        packageId: "original-purchase",
+        kind: "purchase",
         quantity: 4,
-        idempotency_key: "package-subscription-invoice:invoice",
-      }),
-    );
+        reason: "Package renewal · invoice",
+      },
+    });
+    expect(
+      writes.some((write) => write.table === "package_credit_entries"),
+    ).toBe(false);
     expect(
       writes.find((write) => write.table === "payment_entries")?.values
         .amount_minor,

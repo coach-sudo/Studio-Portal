@@ -4671,6 +4671,10 @@ export type Database = {
         Returns: Json
       }
       cleanup_transient_studio_data: { Args: never; Returns: Json }
+      cleanup_credit_coverage_fixture: {
+        Args: { p_run: string; p_student: string }
+        Returns: undefined
+      }
       command_apply_lesson_credit: {
         Args: {
           entry_idempotency_key: string
@@ -4768,6 +4772,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      command_grant_student_credits: {
+        Args: { p_actor?: string; p_key: string; p_student: string; p_value: Json }
+        Returns: Json
+      }
       command_make_lesson_recurring: {
         Args: {
           p_cadence: string
@@ -4783,6 +4791,17 @@ export type Database = {
           expected_version: number
           removed_by: string
           target_student: string
+        }
+        Returns: Json
+      }
+      command_student_credit_settings: {
+        Args: {
+          p_actor: string
+          p_command: string
+          p_key: string
+          p_student: string
+          p_value: Json
+          p_version: number
         }
         Returns: Json
       }
@@ -4885,6 +4904,7 @@ export type Database = {
         Args: { target_service: string; target_starts: string[] }
         Returns: string[]
       }
+      credit_coverage_work: { Args: { p_limit?: number }; Returns: Json }
       credit_reconciliation: { Args: never; Returns: Json }
       current_campaign_contacts: {
         Args: { p_studio_id: string }
@@ -4893,6 +4913,7 @@ export type Database = {
           email: string
         }[]
       }
+      defer_credit_coverage_job: { Args: { p_student: string }; Returns: undefined }
       expire_booking_holds: { Args: never; Returns: number }
       expire_delinquent_booking: {
         Args: { target_booking: string }
@@ -4942,6 +4963,7 @@ export type Database = {
         Args: { target_package: string }
         Returns: number
       }
+      process_credit_coverage_job: { Args: { p_student: string }; Returns: Json }
       process_stripe_checkout: {
         Args: {
           amount_minor: number

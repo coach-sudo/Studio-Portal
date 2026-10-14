@@ -1,5 +1,7 @@
 # Credit coverage diagnostics — modernization PR 1
 
+PR 1.2 is documented in [credit-lifecycle-reliability.md](credit-lifecycle-reliability.md). It depends on this migration, replaces the two characterization gaps below with regression assertions, and makes mixed automatic preferences require review. The baseline descriptions here record PR 1.1 behavior, not the combined dependency stack.
+
 This change begins the approved [master plan](studio-portal-modernization-master-plan.md). It adds authoritative read-only credit diagnostics and factors reservation eligibility into one private SQL evaluator. It does not activate a new UI, change automatic preferences, reconcile balances, or implement the later lifecycle and bulk-operation PRs.
 
 ## Contract and authorization

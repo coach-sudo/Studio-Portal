@@ -15,42 +15,67 @@ function fixture() {
     input: {
       command: "apply_upcoming",
       expectedVersion: 3,
+      idempotencyKey: "stable-command",
       payload: { studentId: "student" },
     },
     requireCoach: async () => "studio",
-    db: { from: () => q },
+    db: {
+      from: () => q,
+      auth: {
+        getUser: async () => ({ data: { user: { id: "coach" } }, error: null }),
+      },
+    },
     audit: vi.fn(),
   } as unknown as V2CommandContext;
 }
 beforeEach(() => {
   vi.clearAllMocks();
-  rpc.mockImplementation(async (name: string) => ({
-    data:
-      name === "student_credit_summary"
-        ? { autoApply: true, reserved: 2, available: 5, version: 3 }
-        : {
-            autoApply: true,
-            reserved: 5,
-            available: 2,
-            version: 6,
-            applied: 16,
-          },
+  rpc.mockResolvedValue({
+    data: {
+      autoApply: true,
+      applied: 3,
+      alreadyCovered: 2,
+      skipped: 1,
+      failed: 0,
+      version: 6,
+      auditEventId: "transactional-audit",
+    },
     error: null,
-  }));
-});
-it("applies upcoming credits through the version-protected account operation and reports only new reservations", async () => {
-  const response = await handleFinanceCommands(fixture());
-  expect(rpc).toHaveBeenCalledWith("set_student_credit_auto", {
-    p_student: "student",
-    p_enabled: true,
-    p_version: 3,
   });
-  expect((await response!.json()).resource.applied).toBe(3);
 });
-it("does not silently enable automatic use when it is off", async () => {
-  rpc.mockResolvedValue({ data: { autoApply: false }, error: null });
+it("forwards authoritative new/already/skipped counts and stable keys to the atomic command", async () => {
+  const ctx = fixture();
+  const response = await handleFinanceCommands(ctx);
+  expect(rpc).toHaveBeenCalledExactlyOnceWith(
+    "command_student_credit_settings",
+    {
+      p_student: "student",
+      p_command: "apply_upcoming",
+      p_value: { studentId: "student" },
+      p_version: 3,
+      p_key: "stable-command",
+      p_actor: "coach",
+    },
+  );
+  expect(await response!.json()).toMatchObject({
+    resource: {
+      applied: 3,
+      alreadyCovered: 2,
+      skipped: 1,
+      failed: 0,
+      autoApply: true,
+    },
+    auditEventId: "transactional-audit",
+  });
+  expect(ctx.audit).not.toHaveBeenCalled();
+});
+it("rejects a disabled preference without silently enabling it", async () => {
+  rpc.mockResolvedValue({
+    data: null,
+    error: new Error("Review and enable automatic credit use first"),
+  });
   await expect(handleFinanceCommands(fixture())).rejects.toThrow(
-    "Enable automatic credit use",
+    "Review and enable",
   );
   expect(rpc).not.toHaveBeenCalledWith(
     "set_student_credit_auto",
@@ -64,4 +89,15 @@ it("requires coach access before reserving credits", async () => {
   };
   await expect(handleFinanceCommands(ctx)).rejects.toThrow("FORBIDDEN");
   expect(rpc).not.toHaveBeenCalled();
+});
+it("propagates transaction conflicts without a second audit or recalculated result", async () => {
+  rpc.mockResolvedValue({
+    data: null,
+    error: new Error("IDEMPOTENCY_CONFLICT"),
+  });
+  const ctx = fixture();
+  await expect(handleFinanceCommands(ctx)).rejects.toThrow(
+    "IDEMPOTENCY_CONFLICT",
+  );
+  expect(ctx.audit).not.toHaveBeenCalled();
 });

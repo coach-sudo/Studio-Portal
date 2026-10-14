@@ -74,6 +74,21 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(`alter table public.packages add column stripe_price_id text;
+    alter table public.lessons add column join_url text;
+    alter table public.recurring_series alter column id set default gen_random_uuid();
+    alter table public.recurring_series add column studio_id uuid,add column service_id uuid,add column student_id uuid,
+      add column status text,add column starts_on timestamptz,add column payment_policy text,
+      add column recurrence_rule jsonb,add column meeting_provider text;
+    create table public.webhook_events(id text primary key,provider text,event_type text,payload jsonb,status text,error text,processed_at timestamptz);
+    create table public.package_gifts(id uuid primary key,definition_id uuid,studio_id uuid,status text,claimed_student_id uuid,
+      package_id uuid,expires_at timestamptz,deliver_at timestamptz,updated_at timestamptz,stripe_checkout_session_id text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014151934_credit_lifecycle_reliability.sql",
+      "utf8",
+    ),
+  );
   preservedExplicitBalance = (await scalar(
     `select sum(case when kind='refund' then amount_minor else -amount_minor end) filter(where account_credit) balance,
     count(*) entries, count(*) filter(where external_reference like 'opening-account-credit:%') openings,
@@ -234,7 +249,7 @@ describe("read-only credit coverage diagnostics", () => {
     expect((await summary()).available).toBe(2);
   });
 
-  it("reports mixed legacy flags while preserving the existing per-lot fallback", async () => {
+  it("keeps mixed legacy flags for review without automatic spending", async () => {
     await reset();
     const on = await lot(1);
     await lot(1);
@@ -250,7 +265,7 @@ describe("read-only credit coverage diagnostics", () => {
     const result = await coverage();
     expect(result.settingReasonCode).toBe("mixed_settings_review");
     expect(result.items.map((item) => item.reasonCode)).toEqual([
-      "eligible",
+      "mixed_settings_review",
       "mixed_settings_review",
     ]);
     expect((await coverage(1, 25, true)).counts?.eligible).toBe(2);
@@ -350,7 +365,7 @@ describe("read-only credit coverage diagnostics", () => {
     await expect(coverage(1, 101)).rejects.toThrow("VALIDATION_FAILED");
   });
 
-  it("characterizes the current account scan counting existing reservations as applied", async () => {
+  it("counts existing reservations separately from newly applied credits", async () => {
     await reset();
     const p = await lot(1);
     const l = await lesson();
@@ -362,16 +377,481 @@ describe("read-only credit coverage diagnostics", () => {
       `select public.reserve_student_upcoming_credits($1) result`,
       [student],
     );
-    expect((result!.result as { applied: number }).applied).toBe(1);
+    expect(result!.result).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+      skipped: 0,
+      failed: 0,
+    });
     expect((await coverage()).counts?.eligible).toBe(0);
     expect((await summary()).reserved).toBe(1);
   });
 });
 async function reset() {
   await db.exec(
-    `reset role; update public.lessons set invoice_id=null;delete from public.payment_entries where reason not in ('Legacy credit','Preserved opening dollar credit balance');delete from public.invoice_settlements;delete from public.studio_invoices;delete from public.package_credit_entries;delete from public.lesson_participants;delete from public.calendar_projections;delete from public.lessons;delete from public.bookings;delete from public.packages;update public.student_credit_accounts set version=1,auto_apply=false;`,
+    `select set_config('app.use_credit','false',false),set_config('app.student_cancel','false',false),set_config('app.invoice_checkout_key','',false);`,
+  );
+  await db.exec(
+    `reset role;delete from credit_internal.credit_command_receipts;delete from credit_internal.credit_coverage_jobs;update credit_internal.coverage_sweep set cursor=null;delete from public.audit_events;delete from public.idempotency_keys;delete from public.recommendations;delete from public.package_gifts;delete from public.webhook_events;update public.lessons set invoice_id=null;delete from public.payment_entries where reason not in ('Legacy credit','Preserved opening dollar credit balance');delete from public.invoice_settlements;delete from public.studio_invoices;delete from public.package_credit_entries;delete from public.lesson_participants;delete from public.calendar_projections;delete from public.lessons;delete from public.bookings;delete from public.recurring_series;delete from public.packages;update public.student_credit_accounts set version=1,auto_apply=false;`,
   );
 }
+describe("credit lifecycle reliability", () => {
+  async function grant(key: string, quantity = 2, extra = {}) {
+    return (await scalar(
+      `select public.command_grant_student_credits($1,$2,$3,$4) result`,
+      [
+        student,
+        key,
+        {
+          quantity,
+          kind: "adjustment",
+          reason: "Regression credit grant",
+          ...extra,
+        },
+        coach,
+      ],
+    ))!.result as any;
+  }
+  async function scan() {
+    return (await scalar(
+      `select public.reserve_student_upcoming_credits($1) result`,
+      [student],
+    ))!.result as any;
+  }
+  async function enable() {
+    await db.query(
+      `update public.student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+  }
+  it("atomically grants, reserves and audits once on exact replay; rejects changed requests", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    await lesson("now()+interval '3 days'");
+    const first = await grant("grant-repeat");
+    expect(first.coverage).toMatchObject({
+      applied: 2,
+      alreadyCovered: 0,
+      skipped: 0,
+      failed: 0,
+    });
+    expect(await grant("grant-repeat")).toEqual({ ...first, duplicate: true });
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      alreadyCovered: 2,
+      failed: 0,
+    });
+    expect(
+      (await scalar(
+        `select count(*) n from public.audit_events where correlation_id='grant-repeat'`,
+      ))!.n,
+    ).toBe(1);
+    await expect(grant("grant-repeat", 3)).rejects.toThrow(
+      "IDEMPOTENCY_CONFLICT",
+    );
+    expect((await summary()).remaining).toBe(2);
+  });
+  it("creates a reviewed package exactly once and rolls back grant if audit persistence fails", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const definition = await scalar(
+      `insert into public.package_definitions(id,studio_id,name,session_count) values(gen_random_uuid(),$1,'Reviewed package',2) returning id`,
+      [studio],
+    );
+    const payload = {
+      package: {
+        definitionId: definition!.id,
+        name: "Reviewed package",
+        priceMinor: 12345,
+        currency: "USD",
+        stripePriceId: null,
+      },
+    };
+    const first = await grant("package-repeat", 2, payload);
+    expect(first.package.price_minor).toBe(12345);
+    expect(first.coverage.applied).toBe(1);
+    expect((await grant("package-repeat", 2, payload)).package.id).toBe(
+      first.package.id,
+    );
+    await db.exec(`create function public.fail_credit_audit() returns trigger language plpgsql as $$begin if new.correlation_id='fail-audit' then raise exception 'audit unavailable'; end if; return new;end$$;
+      create trigger fail_credit_audit before insert on public.audit_events for each row execute function public.fail_credit_audit();`);
+    try {
+      await expect(grant("fail-audit", 2, payload)).rejects.toThrow(
+        "audit unavailable",
+      );
+    } finally {
+      await db.exec(
+        `drop trigger fail_credit_audit on public.audit_events;drop function public.fail_credit_audit();`,
+      );
+    }
+    expect((await scalar(`select count(*) n from public.packages`))!.n).toBe(1);
+    expect((await summary()).remaining).toBe(2);
+  });
+  it("preserves a grant and durable recovery when invoice synchronization fails, then retries once", async () => {
+    await reset();
+    await enable();
+    const l = await lesson();
+    await db.exec(`create function public.fail_credit_sync() returns trigger language plpgsql as $$begin if new.quantity<0 then raise exception 'simulated invoice sync failure'; end if;return new;end$$;
+      create trigger fail_credit_sync after insert on public.package_credit_entries for each row execute function public.fail_credit_sync();`);
+    try {
+      const result = await grant("recovery-grant", 1);
+      expect(result.coverage).toMatchObject({
+        applied: 0,
+        failed: 1,
+        autoApplyPending: true,
+      });
+      expect(await summary()).toMatchObject({ available: 1, reserved: 0 });
+      expect(
+        await scalar(
+          `select generation>completed_generation pending,attempts from credit_internal.credit_coverage_jobs where student_id=$1`,
+          [student],
+        ),
+      ).toEqual({ pending: true, attempts: 1 });
+      expect(
+        (await scalar(`select public.process_credit_coverage_job($1) result`, [
+          student,
+        ]))!.result,
+      ).toEqual({ processed: false });
+    } finally {
+      await db.exec(
+        `drop trigger fail_credit_sync on public.package_credit_entries;drop function public.fail_credit_sync();`,
+      );
+    }
+    await db.query(
+      `update credit_internal.credit_coverage_jobs set next_attempt_at=now()-interval '1 second' where student_id=$1`,
+      [student],
+    );
+    expect(
+      (await scalar(`select public.process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toMatchObject({ processed: true, applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select public.process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toEqual({ processed: false });
+    expect(
+      (await scalar(
+        `select count(*) n from public.package_credit_entries where lesson_id=$1 and quantity<0`,
+        [l],
+      ))!.n,
+    ).toBe(1);
+  });
+  it("application requires an enabled preference and replays its audited result without changing settings", async () => {
+    await reset();
+    await lot(1);
+    await lesson();
+    const version = (await summary()).version;
+    const args = [
+      student,
+      "apply_upcoming",
+      {},
+      version,
+      "explicit-apply",
+      coach,
+    ];
+    await expect(
+      db.query(
+        `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6)`,
+        args,
+      ),
+    ).rejects.toThrow("Review and enable");
+    expect((await summary()).autoApply).toBe(false);
+    await enable();
+    const first = (await scalar(
+      `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+      args,
+    ))!.result as any;
+    expect(first).toMatchObject({ applied: 1, autoApply: true, failed: 0 });
+    expect(
+      (await scalar(
+        `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+        args,
+      ))!.result,
+    ).toEqual({ ...first, duplicate: true });
+    expect((await summary()).autoApply).toBe(true);
+  });
+  it("enable, disable and adjust report accurate coverage while preserving existing holds", async () => {
+    await reset();
+    await lot(1);
+    await lesson();
+    await lesson("now()+interval '4 days'");
+    const on = (await scalar(
+      `select public.set_student_credit_auto($1,true,$2) result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(on).toMatchObject({
+      applied: 1,
+      alreadyCovered: 0,
+      skipped: 1,
+      skipReasons: { no_available_credits: 1 },
+    });
+    const adjust = (await scalar(
+      `select public.set_student_credit_total($1,2,$2,'More lesson credits','total-add') result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(adjust).toMatchObject({ applied: 1, alreadyCovered: 1, failed: 0 });
+    const off = (await scalar(
+      `select public.set_student_credit_auto($1,false,$2) result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(off).toMatchObject({
+      applied: 0,
+      alreadyCovered: 2,
+      autoApply: false,
+    });
+    await expect(grant("negative-grant", -1)).rejects.toThrow(
+      "Reserved credits cannot be removed",
+    );
+    expect((await summary()).reserved).toBe(2);
+  });
+  it("covers actual recurring conversion immediately and does not double consume completed lessons", async () => {
+    await reset();
+    await enable();
+    await lot(4);
+    const l = await lesson();
+    const result = (await scalar(
+      `select public.command_make_lesson_recurring($1,1,'weekly',3,'America/New_York') result`,
+      [l],
+    ))!.result as any;
+    expect(result.creditCoverage[student]).toMatchObject({
+      applied: 3,
+      failed: 0,
+    });
+    expect(await scan()).toMatchObject({ applied: 0, alreadyCovered: 3 });
+    await db.exec(`select set_config('app.uid','${coach}',false);`);
+    const version = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [l],
+    ))!.version;
+    const args = [
+      l,
+      version,
+      "Completed regression lesson",
+      "complete-repeat",
+      "complete-repeat",
+    ];
+    const completed = (await scalar(
+      `select public.command_complete_lesson($1,$2,$3,$4,$5) result`,
+      args,
+    ))!.result;
+    expect(
+      (await scalar(
+        `select public.command_complete_lesson($1,$2,$3,$4,$5) result`,
+        args,
+      ))!.result,
+    ).toEqual(completed);
+    expect(await summary()).toMatchObject({
+      available: 1,
+      reserved: 2,
+      remaining: 3,
+    });
+  });
+  it("applies returned cancellation credit to the next lesson and keeps valid rescheduled holds", async () => {
+    await reset();
+    await enable();
+    await lot(1);
+    const first = await lesson("now()+interval '1 day'");
+    const next = await lesson("now()+interval '5 days'");
+    await scan();
+    const version = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [first],
+    ))!.version;
+    const cancelled = (await scalar(
+      `select public.command_cancel_lesson_credit($1,$2,false) result`,
+      [first, version],
+    ))!.result as any;
+    expect(
+      cancelled.creditCoverage[student],
+      JSON.stringify(cancelled.creditCoverage[student]),
+    ).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select payment_status from public.lessons where id=$1`, [
+        next,
+      ]))!.payment_status,
+    ).toBe("paid_by_credit");
+    const nextVersion = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [next],
+    ))!.version;
+    const moved = (await scalar(
+      `select public.command_change_lesson_state($1,$2,'reschedule',now()+interval '4 days',now()+interval '4 days 1 hour') result`,
+      [next, nextVersion],
+    ))!.result as any;
+    expect(moved.creditCoverage[student]).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+    });
+    expect(await summary()).toMatchObject({
+      available: 0,
+      reserved: 1,
+      remaining: 1,
+    });
+  });
+  it("reserves after moving an uncovered lesson inside validity, and refuses to move a hold past expiry", async () => {
+    await reset();
+    await enable();
+    await lot(1, new Date(Date.now() + 3 * 86400000).toISOString());
+    const l = await lesson("now()+interval '10 days'");
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      skipped: 1,
+      skipReasons: { expires_before_lesson: 1 },
+    });
+    const moved = (await scalar(
+      `select public.command_change_lesson_state($1,1,'reschedule',now()+interval '1 day',now()+interval '1 day 1 hour') result`,
+      [l],
+    ))!.result as any;
+    expect(moved.creditCoverage[student].applied).toBe(1);
+    await expect(
+      db.query(
+        `select public.command_change_lesson_state($1,$2,'reschedule',now()+interval '5 days',now()+interval '5 days 1 hour')`,
+        [l, moved.lesson.version],
+      ),
+    ).rejects.toThrow("expires before that date");
+    expect((await summary()).reserved).toBe(1);
+  });
+  it("classifies uncertain imported payment policy for review; paid imports stay cash covered", async () => {
+    await reset();
+    await enable();
+    await lot(2);
+    const imported = await lesson();
+    const paid = await lesson();
+    await db.query(
+      `update public.lessons set source_provider='lessonface' where id in ($1,$2)`,
+      [imported, paid],
+    );
+    await db.query(
+      `update public.lessons set payment_status='paid',paid_minor=10000 where id=$1`,
+      [paid],
+    );
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      skipped: 2,
+      skipReasons: { reconciliation_required: 1, cash_paid: 1 },
+    });
+    expect((await summary()).available).toBe(2);
+  });
+  it("recovers a pre-upgrade provider key without granting twice and bounds sweep progress", async () => {
+    await reset();
+    await enable();
+    const p = await lot(1);
+    await lesson();
+    await db.query(
+      `update public.package_credit_entries set idempotency_key='legacy-provider' where package_id=$1`,
+      [p],
+    );
+    const result = await grant("legacy-provider", 1, {
+      packageId: p,
+      kind: "purchase",
+    });
+    expect(result.coverage.applied).toBe(1);
+    expect((await summary()).remaining).toBe(1);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([student]);
+    await db.query(`select public.process_credit_coverage_job($1)`, [student]);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([]);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([student]);
+  });
+  it("keeps checkout grants exactly once across provider event replay", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const pkg = await scalar(
+      `insert into public.packages(student_id,name,credit_quantity) values($1,'Purchased snapshot',2) returning id`,
+      [student],
+    );
+    const args = [
+      "checkout-event",
+      "checkout.session.completed",
+      {},
+      "checkout-session",
+      student,
+      pkg!.id,
+      20000,
+      "usd",
+    ];
+    const first = (await scalar(
+      `select public.process_stripe_checkout($1,$2,$3,$4,$5,$6,$7,$8) result`,
+      args,
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(
+        `select public.process_stripe_checkout($1,$2,$3,$4,$5,$6,$7,$8) result`,
+        args,
+      ))!.result,
+    ).toMatchObject({ duplicate: true });
+    expect(await summary()).toMatchObject({
+      remaining: 2,
+      reserved: 1,
+      available: 1,
+    });
+    expect(
+      (await scalar(
+        `select count(*) n from public.payment_entries where external_reference='checkout-session'`,
+      ))!.n,
+    ).toBe(1);
+  });
+  it("gift delivery uses the account preference, preserves paid price, and replays without another lot", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const def = await scalar(
+      `insert into public.package_definitions(id,studio_id,name,session_count,price_minor) values(gen_random_uuid(),$1,'Gift snapshot',2,99999) returning id`,
+      [studio],
+    );
+    const gift = await scalar(
+      `insert into public.package_gifts(id,studio_id,definition_id,status,expires_at,stripe_checkout_session_id) values(gen_random_uuid(),$1,$2,'purchased',now()+interval '20 days','gift-session') returning id`,
+      [studio, def!.id],
+    );
+    await db.query(
+      `insert into public.webhook_events(id,provider,event_type,status,payload) values('gift-receipt','stripe','checkout.session.completed','processed',$1)`,
+      [
+        {
+          data: {
+            object: {
+              id: "gift-session",
+              payment_status: "paid",
+              metadata: {
+                package_gift_id: gift!.id,
+                package_price_minor: "12345",
+                package_currency: "USD",
+              },
+            },
+          },
+        },
+      ],
+    );
+    const first = (await scalar(
+      `select public.claim_package_gift($1,$2,false) result`,
+      [gift!.id, student],
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select price_minor from public.packages where id=$1`, [
+        first.packageId,
+      ]))!.price_minor,
+    ).toBe(12345);
+    expect(
+      (await scalar(`select public.claim_package_gift($1,$2,false) result`, [
+        gift!.id,
+        student,
+      ]))!.result,
+    ).toMatchObject({ duplicate: true, packageId: first.packageId });
+    expect((await summary()).remaining).toBe(2);
+    expect((await scalar(`select count(*) n from public.packages`))!.n).toBe(1);
+  });
+});
 async function lot(quantity = 10, expires?: string) {
   const p = await scalar(
     `insert into public.packages(student_id,name,expires_at) values($1,'Package',$2) returning id`,
@@ -395,6 +875,7 @@ async function summary() {
     student,
   ]))!.summary as {
     available: number;
+    autoApply: boolean | null;
     reserved: number;
     remaining: number;
     version: number;
