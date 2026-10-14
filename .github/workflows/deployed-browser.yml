@@ -26,7 +26,11 @@ concurrency:
 
 jobs:
   smoke:
-    if: (github.event_name == 'pull_request' && github.base_ref != 'codex/pr5-server-contracts' && github.base_ref != 'codex/pr6-product-polish' && github.base_ref != 'codex/pr7-performance-styles' && github.base_ref != 'codex/product-design-modernization') || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')
+    # Explicit no-deploy PRs still run the full isolated suite below. They have
+    # no Netlify preview to smoke-test; do not wait on an intentionally absent URL.
+    if: >-
+      ${{ !(github.event_name == 'pull_request' && github.base_ref == 'main' && contains(github.event.pull_request.title, '[skip netlify]')) &&
+      ((github.event_name == 'pull_request' && github.base_ref != 'codex/pr5-server-contracts' && github.base_ref != 'codex/pr6-product-polish' && github.base_ref != 'codex/pr7-performance-styles' && github.base_ref != 'codex/product-design-modernization') || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
