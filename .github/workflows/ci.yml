@@ -79,11 +79,11 @@ jobs:
       - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
       - run: npx supabase db reset --local --no-seed
       - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops --fail-on error
+      - run: npm run supabase:types
       - run: npx supabase test db
       - run: node scripts/test-credit-concurrency.mjs
       - run: node scripts/test-lesson-change-concurrency.mjs
       - run: node scripts/test-lesson-bulk-concurrency.mjs
-      - run: npm run supabase:types
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()

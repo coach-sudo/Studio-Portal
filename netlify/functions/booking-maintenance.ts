@@ -468,7 +468,16 @@ export default async () => {
     autoCreditsApplied: creditCoverage.applied,
     creditCoverage,
     lessonChanges: {
-      bulk: lessonBulk,
+      bulk: {
+        processed: lessonBulk.filter(
+          (item) =>
+            !["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+        failed: lessonBulk.filter((item) => item.status === "failed").length,
+        recoveryPending: lessonBulk.filter((item) =>
+          ["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+      },
       processed: lessonChanges.processed,
       failed: lessonChanges.failed,
     },

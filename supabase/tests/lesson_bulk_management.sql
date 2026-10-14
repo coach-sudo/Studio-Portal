@@ -43,7 +43,7 @@ insert into integration_imports(studio_id,provider,external_id,detected_source,p
 select is((pg_temp.bulk_preview('c6000000-0000-4000-8000-000000000002')->>'blocked')::integer,1,'Hidden nested JSON blocks deletion');
 create temp table hidden_array_references(id uuid primary key,lesson_ids uuid[]);
 -- Use a real offering array (not a temp table absent from public inventory).
-insert into booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values('c4000000-0000-4000-8000-000000000001','c2000000-0000-4000-8000-000000000001','bulk-class','Bulk class','class',60,0);
+insert into booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values('c4000000-0000-4000-8000-000000000001','c2000000-0000-4000-8000-000000000001','bulk-class','Bulk class','group_class',60,0);
 insert into service_offerings(studio_id,service_id,title,starts_at,ends_at,enrollment_closes_at,capacity,lesson_ids)
  values('c2000000-0000-4000-8000-000000000001','c4000000-0000-4000-8000-000000000001','Bulk array fixture',now()+interval '6 days',now()+interval '6 days 1 hour',now()+interval '5 days',5,array['c6000000-0000-4000-8000-000000000003'::uuid]);
 select is((pg_temp.bulk_preview('c6000000-0000-4000-8000-000000000003')->>'blocked')::integer,1,'Offering UUID array blocks deletion');
@@ -57,17 +57,20 @@ update lesson_ops.lesson_bulk_jobs set expires_at=now()-interval '1 minute' wher
 select throws_ok($$select pg_temp.bulk_execute(r,'bulk-expired-tap-key') from reviews where kind='expired'$$,'P0001','REVIEW_EXPIRED','Expired review cannot execute');
 select throws_ok($$select lesson_bulk_progress('c3000000-0000-4000-8000-000000000001',(select (r->>'jobId')::uuid from reviews where kind='expired'))$$,'P0001','FORBIDDEN','Student cannot inspect coach review');
 insert into reviews values('archive',pg_temp.bulk_preview('c6000000-0000-4000-8000-000000000006','archive'));
-select pg_temp.bulk_execute(r,'bulk-archive-tap-key'),pg_temp.bulk_work(r) from reviews where kind='archive';
+select pg_temp.bulk_execute(r,'bulk-archive-tap-key') from reviews where kind='archive';
+select pg_temp.bulk_work(r) from reviews where kind='archive';
 select is((select status::text from lessons where id='c6000000-0000-4000-8000-000000000006'),'cancelled','Archive leaves lifecycle intact');
 select set_config('request.jwt.claim.sub','c1000000-0000-4000-8000-000000000001',true);
 select is(lesson_coach_record_visible('c6000000-0000-4000-8000-000000000006'),false,'Coach normal list hides archived record');
 select set_config('request.jwt.claim.sub','c3000000-0000-4000-8000-000000000001',true);
 select is(lesson_coach_record_visible('c6000000-0000-4000-8000-000000000006'),true,'Portal historical row remains visible');
 insert into reviews values('restore',pg_temp.bulk_preview('c6000000-0000-4000-8000-000000000006','restore'));
-select pg_temp.bulk_execute(r,'bulk-restore-tap-key'),pg_temp.bulk_work(r) from reviews where kind='restore';
+select pg_temp.bulk_execute(r,'bulk-restore-tap-key') from reviews where kind='restore';
+select pg_temp.bulk_work(r) from reviews where kind='restore';
 select ok((select archived_at is null from lesson_ops.lesson_record_state where lesson_id='c6000000-0000-4000-8000-000000000006'),'Restore reverses archive');
 insert into reviews values('void',pg_temp.bulk_preview('c6000000-0000-4000-8000-000000000007','void'));
-select pg_temp.bulk_execute(r,'bulk-void-tap-key'),pg_temp.bulk_work(r) from reviews where kind='void';
+select pg_temp.bulk_execute(r,'bulk-void-tap-key') from reviews where kind='void';
+select pg_temp.bulk_work(r) from reviews where kind='void';
 select ok((select voided_at is not null from lesson_ops.lesson_record_state where lesson_id='c6000000-0000-4000-8000-000000000007'),'Void stores inspectable metadata');
 select is((select count(*)::integer from lesson_ops.effects where lesson_id in ('c6000000-0000-4000-8000-000000000006','c6000000-0000-4000-8000-000000000007')),0,'Archive/void send no notification');
 select * from finish();
