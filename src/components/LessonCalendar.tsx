@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import type { Lesson } from "../domain/model";
 import {
   calendarDateKey,
@@ -11,7 +11,7 @@ import {
 } from "../domain/presentation";
 import "./LessonCalendar.css";
 
-export type CalendarView = "day" | "week" | "month" | "year";
+export type CalendarView = "day" | "week" | "month" | "year" | "list";
 
 const addDays = (date: Date, days: number) => {
   const next = new Date(date);
@@ -31,15 +31,28 @@ export function LessonCalendar({
   studentName,
   sourceName,
   onOpen,
+  listContent,
+  viewOverride,
+  onViewChange,
 }: {
   lessons: Lesson[];
   timezone: string;
   studentName: (studentId: string) => string;
   sourceName: (source?: string) => string;
   onOpen: (lesson: Lesson) => void;
+  listContent?: ReactNode;
+  viewOverride?: CalendarView;
+  onViewChange?: (view: CalendarView) => void;
 }) {
-  const [view, setView] = useState<CalendarView>("month");
-  const [anchor, setAnchor] = useState(() => studioCalendarDate(new Date(), timezone));
+  const [localView, setLocalView] = useState<CalendarView>("month");
+  const view = viewOverride || localView;
+  const setView = (next: CalendarView) => {
+    setLocalView(next);
+    onViewChange?.(next);
+  };
+  const [anchor, setAnchor] = useState(() =>
+    studioCalendarDate(new Date(), timezone),
+  );
   const [query, setQuery] = useState("");
   const [showCancelled, setShowCancelled] = useState(false);
   const visible = useMemo(() => {
@@ -156,29 +169,42 @@ export function LessonCalendar({
   return (
     <div className="lesson-calendar">
       <div className="calendar-toolbar">
-        <label className="calendar-search">
-          <Search />
-          <input
-            aria-label="Search lessons"
-            placeholder="Search lessons, students, source…"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </label>
-        <label className="calendar-cancelled">
-          <input
-            type="checkbox"
-            checked={showCancelled}
-            onChange={(event) => setShowCancelled(event.target.checked)}
-          />{" "}
-          Show cancelled
-        </label>
+        {view !== "list" && (
+          <label className="calendar-search">
+            <Search />
+            <input
+              aria-label="Search lessons"
+              placeholder="Search lessons, students, source…"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+          </label>
+        )}
+        {view !== "list" && (
+          <label className="calendar-cancelled">
+            <input
+              type="checkbox"
+              checked={showCancelled}
+              onChange={(event) => setShowCancelled(event.target.checked)}
+            />{" "}
+            Show cancelled
+          </label>
+        )}
         <div className="calendar-view-switcher" aria-label="Calendar view">
-          {(["day", "week", "month", "year"] as CalendarView[]).map((item) => (
+          {(
+            [
+              "day",
+              "week",
+              "month",
+              "year",
+              ...(listContent ? ["list"] : []),
+            ] as CalendarView[]
+          ).map((item) => (
             <button
               type="button"
               key={item}
               className={view === item ? "selected" : ""}
+              aria-pressed={view === item}
               onClick={() => setView(item)}
             >
               {item}
@@ -186,7 +212,7 @@ export function LessonCalendar({
           ))}
         </div>
       </div>
-      {query && (
+      {query && view !== "list" && (
         <div className="calendar-search-results">
           <strong>
             {visible.length} matching lesson{visible.length === 1 ? "" : "s"}
@@ -212,29 +238,38 @@ export function LessonCalendar({
           ))}
         </div>
       )}
-      <div className="calendar-navigation">
-        <div>
-          <button
-            type="button"
-            aria-label={`Previous ${view}`}
-            onClick={() => move(-1)}
-          >
-            <ChevronLeft />
-          </button>
-          <button type="button" onClick={() => setAnchor(studioCalendarDate(new Date(), timezone))}>
-            Today
-          </button>
-          <button
-            type="button"
-            aria-label={`Next ${view}`}
-            onClick={() => move(1)}
-          >
-            <ChevronRight />
-          </button>
+      {view === "list" ? (
+        listContent
+      ) : (
+        <div className="calendar-navigation">
+          <div>
+            <button
+              type="button"
+              aria-label={`Previous ${view}`}
+              onClick={() => move(-1)}
+            >
+              <ChevronLeft />
+            </button>
+            <button
+              type="button"
+              onClick={() =>
+                setAnchor(studioCalendarDate(new Date(), timezone))
+              }
+            >
+              Today
+            </button>
+            <button
+              type="button"
+              aria-label={`Next ${view}`}
+              onClick={() => move(1)}
+            >
+              <ChevronRight />
+            </button>
+          </div>
+          <h3>{title}</h3>
+          <span>{visible.length} lessons</span>
         </div>
-        <h3>{title}</h3>
-        <span>{visible.length} lessons</span>
-      </div>
+      )}
       {view === "month" && (
         <>
           <div className="calendar-weekdays">
@@ -288,8 +323,12 @@ export function LessonCalendar({
               const [eventYear, eventMonth] = studioDateKey(
                 lesson.startsAt,
                 timezone,
-              ).split("-").map(Number);
-              return eventYear === date.getFullYear() && eventMonth === month + 1;
+              )
+                .split("-")
+                .map(Number);
+              return (
+                eventYear === date.getFullYear() && eventMonth === month + 1
+              );
             });
             return (
               <button
@@ -301,7 +340,9 @@ export function LessonCalendar({
                 }}
               >
                 <strong>
-                  {formatCalendarDateKey(calendarDateKey(date), { month: "long" })}
+                  {formatCalendarDateKey(calendarDateKey(date), {
+                    month: "long",
+                  })}
                 </strong>
                 <span>
                   {events.length} lesson{events.length === 1 ? "" : "s"}

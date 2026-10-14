@@ -96,11 +96,6 @@ const Work = lazy(() =>
 export function StudentWorkspace() {
   const { studentId = "" } = useParams();
   const location = useLocation();
-  const { data, isDemo } = useStudioRoute(
-    "coach",
-    undefined,
-    studentWorkspaceDomains(location.pathname),
-  );
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -115,6 +110,11 @@ export function StudentWorkspace() {
     | "note"
     | null
   >(null);
+  const { data, isDemo } = useStudioRoute(
+    "coach",
+    undefined,
+    studentWorkspaceDomains(location.pathname, !dialog),
+  );
   const [editingNote, setEditingNote] = useState<Note>();
   const [notice, setNotice] = useState("");
   const studentMutation = useStudioMutation();
@@ -652,7 +652,7 @@ export function StudentWorkspace() {
           />
           <Route
             path="lessons"
-            element={<Lessons data={data} student={student} />}
+            element={<Lessons data={data} student={student} isDemo={isDemo} />}
           />
           <Route
             path="lessons/:lessonId"

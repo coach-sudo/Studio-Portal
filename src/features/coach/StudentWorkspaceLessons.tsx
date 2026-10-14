@@ -1,4 +1,5 @@
 import { LessonChangeReview } from "../../components/LessonChangeReview";
+import { LessonBulkList } from "../../components/LessonBulkList";
 import { ResourceBrowser } from "../library/ResourceBrowser";
 import { useResourceSearch } from "../../data/library";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -42,7 +43,29 @@ import { useStudioStore } from "../../state/StudioStore";
 
 import { belongsToStudent, type Data } from "./StudentWorkspace.shared";
 
-export function Lessons({ data, student }: { data: Data; student: Student }) {
+export function Lessons({
+  data,
+  student,
+  isDemo = false,
+}: {
+  data: Data;
+  student: Student;
+  isDemo?: boolean;
+}) {
+  return isDemo ? (
+    <DemoLessons data={data} student={student} />
+  ) : (
+    <Section title="Lessons" marked>
+      <LessonBulkList
+        studioId={data.studioId}
+        studentId={student.id}
+        timezone={data.settings.timezone}
+      />
+    </Section>
+  );
+}
+
+function DemoLessons({ data, student }: { data: Data; student: Student }) {
   const currentTime = Date.now();
   const lessons = data.lessons.filter((item) =>
     belongsToStudent(data, item, student.id),

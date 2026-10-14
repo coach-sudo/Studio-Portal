@@ -78,5 +78,8 @@ select pg_temp.bulk_execute(r,'bulk-void-tap-key') from reviews where kind='void
 select pg_temp.bulk_work(r) from reviews where kind='void';
 select ok((select voided_at is not null from lesson_ops.lesson_record_state where lesson_id='c6000000-0000-4000-8000-000000000007'),'Void stores inspectable metadata');
 select is((select count(*)::integer from lesson_ops.effects where lesson_id in ('c6000000-0000-4000-8000-000000000006','c6000000-0000-4000-8000-000000000007')),0,'Archive/void send no notification');
+select ok(not has_function_privilege('authenticated','public.lesson_bulk_progress(uuid,uuid,integer,integer)','execute'),'Resumable read remains service-only');
+select is((select lesson_bulk_progress('c1000000-0000-4000-8000-000000000001',(r->>'jobId')::uuid,0,1)->'reviewContext'->>'reviewToken' from reviews where kind='delete'),(select r->>'reviewToken' from reviews where kind='delete'),'Owner can resume the original review without browser storage');
+select is((select (lesson_bulk_progress('c1000000-0000-4000-8000-000000000001',(r->>'jobId')::uuid,0,1)->'counts'->>'processing')::integer from reviews where kind='delete'),0,'Completed job has zero processing items');
 select * from finish();
 rollback;

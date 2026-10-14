@@ -97,6 +97,11 @@ export interface LessonBulkAssessment {
   topic: string;
   startsAt: string;
   status: string;
+  studentIds?: string[];
+  seriesId?: string;
+  class?: boolean;
+  providerLinked?: boolean;
+  bookings?: { id: string; shared: boolean; unaffectedActive: number }[];
   eligible: boolean;
   reasonCode: string | null;
   dependencies: Record<string, { count: number; fingerprint?: string }>;
@@ -125,6 +130,16 @@ export interface LessonBulkProgress {
   scope: string;
   expiresAt: string;
   state: "reviewed" | "running" | "completed" | "needs_attention";
+  filter: NonNullable<LessonBulkPreviewInput["filter"]>;
+  reviewContext: {
+    reviewToken: string;
+    reason: string;
+    selectionMode: "ids" | "matching";
+    studentContextId: string | null;
+    wholeClass: boolean;
+    useCredit: boolean;
+    stopsFutureGeneration: boolean;
+  };
   counts: {
     total: number;
     eligible: number;
@@ -134,6 +149,8 @@ export interface LessonBulkProgress {
     conflicted: number;
     failed: number;
     pending: number;
+    waiting: number;
+    processing: number;
     synchronizationPending: number;
   };
   items: {
@@ -142,6 +159,7 @@ export interface LessonBulkProgress {
     version: number;
     status: string;
     assessment: LessonBulkAssessment;
+    studentNames: string[];
     reasonCode: string | null;
     result: unknown;
     attempts: number;
@@ -153,7 +171,10 @@ export interface LessonBulkProgress {
 }
 export interface LessonBulkCandidatePage {
   count: number;
-  items: Tables<"lessons">[];
+  items: (Tables<"lessons"> & {
+    coachArchivedAt: string | null;
+    studentNames: string[];
+  })[];
   offset: number;
   limit: number;
 }

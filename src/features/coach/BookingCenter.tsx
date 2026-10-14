@@ -89,11 +89,6 @@ export function BookingCenter() {
       ? (requestedView as Tab)
       : "calendar",
   );
-  const { data, isLoading, isDemo } = useStudioRoute(
-    "coach",
-    undefined,
-    bookingCenterDomains(tab),
-  );
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -102,6 +97,18 @@ export function BookingCenter() {
     item?: any;
     lessonId?: string;
   }>();
+  const { data, isLoading, isDemo } = useStudioRoute(
+    "coach",
+    undefined,
+    bookingCenterDomains(
+      tab,
+      !dialog &&
+        !searchParams.has("lesson") &&
+        !searchParams.has("booking") &&
+        (searchParams.get("calendarView") === "list" ||
+          searchParams.has("lessonBatch")),
+    ),
+  );
   const [notice, setNotice] = useState("");
   const [health, setHealth] = useState<PlatformHealth>({
     mode: "demo",

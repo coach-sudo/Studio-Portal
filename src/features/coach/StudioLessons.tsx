@@ -1,4 +1,5 @@
 import { LessonChangeReview } from "../../components/LessonChangeReview";
+import { LessonBulkList } from "../../components/LessonBulkList";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
   lessonCreditDebit,
@@ -6,8 +7,11 @@ import {
 } from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { LessonCalendar } from "../../components/LessonCalendar";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  LessonCalendar,
+  type CalendarView,
+} from "../../components/LessonCalendar";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import {
@@ -31,6 +35,19 @@ export function LessonsView({
   isDemo: boolean;
   onOpenLesson?: (lesson: Lesson) => void;
 }) {
+  const [calendarParams, setCalendarParams] = useSearchParams();
+  const requestedCalendarView = calendarParams.get("lessonBatch")
+    ? "list"
+    : calendarParams.get("calendarView");
+  const calendarView: CalendarView = [
+    "day",
+    "week",
+    "month",
+    "year",
+    "list",
+  ].includes(requestedCalendarView || "")
+    ? (requestedCalendarView as CalendarView)
+    : "month";
   const navigate = useNavigate(),
     store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -320,6 +337,28 @@ export function LessonsView({
     <Section title="Lesson calendar" marked>
       {notice && <p className="portal-notice">{notice}</p>}
       <LessonCalendar
+        viewOverride={isDemo ? undefined : calendarView}
+        onViewChange={
+          isDemo
+            ? undefined
+            : (view) =>
+                setCalendarParams(
+                  (current) => {
+                    const next = new URLSearchParams(current);
+                    next.set("calendarView", view);
+                    return next;
+                  },
+                  { preventScrollReset: true },
+                )
+        }
+        listContent={
+          isDemo ? undefined : (
+            <LessonBulkList
+              studioId={data.studioId}
+              timezone={data.settings.timezone}
+            />
+          )
+        }
         lessons={data.lessons}
         timezone={data.settings.timezone}
         studentName={(id) => studentName(data, id)}

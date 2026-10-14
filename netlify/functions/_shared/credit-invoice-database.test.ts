@@ -140,6 +140,12 @@ describe("occurrence-safe lesson changes against the dependent SQL stack", () =>
       `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
       [l],
     );
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/20261014224415_lesson_bulk_review_context.sql",
+        "utf8",
+      ),
+    );
     const claimed = (
       await db.query<any>(`select * from claim_calendar_projections(10)`)
     ).rows[0];
@@ -2457,6 +2463,55 @@ describe("persisted bulk management on the credit/occurrence stack", () => {
       ),
     );
   }
+  it("returns owner-only resumable review context and exact waiting/processing totals", () =>
+    isolated(async () => {
+      const id = await native();
+      const r = await preview([id], "cancel");
+      const first = await progress(r, 0, 1);
+      expect(first.reviewContext).toMatchObject({
+        reviewToken: r.reviewToken,
+        reason: "Erroneous fixture records",
+        selectionMode: "ids",
+        wholeClass: false,
+        useCredit: false,
+        stopsFutureGeneration: false,
+      });
+      expect(first.items[0].studentNames).toEqual(["Taylor"]);
+      expect(first.counts).toMatchObject({
+        waiting: 1,
+        processing: 0,
+        pending: 1,
+      });
+      await expect(
+        scalar(`select lesson_bulk_progress($1,$2,0,1)`, [other, r.jobId]),
+      ).rejects.toThrow(/FORBIDDEN/);
+      await execute(r);
+      await db.query(`select claim_lesson_bulk_items(1,$1)`, [r.jobId]);
+      expect((await progress(r)).counts).toMatchObject({
+        waiting: 0,
+        processing: 1,
+        pending: 1,
+      });
+    }));
+  it("labels archived bounded candidates without exposing hidden rows in ordinary lists", () =>
+    isolated(async () => {
+      const id = await native("cancelled");
+      const r = await preview([id], "archive");
+      await execute(r);
+      await work(r);
+      const normal = (await scalar(
+        `select lesson_bulk_candidates($1,$2,'{}',0,1) result`,
+        [coach, studio],
+      ))!.result as any;
+      expect(normal.count).toBe(0);
+      const included = (await scalar(
+        `select lesson_bulk_candidates($1,$2,'{"includeArchived":true}',0,1) result`,
+        [coach, studio],
+      ))!.result as any;
+      expect(included.count).toBe(1);
+      expect(included.items[0].coachArchivedAt).toBeTruthy();
+      expect(included.items[0].studentNames).toEqual(["Taylor"]);
+    }));
   it("physically deletes a reviewed mistake and only positively identified scaffolding; retains immutable audit", () =>
     isolated(async () => {
       const l = await native();
