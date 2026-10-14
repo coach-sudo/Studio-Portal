@@ -49,6 +49,9 @@ select is(public.process_credit_coverage_job('83000000-0000-4000-8000-0000000000
 select is(public.process_credit_coverage_job('83000000-0000-4000-8000-000000000001')->>'processed','false','Completed worker replay does no work');
 select is((select count(*) from public.package_credit_entries where lesson_id='86000000-0000-4000-8000-000000000003' and quantity<0),1::bigint,'Recovered reservation is exactly once');
 select ok((select generation=completed_generation and attempts=0 and last_error is null from credit_internal.credit_coverage_jobs where student_id='83000000-0000-4000-8000-000000000001'),'Recovery clears failure state');
+select is(public.student_credit_summary('83000000-0000-4000-8000-000000000001')->>'available','0','Replay fixture has no available lot');
+select is(public.command_apply_lesson_credit('86000000-0000-4000-8000-000000000002',null,'Repeated explicit lesson credit','manual-repeat')->'creditCoverage'->>'applied','0','Manual replay finds the existing hold without another available lot');
+select is((select count(*) from public.package_credit_entries where lesson_id='86000000-0000-4000-8000-000000000002' and quantity<0),1::bigint,'Manual replay does not debit again');
 
 select set_config('request.jwt.claim.sub','81000000-0000-4000-8000-000000000001',true);
 select is(public.student_credit_coverage('83000000-0000-4000-8000-000000000001')->'maintenance'->>'pending','false','Authorized diagnostics expose completed processing');

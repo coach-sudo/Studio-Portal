@@ -4670,11 +4670,11 @@ export type Database = {
         }
         Returns: Json
       }
-      cleanup_transient_studio_data: { Args: never; Returns: Json }
       cleanup_credit_coverage_fixture: {
         Args: { p_run: string; p_student: string }
         Returns: undefined
       }
+      cleanup_transient_studio_data: { Args: never; Returns: Json }
       command_apply_lesson_credit: {
         Args: {
           entry_idempotency_key: string
@@ -4773,7 +4773,12 @@ export type Database = {
         }
       }
       command_grant_student_credits: {
-        Args: { p_actor?: string; p_key: string; p_student: string; p_value: Json }
+        Args: {
+          p_actor?: string
+          p_key: string
+          p_student: string
+          p_value: Json
+        }
         Returns: Json
       }
       command_make_lesson_recurring: {
@@ -4913,7 +4918,10 @@ export type Database = {
           email: string
         }[]
       }
-      defer_credit_coverage_job: { Args: { p_student: string }; Returns: undefined }
+      defer_credit_coverage_job: {
+        Args: { p_student: string }
+        Returns: undefined
+      }
       expire_booking_holds: { Args: never; Returns: number }
       expire_delinquent_booking: {
         Args: { target_booking: string }
@@ -4963,7 +4971,10 @@ export type Database = {
         Args: { target_package: string }
         Returns: number
       }
-      process_credit_coverage_job: { Args: { p_student: string }; Returns: Json }
+      process_credit_coverage_job: {
+        Args: { p_student: string }
+        Returns: Json
+      }
       process_stripe_checkout: {
         Args: {
           amount_minor: number

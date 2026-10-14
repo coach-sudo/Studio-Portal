@@ -12,6 +12,8 @@ Manual per-lesson application remains available through its existing explicit co
 
 Financial policy is unchanged: one credit per eligible participation, earliest expiration first, chronological upcoming allocation, expiry strictly after lesson start, no redistribution of valid holds, no completion double debit, existing cash/partial/waiver/refund/checkout protection, reserved floor, append-only adjustments, and the existing 30-day transfer treatment for returned expired credit.
 
+Coach and self-service booking reschedules both check reservation expiry and invoice checkout protection before changing times, then evaluate new coverage. The self-service command retains its booking-only response; token possession does not reveal account summaries. Repeated manual application finds existing coverage even with zero available credits and reports no new debit, while automatic use stays unchanged.
+
 ## Event-path disposition
 
 | Boundary                          | Reliability change                                                                                                                 |
@@ -54,7 +56,8 @@ Roll back application behavior by reverting this PR; keep additive schema, ledge
 
 ### Local evidence, October 14, 2026
 
-- Full Vitest: **651 tests / 109 files passed**. The lifecycle database suite contains 44 tests executing real credit/invoice, diagnostics and lifecycle migrations.
+- Initial full Vitest: **651 tests / 109 files passed**. Follow-up manual replay and self-service reschedule regressions bring the lifecycle database suite to **46 tests**, rerun with the four affected handler tests: **50 passed**.
 - Typecheck, production build, quiet lint, formatting, secret scan and whitespace checks passed.
 - Existing hard bundle budgets passed: maximum JS 111,672 gzip bytes; CSS 23,090 gzip bytes. The existing 22 KB CSS warning remains.
 - Full PostgreSQL replay/lint, pgTAP, concurrency, regenerated-type comparison and the isolated authenticated browser suite are pending draft-PR CI at initial delivery. No production or provider test was substituted for the missing local container runtime.
+- Follow-up isolated CI at `7857031`: full PostgreSQL replay and public/private SQL lint passed; **111 pgTAP checks / five files passed**; two PostgreSQL sessions passed concurrent grant/replay and repeated scans with observed lock contention. The CLI-generated type artifact from this stack replaced the initial declarations. Final-head checks are reported on the draft PR.

@@ -1297,3 +1297,29 @@ begin
     values(b.studio_id,'booking.rescheduled','booking',b.id,'Permitted self-service reschedule','booking-reschedule:'||b.id::text||':'||expected_version::text,'booking_platform',to_jsonb(b),to_jsonb(updated));
   return updated;
 end $$;
+
+-- Repeated manual application must find an existing hold even when no free lot remains.
+create or replace function public.command_apply_lesson_credit(
+  target_lesson uuid,requested_package uuid,entry_reason text,entry_idempotency_key text
+) returns jsonb language plpgsql security definer set search_path='' as $$
+declare l public.lessons; evaluation jsonb; pkg uuid; coverage jsonb; direct_applied integer;
+begin
+  select * into l from public.lessons where id=target_lesson;
+  if l.id is null or l.student_id is null then raise exception 'NOT_FOUND'; end if;
+  perform 1 from public.students where id=l.student_id and deleted_at is null for update;
+  if not found then raise exception 'NOT_FOUND'; end if;
+  perform credit_internal.lock_upcoming(l.student_id);
+  select * into l from public.lessons where id=target_lesson for update;
+  evaluation:=credit_internal.evaluate_student_lesson_credit(l.student_id,l.id,'manual','{}',requested_package);
+  if evaluation->>'state'='review_required' then raise exception 'INVALID_TRANSITION: Review credit coverage before applying this lesson.'; end if;
+  if evaluation->>'state'<>'covered' and not coalesce((evaluation->>'eligible')::boolean,false) then raise exception 'CREDIT_UNAVAILABLE: Lesson is already paid or credit is unavailable.'; end if;
+  pkg:=public.reserve_student_lesson_credit(l.id,l.student_id,requested_package,true,entry_reason);
+  if pkg is null then raise exception 'CREDIT_UNAVAILABLE'; end if;
+  direct_applied:=case when evaluation->>'state'='covered' then 0 else 1 end;
+  coverage:=credit_internal.request_coverage(l.student_id);
+  coverage:=coverage||jsonb_build_object('applied',(coverage->>'applied')::integer+direct_applied,
+    'alreadyCovered',greatest(0,(coverage->>'alreadyCovered')::integer-direct_applied));
+  return jsonb_build_object('lesson',(select to_jsonb(x) from public.lessons x where x.id=l.id),'packageId',pkg,
+    'creditCoverage',coverage,
+    'entry',(select to_jsonb(e) from public.package_credit_entries e where e.lesson_id=l.id and e.package_id=pkg and e.quantity<0 order by created_at desc,id desc limit 1));
+end $$;

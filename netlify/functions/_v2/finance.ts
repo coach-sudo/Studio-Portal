@@ -508,7 +508,7 @@ export async function handleFinanceCommands(
     if (applyError) throw applyError;
     const entry = applied.entry;
     return json({
-      resource: entry,
+      resource: { ...entry, creditCoverage: applied.creditCoverage },
       recommendations: [],
       auditEventId: await audit(
         studioId,

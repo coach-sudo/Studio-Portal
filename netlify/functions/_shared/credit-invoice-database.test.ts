@@ -715,6 +715,32 @@ describe("credit lifecycle reliability", () => {
     ).rejects.toThrow("expires before that date");
     expect((await summary()).reserved).toBe(1);
   });
+  it("manual replay finds an existing reservation with zero available credits and keeps automatic use off", async () => {
+    await reset();
+    await lot(1);
+    const l = await lesson();
+    const first = (await scalar(
+      `select public.command_apply_lesson_credit($1,null,'Explicit lesson coverage','manual-repeat') result`,
+      [l],
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({
+      applied: 1,
+      alreadyCovered: 0,
+      autoApply: false,
+    });
+    expect((await summary()).available).toBe(0);
+    const repeat = (await scalar(
+      `select public.command_apply_lesson_credit($1,null,'Explicit lesson coverage','manual-repeat') result`,
+      [l],
+    ))!.result as any;
+    expect(repeat.creditCoverage).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+      autoApply: false,
+    });
+    expect(repeat.entry.id).toBe(first.entry.id);
+    expect(await summary()).toMatchObject({ remaining: 1, reserved: 1 });
+  });
   it("self-service booking rescheduling covers newly valid lessons and protects expiry/checkout", async () => {
     await reset();
     await enable();
