@@ -9,6 +9,7 @@ on:
         main,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
+        codex/occurrence-safe-lesson-changes,
         codex/pr2-query-layer,
         codex/pr5-server-contracts,
         codex/pr6-product-polish,
@@ -81,6 +82,7 @@ jobs:
       - run: npx supabase test db
       - run: node scripts/test-credit-concurrency.mjs
       - run: node scripts/test-lesson-change-concurrency.mjs
+      - run: node scripts/test-lesson-bulk-concurrency.mjs
       - run: npm run supabase:types
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence

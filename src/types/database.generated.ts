@@ -1631,6 +1631,7 @@ export type Database = {
         Row: {
           booking_id: string | null
           created_at: string
+          deletion_scaffold: boolean
           display_name: string
           email: string
           id: string
@@ -1641,6 +1642,7 @@ export type Database = {
         Insert: {
           booking_id?: string | null
           created_at?: string
+          deletion_scaffold?: boolean
           display_name: string
           email: string
           id?: string
@@ -1651,6 +1653,7 @@ export type Database = {
         Update: {
           booking_id?: string | null
           created_at?: string
+          deletion_scaffold?: boolean
           display_name?: string
           email?: string
           id?: string
@@ -4372,6 +4375,7 @@ export type Database = {
       }
     }
     Views: {
+      lesson_list_rows: { Row: Database["public"]["Tables"]["lessons"]["Row"]; Relationships: Database["public"]["Tables"]["lessons"]["Relationships"] }
       material_library_rows: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"] | null
@@ -4442,6 +4446,16 @@ export type Database = {
       }
     }
     Functions: {
+      lesson_bulk_candidates: { Args: { p_actor: string; p_studio: string; p_filter: Json; p_offset?: number; p_limit?: number }; Returns: Json }
+      preview_lesson_bulk: { Args: { p_actor: string; p_studio: string; p_key: string; p_value: Json }; Returns: Json }
+      execute_lesson_bulk: { Args: { p_actor: string; p_job: string; p_token: string; p_key: string }; Returns: Json }
+      claim_lesson_bulk_items: { Args: { p_limit?: number; p_job?: string }; Returns: Json }
+      process_lesson_bulk_item: { Args: { p_item: string; p_token: string }; Returns: Json }
+      lesson_bulk_progress: { Args: { p_actor: string; p_job: string; p_offset?: number; p_limit?: number }; Returns: Json }
+      retry_lesson_bulk: { Args: { p_actor: string; p_job: string; p_token: string; p_key: string }; Returns: Json }
+      lesson_record_history: { Args: { p_actor: string; p_studio: string; p_lesson: string }; Returns: Json }
+      cleanup_lesson_bulk_fixture: { Args: { p_run: string; p_studio: string }; Returns: undefined }
+      lesson_coach_record_visible: { Args: { p_lesson: string }; Returns: boolean }
       apply_invoice_lesson_credit: {
         Args: { p_invoice: string; p_line: string; p_version: number }
         Returns: Json

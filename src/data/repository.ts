@@ -209,7 +209,7 @@ export async function loadStudioSnapshot(
       () => database.from("students").select("*").is("deleted_at", null),
     ),
     pick("lessons", wants("lessons", "booking"), () =>
-      database.from("lessons").select("*"),
+      database.from("lesson_list_rows").select("*"),
     ),
     pick("notes", wants("work"), () => database.from("notes").select("*")),
     pick("assignments", wants("work"), () =>
