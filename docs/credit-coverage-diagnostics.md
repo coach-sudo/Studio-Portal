@@ -49,6 +49,7 @@ The SQL characterization tests preserve two known gaps for PR 1.2:
 - `supabase/tests/credit_coverage.sql` runs against the complete Supabase migration chain in the existing migration CI job. It tests real grants/RLS, finance-only and work-only guardians, revoked access, adult/minor identities, immutable previews, and recurring conversion.
 - Local PostgreSQL/pgTAP execution is unavailable without a working container runtime. PGlite is additional evidence, not a replacement for the migration CI gate or concurrent-session tests.
 - New generated public RPC typing is checked against CLI-generated types by migration CI. Private helpers remain outside public generated types.
+- A main-targeting PR explicitly marked `[skip netlify]` skips only the unavailable external preview smoke job; the existing full isolated browser suite still runs. Normal preview smoke gates are unchanged.
 - No production migration, deploy, live payment, outbound email, or financial reconciliation is authorized. Keep this as a draft review until migration/type checks pass.
 
 The migration is additive apart from the reservation function refactor. Application rollback leaves the unused read API in place; revert the reservation function body through a separately reviewed migration if necessary. Never reverse ledger history as rollback.
