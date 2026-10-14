@@ -5158,6 +5158,15 @@ export type Database = {
         }
         Returns: Json
       }
+      student_credit_coverage: {
+        Args: {
+          p_page?: number
+          p_page_size?: number
+          p_preview_enable?: boolean
+          p_student: string
+        }
+        Returns: Json
+      }
       student_credit_summary: { Args: { p_student: string }; Returns: Json }
       student_payment_balance: {
         Args: { target_student: string }

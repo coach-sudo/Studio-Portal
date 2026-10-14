@@ -34,6 +34,7 @@
     "src/domain/invoiceBilling.ts",
     "src/features/finance/invoicePdf.ts",
     "src/domain/credits.ts",
+    "src/domain/creditCoverage.ts",
     "src/domain/automationRules.ts",
     "src/domain/automationCopy.ts",
     "src/domain/paymentReminder.ts",
