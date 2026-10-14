@@ -28,7 +28,13 @@ const commandPayloadSchemas = {
   "lessons:retry_bulk": lessonBulkExecutionRequest,
   "lessons:bulk_progress": lessonBulkProgressRequest,
   "lessons:bulk_candidates": lessonBulkCandidateRequest,
-  "lessons:record_history": z.object({ lessonId: uuid }).strict(),
+  "lessons:record_history": z
+    .object({
+      lessonId: uuid,
+      offset: z.number().int().min(0).default(0),
+      limit: z.number().int().min(1).max(100).default(50),
+    })
+    .strict(),
   "lessons:preview_change": lessonChangeRequest,
   "lessons:execute_change": lessonChangeRequest,
   "students:save_linked_contact": z

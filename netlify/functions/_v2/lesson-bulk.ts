@@ -62,6 +62,8 @@ export async function handleLessonBulkCommands(
         p_actor: actorId,
         p_studio: studioId,
         p_lesson: String(payload.lessonId),
+        p_offset: Number(payload.offset),
+        p_limit: Number(payload.limit),
       });
       break;
     default:

@@ -4453,7 +4453,7 @@ export type Database = {
       process_lesson_bulk_item: { Args: { p_item: string; p_token: string }; Returns: Json }
       lesson_bulk_progress: { Args: { p_actor: string; p_job: string; p_offset?: number; p_limit?: number }; Returns: Json }
       retry_lesson_bulk: { Args: { p_actor: string; p_job: string; p_token: string; p_key: string }; Returns: Json }
-      lesson_record_history: { Args: { p_actor: string; p_studio: string; p_lesson: string }; Returns: Json }
+      lesson_record_history: { Args: { p_actor: string; p_studio: string; p_lesson: string; p_offset?: number; p_limit?: number }; Returns: Json }
       cleanup_lesson_bulk_fixture: { Args: { p_run: string; p_studio: string }; Returns: undefined }
       lesson_coach_record_visible: { Args: { p_lesson: string }; Returns: boolean }
       apply_invoice_lesson_credit: {

@@ -72,9 +72,9 @@ begin
  for c in select ns.nspname schema_name,cl.relname table_name,a.attname column_name,t.typname
   from pg_catalog.pg_attribute a join pg_catalog.pg_class cl on cl.oid=a.attrelid
   join pg_catalog.pg_namespace ns on ns.oid=cl.relnamespace join pg_catalog.pg_type t on t.oid=a.atttypid
-  where ns.nspname='public' and cl.relkind='r' and a.attnum>0 and not a.attisdropped
-   and cl.relname not in ('lessons','audit_events','calendar_projections','lesson_participants')
-   and (t.typname in ('uuid','_uuid','jsonb','json') or exists(select 1 from pg_catalog.pg_constraint fk
+  where cl.relkind in ('r','p') and a.attnum>0 and not a.attisdropped
+   and not (ns.nspname='public' and cl.relname in ('lessons','audit_events','calendar_projections','lesson_participants'))
+   and ((ns.nspname='public' and t.typname in ('uuid','_uuid','jsonb','json')) or exists(select 1 from pg_catalog.pg_constraint fk
      where fk.contype='f' and fk.confrelid='public.lessons'::regclass and fk.conrelid=cl.oid and a.attnum=any(fk.conkey)))
   order by cl.oid,a.attnum loop
   if c.typname='uuid' then predicate:=format('%I=$1',c.column_name);
@@ -82,7 +82,7 @@ begin
   elsif c.typname in ('jsonb','json') then predicate:=format('(exists(select 1 from jsonb_path_query(%1$I::jsonb,''$.** ? (@.type() == "string")'') v where lower(v#>>''{}'')=$1::text) or exists(select 1 from jsonb_path_query(%1$I::jsonb,''$.** ? (@.type() == "object").keyvalue().key'') v where lower(v#>>''{}'')=$1::text))',c.column_name);
   else predicate:=format('%I::text=$1::text',c.column_name); end if;
   execute format('select count(*),md5(coalesce(string_agg(to_jsonb(t)::text,''|'' order by to_jsonb(t)::text),'''')) from %I.%I t where %s',c.schema_name,c.table_name,predicate) into n,seal using p_lesson;
-  if n>0 then found:=found||jsonb_build_object(c.table_name||'.'||c.column_name,jsonb_build_object('count',n,'fingerprint',seal)); end if;
+  if n>0 then found:=found||jsonb_build_object(c.schema_name||'.'||c.table_name||'.'||c.column_name,jsonb_build_object('count',n,'fingerprint',seal)); end if;
  end loop;
  if exists(select 1 from lesson_ops.effects where lesson_id=p_lesson) then
   found:=found||jsonb_build_object('lesson_change_effects',jsonb_build_object('count',(select count(*) from lesson_ops.effects where lesson_id=p_lesson)));
@@ -249,7 +249,7 @@ end $$;
 
 create function public.execute_lesson_bulk(p_actor uuid,p_job uuid,p_token text,p_key text) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare j lesson_ops.lesson_bulk_jobs;prior lesson_ops.lesson_bulk_requests;r jsonb;series_key text;current_series jsonb;
+declare j lesson_ops.lesson_bulk_jobs;prior lesson_ops.lesson_bulk_requests;r jsonb;series_key text;current_series jsonb;checked_item lesson_ops.lesson_bulk_items;student_id uuid;
 begin
  select * into j from lesson_ops.lesson_bulk_jobs where id=p_job;
  if j.id is null or j.actor_id<>p_actor then raise exception 'FORBIDDEN'; end if;
@@ -265,6 +265,20 @@ begin
  if j.expires_at<=now() then raise exception 'REVIEW_EXPIRED'; end if;
  if j.operation='cancel' and j.request->>'scope' in ('future','series') then
   if exists(select 1 from lesson_ops.lesson_bulk_items where job_id=j.id and status='blocked' and assessment->>'status'='scheduled') then raise exception 'REVIEW_REQUIRED: Resolve protected future occurrences before stopping generation'; end if;
+  perform 1 from public.students where studio_id=j.studio_id and id in(
+   select l.student_id from public.lessons l join lesson_ops.lesson_bulk_items i on i.lesson_id=l.id where i.job_id=j.id
+   union select lp.student_id from public.lesson_participants lp join lesson_ops.lesson_bulk_items i on i.lesson_id=lp.lesson_id where i.job_id=j.id) order by id for update;
+  for student_id in select s.id from public.students s where studio_id=j.studio_id and id in(
+   select l.student_id from public.lessons l join lesson_ops.lesson_bulk_items i on i.lesson_id=l.id where i.job_id=j.id
+   union select lp.student_id from public.lesson_participants lp join lesson_ops.lesson_bulk_items i on i.lesson_id=lp.lesson_id where i.job_id=j.id) order by s.id loop
+   perform credit_internal.lock_upcoming(student_id);
+  end loop;
+  perform 1 from public.lessons where id in(select lesson_id from lesson_ops.lesson_bulk_items where job_id=j.id) order by starts_at,id for update;
+  for checked_item in select * from lesson_ops.lesson_bulk_items where job_id=j.id and status='pending' order by ordinal loop
+   r:=lesson_ops.assess_bulk(checked_item.lesson_id,j.operation,coalesce(j.request->>'studentContextId',j.request->'filter'->>'studentId')::uuid,
+    coalesce((j.request->>'wholeClass')::boolean,false),coalesce((j.request->>'useCredit')::boolean,false));
+   if r->>'fingerprint' is distinct from checked_item.fingerprint then raise exception 'VERSION_CONFLICT: Review changed series consequences'; end if;
+  end loop;
   for series_key in select jsonb_object_keys(j.series_snapshot) loop
    perform 1 from public.recurring_series where id=series_key::uuid for update;
    select jsonb_build_object('series',to_jsonb(s),'lessons',(select jsonb_agg(jsonb_build_object('id',x.id,'version',x.version) order by x.id) from public.lessons x where x.series_id=s.id)) into current_series from public.recurring_series s where s.id=series_key::uuid;
@@ -390,7 +404,7 @@ begin
   (exists(select 1 from public.calendar_projections where lesson_id=i.lesson_id and status<>'projected') or
    exists(select 1 from lesson_ops.effects where id in(select value::uuid from jsonb_array_elements_text(i.result->'changeEffectIds')) and status not in ('completed','superseded')) or
    exists(select 1 from lesson_ops.effects e join public.outbox_messages o on o.id=any(e.outbox_ids)
-    where e.id in(select value::uuid from jsonb_array_elements_text(i.result->'changeEffectIds')) and o.status not in ('sent','cancelled','suppressed')));
+    where e.id in(select value::uuid from jsonb_array_elements_text(i.result->'changeEffectIds')) and o.status not in ('sent','cancelled')));
  pending:=(counts->>'pending')::integer;
  return jsonb_build_object('jobId',j.id,'operation',j.operation,'scope',coalesce(j.request->>'scope','selected'),'filter',j.request->'filter',
   'expiresAt',j.expires_at,'state',case when j.state='reviewed' then 'reviewed' when pending>0 then 'running' when (counts->>'failed')::integer>0 then 'needs_attention' else 'completed' end,
@@ -421,14 +435,17 @@ end $$;
 
 -- Read-only administrative history; deleted snapshots remain authorized after
 -- physical removal. Neither private raw tables nor worker tokens are exposed.
-create function public.lesson_record_history(p_actor uuid,p_studio uuid,p_lesson uuid) returns jsonb
+create function public.lesson_record_history(p_actor uuid,p_studio uuid,p_lesson uuid,p_offset integer default 0,p_limit integer default 50) returns jsonb
 language plpgsql stable security definer set search_path='' as $$
 begin
  perform lesson_ops.require_bulk_coach(p_actor,p_studio);
+ if p_offset<0 or p_limit not between 1 and 100 then raise exception 'VALIDATION_FAILED'; end if;
  return jsonb_build_object('lesson',(select to_jsonb(l) from public.lessons l where id=p_lesson and studio_id=p_studio),
  'state',(select to_jsonb(s) from lesson_ops.lesson_record_state s where lesson_id=p_lesson and studio_id=p_studio),
  'deletion',(select to_jsonb(d) from lesson_ops.lesson_deletion_snapshots d where lesson_id=p_lesson and studio_id=p_studio),
- 'audit',(select coalesce(jsonb_agg(to_jsonb(a) order by created_at),'[]') from public.audit_events a where studio_id=p_studio and entity_type='lesson' and entity_id=p_lesson));
+ 'auditCount',(select count(*) from public.audit_events where studio_id=p_studio and entity_type='lesson' and entity_id=p_lesson),
+ 'offset',p_offset,'limit',p_limit,
+ 'audit',(select coalesce(jsonb_agg(to_jsonb(a) order by created_at,id),'[]') from (select * from public.audit_events where studio_id=p_studio and entity_type='lesson' and entity_id=p_lesson order by created_at,id offset p_offset limit p_limit) a));
 end $$;
 
 -- Hide only from normal coach lists; portal history keeps authoritative rows.
