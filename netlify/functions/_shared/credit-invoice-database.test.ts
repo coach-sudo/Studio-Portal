@@ -715,6 +715,48 @@ describe("credit lifecycle reliability", () => {
     ).rejects.toThrow("expires before that date");
     expect((await summary()).reserved).toBe(1);
   });
+  it("self-service booking rescheduling covers newly valid lessons and protects expiry/checkout", async () => {
+    await reset();
+    await enable();
+    await lot(1, new Date(Date.now() + 3 * 86400000).toISOString());
+    const l = await lesson("now()+interval '10 days'");
+    const serviceId = await service();
+    const b = await scalar(
+      `insert into public.bookings(studio_id,student_id,service_id,starts_at,ends_at,policy_snapshot)
+      select studio_id,student_id,$2,starts_at,ends_at,'{"rescheduleLimit":5}' from public.lessons where id=$1 returning id`,
+      [l, serviceId],
+    );
+    await db.query(
+      `insert into public.lesson_participants(lesson_id,student_id,booking_id) values($1,$2,$3)`,
+      [l, student, b!.id],
+    );
+    await scan();
+    const moved = (await scalar(
+      `select to_jsonb(public.reschedule_booking_occurrences($1,1,now()+interval '1 day',now()+interval '1 day 1 hour')) result`,
+      [b!.id],
+    ))!.result as any;
+    expect(moved.payment_policy).toBe("credits");
+    expect(moved.payment_status).toBe("paid");
+    expect(moved.creditCoverage).toBeUndefined();
+    expect(await summary()).toMatchObject({ available: 0, reserved: 1 });
+    await expect(
+      db.query(
+        `select public.reschedule_booking_occurrences($1,$2,now()+interval '5 days',now()+interval '5 days 1 hour')`,
+        [b!.id, moved.version],
+      ),
+    ).rejects.toThrow("expires before that date");
+    await db.query(
+      `update public.lessons set invoice_payment_pending=true where id=$1`,
+      [l],
+    );
+    await expect(
+      db.query(
+        `select public.reschedule_booking_occurrences($1,$2,now()+interval '2 days',now()+interval '2 days 1 hour')`,
+        [b!.id, moved.version],
+      ),
+    ).rejects.toThrow("pending online invoice");
+    expect((await summary()).reserved).toBe(1);
+  });
   it("classifies uncertain imported payment policy for review; paid imports stay cash covered", async () => {
     await reset();
     await enable();

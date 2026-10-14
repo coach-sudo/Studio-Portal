@@ -59,8 +59,8 @@ try {
     insert into public.memberships(studio_id,user_id,role,display_name) values('${studio}','${coach}','coach','Concurrent coach');
     insert into public.students(id,studio_id,full_name) values('${student}','${studio}','Concurrent student');
     insert into public.student_credit_accounts(student_id,auto_apply) values('${student}',true);
-    insert into public.lessons(studio_id,student_id,topic,starts_at,ends_at,location_type,location_label)
-      select '${studio}','${student}','Concurrency lesson',now()+n*interval '1 day',now()+n*interval '1 day'+interval '1 hour','virtual','Meet' from generate_series(1,3) n;
+    insert into public.lessons(studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label)
+      select '${studio}','${student}','Concurrency lesson',now()+n*interval '1 day',now()+n*interval '1 day'+interval '1 hour','scheduled','virtual','Meet' from generate_series(1,3) n;
     commit;`);
   let locked;
   const ready = new Promise((resolve) => {

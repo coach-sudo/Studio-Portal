@@ -402,7 +402,7 @@ begin
     if reason is null then
       select case when exists(select 1 from public.student_credit_accounts where student_id=p_student)
         then (select auto_apply from public.student_credit_accounts where student_id=p_student) else false end into enabled;
-      if p_mode <> 'manual' and l.source_provider is not null and l.source_provider <> 'studio' then
+      if p_mode <> 'manual' and l.source_provider is not null and l.source_provider not in ('studio','public_booking') then
         reason := 'reconciliation_required'; state := 'review_required';
       elsif p_mode = 'automatic' and enabled is null then
         reason := 'mixed_settings_review'; state := 'review_required';
@@ -1248,3 +1248,52 @@ begin
 end $$;
 revoke all on function public.cleanup_credit_coverage_fixture(uuid,text) from public,anon,authenticated;
 grant execute on function public.cleanup_credit_coverage_fixture(uuid,text) to service_role;
+
+-- Self-service booking rescheduling has a separate SQL boundary from coach edits.
+-- Retain its booking return contract (no account data in token-authorized responses).
+create or replace function public.reschedule_booking_occurrences(
+  target_booking uuid,expected_version integer,next_start timestamptz,next_end timestamptz,change_scope text default 'occurrence'
+) returns public.bookings language plpgsql security definer set search_path='' as $$
+declare b public.bookings; service public.booking_services; shift interval; target_ids uuid[];
+  target_lesson record; updated public.bookings; sid uuid;
+begin
+  if change_scope not in ('occurrence','series') or next_start is null or next_end is null or next_end<=next_start then raise exception 'VALIDATION_FAILED'; end if;
+  select * into b from public.bookings where id=target_booking;
+  if b.id is null then raise exception 'BOOKING_NOT_FOUND'; end if;
+  -- Booking confirmation also takes this studio scheduling lock before student locks.
+  perform pg_advisory_xact_lock(hashtext(b.studio_id::text));
+  perform 1 from public.students where id in (
+    select student_id from public.lesson_participants where lesson_id in(select lesson_id from public.lesson_participants where booking_id=b.id)
+    union select b.student_id) order by id for update;
+  select * into b from public.bookings where id=target_booking for update;
+  if b.version<>expected_version then raise exception 'VERSION_CONFLICT'; end if;
+  if b.status<>'confirmed' then raise exception 'INVALID_TRANSITION'; end if;
+  if b.reschedule_count>=cast(b.policy_snapshot->>'rescheduleLimit' as integer) then raise exception 'RESCHEDULE_LIMIT_REACHED'; end if;
+  select * into service from public.booking_services where id=b.service_id;
+  shift:=next_start-b.starts_at;
+  select array_agg(id order by starts_at,id) into target_ids from public.lessons
+    where id in(select lesson_id from public.lesson_participants where booking_id=b.id) and status='scheduled';
+  if change_scope='occurrence' then target_ids:=target_ids[1:1]; end if;
+  if coalesce(array_length(target_ids,1),0)=0 then raise exception 'INVALID_TRANSITION'; end if;
+  perform 1 from public.lessons where id=any(target_ids) order by starts_at,id for update;
+  for target_lesson in select * from public.lessons where id=any(target_ids) order by starts_at,id loop
+    if target_lesson.invoice_payment_pending then raise exception 'INVALID_TRANSITION: Check or cancel the pending online invoice payment first.'; end if;
+    if exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
+      where e.lesson_id=target_lesson.id and p.expires_at<=target_lesson.starts_at+shift group by p.id having sum(e.quantity)<0) then
+      raise exception 'VALIDATION_FAILED: The reserved credit expires before that date. Return the credit and review coverage first.';
+    end if;
+    if exists(select 1 from public.lessons l where l.studio_id=b.studio_id and l.status='scheduled' and not(l.id=any(target_ids))
+      and tstzrange(l.starts_at,l.ends_at,'[)') && tstzrange((target_lesson.starts_at+shift)-make_interval(mins=>service.buffer_before_minutes),
+        (target_lesson.ends_at+shift)+make_interval(mins=>service.buffer_after_minutes),'[)')) then raise exception 'SLOT_UNAVAILABLE'; end if;
+  end loop;
+  update public.lessons set starts_at=starts_at+shift,ends_at=ends_at+shift,version=version+1,updated_at=now() where id=any(target_ids);
+  update public.calendar_projections set status='queued',last_error=null where lesson_id=any(target_ids);
+  update public.bookings set starts_at=next_start,ends_at=next_end,reschedule_count=reschedule_count+1,version=version+1,updated_at=now() where id=b.id returning * into updated;
+  for sid in select id from public.students where studio_id=b.studio_id and deleted_at is null and id in (
+    select student_id from public.lesson_participants where lesson_id=any(target_ids) union select b.student_id) order by id
+  loop perform credit_internal.request_coverage(sid); end loop;
+  select * into updated from public.bookings where id=b.id;
+  insert into public.audit_events(studio_id,action,entity_type,entity_id,reason,correlation_id,source,before_state,after_state)
+    values(b.studio_id,'booking.rescheduled','booking',b.id,'Permitted self-service reschedule','booking-reschedule:'||b.id::text||':'||expected_version::text,'booking_platform',to_jsonb(b),to_jsonb(updated));
+  return updated;
+end $$;
