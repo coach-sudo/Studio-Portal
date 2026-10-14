@@ -54,6 +54,8 @@ export type LessonChangeReview = {
   }[];
 };
 export const lessonChangeReasons: Record<string, string> = {
+  booking_ownership_review_required:
+    "The booking and participation identities need review before this change.",
   lesson_not_scheduled:
     "Only scheduled occurrences can change. Historical records remain intact.",
   class_scope_required:

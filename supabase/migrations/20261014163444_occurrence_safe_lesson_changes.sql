@@ -144,6 +144,8 @@ begin
   if p_action not in ('cancel','reschedule') then reason:='invalid_action';
   elsif l.status<>'scheduled' then reason:='lesson_not_scheduled';
   elsif exists(select 1 from unnest(students) sid where not exists(select 1 from public.students where id=sid and studio_id=l.studio_id)) then reason:='reconciliation_required';
+  elsif exists(select 1 from public.lesson_participants lp join public.bookings b on b.id=lp.booking_id
+    where lp.lesson_id=l.id and lp.status in ('reserved','confirmed') and (b.studio_id<>l.studio_id or b.student_id is distinct from lp.student_id)) then reason:='booking_ownership_review_required';
   elsif (l.student_id is null or l.offering_id is not null or coalesce(l.capacity,1)>1
     or exists(select 1 from public.lesson_participants where lesson_id=l.id and status in ('reserved','confirmed') and student_id is distinct from l.student_id)) and not p_class then reason:='class_scope_required';
   elsif l.invoice_payment_pending or exists(select 1 from public.studio_invoices i cross join jsonb_array_elements(i.items) x
@@ -176,7 +178,7 @@ begin
     exists(select 1 from public.lesson_participants other where other.booking_id=b.id and other.lesson_id<>l.id),
     'unaffectedActive', (select count(distinct other.lesson_id) from public.lesson_participants other join public.lessons x on x.id=other.lesson_id
       where other.booking_id=b.id and other.lesson_id<>l.id and other.status in ('reserved','confirmed') and x.status='scheduled')) order by b.id),'[]')
-    into bookings from public.bookings b where b.id in(select booking_id from public.lesson_participants where lesson_id=l.id and status in ('reserved','confirmed'));
+    into bookings from public.bookings b where b.studio_id=l.studio_id and b.id in(select booking_id from public.lesson_participants where lesson_id=l.id and status in ('reserved','confirmed'));
   select count(*) into credit_count from (select e.package_id from public.package_credit_entries e where e.lesson_id=l.id group by e.package_id having sum(e.quantity)<0) held;
   return jsonb_build_object('eligible',reason is null,'reasonCode',reason,'lessonId',l.id,'version',l.version,
     'topic',l.topic,'startsAt',l.starts_at,'endsAt',l.ends_at,'status',l.status,'seriesId',l.series_id,
@@ -505,6 +507,9 @@ begin
   if b.status<>'confirmed' then raise exception 'INVALID_TRANSITION:%',b.status; end if;
   if b.version<>expected_version then raise exception 'VERSION_CONFLICT:%',b.version; end if;
   if b.payment_policy='credits' and b.paid_minor>0 then raise exception 'REVIEW_REQUIRED: reconciliation_required'; end if;
+  if exists(select 1 from public.lesson_participants lp join public.lessons l on l.id=lp.lesson_id where lp.booking_id=b.id
+    and lp.status in ('reserved','confirmed') and (l.studio_id<>b.studio_id or lp.student_id is distinct from b.student_id)) then
+    raise exception 'REVIEW_REQUIRED: booking_ownership_review_required'; end if;
 
   select coalesce(array_agg(distinct p.lesson_id),'{}'::uuid[]) into lesson_ids
   from public.lesson_participants p where p.booking_id=b.id;

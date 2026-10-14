@@ -120,6 +120,32 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("rejects mismatched studio/booking associations without returning another studio's booking identity", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const foreign = "10000000-0000-4000-8000-000000000099";
+    await db.query(
+      `insert into studios(id,name) values($1,'Other studio') on conflict do nothing`,
+      [foreign],
+    );
+    await db.query(`update bookings set studio_id=$1 where id=$2`, [
+      foreign,
+      b,
+    ]);
+    const r = await review(l);
+    expect(r.preview.items[0]).toMatchObject({
+      eligible: false,
+      reasonCode: "booking_ownership_review_required",
+      bookings: [],
+    });
+    await expect(change(l)).rejects.toThrow(
+      "booking_ownership_review_required",
+    );
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+  });
   it("retains a shared booking and its completed occurrence when its last scheduled occurrence changes", async () => {
     await reset();
     const upcoming = await lesson(),
