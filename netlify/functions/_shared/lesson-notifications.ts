@@ -21,6 +21,7 @@ async function queueLessonChangeMessages(
   scope?: { studentId: string; bookingId: string },
   effect?: {
     id: string;
+    booking_id?: string | null;
     participant_ids: string[];
     student_ids: string[];
     snapshot: { startsAt: string; endsAt: string; status: string };
@@ -35,11 +36,15 @@ async function queueLessonChangeMessages(
   if (error) throw error;
   if (
     effect &&
+    !(kind === "cancelled" && effect.booking_id) &&
     (Date.parse(effect.snapshot.startsAt) !== Date.parse(lesson.starts_at) ||
       Date.parse(effect.snapshot.endsAt) !== Date.parse(lesson.ends_at) ||
       effect.snapshot.status !== lesson.status)
   )
     return [];
+  // A withdrawal stays valid even if the remaining class is moved or cancelled.
+  const occurrenceStart = effect?.snapshot.startsAt || lesson.starts_at;
+  const occurrenceEnd = effect?.snapshot.endsAt || lesson.ends_at;
   const studentId =
     scope?.studentId ??
     (effect
@@ -166,7 +171,10 @@ async function queueLessonChangeMessages(
     .in("status", ["draft", "approved", "queued", "failed"])
     .eq("event_key", "booking.reminder.student")
     .eq("lesson_id", lesson.id);
-  if (scope) cancelQuery = cancelQuery.eq("booking_id", scope.bookingId);
+  if (scope)
+    cancelQuery = cancelQuery.or(
+      `booking_id.eq.${scope.bookingId},and(booking_id.is.null,student_id.eq.${scope.studentId})`,
+    );
   const canceled = await cancelQuery;
   if (canceled.error) throw canceled.error;
   const values = {
@@ -177,7 +185,7 @@ async function queueLessonChangeMessages(
       timeZone: settings.timezone || "America/New_York",
       dateStyle: "full",
       timeStyle: "short",
-    }).format(new Date(lesson.starts_at)),
+    }).format(new Date(occurrenceStart)),
     location: lesson.location_label,
     reference: "",
     manageUrl: portalActionUrl(origin, "lesson", lesson.id),
@@ -204,10 +212,11 @@ async function queueLessonChangeMessages(
     correlation_id: correlationId,
     channel: "email",
     entity_snapshot: {
-      startsAt: lesson.starts_at,
-      endsAt: lesson.ends_at,
+      startsAt: occurrenceStart,
+      endsAt: occurrenceEnd,
       changeId: effect?.id,
       changedStatus: effect?.snapshot.status,
+      bookingCancellation: kind === "cancelled" && Boolean(effect?.booking_id),
     },
     status: "queued" as const,
   };
@@ -310,6 +319,21 @@ export async function processLessonChangeEffects(
   let failed = 0;
   for (const effect of claim.data.effects) {
     try {
+      const current = await client.rpc("lesson_change_effect_current", {
+        p_id: effect.id,
+        p_token: effect.claim_token,
+      });
+      if (current.error) throw current.error;
+      if (!current.data) {
+        const finished = await client.rpc("finish_lesson_change_effect", {
+          p_id: effect.id,
+          p_token: effect.claim_token,
+          p_outbox: [],
+          p_failed: false,
+        });
+        if (finished.error) throw finished.error;
+        continue;
+      }
       const scope =
         effect.booking_id && effect.student_ids.length === 1
           ? { bookingId: effect.booking_id, studentId: effect.student_ids[0] }

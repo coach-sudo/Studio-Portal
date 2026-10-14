@@ -110,6 +110,8 @@ export async function checkOutboxEligibility(
       return { allowed: false, reason: "rule_off" };
   }
   if (!intent) return { allowed: true };
+  if (intent === "lesson_reminder" && !message.lesson_id)
+    return { allowed: false, reason: "occurrence_identity_required" };
   const studio = await db
     .from("studios")
     .select("settings")
@@ -156,6 +158,7 @@ export async function checkOutboxEligibility(
     coverageKey?: string;
     amountDueMinor?: number;
     changedStatus?: string;
+    bookingCancellation?: boolean;
   };
   let studentId = message.student_id;
   if (message.lesson_id) {
@@ -166,7 +169,40 @@ export async function checkOutboxEligibility(
       .eq("studio_id", message.studio_id)
       .single();
     if (result.error) throw result.error;
-    if (snapshot.changedStatus && result.data.status !== snapshot.changedStatus)
+    const withdrawalNotice = Boolean(
+      snapshot.bookingCancellation &&
+      message.booking_id &&
+      (intent === "cancellation" ||
+        message.event_key === "lesson.cancelled.coach"),
+    );
+    if (withdrawalNotice) {
+      const booking = await db
+        .from("bookings")
+        .select("status")
+        .eq("id", message.booking_id!)
+        .eq("studio_id", message.studio_id)
+        .single();
+      if (booking.error) throw booking.error;
+      const participation = await db
+        .from("lesson_participants")
+        .select("id")
+        .eq("lesson_id", message.lesson_id)
+        .eq("booking_id", message.booking_id!)
+        .eq("status", "cancelled")
+        .limit(1)
+        .maybeSingle();
+      if (participation.error) throw participation.error;
+      if (
+        !["cancelled", "late_cancelled"].includes(booking.data.status) ||
+        !participation.data
+      )
+        return { allowed: false, reason: "withdrawal_changed" };
+    }
+    if (
+      !withdrawalNotice &&
+      snapshot.changedStatus &&
+      result.data.status !== snapshot.changedStatus
+    )
       return { allowed: false, reason: "lesson_change_superseded" };
     if (
       message.booking_id &&
@@ -198,6 +234,30 @@ export async function checkOutboxEligibility(
     )
       return { allowed: false, reason: "lesson_not_scheduled" };
     if (
+      message.student_id &&
+      ["lesson_reminder", "schedule_change", "lesson_confirmation"].includes(
+        intent,
+      )
+    ) {
+      const participation = await db
+        .from("lesson_participants")
+        .select("status")
+        .eq("lesson_id", message.lesson_id)
+        .eq("student_id", message.student_id)
+        .limit(100);
+      if (participation.error) throw participation.error;
+      const active = participation.data?.some((p) =>
+        ["reserved", "confirmed"].includes(p.status),
+      );
+      if (
+        !active &&
+        (participation.data?.length ||
+          result.data.student_id !== message.student_id)
+      )
+        return { allowed: false, reason: "participation_cancelled" };
+    }
+    if (
+      !withdrawalNotice &&
       snapshot.startsAt &&
       (Date.parse(snapshot.startsAt) !== Date.parse(result.data.starts_at) ||
         (snapshot.endsAt &&

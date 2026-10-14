@@ -16,7 +16,7 @@ test("@journey @a11y coach reviews one recurring occurrence, preserves shared bo
   const ids = runtime.ids!;
   try {
     await coach.page.goto(
-      `/coach/students/${ids.student}/lessons/${ids.occurrenceFirst}`,
+      `/coach/students/${ids.occurrenceStudent}/lessons/${ids.occurrenceFirst}`,
     );
     const headers = {
       Authorization: `Bearer ${await accessToken(coach.page)}`,

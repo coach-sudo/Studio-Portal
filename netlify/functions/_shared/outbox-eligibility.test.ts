@@ -45,6 +45,17 @@ function client(rows: Record<string, unknown>) {
       const query = {
         select: () => query,
         eq: () => query,
+        limit: () => query,
+        in: () => query,
+        then: (resolve: (value: unknown) => unknown) =>
+          Promise.resolve({
+            data: Array.isArray(rows[table])
+              ? rows[table]
+              : rows[table]
+                ? [rows[table]]
+                : [],
+            error: null,
+          }).then(resolve),
         single: async () => ({
           data:
             table === "studios"
@@ -132,6 +143,70 @@ beforeEach(() => {
   });
 });
 describe("dispatch-time authoritative suppression", () => {
+  it("refuses reminders without an occurrence and class reminders for a withdrawn student", async () => {
+    expect(
+      await checkOutboxEligibility(
+        client(rows),
+        {
+          ...message,
+          lesson_id: null,
+          event_key: "booking.reminder.student",
+          recipient_intent: "lesson_reminder",
+        },
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "occurrence_identity_required" });
+    expect(
+      await checkOutboxEligibility(
+        client({
+          lessons: { ...rows.lessons, student_id: null },
+          lesson_participants: [{ status: "cancelled" }],
+        }),
+        {
+          ...message,
+          event_key: "booking.reminder.student",
+          recipient_intent: "lesson_reminder",
+        },
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "participation_cancelled" });
+  });
+  it("keeps a legitimate withdrawal notice when the remaining class is rescheduled", async () => {
+    const notice = {
+      ...message,
+      booking_id: "own-booking",
+      event_key: "lesson.cancelled.student",
+      recipient_intent: "cancellation",
+      entity_snapshot: {
+        ...(message.entity_snapshot as object),
+        bookingCancellation: true,
+        changedStatus: "scheduled",
+      },
+    };
+    const db = client({
+      lessons: {
+        ...rows.lessons,
+        starts_at: "2026-10-09T12:00:00Z",
+        ends_at: "2026-10-09T13:00:00Z",
+      },
+      bookings: { status: "cancelled" },
+      lesson_participants: { id: "own-participation" },
+    });
+    expect(await checkOutboxEligibility(db, notice, now)).toEqual({
+      allowed: true,
+    });
+    expect(
+      await checkOutboxEligibility(
+        client({
+          lessons: rows.lessons,
+          bookings: { status: "confirmed" },
+          lesson_participants: { id: "own-participation" },
+        }),
+        notice,
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "withdrawal_changed" });
+  });
   it("invalidates a quoted balance after a partial payment", async () => {
     const current = data();
     current.lessons[0].paidMinor = 3500;

@@ -155,6 +155,11 @@ export function LessonChangeReview({
                 {item.newStartsAt &&
                   ` → ${new Date(item.newStartsAt).toLocaleString()}`}{" "}
                 ({item.status})
+                <span>
+                  {" "}
+                  {item.notificationParticipantCount} participant(s) in the
+                  reviewed notification scope.
+                </span>
                 {item.bookings.some((b) => b.shared) && (
                   <span>
                     {" "}

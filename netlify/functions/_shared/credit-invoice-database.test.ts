@@ -104,7 +104,7 @@ beforeAll(async () => {
   ))!;
   await db.exec(`alter table lessons add column offering_id uuid;
     alter table recurring_series add column updated_at timestamptz default now();
-    alter table outbox_messages add column suppression_reason text;
+    alter table outbox_messages add column suppression_reason text,add column student_id uuid;
     alter table calendar_projections add column id uuid default gen_random_uuid(),add column external_event_id text,
       add column external_version text,add column last_projected_at timestamptz;
     create table sync_conflicts(entity_type text,entity_id uuid,status text);`);
@@ -120,6 +120,117 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("keeps withdrawal notification intent valid after another participant changes the class", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=2 where id=$1`,
+      [l],
+    );
+    const b = await booking([l]);
+    await booking([l], other);
+    await db.query(`select cancel_booking_credit($1,1,false,true)`, [b]);
+    const claimed = (
+      (await scalar(`select claim_lesson_change_effects() result`))!
+        .result as any
+    ).effects[0];
+    await db.query(
+      `update lessons set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day',version=version+1 where id=$1`,
+      [l],
+    );
+    expect(
+      (await scalar(`select lesson_change_effect_current($1,$2) result`, [
+        claimed.id,
+        claimed.claim_token,
+      ]))!.result,
+    ).toBe(true);
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}')`, [
+      claimed.id,
+      claimed.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects where id=$1`, [
+        claimed.id,
+      ]))!.status,
+    ).toBe("completed");
+  });
+  it("keeps an ongoing contract generating after its last visible occurrence is cancelled, until future scope is explicitly selected", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const series = await scalar(
+      `insert into recurring_series(studio_id,student_id,service_id,kind,cadence,status,starts_on,payment_policy)
+      select studio_id,student_id,service_id,'ongoing','weekly','active',starts_at,payment_policy from bookings where id=$1 returning id`,
+      [b],
+    );
+    await db.query(`update lessons set series_id=$1 where id=$2`, [
+      series!.id,
+      l,
+    ]);
+    await db.query(
+      `update bookings set series_id=$1,timezone='America/New_York',location='in_person' where id=$2`,
+      [series!.id, b],
+    );
+    await change(l);
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(`select extend_ongoing_series() n`))!.n,
+    ).toBeGreaterThan(0);
+    const next = (await scalar(
+      `select id from lessons where status='scheduled' and series_id=$1 order by starts_at limit 1`,
+      [series!.id],
+    ))!.id as string;
+    await execute((await review(next, { scope: "future" })).value);
+    expect(
+      (await scalar(`select status from recurring_series where id=$1`, [
+        series!.id,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("cancelled");
+    expect((await scalar(`select extend_ongoing_series() n`))!.n).toBe(0);
+  });
+  it("keeps a previously withdrawn student's upcoming work and ledger unchanged in a whole-class change", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=3 where id=$1`,
+      [l],
+    );
+    await booking([l]);
+    const old = await booking([l], other);
+    await db.query(
+      `update lesson_participants set status='cancelled' where booking_id=$1`,
+      [old],
+    );
+    const next = await lesson("now()+interval '12 days'", other);
+    const p = await lot(1);
+    await db.query(`update packages set student_id=$1 where id=$2`, [other, p]);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [other],
+    );
+    const before = await scalar(
+      `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+      [next],
+    );
+    await execute((await review(l, { wholeClass: true })).value);
+    expect(
+      await scalar(
+        `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+        [next],
+      ),
+    ).toEqual(before);
+    expect(
+      (await scalar(
+        `select student_ids from lesson_ops.effects where lesson_id=$1`,
+        [l],
+      ))!.student_ids,
+    ).toEqual([student]);
+  });
   it("booking financial triggers never treat an uncovered recurring occurrence as paid credit or cash", async () => {
     await reset();
     await lot(1);
@@ -404,6 +515,10 @@ describe("occurrence-safe lesson changes against the dependent SQL stack", () =>
       `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'native@example.test')`,
       [l, other],
     );
+    await db.query(
+      `insert into outbox_messages(id,lesson_id,student_id,status,event_key) values(gen_random_uuid(),$1,$2,'queued','booking.reminder.student'),(gen_random_uuid(),$1,$3,'queued','booking.reminder.student')`,
+      [l, student, other],
+    );
     await lot(2);
     await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
       l,
@@ -426,6 +541,16 @@ describe("occurrence-safe lesson changes against the dependent SQL stack", () =>
       ),
     ).toEqual(before);
     expect((await summary()).reserved).toBe(0);
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        student,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        other,
+      ]))!.status,
+    ).toBe("queued");
     expect(
       (await scalar(`select student_ids from lesson_ops.effects`))!.student_ids,
     ).toEqual([student]);

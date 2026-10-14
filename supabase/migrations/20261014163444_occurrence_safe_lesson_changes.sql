@@ -7,12 +7,12 @@ declare b public.bookings;
 begin
   select * into b from public.bookings where id=new.booking_id;
   if b.id is null then return new; end if;
-  if b.payment_policy='credits' then
+  if b.payment_policy='credits' and b.paid_minor=0 then
     update public.lessons l set payment_status='paid_by_credit',paid_minor=0,updated_at=greatest(l.updated_at,b.updated_at)
       where l.id=new.lesson_id and l.student_id=b.student_id and l.status in ('scheduled','completed')
         and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
           where e.lesson_id=l.id and p.student_id=b.student_id group by p.student_id having sum(e.quantity)=-1);
-  elsif not exists(select 1 from public.lesson_participants where booking_id=b.id and lesson_id<>new.lesson_id) then
+  elsif b.payment_policy<>'credits' and not exists(select 1 from public.lesson_participants where booking_id=b.id and lesson_id<>new.lesson_id) then
     update public.lessons l set payment_status=public.lesson_payment_status_from_booking(b.payment_status),price_minor=b.total_minor,
       paid_minor=b.paid_minor,updated_at=greatest(l.updated_at,b.updated_at) where l.id=new.lesson_id and l.student_id=b.student_id;
   end if;
@@ -22,13 +22,13 @@ end $$;
 create or replace function public.sync_lesson_financials_from_booking() returns trigger
 language plpgsql security definer set search_path='' as $$
 begin
-  if new.payment_policy='credits' then
+  if new.payment_policy='credits' and new.paid_minor=0 then
     update public.lessons l set payment_status='paid_by_credit',paid_minor=0,updated_at=greatest(l.updated_at,new.updated_at)
       where l.student_id=new.student_id and l.status in ('scheduled','completed')
         and l.id in(select lesson_id from public.lesson_participants where booking_id=new.id and status in ('reserved','confirmed','attended'))
         and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
           where e.lesson_id=l.id and p.student_id=new.student_id group by p.student_id having sum(e.quantity)=-1);
-  elsif (select count(distinct lesson_id) from public.lesson_participants where booking_id=new.id)<=1 then
+  elsif new.payment_policy<>'credits' and (select count(distinct lesson_id) from public.lesson_participants where booking_id=new.id)<=1 then
     update public.lessons l set payment_status=public.lesson_payment_status_from_booking(new.payment_status),price_minor=new.total_minor,
       paid_minor=new.paid_minor,updated_at=greatest(l.updated_at,new.updated_at)
       where l.student_id=new.student_id and l.id in(select lesson_id from public.lesson_participants where booking_id=new.id);
@@ -156,6 +156,8 @@ begin
   elsif exists(select 1 from public.sync_conflicts where entity_type='lesson' and entity_id=l.id and status='open') then reason:='synchronization_review_required';
   elsif exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
     where e.lesson_id=l.id group by p.student_id having sum(e.quantity)<-1)
+    or exists(select 1 from public.bookings b join public.lesson_participants lp on lp.booking_id=b.id
+      where lp.lesson_id=l.id and b.payment_policy='credits' and b.paid_minor>0)
     or (l.paid_minor>0 and exists(select 1 from public.package_credit_entries where lesson_id=l.id group by package_id having sum(quantity)<0)) then reason:='reconciliation_required';
   elsif p_action='cancel' and exists(select 1 from public.bookings b join public.lesson_participants lp on lp.booking_id=b.id
     where lp.lesson_id=l.id and lp.status in ('reserved','confirmed') and b.payment_policy<>'credits'
@@ -236,7 +238,7 @@ grant execute on function public.preview_lesson_occurrence_change(uuid,jsonb) to
 create function public.execute_lesson_occurrence_change(p_actor uuid,p_key text,p_value jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare preview jsonb; anchor public.lessons; scope text:=coalesce(p_value->>'scope','occurrence'); item jsonb; results jsonb:='[]';
-  prior lesson_ops.receipts; result jsonb; ids uuid[]; sid uuid;
+  prior lesson_ops.receipts; result jsonb; ids uuid[]; sid uuid; affected_students uuid[];
 begin
   select * into anchor from public.lessons where id=(p_value->>'lessonId')::uuid;
   if anchor.id is null or not exists(select 1 from public.memberships where user_id=p_actor and studio_id=anchor.studio_id and role='coach') then raise exception 'FORBIDDEN'; end if;
@@ -261,9 +263,12 @@ begin
   preview:=public.preview_lesson_occurrence_change(p_actor,p_value);
   if p_value->>'reviewToken' is null or p_value->>'reviewToken'<>preview->>'reviewToken' then raise exception 'VERSION_CONFLICT: Review changed occurrences again.'; end if;
   if exists(select 1 from jsonb_array_elements(preview->'items') x where not (x->>'eligible')::boolean) then raise exception 'REVIEW_REQUIRED: One or more occurrences require review.'; end if;
+  select coalesce(array_agg(distinct s.value::uuid order by s.value::uuid),'{}') into affected_students
+    from jsonb_array_elements(preview->'items') e cross join lateral jsonb_array_elements_text(e.value->'studentIds') s;
   perform set_config('app.lesson_actor',p_actor::text,true);
   perform set_config('app.lesson_reason',p_value->>'reason',true);
   perform set_config('app.lesson_class',coalesce(p_value->>'wholeClass','false'),true);
+  perform set_config('app.lesson_stop_generation',preview->>'stopsFutureGeneration',true);
   perform set_config('app.use_credit',coalesce(p_value->>'useCredit','false'),true);
   perform set_config('app.lesson_defer_coverage','true',true);
   for item in select value from jsonb_array_elements(preview->'items') loop
@@ -272,8 +277,7 @@ begin
     results:=results||jsonb_build_array(result);
   end loop;
   perform set_config('app.lesson_defer_coverage','false',true);
-  for sid in select id from public.students where studio_id=anchor.studio_id and id in (
-    select student_id from public.lessons where id=any(ids) union select student_id from public.lesson_participants where lesson_id=any(ids)) order by id loop
+  for sid in select unnest(affected_students) order by 1 loop
     results:=results||jsonb_build_array(jsonb_build_object('studentId',sid,'creditCoverage',credit_internal.request_coverage(sid)));
   end loop;
   if (preview->>'stopsFutureGeneration')::boolean then
@@ -325,7 +329,7 @@ begin
   if e.claim_token is distinct from p_token or e.status<>'processing' then return false; end if;
   select * into l from public.lessons where id=e.lesson_id;
   update lesson_ops.effects set
-    status=case when l.starts_at<>(e.snapshot->>'startsAt')::timestamptz or l.ends_at<>(e.snapshot->>'endsAt')::timestamptz or l.status::text<>e.snapshot->>'status' then 'superseded' when p_failed then 'failed' else 'completed' end,
+    status=case when not lesson_ops.effect_current(e) then 'superseded' when p_failed then 'failed' else 'completed' end,
     last_error=case when p_failed then 'notification_queue_failed' else null end,
     outbox_ids=coalesce(p_outbox,'{}'),claim_token=null,claim_until=null,
     next_attempt_at=case when p_failed then now()+make_interval(secs=>least(3600,30*power(2,least(attempts,7))::integer)) else now() end where id=p_id;
@@ -333,6 +337,24 @@ begin
 end $$;
 revoke all on function public.finish_lesson_change_effect(uuid,uuid,uuid[],boolean) from public,anon,authenticated;
 grant execute on function public.finish_lesson_change_effect(uuid,uuid,uuid[],boolean) to service_role;
+
+create function lesson_ops.effect_current(e lesson_ops.effects) returns boolean
+language sql stable security definer set search_path='' as $$
+  select case when e.kind='cancelled' and e.booking_id is not null then
+    exists(select 1 from public.bookings b where b.id=e.booking_id and b.status in ('cancelled','late_cancelled'))
+    and not exists(select 1 from unnest(e.participant_ids) pid where not exists(select 1 from public.lesson_participants lp
+      where lp.id=pid and lp.lesson_id=e.lesson_id and lp.booking_id=e.booking_id and lp.status='cancelled'))
+  else exists(select 1 from public.lessons l where l.id=e.lesson_id and l.starts_at=(e.snapshot->>'startsAt')::timestamptz
+    and l.ends_at=(e.snapshot->>'endsAt')::timestamptz and l.status::text=e.snapshot->>'status') end;
+$$;
+revoke all on function lesson_ops.effect_current(lesson_ops.effects) from public,anon,authenticated;
+
+create function public.lesson_change_effect_current(p_id uuid,p_token uuid) returns boolean
+language sql stable security definer set search_path='' as $$
+  select exists(select 1 from lesson_ops.effects e where e.id=p_id and e.claim_token=p_token and e.status='processing' and lesson_ops.effect_current(e));
+$$;
+revoke all on function public.lesson_change_effect_current(uuid,uuid) from public,anon,authenticated;
+grant execute on function public.lesson_change_effect_current(uuid,uuid) to service_role;
 
 create function lesson_ops.require_change(p_lesson uuid,p_action text,p_starts_at timestamptz,p_class boolean) returns void
 language plpgsql security definer set search_path='' as $$
@@ -417,7 +439,9 @@ begin
     -- Only a booking without another active occurrence changes lifecycle state.
     update public.bookings b set status='cancelled',version=b.version+1,updated_at=now()
       where b.id=any(booking_ids) and b.status='confirmed' and not exists(select 1 from public.lesson_participants lp join public.lessons l on l.id=lp.lesson_id
-        where lp.booking_id=b.id and lp.status in ('reserved','confirmed') and l.status='scheduled');
+        where lp.booking_id=b.id and lp.status in ('reserved','confirmed') and l.status='scheduled')
+        and (current_setting('app.lesson_stop_generation',true)='true' or not exists(select 1 from public.recurring_series s
+          where s.id=b.series_id and s.kind='ongoing' and s.status='active'));
   else raise exception 'VALIDATION_FAILED'; end if;
   update public.outbox_messages set status='cancelled',suppression_reason=case when p_action='cancel' then 'lesson_cancelled' else 'lesson_rescheduled' end,updated_at=now()
     where lesson_id=p_lesson_id and event_key in ('booking.reminder.student','lesson.rescheduled.student','lesson.rescheduled.coach')
@@ -428,7 +452,12 @@ begin
   end if;
   if current_setting('app.lesson_defer_coverage',true)='true' then
     perform credit_internal.enqueue_coverage(sid) from unnest(students) sid;
-  else coverage:=credit_internal.cover_lesson_students(p_lesson_id); end if;
+  else
+    coverage:='{}';
+    for settlement_student in select unnest(students) order by 1 loop
+      coverage:=jsonb_set(coverage,array[settlement_student::text],credit_internal.request_coverage(settlement_student));
+    end loop;
+  end if;
   select * into changed from public.lessons where id=p_lesson_id;
   effect_id:=lesson_ops.queue_effect(p_lesson_id,case when p_action='cancel' then 'cancelled' else 'rescheduled' end,students,participants,null,occurrence_key);
   insert into public.audit_events(studio_id,actor_id,action,entity_type,entity_id,reason,correlation_id,source,before_state,after_state)
@@ -470,6 +499,7 @@ begin
   end if;
   if b.status<>'confirmed' then raise exception 'INVALID_TRANSITION:%',b.status; end if;
   if b.version<>expected_version then raise exception 'VERSION_CONFLICT:%',b.version; end if;
+  if b.payment_policy='credits' and b.paid_minor>0 then raise exception 'REVIEW_REQUIRED: reconciliation_required'; end if;
 
   select coalesce(array_agg(distinct p.lesson_id),'{}'::uuid[]) into lesson_ids
   from public.lesson_participants p where p.booking_id=b.id;
@@ -537,7 +567,8 @@ begin
     case when target_status='late_cancelled' then 'Late cancellation' else 'Permitted cancellation' end,
     correlation_id,'booking_platform',to_jsonb(b),to_jsonb(updated_booking));
   update public.outbox_messages set status='cancelled',suppression_reason='participation_cancelled',updated_at=now()
-    where booking_id=b.id and lesson_id=any(lesson_ids) and event_key in ('booking.reminder.student','lesson.rescheduled.student') and status in ('draft','approved','queued','failed');
+    where lesson_id=any(lesson_ids) and (booking_id=b.id or (booking_id is null and student_id=b.student_id))
+      and event_key in ('booking.reminder.student','lesson.rescheduled.student') and status in ('draft','approved','queued','failed');
   if b.student_id is not null then coverage:=credit_internal.request_coverage(b.student_id); end if;
   for lid in select unnest(lesson_ids) loop
     select coalesce(array_agg(id),'{}') into participant_ids from public.lesson_participants where booking_id=b.id and lesson_id=lid;
@@ -590,7 +621,7 @@ begin
     changed:=public.command_change_lesson_state(target_lesson.id,target_lesson.version,'reschedule',target_lesson.starts_at+shift,target_lesson.ends_at+shift,true);
   end loop;
   perform set_config('app.lesson_defer_coverage','false',true);
-  for sid in select distinct student_id from public.lesson_participants where lesson_id=any(target_ids) and student_id is not null order by student_id loop perform credit_internal.request_coverage(sid); end loop;
+  for sid in select distinct student_id from public.lesson_participants where lesson_id=any(target_ids) and student_id is not null and status in ('reserved','confirmed') order by student_id loop perform credit_internal.request_coverage(sid); end loop;
   -- Contract dates change only for an explicitly requested whole-booking series shift.
   if change_scope='series' and exists(select 1 from public.bookings where id=b.id and version=b.version) then
     update public.bookings set starts_at=next_start,ends_at=next_end,reschedule_count=reschedule_count+1,version=version+1,updated_at=now() where id=b.id;

@@ -55,16 +55,23 @@ async function contend(holderSql, racerSql, label) {
     ready = resolve;
   });
   const a = session(
-    "begin;set application_name='occurrence-holder';" +
+    "begin;set local lock_timeout='8s';set local statement_timeout='20s';set application_name='occurrence-holder';" +
       holderSql +
       "select 'held';select pg_sleep(3);commit;",
     (output) => {
       if (output.includes("held")) ready();
     },
   );
-  await acquired;
+  await Promise.race([
+    acquired,
+    a.then(() => {
+      throw new Error("Holder exited before acquiring the test lock");
+    }),
+  ]);
   const b = session(
-    "begin;set application_name='occurrence-racer';" + racerSql + "commit;",
+    "begin;set local lock_timeout='8s';set local statement_timeout='20s';set application_name='occurrence-racer';" +
+      racerSql +
+      "commit;",
   );
   await new Promise((resolve) => setTimeout(resolve, 250));
   assert.equal(

@@ -92,6 +92,10 @@ function client(kind = "cancelled") {
         update: () => q,
         in: () => q,
         match: () => q,
+        or: (value: string) => {
+          filters.push({ table, field: "scope", value });
+          return q;
+        },
         eq: (field: string, value: unknown) => {
           filters.push({ table, field, value });
           return q;
@@ -103,7 +107,7 @@ function client(kind = "cancelled") {
       return q;
     },
   } as unknown as SupabaseClient;
-  return { db, rpc, filters };
+  return { db, rpc, filters, lesson };
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -113,6 +117,20 @@ beforeEach(() => {
   );
 });
 describe("occurrence notification intent", () => {
+  it("retains the withdrawn occurrence's original time when the remaining class changes", async () => {
+    const { db, lesson } = client();
+    lesson.status = "cancelled";
+    lesson.starts_at = "2099-02-01T12:00:00Z";
+    lesson.ends_at = "2099-02-01T13:00:00Z";
+    const result = await processLessonChangeEffects(db);
+    expect(result.failed).toBe(0);
+    const message = vi.mocked(queuePresentedMessages).mock.calls[0][1][0];
+    expect(message.entity_snapshot).toMatchObject({
+      startsAt: effect.snapshot.startsAt,
+      bookingCancellation: true,
+    });
+    expect(message.recipient).toBe("affected@example.test");
+  });
   it("notifies only the frozen withdrawal cohort and supersedes only its occurrence reminders", async () => {
     const { db, filters } = client();
     const result = await processLessonChangeEffects(db);
@@ -127,8 +145,9 @@ describe("occurrence notification intent", () => {
     });
     expect(filters).toContainEqual({
       table: "outbox_messages",
-      field: "booking_id",
-      value: "booking-one",
+      field: "scope",
+      value:
+        "booking_id.eq.booking-one,and(booking_id.is.null,student_id.eq.affected)",
     });
     expect(vi.mocked(queuePresentedMessages).mock.calls[0][1]).toEqual([
       expect.objectContaining({
