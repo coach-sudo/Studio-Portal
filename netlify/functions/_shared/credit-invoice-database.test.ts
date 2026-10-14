@@ -120,6 +120,28 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("retains a shared booking and its completed occurrence when its last scheduled occurrence changes", async () => {
+    await reset();
+    const upcoming = await lesson(),
+      past = await lesson("now()-interval '7 days'");
+    await db.query(`update lessons set status='completed' where id=$1`, [past]);
+    const b = await booking([upcoming, past]);
+    await db.query(
+      `update lesson_participants set status='attended' where lesson_id=$1`,
+      [past],
+    );
+    const before = await scalar(
+      `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+      [b, past],
+    );
+    await change(upcoming);
+    expect(
+      await scalar(
+        `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+        [b, past],
+      ),
+    ).toEqual(before);
+  });
   it("keeps local time and durations across DST for explicitly requested booking-series reschedules", async () => {
     await reset();
     const first = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),

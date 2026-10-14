@@ -440,10 +440,11 @@ begin
     end loop;
     update public.lessons set package_id=case when use_credit then package_id else null end,
       payment_status=case when before_lesson.payment_status='paid_by_credit' then case when use_credit then 'paid_by_credit' else 'refunded' end else payment_status end where id=p_lesson_id;
-    -- Only a booking without another active occurrence changes lifecycle state.
+    -- Completed/attended occurrences also retain their booking history. Closing
+    -- that contract is an explicit booking-level operation, not a lesson side effect.
     update public.bookings b set status='cancelled',version=b.version+1,updated_at=now()
       where b.id=any(booking_ids) and b.status='confirmed' and not exists(select 1 from public.lesson_participants lp join public.lessons l on l.id=lp.lesson_id
-        where lp.booking_id=b.id and lp.status in ('reserved','confirmed') and l.status='scheduled')
+        where lp.booking_id=b.id and lp.status<>'cancelled' and l.status not in ('cancelled','late_cancelled'))
         and (current_setting('app.lesson_stop_generation',true)='true' or not exists(select 1 from public.recurring_series s
           where s.id=b.series_id and s.kind='ongoing' and s.status='active'));
   else raise exception 'VALIDATION_FAILED'; end if;
