@@ -48,7 +48,7 @@ test("@journey @a11y coach reviews one recurring occurrence, preserves shared bo
     await expect(
       dialog.getByRole("region", { name: "Reviewed occurrences" }),
     ).toContainText("1 occurrence.");
-    await expect(dialog).toContainText("Recurring generation continues.");
+    await expect(dialog).toContainText("Series settings stay unchanged.");
     await expectNoSeriousAxeViolations(coach.page);
     await expectNoHorizontalOverflow(coach.page);
     await coach.page.screenshot({

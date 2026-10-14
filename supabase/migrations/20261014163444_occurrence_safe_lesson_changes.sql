@@ -238,7 +238,7 @@ grant execute on function public.preview_lesson_occurrence_change(uuid,jsonb) to
 create function public.execute_lesson_occurrence_change(p_actor uuid,p_key text,p_value jsonb) returns jsonb
 language plpgsql security definer set search_path='' as $$
 declare preview jsonb; anchor public.lessons; scope text:=coalesce(p_value->>'scope','occurrence'); item jsonb; results jsonb:='[]';
-  prior lesson_ops.receipts; result jsonb; ids uuid[]; sid uuid; affected_students uuid[];
+  prior lesson_ops.receipts; result jsonb; ids uuid[]; sid uuid; affected_students uuid[]; move_later boolean;
 begin
   select * into anchor from public.lessons where id=(p_value->>'lessonId')::uuid;
   if anchor.id is null or not exists(select 1 from public.memberships where user_id=p_actor and studio_id=anchor.studio_id and role='coach') then raise exception 'FORBIDDEN'; end if;
@@ -271,7 +271,11 @@ begin
   perform set_config('app.lesson_stop_generation',preview->>'stopsFutureGeneration',true);
   perform set_config('app.use_credit',coalesce(p_value->>'useCredit','false'),true);
   perform set_config('app.lesson_defer_coverage','true',true);
-  for item in select value from jsonb_array_elements(preview->'items') loop
+  move_later:=p_value->>'action'='reschedule' and (p_value->>'startsAt')::timestamptz>anchor.starts_at;
+  -- Vacate later slots first for forward shifts; earlier slots first for backward shifts.
+  for item in select value from jsonb_array_elements(preview->'items') order by
+    case when move_later then (value->>'startsAt')::timestamptz end desc,
+    case when not move_later then (value->>'startsAt')::timestamptz end asc,value->>'lessonId' loop
     result:=public.command_change_lesson_state((item->>'lessonId')::uuid,(item->>'version')::integer,p_value->>'action',
       (item->>'newStartsAt')::timestamptz,(item->>'newEndsAt')::timestamptz,true);
     results:=results||jsonb_build_array(result);
@@ -583,7 +587,7 @@ end $$;
 create or replace function public.reschedule_booking_occurrences(
   target_booking uuid,expected_version integer,next_start timestamptz,next_end timestamptz,change_scope text default 'occurrence'
 ) returns public.bookings language plpgsql security definer set search_path='' as $$
-declare b public.bookings; service public.booking_services; shift interval; target_ids uuid[];
+declare b public.bookings; service public.booking_services; wall_shift interval; zone text; proposed_start timestamptz; proposed_end timestamptz; target_ids uuid[];
   target_lesson record; updated public.bookings; sid uuid; changed jsonb;
 begin
   if change_scope not in ('occurrence','series') or next_start is null or next_end is null or next_end<=next_start then raise exception 'VALIDATION_FAILED'; end if;
@@ -603,22 +607,30 @@ begin
   select array_agg(id order by starts_at,id) into target_ids from public.lessons
     where id in(select lesson_id from public.lesson_participants where booking_id=b.id) and status='scheduled';
   if change_scope='occurrence' then target_ids:=target_ids[1:1]; end if;
-  shift:=next_start-(select starts_at from public.lessons where id=target_ids[1]);
+  zone:=coalesce(b.timezone,'America/New_York');
+  wall_shift:=(next_start at time zone zone)-((select starts_at from public.lessons where id=target_ids[1]) at time zone zone);
+  if change_scope='series' and next_end-next_start<>(select ends_at-starts_at from public.lessons where id=target_ids[1]) then raise exception 'VALIDATION_FAILED: Series changes preserve each occurrence duration.'; end if;
   if coalesce(array_length(target_ids,1),0)=0 then raise exception 'INVALID_TRANSITION'; end if;
   perform 1 from public.lessons where id=any(target_ids) order by starts_at,id for update;
-  for target_lesson in select * from public.lessons where id=any(target_ids) order by starts_at,id loop
+  for target_lesson in select * from public.lessons where id=any(target_ids) order by
+    case when wall_shift>interval '0' then starts_at end desc,case when wall_shift<=interval '0' then starts_at end asc,id loop
+    proposed_start:=((target_lesson.starts_at at time zone zone)+wall_shift) at time zone zone;
+    proposed_end:=case when change_scope='occurrence' then next_end else proposed_start+(target_lesson.ends_at-target_lesson.starts_at) end;
     if target_lesson.invoice_payment_pending then raise exception 'INVALID_TRANSITION: Check or cancel the pending online invoice payment first.'; end if;
     if exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
-      where e.lesson_id=target_lesson.id and p.expires_at<=target_lesson.starts_at+shift group by p.id having sum(e.quantity)<0) then
+      where e.lesson_id=target_lesson.id and p.expires_at<=proposed_start group by p.id having sum(e.quantity)<0) then
       raise exception 'VALIDATION_FAILED: The reserved credit expires before that date. Return the credit and review coverage first.';
     end if;
     if exists(select 1 from public.lessons l where l.studio_id=b.studio_id and l.status='scheduled' and not(l.id=any(target_ids))
-      and tstzrange(l.starts_at,l.ends_at,'[)') && tstzrange((target_lesson.starts_at+shift)-make_interval(mins=>service.buffer_before_minutes),
-        (target_lesson.ends_at+shift)+make_interval(mins=>service.buffer_after_minutes),'[)')) then raise exception 'SLOT_UNAVAILABLE'; end if;
+      and tstzrange(l.starts_at,l.ends_at,'[)') && tstzrange((proposed_start)-make_interval(mins=>service.buffer_before_minutes),
+        (proposed_end)+make_interval(mins=>service.buffer_after_minutes),'[)')) then raise exception 'SLOT_UNAVAILABLE'; end if;
   end loop;
   perform set_config('app.lesson_defer_coverage','true',true);
-  for target_lesson in select * from public.lessons where id=any(target_ids) order by starts_at,id loop
-    changed:=public.command_change_lesson_state(target_lesson.id,target_lesson.version,'reschedule',target_lesson.starts_at+shift,target_lesson.ends_at+shift,true);
+  for target_lesson in select * from public.lessons where id=any(target_ids) order by
+    case when wall_shift>interval '0' then starts_at end desc,case when wall_shift<=interval '0' then starts_at end asc,id loop
+    proposed_start:=((target_lesson.starts_at at time zone zone)+wall_shift) at time zone zone;
+    proposed_end:=case when change_scope='occurrence' then next_end else proposed_start+(target_lesson.ends_at-target_lesson.starts_at) end;
+    changed:=public.command_change_lesson_state(target_lesson.id,target_lesson.version,'reschedule',proposed_start,proposed_end,true);
   end loop;
   perform set_config('app.lesson_defer_coverage','false',true);
   for sid in select distinct student_id from public.lesson_participants where lesson_id=any(target_ids) and student_id is not null and status in ('reserved','confirmed') order by student_id loop perform credit_internal.request_coverage(sid); end loop;
@@ -667,8 +679,8 @@ begin
   select * into b from public.bookings where id=p_booking;
   if b.id is null then raise exception 'NOT_FOUND'; end if;
   perform pg_advisory_xact_lock(hashtext(b.studio_id::text));
-  perform credit_internal.lock_upcoming(b.student_id);
   perform 1 from public.students where id=b.student_id for update;
+  perform credit_internal.lock_upcoming(b.student_id);
   select * into b from public.bookings where id=p_booking for update;
   if exists(select 1 from public.studio_invoices i cross join jsonb_array_elements(i.items) x
     where i.student_id=b.student_id and i.checkout_key is not null and x->'lessonIds' ?| array(select lesson_id::text from public.lesson_participants where booking_id=b.id)) then

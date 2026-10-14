@@ -120,6 +120,28 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("keeps local time and durations across DST for explicitly requested booking-series reschedules", async () => {
+    await reset();
+    const first = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),
+      next = await lesson("'2027-03-20T14:00:00Z'::timestamptz");
+    const b = await booking([first, next]);
+    await db.query(
+      `update bookings set timezone='America/New_York' where id=$1`,
+      [b],
+    );
+    await db.query(
+      `select reschedule_booking_occurrences($1,1,'2027-03-14T14:00:00Z','2027-03-14T15:30:00Z','series')`,
+      [b],
+    );
+    expect(
+      (await scalar(`select starts_at,ends_at from lessons where id=$1`, [
+        next,
+      ]))!,
+    ).toEqual({
+      starts_at: new Date("2027-03-28T14:00:00Z"),
+      ends_at: new Date("2027-03-28T15:30:00Z"),
+    });
+  });
   it("keeps withdrawal notification intent valid after another participant changes the class", async () => {
     await reset();
     const l = await lesson();

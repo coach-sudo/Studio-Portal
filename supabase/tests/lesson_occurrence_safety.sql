@@ -40,5 +40,17 @@ select is(public.finish_calendar_projection((select (projection->>'id')::uuid fr
 select is((select status from calendar_projections where lesson_id='a6000000-0000-4000-8000-000000000001'),'queued','Newer calendar work remains queued');
 select is((select external_event_id from calendar_projections where lesson_id='a6000000-0000-4000-8000-000000000001'),'occurrence-event','Obtained remote identity is retained for cleanup');
 select ok((select first_attempted_at is not null from calendar_projections where lesson_id='a6000000-0000-4000-8000-000000000001'),'Prior calendar attempts remain deletion-blocking evidence');
+-- Vacate occupied selected slots in the correct direction without weakening the
+-- immediate PostgreSQL exclusion constraint for unrelated appointments.
+insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values
+ ('a6000000-0000-4000-8000-000000000003','a2000000-0000-4000-8000-000000000001','a3000000-0000-4000-8000-000000000001','Shift first',now()+interval '20 days',now()+interval '20 days 1 hour','scheduled','in_person','Studio','studio'),
+ ('a6000000-0000-4000-8000-000000000004','a2000000-0000-4000-8000-000000000001','a3000000-0000-4000-8000-000000000001','Shift next',now()+interval '27 days',now()+interval '27 days 1 hour','scheduled','in_person','Studio','studio');
+create temporary table shift_review as select jsonb_build_object('lessonId','a6000000-0000-4000-8000-000000000003','action','reschedule','scope','selected',
+  'selectedIds',jsonb_build_array('a6000000-0000-4000-8000-000000000003','a6000000-0000-4000-8000-000000000004'),
+  'startsAt',now()+interval '27 days','endsAt',now()+interval '27 days 1 hour','reason','Shift reviewed occurrences','wholeClass',false,'useCredit',false) value;
+update shift_review set value=value||jsonb_build_object('reviewToken',public.preview_lesson_occurrence_change('a1000000-0000-4000-8000-000000000001',value)->>'reviewToken');
+select lives_ok($$select public.execute_lesson_occurrence_change('a1000000-0000-4000-8000-000000000001','shift-selected-key',(select value from shift_review))$$,'Reviewed forward shift vacates the later selected slot first');
+select is((select starts_at from lessons where id='a6000000-0000-4000-8000-000000000003'),now()+interval '27 days','First occurrence takes the vacated slot');
+select is((select starts_at from lessons where id='a6000000-0000-4000-8000-000000000004'),now()+interval '34 days','Later occurrence moves once');
 select * from finish();
 rollback;

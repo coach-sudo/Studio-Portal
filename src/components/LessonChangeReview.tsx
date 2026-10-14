@@ -141,7 +141,9 @@ export function LessonChangeReview({
             {review.count} occurrence{review.count === 1 ? "" : "s"}.{" "}
             {review.stopsFutureGeneration
               ? "Future generation will stop."
-              : "Recurring generation continues."}
+              : lesson.seriesId
+                ? "Series settings stay unchanged."
+                : "Only this lesson changes."}
           </p>
           <p>
             Calendar changes and existing cancellation or schedule-change

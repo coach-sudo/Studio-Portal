@@ -48,8 +48,11 @@ const coach = "b1000000-0000-4000-8000-000000000001",
   studio = "b2000000-0000-4000-8000-000000000001",
   student = "b3000000-0000-4000-8000-000000000001",
   first = "b6000000-0000-4000-8000-000000000001",
-  next = "b6000000-0000-4000-8000-000000000002";
-async function contend(holderSql, racerSql, label) {
+  next = "b6000000-0000-4000-8000-000000000002",
+  booked = "b6000000-0000-4000-8000-000000000003",
+  booking = "b5000000-0000-4000-8000-000000000001",
+  service = "b4000000-0000-4000-8000-000000000001";
+async function contend(holderSql, racerSql, label, holderAfter = "") {
   let ready;
   const acquired = new Promise((resolve) => {
     ready = resolve;
@@ -57,7 +60,9 @@ async function contend(holderSql, racerSql, label) {
   const a = session(
     "begin;set local lock_timeout='8s';set local statement_timeout='20s';set application_name='occurrence-holder';" +
       holderSql +
-      "select 'held';select pg_sleep(3);commit;",
+      "select 'held';select pg_sleep(3);" +
+      holderAfter +
+      "commit;",
     (output) => {
       if (output.includes("held")) ready();
     },
@@ -171,11 +176,40 @@ try {
   console.log(
     "PostgreSQL cancellation/coverage, reviewed replay, and stale calendar completion passed (separate sessions; observed contention).",
   );
+  query(`begin;
+    insert into booking_services(id,studio_id,slug,name,category,duration_minutes) values('${service}','${studio}','concurrent-booking','Concurrent service','private',60);
+    insert into bookings(id,studio_id,student_id,service_id,reference,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,policy_snapshot,manage_token_hash)
+      values('${booking}','${studio}','${student}','${service}','CONCURRENT-BOOKING','Student','e2e-booked@example.test',now()+interval '16 days',now()+interval '16 days 1 hour','America/New_York','in_person','confirmed','pay_later','due',0,'{"cancellationWindowHours":36}','concurrent-booking-token');
+    insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values('${booked}','${studio}','${student}','Booked concurrent lesson',now()+interval '16 days',now()+interval '16 days 1 hour','scheduled','in_person','Studio','studio');
+    insert into lesson_participants(lesson_id,student_id,booking_id,display_name,email) values('${booked}','${student}','${booking}','Student','e2e-booked@example.test');
+    select reserve_student_upcoming_credits('${student}');commit;`);
+  await contend(
+    `select id from students where id='${student}' for update;`,
+    `select cancel_booking_credit('${booking}',(select version from bookings where id='${booking}'),false,true);`,
+    "Booking withdrawal versus coverage",
+    `select reserve_student_upcoming_credits('${student}')->>'applied';`,
+  );
+  assert.equal(
+    query(
+      `select sum(quantity) from package_credit_entries where lesson_id='${booked}';`,
+    ),
+    "0",
+  );
+  assert.equal(
+    query(
+      `select count(*) from package_credit_entries where lesson_id='${booked}' and quantity<0;`,
+    ),
+    "1",
+  );
+  console.log(
+    "PostgreSQL booking withdrawal/coverage also passed with observed lock contention and one released debit.",
+  );
 } finally {
-  query(`begin;delete from lesson_ops.effects where lesson_id in ('${first}','${next}');delete from lesson_ops.receipts where studio_id='${studio}';
+  query(`begin;delete from lesson_ops.effects where lesson_id in ('${first}','${next}','${booked}');delete from lesson_ops.receipts where studio_id='${studio}';
     delete from credit_internal.credit_command_receipts where student_id='${student}';delete from credit_internal.credit_coverage_jobs where student_id='${student}';
     delete from audit_events where studio_id='${studio}';delete from package_credit_entries where package_id in(select id from packages where student_id='${student}');
-    delete from lesson_participants where lesson_id in ('${first}','${next}');delete from calendar_projections where lesson_id in ('${first}','${next}');
+    delete from lesson_participants where lesson_id in ('${first}','${next}','${booked}');delete from calendar_projections where lesson_id in ('${first}','${next}','${booked}');
+    delete from bookings where id='${booking}';delete from booking_services where id='${service}';
     delete from lessons where studio_id='${studio}';delete from packages where student_id='${student}';delete from student_credit_accounts where student_id='${student}';
     delete from students where id='${student}';delete from memberships where studio_id='${studio}';delete from studios where id='${studio}';delete from auth.users where id='${coach}';commit;`);
 }
