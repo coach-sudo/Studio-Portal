@@ -95,7 +95,7 @@ update public.students set portal_enabled=true where id='73000000-0000-4000-8000
 
 -- Characterization: existing scans overcount existing reservations. PR 1
 -- documents this without changing counts or enabling automatic use.
-select is(public.reserve_student_upcoming_credits('73000000-0000-4000-8000-000000000001')->>'applied','1','Current scan reports an already-existing reservation as applied');
+select is(public.reserve_student_upcoming_credits('73000000-0000-4000-8000-000000000001')->>'applied','0','Repeated scan reports no new reservations');
 select is((select count(*) from public.package_credit_entries where lesson_id='76000000-0000-4000-8000-000000000001'),1::bigint,'Repeated scan still does not double-debit');
 
 -- Characterize recurring conversion against the actual full-schema function.
@@ -104,7 +104,7 @@ update public.student_credit_accounts set auto_apply=true where student_id='7300
 insert into public.package_credit_entries(package_id,kind,quantity,reason) values('75000000-0000-4000-8000-000000000002','adjustment',5,'Recurring characterization');
 select lives_ok($$select public.command_make_lesson_recurring('76000000-0000-4000-8000-000000000002',1,'weekly',3,'America/New_York')$$,'Actual recurring conversion succeeds');
 select is((select count(*) from public.lessons where series_id=(select series_id from public.lessons where id='76000000-0000-4000-8000-000000000002')),3::bigint,'Recurring conversion creates three occurrences');
-select is((select count(*) from public.package_credit_entries where lesson_id in (select id from public.lessons where series_id=(select series_id from public.lessons where id='76000000-0000-4000-8000-000000000002'))),0::bigint,'Current recurring conversion does not immediately reserve credits');
-select ok((public.student_credit_coverage('73000000-0000-4000-8000-000000000001')->'counts'->>'eligible')::integer >= 3,'Diagnostics expose unreserved eligible recurring occurrences');
+select is((select count(*) from public.package_credit_entries where lesson_id in (select id from public.lessons where series_id=(select series_id from public.lessons where id='76000000-0000-4000-8000-000000000002'))),3::bigint,'Recurring conversion immediately reserves three occurrences');
+select ok((public.student_credit_coverage('73000000-0000-4000-8000-000000000001')->'counts'->>'covered')::integer >= 3,'Diagnostics agree on covered recurring occurrences');
 select * from finish();
 rollback;

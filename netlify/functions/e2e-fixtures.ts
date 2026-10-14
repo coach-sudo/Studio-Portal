@@ -419,6 +419,23 @@ async function cleanup(
     ]);
   if (creditAccounts.error)
     throwFixtureError("credit_account_cleanup", creditAccounts.error);
+  for (const studentId of [
+    fixture.coachStudent,
+    fixture.student,
+    fixture.unrelatedStudent,
+    fixture.signoutStudent,
+    fixture.referredPending,
+    fixture.referredEarned,
+    fixture.referredRedeemed,
+    fixture.operationalStudent,
+  ]) {
+    const result = await db.rpc("cleanup_credit_coverage_fixture", {
+      p_student: studentId,
+      p_run: runId,
+    });
+    if (result.error)
+      throwFixtureError("credit_recovery_cleanup", result.error);
+  }
   await deleteIds("students", [
     fixture.coachStudent,
     fixture.student,

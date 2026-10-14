@@ -18,7 +18,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-function database() {
+function database(paymentError = false) {
   const writes: Array<{
     table: string;
     action: string;
@@ -53,7 +53,14 @@ function database() {
               // ESLint's base rule also checks names in callback type signatures.
               // eslint-disable-next-line no-unused-vars
               return (resolve: (value: unknown) => unknown) =>
-                resolve({ data: [], error: null, count: 0 });
+                resolve({
+                  data: [],
+                  error:
+                    paymentError && table === "payment_entries"
+                      ? new Error("Renewal receipt unavailable")
+                      : null,
+                  count: 0,
+                });
             if (method === "single")
               return async () => ({
                 data:
@@ -92,7 +99,7 @@ function database() {
     },
   };
   mocks.service.mockReturnValue(db);
-  return { writes };
+  return { writes, rpc: db.rpc };
 }
 
 beforeEach(() => {
@@ -110,6 +117,47 @@ beforeEach(() => {
 });
 
 describe("existing package renewal agreements", () => {
+  it("reports a receipt-write failure and retries through the same atomic fulfillment key", async () => {
+    const first = database(true);
+    mocks.event.mockReturnValue({
+      id: "event",
+      type: "invoice.paid",
+      data: {
+        object: {
+          id: "invoice",
+          metadata: { package_subscription_id: "agreement" },
+          amount_paid: 36000,
+          currency: "usd",
+        },
+      },
+    });
+    const request = () =>
+      new Request("https://portal.example.test/api/stripe", {
+        method: "POST",
+        body: "{}",
+        headers: { "stripe-signature": "test-only" },
+      });
+    expect(
+      (await webhook(request(), { requestId: "test" } as never)).status,
+    ).toBe(500);
+    expect(first.writes).toContainEqual(
+      expect.objectContaining({
+        table: "webhook_events",
+        values: expect.objectContaining({ status: "failed" }),
+      }),
+    );
+    const retry = database();
+    expect(
+      (await webhook(request(), { requestId: "test" } as never)).status,
+    ).toBe(200);
+    for (const call of [first.rpc, retry.rpc])
+      expect(call).toHaveBeenCalledWith(
+        "command_grant_student_credits",
+        expect.objectContaining({
+          p_key: "package-subscription-invoice:invoice",
+        }),
+      );
+  });
   it("charges the original purchased price even after the offer price changes", async () => {
     database();
     await maintenance();
@@ -127,7 +175,7 @@ describe("existing package renewal agreements", () => {
     );
   });
   it("credits the purchased quantity rather than an edited definition on a paid renewal", async () => {
-    const { writes } = database();
+    const { writes, rpc } = database();
     mocks.event.mockReturnValue({
       id: "event",
       type: "invoice.paid",
@@ -149,15 +197,19 @@ describe("existing package renewal agreements", () => {
       { requestId: "test" } as never,
     );
     expect(response.status).toBe(200);
-    expect(
-      writes.find((write) => write.table === "package_credit_entries")?.values,
-    ).toEqual(
-      expect.objectContaining({
-        package_id: "original-purchase",
+    expect(rpc).toHaveBeenCalledWith("command_grant_student_credits", {
+      p_student: "student",
+      p_key: "package-subscription-invoice:invoice",
+      p_value: {
+        packageId: "original-purchase",
+        kind: "purchase",
         quantity: 4,
-        idempotency_key: "package-subscription-invoice:invoice",
-      }),
-    );
+        reason: "Package renewal · invoice",
+      },
+    });
+    expect(
+      writes.some((write) => write.table === "package_credit_entries"),
+    ).toBe(false);
     expect(
       writes.find((write) => write.table === "payment_entries")?.values
         .amount_minor,

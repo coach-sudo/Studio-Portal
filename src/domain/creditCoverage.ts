@@ -30,6 +30,17 @@ export const creditCoverageSchema = z
       autoApply: z.boolean().nullable(),
       needsReview: z.boolean(),
     }),
+    maintenance: z
+      .object({
+        pending: z.boolean(),
+        requestedVersion: z.number().int().positive(),
+        completedVersion: z.number().int().positive().nullable(),
+        attempts: z.number().int().nonnegative(),
+        lastError: z.string().nullable(),
+        updatedAt: z.iso.datetime({ offset: true }),
+      })
+      .nullable()
+      .optional(),
     items: z
       .array(
         z.object({
@@ -127,3 +138,37 @@ export const creditCoverageSchema = z
 export type CreditCoverage = z.infer<typeof creditCoverageSchema>;
 export type CreditCoverageReason = z.infer<typeof creditCoverageReasonSchema>;
 export type LessonCreditCoverage = CreditCoverage["items"][number];
+
+export const creditApplicationResultSchema = z
+  .object({
+    applied: z.number().int().nonnegative(),
+    alreadyCovered: z.number().int().nonnegative(),
+    skipped: z.number().int().nonnegative(),
+    failed: z.number().int().nonnegative(),
+    skipReasons: z.partialRecord(
+      creditCoverageReasonSchema,
+      z.number().int().nonnegative(),
+    ),
+    failureCodes: z.record(z.string(), z.number().int().nonnegative()),
+    autoApplyPending: z.boolean(),
+  })
+  .superRefine((value, context) => {
+    if (
+      Object.values(value.skipReasons).reduce(
+        (sum, count) => sum + count,
+        0,
+      ) !== value.skipped ||
+      Object.values(value.failureCodes).reduce(
+        (sum, count) => sum + count,
+        0,
+      ) !== value.failed ||
+      value.autoApplyPending !== value.failed > 0
+    )
+      context.addIssue({
+        code: "custom",
+        message: "Credit application counts do not reconcile.",
+      });
+  });
+export type CreditApplicationResult = z.infer<
+  typeof creditApplicationResultSchema
+>;

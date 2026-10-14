@@ -16,6 +16,11 @@ export async function handleFinanceCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   const { audit, db, domain, input, request, requireCoach } = ctx;
+  const coachActor = async () => {
+    const { data, error } = await db.auth.getUser();
+    if (error || !data.user) throw new Error("FORBIDDEN");
+    return data.user.id;
+  };
 
   if (
     domain === "credits" &&
@@ -34,18 +39,6 @@ export async function handleFinanceCommands(
       .single();
     if (student.error || !student.data) throw new Error("FORBIDDEN");
     const service = serviceClient();
-    let beforeCreditSummary: Record<string, any> | undefined;
-    if (input.command === "apply_upcoming" || input.command === "set_auto") {
-      const summary = await service.rpc("student_credit_summary", {
-        p_student: studentId,
-      });
-      if (summary.error) throw summary.error;
-      beforeCreditSummary = summary.data;
-      if (input.command === "apply_upcoming" && summary.data.autoApply !== true)
-        throw new Error(
-          "VALIDATION_FAILED: Enable automatic credit use before applying upcoming credits.",
-        );
-    }
     if (
       input.command === "set_total" &&
       (!Number.isInteger(input.payload.total) ||
@@ -58,53 +51,37 @@ export async function handleFinanceCommands(
       typeof input.payload.enabled !== "boolean"
     )
       throw new Error("VALIDATION_FAILED");
-    const result = await service.rpc(
-      input.command === "set_total"
-        ? "set_student_credit_total"
-        : input.command === "reconcile"
-          ? "reconcile_student_credit_reservations"
-          : "set_student_credit_auto",
-      input.command === "set_total"
-        ? {
-            p_student: studentId,
-            p_target: input.payload.total,
-            p_version: input.expectedVersion,
-            p_reason: input.payload.reason,
-            p_key: `credit-total:${input.idempotencyKey}`,
-          }
-        : input.command === "reconcile"
-          ? { p_student: studentId, p_version: input.expectedVersion }
-          : {
-              p_student: studentId,
-              p_enabled:
-                input.command === "apply_upcoming"
-                  ? true
-                  : input.payload.enabled,
-              p_version: input.expectedVersion,
-            },
-    );
+    if (input.command === "reconcile") {
+      const result = await service.rpc(
+        "reconcile_student_credit_reservations",
+        {
+          p_student: studentId,
+          p_version: input.expectedVersion,
+        },
+      );
+      if (result.error) throw result.error;
+      await audit(
+        studioId,
+        "student",
+        studentId,
+        "credits.reconcile",
+        null,
+        result.data,
+      );
+      return json({ resource: result.data });
+    }
+    const result = await service.rpc("command_student_credit_settings", {
+      p_student: studentId,
+      p_command: input.command,
+      p_value: input.payload,
+      p_version: input.expectedVersion,
+      p_key: input.idempotencyKey,
+      p_actor: await coachActor(),
+    });
     if (result.error) throw result.error;
-    await audit(
-      studioId,
-      "student",
-      studentId,
-      `credits.${input.command}`,
-      null,
-      result.data,
-    );
     return json({
-      resource: {
-        ...result.data,
-        ...(beforeCreditSummary
-          ? {
-              applied: Math.max(
-                0,
-                Number(result.data.reserved) -
-                  Number(beforeCreditSummary.reserved),
-              ),
-            }
-          : {}),
-      },
+      resource: result.data,
+      auditEventId: result.data.auditEventId,
     });
   }
 
@@ -148,68 +125,40 @@ export async function handleFinanceCommands(
         input.idempotencyKey,
       );
     }
-    const expiresAt = definition.expiration_days
-        ? new Date(
-            Date.now() + Number(definition.expiration_days) * 86400000,
-          ).toISOString()
-        : null,
-      { data: pkg, error: packageError } = await service
-        .from("packages")
-        .insert({
-          student_id: student.id,
-          definition_id: definition.id,
-          name: definition.name,
-          price_minor: quote.price_minor,
-          currency: quote.currency,
-          expires_at: expiresAt,
-          stripe_price_id: stripePriceId,
-          credit_quantity: definition.session_count,
-          auto_apply:
-            (
-              await service
-                .from("student_credit_accounts")
-                .select("auto_apply")
-                .eq("student_id", student.id)
-                .maybeSingle()
-            ).data?.auto_apply === true,
-        })
-        .select()
-        .single();
-    if (packageError) throw packageError;
-    const { error: creditError } = await service
-      .from("package_credit_entries")
-      .insert({
-        package_id: pkg.id,
-        kind: "adjustment",
+    const assigned = await service.rpc("command_grant_student_credits", {
+      p_student: student.id,
+      p_actor: await coachActor(),
+      p_key: `coach-package:${input.idempotencyKey}`,
+      p_value: {
         quantity: definition.session_count,
+        kind: "adjustment",
         reason: String(input.payload.reason || "Coach assigned package"),
-        idempotency_key: `coach-package:${input.idempotencyKey}`,
-      });
-    if (creditError) {
-      await service.from("packages").delete().eq("id", pkg.id);
-      throw creditError;
-    }
-    let applied = 0;
-    let autoApplyPending = false;
-    if (pkg.auto_apply) {
-      const coverage = await service.rpc("reserve_student_upcoming_credits", {
-        p_student: student.id,
-      });
-      autoApplyPending = !!coverage.error;
-      applied = Number(coverage.data?.applied ?? 0);
-    }
+        package: {
+          definitionId: definition.id,
+          name: definition.name,
+          priceMinor: quote.price_minor,
+          currency: quote.currency,
+          stripePriceId,
+        },
+      },
+    });
+    if (assigned.error) throw assigned.error;
+    const { package: pkg, coverage, auditEventId } = assigned.data;
     return json({
-      resource: { ...pkg, applied, autoApplyPending },
+      resource: {
+        ...pkg,
+        coverage,
+        applied: coverage.applied,
+        alreadyCovered: coverage.alreadyCovered,
+        skipped: coverage.skipped,
+        failed: coverage.failed,
+        autoApplyPending: coverage.autoApplyPending,
+      },
       recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "package",
-        pkg.id,
-        "package.assigned",
-        null,
-        pkg,
-      ),
-      queuedSideEffects: applied ? [`credits_applied:${applied}`] : [],
+      auditEventId,
+      queuedSideEffects: coverage.applied
+        ? [`credits_applied:${coverage.applied}`]
+        : [],
     });
   }
 
@@ -505,65 +454,22 @@ export async function handleFinanceCommands(
         .eq("studio_id", studioId)
         .single();
     if (studentError || !student) throw new Error("FORBIDDEN");
-    let { data: pkg } = await service
-      .from("packages")
-      .select("id")
-      .eq("student_id", studentId)
-      .eq("name", "Studio lesson credits")
-      .maybeSingle();
-    if (!pkg) {
-      const created = await service
-        .from("packages")
-        .insert({
-          student_id: studentId,
-          name: "Studio lesson credits",
-          price_minor: 0,
-          currency: "USD",
-          credit_quantity: 1,
-        })
-        .select("id")
-        .single();
-      if (created.error) throw created.error;
-      pkg = created.data;
-    }
-    const lessonId = String(input.payload.lessonId || "") || null;
-    if (lessonId) {
-      const linked = await service
-        .from("lessons")
-        .select("id")
-        .eq("id", lessonId)
-        .eq("studio_id", studioId)
-        .eq("student_id", studentId)
-        .single();
-      if (linked.error)
-        throw new Error(
-          "VALIDATION_FAILED: The lesson does not belong to this student.",
-        );
-    }
-    const { data, error } = await service
-      .from("package_credit_entries")
-      .insert({
-        package_id: pkg.id,
-        lesson_id: lessonId,
-        kind: "adjustment",
+    const granted = await service.rpc("command_grant_student_credits", {
+      p_student: studentId,
+      p_actor: await coachActor(),
+      p_key: `coach-credit:${input.idempotencyKey}`,
+      p_value: {
         quantity,
+        kind: "adjustment",
         reason,
-        idempotency_key: `coach-credit:${input.idempotencyKey}`,
-      })
-      .select()
-      .single();
-    if (error) throw error;
+        lessonId: String(input.payload.lessonId || "") || null,
+      },
+    });
+    if (granted.error) throw granted.error;
     return json({
-      resource: data,
+      resource: { ...granted.data.entry, coverage: granted.data.coverage },
       recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "credit",
-        data.id,
-        "credit.granted",
-        null,
-        data,
-      ),
+      auditEventId: granted.data.auditEventId,
       queuedSideEffects: [],
     });
   }
@@ -602,7 +508,7 @@ export async function handleFinanceCommands(
     if (applyError) throw applyError;
     const entry = applied.entry;
     return json({
-      resource: entry,
+      resource: { ...entry, creditCoverage: applied.creditCoverage },
       recommendations: [],
       auditEventId: await audit(
         studioId,

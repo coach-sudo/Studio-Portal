@@ -58,6 +58,26 @@ function fixture(enabled = true, pricingError = false) {
     student_credit_accounts: { auto_apply: false },
   };
   const db = {
+    auth: {
+      getUser: async () => ({ data: { user: { id: "coach" } }, error: null }),
+    },
+    rpc: vi.fn(async (_name: string, args: any) => ({
+      data: {
+        package: {
+          id: "purchase",
+          price_minor: args.p_value.package.priceMinor,
+        },
+        coverage: {
+          applied: 0,
+          alreadyCovered: 0,
+          skipped: 0,
+          failed: 0,
+          autoApplyPending: false,
+        },
+        auditEventId: "atomic-audit",
+      },
+      error: null,
+    })),
     from(table: string) {
       let inserted: Record<string, unknown> | undefined;
       const query = {
@@ -137,7 +157,7 @@ function fixture(enabled = true, pricingError = false) {
       audit,
       requireCoach,
     } as never);
-  return { writes, filters, command, requireCoach };
+  return { writes, filters, command, requireCoach, rpc: db.rpc };
 }
 
 beforeEach(() => {
@@ -229,12 +249,25 @@ describe("new package purchases and assignments", () => {
     },
   );
   it("uses the same effective quote when a coach assigns a new package", async () => {
-    const { command, writes, requireCoach } = fixture();
+    const { command, writes, requireCoach, rpc } = fixture();
     await command("packages", "assign");
     expect(requireCoach).toHaveBeenCalledOnce();
-    expect(writes.find((w) => w.table === "packages")?.values.price_minor).toBe(
-      28800,
+    expect(rpc).toHaveBeenCalledWith(
+      "command_grant_student_credits",
+      expect.objectContaining({
+        p_student: "student",
+        p_actor: "coach",
+        p_key: "coach-package:purchase-key",
+        p_value: expect.objectContaining({
+          quantity: 4,
+          package: expect.objectContaining({
+            priceMinor: 28800,
+            currency: "USD",
+          }),
+        }),
+      }),
     );
+    expect(writes).toEqual([]);
     expect(
       writes.some(
         (w) =>
