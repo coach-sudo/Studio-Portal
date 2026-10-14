@@ -12,7 +12,7 @@ Source of truth: [master plan](studio-portal-modernization-master-plan.md), [cre
 
 | Operation                       | Scope and consequences                                                                                                                                                                                                             |
 | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Coach cancellation/rescheduling | Defaults to one exact occurrence. Shared booking dates and payment history stay intact; lifecycle cancellation occurs only when no active occurrence remains.                                                                      |
+| Coach cancellation/rescheduling | Defaults to one exact occurrence. Shared booking dates and payment history stay intact. Unaffected scheduled or completed occurrences preserve booking validity; ongoing contracts also remain valid until explicitly stopped.     |
 | Reviewed selected IDs           | Frozen explicit IDs and dependency fingerprints; added dependencies or version changes reject the entire interactive request.                                                                                                      |
 | Future/entire series            | Actual IDs and dates are reviewed. Only explicit future/series **cancellation** stops generation. Historical, protected, or ambiguous items block confirmation. Rescheduling preserves local wall-clock spacing and each duration. |
 | Whole class                     | Requires explicit studio-level class review. Student-record operations cannot change the whole class.                                                                                                                              |
@@ -32,7 +32,7 @@ The old class-offering deletion handler no longer physically deletes its lesson 
 
 ## Calendar and communication
 
-Calendar claims have lease tokens, claimed lesson versions, and persistent first-attempt evidence. A stale completion retains any acquired external ID but leaves newer projection work queued. Expired claims recover. Deterministic event IDs recover lost insert responses; current etags protect remote mutations. Missing known events and recurring masters require review. Token/provider failures stay retryable per item.
+Calendar claims have lease tokens, claimed lesson versions, and persistent first-attempt evidence. A stale completion retains any acquired external ID but leaves newer projection work queued. Expired claims recover. Deterministic event IDs recover lost insert responses; current etags protect remote mutations. Missing known events and recurring masters require review. Token/provider failures stay retryable per item. An open synchronization conflict invalidates a claim and prevents successful acknowledgment, including when the conflict was recorded after the claim began.
 
 An in-flight external request cannot be rolled back atomically with PostgreSQL. A simultaneous change may briefly appear remotely until the queued latest projection completes. This is observable recovery, not a claim of exactly-once external delivery. [Google's event insert contract](https://developers.google.com/workspace/calendar/api/v3/reference/events/insert) and [conditional resource updates](https://developers.google.com/workspace/calendar/api/guides/version-resources) support the remote identity/version strategy.
 
@@ -40,8 +40,37 @@ Notification intents freeze affected participant/student IDs. Queue retries use 
 
 ## Verification evidence
 
-Initial local validation: 58 PGlite database tests against the dependent diagnostic/lifecycle/occurrence stack; calendar provider mocks cover conditional single-event deletion, recurring-master refusal, obsolete claims, lost insert response recovery, and token failure. Full-schema pgTAP, three observed two-session PostgreSQL races, and an authenticated desktop/mobile coach review with portal denial are wired to isolated CI.
+Verified CI checkpoint: `dc6a7fd7363171c5a3a93a55c5c5473f3826972f`, October 14, 2026. [Production checks](https://github.com/coach-sudo/Studio-Portal/actions/runs/38629071271) and [authenticated browser checks](https://github.com/coach-sudo/Studio-Portal/actions/runs/38629071283) passed on the complete dependent stack.
+
+- 686 unit/integration tests across 111 files passed, including 67 PGlite credit/invoice/occurrence regressions with the actual booking financial triggers loaded.
+- Complete isolated migration replay, SQL lint for `public`, `credit_internal`, and `lesson_ops`, generated-type parity, and 135 pgTAP assertions across six files passed.
+- Four separate-session PostgreSQL races passed with observed contention: cancellation versus coverage; overlapping reviewed execution/replay; stale calendar completion versus a newer lesson version; booking withdrawal versus coverage. PR 1.2's concurrent grant/replay and repeated-scan checks also passed.
+- 47 Playwright checks passed; one Stripe checkout check was blocked because an isolated Stripe test key was absent. Authenticated coach occurrence review, cancellation, rescheduling, stale review rejection, and portal-role denial passed. The new journey checks desktop and 390 px presentation, axe, and overflow; the existing suite also covers mobile Chromium.
+- Fixture cleanup restored public data, private lesson-operation data, storage, and Auth to their pre-fixture baselines.
+- Lint, formatting, typecheck, build, bundle budgets, and secret checks passed. Existing lint/CSS warning thresholds are retained; failure budgets are unchanged.
+
+The final post-checkpoint synchronization-conflict guard adds one PGlite regression: all 68 database tests passed locally. Final-head CI results are reported in [draft PR #38](https://github.com/coach-sudo/Studio-Portal/pull/38); the checkpoint above identifies already-completed evidence rather than assuming the subsequent run's outcome.
 
 Windows has no running Docker/Podman PostgreSQL environment. Full-schema, real concurrency, generated-type parity, and authenticated browser evidence must come from isolated CI, not PGlite. Live Google/Stripe/email end-to-end checks require isolated provider credentials and remain outside this delivery's authority.
 
-The final validation record and draft PR identify the exact commit, completed checks, remaining limits, and readiness for PR 1.4. Production activation requires separate release authorization.
+Provider calls are mocked in this validation. Live Google/Stripe/email behavior is not claimed verified. Browser evidence uses the isolated `VITE_QUERY_LAYER_V2=true` configuration; production feature flags are untouched. The unavoidable in-flight external synchronization window described above remains recoverable rather than transactionally atomic.
+
+## Changed-file inventory
+
+All paths below are changes relative to the exact PR #37 base, not duplicated dependency work.
+
+| Area                                  | Files                                                                                                                                                                                                                                                                                                                      |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Database and types                    | `supabase/migrations/20261014163444_occurrence_safe_lesson_changes.sql`, `supabase/tests/lesson_occurrence_safety.sql`, `src/types/database.generated.ts`                                                                                                                                                                  |
+| Commands and validation               | `netlify/functions/_v2/lessons.ts`, `netlify/functions/booking-admin.ts`, `netlify/functions/_shared/schemas.ts`, `netlify/functions/_shared/http.ts`, `src/domain/lessonChanges.ts`                                                                                                                                       |
+| Calendar recovery                     | `netlify/functions/calendar-worker.ts`, `netlify/functions/_shared/calendar-projection.ts`, `netlify/functions/_shared/calendar-projection.test.ts`                                                                                                                                                                        |
+| Notification recovery                 | `netlify/functions/booking-maintenance.ts`, `netlify/functions/_shared/booking-notifications.ts`, `netlify/functions/_shared/lesson-notifications.ts`, `netlify/functions/_shared/lesson-notifications.test.ts`, `netlify/functions/_shared/outbox-eligibility.ts`, `netlify/functions/_shared/outbox-eligibility.test.ts` |
+| Shared review interface               | `src/components/LessonChangeReview.tsx`, `src/components/RescheduleLessonForm.tsx`, `src/features/coach/StudentWorkspaceLessons.tsx`, `src/features/coach/StudioLessons.tsx`                                                                                                                                               |
+| Regression and fixture infrastructure | `netlify/functions/_shared/credit-invoice-database.test.ts`, `netlify/functions/_shared/package-renewal-pricing.test.ts`, `scripts/test-lesson-change-concurrency.mjs`, `netlify/functions/e2e-fixtures.ts`, `e2e/lesson-occurrence-safety.spec.ts`                                                                        |
+| Isolated checks and documentation     | `.github/workflows/ci.yml`, `.github/workflows/deployed-browser.yml`, `package.json`, `tsconfig.node.json`, `docs/occurrence-safe-lesson-changes.md`                                                                                                                                                                       |
+
+## Review checkpoint and next work
+
+PR #38 is a draft safety foundation for PR 1.4. Review the migration, shared-booking financial protections, and external recovery behavior before extending the same assessment/mutation core with persisted bulk previews and resumable execution. The 100-record interactive review cap does not satisfy the master plan's 5,000-record bulk requirement; that belongs to PR 1.4. Actual eligible-record deletion, archive/void operations, and bulk selection remain in PRs 1.4–1.5. Student simplification follows in PR 1.6. No later wave is removed from scope.
+
+Implementation stops at draft review. Production activation requires a separately reviewed release package and explicit authorization; no merge, publication, production migration, reconciliation, or live message/payment has been performed.

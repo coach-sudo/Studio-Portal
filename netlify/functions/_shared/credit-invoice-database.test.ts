@@ -120,6 +120,41 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("does not acknowledge or project through a provider conflict that opens after a calendar claim", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
+      [l],
+    );
+    const claimed = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
+      l,
+    ]);
+    expect(
+      (await scalar(`select calendar_claim_current($1,$2) result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      (await scalar(`select finish_calendar_projection($1,$2,'{}') result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      await scalar(
+        `select status,last_error from calendar_projections where lesson_id=$1`,
+        [l],
+      ),
+    ).toEqual({
+      status: "failed",
+      last_error: "synchronization_review_required",
+    });
+  });
   it("rejects mismatched studio/booking associations without returning another studio's booking identity", async () => {
     await reset();
     const l = await lesson();

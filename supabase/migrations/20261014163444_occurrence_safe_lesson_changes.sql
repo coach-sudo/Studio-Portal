@@ -62,27 +62,29 @@ grant execute on function public.claim_calendar_projections(integer) to service_
 create function public.calendar_claim_current(p_id uuid,p_token uuid) returns boolean
 language sql stable security definer set search_path='' as $$
   select exists(select 1 from public.calendar_projections p join public.lessons l on l.id=p.lesson_id
-    where p.id=p_id and p.claim_token=p_token and p.claim_until>now() and p.status='projecting' and p.claimed_version=l.version);
+    where p.id=p_id and p.claim_token=p_token and p.claim_until>now() and p.status='projecting' and p.claimed_version=l.version
+      and not exists(select 1 from public.sync_conflicts where entity_type='lesson' and entity_id=l.id and status='open'));
 $$;
 revoke all on function public.calendar_claim_current(uuid,uuid) from public,anon,authenticated;
 grant execute on function public.calendar_claim_current(uuid,uuid) to service_role;
 
 create function public.finish_calendar_projection(p_id uuid,p_token uuid,p_result jsonb,p_failed boolean default false) returns boolean
 language plpgsql security definer set search_path='' as $$
-declare p public.calendar_projections;l public.lessons; current_version boolean;
+declare p public.calendar_projections;l public.lessons; current_version boolean; has_conflict boolean;
 begin
   -- Match the lesson -> projection order used by commands; a late worker never clears newer work.
   select * into l from public.lessons where id=(select lesson_id from public.calendar_projections where id=p_id) for update;
   select * into p from public.calendar_projections where id=p_id for update;
   if p.claim_token is distinct from p_token then return false; end if;
-  current_version:=p.claimed_version=l.version and p.status='projecting';
+  has_conflict:=exists(select 1 from public.sync_conflicts where entity_type='lesson' and entity_id=l.id and status='open');
+  current_version:=p.claimed_version=l.version and p.status='projecting' and not has_conflict;
   update public.calendar_projections set
     external_event_id=coalesce(p_result->>'id',external_event_id),external_version=coalesce(p_result->>'etag',external_version),
-    status=case when not current_version then 'queued' when p_failed then 'failed' else 'projected' end,
+    status=case when has_conflict then 'failed' when not current_version then 'queued' when p_failed then 'failed' else 'projected' end,
     projected_version=case when current_version and not p_failed then l.version else projected_version end,
     last_projected_at=case when current_version and not p_failed then now() else last_projected_at end,
-    last_error=case when current_version and p_failed then coalesce(p_result->>'errorCode','calendar_sync_failed') else null end,
-    next_attempt_at=case when current_version and p_failed then now()+make_interval(secs=>least(3600,30*power(2,least(attempts,7))::integer)) else now() end,
+    last_error=case when has_conflict then 'synchronization_review_required' when current_version and p_failed then coalesce(p_result->>'errorCode','calendar_sync_failed') else null end,
+    next_attempt_at=case when has_conflict or current_version and p_failed then now()+make_interval(secs=>least(3600,30*power(2,least(attempts,7))::integer)) else now() end,
     claim_token=null,claim_until=null where id=p.id;
   if current_version and not p_failed and p_result->>'joinUrl' is not null and l.status='scheduled' then
     update public.lessons set join_url=p_result->>'joinUrl',location_label='Google Meet',updated_at=now() where id=l.id;
