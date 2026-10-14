@@ -477,8 +477,11 @@ $$;
 revoke all on function public.lesson_coach_record_visible(uuid) from public,anon;
 grant execute on function public.lesson_coach_record_visible(uuid) to authenticated;
 create view public.lesson_list_rows with(security_invoker=true) as select l.* from public.lessons l where public.lesson_coach_record_visible(l.id);
-revoke all on public.lesson_list_rows from public,anon;
-grant select on public.lesson_list_rows to authenticated;
+revoke all on public.lesson_list_rows from public,anon,authenticated,service_role;
+grant select on public.lesson_list_rows to authenticated,service_role;
+-- The old broad coach ALL policy must not provide a cascade-delete bypass.
+-- Existing authenticated reads/updates and trusted service fixture cleanup stay.
+revoke delete on public.lessons from anon,authenticated;
 do $$ declare definition text;begin
  if to_regprocedure('public.studio_route_snapshot(text[])') is not null then
   select pg_get_functiondef('public.studio_route_snapshot(text[])'::regprocedure) into definition;

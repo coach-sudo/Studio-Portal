@@ -25,6 +25,7 @@ Catalog assessment checks actual lesson foreign keys and public UUID, UUID-array
 Scaffolding is removed explicitly before the lesson. Parent locks fence foreign-key inserts, including foreign keys outside the public schema. Deletion also takes short-lived table locks on non-FK JSON/array writers, and tombstone triggers prevent delayed references to deleted lessons after commit. Lock timeout/deadlock is a recoverable item failure, never permission to weaken the dependency check. New public reference columns are included by the catalog scan; future schema migrations must also maintain tombstone fencing and regression coverage.
 
 Normal coach lists use the authorized visibility predicate through both the route snapshot and an invoker-security list view. Portal roles retain historical lesson rows; coach administrative history can inspect archive/void metadata and deleted snapshots without exposing private tables.
+The list view is explicitly read-only, including revocation of Supabase's default write grants. Authenticated users cannot directly delete from `lessons`; the reviewed command boundary handles coach deletion. Trusted service administration and the protected synthetic-fixture cleanup retain their existing authority.
 
 ## Review and scopes
 

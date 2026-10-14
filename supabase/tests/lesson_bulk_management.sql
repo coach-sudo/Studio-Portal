@@ -6,6 +6,8 @@ select ok(not has_function_privilege('authenticated','public.preview_lesson_bulk
 select ok(not has_function_privilege('anon','public.process_lesson_bulk_item(uuid,uuid)','execute'),'Worker is service-only');
 select ok(not has_table_privilege('service_role','lesson_ops.lesson_deletion_snapshots','select'),'Raw deletion snapshots are private');
 select ok(not has_table_privilege('authenticated','lesson_ops.lesson_bulk_jobs','select'),'Raw reviews are private');
+select ok(not has_table_privilege('authenticated','public.lessons','delete'),'Coach cannot bypass reviewed deletion through the base table');
+select ok(not has_table_privilege('authenticated','public.lesson_list_rows','delete'),'List view is read-only despite default grants');
 insert into auth.users(id,email) values('c1000000-0000-4000-8000-000000000001','e2e-bulk@example.test');
 insert into studios(id,name,slug) values('c2000000-0000-4000-8000-000000000001','Bulk fixture','e2e-bulk-management');
 insert into memberships(studio_id,user_id,role,display_name) values('c2000000-0000-4000-8000-000000000001','c1000000-0000-4000-8000-000000000001','coach','Bulk coach');
