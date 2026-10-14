@@ -1,5 +1,5 @@
 import { AlertTriangle, CalendarClock, Clock3 } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { zonedDateTimeToUtc } from "../domain/booking";
 import type { Lesson } from "../domain/model";
 import "./RescheduleLessonForm.css";
@@ -60,6 +60,7 @@ export function RescheduleLessonForm({
   onCancel,
   onSubmit,
   onCheckConflicts,
+  renderReview,
 }: {
   lesson: Lesson;
   studentName: string;
@@ -67,13 +68,33 @@ export function RescheduleLessonForm({
   cancellationWindowHours: number;
   busy: boolean;
   onCancel: () => void;
-  onSubmit: (startsAt: string, endsAt: string, allowConflict?: boolean) => Promise<void> | void;
-  onCheckConflicts?: (startsAt: string, endsAt: string) => Promise<Array<{ id: string; summary: string; start: string; end: string }>>;
+  onSubmit: (
+    startsAt: string,
+    endsAt: string,
+    allowConflict?: boolean,
+  ) => Promise<void> | void;
+  onCheckConflicts?: (
+    startsAt: string,
+    endsAt: string,
+  ) => Promise<
+    Array<{ id: string; summary: string; start: string; end: string }>
+  >;
+  renderReview?: (
+    times: { startsAt: string; endsAt: string; allowConflict: boolean },
+    back: () => void,
+  ) => ReactNode;
 }) {
+  const [reviewTimes, setReviewTimes] = useState<{
+    startsAt: string;
+    endsAt: string;
+    allowConflict: boolean;
+  }>();
   const initial = wallParts(lesson.startsAt, timezone);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
-  const [conflicts, setConflicts] = useState<Array<{ id: string; summary: string; start: string; end: string }>>([]);
+  const [conflicts, setConflicts] = useState<
+    Array<{ id: string; summary: string; start: string; end: string }>
+  >([]);
   const [approvedTime, setApprovedTime] = useState("");
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState("");
@@ -92,7 +113,8 @@ export function RescheduleLessonForm({
   const nextEnd = nextStart
     ? new Date(nextStart.getTime() + durationMinutes * 60_000)
     : undefined;
-  const unchanged = nextStart?.getTime() === new Date(lesson.startsAt).getTime();
+  const unchanged =
+    nextStart?.getTime() === new Date(lesson.startsAt).getTime();
   const inPast = Boolean(nextStart && nextStart.getTime() <= Date.now());
   const insidePolicy =
     new Date(lesson.startsAt).getTime() - Date.now() <
@@ -103,19 +125,46 @@ export function RescheduleLessonForm({
     if (!nextStart || !nextEnd || unchanged || inPast || busy) return;
     const key = `${nextStart.toISOString()}|${nextEnd.toISOString()}`;
     if (onCheckConflicts && approvedTime !== key) {
-      setChecking(true); setCheckError("");
+      setChecking(true);
+      setCheckError("");
       try {
-        const found = await onCheckConflicts(nextStart.toISOString(), nextEnd.toISOString());
+        const found = await onCheckConflicts(
+          nextStart.toISOString(),
+          nextEnd.toISOString(),
+        );
         setConflicts(found);
-        if (found.length) { setApprovedTime(key); return; }
+        if (found.length) {
+          setApprovedTime(key);
+          return;
+        }
       } catch (reason) {
-        setCheckError(reason instanceof Error ? reason.message : "Calendar could not be checked. Nothing was changed.");
+        setCheckError(
+          reason instanceof Error
+            ? reason.message
+            : "Calendar could not be checked. Nothing was changed.",
+        );
         return;
-      } finally { setChecking(false); }
+      } finally {
+        setChecking(false);
+      }
     }
-    await onSubmit(nextStart.toISOString(), nextEnd.toISOString(), conflicts.length > 0 && approvedTime === key);
+    if (renderReview) {
+      setReviewTimes({
+        startsAt: nextStart.toISOString(),
+        endsAt: nextEnd.toISOString(),
+        allowConflict: conflicts.length > 0 && approvedTime === key,
+      });
+      return;
+    }
+    await onSubmit(
+      nextStart.toISOString(),
+      nextEnd.toISOString(),
+      conflicts.length > 0 && approvedTime === key,
+    );
   };
 
+  if (reviewTimes && renderReview)
+    return renderReview(reviewTimes, () => setReviewTimes(undefined));
   return (
     <form className="reschedule-form" onSubmit={submit}>
       <div className="reschedule-current">
@@ -141,7 +190,11 @@ export function RescheduleLessonForm({
               type="button"
               key={String(days)}
               disabled={busy}
-              onClick={() => { setDate(shiftedDate(lesson.startsAt, timezone, Number(days))); setConflicts([]); setApprovedTime(""); }}
+              onClick={() => {
+                setDate(shiftedDate(lesson.startsAt, timezone, Number(days)));
+                setConflicts([]);
+                setApprovedTime("");
+              }}
             >
               {label}
             </button>
@@ -157,7 +210,11 @@ export function RescheduleLessonForm({
             value={date}
             min={wallParts(new Date().toISOString(), timezone).date}
             disabled={busy}
-            onChange={(event) => { setDate(event.target.value); setConflicts([]); setApprovedTime(""); }}
+            onChange={(event) => {
+              setDate(event.target.value);
+              setConflicts([]);
+              setApprovedTime("");
+            }}
           />
         </label>
         <label>
@@ -167,7 +224,11 @@ export function RescheduleLessonForm({
             step="900"
             value={time}
             disabled={busy}
-            onChange={(event) => { setTime(event.target.value); setConflicts([]); setApprovedTime(""); }}
+            onChange={(event) => {
+              setTime(event.target.value);
+              setConflicts([]);
+              setApprovedTime("");
+            }}
           />
         </label>
       </div>
@@ -182,13 +243,46 @@ export function RescheduleLessonForm({
           </span>
         </div>
       )}
-      {unchanged && <p className="field-help">Choose a different date or time.</p>}
-      {inPast && <p className="form-error">The new lesson time must be in the future.</p>}
-      {checkError && <p className="form-error" role="alert">{checkError}</p>}
-      {conflicts.length > 0 && <div className="calendar-conflict" role="alert"><AlertTriangle />
-        <div><strong>Calendar conflict</strong>{conflicts.map((item) => <p key={`${item.id}-${item.start}`}>You have “{item.summary}” from {new Date(item.start).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}–{new Date(item.end).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })} that day. Do you still want to reschedule for this time?</p>)}<small>Confirm again to override the conflict.</small></div>
-      </div>}
-      <p className={insidePolicy ? "reschedule-policy warning" : "reschedule-policy"}>
+      {unchanged && (
+        <p className="field-help">Choose a different date or time.</p>
+      )}
+      {inPast && (
+        <p className="form-error">The new lesson time must be in the future.</p>
+      )}
+      {checkError && (
+        <p className="form-error" role="alert">
+          {checkError}
+        </p>
+      )}
+      {conflicts.length > 0 && (
+        <div className="calendar-conflict" role="alert">
+          <AlertTriangle />
+          <div>
+            <strong>Calendar conflict</strong>
+            {conflicts.map((item) => (
+              <p key={`${item.id}-${item.start}`}>
+                You have “{item.summary}” from{" "}
+                {new Date(item.start).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}
+                –
+                {new Date(item.end).toLocaleTimeString([], {
+                  hour: "numeric",
+                  minute: "2-digit",
+                })}{" "}
+                that day. Do you still want to reschedule for this time?
+              </p>
+            ))}
+            <small>Confirm again to override the conflict.</small>
+          </div>
+        </div>
+      )}
+      <p
+        className={
+          insidePolicy ? "reschedule-policy warning" : "reschedule-policy"
+        }
+      >
         {insidePolicy
           ? "This lesson is inside the " +
             cancellationWindowHours +
@@ -209,8 +303,15 @@ export function RescheduleLessonForm({
         >
           Keep current time
         </button>
-        <button type="submit" disabled={busy || checking || !nextStart || unchanged || inPast}>
-          {busy || checking ? "Checking calendar…" : conflicts.length ? "Reschedule anyway" : "Confirm new time"}
+        <button
+          type="submit"
+          disabled={busy || checking || !nextStart || unchanged || inPast}
+        >
+          {busy || checking
+            ? "Checking calendar…"
+            : conflicts.length
+              ? "Reschedule anyway"
+              : "Confirm new time"}
         </button>
       </div>
     </form>

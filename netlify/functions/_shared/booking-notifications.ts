@@ -28,7 +28,7 @@ export async function queueBookingEmails(
   const [
     { data: studio, error: studioError },
     { data: service, error: serviceError },
-    { data: participant, error: participantError },
+    { data: participants, error: participantError },
     confirmationRule,
     reminderRule,
   ] = await Promise.all([
@@ -44,15 +44,22 @@ export async function queueBookingEmails(
       .single(),
     db
       .from("lesson_participants")
-      .select("lesson_id")
+      .select("lesson_id,lessons!inner(starts_at,ends_at,status)")
       .eq("booking_id", booking.id)
-      .limit(1)
-      .maybeSingle(),
+      .in("status", ["reserved", "confirmed"])
+      .eq("lessons.status", "scheduled")
+      .gt("lessons.starts_at", new Date().toISOString())
+      .limit(501),
     compatibleRule(client, booking.studio_id, "booking_confirmation"),
     compatibleRule(client, booking.studio_id, "lesson_reminder"),
   ]);
   if (studioError || serviceError || participantError)
     throw studioError || serviceError || participantError;
+  if ((participants || []).length > 500)
+    throw new Error(
+      "REVIEW_REQUIRED: Too many upcoming reminders to queue at once.",
+    );
+  const participant = participants?.[0];
   const settings = studio!.settings as Record<string, unknown> & {
     emailAutomations?: typeof emailDefaults;
     reminderHours?: number[];
@@ -150,38 +157,64 @@ export async function queueBookingEmails(
   );
   const timing = reminderRule?.timing as { hoursBefore?: number[] } | undefined;
   if (reminderStatus)
-    for (const recipient of reminderRecipients)
-      for (const hours of timing?.hoursBefore ??
-        settings.reminderHours ?? [72, 24, 2]) {
-        const sendAt = new Date(
-          Date.parse(booking.starts_at) - hours * 3_600_000,
-        );
-        if (
-          !Number.isFinite(hours) ||
-          hours <= 0 ||
-          sendAt.getTime() <= Date.now()
-        )
-          continue;
-        messages.push({
-          ...base,
-          recipient,
-          subject: renderEmailTemplate(automation.reminderSubject, {
-            ...values,
-            hours: String(hours),
-          }),
-          body: renderEmailTemplate(automation.reminderBody, {
-            ...values,
-            hours: String(hours),
-          }),
-          status: reminderStatus,
-          send_at: sendAt.toISOString(),
-          event_key: "booking.reminder.student",
-          recipient_intent: "lesson_reminder",
-          automation_rule_id: reminderRule?.id,
-          dedupe_key: `lesson:${participant?.lesson_id ?? booking.id}:starts:${booking.starts_at}:reminder:${hours}:${recipient}`,
-          priority: 50,
-        });
-      }
+    for (const occurrence of participants || [])
+      for (const recipient of reminderRecipients)
+        for (const hours of timing?.hoursBefore ??
+          settings.reminderHours ?? [72, 24, 2]) {
+          const sendAt = new Date(
+            Date.parse(occurrence.lessons.starts_at) - hours * 3_600_000,
+          );
+          if (
+            !Number.isFinite(hours) ||
+            hours <= 0 ||
+            sendAt.getTime() <= Date.now()
+          )
+            continue;
+          messages.push({
+            ...base,
+            lesson_id: occurrence.lesson_id,
+            entity_snapshot: {
+              startsAt: occurrence.lessons.starts_at,
+              endsAt: occurrence.lessons.ends_at,
+            },
+            recipient,
+            subject: renderEmailTemplate(automation.reminderSubject, {
+              ...values,
+              startsAt: new Intl.DateTimeFormat("en-US", {
+                timeZone: booking.timezone,
+                dateStyle: "full",
+                timeStyle: "short",
+              }).format(new Date(occurrence.lessons.starts_at)),
+              manageUrl: portalActionUrl(
+                origin,
+                "lesson",
+                occurrence.lesson_id,
+              ),
+              hours: String(hours),
+            }),
+            body: renderEmailTemplate(automation.reminderBody, {
+              ...values,
+              startsAt: new Intl.DateTimeFormat("en-US", {
+                timeZone: booking.timezone,
+                dateStyle: "full",
+                timeStyle: "short",
+              }).format(new Date(occurrence.lessons.starts_at)),
+              manageUrl: portalActionUrl(
+                origin,
+                "lesson",
+                occurrence.lesson_id,
+              ),
+              hours: String(hours),
+            }),
+            status: reminderStatus,
+            send_at: sendAt.toISOString(),
+            event_key: "booking.reminder.student",
+            recipient_intent: "lesson_reminder",
+            automation_rule_id: reminderRule?.id,
+            dedupe_key: `lesson:${occurrence.lesson_id}:starts:${occurrence.lessons.starts_at}:reminder:${hours}:${recipient}`,
+            priority: 50,
+          });
+        }
   const confirmation = messages.filter(
     (message) => message.recipient_intent !== "lesson_reminder",
   );
@@ -197,19 +230,33 @@ export async function queueBookingEmails(
       { label: "View / Manage Booking", url: manageUrl },
       values,
     )),
-    ...(await queuePresentedMessages(
-      client,
-      reminders,
-      { name: studio!.name, settings },
-      origin,
-      {
-        label: "View Lesson",
-        url: portalActionUrl(origin, "lesson", participant?.lesson_id),
-      },
-      {
-        ...values,
-        manageUrl: portalActionUrl(origin, "lesson", participant?.lesson_id),
-      },
-    )),
+    ...(
+      await Promise.all(
+        reminders.map((message) =>
+          queuePresentedMessages(
+            client,
+            [message],
+            { name: studio!.name, settings },
+            origin,
+            {
+              label: "View Lesson",
+              url: portalActionUrl(
+                origin,
+                "lesson",
+                message.lesson_id || undefined,
+              ),
+            },
+            {
+              ...values,
+              manageUrl: portalActionUrl(
+                origin,
+                "lesson",
+                message.lesson_id || undefined,
+              ),
+            },
+          ),
+        ),
+      )
+    ).flat(),
   ];
 }

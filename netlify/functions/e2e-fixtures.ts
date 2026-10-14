@@ -45,6 +45,10 @@ const ids = [
   "lessonPending",
   "lessonAvailable",
   "lessonCancelled",
+  "occurrenceFirst",
+  "occurrenceNext",
+  "occurrenceSeries",
+  "occurrenceBooking",
   "referredPending",
   "referredEarned",
   "referredRedeemed",
@@ -340,8 +344,15 @@ async function cleanup(
     fixture.referralRedeemed,
   ]);
   await deleteIds("lesson_participants", [fixture.calendarParticipant]);
+  const lessonChangeCleanup = await db.rpc("cleanup_lesson_change_fixture", {
+    p_run: runId,
+    p_studio: studioId,
+  });
+  if (lessonChangeCleanup.error)
+    throwFixtureError("lesson_change_cleanup", lessonChangeCleanup.error);
   await deleteIds("lessons", [fixture.calendarLesson]);
   await deleteIds("bookings", [
+    fixture.occurrenceBooking,
     fixture.bookingPending,
     fixture.bookingEarned,
     fixture.bookingRedeemed,
@@ -378,6 +389,8 @@ async function cleanup(
   await deleteIds("assignments", [fixture.assignment]);
   await deleteIds("materials", [fixture.material]);
   await deleteIds("lessons", [
+    fixture.occurrenceFirst,
+    fixture.occurrenceNext,
     fixture.lessonNoLink,
     fixture.lessonPending,
     fixture.lessonAvailable,
@@ -387,6 +400,7 @@ async function cleanup(
     fixture.lessonCredit,
     fixture.lessonShortfall,
   ]);
+  await deleteIds("recurring_series", [fixture.occurrenceSeries]);
   await deleteIds("booking_services", [
     fixture.freeService,
     fixture.paidService,
@@ -833,6 +847,87 @@ async function setup(
     },
   ]);
   if (lessonsError) throwFixtureError("lessons", lessonsError);
+
+  const seriesFixture = await db
+    .from("recurring_series")
+    .upsert({
+      id: fixture.occurrenceSeries,
+      studio_id: studioId,
+      student_id: fixture.student,
+      service_id: fixture.freeService,
+      kind: "fixed",
+      cadence: "weekly",
+      starts_on: iso(57600),
+      occurrence_count: 2,
+      payment_policy: "pay_later",
+      status: "active",
+    });
+  if (seriesFixture.error)
+    throwFixtureError("occurrence_series", seriesFixture.error);
+  const bookingFixture = await db
+    .from("bookings")
+    .upsert({
+      id: fixture.occurrenceBooking,
+      studio_id: studioId,
+      student_id: fixture.student,
+      service_id: fixture.freeService,
+      series_id: fixture.occurrenceSeries,
+      reference: `${runId}-occurrence`,
+      guest_name: `${runId} Student`,
+      guest_email: accounts.student.email,
+      starts_at: iso(57600),
+      ends_at: iso(57660),
+      timezone: "America/New_York",
+      location: "in_person",
+      status: "confirmed",
+      payment_policy: "pay_later",
+      payment_status: "due",
+      total_minor: 0,
+      policy_snapshot: { cancellationWindowHours: 36, rescheduleLimit: 5 },
+      manage_token_hash: `${runId}-occurrence-token`,
+    });
+  if (bookingFixture.error)
+    throwFixtureError("occurrence_booking", bookingFixture.error);
+  for (const [id, minutes] of [
+    [fixture.occurrenceFirst, 57600],
+    [fixture.occurrenceNext, 67680],
+  ] as const) {
+    const occurrence = await db
+      .from("lessons")
+      .upsert({
+        ...lessonBase,
+        id,
+        series_id: fixture.occurrenceSeries,
+        topic: `${runId} Occurrence ${id === fixture.occurrenceFirst ? "first" : "next"}`,
+        starts_at: iso(minutes),
+        ends_at: iso(minutes + 60),
+        status: "scheduled",
+        source_provider: "studio",
+        location_type: "in_person",
+        location_label: "Studio",
+        meeting_provider: null,
+        payment_status: "untracked",
+        price_minor: 0,
+        paid_minor: 0,
+      });
+    if (occurrence.error)
+      throwFixtureError("occurrence_lesson", occurrence.error);
+    const participation = await db
+      .from("lesson_participants")
+      .upsert(
+        {
+          lesson_id: id,
+          student_id: fixture.student,
+          booking_id: fixture.occurrenceBooking,
+          display_name: `${runId} Student`,
+          email: accounts.student.email,
+          status: "confirmed",
+        },
+        { onConflict: "lesson_id,email" },
+      );
+    if (participation.error)
+      throwFixtureError("occurrence_participant", participation.error);
+  }
 
   const { error: assignmentError } = await db.from("assignments").upsert({
     id: fixture.assignment,

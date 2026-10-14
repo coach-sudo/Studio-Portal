@@ -1,4 +1,5 @@
 import { ZodError } from "zod";
+import { lessonChangeReasons } from "../../../src/domain/lessonChanges";
 import type { ApiErrorShape } from "../../../src/domain/model";
 
 export const json = (
@@ -20,6 +21,7 @@ export type AppErrorCode =
   | "VALIDATION_FAILED"
   | "NOT_FOUND"
   | "VERSION_CONFLICT"
+  | "REVIEW_REQUIRED"
   | "BOOKING_CAPACITY"
   | "SLOT_UNAVAILABLE"
   | "BOOKING_PROCESSING"
@@ -92,6 +94,14 @@ export function toAppError(error: unknown): AppError {
           typeof error.message === "string"
         ? error.message
         : String(error);
+  if (message.includes("REVIEW_REQUIRED"))
+    return new AppError("REVIEW_REQUIRED", {
+      status: 409,
+      message:
+        lessonChangeReasons[message.split(":").slice(1).join(":").trim()] ||
+        "Review the booking, class, payment, or synchronization details before changing this occurrence.",
+      cause: error,
+    });
   if (message.includes("CREDIT_UNAVAILABLE"))
     return new AppError("VALIDATION_FAILED", {
       status: 422,
@@ -117,6 +127,13 @@ export function toAppError(error: unknown): AppError {
       status: 422,
       message:
         "These older credit reservations cannot be matched safely. No credits were changed. Review the booking and credit history before correcting this balance.",
+      cause: error,
+    });
+  if (message.includes("IDEMPOTENCY_CONFLICT"))
+    return new AppError("VERSION_CONFLICT", {
+      status: 409,
+      message:
+        "This request key was already used for different details. Review the change again.",
       cause: error,
     });
   if (message.includes("VERSION_CONFLICT")) {

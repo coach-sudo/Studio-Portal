@@ -155,6 +155,7 @@ export async function checkOutboxEligibility(
     entityId?: string;
     coverageKey?: string;
     amountDueMinor?: number;
+    changedStatus?: string;
   };
   let studentId = message.student_id;
   if (message.lesson_id) {
@@ -165,6 +166,25 @@ export async function checkOutboxEligibility(
       .eq("studio_id", message.studio_id)
       .single();
     if (result.error) throw result.error;
+    if (snapshot.changedStatus && result.data.status !== snapshot.changedStatus)
+      return { allowed: false, reason: "lesson_change_superseded" };
+    if (
+      message.booking_id &&
+      ["lesson_reminder", "schedule_change", "lesson_confirmation"].includes(
+        intent,
+      )
+    ) {
+      const participation = await db
+        .from("lesson_participants")
+        .select("id")
+        .eq("lesson_id", message.lesson_id)
+        .eq("booking_id", message.booking_id)
+        .in("status", ["reserved", "confirmed"])
+        .limit(1);
+      if (participation.error) throw participation.error;
+      if (!participation.data?.length)
+        return { allowed: false, reason: "participation_cancelled" };
+    }
     if (
       [
         "lesson_reminder",

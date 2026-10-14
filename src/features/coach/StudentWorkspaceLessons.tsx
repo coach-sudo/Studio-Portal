@@ -1,3 +1,4 @@
+import { LessonChangeReview } from "../../components/LessonChangeReview";
 import { ResourceBrowser } from "../library/ResourceBrowser";
 import { useResourceSearch } from "../../data/library";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -513,28 +514,48 @@ export function CoachLessonHub({
           description="This removes the lesson from active calendars and updates Google Calendar."
           onClose={() => !cancelling && setConfirmCancellation(false)}
         >
-          {paidByCredit && (
-            <CreditCancellationChoice
-              useCredit={consumeCredit}
-              onChange={setConsumeCredit}
+          {!isDemo ? (
+            <LessonChangeReview
+              lesson={lesson}
+              action="cancel"
+              studentContextId={student.id}
+              onCancel={() => setConfirmCancellation(false)}
+              onApplied={async () => {
+                await invalidateStudioDomains(queryClient, [
+                  "lessons",
+                  "booking",
+                  "finance",
+                  "messaging",
+                ]);
+                navigate("/coach/students/" + student.id + "/lessons");
+              }}
             />
+          ) : (
+            <>
+              {paidByCredit && (
+                <CreditCancellationChoice
+                  useCredit={consumeCredit}
+                  onChange={setConsumeCredit}
+                />
+              )}
+              <div className="form-actions">
+                <button
+                  disabled={cancelling}
+                  onClick={() => setConfirmCancellation(false)}
+                >
+                  Keep lesson
+                </button>
+                <button
+                  className="danger-button"
+                  disabled={cancelling}
+                  onClick={() => void cancelLesson()}
+                >
+                  Confirm cancellation
+                </button>
+              </div>
+              {notice && <p role="alert">{notice}</p>}
+            </>
           )}
-          <div className="form-actions">
-            <button
-              disabled={cancelling}
-              onClick={() => setConfirmCancellation(false)}
-            >
-              Keep lesson
-            </button>
-            <button
-              className="danger-button"
-              disabled={cancelling}
-              onClick={() => void cancelLesson()}
-            >
-              Confirm cancellation
-            </button>
-          </div>
-          {notice && <p role="alert">{notice}</p>}
         </Dialog>
       )}
       {lessonAction === "details" && (
@@ -585,6 +606,31 @@ export function CoachLessonHub({
                 : checkSchedulingConflicts(startsAt, endsAt, lesson.id)
             }
             onCancel={() => setLessonAction(null)}
+            renderReview={
+              isDemo
+                ? undefined
+                : (times, back) => (
+                    <LessonChangeReview
+                      lesson={lesson}
+                      action="reschedule"
+                      studentContextId={student.id}
+                      times={times}
+                      onCancel={back}
+                      onApplied={async () => {
+                        await invalidateStudioDomains(queryClient, [
+                          "lessons",
+                          "booking",
+                          "finance",
+                          "messaging",
+                        ]);
+                        setLessonAction(null);
+                        setNotice(
+                          "Lesson changed. Calendar and notifications are pending synchronization.",
+                        );
+                      }}
+                    />
+                  )
+            }
             onSubmit={rescheduleLesson}
           />
         </Dialog>

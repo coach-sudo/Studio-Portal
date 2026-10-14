@@ -11,13 +11,20 @@ import {
   queuePresentedMessages,
 } from "./outbox-queue";
 import { portalActionUrl, portalOrigin } from "./portal-url";
+import { resolveBookingGuestRecipients } from "../../../src/domain/bookingGuestRecipients";
 
-export async function queueLessonChangeEmails(
+async function queueLessonChangeMessages(
   client: SupabaseClient,
   lessonId: string,
   kind: "rescheduled" | "cancelled",
   correlationId: string,
   scope?: { studentId: string; bookingId: string },
+  effect?: {
+    id: string;
+    participant_ids: string[];
+    student_ids: string[];
+    snapshot: { startsAt: string; endsAt: string; status: string };
+  },
 ) {
   const db = client as SupabaseClient<Database>;
   const { data: lesson, error } = await db
@@ -26,7 +33,20 @@ export async function queueLessonChangeEmails(
     .eq("id", lessonId)
     .single();
   if (error) throw error;
-  const studentId = scope?.studentId ?? lesson.student_id;
+  if (
+    effect &&
+    (Date.parse(effect.snapshot.startsAt) !== Date.parse(lesson.starts_at) ||
+      Date.parse(effect.snapshot.endsAt) !== Date.parse(lesson.ends_at) ||
+      effect.snapshot.status !== lesson.status)
+  )
+    return [];
+  const studentId =
+    scope?.studentId ??
+    (effect
+      ? effect.student_ids.includes(lesson.student_id || "")
+        ? lesson.student_id
+        : null
+      : lesson.student_id);
   const [
     { data: studio, error: studioError },
     { data: participants, error: participantsError },
@@ -40,7 +60,7 @@ export async function queueLessonChangeEmails(
       .single(),
     db
       .from("lesson_participants")
-      .select("booking_id,student_id,email")
+      .select("id,booking_id,student_id,email,status")
       .eq("lesson_id", lesson.id)
       .match(
         scope
@@ -75,6 +95,13 @@ export async function queueLessonChangeEmails(
   const bookingId =
     scope?.bookingId ??
     participants?.find((item) => item.student_id === studentId)?.booking_id;
+  const recipientStudents = new Map<string, string>();
+  const recipientBookings = new Map<string, string>();
+  const selectedParticipants = (participants || []).filter((p) =>
+    effect
+      ? effect.participant_ids.includes(p.id)
+      : ["reserved", "confirmed"].includes(p.status),
+  );
   const recipients = new Set(
     studentId
       ? (
@@ -88,7 +115,12 @@ export async function queueLessonChangeEmails(
       : [],
   );
   // Group participants are resolved through their own identity and permissions, not raw emails.
-  for (const participant of participants ?? [])
+  for (const email of recipients)
+    if (studentId) {
+      recipientStudents.set(email, studentId);
+      if (bookingId) recipientBookings.set(email, bookingId);
+    }
+  for (const participant of selectedParticipants)
     if (participant.student_id && participant.student_id !== studentId)
       for (const recipient of (
         await resolveEventRecipients(
@@ -97,9 +129,33 @@ export async function queueLessonChangeEmails(
           kind === "cancelled" ? "cancellation" : "schedule_change",
           { mandatory: true },
         )
-      ).recipients)
+      ).recipients) {
         recipients.add(recipient.email);
-  const canceled = await db
+        recipientStudents.set(recipient.email, participant.student_id);
+        if (participant.booking_id)
+          recipientBookings.set(recipient.email, participant.booking_id);
+      }
+  for (const guestBooking of new Set(
+    selectedParticipants
+      .filter((p) => !p.student_id && p.booking_id)
+      .map((p) => p.booking_id!),
+  )) {
+    const guest = await db
+      .from("bookings")
+      .select("for_minor,guest_email,guardian_email")
+      .eq("id", guestBooking)
+      .eq("studio_id", lesson.studio_id)
+      .single();
+    if (guest.error) throw guest.error;
+    for (const recipient of resolveBookingGuestRecipients(
+      guest.data,
+      kind === "cancelled" ? "cancellation" : "schedule_change",
+    ).recipients) {
+      recipients.add(recipient.email);
+      recipientBookings.set(recipient.email, guestBooking);
+    }
+  }
+  let cancelQuery = db
     .from("outbox_messages")
     .update({
       status: "cancelled",
@@ -109,11 +165,9 @@ export async function queueLessonChangeEmails(
     })
     .in("status", ["draft", "approved", "queued", "failed"])
     .eq("event_key", "booking.reminder.student")
-    .or(
-      scope
-        ? `booking_id.eq.${scope.bookingId},and(lesson_id.eq.${lesson.id},student_id.eq.${scope.studentId})`
-        : `lesson_id.eq.${lesson.id}${bookingId ? `,booking_id.eq.${bookingId}` : ""}`,
-    );
+    .eq("lesson_id", lesson.id);
+  if (scope) cancelQuery = cancelQuery.eq("booking_id", scope.bookingId);
+  const canceled = await cancelQuery;
   if (canceled.error) throw canceled.error;
   const values = {
     studioName: studio!.name,
@@ -149,12 +203,19 @@ export async function queueLessonChangeEmails(
     booking_id: bookingId,
     correlation_id: correlationId,
     channel: "email",
-    entity_snapshot: { startsAt: lesson.starts_at, endsAt: lesson.ends_at },
+    entity_snapshot: {
+      startsAt: lesson.starts_at,
+      endsAt: lesson.ends_at,
+      changeId: effect?.id,
+      changedStatus: effect?.snapshot.status,
+    },
     status: "queued" as const,
   };
   const messages: TablesInsert<"outbox_messages">[] = [...recipients].map(
     (recipient) => ({
       ...base,
+      student_id: recipientStudents.get(recipient) || studentId,
+      booking_id: recipientBookings.get(recipient) || bookingId,
       recipient,
       subject,
       body,
@@ -162,7 +223,7 @@ export async function queueLessonChangeEmails(
         kind === "cancelled" ? "cancellation" : "schedule_change",
       send_at: new Date().toISOString(),
       event_key: `lesson.${kind}.student`,
-      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:student:${recipient}`,
+      dedupe_key: `lesson:${lesson.id}:${effect?.id || lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:student:${recipient}`,
     }),
   );
   if (settings.contactEmail)
@@ -173,23 +234,26 @@ export async function queueLessonChangeEmails(
       body,
       send_at: new Date().toISOString(),
       event_key: `lesson.${kind}.coach`,
-      dedupe_key: `lesson:${lesson.id}:${lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:coach`,
+      dedupe_key: `lesson:${lesson.id}:${effect?.id || lesson.version}:${kind}${scope ? `:${scope.bookingId}` : ""}:coach`,
     });
   const reminderStatus = compatibleQueueStatus(rule, automation.reminders);
   if (kind === "rescheduled" && reminderStatus) {
     const timing = rule?.timing as { hoursBefore?: number[] } | undefined;
-    const reminderRecipients = new Map<string, { email: string }>();
+    const reminderRecipients = new Map<
+      string,
+      { email: string; studentId: string }
+    >();
     const reminderStudentIds = new Set(
       [
-        lesson.student_id,
-        ...(participants ?? []).map((participant) => participant.student_id),
+        studentId,
+        ...selectedParticipants.map((participant) => participant.student_id),
       ].filter((id): id is string => Boolean(id)),
     );
     for (const studentId of reminderStudentIds)
       for (const recipient of (
         await resolveEventRecipients(client, studentId, "lesson_reminder")
       ).recipients)
-        reminderRecipients.set(recipient.email, recipient);
+        reminderRecipients.set(recipient.email, { ...recipient, studentId });
     for (const recipient of reminderRecipients.values())
       for (const hours of timing?.hoursBefore ??
         settings.reminderHours ?? [24, 2]) {
@@ -205,6 +269,7 @@ export async function queueLessonChangeEmails(
         messages.push({
           ...base,
           recipient: recipient.email,
+          student_id: recipient.studentId,
           recipient_intent: "lesson_reminder",
           automation_rule_id: rule?.id,
           subject: renderEmailTemplate(automation.reminderSubject, {
@@ -229,5 +294,74 @@ export async function queueLessonChangeEmails(
     origin,
     undefined,
     values,
+  );
+}
+
+export async function processLessonChangeEffects(
+  client: SupabaseClient,
+  lessonId?: string,
+) {
+  const claim = await client.rpc("claim_lesson_change_effects", {
+    p_limit: 25,
+    p_lesson: lessonId || null,
+  });
+  if (claim.error) throw claim.error;
+  const messages: { id: string }[] = [];
+  let failed = 0;
+  for (const effect of claim.data.effects) {
+    try {
+      const scope =
+        effect.booking_id && effect.student_ids.length === 1
+          ? { bookingId: effect.booking_id, studentId: effect.student_ids[0] }
+          : undefined;
+      const queued = await queueLessonChangeMessages(
+        client,
+        effect.lesson_id,
+        effect.kind,
+        effect.correlation_id,
+        scope,
+        effect,
+      );
+      const finished = await client.rpc("finish_lesson_change_effect", {
+        p_id: effect.id,
+        p_token: effect.claim_token,
+        p_outbox: queued.map((m: { id: string }) => m.id),
+        p_failed: false,
+      });
+      if (finished.error) throw finished.error;
+      messages.push(...queued);
+    } catch {
+      const finished = await client.rpc("finish_lesson_change_effect", {
+        p_id: effect.id,
+        p_token: effect.claim_token,
+        p_outbox: [],
+        p_failed: true,
+      });
+      if (finished.error) throw finished.error;
+      failed++;
+    }
+  }
+  return {
+    messages,
+    failed,
+    processed: claim.data.effects.length,
+    tracked: claim.data.tracked,
+  };
+}
+export async function queueLessonChangeEmails(
+  client: SupabaseClient,
+  lessonId: string,
+  kind: "rescheduled" | "cancelled",
+  correlationId: string,
+  scope?: { studentId: string; bookingId: string },
+) {
+  const processed = await processLessonChangeEffects(client, lessonId);
+  if (processed.tracked) return processed.messages;
+  return queueLessonChangeMessages(
+    client,
+    lessonId,
+    kind,
+    correlationId,
+    scope,
   );
 }

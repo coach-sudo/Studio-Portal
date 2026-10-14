@@ -22,7 +22,7 @@
     "playwright:report": "tsx scripts/report-e2e-results.ts",
     "supabase:types": "tsx scripts/generate-database-types.ts --local",
     "supabase:types:linked": "tsx scripts/generate-database-types.ts --linked",
-    "supabase:verify": "supabase db reset --local --no-seed && supabase db lint --local --schema public,credit_internal --fail-on error && supabase test db && node scripts/test-credit-concurrency.mjs && npm run supabase:types && git diff --exit-code -- src/types/database.generated.ts",
+    "supabase:verify": "supabase db reset --local --no-seed && supabase db lint --local --schema public,credit_internal,lesson_ops --fail-on error && supabase test db && node scripts/test-credit-concurrency.mjs && node scripts/test-lesson-change-concurrency.mjs && npm run supabase:types && git diff --exit-code -- src/types/database.generated.ts",
     "pretypecheck": "tsx scripts/generate-release-metadata.ts",
     "typecheck": "tsc -b --pretty false",
     "test": "vitest run",
