@@ -44,9 +44,11 @@ function database(paymentError = false) {
       data:
         name === "claim_package_auto_renewals"
           ? [subscription]
-          : name === "claim_lesson_change_effects"
-            ? { effects: [], tracked: true }
-            : null,
+          : name === "claim_lesson_bulk_items"
+            ? []
+            : name === "claim_lesson_change_effects"
+              ? { effects: [], tracked: true }
+              : null,
       error: null,
     })),
     from(table: string) {

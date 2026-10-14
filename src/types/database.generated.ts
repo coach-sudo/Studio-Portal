@@ -170,6 +170,13 @@ export type Database = {
             foreignKeyName: "assignments_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "assignments_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -1012,6 +1019,13 @@ export type Database = {
             foreignKeyName: "calendar_projections_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: true
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "calendar_projections_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: true
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -1525,6 +1539,13 @@ export type Database = {
             foreignKeyName: "integration_imports_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "integration_imports_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -1615,6 +1636,13 @@ export type Database = {
             foreignKeyName: "lesson_messages_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_messages_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -1631,6 +1659,7 @@ export type Database = {
         Row: {
           booking_id: string | null
           created_at: string
+          deletion_scaffold: boolean
           display_name: string
           email: string
           id: string
@@ -1641,6 +1670,7 @@ export type Database = {
         Insert: {
           booking_id?: string | null
           created_at?: string
+          deletion_scaffold?: boolean
           display_name: string
           email: string
           id?: string
@@ -1651,6 +1681,7 @@ export type Database = {
         Update: {
           booking_id?: string | null
           created_at?: string
+          deletion_scaffold?: boolean
           display_name?: string
           email?: string
           id?: string
@@ -1664,6 +1695,13 @@ export type Database = {
             columns: ["booking_id"]
             isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lesson_participants_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_list_rows"
             referencedColumns: ["id"]
           },
           {
@@ -2191,6 +2229,13 @@ export type Database = {
             foreignKeyName: "material_links_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_links_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -2516,6 +2561,13 @@ export type Database = {
             foreignKeyName: "notes_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -2725,6 +2777,13 @@ export type Database = {
             foreignKeyName: "outbox_messages_lesson_id_fkey"
             columns: ["lesson_id"]
             isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outbox_messages_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
             referencedRelation: "lessons"
             referencedColumns: ["id"]
           },
@@ -2836,6 +2895,13 @@ export type Database = {
           reverses_entry_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "package_credit_entries_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "package_credit_entries_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -4372,6 +4438,152 @@ export type Database = {
       }
     }
     Views: {
+      lesson_list_rows: {
+        Row: {
+          capacity: number | null
+          created_at: string | null
+          ends_at: string | null
+          id: string | null
+          imported_at: string | null
+          invoice_id: string | null
+          invoice_payment_pending: boolean | null
+          join_url: string | null
+          location_label: string | null
+          location_type: string | null
+          meeting_provider: string | null
+          offering_id: string | null
+          package_id: string | null
+          paid_minor: number | null
+          payment_status: string | null
+          preparation: Json | null
+          price_minor: number | null
+          series_id: string | null
+          service_id: string | null
+          source_confidence: number | null
+          source_external_id: string | null
+          source_provider: string | null
+          starts_at: string | null
+          status: Database["public"]["Enums"]["lesson_status"] | null
+          student_id: string | null
+          studio_id: string | null
+          topic: string | null
+          updated_at: string | null
+          version: number | null
+        }
+        Insert: {
+          capacity?: number | null
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string | null
+          imported_at?: string | null
+          invoice_id?: string | null
+          invoice_payment_pending?: boolean | null
+          join_url?: string | null
+          location_label?: string | null
+          location_type?: string | null
+          meeting_provider?: string | null
+          offering_id?: string | null
+          package_id?: string | null
+          paid_minor?: number | null
+          payment_status?: string | null
+          preparation?: Json | null
+          price_minor?: number | null
+          series_id?: string | null
+          service_id?: string | null
+          source_confidence?: number | null
+          source_external_id?: string | null
+          source_provider?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["lesson_status"] | null
+          student_id?: string | null
+          studio_id?: string | null
+          topic?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Update: {
+          capacity?: number | null
+          created_at?: string | null
+          ends_at?: string | null
+          id?: string | null
+          imported_at?: string | null
+          invoice_id?: string | null
+          invoice_payment_pending?: boolean | null
+          join_url?: string | null
+          location_label?: string | null
+          location_type?: string | null
+          meeting_provider?: string | null
+          offering_id?: string | null
+          package_id?: string | null
+          paid_minor?: number | null
+          payment_status?: string | null
+          preparation?: Json | null
+          price_minor?: number | null
+          series_id?: string | null
+          service_id?: string | null
+          source_confidence?: number | null
+          source_external_id?: string | null
+          source_provider?: string | null
+          starts_at?: string | null
+          status?: Database["public"]["Enums"]["lesson_status"] | null
+          student_id?: string | null
+          studio_id?: string | null
+          topic?: string | null
+          updated_at?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lessons_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "studio_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_offering_id_fkey"
+            columns: ["offering_id"]
+            isOneToOne: false
+            referencedRelation: "service_offerings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_package_id_fkey"
+            columns: ["package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_series_id_fkey"
+            columns: ["series_id"]
+            isOneToOne: false
+            referencedRelation: "recurring_series"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "booking_services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lessons_studio_id_fkey"
+            columns: ["studio_id"]
+            isOneToOne: false
+            referencedRelation: "studios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       material_library_rows: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"] | null
@@ -4401,6 +4613,13 @@ export type Database = {
           visible_to_student: boolean | null
         }
         Relationships: [
+          {
+            foreignKeyName: "material_links_lesson_id_fkey"
+            columns: ["lesson_id"]
+            isOneToOne: false
+            referencedRelation: "lesson_list_rows"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "material_links_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -4587,6 +4806,10 @@ export type Database = {
           projection: Json
         }[]
       }
+      claim_lesson_bulk_items: {
+        Args: { p_job?: string; p_limit?: number }
+        Returns: Json
+      }
       claim_lesson_change_effects: {
         Args: { p_lesson?: string; p_limit?: number }
         Returns: Json
@@ -4692,6 +4915,10 @@ export type Database = {
       }
       cleanup_credit_coverage_fixture: {
         Args: { p_run: string; p_student: string }
+        Returns: undefined
+      }
+      cleanup_lesson_bulk_fixture: {
+        Args: { p_run: string; p_studio: string }
         Returns: undefined
       }
       cleanup_lesson_change_fixture: {
@@ -4946,6 +5173,10 @@ export type Database = {
         Args: { p_student: string }
         Returns: undefined
       }
+      execute_lesson_bulk: {
+        Args: { p_actor: string; p_job: string; p_key: string; p_token: string }
+        Returns: Json
+      }
       execute_lesson_occurrence_change: {
         Args: { p_actor: string; p_key: string; p_value: Json }
         Returns: Json
@@ -4997,6 +5228,25 @@ export type Database = {
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
+      lesson_bulk_candidates: {
+        Args: {
+          p_actor: string
+          p_filter: Json
+          p_limit?: number
+          p_offset?: number
+          p_studio: string
+        }
+        Returns: Json
+      }
+      lesson_bulk_progress: {
+        Args: {
+          p_actor: string
+          p_job: string
+          p_limit?: number
+          p_offset?: number
+        }
+        Returns: Json
+      }
       lesson_change_effect_current: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
@@ -5005,9 +5255,23 @@ export type Database = {
         Args: { p_actor: string; p_key: string; p_value: Json }
         Returns: Json
       }
+      lesson_coach_record_visible: {
+        Args: { p_lesson: string }
+        Returns: boolean
+      }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
+      }
+      lesson_record_history: {
+        Args: {
+          p_actor: string
+          p_lesson: string
+          p_limit?: number
+          p_offset?: number
+          p_studio: string
+        }
+        Returns: Json
       }
       manage_material_resources: {
         Args: {
@@ -5025,12 +5289,25 @@ export type Database = {
         Args: { target_package: string }
         Returns: number
       }
+      preview_lesson_bulk: {
+        Args: {
+          p_actor: string
+          p_key: string
+          p_studio: string
+          p_value: Json
+        }
+        Returns: Json
+      }
       preview_lesson_occurrence_change: {
         Args: { p_actor: string; p_value: Json }
         Returns: Json
       }
       process_credit_coverage_job: {
         Args: { p_student: string }
+        Returns: Json
+      }
+      process_lesson_bulk_item: {
+        Args: { p_item: string; p_token: string }
         Returns: Json
       }
       process_stripe_checkout: {
@@ -5167,6 +5444,10 @@ export type Database = {
       }
       reserve_student_upcoming_credits: {
         Args: { p_student: string }
+        Returns: Json
+      }
+      retry_lesson_bulk: {
+        Args: { p_actor: string; p_job: string; p_key: string; p_token: string }
         Returns: Json
       }
       save_studio_invoice: {

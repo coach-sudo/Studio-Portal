@@ -3,11 +3,14 @@ import { googleAccessToken, googleFreeBusy } from "../_shared/google";
 import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
+import { handleLessonBulkCommands } from "./lesson-bulk";
 
 export async function handleLessonsCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   const { audit, db, domain, id, input, requireCoach } = ctx;
+  const bulk = await handleLessonBulkCommands(ctx);
+  if (bulk) return bulk;
 
   if (
     domain === "lessons" &&

@@ -50,6 +50,8 @@ const ids = [
   "occurrenceSeries",
   "occurrenceBooking",
   "occurrenceStudent",
+  "bulkDeleteLesson",
+  "bulkArchiveLesson",
   "referredPending",
   "referredEarned",
   "referredRedeemed",
@@ -353,6 +355,16 @@ async function cleanup(
     fixture.referralRedeemed,
   ]);
   await deleteIds("lesson_participants", [fixture.calendarParticipant]);
+  const bulkCleanup = await db.rpc("cleanup_lesson_bulk_fixture", {
+    p_run: runId,
+    p_studio: studioId,
+  });
+  if (bulkCleanup.error)
+    throwFixtureError("lesson_bulk_cleanup", bulkCleanup.error);
+  await deleteIds("lessons", [
+    fixture.bulkDeleteLesson,
+    fixture.bulkArchiveLesson,
+  ]);
   const lessonChangeCleanup = await db.rpc("cleanup_lesson_change_fixture", {
     p_run: runId,
     p_studio: studioId,
@@ -905,6 +917,30 @@ async function setup(
   });
   if (bookingFixture.error)
     throwFixtureError("occurrence_booking", bookingFixture.error);
+  for (const [id, minutes, status] of [
+    [fixture.bulkDeleteLesson, 62000, "scheduled"],
+    [fixture.bulkArchiveLesson, 62200, "cancelled"],
+  ] as const) {
+    const row = await db
+      .from("lessons")
+      .upsert({
+        id,
+        studio_id: studioId,
+        student_id: fixture.occurrenceStudent,
+        topic: `${runId} Bulk ${status}`,
+        starts_at: iso(minutes),
+        ends_at: iso(minutes + 60),
+        status,
+        source_provider: "studio",
+        location_type: "in_person",
+        location_label: "Studio",
+        meeting_provider: null,
+        payment_status: "untracked",
+        price_minor: 0,
+        paid_minor: 0,
+      });
+    if (row.error) throwFixtureError("bulk_lesson", row.error);
+  }
   for (const [id, minutes] of [
     [fixture.occurrenceFirst, 57600],
     [fixture.occurrenceNext, 67680],

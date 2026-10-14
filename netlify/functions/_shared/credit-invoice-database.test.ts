@@ -114,6 +114,19 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(`alter table lessons add column created_at timestamptz default now(),add column source_external_id text;
+    alter table audit_events add column created_at timestamptz default now();
+    create table notes(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade,body text);
+    create table assignments(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete set null,body text);
+    create table material_links(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade);
+    create table integration_imports(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete set null,payload jsonb);
+    create table lesson_whiteboards(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade,body jsonb);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014203257_bulk_lesson_management.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
@@ -2352,4 +2365,688 @@ describe("credit and invoice migration against PostgreSQL", () => {
     ).rejects.toThrow(/permission denied/);
     await db.exec(`reset role;`);
   });
+});
+
+// Every bulk scenario rolls back its synthetic fixtures, including immutable
+// tombstones. No real or historical fixture is deleted during migration replay.
+describe("persisted bulk management on the credit/occurrence stack", () => {
+  async function checked<T>(run: () => Promise<T>): Promise<T> {
+    await db.exec("savepoint bulk_expected_error");
+    try {
+      return await run();
+    } catch (error) {
+      await db.exec("rollback to savepoint bulk_expected_error");
+      throw error;
+    } finally {
+      await db.exec("release savepoint bulk_expected_error");
+    }
+  }
+  const scalar = async (sql: string, params: unknown[] = []) =>
+    (await checked(() => db.query<Record<string, unknown>>(sql, params)))
+      .rows[0];
+  async function booking(ids: string[]) {
+    const b = (await scalar(
+      `insert into bookings(studio_id,student_id,starts_at,ends_at) select studio_id,student_id,starts_at,ends_at from lessons where id=$1 returning id`,
+      [ids[0]],
+    ))!.id as string;
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, student, b, student + "@example.test"],
+      );
+    return b;
+  }
+  async function isolated(run: () => Promise<void>) {
+    await db.exec("begin");
+    try {
+      await reset();
+      await run();
+    } finally {
+      await db.exec("rollback");
+    }
+  }
+  async function native(status = "scheduled") {
+    const id = await lesson();
+    await db.query(
+      `update lessons set source_provider='studio',status=$2::lesson_status where id=$1`,
+      [id, status],
+    );
+    return id;
+  }
+  async function preview(ids: string[], operation = "delete", extra = {}) {
+    return (await scalar(`select preview_lesson_bulk($1,$2,$3,$4) result`, [
+      coach,
+      studio,
+      crypto.randomUUID(),
+      {
+        selectedIds: ids,
+        operation,
+        reason: "Erroneous fixture records",
+        ...extra,
+      },
+    ]))!.result as any;
+  }
+  async function execute(r: any, key = crypto.randomUUID()) {
+    return (await scalar(`select execute_lesson_bulk($1,$2,$3,$4) result`, [
+      coach,
+      r.jobId,
+      r.reviewToken,
+      key,
+    ]))!.result as any;
+  }
+  async function progress(r: any, offset = 0, limit = 100) {
+    return (await scalar(`select lesson_bulk_progress($1,$2,$3,$4) result`, [
+      coach,
+      r.jobId,
+      offset,
+      limit,
+    ]))!.result as any;
+  }
+  async function work(r: any, limit = 25) {
+    const claimed = (await scalar(
+      `select claim_lesson_bulk_items($1,$2) result`,
+      [limit, r.jobId],
+    ))!.result as any[];
+    return Promise.all(
+      claimed.map(
+        async (c) =>
+          (await scalar(`select process_lesson_bulk_item($1,$2) result`, [
+            c.id,
+            c.claim_token,
+          ]))!.result as any,
+      ),
+    );
+  }
+  it("physically deletes a reviewed mistake and only positively identified scaffolding; retains immutable audit", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,display_name,email,status,created_at) select id,student_id,'Taylor','taylor@example.test','confirmed',created_at from lessons where id=$1`,
+        [l],
+      );
+      await db.query(
+        `update students set email='taylor@example.test' where id=$1`,
+        [student],
+      );
+      // The initial participant had no matching identity; replace it at creation.
+      await db.query(`delete from lesson_participants where lesson_id=$1`, [l]);
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,display_name,email,status,created_at) select id,student_id,'Taylor','taylor@example.test','confirmed',created_at from lessons where id=$1`,
+        [l],
+      );
+      await db.query(
+        `insert into calendar_projections(lesson_id,status,projected_version) values($1,'queued',0)`,
+        [l],
+      );
+      const r = await preview([l]);
+      expect(r.eligible).toBe(1);
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [l]))!.n,
+      ).toBe(0);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_participants where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(0);
+      const history = (await scalar(
+        `select lesson_record_history($1,$2,$3) result`,
+        [coach, studio, l],
+      ))!.result as any;
+      expect(history.deletion.snapshot.lesson.id).toBe(l);
+      expect(history.deletion.reason).toBe("Erroneous fixture records");
+      await expect(
+        scalar(
+          `insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at) values($1,$2,$3,'Reused identity',now(),now()+interval '1 hour')`,
+          [l, studio, student],
+        ),
+      ).rejects.toThrow("permanently deleted");
+      expect(
+        history.audit.some((a: any) => a.action === "lesson.bulk_delete"),
+      ).toBe(true);
+      await expect(
+        db.query(
+          `delete from lesson_ops.lesson_deletion_snapshots where lesson_id=$1`,
+          [l],
+        ),
+      ).rejects.toThrow("immutable");
+    }));
+  it.each(["completed", "late_cancelled"])("protects %s history", (status) =>
+    isolated(async () => {
+      const r = await preview([await native(status)]);
+      expect(r.blocked).toBe(1);
+      expect((await progress(r)).items[0].reasonCode).toBe(
+        "historical_record_protected",
+      );
+    }),
+  );
+  it.each([
+    ["notes", `insert into notes(lesson_id,body) values($1,'Authored note')`],
+    [
+      "assignments",
+      `insert into assignments(lesson_id,body) values($1,'Assigned practice')`,
+    ],
+    ["material_links", `insert into material_links(lesson_id) values($1)`],
+    [
+      "integration_imports",
+      `insert into integration_imports(lesson_id,payload) values($1,'{}')`,
+    ],
+    [
+      "lesson_whiteboards",
+      `insert into lesson_whiteboards(lesson_id,body) values($1,'{}')`,
+    ],
+    [
+      "outbox_messages",
+      `insert into outbox_messages(id,lesson_id,event_key,status) values(gen_random_uuid(),$1,'booking.reminder.student','queued')`,
+    ],
+    [
+      "service_offerings",
+      `insert into service_offerings(id,lesson_ids) values(gen_random_uuid(),array[$1::uuid])`,
+    ],
+    [
+      "nested JSON",
+      `insert into integration_imports(payload) values(jsonb_build_object('nested',jsonb_build_object('lessonId',$1::text)))`,
+    ],
+  ])(
+    "rejects %s dependency without cascade or SET NULL data loss",
+    (_label, sql) =>
+      isolated(async () => {
+        const l = await native();
+        await db.query(sql, [l]);
+        const r = await preview([l]);
+        expect(r.blocked).toBe(1);
+        expect(
+          Object.keys((await progress(r)).items[0].assessment.dependencies)
+            .length,
+        ).toBeGreaterThan(0);
+        await execute(r);
+        expect(await work(r)).toEqual([]);
+        expect(
+          (await scalar(`select count(*) n from lessons where id=$1`, [l]))!.n,
+        ).toBe(1);
+      }),
+  );
+  it.each([
+    [
+      "paid",
+      `update lessons set paid_minor=100,payment_status='paid' where id=$1`,
+      "financial_history",
+    ],
+    [
+      "waived",
+      `update lessons set payment_status='waived' where id=$1`,
+      "financial_history",
+    ],
+    [
+      "provider",
+      `update lessons set source_provider='calendly' where id=$1`,
+      "provider_history",
+    ],
+    [
+      "calendar attempted",
+      `insert into calendar_projections(lesson_id,status,attempts) values($1,'queued',1)`,
+      "calendar_history",
+    ],
+    [
+      "calendar claimed",
+      `insert into calendar_projections(lesson_id,status,claim_token,claim_until) values($1,'queued',gen_random_uuid(),now()+interval '2 minutes')`,
+      "calendar_history",
+    ],
+    [
+      "external event",
+      `insert into calendar_projections(lesson_id,status,external_event_id) values($1,'queued','external')`,
+      "calendar_history",
+    ],
+    [
+      "participant",
+      `insert into lesson_participants(lesson_id,student_id,display_name,email) values($1,'20000000-0000-4000-8000-000000000002','Other','other@example.test')`,
+      "participant_history",
+    ],
+  ])("protects %s evidence", (_label, sql, code) =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(sql, [l]);
+      const r = await preview([l]);
+      expect((await progress(r)).items[0].reasonCode).toBe(code);
+    }),
+  );
+  it("blocks released credit history, booking associations and pending invoices", () =>
+    isolated(async () => {
+      const l = await native();
+      await lot();
+      await db.query(
+        `insert into package_credit_entries(package_id,lesson_id,kind,quantity,reason) select id,$1,'reservation',-1,'Fixture' from packages limit 1`,
+        [l],
+      );
+      await db.query(
+        `insert into package_credit_entries(package_id,lesson_id,kind,quantity,reason) select id,$1,'release',1,'Fixture release' from packages limit 1`,
+        [l],
+      );
+      expect((await progress(await preview([l]))).items[0].reasonCode).toBe(
+        "credit_history",
+      );
+      const booked = await native();
+      await booking([booked]);
+      expect((await preview([booked])).blocked).toBe(1);
+      const pending = await native();
+      await db.query(
+        `update lessons set invoice_payment_pending=true where id=$1`,
+        [pending],
+      );
+      expect((await preview([pending])).blocked).toBe(1);
+    }));
+  it("freezes all-matching IDs with exclusions, keeps new matches out and rejects changed dependencies", () =>
+    isolated(async () => {
+      const first = await native(),
+        excluded = await native();
+      const r = await preview([], "delete", {
+        selectionMode: "matching",
+        filter: { query: "Lesson" },
+        excludedIds: [excluded],
+      });
+      expect(r.count).toBe(1);
+      const later = await native();
+      await db.query(
+        `insert into notes(lesson_id,body) values($1,'Late note')`,
+        [first],
+      );
+      await execute(r);
+      expect((await work(r))[0].status).toBe("conflicted");
+      const p = await progress(r);
+      expect(p.counts.conflicted).toBe(1);
+      expect(p.items.map((i: any) => i.lessonId)).toEqual([first]);
+      expect(
+        (await scalar(
+          `select count(*) n from lessons where id=any($1::uuid[])`,
+          [[excluded, later]],
+        ))!.n,
+      ).toBe(2);
+    }));
+  it("rejects expired, forged and cross-studio reviews and conflicting execution keys", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_jobs set expires_at=now()-interval '1 minute' where id=$1`,
+        [r.jobId],
+      );
+      await expect(execute(r)).rejects.toThrow("REVIEW_EXPIRED");
+      const active = await preview([await native()]);
+      await expect(
+        execute({ ...active, reviewToken: "0".repeat(64) }),
+      ).rejects.toThrow("FORBIDDEN");
+      await expect(
+        checked(() =>
+          db.query(`select lesson_bulk_progress($1,$2)`, [
+            student,
+            active.jobId,
+          ]),
+        ),
+      ).rejects.toThrow("FORBIDDEN");
+      await expect(
+        scalar(`select preview_lesson_bulk($1,$2,$3,$4)`, [
+          student,
+          studio,
+          crypto.randomUUID(),
+          {
+            operation: "delete",
+            selectedIds: [await native()],
+            reason: "Unauthorized fixture",
+          },
+        ]),
+      ).rejects.toThrow("FORBIDDEN");
+      const key = crypto.randomUUID();
+      await execute(active, key);
+      expect((await execute(active, key)).duplicate).toBe(true);
+      await expect(execute(active, crypto.randomUUID())).rejects.toThrow(
+        "IDEMPOTENCY_CONFLICT",
+      );
+    }));
+  it("archives and restores only coach visibility without touching lifecycle or notifications; void preserves content", () =>
+    isolated(async () => {
+      const l = await native("cancelled");
+      await db.query(
+        `insert into notes(lesson_id,body) values($1,'Preserve note')`,
+        [l],
+      );
+      const before = await scalar(
+        `select to_jsonb(l) record from lessons l where id=$1`,
+        [l],
+      );
+      const r = await preview([l], "archive");
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+      expect(
+        (await scalar(`select lesson_coach_record_visible($1) visible`, [l]))!
+          .visible,
+      ).toBe(false);
+      await db.query(`select set_config('app.uid',$1,false)`, [student]);
+      expect(
+        (await scalar(`select lesson_coach_record_visible($1) visible`, [l]))!
+          .visible,
+      ).toBe(true);
+      const restore = await preview([l], "restore");
+      await execute(restore);
+      expect((await work(restore))[0].status).toBe("succeeded");
+      const v = await preview([l], "void");
+      await execute(v);
+      expect((await work(v))[0].status).toBe("succeeded");
+      expect(
+        await scalar(`select to_jsonb(l) record from lessons l where id=$1`, [
+          l,
+        ]),
+      ).toEqual(before);
+      expect(
+        (await scalar(`select count(*) n from notes where lesson_id=$1`, [l]))!
+          .n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(0);
+      expect((await preview([l], "void")).blocked).toBe(1);
+    }));
+  it("cancels one shared occurrence through the existing core and reports synchronization separately", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const b = await booking([first, next]);
+      const before = await scalar(
+        `select to_jsonb(b) record from bookings b where id=$1`,
+        [b],
+      );
+      const r = await preview([first], "cancel");
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        await scalar(`select to_jsonb(b) record from bookings b where id=$1`, [
+          b,
+        ]),
+      ).toEqual(before);
+      expect(
+        (await scalar(`select status from lessons where id=$1`, [next]))!
+          .status,
+      ).toBe("scheduled");
+      expect((await progress(r)).counts).toMatchObject({
+        succeeded: 1,
+        synchronizationPending: 1,
+      });
+      expect(await work(r)).toEqual([]);
+    }));
+  it("partial execution retries only failed items and rolls back a failed deletion snapshot/audit", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const r = await preview([first, next]);
+      await execute(r);
+      await db.exec(
+        `create function public.bulk_fixture_fail() returns trigger language plpgsql as $$begin if new.entity_id='${next}'::uuid then raise exception 'Fixture failure';end if;return new;end$$; create trigger bulk_fixture_fail before insert on audit_events for each row execute function public.bulk_fixture_fail();`,
+      );
+      const results = await work(r);
+      expect(results.map((i) => i.status).sort()).toEqual([
+        "failed",
+        "succeeded",
+      ]);
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [next]))!.n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.lesson_deletion_snapshots where lesson_id=$1`,
+          [next],
+        ))!.n,
+      ).toBe(0);
+      await db.exec(
+        `drop trigger bulk_fixture_fail on audit_events;drop function bulk_fixture_fail()`,
+      );
+      const key = crypto.randomUUID();
+      const retry = await scalar(
+        `select retry_lesson_bulk($1,$2,$3,$4) result`,
+        [coach, r.jobId, r.reviewToken, key],
+      );
+      expect((retry!.result as any).retried).toBe(1);
+      expect(
+        await scalar(`select retry_lesson_bulk($1,$2,$3,$4) result`, [
+          coach,
+          r.jobId,
+          r.reviewToken,
+          key,
+        ]),
+      ).toEqual(retry);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect((await progress(r)).counts.succeeded).toBe(2);
+    }));
+  it("recovers an interrupted claim and rejects its obsolete token", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await execute(r);
+      const old = (await scalar(`select claim_lesson_bulk_items(1,$1) result`, [
+        r.jobId,
+      ]))!.result as any[];
+      expect(await work(r)).toEqual([]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_items set claim_until=now()-interval '1 minute' where id=$1`,
+        [old[0].id],
+      );
+      const current = (await scalar(
+        `select claim_lesson_bulk_items(1,$1) result`,
+        [r.jobId],
+      ))!.result as any[];
+      await expect(
+        checked(() =>
+          db.query(`select process_lesson_bulk_item($1,$2)`, [
+            old[0].id,
+            old[0].claim_token,
+          ]),
+        ),
+      ).rejects.toThrow("VERSION_CONFLICT");
+      expect(
+        (await scalar(`select process_lesson_bulk_item($1,$2) result`, [
+          current[0].id,
+          current[0].claim_token,
+        ]))!.result,
+      ).toMatchObject({ status: "succeeded" });
+    }));
+  it(
+    "supports 5,000 frozen records, bounded pages and rejects 5,001 without truncation",
+    () =>
+      isolated(async () => {
+        await db.exec(`insert into lessons(studio_id,student_id,topic,starts_at,ends_at,status,source_provider)
+      select '${studio}','${student}','Capacity fixture '||i,now()+i*interval '2 hours',now()+i*interval '2 hours'+interval '1 hour','completed','studio' from generate_series(1,5000) i`);
+        const r = await preview([], "archive", {
+          selectionMode: "matching",
+          filter: { query: "Capacity fixture" },
+        });
+        expect(r.count).toBe(5000);
+        expect(r.eligible).toBe(5000);
+        expect((await progress(r, 4999, 1)).items).toHaveLength(1);
+        expect((await progress(r, 5000, 1)).items).toHaveLength(0);
+        await expect(progress(r, 0, 101)).rejects.toThrow("VALIDATION_FAILED");
+        await db.exec(
+          `insert into lessons(studio_id,student_id,topic,starts_at,ends_at,status,source_provider) values('${studio}','${student}','Capacity fixture extra',now()+interval '20000 days',now()+interval '20000 days 1 hour','completed','studio')`,
+        );
+        await expect(
+          preview([], "archive", {
+            selectionMode: "matching",
+            filter: { query: "Capacity fixture" },
+          }),
+        ).rejects.toThrow("BATCH_TOO_LARGE");
+        expect((await progress(r)).counts.total).toBe(5000);
+        await execute(r);
+        await expect(work(r, 26)).rejects.toThrow("VALIDATION_FAILED");
+        expect(await work(r, 25)).toHaveLength(25);
+        expect((await progress(r)).counts).toMatchObject({
+          total: 5000,
+          succeeded: 25,
+          pending: 4975,
+        });
+      }),
+    60000,
+  );
+  it("freezes expanded series, stops generation only after explicit approval, and preserves the series when deleting occurrences", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const series = (await scalar(
+        `insert into recurring_series(studio_id,student_id,status,kind) values($1,$2,'active','ongoing') returning id`,
+        [studio, student],
+      ))!.id;
+      await db.query(
+        `update lessons set series_id=$1 where id=any($2::uuid[])`,
+        [series, [first, next]],
+      );
+      const r = await preview([first], "cancel", { scope: "future" });
+      expect(r.count).toBe(2);
+      expect(
+        (await scalar(`select status from recurring_series where id=$1`, [
+          series,
+        ]))!.status,
+      ).toBe("active");
+      await execute(r);
+      expect(
+        (await scalar(`select status from recurring_series where id=$1`, [
+          series,
+        ]))!.status,
+      ).toBe("cancelled");
+      expect((await work(r)).every((i) => i.status === "succeeded")).toBe(true);
+      const mistake = await native();
+      await db.query(`update lessons set series_id=$1 where id=$2`, [
+        series,
+        mistake,
+      ]);
+      const d = await preview([mistake]);
+      await execute(d);
+      expect((await work(d))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(`select count(*) n from recurring_series where id=$1`, [
+          series,
+        ]))!.n,
+      ).toBe(1);
+    }));
+  it("blocks student-scoped classes; studio whole-class cancellation preserves the participant cohort", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(`update lessons set capacity=2 where id=$1`, [l]);
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'other@example.test')`,
+        [l, other],
+      );
+      const blocked = await preview([l], "cancel", {
+        studentContextId: student,
+      });
+      expect(blocked.blocked).toBe(1);
+      expect((await progress(blocked)).items[0].reasonCode).toBe(
+        "class_scope_required",
+      );
+      const r = await preview([l], "cancel", { wholeClass: true });
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_participants where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(1);
+    }));
+  it("rejects stale versions and revoked coach membership; successful replay produces no extra audit or effects", () =>
+    isolated(async () => {
+      const l = await native();
+      const r = await preview([l]);
+      await db.query(`update lessons set version=version+1 where id=$1`, [l]);
+      await execute(r);
+      expect((await work(r))[0].status).toBe("conflicted");
+      const otherLesson = await native();
+      const active = await preview([otherLesson]);
+      await execute(active);
+      await db.query(`delete from memberships where user_id=$1`, [coach]);
+      expect((await work(active))[0].status).toBe("failed");
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [
+          otherLesson,
+        ]))!.n,
+      ).toBe(1);
+    }));
+  it("protects uppercase/object-key JSON and foreign keys outside public", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(
+        `insert into integration_imports(payload) values(jsonb_build_object(upper($1::text),jsonb_build_object('linked',true)))`,
+        [l],
+      );
+      expect((await preview([l])).blocked).toBe(1);
+      const fk = await native();
+      await db.exec(
+        `create schema bulk_hidden_test;create table bulk_hidden_test.refs(lesson_id uuid references public.lessons on delete cascade)`,
+      );
+      await db.query(`insert into bulk_hidden_test.refs values($1)`, [fk]);
+      expect((await preview([fk])).blocked).toBe(1);
+    }));
+  it("returns each held credit once across multiple cancellations and repeats", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      await lot(2);
+      await db.query(
+        `select set_student_credit_auto($1,true,(student_credit_summary($1)->>'version')::integer)`,
+        [student],
+      );
+      const r = await preview([first, next], "cancel");
+      expect(r.eligible).toBe(2);
+      await execute(r);
+      expect((await work(r)).map((i) => i.status)).toEqual([
+        "succeeded",
+        "succeeded",
+      ]);
+      expect(await work(r)).toEqual([]);
+      expect(
+        (await scalar(
+          `select count(*) n from package_credit_entries where lesson_id=any($1::uuid[]) and kind='release'`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+      expect(
+        (await scalar(
+          `select sum(quantity) n from package_credit_entries where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(0);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+    }));
+  it("turns a fifth interrupted lease into a recoverable failure", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await execute(r);
+      await db.query(`select claim_lesson_bulk_items(1,$1)`, [r.jobId]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_items set attempts=5,claim_until=now()-interval '1 minute' where job_id=$1`,
+        [r.jobId],
+      );
+      expect(await work(r)).toEqual([]);
+      expect((await progress(r)).counts).toMatchObject({
+        failed: 1,
+        pending: 0,
+      });
+      await scalar(`select retry_lesson_bulk($1,$2,$3,$4)`, [
+        coach,
+        r.jobId,
+        r.reviewToken,
+        crypto.randomUUID(),
+      ]);
+      expect((await work(r))[0].status).toBe("succeeded");
+    }));
 });

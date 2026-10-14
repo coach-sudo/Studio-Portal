@@ -136,6 +136,19 @@ export function toAppError(error: unknown): AppError {
         "This request key was already used for different details. Review the change again.",
       cause: error,
     });
+  if (message.includes("REVIEW_EXPIRED"))
+    return new AppError("REVIEW_REQUIRED", {
+      status: 409,
+      message: "This batch review expired. Review the current lessons again.",
+      cause: error,
+    });
+  if (message.includes("BATCH_TOO_LARGE"))
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "Review 1–5,000 lessons. Narrow the filters for a larger selection.",
+      cause: error,
+    });
   if (message.includes("VERSION_CONFLICT")) {
     const expectedVersion = Number(message.split(":")[1]);
     return new AppError("VERSION_CONFLICT", {

@@ -8,12 +8,16 @@ import { queuePackageWarning } from "./_shared/package-notifications";
 import { clearDeliveredPortalCredentials } from "./_shared/outbox-retention";
 import { processLessonChangeEffects } from "./_shared/lesson-notifications";
 import { applyAutomaticCredits } from "./_shared/auto-credits";
+import { processLessonBulkItems } from "./_shared/lesson-bulk";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
 
 export default async () => {
   const db = serviceClient();
+  const lessonBulk = await processLessonBulkItems(db).catch(() => [
+    { itemId: "", status: "claim_failed" },
+  ]);
   const lessonChanges = await processLessonChangeEffects(db);
   const maintenanceTime = new Date();
   const runDailyStorageCleanup =
@@ -464,6 +468,16 @@ export default async () => {
     autoCreditsApplied: creditCoverage.applied,
     creditCoverage,
     lessonChanges: {
+      bulk: {
+        processed: lessonBulk.filter(
+          (item) =>
+            !["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+        failed: lessonBulk.filter((item) => item.status === "failed").length,
+        recoveryPending: lessonBulk.filter((item) =>
+          ["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+      },
       processed: lessonChanges.processed,
       failed: lessonChanges.failed,
     },
