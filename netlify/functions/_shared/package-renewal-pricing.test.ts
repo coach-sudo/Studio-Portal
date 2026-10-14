@@ -41,7 +41,12 @@ function database(paymentError = false) {
   };
   const db = {
     rpc: vi.fn(async (name: string) => ({
-      data: name === "claim_package_auto_renewals" ? [subscription] : null,
+      data:
+        name === "claim_package_auto_renewals"
+          ? [subscription]
+          : name === "claim_lesson_change_effects"
+            ? { effects: [], tracked: true }
+            : null,
       error: null,
     })),
     from(table: string) {

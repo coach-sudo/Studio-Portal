@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lessonChangeRequest } from "../../../src/domain/lessonChanges";
 export const commandSchema = z.object({
   command: z.string().min(1),
   idempotencyKey: z.string().min(8).max(200),
@@ -16,6 +17,8 @@ export type CommandInput = z.infer<typeof commandSchema>;
 const uuid = z.string().uuid();
 const dateTime = z.string().datetime();
 const commandPayloadSchemas = {
+  "lessons:preview_change": lessonChangeRequest,
+  "lessons:execute_change": lessonChangeRequest,
   "students:save_linked_contact": z
     .object({
       contactId: uuid.optional(),

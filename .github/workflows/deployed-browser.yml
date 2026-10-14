@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - codex/credit-coverage-diagnostics
+      - codex/credit-lifecycle-reliability
       - codex/pr2-query-layer
       - codex/pr5-server-contracts
       - codex/pr6-product-polish
@@ -30,7 +31,7 @@ jobs:
     # Explicit no-deploy PRs still run the full isolated suite below. They have
     # no Netlify preview to smoke-test; do not wait on an intentionally absent URL.
     if: >-
-      ${{ !(github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'codex/credit-coverage-diagnostics') && contains(github.event.pull_request.title, '[skip netlify]')) &&
+      ${{ !(github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'codex/credit-coverage-diagnostics' || github.base_ref == 'codex/credit-lifecycle-reliability') && contains(github.event.pull_request.title, '[skip netlify]')) &&
       ((github.event_name == 'pull_request' && github.base_ref != 'codex/pr5-server-contracts' && github.base_ref != 'codex/pr6-product-polish' && github.base_ref != 'codex/pr7-performance-styles' && github.base_ref != 'codex/product-design-modernization') || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -77,7 +78,7 @@ jobs:
     timeout-minutes: 30
     env:
       # PR suites use the free local Supabase/Netlify stack, never production-scoped Netlify variables.
-      USE_EPHEMERAL_STACK: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'codex/credit-coverage-diagnostics' || github.base_ref == 'codex/pr2-query-layer' || github.base_ref == 'codex/pr5-server-contracts' || github.base_ref == 'codex/pr6-product-polish' || github.base_ref == 'codex/pr7-performance-styles' || github.base_ref == 'codex/product-design-modernization')) || github.event_name == 'workflow_dispatch' }}
+      USE_EPHEMERAL_STACK: ${{ (github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'codex/credit-coverage-diagnostics' || github.base_ref == 'codex/credit-lifecycle-reliability' || github.base_ref == 'codex/pr2-query-layer' || github.base_ref == 'codex/pr5-server-contracts' || github.base_ref == 'codex/pr6-product-polish' || github.base_ref == 'codex/pr7-performance-styles' || github.base_ref == 'codex/product-design-modernization')) || github.event_name == 'workflow_dispatch' }}
       STAGING_BASE_URL: ${{ github.event_name == 'pull_request' && github.base_ref == 'main' && format('https://deploy-preview-{0}--coachd-staging.netlify.app', github.event.number) || secrets.STAGING_BASE_URL || github.event.deployment_status.target_url }}
       STAGING_E2E_FIXTURE_TOKEN: ${{ github.event_name == 'deployment_status' && secrets.STAGING_E2E_FIXTURE_TOKEN || '' }}
       E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}
@@ -98,7 +99,7 @@ jobs:
           set -euo pipefail
           npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
           npx supabase db reset --local --no-seed
-          npx supabase db lint --local --schema public,credit_internal --fail-on error
+          npx supabase db lint --local --schema public,credit_internal,lesson_ops --fail-on error
           npx supabase test db
 
           eval "$(npx supabase status -o env)"
@@ -121,6 +122,7 @@ jobs:
               | LC_ALL=C sort > "$file"
           }
           snapshot_table "$RUNNER_TEMP/public-before.sql" --schema=public
+          snapshot_table "$RUNNER_TEMP/lesson-ops-before.sql" --schema=lesson_ops
           snapshot_table "$RUNNER_TEMP/storage-before.sql" --table=storage.objects
           snapshot_table "$RUNNER_TEMP/auth-users-before.sql" --table=auth.users
           snapshot_table "$RUNNER_TEMP/auth-identities-before.sql" --table=auth.identities
@@ -217,13 +219,14 @@ jobs:
               | LC_ALL=C sort > "$file"
           }
           snapshot_table "$RUNNER_TEMP/public-after.sql" --schema=public
+          snapshot_table "$RUNNER_TEMP/lesson-ops-after.sql" --schema=lesson_ops
           snapshot_table "$RUNNER_TEMP/storage-after.sql" --table=storage.objects
           snapshot_table "$RUNNER_TEMP/auth-users-after.sql" --table=auth.users
           snapshot_table "$RUNNER_TEMP/auth-identities-after.sql" --table=auth.identities
 
           failed=0
           : > test-results/cleanup-verification.txt
-          for dataset in public storage auth-users auth-identities; do
+          for dataset in public lesson-ops storage auth-users auth-identities; do
             if diff --unified=3 "$RUNNER_TEMP/$dataset-before.sql" "$RUNNER_TEMP/$dataset-after.sql" \
               > "test-results/$dataset-cleanup.diff"; then
               echo "$dataset: restored to the pre-fixture baseline" | tee -a test-results/cleanup-verification.txt

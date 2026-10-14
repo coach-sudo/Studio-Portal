@@ -1,3 +1,4 @@
+import { LessonChangeReview } from "../../components/LessonChangeReview";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
   lessonCreditDebit,
@@ -367,6 +368,30 @@ export function LessonsView({
                   : checkSchedulingConflicts(startsAt, endsAt, selected.id)
               }
               onCancel={() => setPanel("details")}
+              renderReview={
+                isDemo
+                  ? undefined
+                  : (times, back) => (
+                      <LessonChangeReview
+                        lesson={selected}
+                        action="reschedule"
+                        times={times}
+                        onCancel={back}
+                        onApplied={async () => {
+                          await invalidateStudioDomains(queryClient, [
+                            "lessons",
+                            "booking",
+                            "finance",
+                            "messaging",
+                          ]);
+                          setSelected(undefined);
+                          setNotice(
+                            "Reviewed occurrences changed. Calendar and notifications are pending synchronization.",
+                          );
+                        }}
+                      />
+                    )
+              }
               onSubmit={move}
             />
           ) : (
@@ -634,30 +659,50 @@ export function LessonsView({
                     {busy === "completed" ? "Saving…" : "Mark complete"}
                   </button>
                   {confirmCancel ? (
-                    <>
-                      {paidByCredit && (
-                        <CreditCancellationChoice
-                          useCredit={consumeCredit}
-                          onChange={setConsumeCredit}
-                        />
-                      )}
-                      <span>
-                        This removes it from active calendars and sends the
-                        cancellation to Google.
-                      </span>
-                      <button
-                        className="danger-button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void update("cancelled")}
-                      >
-                        {busy === "cancelled"
-                          ? "Cancelling…"
-                          : "Confirm cancellation"}
-                      </button>
-                      <button onClick={() => setConfirmCancel(false)}>
-                        Keep lesson
-                      </button>
-                    </>
+                    !isDemo ? (
+                      <LessonChangeReview
+                        lesson={selected}
+                        action="cancel"
+                        onCancel={() => setConfirmCancel(false)}
+                        onApplied={async () => {
+                          await invalidateStudioDomains(queryClient, [
+                            "lessons",
+                            "booking",
+                            "finance",
+                            "messaging",
+                          ]);
+                          setSelected(undefined);
+                          setNotice(
+                            "Reviewed occurrences changed. Calendar and notifications are pending synchronization.",
+                          );
+                        }}
+                      />
+                    ) : (
+                      <>
+                        {paidByCredit && (
+                          <CreditCancellationChoice
+                            useCredit={consumeCredit}
+                            onChange={setConsumeCredit}
+                          />
+                        )}
+                        <span>
+                          This removes it from active calendars and sends the
+                          cancellation to Google.
+                        </span>
+                        <button
+                          className="danger-button"
+                          disabled={Boolean(busy)}
+                          onClick={() => void update("cancelled")}
+                        >
+                          {busy === "cancelled"
+                            ? "Cancelling…"
+                            : "Confirm cancellation"}
+                        </button>
+                        <button onClick={() => setConfirmCancel(false)}>
+                          Keep lesson
+                        </button>
+                      </>
+                    )
                   ) : (
                     <button
                       className="danger-button"

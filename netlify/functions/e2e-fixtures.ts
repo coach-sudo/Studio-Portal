@@ -45,6 +45,11 @@ const ids = [
   "lessonPending",
   "lessonAvailable",
   "lessonCancelled",
+  "occurrenceFirst",
+  "occurrenceNext",
+  "occurrenceSeries",
+  "occurrenceBooking",
+  "occurrenceStudent",
   "referredPending",
   "referredEarned",
   "referredRedeemed",
@@ -151,7 +156,11 @@ async function cleanup(
 ) {
   assertE2ERunId(runId);
   const db = serviceClient();
-  const operationalStudents = [fixture.student, fixture.operationalStudent];
+  const operationalStudents = [
+    fixture.student,
+    fixture.operationalStudent,
+    fixture.occurrenceStudent,
+  ];
   const queued = await db
     .from("outbox_messages")
     .select("id")
@@ -248,7 +257,11 @@ async function cleanup(
     if (error) throwFixtureError(`delete_${table}`, error);
   };
   // Only these isolated, non-production fixture owners are eligible for cleanup.
-  const financeOwners = [fixture.student, fixture.operationalStudent];
+  const financeOwners = [
+    fixture.student,
+    fixture.operationalStudent,
+    fixture.occurrenceStudent,
+  ];
   const invoiceLookup = await db
     .from("studio_invoices")
     .select("id")
@@ -340,8 +353,15 @@ async function cleanup(
     fixture.referralRedeemed,
   ]);
   await deleteIds("lesson_participants", [fixture.calendarParticipant]);
+  const lessonChangeCleanup = await db.rpc("cleanup_lesson_change_fixture", {
+    p_run: runId,
+    p_studio: studioId,
+  });
+  if (lessonChangeCleanup.error)
+    throwFixtureError("lesson_change_cleanup", lessonChangeCleanup.error);
   await deleteIds("lessons", [fixture.calendarLesson]);
   await deleteIds("bookings", [
+    fixture.occurrenceBooking,
     fixture.bookingPending,
     fixture.bookingEarned,
     fixture.bookingRedeemed,
@@ -378,6 +398,8 @@ async function cleanup(
   await deleteIds("assignments", [fixture.assignment]);
   await deleteIds("materials", [fixture.material]);
   await deleteIds("lessons", [
+    fixture.occurrenceFirst,
+    fixture.occurrenceNext,
     fixture.lessonNoLink,
     fixture.lessonPending,
     fixture.lessonAvailable,
@@ -387,6 +409,7 @@ async function cleanup(
     fixture.lessonCredit,
     fixture.lessonShortfall,
   ]);
+  await deleteIds("recurring_series", [fixture.occurrenceSeries]);
   await deleteIds("booking_services", [
     fixture.freeService,
     fixture.paidService,
@@ -416,6 +439,7 @@ async function cleanup(
       fixture.referredEarned,
       fixture.referredRedeemed,
       fixture.operationalStudent,
+      fixture.occurrenceStudent,
     ]);
   if (creditAccounts.error)
     throwFixtureError("credit_account_cleanup", creditAccounts.error);
@@ -428,6 +452,7 @@ async function cleanup(
     fixture.referredEarned,
     fixture.referredRedeemed,
     fixture.operationalStudent,
+    fixture.occurrenceStudent,
   ]) {
     const result = await db.rpc("cleanup_credit_coverage_fixture", {
       p_student: studentId,
@@ -445,6 +470,7 @@ async function cleanup(
     fixture.referredEarned,
     fixture.referredRedeemed,
     fixture.operationalStudent,
+    fixture.occurrenceStudent,
   ]);
   await removeAuthUsers(emails);
 }
@@ -526,6 +552,15 @@ async function setup(
   const operationalIso = (minutes: number) =>
     new Date(operationalDay.getTime() + minutes * 60000).toISOString();
   const studentRows = [
+    {
+      id: fixture.occurrenceStudent,
+      studio_id: studioId,
+      full_name: `${runId} Occurrence student`,
+      preferred_name: "Occurrence student",
+      email: `e2e-occurrence-${runId.slice(-8)}@example.test`,
+      status: "active",
+      portal_enabled: false,
+    },
     {
       id: fixture.coachStudent,
       studio_id: studioId,
@@ -833,6 +868,80 @@ async function setup(
     },
   ]);
   if (lessonsError) throwFixtureError("lessons", lessonsError);
+
+  const seriesFixture = await db.from("recurring_series").upsert({
+    id: fixture.occurrenceSeries,
+    studio_id: studioId,
+    student_id: fixture.occurrenceStudent,
+    service_id: fixture.freeService,
+    kind: "fixed",
+    cadence: "weekly",
+    starts_on: iso(57600),
+    occurrence_count: 2,
+    payment_policy: "pay_later",
+    status: "active",
+  });
+  if (seriesFixture.error)
+    throwFixtureError("occurrence_series", seriesFixture.error);
+  const bookingFixture = await db.from("bookings").upsert({
+    id: fixture.occurrenceBooking,
+    studio_id: studioId,
+    student_id: fixture.occurrenceStudent,
+    service_id: fixture.freeService,
+    series_id: fixture.occurrenceSeries,
+    reference: `${runId}-occurrence`,
+    guest_name: `${runId} Student`,
+    guest_email: `e2e-occurrence-${runId.slice(-8)}@example.test`,
+    starts_at: iso(57600),
+    ends_at: iso(57660),
+    timezone: "America/New_York",
+    location: "in_person",
+    status: "confirmed",
+    payment_policy: "pay_later",
+    payment_status: "due",
+    total_minor: 0,
+    policy_snapshot: { cancellationWindowHours: 36, rescheduleLimit: 5 },
+    manage_token_hash: `${runId}-occurrence-token`,
+  });
+  if (bookingFixture.error)
+    throwFixtureError("occurrence_booking", bookingFixture.error);
+  for (const [id, minutes] of [
+    [fixture.occurrenceFirst, 57600],
+    [fixture.occurrenceNext, 67680],
+  ] as const) {
+    const occurrence = await db.from("lessons").upsert({
+      ...lessonBase,
+      student_id: fixture.occurrenceStudent,
+      id,
+      series_id: fixture.occurrenceSeries,
+      topic: `${runId} Occurrence ${id === fixture.occurrenceFirst ? "first" : "next"}`,
+      starts_at: iso(minutes),
+      ends_at: iso(minutes + 60),
+      status: "scheduled",
+      source_provider: "studio",
+      location_type: "in_person",
+      location_label: "Studio",
+      meeting_provider: null,
+      payment_status: "untracked",
+      price_minor: 0,
+      paid_minor: 0,
+    });
+    if (occurrence.error)
+      throwFixtureError("occurrence_lesson", occurrence.error);
+    const participation = await db.from("lesson_participants").upsert(
+      {
+        lesson_id: id,
+        student_id: fixture.occurrenceStudent,
+        booking_id: fixture.occurrenceBooking,
+        display_name: `${runId} Student`,
+        email: `e2e-occurrence-${runId.slice(-8)}@example.test`,
+        status: "confirmed",
+      },
+      { onConflict: "lesson_id,email" },
+    );
+    if (participation.error)
+      throwFixtureError("occurrence_participant", participation.error);
+  }
 
   const { error: assignmentError } = await db.from("assignments").upsert({
     id: fixture.assignment,
@@ -1330,20 +1439,29 @@ export default async (request: Request, context: Context) => {
           .single();
       if (lesson.error)
         throwFixtureError("operational_reschedule_read", lesson.error);
-      const changed = await db.rpc("command_change_lesson_state", {
-        p_lesson_id: fixture.lessonShortfall,
-        p_expected_version: lesson.data.version,
-        p_action: "reschedule",
-        p_starts_at: new Date(
-          Date.parse(lesson.data.starts_at) + 86400000,
-        ).toISOString(),
-        p_ends_at: new Date(
-          Date.parse(lesson.data.ends_at) + 86400000,
-        ).toISOString(),
-        p_queue_calendar: false,
-      });
-      if (changed.error)
-        throwFixtureError("operational_reschedule", changed.error);
+      let changed = false;
+      // Avoid time-of-day collisions with the other deterministic fixtures.
+      for (let days = 1; days <= 14; days++) {
+        const result = await db.rpc("command_change_lesson_state", {
+          p_lesson_id: fixture.lessonShortfall,
+          p_expected_version: lesson.data.version,
+          p_action: "reschedule",
+          p_starts_at: new Date(
+            Date.parse(lesson.data.starts_at) + days * 86400000,
+          ).toISOString(),
+          p_ends_at: new Date(
+            Date.parse(lesson.data.ends_at) + days * 86400000,
+          ).toISOString(),
+          p_queue_calendar: false,
+        });
+        if (result.error?.code === "23P01") continue;
+        if (result.error)
+          throwFixtureError("operational_reschedule", result.error);
+        changed = true;
+        break;
+      }
+      if (!changed)
+        throw new Error("E2E_FIXTURE_OPERATIONAL_RESCHEDULE:SLOT_UNAVAILABLE");
       await queueLessonChangeEmails(
         db,
         fixture.lessonShortfall,

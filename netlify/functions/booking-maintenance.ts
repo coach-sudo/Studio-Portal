@@ -6,6 +6,7 @@ import { resolveNotificationRecipients } from "./_shared/notification-recipients
 import { portalActionUrl, portalOrigin } from "./_shared/portal-url";
 import { queuePackageWarning } from "./_shared/package-notifications";
 import { clearDeliveredPortalCredentials } from "./_shared/outbox-retention";
+import { processLessonChangeEffects } from "./_shared/lesson-notifications";
 import { applyAutomaticCredits } from "./_shared/auto-credits";
 
 const render = (template: string, values: Record<string, string>) =>
@@ -13,6 +14,7 @@ const render = (template: string, values: Record<string, string>) =>
 
 export default async () => {
   const db = serviceClient();
+  const lessonChanges = await processLessonChangeEffects(db);
   const maintenanceTime = new Date();
   const runDailyStorageCleanup =
     maintenanceTime.getUTCHours() === 8 && maintenanceTime.getUTCMinutes() < 5;
@@ -461,6 +463,10 @@ export default async () => {
     noteReminders,
     autoCreditsApplied: creditCoverage.applied,
     creditCoverage,
+    lessonChanges: {
+      processed: lessonChanges.processed,
+      failed: lessonChanges.failed,
+    },
     packageGiftsDelivered,
     packageAutoRenewals,
     packageReminders,

@@ -958,9 +958,13 @@ export type Database = {
       calendar_projections: {
         Row: {
           attempts: number
+          claim_token: string | null
+          claim_until: string | null
+          claimed_version: number | null
           conference_request_id: string | null
           external_event_id: string | null
           external_version: string | null
+          first_attempted_at: string | null
           id: string
           last_error: string | null
           last_projected_at: string | null
@@ -971,9 +975,13 @@ export type Database = {
         }
         Insert: {
           attempts?: number
+          claim_token?: string | null
+          claim_until?: string | null
+          claimed_version?: number | null
           conference_request_id?: string | null
           external_event_id?: string | null
           external_version?: string | null
+          first_attempted_at?: string | null
           id?: string
           last_error?: string | null
           last_projected_at?: string | null
@@ -984,9 +992,13 @@ export type Database = {
         }
         Update: {
           attempts?: number
+          claim_token?: string | null
+          claim_until?: string | null
+          claimed_version?: number | null
           conference_request_id?: string | null
           external_event_id?: string | null
           external_version?: string | null
+          first_attempted_at?: string | null
           id?: string
           last_error?: string | null
           last_projected_at?: string | null
@@ -4438,6 +4450,10 @@ export type Database = {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
       }
+      calendar_claim_current: {
+        Args: { p_id: string; p_token: string }
+        Returns: boolean
+      }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -4571,6 +4587,10 @@ export type Database = {
           projection: Json
         }[]
       }
+      claim_lesson_change_effects: {
+        Args: { p_lesson?: string; p_limit?: number }
+        Returns: Json
+      }
       claim_outbox_messages: {
         Args: { batch_size?: number }
         Returns: {
@@ -4672,6 +4692,10 @@ export type Database = {
       }
       cleanup_credit_coverage_fixture: {
         Args: { p_run: string; p_student: string }
+        Returns: undefined
+      }
+      cleanup_lesson_change_fixture: {
+        Args: { p_run: string; p_studio: string }
         Returns: undefined
       }
       cleanup_transient_studio_data: { Args: never; Returns: Json }
@@ -4922,6 +4946,10 @@ export type Database = {
         Args: { p_student: string }
         Returns: undefined
       }
+      execute_lesson_occurrence_change: {
+        Args: { p_actor: string; p_key: string; p_value: Json }
+        Returns: Json
+      }
       expire_booking_holds: { Args: never; Returns: number }
       expire_delinquent_booking: {
         Args: { target_booking: string }
@@ -4947,10 +4975,36 @@ export type Database = {
         }
         Returns: Json
       }
+      finish_calendar_projection: {
+        Args: {
+          p_failed?: boolean
+          p_id: string
+          p_result: Json
+          p_token: string
+        }
+        Returns: boolean
+      }
+      finish_lesson_change_effect: {
+        Args: {
+          p_failed?: boolean
+          p_id: string
+          p_outbox: string[]
+          p_token: string
+        }
+        Returns: boolean
+      }
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
+      lesson_change_effect_current: {
+        Args: { p_id: string; p_token: string }
+        Returns: boolean
+      }
+      lesson_change_replay: {
+        Args: { p_actor: string; p_key: string; p_value: Json }
+        Returns: Json
+      }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
@@ -4970,6 +5024,10 @@ export type Database = {
       package_credit_balance: {
         Args: { target_package: string }
         Returns: number
+      }
+      preview_lesson_occurrence_change: {
+        Args: { p_actor: string; p_value: Json }
+        Returns: Json
       }
       process_credit_coverage_job: {
         Args: { p_student: string }

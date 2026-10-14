@@ -89,6 +89,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20260830221230_sync_lesson_booking_financials.sql",
+      "utf8",
+    ),
+  );
   preservedExplicitBalance = (await scalar(
     `select sum(case when kind='refund' then amount_minor else -amount_minor end) filter(where account_credit) balance,
     count(*) entries, count(*) filter(where external_reference like 'opening-account-credit:%') openings,
@@ -96,9 +102,747 @@ beforeAll(async () => {
     from public.payment_entries where student_id=$1`,
     [other],
   ))!;
+  await db.exec(`alter table lessons add column offering_id uuid;
+    alter table recurring_series add column updated_at timestamptz default now();
+    alter table outbox_messages add column suppression_reason text,add column student_id uuid;
+    alter table calendar_projections add column id uuid default gen_random_uuid(),add column external_event_id text,
+      add column external_version text,add column last_projected_at timestamptz;
+    create table sync_conflicts(entity_type text,entity_id uuid,status text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014163444_occurrence_safe_lesson_changes.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
+});
+
+describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("does not acknowledge or project through a provider conflict that opens after a calendar claim", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
+      [l],
+    );
+    const claimed = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
+      l,
+    ]);
+    expect(
+      (await scalar(`select calendar_claim_current($1,$2) result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      (await scalar(`select finish_calendar_projection($1,$2,'{}') result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      await scalar(
+        `select status,last_error from calendar_projections where lesson_id=$1`,
+        [l],
+      ),
+    ).toEqual({
+      status: "failed",
+      last_error: "synchronization_review_required",
+    });
+  });
+  it("rejects mismatched studio/booking associations without returning another studio's booking identity", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const foreign = "10000000-0000-4000-8000-000000000099";
+    await db.query(
+      `insert into studios(id,name) values($1,'Other studio') on conflict do nothing`,
+      [foreign],
+    );
+    await db.query(`update bookings set studio_id=$1 where id=$2`, [
+      foreign,
+      b,
+    ]);
+    const r = await review(l);
+    expect(r.preview.items[0]).toMatchObject({
+      eligible: false,
+      reasonCode: "booking_ownership_review_required",
+      bookings: [],
+    });
+    await expect(change(l)).rejects.toThrow(
+      "booking_ownership_review_required",
+    );
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+  });
+  it("retains a shared booking and its completed occurrence when its last scheduled occurrence changes", async () => {
+    await reset();
+    const upcoming = await lesson(),
+      past = await lesson("now()-interval '7 days'");
+    await db.query(`update lessons set status='completed' where id=$1`, [past]);
+    const b = await booking([upcoming, past]);
+    await db.query(
+      `update lesson_participants set status='attended' where lesson_id=$1`,
+      [past],
+    );
+    const before = await scalar(
+      `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+      [b, past],
+    );
+    await change(upcoming);
+    expect(
+      await scalar(
+        `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+        [b, past],
+      ),
+    ).toEqual(before);
+  });
+  it("keeps local time and durations across DST for explicitly requested booking-series reschedules", async () => {
+    await reset();
+    const first = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),
+      next = await lesson("'2027-03-20T14:00:00Z'::timestamptz");
+    const b = await booking([first, next]);
+    await db.query(
+      `update bookings set timezone='America/New_York' where id=$1`,
+      [b],
+    );
+    await db.query(
+      `select reschedule_booking_occurrences($1,1,'2027-03-14T14:00:00Z','2027-03-14T15:30:00Z','series')`,
+      [b],
+    );
+    expect(
+      (await scalar(`select starts_at,ends_at from lessons where id=$1`, [
+        next,
+      ]))!,
+    ).toEqual({
+      starts_at: new Date("2027-03-28T14:00:00Z"),
+      ends_at: new Date("2027-03-28T15:30:00Z"),
+    });
+  });
+  it("keeps withdrawal notification intent valid after another participant changes the class", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=2 where id=$1`,
+      [l],
+    );
+    const b = await booking([l]);
+    await booking([l], other);
+    await db.query(`select cancel_booking_credit($1,1,false,true)`, [b]);
+    const claimed = (
+      (await scalar(`select claim_lesson_change_effects() result`))!
+        .result as any
+    ).effects[0];
+    await db.query(
+      `update lessons set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day',version=version+1 where id=$1`,
+      [l],
+    );
+    expect(
+      (await scalar(`select lesson_change_effect_current($1,$2) result`, [
+        claimed.id,
+        claimed.claim_token,
+      ]))!.result,
+    ).toBe(true);
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}')`, [
+      claimed.id,
+      claimed.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects where id=$1`, [
+        claimed.id,
+      ]))!.status,
+    ).toBe("completed");
+  });
+  it("keeps an ongoing contract generating after its last visible occurrence is cancelled, until future scope is explicitly selected", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const series = await scalar(
+      `insert into recurring_series(studio_id,student_id,service_id,kind,cadence,status,starts_on,payment_policy)
+      select studio_id,student_id,service_id,'ongoing','weekly','active',starts_at,payment_policy from bookings where id=$1 returning id`,
+      [b],
+    );
+    await db.query(`update lessons set series_id=$1 where id=$2`, [
+      series!.id,
+      l,
+    ]);
+    await db.query(
+      `update bookings set series_id=$1,timezone='America/New_York',location='in_person' where id=$2`,
+      [series!.id, b],
+    );
+    await change(l);
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(`select extend_ongoing_series() n`))!.n,
+    ).toBeGreaterThan(0);
+    const next = (await scalar(
+      `select id from lessons where status='scheduled' and series_id=$1 order by starts_at limit 1`,
+      [series!.id],
+    ))!.id as string;
+    await execute((await review(next, { scope: "future" })).value);
+    expect(
+      (await scalar(`select status from recurring_series where id=$1`, [
+        series!.id,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("cancelled");
+    expect((await scalar(`select extend_ongoing_series() n`))!.n).toBe(0);
+  });
+  it("keeps a previously withdrawn student's upcoming work and ledger unchanged in a whole-class change", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=3 where id=$1`,
+      [l],
+    );
+    await booking([l]);
+    const old = await booking([l], other);
+    await db.query(
+      `update lesson_participants set status='cancelled' where booking_id=$1`,
+      [old],
+    );
+    const next = await lesson("now()+interval '12 days'", other);
+    const p = await lot(1);
+    await db.query(`update packages set student_id=$1 where id=$2`, [other, p]);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [other],
+    );
+    const before = await scalar(
+      `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+      [next],
+    );
+    await execute((await review(l, { wholeClass: true })).value);
+    expect(
+      await scalar(
+        `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+        [next],
+      ),
+    ).toEqual(before);
+    expect(
+      (await scalar(
+        `select student_ids from lesson_ops.effects where lesson_id=$1`,
+        [l],
+      ))!.student_ids,
+    ).toEqual([student]);
+  });
+  it("booking financial triggers never treat an uncovered recurring occurrence as paid credit or cash", async () => {
+    await reset();
+    await lot(1);
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      first,
+      student,
+    ]);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).not.toBe("paid");
+    expect(
+      (await scalar(
+        `select count(*) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(0);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+    await change(first);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).toBe("paid_by_credit");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(
+        `select sum(quantity) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(-1);
+  });
+  it("blocks a multi-occurrence invoice line without waiving unrelated charges or changing its associations", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const inv = await invoice(await service(), "service", [first]);
+    // Characterize an existing legacy/imported JSON line; current authoring already refuses it.
+    await db.query(
+      `update studio_invoices set items=jsonb_set(items,'{0,lessonIds}',$2::jsonb) where id=$1`,
+      [inv.id, JSON.stringify([first, next])],
+    );
+    const before = await scalar(
+      `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+      [inv.id],
+    );
+    await expect(change(first)).rejects.toThrow(
+      "shared_invoice_review_required",
+    );
+    expect(
+      await scalar(
+        `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+        [inv.id],
+      ),
+    ).toEqual(before);
+  });
+  it("increments the shared booking's reschedule counter without moving its contract and rejects stale repeats", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    const before = await scalar(
+      `select starts_at,ends_at from bookings where id=$1`,
+      [b],
+    );
+    const startsAt = new Date(Date.now() + 7 * 86400000).toISOString(),
+      endsAt = new Date(Date.now() + 7 * 86400000 + 3600000).toISOString();
+    const moved = (await scalar(
+      `select to_jsonb(reschedule_booking_occurrences($1,1,$2,$3)) result`,
+      [b, startsAt, endsAt],
+    ))!.result as any;
+    expect(moved.reschedule_count).toBe(1);
+    expect(
+      await scalar(`select starts_at,ends_at from bookings where id=$1`, [b]),
+    ).toEqual(before);
+    await expect(
+      db.query(`select reschedule_booking_occurrences($1,1,$2,$3)`, [
+        b,
+        startsAt,
+        endsAt,
+      ]),
+    ).rejects.toThrow("VERSION_CONFLICT");
+  });
+  async function booking(ids: string[], sid = student, paid = false) {
+    const b = await scalar(
+      `insert into bookings(studio_id,student_id,service_id,starts_at,ends_at,payment_policy,payment_status,total_minor,paid_minor,policy_snapshot)
+      select studio_id,$2,$3,starts_at,ends_at,$4,$5,$6,$6,'{"rescheduleLimit":5}' from lessons where id=$1 returning id`,
+      [
+        ids[0],
+        sid,
+        await service(),
+        paid ? "pay_now" : "pay_later",
+        paid ? "paid" : "due",
+        paid ? 10000 : 0,
+      ],
+    );
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, sid, b!.id, sid + "@example.test"],
+      );
+    return b!.id as string;
+  }
+  async function change(
+    id: string,
+    action = "cancel",
+    extra: Record<string, unknown> = {},
+  ) {
+    const v = (await scalar(`select version from lessons where id=$1`, [id]))!
+      .version;
+    return (await scalar(
+      `select command_change_lesson_state($1,$2,$3,$4,$5) result`,
+      [id, v, action, extra.startsAt || null, extra.endsAt || null],
+    ))!.result as any;
+  }
+  async function review(id: string, extra: Record<string, unknown> = {}) {
+    const value = {
+      lessonId: id,
+      action: "cancel",
+      scope: "occurrence",
+      reason: "Reviewed occurrence change",
+      wholeClass: false,
+      useCredit: false,
+      ...extra,
+    };
+    const preview = (await scalar(
+      `select preview_lesson_occurrence_change($1,$2) result`,
+      [coach, value],
+    ))!.result as any;
+    return { preview, value: { ...value, reviewToken: preview.reviewToken } };
+  }
+  async function execute(value: unknown, key = "review-change-key") {
+    return (await scalar(
+      `select execute_lesson_occurrence_change($1,$2,$3) result`,
+      [coach, key, value],
+    ))!.result as any;
+  }
+  it("cancels only one shared-booking occurrence, leaves history/reminders/participants untouched, and replays once", async () => {
+    await reset();
+    const first = await lesson("now()+interval '2 days'"),
+      next = await lesson("now()+interval '9 days'");
+    const b = await booking([first, next]);
+    await db.query(
+      `insert into outbox_messages(id,lesson_id,booking_id,event_key,status) values(gen_random_uuid(),$1,$3,'booking.reminder.student','queued'),(gen_random_uuid(),$2,$3,'booking.reminder.student','queued')`,
+      [first, next, b],
+    );
+    const before = await scalar(
+      `select to_jsonb(l) lesson,(select to_jsonb(b) from bookings b where id=$2) booking,(select jsonb_agg(to_jsonb(p)) from lesson_participants p where lesson_id=$1) participants from lessons l where id=$1`,
+      [next, b],
+    );
+    const changed = await change(first);
+    expect(
+      await scalar(
+        `select to_jsonb(l) lesson,(select to_jsonb(b) from bookings b where id=$2) booking,(select jsonb_agg(to_jsonb(p)) from lesson_participants p where lesson_id=$1) participants from lessons l where id=$1`,
+        [next, b],
+      ),
+    ).toEqual(before);
+    expect(
+      (await scalar(`select status from outbox_messages where lesson_id=$1`, [
+        next,
+      ]))!.status,
+    ).toBe("queued");
+    expect(
+      (await scalar(`select status from outbox_messages where lesson_id=$1`, [
+        first,
+      ]))!.status,
+    ).toBe("cancelled");
+    const replay = (await scalar(
+      `select command_change_lesson_state($1,1,'cancel') result`,
+      [first],
+    ))!.result as any;
+    expect(replay).toEqual({ ...changed, duplicate: true });
+    expect((await scalar(`select count(*) n from lesson_ops.effects`))!.n).toBe(
+      1,
+    );
+    expect(
+      (await scalar(
+        `select count(*) n from audit_events where action='lesson.cancelled'`,
+      ))!.n,
+    ).toBe(1);
+  });
+  it("reschedules one occurrence without shifting the shared booking or its next occurrence", async () => {
+    await reset();
+    const first = await lesson("now()+interval '2 days'"),
+      next = await lesson("now()+interval '9 days'");
+    const b = await booking([first, next], student, true);
+    const before = await scalar(
+      `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) lesson from bookings b where id=$1`,
+      [b, next],
+    );
+    await change(first, "reschedule", {
+      startsAt: new Date(Date.now() + 3 * 86400000).toISOString(),
+      endsAt: new Date(Date.now() + 3 * 86400000 + 3600000).toISOString(),
+    });
+    expect(
+      await scalar(
+        `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) lesson from bookings b where id=$1`,
+        [b, next],
+      ),
+    ).toEqual(before);
+  });
+  it("blocks ambiguous shared prepaid cancellation without changing any financial or coaching records", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    await booking([a, b], student, true);
+    const before = await scalar(
+      `select jsonb_agg(to_jsonb(l) order by id) lessons from lessons l`,
+    );
+    await expect(change(a)).rejects.toThrow("shared_prepaid_review_required");
+    expect(
+      await scalar(
+        `select jsonb_agg(to_jsonb(l) order by id) lessons from lessons l`,
+      ),
+    ).toEqual(before);
+    expect((await scalar(`select count(*) n from lesson_ops.effects`))!.n).toBe(
+      0,
+    );
+  });
+  it("permits a paid standalone cancellation while preserving the cash receipt and booking payment history", async () => {
+    await reset();
+    const a = await lesson();
+    const b = await booking([a], student, true);
+    await db.query(
+      `update lessons set paid_minor=10000,payment_status='paid' where id=$1`,
+      [a],
+    );
+    await change(a);
+    expect(
+      await scalar(
+        `select status,paid_minor,payment_status from bookings where id=$1`,
+        [b],
+      ),
+    ).toMatchObject({
+      status: "cancelled",
+      paid_minor: 10000,
+      payment_status: "paid",
+    });
+  });
+  it("requires explicit whole-class review and refuses student-scoped class changes", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(`update lessons set capacity=2 where id=$1`, [l]);
+    await booking([l]);
+    await booking([l], other);
+    await expect(change(l)).rejects.toThrow("class_scope_required");
+    const blocked = await review(l, { studentContextId: student });
+    expect(blocked.preview.items[0]).toMatchObject({
+      eligible: false,
+      reasonCode: "class_scope_required",
+    });
+    const r = await review(l, { wholeClass: true });
+    expect(r.preview.items[0].notificationParticipantCount).toBe(2);
+    await execute(r.value);
+    expect(
+      (await scalar(
+        `select count(*) n from lesson_participants where status='confirmed'`,
+      ))!.n,
+    ).toBe(0);
+    expect(
+      (await scalar(
+        `select cardinality(student_ids) n from lesson_ops.effects`,
+      ))!.n,
+    ).toBe(2);
+  });
+  it("withdrawing a booked student leaves a booking-free class participant, reminders and credit ledger intact", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=2 where id=$1`,
+      [l],
+    );
+    const b = await booking([l]);
+    await db.query(
+      `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'native@example.test')`,
+      [l, other],
+    );
+    await db.query(
+      `insert into outbox_messages(id,lesson_id,student_id,status,event_key) values(gen_random_uuid(),$1,$2,'queued','booking.reminder.student'),(gen_random_uuid(),$1,$3,'queued','booking.reminder.student')`,
+      [l, student, other],
+    );
+    await lot(2);
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      l,
+      student,
+    ]);
+    const before = await scalar(
+      `select to_jsonb(lp) participant from lesson_participants lp where student_id=$1`,
+      [other],
+    );
+    const v = (await scalar(`select version from bookings where id=$1`, [b]))!
+      .version;
+    await db.query(`select cancel_booking_credit($1,$2,false,true)`, [b, v]);
+    expect(
+      (await scalar(`select status from lessons where id=$1`, [l]))!.status,
+    ).toBe("scheduled");
+    expect(
+      await scalar(
+        `select to_jsonb(lp) participant from lesson_participants lp where student_id=$1`,
+        [other],
+      ),
+    ).toEqual(before);
+    expect((await summary()).reserved).toBe(0);
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        student,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        other,
+      ]))!.status,
+    ).toBe("queued");
+    expect(
+      (await scalar(`select student_ids from lesson_ops.effects`))!.student_ids,
+    ).toEqual([student]);
+  });
+  it("rejects pending invoice JSON associations and unresolved provider synchronization", async () => {
+    await reset();
+    const l = await lesson();
+    const inv = await invoice(await service(), "service", [l]);
+    await db.query(
+      `update studio_invoices set checkout_key='pending' where id=$1`,
+      [inv.id],
+    );
+    await expect(change(l)).rejects.toThrow("payment_pending");
+    await db.query(`update studio_invoices set checkout_key=null where id=$1`, [
+      inv.id,
+    ]);
+    await db.query(
+      `update lessons set source_provider='google_calendar' where id=$1`,
+      [l],
+    );
+    await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
+      l,
+    ]);
+    await expect(change(l)).rejects.toThrow("synchronization_review_required");
+  });
+  it("executes a frozen selection and rejects dependencies added after review", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    const r = await review(a, { scope: "selected", selectedIds: [a, b] });
+    await db.query(
+      `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'added@example.test')`,
+      [b, student],
+    );
+    await expect(execute(r.value)).rejects.toThrow("VERSION_CONFLICT");
+    expect(
+      (await scalar(`select count(*) n from lessons where status='scheduled'`))!
+        .n,
+    ).toBe(2);
+    const fresh = await review(a, { scope: "selected", selectedIds: [a, b] });
+    const extra = await lesson("now()+interval '16 days'");
+    await execute(fresh.value);
+    expect(
+      (await scalar(`select status from lessons where id=$1`, [extra]))!.status,
+    ).toBe("scheduled");
+    expect((await execute(fresh.value)).duplicate).toBe(true);
+  });
+  it("stops future generation only for explicit future scope and freezes expanded IDs", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    const series = await scalar(
+      `insert into recurring_series(studio_id,student_id,kind,status) values($1,$2,'ongoing','active') returning id`,
+      [studio, student],
+    );
+    await db.query(`update lessons set series_id=$1`, [series!.id]);
+    const r = await review(a, { scope: "future" });
+    const extra = await lesson("now()+interval '16 days'");
+    await db.query(`update lessons set series_id=$1 where id=$2`, [
+      series!.id,
+      extra,
+    ]);
+    await expect(execute(r.value)).rejects.toThrow("VERSION_CONFLICT");
+    await execute((await review(a)).value, "single-occurrence");
+    expect((await scalar(`select status from recurring_series`))!.status).toBe(
+      "active",
+    );
+    await execute(
+      (await review(b, { scope: "future" })).value,
+      "future-occurrences",
+    );
+    expect((await scalar(`select status from recurring_series`))!.status).toBe(
+      "cancelled",
+    );
+  });
+  it("reschedules multiple occurrences before allocating credits and preserves wall-clock time across DST", async () => {
+    await reset();
+    await lot(2);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+    const a = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),
+      b = await lesson("'2027-03-13T15:00:00Z'::timestamptz");
+    const r = await review(a, {
+      scope: "selected",
+      selectedIds: [a, b],
+      action: "reschedule",
+      startsAt: "2027-03-07T15:00:00Z",
+      endsAt: "2027-03-07T16:30:00Z",
+    });
+    await execute(r.value);
+    expect(
+      (await scalar(`select starts_at from lessons where id=$1`, [b]))!
+        .starts_at,
+    ).toEqual(new Date("2027-03-14T14:00:00Z"));
+    expect((await summary()).reserved).toBe(2);
+  });
+  it("fences late calendar completions, preserves obtained identity and retries an expired lease", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
+      [l],
+    );
+    const claimed = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await change(l);
+    const done = (await scalar(
+      `select finish_calendar_projection($1,$2,$3) result`,
+      [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+        { id: "individual-event", etag: "etag" },
+      ],
+    ))!.result;
+    expect(done).toBe(false);
+    const p = await scalar(
+      `select status,external_event_id,projected_version,first_attempted_at from calendar_projections`,
+    );
+    expect(p).toMatchObject({
+      status: "queued",
+      external_event_id: "individual-event",
+    });
+    expect(p!.first_attempted_at).toBeTruthy();
+    const next = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await db.exec(
+      `update calendar_projections set claim_until=now()-interval '1 second'`,
+    );
+    const recovered = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    expect(recovered.projection.claim_token).not.toBe(
+      next.projection.claim_token,
+    );
+    expect(
+      (await scalar(`select finish_calendar_projection($1,$2,'{}') result`, [
+        next.projection.id,
+        next.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+  });
+  it("recovers notification intent failures with a stable cohort and refuses an old worker token", async () => {
+    await reset();
+    const l = await lesson();
+    await change(l);
+    const claim = (await scalar(`select claim_lesson_change_effects() result`))!
+      .result as any;
+    const e = claim.effects[0];
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}',true)`, [
+      e.id,
+      e.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects`))!.status,
+    ).toBe("failed");
+    expect(
+      (
+        (await scalar(`select claim_lesson_change_effects() result`))!
+          .result as any
+      ).effects,
+    ).toHaveLength(0);
+    await db.exec(
+      `update lesson_ops.effects set next_attempt_at=now()-interval '1 second'`,
+    );
+    const retry = (
+      (await scalar(`select claim_lesson_change_effects() result`))!
+        .result as any
+    ).effects[0];
+    expect(retry.student_ids).toEqual(e.student_ids);
+    expect(
+      (await scalar(`select finish_lesson_change_effect($1,$2,'{}') result`, [
+        e.id,
+        e.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}')`, [
+      e.id,
+      retry.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects`))!.status,
+    ).toBe("completed");
+  });
 });
 
 describe("read-only credit coverage diagnostics", () => {
@@ -388,6 +1132,8 @@ describe("read-only credit coverage diagnostics", () => {
   });
 });
 async function reset() {
+  await db.exec(`delete from lesson_ops.effects;delete from lesson_ops.receipts;delete from sync_conflicts;delete from outbox_messages;
+    select set_config('app.lesson_actor','',false),set_config('app.lesson_class','false',false),set_config('app.lesson_reason','',false),set_config('app.lesson_defer_coverage','false',false);`);
   await db.exec(
     `select set_config('app.use_credit','false',false),set_config('app.student_cancel','false',false),set_config('app.invoice_checkout_key','',false);`,
   );
