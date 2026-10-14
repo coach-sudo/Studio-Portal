@@ -56,6 +56,18 @@
   display: flex !important;
   align-items: center;
   gap: 0.5rem;
+  min-height: 44px;
+}
+.bulk-row-select {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  cursor: pointer;
+}
+.lesson-bulk-workspace > label,
+.bulk-toolbar label {
+  min-width: 0;
 }
 .bulk-check input,
 .bulk-lesson-rows input[type="checkbox"] {
@@ -120,7 +132,12 @@
   gap: 1rem;
 }
 .bulk-row-heading > div {
+  flex: 1;
   min-width: 0;
+}
+.bulk-row-heading .status {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .bulk-review-row details {
   margin-top: 0.6rem;

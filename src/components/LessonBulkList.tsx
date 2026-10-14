@@ -323,14 +323,16 @@ function AuthenticatedLessonBulkList({
           >
             {items.map((item) => (
               <li key={item.id}>
-                <input
-                  type="checkbox"
-                  aria-label={`Select ${item.topic}`}
-                  checked={selection.isSelected(item.id)}
-                  onChange={(e) =>
-                    selection.toggle([item.id], e.target.checked)
-                  }
-                />
+                <label className="bulk-row-select">
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${item.topic}`}
+                    checked={selection.isSelected(item.id)}
+                    onChange={(e) =>
+                      selection.toggle([item.id], e.target.checked)
+                    }
+                  />
+                </label>
                 <div className="bulk-lesson-identity">
                   <Link
                     to={

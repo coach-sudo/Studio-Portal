@@ -1,4 +1,5 @@
 import { openAs, accessToken } from "./support/auth";
+import { storageStatePath } from "./support/runtime";
 import { expectNoSeriousAxeViolations } from "./support/axe";
 import {
   bulkFixture,
@@ -19,24 +20,32 @@ test("@journey @mobile @a11y select across pages, delete eligible mistakes, pres
   requireFixtures(runtime);
   test.setTimeout(180000);
   const f = await bulkFixture(runtime);
-  const coach = await openAs(browser, "coach"),
-    page = coach.page;
-  await page.setViewportSize({
-    width: info.project.name.startsWith("mobile") ? 390 : 1440,
-    height: 1000,
+  const mobile = info.project.name.startsWith("mobile");
+  const context = await browser.newContext({
+    baseURL: runtime.baseURL,
+    bypassCSP: process.env.E2E_EPHEMERAL === "true",
+    storageState: storageStatePath("coach"),
+    isMobile: mobile,
+    hasTouch: mobile,
+    viewport: { width: mobile ? 390 : 1440, height: 1000 },
   });
+  const coach = { context, page: await context.newPage() },
+    page = coach.page;
   const route = `/coach/students/${f.studentId}/lessons`;
   try {
     await page.goto(route);
     const rows = page.locator(".bulk-lesson-rows input[type=checkbox]");
     await expect(rows).toHaveCount(25);
-    await rows.nth(0).check();
+    if (mobile) await page.locator(".bulk-row-select").first().tap();
+    else await rows.nth(0).check();
     await rows.nth(1).check();
     await expect(page.getByText("2 selected", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(rows).toHaveCount(7);
     await rows.first().check();
     await expect(page.getByText("3 selected", { exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Previous", exact: true }).click();
+    await expect(rows).toHaveCount(25);
     await expect(rows.first()).toBeChecked();
     await page.getByRole("button", { name: "Clear selection" }).click();
     await page.getByLabel("Select all visible", { exact: true }).check();
@@ -429,7 +438,7 @@ test("@journey recurring scope and shared prepaid/class cancellation protections
           timezone: "America/New_York",
           location: "in_person",
           status: "confirmed",
-          payment_policy: "prepaid",
+          payment_policy: "pay_now",
           payment_status: "paid",
           total_minor: 3000,
           paid_minor: 3000,

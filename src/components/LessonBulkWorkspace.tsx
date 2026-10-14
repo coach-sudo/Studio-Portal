@@ -385,6 +385,15 @@ function BulkResultRow({
       {item.reasonCode && <p>{lessonBulkReason(item.reasonCode)}</p>}
       <details>
         <summary>Consequences and history</summary>
+        {!reviewed && (
+          <p>
+            {item.attempts} processing attempts
+            {item.nextRetryAt
+              ? ` · Automatic retry available after ${formatStudioDateTime(item.nextRetryAt, timezone)}`
+              : ""}
+            .
+          </p>
+        )}
         <p>
           {a.status} {a.seriesId ? "· Recurring occurrence" : ""}{" "}
           {a.class ? "· Shared class" : ""}{" "}
@@ -436,7 +445,9 @@ function BulkResultRow({
           ) && (
             <Link
               to={
-                a.class || !a.studentIds?.[0]
+                a.class ||
+                item.reasonCode === "class_scope_required" ||
+                !a.studentIds?.[0]
                   ? `/coach/bookings?view=calendar&lesson=${item.lessonId}`
                   : `/coach/students/${a.studentIds[0]}/lessons/${item.lessonId}`
               }
