@@ -1,4 +1,41 @@
 -- Depends on PR 1.1 diagnostics and PR 1.2 lifecycle recovery. No financial backfill.
+-- A booking-level credit status is not proof that each linked occurrence has a
+-- reservation. Cash totals on shared bookings also cannot be guessed per lesson.
+create or replace function public.sync_lesson_financials_from_participant() returns trigger
+language plpgsql security definer set search_path='' as $$
+declare b public.bookings;
+begin
+  select * into b from public.bookings where id=new.booking_id;
+  if b.id is null then return new; end if;
+  if b.payment_policy='credits' then
+    update public.lessons l set payment_status='paid_by_credit',paid_minor=0,updated_at=greatest(l.updated_at,b.updated_at)
+      where l.id=new.lesson_id and l.student_id=b.student_id and l.status in ('scheduled','completed')
+        and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
+          where e.lesson_id=l.id and p.student_id=b.student_id group by p.student_id having sum(e.quantity)=-1);
+  elsif not exists(select 1 from public.lesson_participants where booking_id=b.id and lesson_id<>new.lesson_id) then
+    update public.lessons l set payment_status=public.lesson_payment_status_from_booking(b.payment_status),price_minor=b.total_minor,
+      paid_minor=b.paid_minor,updated_at=greatest(l.updated_at,b.updated_at) where l.id=new.lesson_id and l.student_id=b.student_id;
+  end if;
+  return new;
+end $$;
+
+create or replace function public.sync_lesson_financials_from_booking() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+  if new.payment_policy='credits' then
+    update public.lessons l set payment_status='paid_by_credit',paid_minor=0,updated_at=greatest(l.updated_at,new.updated_at)
+      where l.student_id=new.student_id and l.status in ('scheduled','completed')
+        and l.id in(select lesson_id from public.lesson_participants where booking_id=new.id and status in ('reserved','confirmed','attended'))
+        and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
+          where e.lesson_id=l.id and p.student_id=new.student_id group by p.student_id having sum(e.quantity)=-1);
+  elsif (select count(distinct lesson_id) from public.lesson_participants where booking_id=new.id)<=1 then
+    update public.lessons l set payment_status=public.lesson_payment_status_from_booking(new.payment_status),price_minor=new.total_minor,
+      paid_minor=new.paid_minor,updated_at=greatest(l.updated_at,new.updated_at)
+      where l.student_id=new.student_id and l.id in(select lesson_id from public.lesson_participants where booking_id=new.id);
+  end if;
+  return new;
+end $$;
+
 -- Preserve evidence of prior attempts even when successful workers reset attempts.
 alter table public.calendar_projections add column claim_token uuid,add column claim_until timestamptz,
   add column claimed_version integer,add column first_attempted_at timestamptz;
@@ -97,6 +134,7 @@ create function lesson_ops.assess_change(
   p_lesson uuid,p_action text,p_starts_at timestamptz default null,p_class boolean default false
 ) returns jsonb language plpgsql stable security definer set search_path='' as $$
 declare l public.lessons; reason text; bookings jsonb; students uuid[]; credit_count bigint;
+  credit_diagnostics jsonb:='{}'; evaluated_student uuid; diagnostic jsonb;
 begin
   select * into l from public.lessons where id=p_lesson;
   if l.id is null then return jsonb_build_object('eligible',false,'reasonCode','lesson_unavailable'); end if;
@@ -127,6 +165,11 @@ begin
   elsif p_action='reschedule' and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
     where e.lesson_id=l.id and p.expires_at<=greatest(now(),p_starts_at) group by p.id having sum(e.quantity)<0) then reason:='reserved_credit_expires';
   end if;
+  for evaluated_student in select unnest(students) order by 1 loop
+    diagnostic:=credit_internal.evaluate_student_lesson_credit(evaluated_student,l.id,'manual');
+    credit_diagnostics:=jsonb_set(credit_diagnostics,array[evaluated_student::text],diagnostic);
+    if reason is null and diagnostic->>'reasonCode'='reconciliation_required' then reason:='reconciliation_required'; end if;
+  end loop;
   select coalesce(jsonb_agg(jsonb_build_object('id',b.id,'version',b.version,'shared',
     exists(select 1 from public.lesson_participants other where other.booking_id=b.id and other.lesson_id<>l.id),
     'unaffectedActive', (select count(distinct other.lesson_id) from public.lesson_participants other join public.lessons x on x.id=other.lesson_id
@@ -136,7 +179,7 @@ begin
   return jsonb_build_object('eligible',reason is null,'reasonCode',reason,'lessonId',l.id,'version',l.version,
     'topic',l.topic,'startsAt',l.starts_at,'endsAt',l.ends_at,'status',l.status,'seriesId',l.series_id,
     'class',l.student_id is null or l.offering_id is not null or coalesce(l.capacity,1)>1,
-    'studentIds',to_jsonb(students),'bookings',bookings,'reservedCredits',credit_count,
+    'studentIds',to_jsonb(students),'bookings',bookings,'reservedCredits',credit_count,'creditDiagnostics',credit_diagnostics,
     'calendarPending',exists(select 1 from public.calendar_projections where lesson_id=l.id and status<>'projected'),
     'notificationParticipantCount',(select count(*) from public.lesson_participants where lesson_id=l.id and status in ('reserved','confirmed')),
     'providerLinked',l.source_provider not in ('studio','public_booking'));

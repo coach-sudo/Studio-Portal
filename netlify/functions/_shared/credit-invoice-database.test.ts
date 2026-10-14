@@ -89,6 +89,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20260830221230_sync_lesson_booking_financials.sql",
+      "utf8",
+    ),
+  );
   preservedExplicitBalance = (await scalar(
     `select sum(case when kind='refund' then amount_minor else -amount_minor end) filter(where account_credit) balance,
     count(*) entries, count(*) filter(where external_reference like 'opening-account-credit:%') openings,
@@ -114,6 +120,96 @@ afterAll(async () => {
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("booking financial triggers never treat an uncovered recurring occurrence as paid credit or cash", async () => {
+    await reset();
+    await lot(1);
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      first,
+      student,
+    ]);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).not.toBe("paid");
+    expect(
+      (await scalar(
+        `select count(*) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(0);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+    await change(first);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).toBe("paid_by_credit");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(
+        `select sum(quantity) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(-1);
+  });
+  it("blocks a multi-occurrence invoice line without waiving unrelated charges or changing its associations", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const inv = await invoice(await service(), "service", [first]);
+    // Characterize an existing legacy/imported JSON line; current authoring already refuses it.
+    await db.query(
+      `update studio_invoices set items=jsonb_set(items,'{0,lessonIds}',$2::jsonb) where id=$1`,
+      [inv.id, JSON.stringify([first, next])],
+    );
+    const before = await scalar(
+      `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+      [inv.id],
+    );
+    await expect(change(first)).rejects.toThrow(
+      "shared_invoice_review_required",
+    );
+    expect(
+      await scalar(
+        `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+        [inv.id],
+      ),
+    ).toEqual(before);
+  });
+  it("increments the shared booking's reschedule counter without moving its contract and rejects stale repeats", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    const before = await scalar(
+      `select starts_at,ends_at from bookings where id=$1`,
+      [b],
+    );
+    const startsAt = new Date(Date.now() + 7 * 86400000).toISOString(),
+      endsAt = new Date(Date.now() + 7 * 86400000 + 3600000).toISOString();
+    const moved = (await scalar(
+      `select to_jsonb(reschedule_booking_occurrences($1,1,$2,$3)) result`,
+      [b, startsAt, endsAt],
+    ))!.result as any;
+    expect(moved.reschedule_count).toBe(1);
+    expect(
+      await scalar(`select starts_at,ends_at from bookings where id=$1`, [b]),
+    ).toEqual(before);
+    await expect(
+      db.query(`select reschedule_booking_occurrences($1,1,$2,$3)`, [
+        b,
+        startsAt,
+        endsAt,
+      ]),
+    ).rejects.toThrow("VERSION_CONFLICT");
+  });
   async function booking(ids: string[], sid = student, paid = false) {
     const b = await scalar(
       `insert into bookings(studio_id,student_id,service_id,starts_at,ends_at,payment_policy,payment_status,total_minor,paid_minor,policy_snapshot)

@@ -99,7 +99,7 @@ jobs:
           set -euo pipefail
           npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
           npx supabase db reset --local --no-seed
-          npx supabase db lint --local --schema public,credit_internal --fail-on error
+          npx supabase db lint --local --schema public,credit_internal,lesson_ops --fail-on error
           npx supabase test db
 
           eval "$(npx supabase status -o env)"
