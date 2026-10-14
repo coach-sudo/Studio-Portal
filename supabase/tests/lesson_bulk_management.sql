@@ -35,6 +35,9 @@ select is((select count(*)::integer from lesson_participants where lesson_id='c6
 select is((select count(*)::integer from calendar_projections where lesson_id='c6000000-0000-4000-8000-000000000001'),0,'Untouched projection explicitly removed');
 select is((select count(*)::integer from lesson_ops.lesson_deletion_snapshots where lesson_id='c6000000-0000-4000-8000-000000000001'),1,'Snapshot survived physical deletion');
 select is((select count(*)::integer from audit_events where entity_id='c6000000-0000-4000-8000-000000000001' and action='lesson.bulk_delete'),1,'Deletion audit survived');
+select throws_ok($$insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider)
+ values('c6000000-0000-4000-8000-000000000001','c2000000-0000-4000-8000-000000000001','c3000000-0000-4000-8000-000000000001','Reused identity',now()+interval '90 days',now()+interval '90 days 1 hour','scheduled','in_person','Studio','studio')$$,
+ 'P0001','REVIEW_REQUIRED: This lesson was permanently deleted','Deleted identity cannot be reused');
 select throws_ok($$delete from lesson_ops.lesson_deletion_snapshots where lesson_id='c6000000-0000-4000-8000-000000000001'$$,'P0001','FORBIDDEN: Deletion snapshots are immutable','Snapshot cannot be erased');
 select is((select (pg_temp.bulk_execute(r)->>'duplicate')::boolean from reviews where kind='delete'),true,'Same execution key replays');
 select is((select jsonb_array_length(pg_temp.bulk_work(r)) from reviews where kind='delete'),0,'Successful items never execute again');

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { Tables } from "../types/database.generated";
 
 export const lessonBulkFilter = z
   .object({
@@ -103,6 +104,20 @@ export interface LessonBulkAssessment {
   notificationEffect: boolean;
   reservedCredits: number;
   creditPolicy: "return" | "retain";
+  potentialNotificationStudentIds: string[];
+  financialConsequences: {
+    paidAmountPreserved: boolean;
+    initiatesCashRefund: boolean;
+    creditSettlement: "none" | "retain" | "return_under_existing_expiry_policy";
+    invoiceLines: {
+      invoiceId: string;
+      currency: string;
+      lineId: string;
+      paidMinor: number;
+      marksCancelled: boolean;
+      unpaidWaiverMinor: number;
+    }[];
+  };
 }
 export interface LessonBulkProgress {
   jobId: string;
@@ -131,7 +146,36 @@ export interface LessonBulkProgress {
     result: unknown;
     attempts: number;
     retryable: boolean;
+    nextRetryAt: string | null;
   }[];
+  offset: number;
+  limit: number;
+}
+export interface LessonBulkCandidatePage {
+  count: number;
+  items: Tables<"lessons">[];
+  offset: number;
+  limit: number;
+}
+export interface LessonRecordHistory {
+  lesson: Tables<"lessons"> | null;
+  state: {
+    lesson_id: string;
+    archived_at: string | null;
+    voided_at: string | null;
+    void_reason: string | null;
+    version: number;
+  } | null;
+  deletion: {
+    lesson_id: string;
+    actor_id: string;
+    studio_id: string;
+    job_id: string;
+    reason: string;
+    snapshot: { lesson: Tables<"lessons"> };
+  } | null;
+  audit: Tables<"audit_events">[];
+  auditCount: number;
   offset: number;
   limit: number;
 }

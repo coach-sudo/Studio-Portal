@@ -90,6 +90,15 @@ begin
  return found;
 end $$;
 
+create function lesson_ops.reject_deleted_lesson_identity() returns trigger language plpgsql security definer set search_path='' as $$
+begin
+ if tg_op='UPDATE' and new.id=old.id then return new; end if;
+ perform pg_advisory_xact_lock(hashtext('lesson_tombstone'),hashtext(new.id::text));
+ if exists(select 1 from lesson_ops.lesson_deletion_snapshots where lesson_id=new.id) then raise exception 'REVIEW_REQUIRED: This lesson was permanently deleted'; end if;
+ return new;
+end $$;
+create trigger reject_deleted_lesson_identity before insert or update of id on public.lessons for each row execute function lesson_ops.reject_deleted_lesson_identity();
+
 -- Prevent JSON/array/non-FK references to already deleted lessons. FK inserts
 -- already have parent-key locks; these tombstone checks close their missing path.
 create function lesson_ops.reject_deleted_reference() returns trigger language plpgsql security definer set search_path='' as $$
@@ -156,11 +165,22 @@ begin
   elsif state.lesson_id is not null then reason:='record_management_history'; end if;
  end if;
  if exists(select 1 from public.sync_conflicts where entity_type='lesson' and entity_id=l.id and status='open') then reason:='synchronization_review_required'; end if;
+ if p_operation in ('cancel','void') and exists(select 1 from public.studio_invoices inv cross join jsonb_array_elements(inv.items) line
+  where line->'lessonIds' @> to_jsonb(array[l.id::text]) and inv.studio_id<>l.studio_id) then reason:='invoice_ownership_review_required'; end if;
  fingerprint:=encode(extensions.digest(jsonb_build_object('lesson',to_jsonb(l),'state',to_jsonb(state),
    'dependencies',dependencies,'participants',participants,'projection',projection,'assessment',assessment)::text,'sha256'),'hex');
  return assessment||jsonb_build_object('eligible',reason is null,'reasonCode',reason,'dependencies',dependencies,'fingerprint',fingerprint,
    'creditPolicy',case when p_use_credit then 'retain' else 'return' end,'calendarEffect',p_operation='cancel',
-   'notificationEffect',p_operation='cancel','archivedAt',state.archived_at,'voidedAt',state.voided_at);
+   'notificationEffect',p_operation='cancel','archivedAt',state.archived_at,'voidedAt',state.voided_at,
+   'potentialNotificationStudentIds',case when p_operation='cancel' then assessment->'studentIds' else '[]'::jsonb end,
+   'financialConsequences',jsonb_build_object('paidAmountPreserved',true,'initiatesCashRefund',false,
+    'creditSettlement',case when p_operation='cancel' then case when p_use_credit then 'retain' else 'return_under_existing_expiry_policy' end else 'none' end,
+    'invoiceLines',case when p_operation='cancel' then (select coalesce(jsonb_agg(jsonb_build_object('invoiceId',inv.id,'currency',inv.currency,
+      'lineId',line->>'id','paidMinor',coalesce((line->>'paidMinor')::bigint,0),'marksCancelled',not coalesce((line->>'cancelled')::boolean,false),
+      'unpaidWaiverMinor',case when p_use_credit or coalesce((line->>'cancelled')::boolean,false) then 0 else greatest(0,
+        coalesce((line->>'quantity')::bigint,0)*coalesce((line->>'unitMinor')::bigint,0)-coalesce((line->>'paidMinor')::bigint,0)-coalesce((line->>'creditMinor')::bigint,0)) end)),'[]')
+     from public.studio_invoices inv cross join jsonb_array_elements(inv.items) line where inv.studio_id=l.studio_id and inv.status not in ('draft','void')
+      and line->'lessonIds' @> to_jsonb(array[l.id::text])) else '[]'::jsonb end));
 end $$;
 
 create function lesson_ops.require_bulk_coach(p_actor uuid,p_studio uuid) returns void language plpgsql stable security definer set search_path='' as $$
@@ -330,6 +350,7 @@ begin
   -- Non-FK writers need table fencing. Locks are bounded to one record and
   -- released at RPC commit; deadlock/timeout is a recoverable item failure.
   if j.operation='delete' then
+   perform pg_advisory_xact_lock(hashtext('lesson_tombstone'),hashtext(i.lesson_id::text));
    for t in select distinct c.oid,n.nspname,c.relname from pg_catalog.pg_class c join pg_catalog.pg_namespace n on n.oid=c.relnamespace
     join pg_catalog.pg_attribute at on at.attrelid=c.oid join pg_catalog.pg_type ty on ty.oid=at.atttypid
     where n.nspname='public' and c.relkind='r' and at.attnum>0 and not at.attisdropped and c.relname not in ('lessons','audit_events')
@@ -410,7 +431,7 @@ begin
   'expiresAt',j.expires_at,'state',case when j.state='reviewed' then 'reviewed' when pending>0 then 'running' when (counts->>'failed')::integer>0 then 'needs_attention' else 'completed' end,
   'counts',counts||jsonb_build_object('synchronizationPending',sync_pending),
   'items',(select coalesce(jsonb_agg(jsonb_build_object('id',i.id,'lessonId',i.lesson_id,'version',i.lesson_version,'status',i.status,
-     'assessment',i.assessment,'reasonCode',i.reason_code,'result',i.result,'attempts',i.attempts,'retryable',i.status='failed') order by i.ordinal),'[]')
+     'assessment',i.assessment,'reasonCode',i.reason_code,'result',i.result,'attempts',i.attempts,'retryable',i.status='failed','nextRetryAt',case when i.status='failed' and i.attempts<5 then i.next_attempt_at end) order by i.ordinal),'[]')
     from (select * from lesson_ops.lesson_bulk_items where job_id=j.id order by ordinal offset p_offset limit p_limit) i),
   'offset',p_offset,'limit',p_limit);
 end $$;

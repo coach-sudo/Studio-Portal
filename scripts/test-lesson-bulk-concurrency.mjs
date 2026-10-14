@@ -183,6 +183,17 @@ try {
     ),
     "conflicted",
   );
+  const reused = fixture(6);
+  await contend(
+    reused.process,
+    `insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values('${reused.id}','${studio}','${student}','${run} Reused identity',now()+interval '90 days',now()+interval '90 days 1 hour','scheduled','in_person','Studio','studio')`,
+    "Deletion versus delayed identity reuse",
+    /permanently deleted/,
+  );
+  assert.equal(
+    query(`select count(*) from lessons where id='${reused.id}';`),
+    "0",
+  );
 } finally {
   query(
     `begin;select cleanup_lesson_bulk_fixture('${run}','${studio}');delete from integration_imports where studio_id='${studio}';delete from notes where student_id='${student}';delete from calendar_projections where lesson_id in(select id from lessons where studio_id='${studio}');delete from lessons where studio_id='${studio}';delete from audit_events where studio_id='${studio}';delete from student_credit_accounts where student_id='${student}';delete from students where id='${student}';delete from memberships where studio_id='${studio}';delete from studios where id='${studio}';delete from auth.users where id='${coach}';commit;`,

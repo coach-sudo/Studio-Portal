@@ -2497,6 +2497,12 @@ describe("persisted bulk management on the credit/occurrence stack", () => {
       ))!.result as any;
       expect(history.deletion.snapshot.lesson.id).toBe(l);
       expect(history.deletion.reason).toBe("Erroneous fixture records");
+      await expect(
+        scalar(
+          `insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at) values($1,$2,$3,'Reused identity',now(),now()+interval '1 hour')`,
+          [l, studio, student],
+        ),
+      ).rejects.toThrow("permanently deleted");
       expect(
         history.audit.some((a: any) => a.action === "lesson.bulk_delete"),
       ).toBe(true);
@@ -2870,6 +2876,14 @@ describe("persisted bulk management on the credit/occurrence stack", () => {
           }),
         ).rejects.toThrow("BATCH_TOO_LARGE");
         expect((await progress(r)).counts.total).toBe(5000);
+        await execute(r);
+        await expect(work(r, 26)).rejects.toThrow("VALIDATION_FAILED");
+        expect(await work(r, 25)).toHaveLength(25);
+        expect((await progress(r)).counts).toMatchObject({
+          total: 5000,
+          succeeded: 25,
+          pending: 4975,
+        });
       }),
     60000,
   );
@@ -2961,5 +2975,78 @@ describe("persisted bulk management on the credit/occurrence stack", () => {
           otherLesson,
         ]))!.n,
       ).toBe(1);
+    }));
+  it("protects uppercase/object-key JSON and foreign keys outside public", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(
+        `insert into integration_imports(payload) values(jsonb_build_object(upper($1::text),jsonb_build_object('linked',true)))`,
+        [l],
+      );
+      expect((await preview([l])).blocked).toBe(1);
+      const fk = await native();
+      await db.exec(
+        `create schema bulk_hidden_test;create table bulk_hidden_test.refs(lesson_id uuid references public.lessons on delete cascade)`,
+      );
+      await db.query(`insert into bulk_hidden_test.refs values($1)`, [fk]);
+      expect((await preview([fk])).blocked).toBe(1);
+    }));
+  it("returns each held credit once across multiple cancellations and repeats", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      await lot(2);
+      await db.query(
+        `select set_student_credit_auto($1,true,(student_credit_summary($1)->>'version')::integer)`,
+        [student],
+      );
+      const r = await preview([first, next], "cancel");
+      expect(r.eligible).toBe(2);
+      await execute(r);
+      expect((await work(r)).map((i) => i.status)).toEqual([
+        "succeeded",
+        "succeeded",
+      ]);
+      expect(await work(r)).toEqual([]);
+      expect(
+        (await scalar(
+          `select count(*) n from package_credit_entries where lesson_id=any($1::uuid[]) and kind='release'`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+      expect(
+        (await scalar(
+          `select sum(quantity) n from package_credit_entries where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(0);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+    }));
+  it("turns a fifth interrupted lease into a recoverable failure", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await execute(r);
+      await db.query(`select claim_lesson_bulk_items(1,$1)`, [r.jobId]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_items set attempts=5,claim_until=now()-interval '1 minute' where job_id=$1`,
+        [r.jobId],
+      );
+      expect(await work(r)).toEqual([]);
+      expect((await progress(r)).counts).toMatchObject({
+        failed: 1,
+        pending: 0,
+      });
+      await scalar(`select retry_lesson_bulk($1,$2,$3,$4)`, [
+        coach,
+        r.jobId,
+        r.reviewToken,
+        crypto.randomUUID(),
+      ]);
+      expect((await work(r))[0].status).toBe("succeeded");
     }));
 });

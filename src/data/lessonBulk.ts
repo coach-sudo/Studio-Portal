@@ -3,7 +3,38 @@ import type {
   LessonBulkPreview,
   LessonBulkPreviewInput,
   LessonBulkProgress,
+  LessonBulkCandidatePage,
+  LessonRecordHistory,
 } from "../domain/lessonBulk";
+
+export async function readLessonBulkCandidates(
+  filter: NonNullable<LessonBulkPreviewInput["filter"]>,
+  offset = 0,
+  limit = 50,
+): Promise<LessonBulkCandidatePage> {
+  return (
+    await studioCommand("lessons", {
+      command: "bulk_candidates",
+      payload: { filter, offset, limit },
+      reason: "Read lesson selection candidates",
+      expectedVersion: 0,
+    })
+  ).resource;
+}
+export async function readLessonRecordHistory(
+  lessonId: string,
+  offset = 0,
+  limit = 50,
+): Promise<LessonRecordHistory> {
+  return (
+    await studioCommand("lessons", {
+      command: "record_history",
+      payload: { lessonId, offset, limit },
+      reason: "Read lesson administrative history",
+      expectedVersion: 0,
+    })
+  ).resource;
+}
 
 // Caller retains each key across transport retries; preview keys and execution
 // keys are separate. Selection changes require a new preview/key.
