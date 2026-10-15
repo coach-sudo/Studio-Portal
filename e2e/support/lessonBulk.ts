@@ -3,6 +3,8 @@ import { execFileSync } from "node:child_process";
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import type { E2ERuntime } from "./runtime";
+import { lessonBulkLabels } from "../../src/domain/lessonBulkPresentation";
+import type { LessonBulkOperation } from "../../src/domain/lessonBulk";
 import type {
   Database,
   TablesInsert,
@@ -49,17 +51,30 @@ export async function bulkFixture(
   const lessonIds = Array.from({ length: count }, () => crypto.randomUUID());
   const seriesIds: string[] = [],
     bookingIds: string[] = [];
+  // Disjoint studio-wide slots, including retries after an interrupted test.
+  const info = test.info();
+  const scenario = info.title.includes("recurring")
+    ? 2
+    : info.title.includes("partial")
+      ? 1
+      : info.title.includes("bounded")
+        ? 3
+        : 0;
+  const slotDay =
+    120 +
+    scenario * 10 +
+    (info.project.name.startsWith("mobile") ? 60 : 0) +
+    info.retry;
+  const baseTime = completed
+    ? Date.now() - (count * 2 + 48) * 3600000
+    : Date.now() + slotDay * 24 * 3600000;
   const rows: TablesInsert<"lessons">[] = lessonIds.map((id, i) => ({
     id,
     studio_id: studioId,
     student_id: studentId,
     topic: `${run} Lesson ${String(i + 1).padStart(4, "0")}${i === 0 ? " with a long title to verify responsive rows and accessible selection" : ""}`,
-    starts_at: new Date(
-      Date.now() + (120 * 24 + i * 2) * 3600000,
-    ).toISOString(),
-    ends_at: new Date(
-      Date.now() + (120 * 24 + i * 2 + 1) * 3600000,
-    ).toISOString(),
+    starts_at: new Date(baseTime + i * 2 * 3600000).toISOString(),
+    ends_at: new Date(baseTime + (i * 2 + 1) * 3600000).toISOString(),
     status: completed ? "completed" : i < 3 ? "scheduled" : "cancelled",
     source_provider: "studio",
     location_type: "in_person",
@@ -71,6 +86,19 @@ export async function bulkFixture(
     const inserted = await db
       .from("lessons")
       .insert(rows.slice(offset, offset + 250));
+    if (inserted.error) {
+      for (let start = 0; start < lessonIds.length; start += 100)
+        await db
+          .from("lessons")
+          .delete()
+          .eq("studio_id", studioId)
+          .in("id", lessonIds.slice(start, start + 100));
+      await db
+        .from("students")
+        .delete()
+        .eq("studio_id", studioId)
+        .in("id", [studentId, secondStudent]);
+    }
     expect(inserted.error).toBeNull();
   }
   const sql = (query: string) => {
@@ -189,13 +217,18 @@ export function batchId(page: Page) {
 }
 export async function chooseBulkOperation(
   page: Page,
-  operation: string,
+  operation: LessonBulkOperation,
   scope?: string,
 ) {
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page
     .getByRole("combobox", { name: "Bulk lesson action" })
     .selectOption(operation);
-  const form = page.getByRole("dialog");
+  const form = page.getByRole("dialog", {
+    name: lessonBulkLabels[operation],
+    exact: true,
+  });
+  await expect(form).toBeVisible();
   if (scope)
     await form.getByLabel("Scope", { exact: true }).selectOption(scope);
   await form

@@ -70,6 +70,9 @@ function AuthenticatedLessonBulkList({
   const query = (params.get("lessonQuery") || "").slice(0, 120);
   const status = params.get("lessonStatus") || "";
   const includeArchived = params.get("lessonArchived") === "true";
+  const [archiveInput, setArchiveInput] = useState(includeArchived);
+  useEffect(() => setArchiveInput(includeArchived), [includeArchived]);
+  const filterPending = archiveInput !== includeArchived;
   const filter = useMemo<NonNullable<LessonBulkPreviewInput["filter"]>>(
     () => ({
       ...(studentId ? { studentId } : {}),
@@ -210,10 +213,12 @@ function AuthenticatedLessonBulkList({
         <label className="bulk-check">
           <input
             type="checkbox"
-            checked={includeArchived}
-            onChange={(e) =>
-              changeParams({ lessonArchived: String(e.target.checked) }, true)
-            }
+            checked={archiveInput}
+            disabled={filterPending}
+            onChange={(e) => {
+              setArchiveInput(e.target.checked);
+              changeParams({ lessonArchived: String(e.target.checked) }, true);
+            }}
           />
           Include archived
         </label>
@@ -241,6 +246,7 @@ function AuthenticatedLessonBulkList({
             Action
             <select
               aria-label="Bulk lesson action"
+              disabled={filterPending}
               defaultValue=""
               onChange={(e) => {
                 if (e.target.value)
@@ -266,7 +272,7 @@ function AuthenticatedLessonBulkList({
             ref={checkbox}
             type="checkbox"
             checked={allVisible}
-            disabled={!items.length || q.isFetching}
+            disabled={!items.length || q.isFetching || filterPending}
             onChange={(e) =>
               selection.toggle(
                 items.map((item) => item.id),
@@ -278,7 +284,7 @@ function AuthenticatedLessonBulkList({
         </label>
         {total > 0 && (
           <button
-            disabled={total > 5000 || q.isFetching}
+            disabled={total > 5000 || q.isFetching || filterPending}
             onClick={() => selection.allMatching(total)}
           >
             Select all {total} matching lessons
@@ -326,6 +332,7 @@ function AuthenticatedLessonBulkList({
                 <label className="bulk-row-select">
                   <input
                     type="checkbox"
+                    disabled={filterPending}
                     aria-label={`Select ${item.topic}`}
                     checked={selection.isSelected(item.id)}
                     onChange={(e) =>

@@ -13,6 +13,8 @@ import {
   expectNoHorizontalOverflow,
 } from "./support/fixtures";
 
+test.use({ trace: "retain-on-failure" });
+
 test("@journey @mobile @a11y select across pages, delete eligible mistakes, preserve protected history, archive and restore", async ({
   browser,
   runtime,
@@ -31,6 +33,7 @@ test("@journey @mobile @a11y select across pages, delete eligible mistakes, pres
   });
   const coach = { context, page: await context.newPage() },
     page = coach.page;
+  page.setDefaultTimeout(15000);
   const route = `/coach/students/${f.studentId}/lessons`;
   try {
     await page.goto(route);
@@ -253,8 +256,11 @@ test("@journey @mobile @a11y select across pages, delete eligible mistakes, pres
       }
     }
   } finally {
-    await coach.context.close();
-    await f.cleanup();
+    try {
+      await f.cleanup();
+    } finally {
+      await coach.context.close();
+    }
   }
 });
 
@@ -267,6 +273,7 @@ test("@journey real partial success, dependency conflict, exhausted lease and sa
   const f = await bulkFixture(runtime, 3, true),
     coach = await openAs(browser, "coach"),
     page = coach.page;
+  page.setDefaultTimeout(15000);
   try {
     const keys: string[] = [];
     let lost = false,
@@ -379,8 +386,11 @@ test("@journey real partial success, dependency conflict, exhausted lease and sa
       ),
     ).toBe("2");
   } finally {
-    await coach.context.close();
-    await f.cleanup();
+    try {
+      await f.cleanup();
+    } finally {
+      await coach.context.close();
+    }
   }
 });
 
@@ -393,6 +403,7 @@ test("@journey recurring scope and shared prepaid/class cancellation protections
   const f = await bulkFixture(runtime, 4),
     coach = await openAs(browser, "coach"),
     page = coach.page;
+  page.setDefaultTimeout(15000);
   try {
     const series = crypto.randomUUID(),
       booking = crypto.randomUUID();
@@ -604,8 +615,11 @@ test("@journey recurring scope and shared prepaid/class cancellation protections
       ).data,
     ).toHaveLength(2);
   } finally {
-    await coach.context.close();
-    await f.cleanup();
+    try {
+      await f.cleanup();
+    } finally {
+      await coach.context.close();
+    }
   }
 });
 
@@ -618,6 +632,7 @@ test("@journey bounded all-matching review near the 5,000-record limit", async (
   const f = await bulkFixture(runtime, 5000, true),
     coach = await openAs(browser, "coach"),
     page = coach.page;
+  page.setDefaultTimeout(15000);
   const payloadSizes: number[] = [];
   try {
     page.on("response", async (response) => {
@@ -689,7 +704,10 @@ test("@journey bounded all-matching review near the 5,000-record limit", async (
     ).toBe("4999");
     // No acceptance or mutation is needed to validate a large frozen review.
   } finally {
-    await coach.context.close();
-    await f.cleanup();
+    try {
+      await f.cleanup();
+    } finally {
+      await coach.context.close();
+    }
   }
 });
