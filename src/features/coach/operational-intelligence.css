@@ -154,7 +154,7 @@
   font-size: 12px;
 }
 .student-record-page .record-tabs > a.active {
-  color: #fff;
+  color: var(--ink);
 }
 .student-record-page .primary-button {
   color: #17211d;

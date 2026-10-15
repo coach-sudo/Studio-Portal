@@ -129,6 +129,10 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     await expect(
       page.getByText("Portal permissions", { exact: true }),
     ).toHaveCount(0);
+    await expect(page.locator(".record-tabs > a.active")).toHaveCSS(
+      "color",
+      "rgb(23, 33, 29)",
+    );
     await page.screenshot({
       path: info.outputPath(`after-household-${mobile ? 390 : 1440}.png`),
       fullPage: true,
@@ -202,6 +206,10 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
         await new Promise(requestAnimationFrame);
       });
       await expectNoHorizontalOverflow(page);
+      await expect(page.locator(".record-tabs > a.active")).toHaveCSS(
+        "color",
+        "rgb(23, 33, 29)",
+      );
       await page.screenshot({
         path: info.outputPath(`after-payments-${width}.png`),
         fullPage: true,
