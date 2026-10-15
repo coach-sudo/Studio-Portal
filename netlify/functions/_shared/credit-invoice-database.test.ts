@@ -133,6 +133,7 @@ beforeAll(async () => {
     alter table assignments add column student_id uuid,add column title text default '',add column status text default 'assigned',add column help_requested boolean default false,add column due_at timestamptz;
     create table materials(id uuid primary key default gen_random_uuid(),title text,status text default 'active',text_content text default '',source text default '',version integer default 1,in_library boolean default false,catalog_visibility text default 'assigned',created_at timestamptz default now());
     alter table material_links add column material_id uuid,add column student_id uuid,add column role text default 'library',add column status text default 'active',add column pinned boolean default false,add column updated_at timestamptz default now(),add column version integer default 1;
+    create table package_subscriptions(id uuid primary key,student_id uuid,status text);
     create table actor_profiles(id uuid primary key,student_id uuid);
     create table profile_submissions(id uuid primary key,actor_profile_id uuid,approval_status text);`);
   await db.exec(

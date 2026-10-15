@@ -42,7 +42,7 @@ select set_config('request.jwt.claim.sub','d1000000-0000-4000-8000-000000000001'
 select is(public.student_workspace_summary('d3000000-0000-4000-8000-000000000001')->'nextLesson'->>'id','d6000000-0000-4000-8000-000000000001','Overview links the exact chronological lesson');
 select is(public.student_workspace_summary('d3000000-0000-4000-8000-000000000001')->'latestNote'->>'takeaway','PRIVATE TAKEAWAY','Coach sees the latest relevant private takeaway');
 select is(public.student_financial_overview('d3000000-0000-4000-8000-000000000001')->'balances'->0->>'dueMinor','2750','Summary includes partial obligations without netting lesson credits');
-select is(public.student_financial_overview('d3000000-0000-4000-8000-000000000002')->'balances','[]'::jsonb,'Empty records have no fabricated currency balance');
+select is(public.student_financial_overview('d3000000-0000-4000-8000-000000000002')->'balances'->0->>'dueMinor','0','Empty records have an authoritative zero obligation');
 select is(public.student_workspace_summary('d3000000-0000-4000-8000-000000000002')->'latestNote','null'::jsonb,'Empty student has no borrowed note');
 select set_config('request.jwt.claim.sub','d1000000-0000-4000-8000-000000000004',true);
 select is((select count(*) from public.lessons where studio_id='d2000000-0000-4000-8000-000000000001'),0::bigint,'Finance-only guardian cannot read lesson logistics');

@@ -16,7 +16,6 @@ import type { Student } from "../../domain/model";
 import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
-import { StudentFinancialSetup } from "./StudentFinancialSetup";
 import { StudentCommunication } from "./StudentCommunication";
 
 import {
@@ -338,7 +337,10 @@ export function LinkedContacts({
             setEditing(undefined);
           }}
         >
-          <form className="workflow-form" onSubmit={save}>
+          <form
+            className="workflow-form household-contact-form"
+            onSubmit={save}
+          >
             <label>
               Name
               <input
@@ -825,7 +827,12 @@ export function Account({
   };
   return (
     <div className="two-section-grid">
-      <StudentFinancialSetup data={data} student={student} />
+      <Link
+        className="button-link"
+        to={`/coach/students/${student.id}/payments`}
+      >
+        Payments, packages and financial configuration
+      </Link>
       <StudentCommunication
         data={data}
         studentId={student.id}

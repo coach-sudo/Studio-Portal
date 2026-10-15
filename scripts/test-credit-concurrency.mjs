@@ -124,7 +124,7 @@ try {
   const version = query(
     `select version from public.student_credit_accounts where student_id='${student}'`,
   );
-  const manual = `select public.command_student_credit_settings('${student}','apply_upcoming','{}',${version},'manual-race-intent','${coach}')->>'duplicate';`;
+  const manual = `select coalesce(public.command_student_credit_settings('${student}','apply_upcoming','{}',${version},'manual-race-intent','${coach}')->>'duplicate','false');`;
   const responses = await Promise.all([session(manual), session(manual)]);
   assert.deepEqual(responses.map((value) => value.trim()).sort(), [
     "false",

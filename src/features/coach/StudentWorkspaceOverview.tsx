@@ -170,12 +170,22 @@ function LiveOverview({
             )}
             {(summary.finance.reviewRequired ||
               summary.finance.pendingPayments > 0 ||
+              summary.finance.renewalExceptions > 0 ||
+              summary.finance.expiringPackages > 0 ||
               summary.finance.unpaidInvoices > 0 ||
               summary.finance.balances.some((item) => item.dueMinor > 0)) && (
               <Link to={`${base}/payments`}>
                 {summary.finance.reviewRequired
                   ? "Financial review required"
-                  : `${summary.finance.unpaidInvoices} unpaid invoice(s)`}
+                  : summary.finance.unpaidInvoices
+                    ? `${summary.finance.unpaidInvoices} unpaid invoice(s)`
+                    : summary.finance.pendingPayments
+                      ? "Payment processing needs review"
+                      : summary.finance.balances.some(
+                            (item) => item.dueMinor > 0,
+                          )
+                        ? "Recorded payment is due"
+                        : "Package expiry or renewal needs review"}
               </Link>
             )}
             {!student.portalEnabled && (
@@ -186,6 +196,8 @@ function LiveOverview({
               !summary.finance.reviewRequired &&
               !summary.finance.unpaidInvoices &&
               !summary.finance.pendingPayments &&
+              !summary.finance.renewalExceptions &&
+              !summary.finance.expiringPackages &&
               !summary.finance.balances.some((item) => item.dueMinor > 0) &&
               student.portalEnabled && <p>No current exceptions.</p>}
           </div>

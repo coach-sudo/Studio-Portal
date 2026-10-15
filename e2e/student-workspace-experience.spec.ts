@@ -9,6 +9,7 @@ import { bulkFixture } from "./support/lessonBulk";
 import { storageStatePath } from "./support/runtime";
 import { openAs, accessToken } from "./support/auth";
 import { expectNoSeriousAxeViolations } from "./support/axe";
+import { createClient } from "@supabase/supabase-js";
 
 test.use({ trace: "retain-on-failure" });
 test("@journey @mobile @a11y student context, household, credit truth and failure recovery", async ({
@@ -147,6 +148,27 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     await expect(
       page.getByText(/0 newly covered · 2 already covered/),
     ).toBeVisible();
+    await page.getByRole("button", { name: "Turn off", exact: true }).click();
+    await page.getByRole("button", { name: "Confirm setting" }).click();
+    await expect(
+      page.getByText("Use credits automatically: Off", { exact: true }),
+    ).toBeVisible();
+    f.sql(
+      `insert into package_credit_entries(package_id,kind,quantity,reason) values('${packages[0]}','adjustment',1,'Manual application fixture');update lessons set status='scheduled',payment_status='due',price_minor=4000,paid_minor=0 where id='${f.lessonIds[3]}';`,
+    );
+    await page.getByRole("button", { name: "Refresh coverage" }).click();
+    await expect(
+      page.getByText("Automatic use is off", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("button", { name: "Apply eligible credits now" })
+      .click();
+    await expect(
+      page.getByText(/1 newly covered · 2 already covered/),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Use credits automatically: Off", { exact: true }),
+    ).toBeVisible();
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
       await expectNoHorizontalOverflow(page);
@@ -160,7 +182,7 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
       f.sql(
         `select count(*) from package_credit_entries where package_id='${packages[0]}' and quantity<0`,
       ),
-    ).toBe("2");
+    ).toBe("3");
     for (const role of ["student", "guardian", "unrelated"] as const) {
       const portal = await openAs(browser, role);
       try {
@@ -190,6 +212,115 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
       await f.cleanup();
     } finally {
       await context.close();
+    }
+  }
+});
+
+test("@journey @mobile @a11y finance-only guardian sees account totals without lesson logistics", async ({
+  browser,
+  runtime,
+}) => {
+  requireFixtures(runtime);
+  const f = await bulkFixture(runtime, 2, false, 130);
+  const userId = crypto.randomUUID(),
+    contact = crypto.randomUUID();
+  const email = `${runtime.runId}-${userId}@example.test`,
+    password = `Isolated-${crypto.randomUUID()}-aA1!`;
+  let context: Awaited<ReturnType<typeof browser.newContext>> | undefined;
+  try {
+    const created = await f.db.auth.admin.createUser({
+      id: userId,
+      email,
+      password,
+      email_confirm: true,
+    });
+    expect(created.error).toBeNull();
+    f.sql(`update students set portal_enabled=true where id='${f.studentId}';update lessons set payment_status='due',price_minor=4000 where student_id='${f.studentId}';
+      insert into memberships(studio_id,user_id,role,display_name) values('${f.studioId}','${userId}','guardian','Finance-only guardian');
+      insert into linked_contacts(id,studio_id,student_id,user_id,full_name,email,relationship_type,portal_enabled,can_view_finance,can_view_schedule,can_view_work) values('${contact}','${f.studioId}','${f.studentId}','${userId}','Finance-only guardian','${email}','guardian',true,true,false,false);`);
+    const client = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_ANON_KEY!,
+      { auth: { persistSession: false, autoRefreshToken: false } },
+    );
+    const login = await client.auth.signInWithPassword({ email, password });
+    expect(login.error).toBeNull();
+    const baseline = JSON.parse(
+      await readFile(storageStatePath("guardian"), "utf8"),
+    );
+    const storageKey = baseline.origins
+      .flatMap(
+        (origin: { localStorage: { name: string }[] }) => origin.localStorage,
+      )
+      .find((entry: { name: string }) =>
+        entry.name.endsWith("-auth-token"),
+      )!.name;
+    context = await browser.newContext({
+      baseURL: runtime.baseURL,
+      bypassCSP: true,
+      viewport: { width: 390, height: 1000 },
+      storageState: {
+        cookies: [],
+        origins: [
+          {
+            origin: new URL(runtime.baseURL).origin,
+            localStorage: [
+              { name: storageKey, value: JSON.stringify(login.data.session) },
+            ],
+          },
+        ],
+      },
+    });
+    const page = await context.newPage();
+    page.setDefaultTimeout(15000);
+    await page.goto("/portal/payments");
+    await expect(
+      page.getByRole("heading", { name: "Account summary" }),
+    ).toBeVisible();
+    await expect(page.getByText("$80.00", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText("Your coach manages this setting."),
+    ).toBeVisible();
+    await expect(page.getByText(/Upcoming coverage/)).toHaveCount(0);
+    await expect(page.getByText(f.rows[0].topic!, { exact: true })).toHaveCount(
+      0,
+    );
+    await expect(
+      page.getByRole("button", { name: "Apply eligible credits now" }),
+    ).toHaveCount(0);
+    await expectNoHorizontalOverflow(page);
+    await expectNoSeriousAxeViolations(page, "main");
+    const headers = {
+      apikey: process.env.SUPABASE_ANON_KEY!,
+      Authorization: `Bearer ${login.data.session!.access_token}`,
+    };
+    const coverage = await page.request.post(
+      `${process.env.SUPABASE_URL}/rest/v1/rpc/student_credit_coverage`,
+      { headers, data: { p_student: f.studentId } },
+    );
+    expect(coverage.ok()).toBe(true);
+    expect(await coverage.json()).toMatchObject({
+      lessonsVisible: false,
+      counts: null,
+      items: [],
+    });
+    f.sql(
+      `update linked_contacts set portal_enabled=false where id='${contact}'`,
+    );
+    const denied = await page.request.post(
+      `${process.env.SUPABASE_URL}/rest/v1/rpc/student_financial_overview`,
+      { headers, data: { p_student: f.studentId } },
+    );
+    expect(denied.ok()).toBe(false);
+  } finally {
+    try {
+      f.sql(
+        `delete from linked_contacts where id='${contact}';delete from memberships where user_id='${userId}' and studio_id='${f.studioId}';`,
+      );
+      await f.db.auth.admin.deleteUser(userId);
+      await f.cleanup();
+    } finally {
+      await context?.close();
     }
   }
 });

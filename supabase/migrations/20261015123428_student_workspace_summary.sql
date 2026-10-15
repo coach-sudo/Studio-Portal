@@ -44,7 +44,7 @@ begin
   ), dollars as (
     select currency,sum(case when kind='refund' then amount_minor else -amount_minor end) amount
     from public.payment_entries where student_id=p_student and account_credit group by currency
-  ), currencies as (select currency from obligations union select currency from dollars), balances as (
+  ), currencies as (select currency from obligations union select currency from dollars union select coalesce(st.settings->>'currency','USD') from public.students s join public.studios st on st.id=s.studio_id where s.id=p_student), balances as (
     select c.currency,coalesce((select sum(amount) from obligations o where o.currency=c.currency),0) due,
       coalesce((select amount from dollars d where d.currency=c.currency),0) credit from currencies c
   ) select jsonb_build_object(
@@ -59,6 +59,7 @@ begin
     'pendingPayments',(select count(*) from obligations where pending),
     'unpaidInvoices',(select count(*) from issued where status in ('open','partially_paid')),
     'activePackages',(select count(*) from public.packages p where p.student_id=p_student and (p.expires_at is null or p.expires_at>now()) and public.package_credit_balance(p.id)>0),
+    'renewalExceptions',(select count(*) from public.package_subscriptions where student_id=p_student and status in ('past_due','pending')),
     'expiringPackages',(select count(*) from public.packages p where p.student_id=p_student and p.expires_at>now() and p.expires_at<now()+interval '30 days' and public.package_credit_balance(p.id)>0)
   ) into result;
   return result;

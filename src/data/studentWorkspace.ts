@@ -18,6 +18,7 @@ export const financialOverviewSchema = z.object({
   unpaidInvoices: z.number().int().nonnegative(),
   activePackages: z.number().int().nonnegative(),
   expiringPackages: z.number().int().nonnegative(),
+  renewalExceptions: z.number().int().nonnegative(),
 });
 export const workspaceSummarySchema = z.object({
   studentId: z.string().uuid(),

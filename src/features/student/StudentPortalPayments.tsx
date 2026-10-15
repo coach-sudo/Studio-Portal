@@ -5,6 +5,8 @@ import { Link, useSearchParams } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import {
   Dialog,
+  ListControls,
+  usePagedList,
   EmptyState,
   Section,
   Status,
@@ -38,6 +40,14 @@ export function Payments({
   isDemo: boolean;
 }) {
   const student = data.students[0];
+  const payments = data.payments.filter(
+    (item) => item.studentId === student?.id,
+  );
+  const packages = data.packages.filter(
+    (item) => item.studentId === student?.id,
+  );
+  const paymentPage = usePagedList(payments);
+  const packagePage = usePagedList(packages);
   const preferredDuration = student
     ? recentLessonDuration(data.lessons, student.id)
     : undefined;
@@ -185,7 +195,10 @@ export function Payments({
             isDemo={isDemo}
             readOnly
           />
-          <details className="disclosure-section">
+          <details
+            className="disclosure-section"
+            open={params.has("invoice") || undefined}
+          >
             <summary>Invoices</summary>
             <InvoiceWorkspace
               data={data}
@@ -212,10 +225,17 @@ export function Payments({
         </Section>
       )}
       <details className="disclosure-section">
-        <summary>Receipts & adjustments ({data.payments.length})</summary>
+        <summary>Receipts & adjustments ({payments.length})</summary>
         <Section title="Receipts & adjustments">
+          <ListControls
+            {...paymentPage}
+            total={payments.length}
+            onPage={paymentPage.setPage}
+            onPageSize={paymentPage.setPageSize}
+            label="payments"
+          />
           <div className="table-list">
-            {data.payments.map((entry) => (
+            {paymentPage.visible.map((entry) => (
               <article key={entry.id} className="payment-history-row">
                 <FileText />
                 <div>
@@ -231,7 +251,7 @@ export function Payments({
                 </strong>
               </article>
             ))}
-            {!data.payments.length && (
+            {!payments.length && (
               <EmptyState
                 title="No payment history"
                 detail="Receipts, refunds, and adjustments will appear here."
@@ -240,10 +260,17 @@ export function Payments({
           </div>
         </Section>
       </details>
-      {data.packages.length > 0 && (
+      {packages.length > 0 && (
         <Section title="Your packages">
+          <ListControls
+            {...packagePage}
+            total={packages.length}
+            onPage={packagePage.setPage}
+            onPageSize={packagePage.setPageSize}
+            label="packages"
+          />
           <div className="table-list">
-            {data.packages.map((pkg) => {
+            {packagePage.visible.map((pkg) => {
               const expired = Boolean(
                 pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
               );

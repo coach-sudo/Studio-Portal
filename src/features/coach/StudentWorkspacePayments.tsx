@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { CircleDollarSign } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import {
   Dialog,
   ListControls,
@@ -44,6 +45,7 @@ export function Payments({
   student: Student;
   isDemo: boolean;
 }) {
+  const [params] = useSearchParams();
   const pkgs = data.packages.filter((i) => i.studentId === student.id),
     payments = data.payments.filter((i) => i.studentId === student.id),
     preferredDuration = recentLessonDuration(data.lessons, student.id),
@@ -66,6 +68,11 @@ export function Payments({
     [balanceAmount, setBalanceAmount] = useState("0.00"),
     [balanceReason, setBalanceReason] = useState("Studio account credit"),
     [notice, setNotice] = useState("");
+  const assignmentIntent = useRef<{ signature: string; key: string } | null>(
+    null,
+  );
+  const assigningNow = useRef(false);
+  const [assignBusy, setAssignBusy] = useState(false);
   const paymentPage = usePagedList(payments);
   const packagePage = usePagedList(pkgs);
   const autoApplyOnAssign = pkgs.length > 0 && pkgs.every((p) => p.autoApply);
@@ -82,7 +89,7 @@ export function Payments({
             kind: amountMinor > 0 ? "refund" : "adjustment",
             amountMinor: Math.abs(amountMinor),
             accountCredit: true,
-            currency: "USD",
+            currency: data.settings.currency,
             reason: balanceReason.trim(),
             createdAt: now(),
           });
@@ -94,7 +101,7 @@ export function Payments({
           expectedVersion: 0,
           payload: {
             amountMinor,
-            currency: "USD",
+            currency: data.settings.currency,
             reason: balanceReason.trim(),
           },
           reason: "Coach adjusted student dollar balance",
@@ -123,7 +130,17 @@ export function Payments({
     const definition = availableDefinitions.find(
       (item) => item.id === definitionId,
     );
-    if (!definition) return;
+    if (!definition || assigningNow.current) return;
+    const signature = JSON.stringify([
+      student.id,
+      definitionId,
+      definition.priceMinor,
+      definition.currency,
+    ]);
+    if (assignmentIntent.current?.signature !== signature)
+      assignmentIntent.current = { signature, key: crypto.randomUUID() };
+    assigningNow.current = true;
+    setAssignBusy(true);
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -156,6 +173,7 @@ export function Payments({
       else {
         const result = await studioCommand("packages", {
           command: "assign",
+          idempotencyKey: assignmentIntent.current.key,
           expectedVersion: 0,
           payload: {
             definitionId,
@@ -175,12 +193,14 @@ export function Payments({
         const coverage = creditApplicationResultSchema.safeParse(
           result.resource.coverage,
         );
+        assignmentIntent.current = null;
         setAssigning(false);
         setNotice(
           `Package assigned. ${coverage.success ? creditApplicationMessage(coverage.data) : "Refresh coverage to verify application."}`,
         );
         return;
       }
+      assignmentIntent.current = null;
       setAssigning(false);
       setNotice(
         `Package assigned with its full credit balance${autoApplyOnAssign ? "; eligible upcoming lessons will use its credits automatically" : ""}.`,
@@ -191,6 +211,9 @@ export function Payments({
           ? reason.message
           : "Package could not be assigned.",
       );
+    } finally {
+      assigningNow.current = false;
+      setAssignBusy(false);
     }
   };
   return (
@@ -202,7 +225,10 @@ export function Payments({
       )}
       {!isDemo && <StudentFinancialSummary studentId={student.id} />}
       <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
-      <details className="disclosure-section">
+      <details
+        className="disclosure-section"
+        open={params.has("invoice") || undefined}
+      >
         <summary>Invoices</summary>
         <InvoiceWorkspace data={data} isDemo={isDemo} studentId={student.id} />
       </details>
@@ -278,7 +304,14 @@ export function Payments({
                 <small>Dollar account credit</small>
                 <strong>
                   {formatMoney(
-                    Math.max(0, studentBalanceMinor(student.id, data.payments)),
+                    Math.max(
+                      0,
+                      studentBalanceMinor(
+                        student.id,
+                        data.payments,
+                        data.settings.currency,
+                      ),
+                    ),
                   )}
                 </strong>
               </div>
@@ -350,7 +383,9 @@ export function Payments({
               <button type="button" onClick={() => setAssigning(false)}>
                 Cancel
               </button>
-              <button className="primary">Assign credits</button>
+              <button className="primary" disabled={assignBusy}>
+                {assignBusy ? "Assigning…" : "Assign credits"}
+              </button>
             </div>
           </form>
         </Dialog>
@@ -363,7 +398,7 @@ export function Payments({
         >
           <form className="workflow-form" onSubmit={adjustBalance}>
             <label>
-              Amount (USD)
+              Amount ({data.settings.currency})
               <input
                 required
                 type="number"

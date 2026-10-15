@@ -75,6 +75,12 @@ export function StudentFinancialSummary({ studentId }: { studentId: string }) {
               before recording another payment.
             </p>
           )}
+          {summary.renewalExceptions > 0 && (
+            <p>
+              {summary.renewalExceptions} package renewal(s) need payment or
+              activation review.
+            </p>
+          )}
           {summary.expiringPackages > 0 && (
             <p>{summary.expiringPackages} package(s) expire within 30 days.</p>
           )}
