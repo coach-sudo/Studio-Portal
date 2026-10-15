@@ -200,6 +200,18 @@ export async function bulkFixture(
         .in("entity_id", [studentId, secondStudent])
         .eq("studio_id", studioId);
       expect(a.error).toBeNull();
+      for (const owner of [studentId, secondStudent]) {
+        const recovery = await db.rpc("cleanup_credit_coverage_fixture", {
+          p_student: owner,
+          p_run: run,
+        });
+        expect(recovery.error).toBeNull();
+      }
+      expect(
+        sql(
+          `select count(*) from credit_internal.credit_coverage_jobs where student_id in ('${studentId}','${secondStudent}')`,
+        ),
+      ).toBe("0");
       const s = await db
         .from("students")
         .delete()
