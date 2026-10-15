@@ -72,8 +72,8 @@ export function StudentFinancialSummary({ studentId }: { studentId: string }) {
           </div>
           {summary.pendingPayments > 0 && (
             <p>
-              {summary.pendingPayments} payment(s) pending. Verify checkout
-              before recording another payment.
+              Payment processing is pending. Verify checkout before recording
+              another payment.
             </p>
           )}
           {summary.renewalExceptions > 0 && (

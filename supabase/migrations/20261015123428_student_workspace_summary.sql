@@ -13,7 +13,7 @@ begin
   ), own_lessons as (
     select l.* from public.lessons l where l.studio_id=target_studio and (l.student_id=p_student or exists(
       select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=p_student and lp.status in ('reserved','confirmed','attended','no_show')))
-      and l.status not in ('draft','cancelled','late_cancelled')
+      and l.status not in ('draft','cancelled')
   ), own_bookings as (
     select b.* from public.bookings b where b.student_id=p_student and b.studio_id=target_studio and b.status not in ('cancelled','expired','held')
   ), linked as (

@@ -148,6 +148,22 @@ afterAll(async () => {
 });
 
 describe("student workspace summaries and explicit credit intent", () => {
+  it("retains a recorded standalone late-cancellation obligation without subtracting dollar credit", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const lid = await lesson();
+    await db.query(
+      `update lessons set status='late_cancelled',payment_status='due',price_minor=3000 where id=$1`,
+      [lid],
+    );
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 3000, dollarCreditMinor: 1200 }],
+    });
+  });
   it("does not aggregate another studio's amounts through a corrupted student association", async () => {
     await reset();
     await db.query(`select set_config('app.uid',$1,false)`, [coach]);
