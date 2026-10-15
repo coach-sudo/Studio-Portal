@@ -11,6 +11,7 @@ on:
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
         codex/bulk-lesson-management,
+        codex/bulk-lesson-interface,
         codex/pr2-query-layer,
         codex/pr5-server-contracts,
         codex/pr6-product-polish,

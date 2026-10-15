@@ -332,7 +332,9 @@ export function TodayView({
                 </Status>
                 <button
                   onClick={() =>
-                    navigate(`/coach/students/${lesson.studentId}/notes`)
+                    navigate(
+                      `/coach/students/${lesson.studentId}/lessons/${lesson.id}?writeNote=${lesson.id}`,
+                    )
                   }
                 >
                   Write note

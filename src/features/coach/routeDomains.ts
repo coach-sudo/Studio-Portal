@@ -68,6 +68,8 @@ export function studentWorkspaceDomains(
   pathname: string,
   boundedList = false,
 ): readonly StudioDomain[] {
+  if (boundedList && /^\/coach\/students\/[^/]+\/?$/.test(pathname))
+    return ["identity", "students"];
   if (boundedList && /^\/coach\/students\/[^/]+\/lessons\/?$/.test(pathname))
     return ["identity", "students"];
   const shared: readonly StudioDomain[] = [
@@ -81,7 +83,7 @@ export function studentWorkspaceDomains(
   if (/^\/coach\/students\/[^/]+\/actor-page\/?$/.test(pathname))
     return [...shared, "actorProfiles"];
   if (
-    /^\/coach\/students\/[^/]+\/(?:account|payments|contacts\/[^/]+)\/?$/.test(
+    /^\/coach\/students\/[^/]+\/(?:account|household|payments|contacts\/[^/]+)\/?$/.test(
       pathname,
     )
   )

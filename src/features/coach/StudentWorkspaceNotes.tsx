@@ -1,6 +1,7 @@
 import DOMPurify from "dompurify";
 import { CalendarDays, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
@@ -30,6 +31,7 @@ export function Notes({
   onEdit: (note: Note) => void;
   onDelete: (note: Note) => void;
 }) {
+  const [params, setParams] = useSearchParams();
   const [query, setQuery] = useState(""),
     [status, setStatus] = useState("all"),
     [selectedLessonId, setSelectedLessonId] = useState("");
@@ -69,7 +71,16 @@ export function Notes({
     return bDate.localeCompare(aDate);
   });
   const notePage = usePagedList(groups);
-  const selected = groups.find((group) => group.lessonId === selectedLessonId);
+  const exactNote = data.notes.find(
+    (note) => note.studentId === student.id && note.id === params.get("note"),
+  );
+  const selected = exactNote
+    ? {
+        lessonId: exactNote.lessonId,
+        updatedAt: exactNote.updatedAt,
+        notes: [exactNote],
+      }
+    : groups.find((group) => group.lessonId === selectedLessonId);
   return (
     <Section
       title="Coach notes"
@@ -170,7 +181,18 @@ export function Notes({
                 )
               : "General coaching note"
           }
-          onClose={() => setSelectedLessonId("")}
+          onClose={() => {
+            setSelectedLessonId("");
+            setParams(
+              (current) => {
+                const next = new URLSearchParams(current);
+                next.delete("note");
+                next.delete("lesson");
+                return next;
+              },
+              { replace: true },
+            );
+          }}
         >
           <div className="lesson-note-stack">
             {selected.notes.map((note) => (

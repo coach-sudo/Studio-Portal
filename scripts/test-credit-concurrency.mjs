@@ -119,6 +119,38 @@ try {
     query(`select public.student_credit_summary('${student}')->>'remaining';`),
     "2",
   );
+  query(`update public.student_credit_accounts set auto_apply=false where student_id='${student}';
+    select public.command_grant_student_credits('${student}','manual-race-grant','{"quantity":1,"kind":"adjustment","reason":"Manual race fixture"}','${coach}');`);
+  const version = query(
+    `select version from public.student_credit_accounts where student_id='${student}'`,
+  );
+  const manual = `select coalesce(public.command_student_credit_settings('${student}','apply_upcoming','{}',${version},'manual-race-intent','${coach}')->>'duplicate','false');`;
+  const responses = await Promise.all([session(manual), session(manual)]);
+  assert.deepEqual(responses.map((value) => value.trim()).sort(), [
+    "false",
+    "true",
+  ]);
+  assert.equal(
+    query(
+      `select auto_apply from public.student_credit_accounts where student_id='${student}'`,
+    ),
+    "f",
+    "Manual concurrency never enables automatic use",
+  );
+  assert.equal(
+    query(
+      `select count(*) from public.package_credit_entries e join public.packages p on p.id=e.package_id where p.student_id='${student}' and e.quantity<0`,
+    ),
+    "3",
+    "One additional lesson debit across both manual requests",
+  );
+  assert.equal(
+    query(
+      `select count(*) from public.audit_events where correlation_id='manual-race-intent'`,
+    ),
+    "1",
+    "Manual replay retains one audit",
+  );
   console.log(
     "PostgreSQL concurrent grant/replay and repeated scans passed (two sessions, observed lock contention).",
   );

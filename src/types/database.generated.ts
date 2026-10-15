@@ -5539,11 +5539,21 @@ export type Database = {
         }
         Returns: Json
       }
+      student_credit_history: {
+        Args: { p_page?: number; p_student: string }
+        Returns: Json
+      }
       student_credit_summary: { Args: { p_student: string }; Returns: Json }
+      student_financial_overview: { Args: { p_student: string }; Returns: Json }
       student_payment_balance: {
         Args: { target_student: string }
         Returns: number
       }
+      student_workspace_resource: {
+        Args: { p_assignment: string; p_resource: string; p_student: string }
+        Returns: Json
+      }
+      student_workspace_summary: { Args: { p_student: string }; Returns: Json }
       studio_route_snapshot: {
         Args: { requested_domains: string[] }
         Returns: Json

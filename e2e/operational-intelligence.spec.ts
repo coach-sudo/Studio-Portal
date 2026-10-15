@@ -159,7 +159,7 @@ test.describe("Stateful operational acceptance", () => {
     await test.step("04 Linked contact responsibility is editable independently of private work permission", async () => {
       await page.goto(`/coach/students/${ids.operationalStudent}/account`);
       await page
-        .getByRole("button", { name: "Edit access", exact: true })
+        .getByRole("button", { name: "Edit contact", exact: true })
         .click();
       const dialog = page.getByRole("dialog");
       await expect(
@@ -169,7 +169,7 @@ test.describe("Stateful operational acceptance", () => {
       await dialog.getByRole("button", { name: /Save/ }).click();
       await expect(dialog).toHaveCount(0);
       await page
-        .getByRole("button", { name: "Edit access", exact: true })
+        .getByRole("button", { name: "Edit contact", exact: true })
         .click();
       await page
         .getByRole("dialog")
@@ -194,6 +194,11 @@ test.describe("Stateful operational acceptance", () => {
       expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     });
     await test.step("05 Package shortfall surfaced without consuming forecast credits", async () => {
+      await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      await page
+        .locator("summary")
+        .filter({ hasText: "Financial configuration and forecasts" })
+        .click();
       await expect(
         // Credits now cover any service: the unpaid non-service lesson also counts.
         page.getByText(/Package shortfall: 2 uncovered/),
@@ -204,6 +209,7 @@ test.describe("Stateful operational acceptance", () => {
       });
     });
     await test.step("06 Upcoming communication visible before sending", async () => {
+      await page.goto(`/coach/students/${ids.operationalStudent}/account`);
       await expect(
         page.getByRole("heading", { name: "Communication timeline" }),
       ).toBeVisible();
@@ -326,6 +332,10 @@ test.describe("Stateful operational acceptance", () => {
         },
       );
       await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      await page
+        .locator("summary")
+        .filter({ hasText: "Payment reminders" })
+        .click();
       const lessonCard = page
         .locator("article.communication-card")
         .filter({ hasText: `${runtime.runId} Package shortfall readiness` });
@@ -422,6 +432,10 @@ test.describe("Stateful operational acceptance", () => {
       );
       expect(before.status).toBe("draft");
       await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      await page
+        .locator("summary")
+        .filter({ hasText: "Payment reminders" })
+        .click();
       const reminder = page.locator(`[data-message-id="${messageId}"]`);
       await expect(reminder).toContainText("Awaiting coach approval");
       await reminder
@@ -568,6 +582,10 @@ test.describe("Stateful operational acceptance", () => {
     });
     await test.step("15 Keyboard/axe/reflow on Today, Account, Payments, timeline and Settings", async () => {
       await page.goto(`/coach/students/${ids.operationalStudent}/payments`);
+      await page
+        .locator("summary")
+        .filter({ hasText: "Financial configuration and forecasts" })
+        .click();
       await expect(
         page.getByRole("heading", { name: "Financial setup" }),
       ).toBeVisible();
@@ -634,8 +652,19 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       await expect(payerName).toHaveText("E2E Primary payer");
       expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     }
-    if (name === "account" || name === "payments")
+    if (name === "account")
+      await expect(
+        page.getByRole("link", {
+          name: "Payments, packages and financial configuration",
+        }),
+      ).toBeVisible();
+    if (name === "payments") {
+      await page
+        .locator("summary")
+        .filter({ hasText: "Financial configuration and forecasts" })
+        .click();
       await expectFinancialInset(page);
+    }
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page);
     await page.screenshot({

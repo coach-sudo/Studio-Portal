@@ -15,6 +15,7 @@ export async function bulkFixture(
   runtime: E2ERuntime,
   count = 32,
   completed = false,
+  slotOffset = 0,
 ) {
   test.skip(
     process.env.USE_EPHEMERAL_STACK !== "true",
@@ -62,6 +63,7 @@ export async function bulkFixture(
         : 0;
   const slotDay =
     120 +
+    slotOffset +
     scenario * 10 +
     (info.project.name.startsWith("mobile") ? 60 : 0) +
     info.retry;

@@ -100,7 +100,11 @@ export function CoachHome() {
     reviewCount;
   const outstanding = data.students.reduce(
     (total, student) =>
-      total + Math.max(0, studentBalanceMinor(student.id, data.payments)),
+      total +
+      Math.max(
+        0,
+        studentBalanceMinor(student.id, data.payments, data.settings.currency),
+      ),
     0,
   );
   return (
@@ -170,8 +174,8 @@ export function CoachHome() {
         <button onClick={() => navigate("/coach/finance")}>
           <CircleDollarSign />
           <span>
-            <strong>{formatMoney(outstanding)}</strong>
-            <small>open balances</small>
+            <strong>{formatMoney(outstanding, data.settings.currency)}</strong>
+            <small>dollar account credit</small>
           </span>
         </button>
       </div>
