@@ -1,20 +1,21 @@
 -- PR 1.6: read-only summaries. Invoker execution retains each table's RLS.
 create function credit_internal.read_student_financial_overview(p_student uuid) returns jsonb
 language plpgsql stable security definer set search_path='' as $$
-declare result jsonb;
+declare result jsonb; target_studio uuid;
 begin
   perform credit_internal.require_student_finance(p_student);
+  select studio_id into target_studio from public.students where id=p_student;
   with issued as (
-    select * from public.studio_invoices where student_id=p_student and status not in ('draft','void')
+    select * from public.studio_invoices where student_id=p_student and studio_id=target_studio and status not in ('draft','void')
   ), invoiced_lessons as (
     select distinct lid from issued i cross join lateral jsonb_array_elements(i.items) x
       cross join lateral jsonb_array_elements_text(coalesce(x->'lessonIds','[]')) lid
   ), own_lessons as (
-    select l.* from public.lessons l where (l.student_id=p_student or exists(
+    select l.* from public.lessons l where l.studio_id=target_studio and (l.student_id=p_student or exists(
       select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=p_student and lp.status in ('reserved','confirmed','attended','no_show')))
       and l.status not in ('draft','cancelled','late_cancelled')
   ), own_bookings as (
-    select b.* from public.bookings b where b.student_id=p_student and b.status not in ('cancelled','expired','held')
+    select b.* from public.bookings b where b.student_id=p_student and b.studio_id=target_studio and b.status not in ('cancelled','expired','held')
   ), linked as (
     select distinct lp.booking_id from public.lesson_participants lp join own_lessons l on l.id=lp.lesson_id
       where lp.student_id=p_student and lp.booking_id is not null
@@ -54,6 +55,10 @@ begin
       select 1 from linked x where not exists(select 1 from own_bookings b where b.id=x.booking_id))
       or (public.student_credit_summary(p_student)->>'needsReview')::boolean
       or exists(select 1 from balances where credit<0)
+      or exists(select 1 from public.lessons l where l.studio_id<>target_studio and (l.student_id=p_student or exists(select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=p_student)))
+      or exists(select 1 from public.bookings b where b.student_id=p_student and b.studio_id<>target_studio)
+      or exists(select 1 from public.studio_invoices i where i.student_id=p_student and i.studio_id<>target_studio)
+      or exists(select 1 from own_lessons l where l.invoice_id is not null and not exists(select 1 from issued i where i.id=l.invoice_id))
       or exists(select 1 from own_lessons l join public.package_credit_entries e on e.lesson_id=l.id join public.packages p on p.id=e.package_id
         where l.status='scheduled' and p.student_id=p_student and p.expires_at<=l.starts_at group by l.id,p.id having sum(e.quantity)<0)
       or exists(select 1 from own_lessons l where l.student_id is distinct from p_student and not exists(select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=p_student and lp.booking_id is not null))

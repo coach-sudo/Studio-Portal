@@ -148,6 +148,33 @@ afterAll(async () => {
 });
 
 describe("student workspace summaries and explicit credit intent", () => {
+  it("does not aggregate another studio's amounts through a corrupted student association", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await db.exec("begin");
+    try {
+      const foreignStudio = crypto.randomUUID(),
+        lid = await lesson();
+      await db.query(
+        `insert into studios(id,name) values($1,'Foreign studio')`,
+        [foreignStudio],
+      );
+      await db.query(
+        `update lessons set studio_id=$1,price_minor=99999,payment_status='due' where id=$2`,
+        [foreignStudio, lid],
+      );
+      expect(
+        (await scalar(`select student_financial_overview($1) result`, [
+          student,
+        ]))!.result,
+      ).toMatchObject({
+        reviewRequired: true,
+        balances: [{ currency: "USD", dueMinor: 0, dollarCreditMinor: 1200 }],
+      });
+    } finally {
+      await db.exec("rollback");
+    }
+  });
   it("keeps a fully reserved package active and flags an invalid legacy expiry for review", async () => {
     await reset();
     await db.query(`select set_config('app.uid',$1,false)`, [coach]);
