@@ -51,6 +51,8 @@ select ok(position('PRIVATE TAKEAWAY' in public.student_financial_overview('d300
 select ok(not (public.student_financial_overview('d3000000-0000-4000-8000-000000000001') ? 'lessons'),'Finance response exposes no lesson collection');
 select throws_ok($$select public.student_workspace_summary('d3000000-0000-4000-8000-000000000001')$$,'P0001','FORBIDDEN','Finance guardian cannot call the coach summary');
 select is(jsonb_array_length(public.student_credit_history('d3000000-0000-4000-8000-000000000001')->'items'),2,'Finance guardian can inspect their ledger without lesson logistics');
+select is(public.student_credit_history('d3000000-0000-4000-8000-000000000001')->'items'->0->'reason','null'::jsonb,'Finance-only history suppresses free-form coach reasons');
+select throws_ok($$select public.student_credit_history('d3000000-0000-4000-8000-000000000001',0)$$,'P0001','VALIDATION_FAILED','Credit history rejects an invalid page');
 select set_config('request.jwt.claim.sub','d1000000-0000-4000-8000-000000000002',true);
 select lives_ok($$select public.student_financial_overview('d3000000-0000-4000-8000-000000000001')$$,'Adult student can read their totals');
 select throws_ok($$select public.student_workspace_summary('d3000000-0000-4000-8000-000000000001')$$,'P0001','FORBIDDEN','Student cannot read coach-private summary');

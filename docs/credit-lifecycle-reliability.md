@@ -1,5 +1,7 @@
 # Credit lifecycle reliability — modernization PR 1.2
 
+PR 1.6 extends the account-level Apply upcoming action into an explicit manual check while automatic use is off, using this allocator and queue. See [student-workspace-experience.md](student-workspace-experience.md). The enabled-account requirement below records the original PR 1.2 boundary.
+
 This is a dependent change on draft [PR #36](https://github.com/coach-sudo/Studio-Portal/pull/36), pinned at `f99f8cc0b7ae209e27562014e0743f39052f1dad`. Its PR base is `codex/credit-coverage-diagnostics`, not `main`. The October 14 read-only production migration check still ends at `20261008220659_bounded_legacy_material_snapshots`; neither modernization migration is assumed to be deployed.
 
 ## Results and transactions

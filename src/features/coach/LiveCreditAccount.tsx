@@ -61,7 +61,7 @@ function CreditControls({
   const coverage = useQuery({
     queryKey: ["credit-coverage", identity, studentId, page],
     queryFn: ({ signal }) =>
-      loadCreditCoverage({ studentId, page, pageSize: 10 }, signal),
+      loadCreditCoverage({ studentId, page, pageSize: 5 }, signal),
     refetchInterval: (query) =>
       query.state.data?.maintenance?.pending ? 5000 : 30000,
   });
@@ -70,7 +70,7 @@ function CreditControls({
     enabled: automatic === true,
     queryFn: ({ signal }) =>
       loadCreditCoverage(
-        { studentId, pageSize: 10, previewEnable: true },
+        { studentId, pageSize: 5, previewEnable: true },
         signal,
       ),
     staleTime: 0,
@@ -360,7 +360,7 @@ function CreditControls({
                 {rows(preview.data)}
                 {preview.data.hasMore && (
                   <p>
-                    Showing the first 10 lessons; counts include the complete
+                    Showing the first 5 lessons; counts include the complete
                     upcoming set.
                   </p>
                 )}

@@ -169,6 +169,9 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-maya");
       await user.click(
+        await screen.findByText("Assign", { selector: "summary", exact: true }),
+      );
+      await user.click(
         await screen.findByRole("button", { name: /Assign practice/i }),
       );
       const dialog = screen.getByRole("dialog");
@@ -186,6 +189,9 @@ describe("50 start-to-finish studio workflows", () => {
     it("08 adds a private student resource", async () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-liam");
+      await user.click(
+        await screen.findByText("Assign", { selector: "summary", exact: true }),
+      );
       await user.click(
         await screen.findByRole("button", { name: /Add material/i }),
       );

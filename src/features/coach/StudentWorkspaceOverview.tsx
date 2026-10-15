@@ -77,9 +77,6 @@ function LiveOverview({
     <div className="record-overview">
       <div className="record-main">
         <Section title="What matters now" marked>
-          <p>
-            <strong>{student.focusArea || "Coaching focus not set"}</strong>
-          </p>
           <div className="focus-grid">
             <RecordCard
               icon={CalendarDays}

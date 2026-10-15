@@ -16,6 +16,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
 } from "react";
 import {
@@ -98,7 +99,17 @@ const Work = lazy(() =>
   })),
 );
 
+const narrowQuery = "(max-width: 600px)";
+const narrowSnapshot = () => window.matchMedia?.(narrowQuery).matches ?? false;
+const subscribeNarrow = (notify: () => void) => {
+  const query = window.matchMedia?.(narrowQuery);
+  if (!query) return () => {};
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+
 export function StudentWorkspace() {
+  const narrow = useSyncExternalStore(subscribeNarrow, narrowSnapshot);
   const { studentId = "" } = useParams();
   const location = useLocation();
   const store = useStudioStore();
@@ -129,6 +140,13 @@ export function StudentWorkspace() {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [recordMenuOpen, setRecordMenuOpen] = useState(false);
   const [workflowLessonId, setWorkflowLessonId] = useState<string>();
+  useEffect(() => {
+    setDialog(null);
+    setEditingNote(undefined);
+    setWorkflowLessonId(undefined);
+    setRecordMenuOpen(false);
+    setNotice("");
+  }, [studentId]);
   const student = data?.students.find((item) => item.id === studentId);
   useEffect(() => {
     const tabs = document.querySelector<HTMLElement>(".record-tabs");
@@ -607,20 +625,35 @@ export function StudentWorkspace() {
           </Status>
         </div>
         <div className="record-actions">
-          <details className="record-add-menu">
-            <summary className="button-link">Add</summary>
-            <div className="stack-actions">
+          {!narrow && (
+            <>
+              <button className="primary" onClick={() => setDialog("lesson")}>
+                <Plus />
+                Add lesson
+              </button>
               <button onClick={() => setDialog("note")}>Write note</button>
+            </>
+          )}
+          <details className="record-add-menu">
+            <summary className="button-link">
+              {narrow ? "Add" : "Assign"}
+            </summary>
+            <div className="stack-actions">
+              {narrow && (
+                <button onClick={() => setDialog("note")}>Write note</button>
+              )}
               <button onClick={() => setDialog("material")}>
                 Add material
               </button>
               <button onClick={() => setDialog("assignment")}>
                 Assign practice
               </button>
-              <button onClick={() => setDialog("lesson")}>
-                <Plus />
-                Add lesson
-              </button>
+              {narrow && (
+                <button onClick={() => setDialog("lesson")}>
+                  <Plus />
+                  Add lesson
+                </button>
+              )}
             </div>
           </details>
           {student.email && (
@@ -755,6 +788,7 @@ export function StudentWorkspace() {
                   onManage={() => navigate(`${base}/account`)}
                 />
                 <LinkedContacts
+                  key={student.id}
                   data={data}
                   student={student}
                   busy={settingCredentials}
@@ -768,6 +802,7 @@ export function StudentWorkspace() {
             path="account"
             element={
               <Account
+                key={student.id}
                 data={data}
                 student={student}
                 isDemo={isDemo}
@@ -790,7 +825,14 @@ export function StudentWorkspace() {
           />
           <Route
             path="payments"
-            element={<Payments data={data} student={student} isDemo={isDemo} />}
+            element={
+              <Payments
+                key={student.id}
+                data={data}
+                student={student}
+                isDemo={isDemo}
+              />
+            }
           />
           <Route
             path="actor-page"

@@ -148,6 +148,58 @@ afterAll(async () => {
 });
 
 describe("student workspace summaries and explicit credit intent", () => {
+  it("deduplicates canonical work, bounds its summary, and validates exact assignment/student context", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await db.exec("begin");
+    try {
+      const materials = Array.from({ length: 8 }, () => crypto.randomUUID());
+      const links = Array.from({ length: 8 }, () => crypto.randomUUID());
+      for (let n = 0; n < 8; n++) {
+        await db.query(
+          `insert into materials(id,title,text_content) values($1,$2,'Private resource body')`,
+          [materials[n], `Work ${n}`],
+        );
+        await db.query(
+          `insert into material_links(id,material_id,student_id,role) values($1,$2,$3,'library')`,
+          [links[n], materials[n], student],
+        );
+      }
+      await db.query(
+        `insert into material_links(material_id,student_id,role) values($1,$2,'current_script')`,
+        [materials[0], student],
+      );
+      const result = (await scalar(
+        `select student_workspace_summary($1) result`,
+        [student],
+      ))!.result as any;
+      expect(result.work).toHaveLength(5);
+      expect(new Set(result.work.map((item: any) => item.id)).size).toBe(5);
+      expect(JSON.stringify(result.work)).not.toContain(
+        "Private resource body",
+      );
+      const target = (await scalar(
+        `select student_workspace_resource($1,$2,$3) result`,
+        [student, materials[7], links[7]],
+      ))!.result;
+      expect(target).toMatchObject({
+        id: materials[7],
+        assignmentId: links[7],
+      });
+      // The exact record need not be present on the current five-item summary page.
+      await db.exec("savepoint wrong_context");
+      await expect(
+        db.query(`select student_workspace_resource($1,$2,$3)`, [
+          other,
+          materials[7],
+          links[7],
+        ]),
+      ).rejects.toThrow("NOT_FOUND");
+      await db.exec("rollback to savepoint wrong_context");
+    } finally {
+      await db.exec("rollback");
+    }
+  });
   async function booking(ids: string[]) {
     const b = (await scalar(
       `insert into bookings(studio_id,student_id,starts_at,ends_at) select studio_id,student_id,starts_at,ends_at from lessons where id=$1 returning id`,

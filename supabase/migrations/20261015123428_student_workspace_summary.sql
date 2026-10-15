@@ -137,7 +137,7 @@ begin
   if p_page not between 1 and 1000000 then raise exception 'VALIDATION_FAILED'; end if;
   return jsonb_build_object('studentId',p_student,'page',p_page,'total',(select count(*) from public.package_credit_entries e join public.packages p on p.id=e.package_id where p.student_id=p_student),
     'items',coalesce((select jsonb_agg(x.item order by x.created_at desc,x.id) from (
-      select e.created_at,e.id,jsonb_build_object('id',e.id,'quantity',e.quantity,'kind',e.kind,'createdAt',e.created_at,'packageName',p.name) item
+      select e.created_at,e.id,jsonb_build_object('id',e.id,'quantity',e.quantity,'kind',e.kind,'createdAt',e.created_at,'packageName',p.name,'reason',case when exists(select 1 from public.students s where s.id=p_student and public.is_studio_coach(s.studio_id)) then e.reason else null end) item
       from public.package_credit_entries e join public.packages p on p.id=e.package_id where p.student_id=p_student
       order by e.created_at desc,e.id limit 25 offset (p_page-1)*25
     )x),'[]'::jsonb));

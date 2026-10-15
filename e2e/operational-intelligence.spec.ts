@@ -652,8 +652,19 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       await expect(payerName).toHaveText("E2E Primary payer");
       expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     }
-    if (name === "account" || name === "payments")
+    if (name === "account")
+      await expect(
+        page.getByRole("link", {
+          name: "Payments, packages and financial configuration",
+        }),
+      ).toBeVisible();
+    if (name === "payments") {
+      await page
+        .locator("summary")
+        .filter({ hasText: "Financial configuration and forecasts" })
+        .click();
       await expectFinancialInset(page);
+    }
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page);
     await page.screenshot({

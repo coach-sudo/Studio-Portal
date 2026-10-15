@@ -18,6 +18,7 @@ const schema = z.object({
         kind: z.string(),
         createdAt: z.string(),
         packageName: z.string(),
+        reason: z.string().nullable(),
       }),
     )
     .max(25),
@@ -66,7 +67,7 @@ export function StudentCreditHistory({
                 <div>
                   <strong>{item.packageName}</strong>
                   <small>
-                    {item.kind} ·{" "}
+                    {item.reason || item.kind} ·{" "}
                     {formatStudioDateTime(item.createdAt, timezone)}
                   </small>
                 </div>

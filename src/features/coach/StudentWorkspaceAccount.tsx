@@ -285,7 +285,7 @@ export function LinkedContacts({
                     : ""}
                 </small>
               </div>
-              <div>
+              <div className="household-contact-status">
                 <Status tone={contact.portalEnabled ? "good" : "neutral"}>
                   Portal access {contact.portalEnabled ? "on" : "off"}
                 </Status>

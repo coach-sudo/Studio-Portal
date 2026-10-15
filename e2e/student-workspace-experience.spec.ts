@@ -29,7 +29,12 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const base = `/coach/students/${f.studentId}`;
-  const packages = [crypto.randomUUID(), crypto.randomUUID()];
+  const packages = [
+    crypto.randomUUID(),
+    crypto.randomUUID(),
+    crypto.randomUUID(),
+    crypto.randomUUID(),
+  ];
   const contacts = [crypto.randomUUID(), crypto.randomUUID()];
   const note = crypto.randomUUID();
   try {
@@ -97,6 +102,25 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
       "Find the clear objective",
     );
     await page.keyboard.press("Escape");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      await page.goto(
+        `${base}/lessons/${f.lessonIds[0]}?writeNote=${f.lessonIds[0]}`,
+      );
+      const editor = page.getByRole("dialog", {
+        name: "Edit note",
+        exact: true,
+      });
+      await expect(
+        editor.getByRole("textbox", { name: "Note", exact: true }),
+      ).toContainText("Find the clear objective");
+      await editor
+        .getByRole("button", { name: "Save changes", exact: true })
+        .click();
+      await expect(editor).toHaveCount(0);
+      expect(
+        f.sql(`select count(*) from notes where student_id='${f.studentId}'`),
+      ).toBe("1");
+    }
     await page.goto(`${base}/household`);
     await expect(page.getByText("Casey Payer", { exact: true })).toBeVisible();
     await expect(
@@ -183,9 +207,31 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
         `select count(*) from package_credit_entries where package_id='${packages[0]}' and quantity<0`,
       ),
     ).toBe("3");
+    await page.goto(`/coach/students/${f.secondStudent}/payments`);
+    await expect(
+      page
+        .getByText("Remaining", { exact: true })
+        .locator("..")
+        .getByText("0", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText("No upcoming lessons.")).toBeVisible();
+    f.sql(`insert into packages(id,student_id,name,auto_apply) values('${packages[2]}','${f.secondStudent}','Legacy automatic package',true),('${packages[3]}','${f.secondStudent}','Legacy manual package',false);
+      insert into package_credit_entries(package_id,kind,quantity,reason) values('${packages[2]}','purchase',1,'Mixed preference fixture'),('${packages[3]}','purchase',1,'Mixed preference fixture');`);
+    await page.reload();
+    await expect(
+      page.getByText("Use credits automatically: Needs review", {
+        exact: true,
+      }),
+    ).toBeVisible();
+    await expect(
+      page.getByText(
+        "Package preferences differ. Review and choose a single automatic setting.",
+      ),
+    ).toBeVisible();
     for (const role of ["student", "guardian", "unrelated"] as const) {
       const portal = await openAs(browser, role);
       try {
+        await portal.page.goto("/portal");
         const token = await accessToken(portal.page);
         const denied = await portal.page.request.post(
           `${process.env.SUPABASE_URL}/rest/v1/rpc/student_workspace_summary`,
@@ -205,9 +251,9 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
   } finally {
     try {
       f.sql(`drop trigger if exists workspace_fail_${f.studentId.replaceAll("-", "")} on package_credit_entries;drop function if exists public.e2e_workspace_fail_${f.studentId.replaceAll("-", "")}();
-        delete from linked_contacts where id in ('${contacts[0]}','${contacts[1]}');delete from notes where id='${note}';
+        delete from linked_contacts where id in ('${contacts[0]}','${contacts[1]}');delete from audit_events where entity_id='${note}' and studio_id='${f.studioId}';delete from notes where id='${note}';
         update lessons set package_id=null where id in (${f.lessonIds.map((id) => `'${id}'`).join(",")});
-        delete from package_credit_entries where package_id in ('${packages[0]}','${packages[1]}');delete from packages where id in ('${packages[0]}','${packages[1]}');
+        delete from package_credit_entries where package_id in ('${packages[0]}','${packages[1]}','${packages[2]}','${packages[3]}');delete from packages where id in ('${packages[0]}','${packages[1]}','${packages[2]}','${packages[3]}');
         delete from payment_entries where student_id='${f.studentId}';delete from student_credit_accounts where student_id='${f.studentId}';`);
       await f.cleanup();
     } finally {
