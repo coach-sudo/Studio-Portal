@@ -55,8 +55,11 @@ export function Work({
         .getElementById(`practice-${target}`)
         ?.scrollIntoView({ block: "center" });
   }, [params]);
+  const helpOnly = params.get("help") === "1";
   const assignments = data.assignments.filter(
-      (i) => i.studentId === student.id,
+      (i) =>
+        i.studentId === student.id &&
+        (!helpOnly || (i.helpRequested && i.status !== "completed")),
     ),
     materials = data.materials.filter(
       (i) => i.studentId === student.id && i.role !== "actor_material",
@@ -89,7 +92,7 @@ export function Work({
         </Dialog>
       )}
       <Section
-        title="Practice"
+        title={helpOnly ? "Practice help requests" : "Practice"}
         aside={
           <button onClick={onAddAssignment}>
             <Plus />
@@ -97,6 +100,19 @@ export function Work({
           </button>
         }
       >
+        {helpOnly && (
+          <button
+            onClick={() =>
+              setParams((current) => {
+                const next = new URLSearchParams(current);
+                next.delete("help");
+                return next;
+              })
+            }
+          >
+            Show all practice
+          </button>
+        )}
         <div className="table-list">
           {assignments.map((item) => (
             <article key={item.id} id={`practice-${item.id}`}>
@@ -117,8 +133,14 @@ export function Work({
           ))}
           {!assignments.length && (
             <EmptyState
-              title="No practice assigned"
-              detail="Add one focused next step."
+              title={
+                helpOnly ? "No pending help requests" : "No practice assigned"
+              }
+              detail={
+                helpOnly
+                  ? "Practice with a help request will appear here."
+                  : "Add one focused next step."
+              }
             />
           )}
         </div>
