@@ -101,6 +101,12 @@ Significant observed friction: long synthetic identities wrap heavily on mobile;
 
 Ephemeral CI is an isolated loopback Netlify/Supabase stack with synthetic auth and no live provider keys. It is valid integration evidence, **not a published staging deployment**. No staging configuration, access policy or deployment was changed.
 
+## Acceptance harness corrections
+
+Initial run 38823194968 passed the production-prefix upgrade and all substantive role assertions, then the new privilege introspection failed because it tried to resolve a private-schema table as a portal role. The inspection now runs as the harness administrator while explicitly checking the authenticated role's privileges; no access was granted. Run 38823510869 then passed all 204 pgTAP assertions and real concurrency suites.
+
+The new integrated browser probe initially called the user-facing financial facade with its fixture service client. That facade intentionally grants execution to authenticated users. The probe now uses the signed-in coach's token, retaining direct SQL ledger comparison and all production grants. These are harness corrections, not financial-policy changes or weakened permission tests. Prior failing attempts remain linked in PR #43; final outcomes must be read separately from them.
+
 ## Findings and disposition
 
 **Release blockers**

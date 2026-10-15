@@ -1,3 +1,4 @@
+import { accessToken } from "./support/auth";
 import { storageStatePath } from "./support/runtime";
 import {
   bulkFixture,
@@ -54,11 +55,18 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       await expect(metric(label)).toHaveText(
         String(totals[label.toLowerCase() as keyof typeof totals]),
       );
-    const finance = await f.db.rpc("student_financial_overview", {
-      p_student: f.studentId,
-    });
-    expect(finance.error).toBeNull();
-    expect(finance.data).toMatchObject({
+    const finance = await page.request.post(
+      `${process.env.SUPABASE_URL}/rest/v1/rpc/student_financial_overview`,
+      {
+        headers: {
+          apikey: process.env.SUPABASE_ANON_KEY!,
+          Authorization: `Bearer ${await accessToken(page)}`,
+        },
+        data: { p_student: f.studentId },
+      },
+    );
+    expect(finance.ok(), await finance.text()).toBe(true);
+    expect(await finance.json()).toMatchObject({
       reviewRequired: false,
       balances: [{ currency: "USD", dueMinor: Number(due) * 100 }],
     });
