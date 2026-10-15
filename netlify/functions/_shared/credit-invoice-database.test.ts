@@ -223,6 +223,7 @@ describe("student workspace summaries and explicit credit intent", () => {
     await db.exec("begin");
     try {
       const materials = Array.from({ length: 8 }, () => crypto.randomUUID());
+      materials[0] = "ffffffff-ffff-4fff-8fff-ffffffffffff";
       const links = Array.from({ length: 8 }, () => crypto.randomUUID());
       for (let n = 0; n < 8; n++) {
         await db.query(
@@ -243,6 +244,10 @@ describe("student workspace summaries and explicit credit intent", () => {
         [student],
       ))!.result as any;
       expect(result.work).toHaveLength(5);
+      expect(result.work[0]).toMatchObject({
+        id: materials[0],
+        role: "current_script",
+      });
       expect(new Set(result.work.map((item: any) => item.id)).size).toBe(5);
       expect(JSON.stringify(result.work)).not.toContain(
         "Private resource body",

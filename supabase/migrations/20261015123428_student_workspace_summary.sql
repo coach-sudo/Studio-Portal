@@ -104,13 +104,13 @@ begin
         select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=s.id and lp.status in ('reserved','confirmed')))
       order by l.starts_at,l.id limit 1),
     'latestNote',(select jsonb_build_object('id',n.id,'lessonId',n.lesson_id,'title',n.title,'takeaway',left(n.body,300),'status',n.status) from public.notes n where n.student_id=s.id and n.status<>'archived' order by n.updated_at desc,n.id limit 1),
-    'work',coalesce((select jsonb_agg(x.item) from (
-      select distinct on (m.id) jsonb_build_object('id',m.id,'assignmentId',ml.id,'lessonId',ml.lesson_id,'title',m.title,'role',ml.role) item
+    'work',coalesce((select jsonb_agg(x.item order by x.current_script desc,x.pinned desc,x.updated_at desc,x.resource_id) from (select d.* from (
+      select distinct on (m.id) m.id resource_id,(ml.role='current_script') current_script,ml.pinned,ml.updated_at,jsonb_build_object('id',m.id,'assignmentId',ml.id,'lessonId',ml.lesson_id,'title',m.title,'role',ml.role) item
       from public.material_links ml join public.materials m on m.id=ml.material_id
       where (ml.student_id=s.id or (ml.student_id is null and exists(select 1 from public.lessons l where l.id=ml.lesson_id and (l.student_id=s.id or exists(select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=s.id and lp.status in ('reserved','confirmed'))))))
         and ml.status='active' and m.status='active'
-      order by m.id,(ml.role='current_script') desc,ml.pinned desc,ml.updated_at desc,ml.id limit 5
-    ) x),'[]'::jsonb),
+      order by m.id,(ml.role='current_script') desc,ml.pinned desc,ml.updated_at desc,ml.id
+    ) d order by d.current_script desc,d.pinned desc,d.updated_at desc,d.resource_id limit 5) x),'[]'::jsonb),
     'practice',coalesce((select jsonb_agg(x.item) from (select jsonb_build_object('id',a.id,'lessonId',a.lesson_id,'title',a.title,'helpRequested',a.help_requested) item from public.assignments a where a.student_id=s.id and a.status<>'completed' order by a.due_at nulls last,a.id limit 5) x),'[]'::jsonb),
     'questions',(select count(*) from public.assignments a where a.student_id=s.id and a.help_requested and a.status<>'completed'),
     'approvals',credit_internal.workspace_approval_count(s.id),
