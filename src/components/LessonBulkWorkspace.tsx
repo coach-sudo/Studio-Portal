@@ -11,6 +11,7 @@ import {
 import {
   lessonBulkLabels,
   lessonBulkReason,
+  lessonDependencyLabel,
 } from "../domain/lessonBulkPresentation";
 import { formatStudioDateTime } from "../domain/presentation";
 import { formatMoney } from "../domain/finance";
@@ -417,8 +418,10 @@ function BulkResultRow({
         <p>Payment history preserved. No automatic cash refund.</p>
         {a.financialConsequences?.invoiceLines?.map((line, i) => (
           <p key={`${line.invoiceId}:${i}`}>
-            Invoice {line.invoiceId}:{" "}
-            {formatMoney(line.paidMinor, line.currency)} paid is preserved;{" "}
+            <Link to={`/coach/finance?invoice=${line.invoiceId}`}>
+              Linked invoice
+            </Link>
+            : {formatMoney(line.paidMinor, line.currency)} paid is preserved;{" "}
             {formatMoney(line.unpaidWaiverMinor, line.currency)} unpaid is
             waived.
           </p>
@@ -428,14 +431,14 @@ function BulkResultRow({
             ? "Calendar synchronization required for this occurrence."
             : "No calendar change."}{" "}
           {a.notificationEffect
-            ? "Cancellation notice to affected participants."
+            ? `Cancellation notices: up to ${a.potentialNotificationStudentIds?.length || 0} affected students. Delivery is tracked separately.`
             : "No student email."}
         </p>
         {Object.entries(a.dependencies || {})
           .filter(([, v]) => v.count > 0)
           .map(([name, v]) => (
             <p key={name}>
-              {name}: {v.count} linked records
+              {lessonDependencyLabel(name)}: {v.count} references
             </p>
           ))}
         <div className="bulk-actions">

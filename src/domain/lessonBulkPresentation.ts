@@ -45,3 +45,27 @@ export function lessonBulkReason(code: string | null) {
       : `Review required (${code.replaceAll("_", " ")}).`)
   );
 }
+
+export function lessonDependencyLabel(reference: string) {
+  const names: [string, string][] = [
+    ["package_credit", "Credit history"],
+    ["invoice", "Invoices"],
+    ["settlement", "Settlements"],
+    ["payment", "Payment history"],
+    ["outbox", "Queued communications"],
+    ["message", "Messages"],
+    ["material", "Linked materials"],
+    ["assignment", "Practice assignments"],
+    ["note", "Coaching notes"],
+    ["participant", "Participation history"],
+    ["booking", "Bookings"],
+    ["calendar", "Calendar synchronization"],
+    ["integration_import", "Provider imports"],
+    ["offering", "Class membership"],
+    ["lesson_change_effect", "Pending lesson changes"],
+  ];
+  return (
+    names.find(([key]) => reference.includes(key))?.[1] ||
+    "Other linked history"
+  );
+}
