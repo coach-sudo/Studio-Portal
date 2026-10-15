@@ -13,6 +13,7 @@ import { formatStudioDateTime } from "../../domain/presentation";
 import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { ApiClientError } from "../../data/apiClientError";
+import "../../components/StudentFinancialSummary.css";
 import { StudentCreditHistory } from "../../components/StudentCreditHistory";
 
 export function LiveCreditAccount(props: {
@@ -182,7 +183,7 @@ function CreditControls({
     >
       {current ? (
         <>
-          <div className="metric-strip compact-metrics">
+          <div className="account-metrics">
             {[
               ["Remaining", current.summary.remaining],
               ["Available", current.summary.available],
@@ -205,7 +206,11 @@ function CreditControls({
             </strong>
             {!readOnly && (
               <button
-                disabled={busy || current.summary.needsReview}
+                disabled={
+                  busy ||
+                  (current.summary.needsReview &&
+                    current.summary.autoApply !== true)
+                }
                 onClick={() => setAutomatic(!current.summary.autoApply)}
               >
                 {current.summary.autoApply ? "Turn off" : "Review and enable"}

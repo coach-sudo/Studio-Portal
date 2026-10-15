@@ -54,11 +54,14 @@ begin
       select 1 from linked x where not exists(select 1 from own_bookings b where b.id=x.booking_id))
       or (public.student_credit_summary(p_student)->>'needsReview')::boolean
       or exists(select 1 from balances where credit<0)
+      or exists(select 1 from own_lessons l join public.package_credit_entries e on e.lesson_id=l.id join public.packages p on p.id=e.package_id
+        where l.status='scheduled' and p.student_id=p_student and p.expires_at<=l.starts_at group by l.id,p.id having sum(e.quantity)<0)
       or exists(select 1 from own_lessons l where l.student_id is distinct from p_student and not exists(select 1 from public.lesson_participants lp where lp.lesson_id=l.id and lp.student_id=p_student and lp.booking_id is not null))
       or exists(select 1 from own_lessons l where coalesce(l.paid_minor,0)>0 and exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id where p.student_id=p_student and e.lesson_id=l.id group by e.lesson_id having sum(e.quantity)<0)),
     'pendingPayments',(select count(*) from obligations where pending),
     'unpaidInvoices',(select count(*) from issued where status in ('open','partially_paid')),
-    'activePackages',(select count(*) from public.packages p where p.student_id=p_student and (p.expires_at is null or p.expires_at>now()) and public.package_credit_balance(p.id)>0),
+    'activePackages',(select count(*) from public.packages p where p.student_id=p_student and (p.expires_at is null or p.expires_at>now()) and (public.package_credit_balance(p.id)>0 or exists(
+      select 1 from public.package_credit_entries e join public.lessons l on l.id=e.lesson_id where e.package_id=p.id and l.status='scheduled' and l.ends_at>now() group by l.id having sum(e.quantity)<0))),
     'renewalExceptions',(select count(*) from public.package_subscriptions where student_id=p_student and status in ('past_due','pending')),
     'expiringPackages',(select count(*) from public.packages p where p.student_id=p_student and p.expires_at>now() and p.expires_at<now()+interval '30 days' and public.package_credit_balance(p.id)>0)
   ) into result;

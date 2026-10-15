@@ -3,6 +3,7 @@ import { loadFinancialOverview } from "../data/studentWorkspace";
 import { formatMoney } from "../domain/finance";
 import { usePrivateIdentity } from "../hooks/usePrivateIdentity";
 import { Section } from "./Primitives";
+import "./StudentFinancialSummary.css";
 
 export function StudentFinancialSummary({ studentId }: { studentId: string }) {
   const identity = usePrivateIdentity();
@@ -23,7 +24,7 @@ export function StudentFinancialSummary({ studentId }: { studentId: string }) {
               amounts are shown below.
             </p>
           )}
-          <div className="metric-strip compact-metrics">
+          <div className="account-metrics">
             {summary.balances.map((balance) => (
               <div key={balance.currency}>
                 <small>Amount due · {balance.currency}</small>

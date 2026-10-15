@@ -195,10 +195,17 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     ).toBeVisible();
     for (const width of [320, 390, 768, 1440]) {
       await page.setViewportSize({ width, height: 1000 });
+      await page.evaluate(async () => {
+        window.scrollTo(0, 0);
+        await document.fonts.ready;
+        await new Promise(requestAnimationFrame);
+        await new Promise(requestAnimationFrame);
+      });
       await expectNoHorizontalOverflow(page);
       await page.screenshot({
         path: info.outputPath(`after-payments-${width}.png`),
         fullPage: true,
+        animations: "disabled",
       });
     }
     await expectNoSeriousAxeViolations(page, "main");
@@ -254,7 +261,7 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
         delete from linked_contacts where id in ('${contacts[0]}','${contacts[1]}');delete from audit_events where entity_id='${note}' and studio_id='${f.studioId}';delete from notes where id='${note}';
         update lessons set package_id=null where id in (${f.lessonIds.map((id) => `'${id}'`).join(",")});
         delete from package_credit_entries where package_id in ('${packages[0]}','${packages[1]}','${packages[2]}','${packages[3]}');delete from packages where id in ('${packages[0]}','${packages[1]}','${packages[2]}','${packages[3]}');
-        delete from payment_entries where student_id='${f.studentId}';delete from student_credit_accounts where student_id='${f.studentId}';`);
+        delete from payment_entries where student_id='${f.studentId}';delete from student_credit_accounts where student_id in ('${f.studentId}','${f.secondStudent}');`);
       await f.cleanup();
     } finally {
       await context.close();

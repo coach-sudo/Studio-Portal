@@ -148,6 +148,32 @@ afterAll(async () => {
 });
 
 describe("student workspace summaries and explicit credit intent", () => {
+  it("keeps a fully reserved package active and flags an invalid legacy expiry for review", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const pkg = await lot(1),
+      lid = await lesson();
+    await db.query(
+      `update lessons set price_minor=4000,payment_status='due' where id=$1`,
+      [lid],
+    );
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      lid,
+      student,
+    ]);
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ activePackages: 1, reviewRequired: false });
+    await db.query(
+      `update packages set expires_at=now()+interval '1 day' where id=$1`,
+      [pkg],
+    );
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ reviewRequired: true });
+  });
   it("deduplicates canonical work, bounds its summary, and validates exact assignment/student context", async () => {
     await reset();
     await db.query(`select set_config('app.uid',$1,false)`, [coach]);
