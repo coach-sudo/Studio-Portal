@@ -147,6 +147,55 @@ afterAll(async () => {
 });
 
 describe("student workspace summaries and explicit credit intent", () => {
+  async function booking(ids: string[]) {
+    const b = (await scalar(
+      `insert into bookings(studio_id,student_id,starts_at,ends_at) select studio_id,student_id,starts_at,ends_at from lessons where id=$1 returning id`,
+      [ids[0]],
+    ))!.id as string;
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, student, b, student + "@example.test"],
+      );
+    return b;
+  }
+
+  it("counts a partially paid shared booking once across its occurrences", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson(),
+      next = await lesson("now()+interval '8 days'");
+    const bid = await booking([first, next]);
+    await db.query(
+      `update bookings set total_minor=10000,paid_minor=2500,payment_status='partially_paid' where id=$1`,
+      [bid],
+    );
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 7500, dollarCreditMinor: 1200 }],
+    });
+  });
+  it("flags mixed invoice and shared-booking associations instead of charging the full booking twice", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson(),
+      next = await lesson("now()+interval '8 days'");
+    await booking([first, next]);
+    await invoice(await service(), "service", [first]);
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      reviewRequired: true,
+      unpaidInvoices: 1,
+      balances: [{ currency: "USD", dueMinor: 4000 }],
+    });
+  });
   it("counts an issued invoice once instead of adding its lesson obligation", async () => {
     await reset();
     await db.query(`select set_config('app.uid',$1,false)`, [coach]);

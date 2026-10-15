@@ -12,6 +12,7 @@ import {
 import { formatStudioDateTime } from "../../domain/presentation";
 import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
+import { ApiClientError } from "../../data/apiClientError";
 import { StudentCreditHistory } from "../../components/StudentCreditHistory";
 
 export function LiveCreditAccount(props: {
@@ -52,7 +53,11 @@ function CreditControls({
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   // Preserve the key across an unknown transport result; changed intent gets a new key.
-  const intent = useRef<{ signature: string; key: string } | null>(null);
+  const intent = useRef<{
+    signature: string;
+    key: string;
+    version: number;
+  } | null>(null);
   const coverage = useQuery({
     queryKey: ["credit-coverage", identity, studentId, page],
     queryFn: ({ signal }) =>
@@ -83,19 +88,19 @@ function CreditControls({
           ? { total, reason: reason.trim() }
           : {}),
     };
-    const signature = JSON.stringify([
-      command,
-      payload,
-      current.summary.version,
-    ]);
+    const signature = JSON.stringify([command, payload]);
     if (intent.current?.signature !== signature)
-      intent.current = { signature, key: crypto.randomUUID() };
+      intent.current = {
+        signature,
+        key: crypto.randomUUID(),
+        version: current.summary.version,
+      };
     setBusy(true);
     setNotice("");
     try {
       const response = await studioCommand("credits", {
         command,
-        expectedVersion: current.summary.version,
+        expectedVersion: intent.current.version,
         payload,
         idempotencyKey: intent.current.key,
         reason:
@@ -126,6 +131,8 @@ function CreditControls({
         ]),
       ]);
     } catch (error) {
+      if (error instanceof ApiClientError && error.code === "VERSION_CONFLICT")
+        intent.current = null;
       setNotice(
         `${error instanceof Error ? error.message : "Credit command failed."} Refresh coverage before starting a different change; retrying this same request is safe.`,
       );
@@ -141,7 +148,11 @@ function CreditControls({
           <div>
             <strong>
               {readOnly ? (
-                item.topic
+                <Link
+                  to={`/portal/lessons/${item.lessonId}?student=${studentId}`}
+                >
+                  {item.topic}
+                </Link>
               ) : (
                 <Link
                   to={`/coach/students/${studentId}/lessons/${item.lessonId}`}

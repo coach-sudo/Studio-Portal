@@ -72,6 +72,16 @@ $$;
 revoke all on function public.student_financial_overview(uuid) from public,anon;
 grant execute on function public.student_financial_overview(uuid) to authenticated;
 
+-- Submission bodies stay inaccessible; expose only a guarded coach count.
+create function credit_internal.workspace_approval_count(p_student uuid) returns bigint
+language plpgsql stable security definer set search_path='' as $$
+begin
+  if auth.uid() is null or not exists(select 1 from public.students s where s.id=p_student and s.deleted_at is null and public.is_studio_coach(s.studio_id)) then raise exception 'FORBIDDEN'; end if;
+  return (select count(*) from public.profile_submissions p join public.actor_profiles a on a.id=p.actor_profile_id where a.student_id=p_student and p.approval_status='pending_review');
+end $$;
+revoke all on function credit_internal.workspace_approval_count(uuid) from public,anon;
+grant execute on function credit_internal.workspace_approval_count(uuid) to authenticated;
+
 -- Coach workspace has private coaching context; portal consumers cannot call it.
 create function public.student_workspace_summary(p_student uuid) returns jsonb
 language plpgsql stable security invoker set search_path='' as $$
@@ -94,7 +104,7 @@ begin
     ) x),'[]'::jsonb),
     'practice',coalesce((select jsonb_agg(x.item) from (select jsonb_build_object('id',a.id,'lessonId',a.lesson_id,'title',a.title,'helpRequested',a.help_requested) item from public.assignments a where a.student_id=s.id and a.status<>'completed' order by a.due_at nulls last,a.id limit 5) x),'[]'::jsonb),
     'questions',(select count(*) from public.assignments a where a.student_id=s.id and a.help_requested and a.status<>'completed'),
-    'approvals',(select count(*) from public.profile_submissions p join public.actor_profiles a on a.id=p.actor_profile_id where a.student_id=s.id and p.approval_status='pending_review'),
+    'approvals',credit_internal.workspace_approval_count(s.id),
     'finance',public.student_financial_overview(s.id)
   ) into result;
   return result;
