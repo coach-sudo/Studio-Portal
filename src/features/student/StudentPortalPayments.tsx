@@ -27,6 +27,7 @@ import { useStudioStore } from "../../state/StudioStore";
 
 import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
 import { CreditAccount } from "../coach/CreditAccount";
 
 export function Payments({
@@ -177,22 +178,26 @@ export function Payments({
       )}
       {student && (
         <>
+          {!isDemo && <StudentFinancialSummary studentId={student.id} />}
           <CreditAccount
             data={data}
             studentId={student.id}
             isDemo={isDemo}
             readOnly
           />
-          <InvoiceWorkspace
-            data={data}
-            isDemo={isDemo}
-            studentId={student.id}
-            readOnly
-          />
+          <details className="disclosure-section">
+            <summary>Invoices</summary>
+            <InvoiceWorkspace
+              data={data}
+              isDemo={isDemo}
+              studentId={student.id}
+              readOnly
+            />
+          </details>
         </>
       )}
-      {student && (
-        <Section title="Account credit" marked>
+      {student && isDemo && (
+        <Section title="Dollar account credit" marked>
           <div
             className="account-balance-card"
             role="status"

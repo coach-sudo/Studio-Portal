@@ -3,6 +3,8 @@ import { CircleDollarSign } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import {
   Dialog,
+  ListControls,
+  usePagedList,
   EmptyState,
   Section,
   Status,
@@ -27,6 +29,9 @@ import { StudentFinancialSetup } from "./StudentFinancialSetup";
 import { PaymentReminderSteps } from "./PaymentReminderSteps";
 import { CreditAccount } from "./CreditAccount";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { creditApplicationResultSchema } from "../../domain/creditCoverage";
+import { creditApplicationMessage } from "../../domain/creditCoveragePresentation";
+import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
 import { packageOffer } from "../../domain/packagePricing";
 import { reserveDemoCredits } from "../../domain/credits";
 
@@ -61,6 +66,8 @@ export function Payments({
     [balanceAmount, setBalanceAmount] = useState("0.00"),
     [balanceReason, setBalanceReason] = useState("Studio account credit"),
     [notice, setNotice] = useState("");
+  const paymentPage = usePagedList(payments);
+  const packagePage = usePagedList(pkgs);
   const autoApplyOnAssign = pkgs.length > 0 && pkgs.every((p) => p.autoApply);
   const adjustBalance = async (event: FormEvent) => {
     event.preventDefault();
@@ -165,13 +172,14 @@ export function Payments({
           "lessons",
           "booking",
         ]);
-        if (result.resource.autoApplyPending) {
-          setAssigning(false);
-          setNotice(
-            "Package assigned. Automatic credit application is queued for the next maintenance run.",
-          );
-          return;
-        }
+        const coverage = creditApplicationResultSchema.safeParse(
+          result.resource.coverage,
+        );
+        setAssigning(false);
+        setNotice(
+          `Package assigned. ${coverage.success ? creditApplicationMessage(coverage.data) : "Refresh coverage to verify application."}`,
+        );
+        return;
       }
       setAssigning(false);
       setNotice(
@@ -192,91 +200,124 @@ export function Payments({
           {notice}
         </p>
       )}
+      {!isDemo && <StudentFinancialSummary studentId={student.id} />}
       <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
-      <InvoiceWorkspace data={data} isDemo={isDemo} studentId={student.id} />
-      <StudentFinancialSetup data={data} student={student} />
-      <PaymentReminderSteps data={data} student={student} isDemo={isDemo} />
-      <div className="two-section-grid" id="payment-arrangements">
-        <Section
-          title="Packages"
-          marked
-          aside={
-            <div className="header-actions">
-              <button onClick={() => setAdjustingBalance(true)}>
-                Adjust dollar balance
-              </button>
-              <button
-                disabled={!data.packageDefinitions.some((item) => item.active)}
-                onClick={() => setAssigning(true)}
-              >
-                Assign package
-              </button>
-            </div>
-          }
-        >
-          <div className="table-list">
-            {pkgs.map((pkg) => (
-              <article key={pkg.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{pkg.name}</strong>
-                  <small>{formatMoney(pkg.priceMinor, pkg.currency)}</small>
-                </div>
-                <Status tone="good">
-                  {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                  available
-                </Status>
-                <small>
-                  {pkg.expiresAt
-                    ? `Expires ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`
-                    : "No expiration"}
-                </small>
-              </article>
-            ))}
-            {!pkgs.length && (
-              <EmptyState
-                title="No package"
-                detail="This student is currently pay as you go."
-              />
-            )}
-          </div>
-        </Section>
-        <Section title="Payments & adjustments">
-          <div className="metric-strip compact-metrics">
-            <div>
-              <small>Available studio balance</small>
-              <strong>
-                {formatMoney(
-                  Math.max(0, studentBalanceMinor(student.id, data.payments)),
-                )}
-              </strong>
-            </div>
-          </div>
-          <details className="disclosure-section">
-            <summary>Payment history ({payments.length})</summary>
+      <details className="disclosure-section">
+        <summary>Invoices</summary>
+        <InvoiceWorkspace data={data} isDemo={isDemo} studentId={student.id} />
+      </details>
+      <details className="disclosure-section">
+        <summary>Financial configuration and forecasts</summary>
+        <StudentFinancialSetup data={data} student={student} />
+      </details>
+      <details className="disclosure-section">
+        <summary>Payment reminders</summary>
+        <PaymentReminderSteps data={data} student={student} isDemo={isDemo} />
+      </details>
+      <details className="disclosure-section" id="payment-arrangements">
+        <summary>Packages, payment history and adjustments</summary>
+        <div className="two-section-grid">
+          <Section
+            title="Packages"
+            marked
+            aside={
+              <div className="header-actions">
+                <button onClick={() => setAdjustingBalance(true)}>
+                  Adjust dollar balance
+                </button>
+                <button
+                  disabled={
+                    !data.packageDefinitions.some((item) => item.active)
+                  }
+                  onClick={() => setAssigning(true)}
+                >
+                  Assign package
+                </button>
+              </div>
+            }
+          >
+            <ListControls
+              page={packagePage.page}
+              pageCount={packagePage.pageCount}
+              pageSize={packagePage.pageSize}
+              total={pkgs.length}
+              onPage={packagePage.setPage}
+              onPageSize={packagePage.setPageSize}
+              label="packages"
+            />
             <div className="table-list">
-              {payments.map((p) => (
-                <article key={p.id}>
+              {packagePage.visible.map((pkg) => (
+                <article key={pkg.id}>
                   <CircleDollarSign />
                   <div>
-                    <strong>{p.reason}</strong>
-                    <small>
-                      {formatStudioDate(p.createdAt, data.settings.timezone)}
-                    </small>
+                    <strong>{pkg.name}</strong>
+                    <small>{formatMoney(pkg.priceMinor, pkg.currency)}</small>
                   </div>
-                  <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
+                  <Status tone="good">
+                    {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
+                    remaining
+                  </Status>
+                  <small>
+                    {pkg.expiresAt
+                      ? `Expires ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`
+                      : "No expiration"}
+                  </small>
                 </article>
               ))}
-              {!payments.length && (
+              {!pkgs.length && (
                 <EmptyState
-                  title="No ledger entries"
-                  detail="Payments and adjustments will appear here."
+                  title="No package"
+                  detail="This student is currently pay as you go."
                 />
               )}
             </div>
-          </details>
-        </Section>
-      </div>
+          </Section>
+          <Section title="Payments & adjustments">
+            <div className="metric-strip compact-metrics">
+              <div>
+                <small>Dollar account credit</small>
+                <strong>
+                  {formatMoney(
+                    Math.max(0, studentBalanceMinor(student.id, data.payments)),
+                  )}
+                </strong>
+              </div>
+            </div>
+            <details className="disclosure-section">
+              <summary>Payment history ({payments.length})</summary>
+              <ListControls
+                page={paymentPage.page}
+                pageCount={paymentPage.pageCount}
+                pageSize={paymentPage.pageSize}
+                total={payments.length}
+                onPage={paymentPage.setPage}
+                onPageSize={paymentPage.setPageSize}
+                label="payments"
+              />
+              <div className="table-list">
+                {paymentPage.visible.map((p) => (
+                  <article key={p.id}>
+                    <CircleDollarSign />
+                    <div>
+                      <strong>{p.reason}</strong>
+                      <small>
+                        {formatStudioDate(p.createdAt, data.settings.timezone)}
+                      </small>
+                    </div>
+                    <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
+                  </article>
+                ))}
+                {!payments.length && (
+                  <EmptyState
+                    title="No ledger entries"
+                    detail="Payments and adjustments will appear here."
+                  />
+                )}
+              </div>
+            </details>
+          </Section>
+        </div>
+      </details>
       {assigning && (
         <Dialog
           title="Assign package"

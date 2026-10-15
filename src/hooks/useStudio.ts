@@ -262,6 +262,13 @@ export async function invalidateStudioDomains(
 ) {
   const selected = new Set(domains);
   await Promise.all([
+    queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
+    queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
+    ...(["finance", "lessons", "booking"].some((domain) =>
+      selected.has(domain as StudioDomain),
+    )
+      ? [queryClient.invalidateQueries({ queryKey: ["credit-coverage"] })]
+      : []),
     queryClient.invalidateQueries({
       predicate: (query) =>
         query.queryKey[0] === "studio-domain" &&

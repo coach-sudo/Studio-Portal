@@ -53,9 +53,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "Maya Kim" }),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Current work" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My Work" })).toBeInTheDocument();
     });
     it("02 filters interested students", async () => {
       const user = userEvent.setup();
@@ -207,7 +205,7 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(
         within(dialog).getByRole("button", { name: "Add resource" }),
       );
-      await user.click(screen.getByRole("link", { name: "Current work" }));
+      await user.click(screen.getByRole("link", { name: "My Work" }));
       expect(await screen.findByText("Hamlet sides")).toBeInTheDocument();
     });
     it("09 saves a private coach note", async () => {
@@ -488,7 +486,7 @@ describe("50 start-to-finish studio workflows", () => {
         screen.getByRole("heading", { name: "Your packages" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Account credit" }),
+        screen.getByRole("heading", { name: "Dollar account credit" }),
       ).toBeInTheDocument();
     });
     it("26 sees one primary action and related workspace actions on Home", async () => {
@@ -724,7 +722,7 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("heading", { name: "Payments" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Account credit" }),
+        screen.getByRole("heading", { name: "Dollar account credit" }),
       ).toBeInTheDocument();
     });
     it("G4 can open the linked actor-page workspace", async () => {

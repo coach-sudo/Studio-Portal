@@ -17,8 +17,36 @@ import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { supabase } from "../../lib/supabase";
 import { useStudioStore } from "../../state/StudioStore";
+import { LiveCreditAccount } from "./LiveCreditAccount";
 
 export function CreditAccount({
+  data,
+  studentId,
+  isDemo,
+  readOnly = false,
+}: {
+  data: StudioSnapshot;
+  studentId: string;
+  isDemo: boolean;
+  readOnly?: boolean;
+}) {
+  return isDemo ? (
+    <DemoCreditAccount
+      data={data}
+      studentId={studentId}
+      isDemo={isDemo}
+      readOnly={readOnly}
+    />
+  ) : (
+    <LiveCreditAccount
+      studentId={studentId}
+      timezone={data.settings.timezone}
+      readOnly={readOnly}
+    />
+  );
+}
+
+function DemoCreditAccount({
   data,
   studentId,
   isDemo,

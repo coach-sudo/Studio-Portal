@@ -163,3 +163,39 @@
 .student-record-page .action-row > button.primary-button {
   color: #17211d;
 }
+
+/* Student actions use one native, keyboard-operable disclosure on every viewport. */
+.record-add-menu > summary {
+  min-height: 44px;
+  padding: 10px 16px;
+  cursor: pointer;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface, white);
+  font-weight: 700;
+}
+.record-add-menu[open] > .stack-actions {
+  padding: 8px 0;
+}
+.student-record-page .record-card {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.student-record-page .household-contact-row small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.student-record-page .record-side {
+  min-width: 0;
+}
+@media (max-width: 600px) {
+  .student-record-page .record-side {
+    grid-template-columns: 1fr;
+  }
+  .student-record-page .focus-grid {
+    grid-template-columns: 1fr;
+  }
+  .record-add-menu {
+    min-width: 0;
+  }
+}

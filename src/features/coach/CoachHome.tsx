@@ -171,7 +171,7 @@ export function CoachHome() {
           <CircleDollarSign />
           <span>
             <strong>{formatMoney(outstanding)}</strong>
-            <small>open balances</small>
+            <small>dollar account credit</small>
           </span>
         </button>
       </div>

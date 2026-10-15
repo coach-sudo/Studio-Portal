@@ -84,7 +84,7 @@ const notificationLabels = {
   accountAccess: "Account access",
 } as const;
 
-function LinkedContacts({
+export function LinkedContacts({
   data,
   student,
   busy,
@@ -104,6 +104,7 @@ function LinkedContacts({
   const store = useStudioStore();
   const [editing, setEditing] = useState<Data["linkedContacts"][number]>();
   const [adding, setAdding] = useState(false);
+  const [managing, setManaging] = useState(false);
   const [notice, setNotice] = useState("");
   const contacts = data.linkedContacts.filter(
     (contact) => contact.studentId === student.id,
@@ -241,13 +242,14 @@ function LinkedContacts({
     portalInvitationDelivery(data, student.id, contact.email);
   return (
     <Section
-      title="Household access"
+      title="Household contacts"
       marked
       aside={
         <button
           type="button"
           onClick={() => {
             setEditing(undefined);
+            setManaging(false);
             setAdding(true);
           }}
         >
@@ -284,56 +286,35 @@ function LinkedContacts({
                     : ""}
                 </small>
               </div>
-              <Status
-                tone={
-                  !contact.portalEnabled
-                    ? "neutral"
-                    : delivery?.status === "failed"
-                      ? "danger"
-                      : delivery?.status === "sent"
-                        ? "good"
-                        : "warn"
-                }
-              >
-                {!contact.portalEnabled
-                  ? "Access off"
-                  : delivery?.status === "failed"
-                    ? "Needs retry"
-                    : delivery?.status === "sent"
-                      ? "Sent"
-                      : delivery
-                        ? "Sending"
-                        : "Not invited"}
-              </Status>
+              <div>
+                <Status tone={contact.portalEnabled ? "good" : "neutral"}>
+                  Portal access {contact.portalEnabled ? "on" : "off"}
+                </Status>
+                <small>
+                  Invitation:{" "}
+                  {delivery?.status === "sent"
+                    ? "sent to delivery provider"
+                    : delivery?.status || "not created"}
+                </small>
+                <small>Activation: not verified</small>
+              </div>
               <div className="household-contact-actions">
-                <Link
-                  className="button-link"
-                  to={`/coach/students/${student.id}/contacts/${contact.id}`}
+                <button
+                  onClick={() => {
+                    setManaging(false);
+                    setEditing(contact);
+                  }}
                 >
-                  Open profile
-                </Link>
-                <button onClick={() => setEditing(contact)}>
-                  {contact.portalEnabled ? "Edit access" : "Restore access"}
+                  Edit contact
                 </button>
-                {contact.portalEnabled && (
-                  <button
-                    className="primary-button"
-                    disabled={busy}
-                    onClick={() => void onInvite("guardian", contact.id)}
-                  >
-                    {delivery?.status === "failed"
-                      ? "Retry invite"
-                      : "Send invite"}
-                  </button>
-                )}
-                {contact.portalEnabled && (
-                  <button
-                    className="danger-button"
-                    onClick={() => void disable(contact)}
-                  >
-                    Remove
-                  </button>
-                )}
+                <button
+                  onClick={() => {
+                    setManaging(true);
+                    setEditing(contact);
+                  }}
+                >
+                  Manage Access
+                </button>
               </div>
             </article>
           );
@@ -347,7 +328,11 @@ function LinkedContacts({
       )}
       {(adding || editing) && (
         <Drawer
-          title={editing ? `Edit ${editing.fullName}` : "Add linked contact"}
+          title={
+            editing
+              ? `${managing ? "Manage Access" : "Edit contact"} · ${editing.fullName}`
+              : "Add linked contact"
+          }
           onClose={() => {
             setAdding(false);
             setEditing(undefined);
@@ -393,37 +378,40 @@ function LinkedContacts({
                 placeholder="Parent, manager, spouse…"
               />
             </label>
-            <label className="check-row full">
-              <input
-                name="portalEnabled"
-                type="checkbox"
-                defaultChecked={editing?.portalEnabled ?? true}
-              />
-              Allow this person to use the portal
-            </label>
-            <fieldset className="full option-fieldset">
-              <legend>Portal permissions</legend>
-              {[
-                ["canViewSchedule", "View schedule", true],
-                ["canManageLessons", "Manage or reschedule lessons", false],
-                ["canViewWork", "View work and notes", true],
-                ["canManageProfile", "Manage profile", false],
-                ["canViewFinance", "View payments", student.isMinor],
-              ].map(([name, label, fallback]) => (
-                <label className="check-row" key={String(name)}>
-                  <input
-                    name={String(name)}
-                    type="checkbox"
-                    defaultChecked={
-                      editing
-                        ? Boolean(editing[name as keyof typeof editing])
-                        : Boolean(fallback)
-                    }
-                  />
-                  {String(label)}
-                </label>
-              ))}
-            </fieldset>
+            <details className="full disclosure-section" open={managing}>
+              <summary>Portal access and permissions</summary>
+              <label className="check-row full">
+                <input
+                  name="portalEnabled"
+                  type="checkbox"
+                  defaultChecked={editing?.portalEnabled ?? true}
+                />
+                Allow this person to use the portal
+              </label>
+              <fieldset className="full option-fieldset">
+                <legend>Portal permissions</legend>
+                {[
+                  ["canViewSchedule", "View schedule", true],
+                  ["canManageLessons", "Manage or reschedule lessons", false],
+                  ["canViewWork", "View work and notes", true],
+                  ["canManageProfile", "Manage profile", false],
+                  ["canViewFinance", "View payments", student.isMinor],
+                ].map(([name, label, fallback]) => (
+                  <label className="check-row" key={String(name)}>
+                    <input
+                      name={String(name)}
+                      type="checkbox"
+                      defaultChecked={
+                        editing
+                          ? Boolean(editing[name as keyof typeof editing])
+                          : Boolean(fallback)
+                      }
+                    />
+                    {String(label)}
+                  </label>
+                ))}
+              </fieldset>
+            </details>
             <fieldset className="full option-fieldset">
               <legend>Responsibility</legend>
               <p>Responsibility does not grant portal access.</p>
@@ -461,40 +449,74 @@ function LinkedContacts({
                 );
               })}
             </fieldset>
-            <fieldset className="full option-fieldset">
-              <legend>Notifications</legend>
-              <label className="check-row">
-                <input
-                  name="canReceiveNotifications"
-                  type="checkbox"
-                  defaultChecked={editing?.canReceiveNotifications ?? true}
-                />
-                Receive optional notifications
-              </label>
-              {Object.entries(notificationLabels).map(([key, label]) => (
-                <label className="check-row" key={key}>
+            <details className="full disclosure-section" open={managing}>
+              <summary>Notification preferences</summary>
+              <fieldset className="full option-fieldset">
+                <legend>Notifications</legend>
+                <label className="check-row">
                   <input
-                    name={`notify-${key}`}
+                    name="canReceiveNotifications"
                     type="checkbox"
-                    defaultChecked={
-                      editing?.notificationPreferences?.[
-                        key as keyof typeof editing.notificationPreferences
-                      ] ??
-                      ((key !== "payments" && key !== "packageBalance") ||
-                        student.isMinor)
-                    }
+                    defaultChecked={editing?.canReceiveNotifications ?? true}
                   />
-                  {label}
-                  {["accountAccess", "scheduleChanges", "payments"].includes(
-                    key,
-                  ) && (
-                    <small>
-                      Critical messages cannot be disabled when applicable.
-                    </small>
-                  )}
+                  Receive optional notifications
                 </label>
-              ))}
-            </fieldset>
+                {Object.entries(notificationLabels).map(([key, label]) => (
+                  <label className="check-row" key={key}>
+                    <input
+                      name={`notify-${key}`}
+                      type="checkbox"
+                      defaultChecked={
+                        editing?.notificationPreferences?.[
+                          key as keyof typeof editing.notificationPreferences
+                        ] ??
+                        ((key !== "payments" && key !== "packageBalance") ||
+                          student.isMinor)
+                      }
+                    />
+                    {label}
+                    {["accountAccess", "scheduleChanges", "payments"].includes(
+                      key,
+                    ) && (
+                      <small>
+                        Critical messages cannot be disabled when applicable.
+                      </small>
+                    )}
+                  </label>
+                ))}
+              </fieldset>
+            </details>
+            {managing && editing && (
+              <div className="full stack-actions">
+                <Link
+                  to={`/coach/students/${student.id}/contacts/${editing.id}`}
+                >
+                  Contact profile and access details
+                </Link>
+                {editing.portalEnabled && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={() => void onInvite("guardian", editing.id)}
+                  >
+                    Send invitation or reset credentials
+                  </button>
+                )}
+                {editing.portalEnabled && (
+                  <button
+                    type="button"
+                    className="danger-button"
+                    onClick={() => void disable(editing)}
+                  >
+                    Revoke portal access
+                  </button>
+                )}
+                <small>
+                  Revocation preserves the contact and relationship. Mandatory
+                  notifications remain subject to studio policy.
+                </small>
+              </div>
+            )}
             <div className="form-actions full">
               <button
                 type="button"

@@ -127,9 +127,124 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(`alter type public.lesson_status add value if not exists 'draft';
+    alter table studios add column if not exists settings jsonb default '{}';
+    alter table notes add column student_id uuid,add column title text default '',add column status text default 'draft',add column updated_at timestamptz default now();
+    alter table assignments add column student_id uuid,add column title text default '',add column status text default 'assigned',add column help_requested boolean default false,add column due_at timestamptz;
+    create table materials(id uuid primary key default gen_random_uuid(),title text,status text default 'active',text_content text default '',source text default '',version integer default 1,in_library boolean default false,catalog_visibility text default 'assigned',created_at timestamptz default now());
+    alter table material_links add column material_id uuid,add column student_id uuid,add column role text default 'library',add column status text default 'active',add column pinned boolean default false,add column updated_at timestamptz default now(),add column version integer default 1;
+    create table actor_profiles(id uuid primary key,student_id uuid);
+    create table profile_submissions(id uuid primary key,actor_profile_id uuid,approval_status text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261015123428_student_workspace_summary.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
+});
+
+describe("student workspace summaries and explicit credit intent", () => {
+  it("counts an issued invoice once instead of adding its lesson obligation", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const lid = await lesson();
+    await db.query(
+      `update lessons set price_minor=4000,payment_status='due' where id=$1`,
+      [lid],
+    );
+    await invoice(await service(), "service", [lid]);
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      unpaidInvoices: 1,
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 4000, dollarCreditMinor: 1200 }],
+    });
+  });
+  it("reports unknown lesson prices for review without inventing a zero balance", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await lesson();
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ reviewRequired: true });
+  });
+  it("bounds current context and denies the coach-private summary to a student", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson("now()+interval '1 day'");
+    await lesson("now()+interval '2 days'");
+    const result = (await scalar(
+      `select student_workspace_summary($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      studentId: student,
+      nextLesson: { id: first },
+      work: [],
+      practice: [],
+      latestNote: null,
+    });
+    await db.query(`select set_config('app.uid',$1,false)`, [student]);
+    await expect(
+      db.query(`select student_workspace_summary($1)`, [student]),
+    ).rejects.toThrow("FORBIDDEN");
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+  });
+  it("retains a failed manual request for recovery while automatic use remains off", async () => {
+    await reset();
+    await lot(1);
+    const lid = await lesson();
+    await db.exec(`create function pg_temp.manual_fail() returns trigger language plpgsql as $$begin if new.quantity<0 then raise exception 'fixture failure';end if;return new;end$$;
+      create trigger manual_failure after insert on package_credit_entries for each row execute function pg_temp.manual_fail();`);
+    const args = [
+      student,
+      "apply_upcoming",
+      {},
+      (await summary()).version,
+      "manual-recovery",
+      coach,
+    ];
+    const first = (await scalar(
+      `select command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+      args,
+    ))!.result;
+    expect(first).toMatchObject({
+      applied: 0,
+      failed: 1,
+      autoApplyPending: true,
+      autoApply: false,
+    });
+    await db.exec(`drop trigger manual_failure on package_credit_entries`);
+    await db.query(
+      `update credit_internal.credit_coverage_jobs set next_attempt_at=now()-interval '1 second' where student_id=$1`,
+      [student],
+    );
+    expect(
+      (await scalar(`select process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toMatchObject({ applied: 1, failed: 0 });
+    expect((await summary()).autoApply).toBe(false);
+    expect(
+      (await scalar(
+        `select count(*) n from package_credit_entries where lesson_id=$1 and quantity<0`,
+        [lid],
+      ))!.n,
+    ).toBe(1);
+    expect(
+      (await scalar(
+        `select command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+        args,
+      ))!.result,
+    ).toEqual({ ...(first as Record<string, unknown>), duplicate: true });
+  });
 });
 
 describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
@@ -1201,7 +1316,10 @@ describe("credit lifecycle reliability", () => {
       skipped: 0,
       failed: 0,
     });
-    expect(await grant("grant-repeat")).toEqual({ ...first, duplicate: true });
+    expect(await grant("grant-repeat")).toEqual({
+      ...(first as Record<string, unknown>),
+      duplicate: true,
+    });
     expect(await scan()).toMatchObject({
       applied: 0,
       alreadyCovered: 2,
@@ -1305,7 +1423,7 @@ describe("credit lifecycle reliability", () => {
       ))!.n,
     ).toBe(1);
   });
-  it("application requires an enabled preference and replays its audited result without changing settings", async () => {
+  it("manual application works with automatic use off and replays without changing the preference", async () => {
     await reset();
     await lot(1);
     await lesson();
@@ -1318,26 +1436,18 @@ describe("credit lifecycle reliability", () => {
       "explicit-apply",
       coach,
     ];
-    await expect(
-      db.query(
-        `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6)`,
-        args,
-      ),
-    ).rejects.toThrow("Review and enable");
-    expect((await summary()).autoApply).toBe(false);
-    await enable();
     const first = (await scalar(
       `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
       args,
     ))!.result as any;
-    expect(first).toMatchObject({ applied: 1, autoApply: true, failed: 0 });
+    expect(first).toMatchObject({ applied: 1, autoApply: false, failed: 0 });
     expect(
       (await scalar(
         `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
         args,
       ))!.result,
-    ).toEqual({ ...first, duplicate: true });
-    expect((await summary()).autoApply).toBe(true);
+    ).toEqual({ ...(first as Record<string, unknown>), duplicate: true });
+    expect((await summary()).autoApply).toBe(false);
   });
   it("enable, disable and adjust report accurate coverage while preserving existing holds", async () => {
     await reset();
