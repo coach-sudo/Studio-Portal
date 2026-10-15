@@ -36,7 +36,7 @@ Windows has no running local PostgreSQL container. Full migration replay/lint/ty
 
 ## Changed-file inventory
 
-- Shared interface: `src/components/LessonBulkList.tsx`, `LessonBulkWorkspace.tsx`, `LessonBulk.css`, `src/hooks/useLessonSelection.ts`, `src/domain/lessonBulkPresentation.ts`.
+- Shared interface: `src/components/LessonBulkList.tsx`, `LessonBulkWorkspace.tsx`, `LessonBulk.css`, `src/hooks/useLessonSelection.ts`, `src/domain/lessonBulkPresentation.ts`; `Primitives.tsx` and its keyboard regression keep native disclosure summaries inside the dialog focus trap and exclude collapsed controls.
 - Integrations and context: `src/components/LessonCalendar.tsx`, `src/features/coach/StudentWorkspace.tsx`, `StudentWorkspaceLessons.tsx`, `StudioLessons.tsx`, `BookingCenter.tsx`, `routeDomains.ts`.
 - Read contracts: `src/domain/lessonBulk.ts`, `supabase/migrations/20261014224415_lesson_bulk_review_context.sql`.
 - Verification: selection and route-domain tests, credit/invoice database tests, `supabase/tests/lesson_bulk_management.sql`, `e2e/lesson-bulk-interface.spec.ts`, `e2e/support/lessonBulk.ts`.

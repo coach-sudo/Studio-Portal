@@ -339,15 +339,30 @@ function useOverlayFocus(onClose: () => void) {
     const controls = () =>
       [
         ...(ref.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"]):not(:disabled)',
+          'button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary:not([tabindex="-1"]),[tabindex]:not([tabindex="-1"]):not(:disabled)',
         ) ?? []),
       ]
-        .filter(
-          (element) =>
+        .filter((element) => {
+          // Native summaries participate in Tab order; controls inside a closed
+          // disclosure do not, even though their computed display stays visible.
+          for (
+            let parent = element.parentElement;
+            parent;
+            parent = parent.parentElement
+          ) {
+            if (
+              parent.tagName === "DETAILS" &&
+              !parent.hasAttribute("open") &&
+              !parent.querySelector(":scope > summary")?.contains(element)
+            )
+              return false;
+          }
+          return (
             !element.closest('[hidden],[inert],[aria-hidden="true"]') &&
             getComputedStyle(element).display !== "none" &&
-            getComputedStyle(element).visibility !== "hidden",
-        )
+            getComputedStyle(element).visibility !== "hidden"
+          );
+        })
         .sort((a, b) =>
           a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
             ? -1

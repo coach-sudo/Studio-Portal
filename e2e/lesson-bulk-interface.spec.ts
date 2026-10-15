@@ -86,6 +86,17 @@ test("@journey @mobile @a11y select across pages, delete eligible mistakes, pres
     await expect(
       dialog.getByText("Payment or invoice history must be preserved."),
     ).toBeVisible();
+    const lastConsequence = page
+      .locator(".bulk-review-row > details > summary")
+      .last();
+    await lastConsequence.focus();
+    await page.keyboard.press("Tab");
+    await expect(
+      dialog.getByRole("button", { name: "Close", exact: true }),
+    ).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(lastConsequence).toBeFocused();
+    await dialog.getByRole("button", { name: "Close", exact: true }).focus();
     await expectNoSeriousAxeViolations(page, '[role="dialog"]');
     for (const width of info.project.name.startsWith("mobile")
       ? [390]

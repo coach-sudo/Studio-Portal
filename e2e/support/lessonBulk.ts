@@ -230,7 +230,9 @@ export async function chooseBulkOperation(
   });
   await expect(form).toBeVisible();
   if (scope)
-    await form.getByLabel("Scope", { exact: true }).selectOption(scope);
+    await form
+      .getByRole("combobox", { name: "Scope", exact: true })
+      .selectOption(scope);
   await form
     .getByLabel("Reason", { exact: true })
     .fill("Erroneous isolated fixture review");
