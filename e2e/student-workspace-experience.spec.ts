@@ -373,6 +373,8 @@ test("@journey @mobile @a11y finance-only guardian sees account totals without l
       { headers, data: { p_student: f.studentId } },
     );
     expect(denied.ok()).toBe(false);
+    await page.reload();
+    await expect(page.getByText("$80.00", { exact: true })).toHaveCount(0);
   } finally {
     try {
       f.sql(

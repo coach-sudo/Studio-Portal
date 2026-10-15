@@ -12,6 +12,7 @@ on:
         codex/occurrence-safe-lesson-changes,
         codex/bulk-lesson-management,
         codex/bulk-lesson-interface,
+        codex/student-workspace-experience,
         codex/pr2-query-layer,
         codex/pr5-server-contracts,
         codex/pr6-product-polish,
@@ -79,6 +80,10 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor
+      - name: Upgrade from verified production migration baseline with synthetic history
+        env:
+          WAVE_ONE_ACCEPTANCE_LOCAL: "true"
+        run: node scripts/test-wave-one-upgrade.mjs
       - run: npx supabase db reset --local --no-seed
       - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops --fail-on error
       - run: npm run supabase:types
