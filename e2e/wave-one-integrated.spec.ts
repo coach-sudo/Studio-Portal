@@ -231,3 +231,92 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
     }
   }
 });
+
+test("@journey @mobile @a11y Wave 1 studio selection spans students and pages and void preserves records", async ({
+  browser,
+  runtime,
+}, info) => {
+  requireFixtures(runtime);
+  test.setTimeout(120000);
+  const f = await bulkFixture(runtime, 12, false, 300);
+  const context = await browser.newContext({
+    baseURL: runtime.baseURL,
+    storageState: storageStatePath("coach"),
+    bypassCSP: true,
+    viewport: {
+      width: info.project.name.startsWith("mobile") ? 390 : 1440,
+      height: 1000,
+    },
+  });
+  const page = await context.newPage();
+  page.setDefaultTimeout(15000);
+  try {
+    f.sql(
+      `update lessons set status='cancelled',payment_status='untracked',paid_minor=0 where student_id='${f.studentId}';update lessons set student_id='${f.secondStudent}' where id in (${f.lessonIds
+        .slice(6)
+        .map((id) => `'${id}'`)
+        .join(",")});`,
+    );
+    const snapshot = () =>
+      f.sql(
+        `select jsonb_agg(to_jsonb(l) order by id) from lessons l where id in (${f.lessonIds.map((id) => `'${id}'`).join(",")})`,
+      );
+    const before = snapshot();
+    await page.goto(
+      `/coach/bookings?calendarView=list&lessonQuery=${encodeURIComponent(f.run)}&lessonSize=10`,
+    );
+    const rows = page.locator(".bulk-lesson-rows input[type=checkbox]");
+    await expect(rows).toHaveCount(10);
+    await rows.first().check();
+    await rows.last().check();
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await expect(rows).toHaveCount(2);
+    await rows.first().check();
+    await expect(page.getByText("3 selected", { exact: true })).toBeVisible();
+    await chooseBulkOperation(page, "void");
+    await expect(page.getByRole("dialog")).toContainText(`${f.run} Student 1`);
+    await expect(page.getByRole("dialog")).toContainText(`${f.run} Student 2`);
+    await expect(page.getByText("3 eligible", { exact: true })).toBeVisible();
+    const job = batchId(page);
+    await expectNoHorizontalOverflow(page);
+    await expectNoSeriousAxeViolations(page, '[role="dialog"]');
+    await page.screenshot({
+      path: info.outputPath("integrated-cross-student-void-review.png"),
+      fullPage: true,
+    });
+    await page
+      .getByRole("button", {
+        name: "Confirm void erroneous records (3 eligible)",
+        exact: true,
+      })
+      .click();
+    await expect(page.getByText(/Batch accepted/)).toBeVisible();
+    await f.work(job);
+    await page.reload();
+    await expect(
+      page.getByText("3 completed of 3", { exact: true }),
+    ).toBeVisible();
+    expect(snapshot()).toBe(before);
+    expect(
+      f.sql(
+        `select count(*) from lesson_ops.lesson_record_state where lesson_id in (${f.lessonIds.map((id) => `'${id}'`).join(",")}) and voided_at is not null`,
+      ),
+    ).toBe("3");
+    expect(
+      f.sql(
+        `select count(*) from audit_events where correlation_id='${job}' and action='lesson.bulk_void'`,
+      ),
+    ).toBe("3");
+    expect(
+      f.sql(
+        `select count(*) from lesson_ops.effects where lesson_id in (${f.lessonIds.map((id) => `'${id}'`).join(",")})`,
+      ),
+    ).toBe("0");
+  } finally {
+    try {
+      await f.cleanup();
+    } finally {
+      await context.close();
+    }
+  }
+});
