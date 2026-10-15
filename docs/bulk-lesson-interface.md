@@ -40,7 +40,7 @@ Windows has no running local PostgreSQL container. Full migration replay/lint/ty
 - Integrations and context: `src/components/LessonCalendar.tsx`, `src/features/coach/StudentWorkspace.tsx`, `StudentWorkspaceLessons.tsx`, `StudioLessons.tsx`, `BookingCenter.tsx`, `routeDomains.ts`.
 - Read contracts: `src/domain/lessonBulk.ts`, `supabase/migrations/20261014224415_lesson_bulk_review_context.sql`.
 - Verification: selection and route-domain tests, credit/invoice database tests, `supabase/tests/lesson_bulk_management.sql`, `e2e/lesson-bulk-interface.spec.ts`, `e2e/support/lessonBulk.ts`.
-- Delivery: dependent-base CI allowlists and this document.
+- Delivery: dependent-base CI allowlists, the Node typecheck include for shared review labels, and this document.
 
 ## Review checkpoint and next scope
 
