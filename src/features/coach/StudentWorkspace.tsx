@@ -656,27 +656,17 @@ export function StudentWorkspace() {
               )}
             </div>
           </details>
-          {student.email && (
-            <Link
-              className="button-link"
-              to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}
-            >
-              <MessageSquare />
-              Message
-            </Link>
-          )}
-          {student.email && (
-            <button onClick={() => setRecordMenuOpen(true)}>
-              <MoreHorizontal />
-              More actions
-            </button>
-          )}
-          {!student.email && (
-            <button onClick={() => setRecordMenuOpen(true)}>
-              <MoreHorizontal />
-              More actions
-            </button>
-          )}
+          <Link
+            className="button-link"
+            to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}
+          >
+            <MessageSquare />
+            Message
+          </Link>
+          <button onClick={() => setRecordMenuOpen(true)}>
+            <MoreHorizontal />
+            More actions
+          </button>
         </div>
       </header>
       {notice && (
