@@ -90,6 +90,7 @@ select set_config('request.jwt.claim.sub','d1000000-0000-4000-8000-000000000002'
 select throws_ok($$select public.student_financial_overview('d3000000-0000-4000-8000-000000000001')$$,'42501','FORBIDDEN','Disabled workspace denies totals without changing identity claims');
 select throws_ok($$select public.student_credit_coverage('d3000000-0000-4000-8000-000000000001')$$,'42501','FORBIDDEN','Disabled workspace denies coverage');
 select throws_ok($$select public.student_credit_history('d3000000-0000-4000-8000-000000000001')$$,'42501','FORBIDDEN','Disabled workspace denies history');
+reset role;
 select ok(not has_table_privilege('authenticated','lesson_ops.lesson_deletion_snapshots','select'),'Portal identity cannot list deleted record snapshots');
 select ok(not has_table_privilege('authenticated','credit_internal.credit_coverage_jobs','select'),'Portal identity cannot list private financial jobs');
 reset role;
