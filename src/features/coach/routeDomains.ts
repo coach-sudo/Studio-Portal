@@ -48,7 +48,11 @@ export function coachSectionDomains(
   }
 }
 
-export function bookingCenterDomains(tab: Tab): readonly StudioDomain[] {
+export function bookingCenterDomains(
+  tab: Tab,
+  boundedList = false,
+): readonly StudioDomain[] {
+  if (tab === "calendar" && boundedList) return ["identity", "students"];
   const shared: readonly StudioDomain[] = [
     "identity",
     "students",
@@ -62,7 +66,10 @@ export function bookingCenterDomains(tab: Tab): readonly StudioDomain[] {
 
 export function studentWorkspaceDomains(
   pathname: string,
+  boundedList = false,
 ): readonly StudioDomain[] {
+  if (boundedList && /^\/coach\/students\/[^/]+\/lessons\/?$/.test(pathname))
+    return ["identity", "students"];
   const shared: readonly StudioDomain[] = [
     "identity",
     "students",
