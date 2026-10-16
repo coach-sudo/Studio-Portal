@@ -1,5 +1,7 @@
 # Wave 1 first protected application deployment gate
 
+**Current checkpoint:** [PR #46 blocker resolution](wave-one-staging-blocker-resolution.md) records the subsequently authorized local Linux installation, successful native/official-CLI packaging, evidence for all four legacy workers, and the revised narrow GO recommendation. The original assessment below is historical. Its original upload recipe has been withdrawn; use the corrected specification in that checkpoint only after explicit deployment authorization.
+
 October 16, 2026 (Eastern). **Staging deployment: NO-GO pending the gates below. Production: NO-GO. No deployment is authorized or executed by this document.**
 
 This follows [staging recovery](wave-one-staging-recovery.md), [the configuration checkpoint](wave-one-staging-checkpoint.json), [integrated acceptance](wave-one-integrated-acceptance.md), and [the master plan](studio-portal-modernization-master-plan.md). It replaces their proposed first-deployment candidate only where explicitly stated below. No migration is added or changed.
@@ -87,10 +89,10 @@ Important distinctions:
 # COMMIT_REF must equal git rev-parse HEAD; CONTEXT must be deploy-preview.
 # NETLIFY_SITE_ID must equal the allowed staging site ID.
 npm ci --ignore-scripts
-npx netlify-cli@27.8.0 build --context deploy-preview
-# Inspect dist, release metadata, Linux native dependencies and function manifests.
-# Stop on any target/runtime/origin/scope mismatch; no upload occurs during build.
-npx netlify-cli@27.8.0 deploy --no-build --context deploy-preview --site d83ff6cb-f57b-4741-8c3c-3eaae7adab19 --skip-functions-cache --message "Wave 1 approved candidate FULL_SHA" --json
+# WITHDRAWN: the original split build/no-build recipe is not an execution procedure.
+# CLI 27.8.0 rejects --context with --no-build, and skipping its function manifest
+# discards the verified runtime metadata. See wave-one-staging-blocker-resolution.md
+# for the reviewed integrated Linux build/draft-upload specification.
 ```
 
 Use supported Netlify CLI authentication; never extract local dashboard/CLI tokens. Capture only sanitized deployment metadata; raw deploy responses may include platform tokens. Record returned `id`, `context`, `site_id`, `published_at`, permalink, function runtime, and a manifest of artifact SHA-256 hashes. Manual deploy records may have a null `commit_ref`; an honest record ties the clean source SHA, embedded release metadata and artifact hashes to the returned deploy ID rather than inventing a Git field.

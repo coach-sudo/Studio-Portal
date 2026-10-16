@@ -77,7 +77,8 @@ async function main() {
   const browser = await chromium.launch({ headless: mode !== "capture" });
   try {
     if (mode === "capture") {
-      const context = await browser.newContext();
+      // Keep application service workers from obscuring intercepted requests.
+      const context = await browser.newContext({ serviceWorkers: "block" });
       const page = await context.newPage();
       await page.goto(`${origin}/login`);
       const prompt = createInterface({
@@ -122,12 +123,16 @@ async function main() {
       const account = credentials.accounts?.[role];
       if (
         !account?.email?.endsWith("@coachd-staging.example.test") ||
-        !account.password
+        !account.password ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+          account.id || "",
+        )
       )
         throw Error("Existing synthetic credentials are required");
       const context = await browser.newContext({
         baseURL: origin,
         storageState: state,
+        serviceWorkers: "block",
       });
       try {
         const health = await context.request.get("/api/healthz", {
