@@ -1,0 +1,216 @@
+{
+  "verifiedDate": "2026-10-16",
+  "environment": "staging",
+  "productionRelease": "NO-GO",
+  "candidate": "fe63c57e928bca78c23e43877480b36a2d8e26c6",
+  "proposalBase": "5be0de2a8a2dc3563ceac80f1a197f75cba24bb4",
+  "supabase": {
+    "project": "lrxrivfqjpkvygozphoz",
+    "name": "coachd-staging",
+    "region": "us-west-1",
+    "postgres": "17.11.0.003",
+    "status": "ACTIVE_HEALTHY"
+  },
+  "netlify": {
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "teamLogin": true,
+    "scope": "all",
+    "currentEnvKeys": ["E2E_FIXTURE_TOKEN"],
+    "stripeEnvPresent": false,
+    "credentialsConfiguredThisRun": false,
+    "deployedThisRun": false
+  },
+  "historyRepair": {
+    "originalVersion": "20261016122917",
+    "originalName": "202607030001_core",
+    "repairedVersion": "202607030001",
+    "repairedName": "core",
+    "normalizedCoreSha256": "80ea1035675d034a1f96a3793e2678f62883cef40a7846e94be77f87b35c91e6",
+    "method": "Supabase CLI migration repair: old version reverted, verified original version applied; no core SQL replay"
+  },
+  "migrationCount": 35,
+  "expectedMigrationCount": 57,
+  "applied": [
+    {
+      "version": "202607030001",
+      "name": "core"
+    },
+    {
+      "version": "202607030002",
+      "name": "rls"
+    },
+    {
+      "version": "202607030003",
+      "name": "commands"
+    },
+    {
+      "version": "202608070004",
+      "name": "booking_platform"
+    },
+    {
+      "version": "20260820054301",
+      "name": "configurable_business_rules"
+    },
+    {
+      "version": "20260820055359",
+      "name": "live_content_and_personalization"
+    },
+    {
+      "version": "20260820055805",
+      "name": "booking_branding_and_location_pricing"
+    },
+    {
+      "version": "20260820061547",
+      "name": "email_automation_and_locations"
+    },
+    {
+      "version": "20260820184240",
+      "name": "actor_view_security_invoker"
+    },
+    {
+      "version": "20260820184248",
+      "name": "actor_portfolios_and_provider_intake"
+    },
+    {
+      "version": "20260820184252",
+      "name": "merge_student_profiles"
+    },
+    {
+      "version": "20260820184254",
+      "name": "portal_credentials_terms"
+    },
+    {
+      "version": "20260820184601",
+      "name": "global_portal_usernames"
+    },
+    {
+      "version": "20260824062936",
+      "name": "lesson_hubs_and_offerings"
+    },
+    {
+      "version": "20260824063423",
+      "name": "enrolled_offering_access_and_indexes"
+    },
+    {
+      "version": "20260824072704",
+      "name": "cohesive_portal_operations"
+    },
+    {
+      "version": "20260824072802",
+      "name": "cohesive_portal_indexes"
+    },
+    {
+      "version": "20260825172349",
+      "name": "operational_calendar_controls"
+    },
+    {
+      "version": "20260825173126",
+      "name": "booking_contact_preferences"
+    },
+    {
+      "version": "20260825174213",
+      "name": "server_command_execution_hardening"
+    },
+    {
+      "version": "20260825183731",
+      "name": "storage_retention"
+    },
+    {
+      "version": "20260826022808",
+      "name": "unified_lesson_operations"
+    },
+    {
+      "version": "20260826072918",
+      "name": "close_production_workflow_gaps"
+    },
+    {
+      "version": "20260826073351",
+      "name": "portal_account_grants_and_whiteboard_removal"
+    },
+    {
+      "version": "20260826190425",
+      "name": "optional_booking_portal_invites"
+    },
+    {
+      "version": "20260830214801",
+      "name": "activity_receipts_student_pricing_and_lesson_financials"
+    },
+    {
+      "version": "20260830220952",
+      "name": "notification_receipt_related_access"
+    },
+    {
+      "version": "20260830221230",
+      "name": "sync_lesson_booking_financials"
+    },
+    {
+      "version": "20260902011922",
+      "name": "cleanup_non_lesson_provider_reviews"
+    },
+    {
+      "version": "20260902172443",
+      "name": "packages_households_notifications_pwa"
+    },
+    {
+      "version": "20260902223243",
+      "name": "fix_lesson_rls_recursion"
+    },
+    {
+      "version": "20260902223544",
+      "name": "harden_household_and_package_lifecycle"
+    },
+    {
+      "version": "20260902224107",
+      "name": "revoke_anonymous_household_helpers"
+    },
+    {
+      "version": "20260903051455",
+      "name": "add_group_class_workspace"
+    },
+    {
+      "version": "20260903153607",
+      "name": "unified_inbox_and_undoable_manual_email"
+    }
+  ],
+  "failed": {
+    "version": "20260903161123",
+    "name": "repair_legacy_procedure_lint",
+    "recorded": false,
+    "sqlstate": "P0001",
+    "message": "Expected redundant i declaration was not found in command_make_lesson_recurring",
+    "observedCR": 61,
+    "observedLF": 61,
+    "lfGuardPosition": 0,
+    "crlfGuardPosition": 438
+  },
+  "waveOneApplied": 0,
+  "intermediateSecurity": {
+    "publicTables": 51,
+    "rlsEnabledTables": 51,
+    "publicPolicies": 76,
+    "advisorInfo": 3,
+    "advisorWarnings": 10,
+    "finalAcceptanceComplete": false
+  },
+  "data": {
+    "students": 0,
+    "authUsers": 0,
+    "outboxMessages": 0,
+    "storageObjects": 0,
+    "defaultStudio": {
+      "id": "11111111-1111-4111-8111-111111111111",
+      "slug": "stage-story"
+    },
+    "syntheticProfileCreated": false
+  },
+  "writesStopped": true,
+  "remaining": [
+    "review staging-only CRLF recovery",
+    "complete remaining 22 migrations",
+    "full-schema security/types/tests",
+    "create synthetic staging profile",
+    "restrict automatic staging builds before credential setup",
+    "configure staging-only Netlify values",
+    "obtain explicit deployment approval"
+  ]
+}
