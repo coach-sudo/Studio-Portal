@@ -68,7 +68,7 @@ const config = {
   database: "postgres",
 };
 const bootstrap = new Client({ ...config, user: "recovery_bootstrap" });
-const client = new Client(config);
+let client = new Client(config);
 try {
   try {
     await bootstrap.connect();
@@ -361,6 +361,14 @@ try {
       }
     }
     console.log("PASS: all 57 original migrations replayed on PostgreSQL 17");
+    if (process.env.VALIDATE_MUTATION_EXECUTOR === "true") {
+      await client.end();
+      const { validateExecutor } = await import("./mutations/validate.mjs");
+      await validateExecutor({ Client, config, root });
+      client = new Client(config);
+      await client.connect();
+      await client.query("set search_path=public,extensions");
+    }
     const catalog = (
       await client.query(
         readFileSync(repo + "/scripts/staging/schema-fingerprint.sql", "utf8"),
@@ -422,7 +430,7 @@ try {
       );
       const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';
 const args=[${JSON.stringify(root + "/pg-client-bridge.mjs")},'${port}'];
-const query=sql=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();
+const query=sql=>{const run=()=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();let value=run();if(sql.includes("wait_event_type='Lock'")){const until=Date.now()+1000;while(value==='0'&&Date.now()<until)value=run();}return value;};
 function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{windowsHide:true});let output='',error='';child.stdout.on('data',data=>{output+=data;onOutput(output)});child.stderr.on('data',data=>error+=data);child.on('error',reject);child.on('close',code=>code?reject(new Error(error)):resolve(output));child.stdin.end(sql)});}
 `;
       assert.ok(source.includes("const coach ="));
@@ -439,7 +447,7 @@ function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{cons
     console.log(
       "PASS: " +
         assertions +
-        " pgTAP assertions and all three original concurrency scenario bodies",
+        " pgTAP assertions and all three original concurrency scenario bodies (bounded native lock polling)",
     );
     writeFileSync(
       root + "/recovery-test-result.json",
