@@ -1,5 +1,7 @@
 # Wave 1 staging configuration: execution checkpoint
 
+**Historical blocked checkpoint:** the subsequently authorized recovery completed all 57 migrations and staging configuration. See [the recovery and configuration report](wave-one-staging-recovery.md) and the updated [current checkpoint](wave-one-staging-checkpoint.json). The failure investigation below is retained as execution history.
+
 October 16, 2026 (Eastern). **BLOCKED before synthetic setup, Netlify credential configuration and deployment. Production remains NO-GO.** This records authorized staging work and its actual result, rather than treating the earlier proposal as current infrastructure state. No Wave 2 work is included.
 
 Source: the user's October 16 resume instructions; [integrated acceptance](wave-one-integrated-acceptance.md); [staging proposal](wave-one-staging-proposal.md); [master plan](studio-portal-modernization-master-plan.md); [release-safety instructions](release-safety.md). Exact machine-readable applied history and checkpoint facts are retained in [wave-one-staging-checkpoint.json](wave-one-staging-checkpoint.json).

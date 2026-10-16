@@ -17,8 +17,75 @@
     "scope": "all",
     "currentEnvKeys": ["E2E_FIXTURE_TOKEN"],
     "stripeEnvPresent": false,
-    "credentialsConfiguredThisRun": false,
-    "deployedThisRun": false
+    "credentialsConfiguredThisRun": true,
+    "deployedThisRun": false,
+    "buildsStopped": true,
+    "activeBuilds": 0,
+    "buildHooks": 0,
+    "teamSharedEnvKeys": [],
+    "environment": [
+      {
+        "key": "STUDIO_ID",
+        "scopes": ["functions"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "SUPABASE_ANON_KEY",
+        "scopes": ["functions"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "SUPABASE_SERVICE_ROLE_KEY",
+        "scopes": ["functions"],
+        "secret": true,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "SUPABASE_URL",
+        "scopes": ["functions"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "VITE_QUERY_LAYER_V2",
+        "scopes": ["builds"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "VITE_SUPABASE_ANON_KEY",
+        "scopes": ["builds"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "E2E_FIXTURE_TOKEN",
+        "scopes": ["functions"],
+        "secret": true,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "E2E_STUDIO_ID",
+        "scopes": ["functions"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "STUDIO_SLUG",
+        "scopes": ["functions"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      },
+      {
+        "key": "VITE_SUPABASE_URL",
+        "scopes": ["builds"],
+        "secret": false,
+        "contexts": ["deploy-preview"]
+      }
+    ],
+    "fixtureTokenRotated": true
   },
   "historyRepair": {
     "originalVersion": "20261016122917",
@@ -28,7 +95,7 @@
     "normalizedCoreSha256": "80ea1035675d034a1f96a3793e2678f62883cef40a7846e94be77f87b35c91e6",
     "method": "Supabase CLI migration repair: old version reverted, verified original version applied; no core SQL replay"
   },
-  "migrationCount": 35,
+  "migrationCount": 57,
   "expectedMigrationCount": 57,
   "applied": [
     {
@@ -170,6 +237,94 @@
     {
       "version": "20260903153607",
       "name": "unified_inbox_and_undoable_manual_email"
+    },
+    {
+      "version": "20260903161123",
+      "name": "repair_legacy_procedure_lint"
+    },
+    {
+      "version": "20260904123000",
+      "name": "household_contact_sync_and_inbox_state"
+    },
+    {
+      "version": "20260905141058",
+      "name": "google_portal_identity_claim"
+    },
+    {
+      "version": "20260913160351",
+      "name": "email_campaigns_and_daily_popup"
+    },
+    {
+      "version": "20260913190801",
+      "name": "student_referrals"
+    },
+    {
+      "version": "20260913191600",
+      "name": "repair_referral_notification"
+    },
+    {
+      "version": "20260919090000",
+      "name": "visible_inbox_realtime"
+    },
+    {
+      "version": "20260919091000",
+      "name": "route_snapshot_rpc"
+    },
+    {
+      "version": "20260919092000",
+      "name": "restrict_route_snapshot_anon_execute"
+    },
+    {
+      "version": "20260920120823",
+      "name": "material_library_page"
+    },
+    {
+      "version": "20260922125950",
+      "name": "pr6_product_polish_configuration"
+    },
+    {
+      "version": "20261005014016",
+      "name": "lesson_operational_intelligence"
+    },
+    {
+      "version": "20261006204647",
+      "name": "unified_credits_and_invoices"
+    },
+    {
+      "version": "20261008120000",
+      "name": "preserve_package_gift_price"
+    },
+    {
+      "version": "20261008203319",
+      "name": "studio_library_resources"
+    },
+    {
+      "version": "20261008220659",
+      "name": "bounded_legacy_material_snapshots"
+    },
+    {
+      "version": "20261014142813",
+      "name": "credit_coverage_diagnostics"
+    },
+    {
+      "version": "20261014151934",
+      "name": "credit_lifecycle_reliability"
+    },
+    {
+      "version": "20261014163444",
+      "name": "occurrence_safe_lesson_changes"
+    },
+    {
+      "version": "20261014203257",
+      "name": "bulk_lesson_management"
+    },
+    {
+      "version": "20261014224415",
+      "name": "lesson_bulk_review_context"
+    },
+    {
+      "version": "20261015123428",
+      "name": "student_workspace_summary"
     }
   ],
   "failed": {
@@ -181,36 +336,113 @@
     "observedCR": 61,
     "observedLF": 61,
     "lfGuardPosition": 0,
-    "crlfGuardPosition": 438
+    "crlfGuardPosition": 438,
+    "resolved": true,
+    "resolution": "Verified exact-function CRLF normalization followed by the unchanged original migration"
   },
-  "waveOneApplied": 0,
+  "waveOneApplied": 6,
   "intermediateSecurity": {
     "publicTables": 51,
     "rlsEnabledTables": 51,
     "publicPolicies": 76,
     "advisorInfo": 3,
     "advisorWarnings": 10,
-    "finalAcceptanceComplete": false
+    "finalAcceptanceComplete": false,
+    "phase": "historical 35-migration checkpoint; see finalSecurity"
   },
   "data": {
-    "students": 0,
-    "authUsers": 0,
+    "students": 1,
+    "authUsers": 4,
     "outboxMessages": 0,
     "storageObjects": 0,
+    "lessons": 0,
+    "ledgerEntries": 0,
+    "paymentEntries": 0,
     "defaultStudio": {
       "id": "11111111-1111-4111-8111-111111111111",
       "slug": "stage-story"
     },
-    "syntheticProfileCreated": false
+    "syntheticProfileCreated": true,
+    "syntheticStudio": {
+      "id": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+      "slug": "coachd-staging"
+    },
+    "syntheticStudentId": "be0657a3-0f36-477a-949a-491afb24809c",
+    "syntheticContactId": "abd656d5-d557-41bb-a9d8-28c4ace67e6b",
+    "recipientDomain": "coachd-staging.example.test",
+    "notificationsEnabled": false
   },
   "writesStopped": true,
   "remaining": [
-    "review staging-only CRLF recovery",
-    "complete remaining 22 migrations",
-    "full-schema security/types/tests",
-    "create synthetic staging profile",
-    "restrict automatic staging builds before credential setup",
-    "configure staging-only Netlify values",
-    "obtain explicit deployment approval"
-  ]
+    "explicit authorization for immutable protected non-production application deployment",
+    "verify deployed origin, commit, context and Auth redirects",
+    "perimeter-aware hosted browser harness",
+    "both-query-mode hosted journeys",
+    "isolated provider approval and safeguards",
+    "separate scheduled-cadence approval",
+    "human coach sign-off",
+    "production release authorization remains excluded"
+  ],
+  "previousCheckpoint": {
+    "migrationCount": 35,
+    "lastApplied": "20260903153607",
+    "failureVersion": "20260903161123"
+  },
+  "checkpoint": "database-and-staging-environment-configured-awaiting-deployment-authorization",
+  "recovery": {
+    "sql": "scripts/staging/recover-recurring-crlf.sql",
+    "rawDefinitionSha256": "d0681ba4709e1cc6fc7c96e338f98e6f2b41e16a2b7f16eb7f3d4d81223b74bc",
+    "normalizedDefinitionSha256": "67563f49127d6aaec3c6eb97447a5b54d290b8e8232b234331294cbaac57adfe",
+    "unrelatedFunctionsUnchanged": true,
+    "allCatalogPropertiesExceptProsrcPreserved": true,
+    "firstAttempt": "Explicit catalog lock denied; transaction rolled back without function changes",
+    "successfulLocking": "Supported owner ALTER FUNCTION reasserts the verified search_path; catalog drift and concurrent change fail closed",
+    "historyUnchangedByRecovery": true,
+    "exactSqlSha256": "b6593c10ba668ede8aa2a2693b2b13cca69ee10551d96836b99ba9edb4a1dc3a"
+  },
+  "validation": {
+    "disposablePostgres": "17.10 Windows x64",
+    "managedPostgres": "17.11.0.003",
+    "recoveryAsNonSuperuser": true,
+    "pgTapAssertions": 204,
+    "pgTapFiles": 8,
+    "concurrencySuites": 3,
+    "concurrencyObserved": true,
+    "generatedTypeParity": true,
+    "schemaParity": {
+      "tables": 78,
+      "columns": 1041,
+      "constraints": 488,
+      "indexes": 233,
+      "functions": 151,
+      "policies": 97
+    },
+    "directStagingAuthorization": [
+      "coach",
+      "student",
+      "guardian",
+      "unrelated denial",
+      "anonymous denial",
+      "coach-summary denial to portal roles",
+      "same-JWT guardian revocation",
+      "private schema PGRST106"
+    ],
+    "allMigrationsUpToDate": true,
+    "containerTestCommand": "Blocked by missing container distribution; SQL assertions and concurrency scenario bodies executed on disposable native PostgreSQL 17"
+  },
+  "finalSecurity": {
+    "publicTables": 67,
+    "rlsDisabledTables": 0,
+    "publicPolicies": 95,
+    "invalidIndexes": 0,
+    "advisorInfoRlsWithoutPolicy": 13,
+    "advisorWarnAuthenticatedSecurityDefiner": 11,
+    "performance": {
+      "unindexedForeignKeys": 80,
+      "authRlsInitplanWarnings": 4,
+      "unusedIndexes": 86,
+      "multiplePermissivePolicyWarnings": 24
+    },
+    "disposition": "Service-only denial tables and guarded RPC helpers; performance notices retained for sizing; no blanket policy or grant changes"
+  }
 }
