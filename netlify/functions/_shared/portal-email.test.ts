@@ -12,6 +12,48 @@ describe("trusted email origins", () => {
       }),
     ).toBe("https://portal.d-a-j.com");
   });
+  it("rejects a production-context staging site instead of generating live links", () => {
+    for (const siteUrl of [
+      undefined,
+      "https://coachd-staging.netlify.app",
+      "https://other-site.netlify.app",
+      "http://portal.d-a-j.com",
+      "https://user:password@portal.d-a-j.com",
+      "https://portal.d-a-j.com:8443",
+      "https://portal.d-a-j.com.attacker.example",
+    ])
+      expect(() =>
+        resolvePortalOrigin({ context: "production", siteUrl }),
+      ).toThrow("Production context requires a trusted production site URL");
+  });
+  it("accepts each existing production site identity", () => {
+    for (const host of [
+      "portal.d-a-j.com",
+      "portal.daj.com",
+      "studio-portal.netlify.app",
+    ])
+      expect(
+        resolvePortalOrigin({
+          context: "production",
+          siteUrl: `https://${host}`,
+        }),
+      ).toBe("https://portal.d-a-j.com");
+  });
+  it("keeps manual draft links on the immutable deployment rather than the main site", () => {
+    const origin = resolvePortalOrigin({
+      context: "deploy-preview",
+      deployUrl: "https://0123456789abcdef01234567--coachd-staging.netlify.app",
+      deployPrimeUrl: "https://coachd-staging.netlify.app",
+      siteUrl: "https://coachd-staging.netlify.app",
+    });
+    expect(origin).toBe(
+      "https://0123456789abcdef01234567--coachd-staging.netlify.app",
+    );
+    expect(portalActionUrl(origin, "login")).toBe(`${origin}/login`);
+    expect(portalActionUrl(origin, "booking", "synthetic-token")).toBe(
+      `${origin}/booking/synthetic-token`,
+    );
+  });
   it("uses the supplied preview deployment without leaking production links", () => {
     const origin = resolvePortalOrigin({
       context: "deploy-preview",
@@ -54,6 +96,8 @@ describe("trusted email origins", () => {
       "https://portal.d-a-j.com",
       "https://portal.daj.com",
       "https://studio-portal.netlify.app",
+      "https://www.portal.d-a-j.com",
+      "https://preview.studio-portal.netlify.app",
       "https://user:password@preview.example.test",
     ])
       expect(() =>
