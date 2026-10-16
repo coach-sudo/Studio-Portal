@@ -1,5 +1,7 @@
 # Wave 1 — first authorized protected staging draft
 
+**Subsequent checkpoint:** [exact-host Auth configuration and private credentials handoff](wave-one-staging-auth-configuration.md) records the separately authorized URL-only update. The deployment/stop report below remains historical; it does not authorize another deployment or application sign-in.
+
 October 16, 2026 (Eastern). **Outcome: PASS. Exactly one draft was created and verified; it is unpublished. Production remains NO-GO.** Execution stopped after the authorized deployment and read-only verification. Auth configuration, synthetic sign-in, fixtures, financial acceptance and further deployments are not authorized by this result.
 
 ## Deployment identity
