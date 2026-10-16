@@ -1,5 +1,7 @@
 # Wave 1 isolated staging configuration proposal
 
+**Historical proposal:** infrastructure and authorization changed after this snapshot. See the [October 16 staging execution checkpoint](wave-one-staging-configuration.md) for the verified project, preserved team-login protection, migration-history repair and current installation blocker. Do not use this proposal's original infrastructure inventory as current state.
+
 Prepared October 15, 2026 (Eastern). **Proposal only. Production remains NO-GO.** Preparation is authorized; infrastructure creation, hosted configuration changes, database mutations, deployment, provider activity and worker activation are not authorized. No Wave 1 PR is to be merged. Wave 2 is outside this work.
 
 The source of truth is [draft PR #43](https://github.com/coach-sudo/Studio-Portal/pull/43) and [its integrated acceptance report](wave-one-integrated-acceptance.md), with the [master plan](studio-portal-modernization-master-plan.md). This document supplements the general [release-safety guide](release-safety.md) with the restrictions required for this candidate. It contains no credentials or deployable environment file.
