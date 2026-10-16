@@ -11,6 +11,7 @@ assertNonProductionE2EUrl(baseURL);
 
 export default defineConfig({
   testDir: "./e2e",
+  testIgnore: ["**/hosted-readonly/**", "**/focus-local/**"],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",
   globalTeardown: "./e2e/global.teardown.ts",

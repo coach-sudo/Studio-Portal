@@ -1,4 +1,5 @@
 import { readRuntime } from "./support/runtime";
+import { assertFixtureMutationTarget } from "../src/security/hostedAcceptance";
 
 export default async function globalTeardown() {
   const token = process.env.STAGING_E2E_FIXTURE_TOKEN || "";
@@ -10,6 +11,7 @@ export default async function globalTeardown() {
     return;
   }
   if (!runtime.fixtureReady) return;
+  assertFixtureMutationTarget(runtime.baseURL);
   const response = await fetch(`${runtime.baseURL}/api/e2e/fixtures`, {
     method: "POST",
     headers: {

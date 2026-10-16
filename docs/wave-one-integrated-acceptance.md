@@ -1,5 +1,7 @@
 # Wave 1 integrated acceptance and release readiness
 
+October 16 follow-up: [protected hosted acceptance](wave-one-hosted-acceptance.md) records fresh non-mutating staging and disposable PostgreSQL evidence. The assessment below is retained as its original October 15 checkpoint; it is not a claim that later staging setup remains missing.
+
 Assessment date: October 15, 2026. **Recommendation: NO-GO for production release.** The combined implementation passed the expanded disposable-stack acceptance at `404305487ea5c4a365a098f2bfb78b1c605a1eba`, but a configured, authorized persistent staging environment, provider acceptance and release approvals are still missing. This assessment does not start Wave 2 or authorize a merge, deployment, production migration, financial reconciliation, deletion or communication.
 
 ## Candidate and dependency verification

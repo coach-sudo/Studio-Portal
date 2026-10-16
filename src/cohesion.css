@@ -1009,7 +1009,13 @@
     grid-template-columns: 1fr 1fr;
   }
   .student-record-identity {
+    display: grid;
     grid-template-columns: 52px minmax(0, 1fr) !important;
+    align-items: start;
+  }
+  .student-record-identity > .avatar.large {
+    width: 52px;
+    height: 52px;
   }
   .student-record-identity > .status {
     grid-column: 1/-1;

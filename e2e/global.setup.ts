@@ -1,6 +1,7 @@
 import { chromium, type FullConfig } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { assertE2ERunId } from "../src/security/e2eSafety";
+import { assertFixtureMutationTarget } from "../src/security/hostedAcceptance";
 import {
   authDirectory,
   runtimePath,
@@ -18,6 +19,7 @@ function runId() {
 
 export default async function globalSetup(config: FullConfig) {
   const baseURL = String(config.projects[0]?.use.baseURL || "");
+  assertFixtureMutationTarget(baseURL);
   const token = process.env.STAGING_E2E_FIXTURE_TOKEN || "";
   const runtime: E2ERuntime = {
     runId: runId(),
