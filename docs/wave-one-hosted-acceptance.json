@@ -1,0 +1,858 @@
+{
+  "application": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+  "origin": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+  "netlifySite": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "supabase": "lrxrivfqjpkvygozphoz",
+  "generatedAt": "2026-10-16T16:42:39.488Z",
+  "tooling": {
+    "node": "v24.14.1",
+    "playwright": "1.63.0",
+    "chromium": "153.0.8010.12",
+    "webkit": "26.6",
+    "operatingSystem": "Windows x64",
+    "chromiumWidths": [320, 390, 768, 1440],
+    "webkitWidths": [1440],
+    "zoomEquivalentWidth": 720
+  },
+  "hostedMatrix": {
+    "startedAt": "2026-10-16T16:25:23.903Z",
+    "passed": 68,
+    "failed": 1,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 259645.735,
+    "cases": [
+      {
+        "title": "acceptance.spec.ts › coach › session identity, refresh and isolation",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/today",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/bookings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/inbox",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/materials",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/finance",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/settings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/lessons",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/work",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/notes",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › authorized finance and coverage agree with empty synthetic account",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "tablet-768",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-390",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › coach › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-320",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › session identity, refresh and isolation",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/work",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/bookings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/inbox",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/payments",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/settings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/actor-page",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › navigation /portal/referrals",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › authorized finance and coverage agree with empty synthetic account",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "tablet-768",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-390",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-320",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › session identity, refresh and isolation",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "webkit-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal/work",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal/bookings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal/inbox",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal/payments",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › navigation /portal/settings",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › authorized finance and coverage agree with empty synthetic account",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "tablet-768",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-390",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › @responsive home, work and payments: overflow, landmarks, axe",
+        "project": "mobile-320",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student authorization › coach workspace summary denied without disclosure",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student authorization › private credit schema remains unavailable",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student authorization › forged student financial read denied",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian authorization › coach workspace summary denied without disclosure",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian authorization › private credit schema remains unavailable",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian authorization › forged student financial read denied",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › unrelated authorization › coach workspace summary denied without disclosure",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › unrelated authorization › private credit schema remains unavailable",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › unrelated authorization › forged student financial read denied",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student boundaries › coach route denies workspace; automatic access claim is blocked",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student boundaries › keyboard focus reaches portal controls",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student boundaries › 200 percent zoom equivalent has no page overflow",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › unrelated boundaries › student rows, contacts and ledger are not disclosed",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › session termination › logout removes application session while keeping Netlify perimeter",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "security.spec.ts › anonymous financial reads are denied; invoices require application authentication",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "security.spec.ts › served client modules contain no service key or service-role JWT",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "security.spec.ts › coach keyboard › search dialog traps focus, closes with Escape and restores focus",
+        "project": "desktop-1440",
+        "status": "unexpected"
+      }
+    ]
+  },
+  "additionalHostedHeaderRegression": {
+    "startedAt": "2026-10-16T16:35:30.013Z",
+    "passed": 0,
+    "failed": 1,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 6816.182000000001,
+    "cases": [
+      {
+        "title": "security.spec.ts › coach keyboard › 320 px student header gives long names a readable column",
+        "project": "desktop-1440",
+        "status": "unexpected"
+      }
+    ]
+  },
+  "hostedRecheck": {
+    "startedAt": "2026-10-16T16:32:11.544Z",
+    "passed": 3,
+    "failed": 1,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 27979.904000000002,
+    "cases": [
+      {
+        "title": "acceptance.spec.ts › coach › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › student › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "acceptance.spec.ts › guardian › session identity, refresh and isolation",
+        "project": "desktop-1440",
+        "status": "expected"
+      },
+      {
+        "title": "security.spec.ts › coach keyboard › search dialog traps focus, closes with Escape and restores focus",
+        "project": "desktop-1440",
+        "status": "unexpected"
+      }
+    ]
+  },
+  "uniqueHostedChecks": {
+    "executed": 70,
+    "passed": 68,
+    "failed": 2,
+    "skipped": 0,
+    "interpretation": "69-check matrix plus the new 320px header regression; reruns are not added as unique checks"
+  },
+  "localBrowserFixes": {
+    "startedAt": "2026-10-16T16:35:20.942Z",
+    "passed": 4,
+    "failed": 0,
+    "skipped": 0,
+    "flaky": 0,
+    "durationMs": 7407.741,
+    "cases": [
+      {
+        "title": "focus.spec.ts › search autofocus, trap and opener restoration survive repeated visits",
+        "project": "chromium",
+        "status": "expected"
+      },
+      {
+        "title": "focus.spec.ts › 320 px student header gives long names a readable column",
+        "project": "chromium",
+        "status": "expected"
+      },
+      {
+        "title": "focus.spec.ts › search autofocus, trap and opener restoration survive repeated visits",
+        "project": "webkit",
+        "status": "expected"
+      },
+      {
+        "title": "focus.spec.ts › 320 px student header gives long names a readable column",
+        "project": "webkit",
+        "status": "expected"
+      }
+    ]
+  },
+  "unit": {
+    "total": 784,
+    "passed": 784,
+    "failed": 0,
+    "pending": 0,
+    "files": 116
+  },
+  "postgres": {
+    "version": "17.10",
+    "migrations": 57,
+    "pgTapAssertions": 204,
+    "pgTapFiles": 8,
+    "concurrencyPrograms": 3,
+    "passed": true,
+    "connection": "unique disposable loopback cluster",
+    "source": "fe63c57e928bca78c23e43877480b36a2d8e26c6",
+    "sourceInputsEqualDeployedCandidate": true
+  },
+  "accessibility": {
+    "auditedPages": 45,
+    "seriousOrCritical": 0,
+    "pages": [
+      {
+        "project": "webkit-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [
+          { "id": "landmark-unique", "impact": "moderate" },
+          { "id": "region", "impact": "moderate" }
+        ]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [
+          { "id": "landmark-unique", "impact": "moderate" },
+          { "id": "region", "impact": "moderate" }
+        ]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "coach",
+        "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "student",
+        "path": "/portal",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "student",
+        "path": "/portal/work",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "student",
+        "path": "/portal/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "student",
+        "path": "/portal",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "student",
+        "path": "/portal/work",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "student",
+        "path": "/portal/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "student",
+        "path": "/portal",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "student",
+        "path": "/portal/work",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "student",
+        "path": "/portal/payments",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "student",
+        "path": "/portal",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "student",
+        "path": "/portal/work",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "student",
+        "path": "/portal/payments",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "student",
+        "path": "/portal",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "student",
+        "path": "/portal/work",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "student",
+        "path": "/portal/payments",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "guardian",
+        "path": "/portal",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "guardian",
+        "path": "/portal/work",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "webkit-1440",
+        "role": "guardian",
+        "path": "/portal/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "guardian",
+        "path": "/portal",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "guardian",
+        "path": "/portal/work",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "desktop-1440",
+        "role": "guardian",
+        "path": "/portal/payments",
+        "width": 1440,
+        "contentWidth": 1440,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "guardian",
+        "path": "/portal",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "guardian",
+        "path": "/portal/work",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "tablet-768",
+        "role": "guardian",
+        "path": "/portal/payments",
+        "width": 768,
+        "contentWidth": 768,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "guardian",
+        "path": "/portal",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "guardian",
+        "path": "/portal/work",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-390",
+        "role": "guardian",
+        "path": "/portal/payments",
+        "width": 390,
+        "contentWidth": 390,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "guardian",
+        "path": "/portal",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "guardian",
+        "path": "/portal/work",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      },
+      {
+        "project": "mobile-320",
+        "role": "guardian",
+        "path": "/portal/payments",
+        "width": 320,
+        "contentWidth": 320,
+        "violations": [{ "id": "region", "impact": "moderate" }]
+      }
+    ]
+  },
+  "blocked": [
+    "Hosted business fixtures and all H01–H16 mutations",
+    "Live guardian revocation and protected Auth claim redirect completion",
+    "Provider health, Stripe, Google and outbound delivery",
+    "Scheduled worker invocation/cadence",
+    "Legacy query mode false hosted build",
+    "Populated hosted history/lesson/bulk interface acceptance"
+  ],
+  "limitations": [
+    "Only existing empty synthetic records tested on host",
+    "200% represented by 720px CSS reflow, not native browser zoom",
+    "Axe is not screen-reader or full manual accessibility certification",
+    "Auth session/rate-limit changes are allowed operational writes; business tables must remain unchanged"
+  ]
+}

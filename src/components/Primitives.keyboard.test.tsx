@@ -2,8 +2,29 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Drawer, Dialog } from "./Primitives";
+import { StrictMode } from "react";
 
 describe("overlay keyboard navigation", () => {
+  it("preserves an autofocus field and returns focus to the opener on repeated visits", async () => {
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    for (let visit = 0; visit < 2; visit++) {
+      opener.focus();
+      const { unmount } = render(
+        <StrictMode>
+          <Dialog title="Go to" onClose={vi.fn()}>
+            <input autoFocus aria-label="Find a workflow" />
+          </Dialog>
+        </StrictMode>,
+      );
+      expect(
+        screen.getByRole("textbox", { name: "Find a workflow" }),
+      ).toHaveFocus();
+      unmount();
+      expect(opener).toHaveFocus();
+    }
+    opener.remove();
+  });
   it("wraps through disclosure summaries without focusing collapsed consequence controls", async () => {
     const user = userEvent.setup();
     render(

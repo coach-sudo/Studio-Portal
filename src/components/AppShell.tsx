@@ -76,7 +76,8 @@ export function AppShell() {
         <button
           type="button"
           className="shell-search"
-          onClick={() => {
+          onClick={(event) => {
+            event.currentTarget.focus();
             setQuery("");
             setSearchOpen(true);
           }}
@@ -144,16 +145,18 @@ export function AppShell() {
             <span>{label}</span>
           </NavLink>
         ))}
-        <button onClick={() => setSearchOpen(true)}>
+        <button
+          onClick={(event) => {
+            event.currentTarget.focus();
+            setSearchOpen(true);
+          }}
+        >
           <Menu />
           <span>More</span>
         </button>
       </nav>
       {searchOpen && (
-        <Dialog
-          title="Go to"
-          onClose={() => setSearchOpen(false)}
-        >
+        <Dialog title="Go to" onClose={() => setSearchOpen(false)}>
           <div className="command-search">
             <label>
               <Search aria-hidden="true" />
