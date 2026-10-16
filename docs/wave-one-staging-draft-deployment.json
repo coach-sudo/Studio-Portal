@@ -1,0 +1,285 @@
+{
+  "id": "6ad23d4f8b10c10447224155",
+  "site_id": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "context": "deploy-preview",
+  "state": "ready",
+  "published_at": null,
+  "commit_ref": null,
+  "permalink": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+  "created_at": "2026-10-16T15:05:51.698Z",
+  "verified_source_sha": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+  "verified_health": {
+    "status": "ok",
+    "release": {
+      "commit": "0b18a5a2238d",
+      "context": "deploy-preview"
+    },
+    "checkedAt": "2026-10-16T15:07:34.867Z"
+  },
+  "deploy_source": "cli",
+  "api_manual_deploy_field": false,
+  "api_branch_field": "main",
+  "api_subdomain_alias_field": "6ad23d4f8b10c10447224155",
+  "build_id": null,
+  "outcome": "PASS",
+  "creationAttempts": 1,
+  "netlifyCliVersion": "27.8.0",
+  "platform": "linux",
+  "architecture": "x64",
+  "node": "22.22.0",
+  "queryLayerV2": true,
+  "publishedStagingDeploymentUnchanged": "6ace53e7f850061d7c49b711",
+  "teamLogin": {
+    "enabled": true,
+    "scope": "all"
+  },
+  "supabase": {
+    "project": "lrxrivfqjpkvygozphoz",
+    "migrations": 57,
+    "historyUnchanged": true,
+    "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2"
+  },
+  "environment": {
+    "entries": 10,
+    "previewOnly": true,
+    "unchanged": true,
+    "functionOnlySecrets": ["SUPABASE_SERVICE_ROLE_KEY", "E2E_FIXTURE_TOKEN"],
+    "sharedTeamEntries": 0,
+    "providerCredentialsPresent": false
+  },
+  "builds": {
+    "stopped": true,
+    "active": 0,
+    "hooks": 0
+  },
+  "artifacts": {
+    "clientAssets": 117,
+    "functions": 23,
+    "allFunctionRuntime": "nodejs22.x",
+    "remoteFunctionDigestsMatchLocal": true,
+    "rawLocalArtifactIdentitySha256": "d7c18269e1191e30657f8659f999cf2e29736f444da90a0010d015eb2179b3a0",
+    "rawLocalFunctionManifestSha256": "73f038722865df76cb1a21faaf4a0dd960ec0ef9ab369a75bc46b597d40e82aa",
+    "deployedConfigChunk": {
+      "file": "assets/supabase-DqUkwEpt.js",
+      "sha256": "25b37f4b7d90f909748c047ee673bea6687f3988691fda655b9c2ae1627a66ad",
+      "bytes": 202939
+    },
+    "clientSafetyCheck": "Actual uploaded build scanned; staging anon claims only, no production project/portal reference or service-role JWT. Protected shell observed loading the same hashed config chunk."
+  },
+  "anonymousChecks": [
+    {
+      "path": "/login",
+      "status": 401,
+      "contentType": "text/html; charset=utf-8",
+      "netlifyGate": true
+    },
+    {
+      "path": "/coach",
+      "status": 401,
+      "contentType": "text/html; charset=utf-8",
+      "netlifyGate": true
+    },
+    {
+      "path": "/api/healthz",
+      "status": 401,
+      "contentType": "text/html; charset=utf-8",
+      "netlifyGate": true
+    },
+    {
+      "path": "/api/v2/lessons",
+      "status": 401,
+      "contentType": "text/html; charset=utf-8",
+      "netlifyGate": true
+    },
+    {
+      "path": "/assets/ActorProfilePreview-RqBciXtI.js",
+      "status": 401,
+      "contentType": "text/html; charset=utf-8",
+      "netlifyGate": true
+    }
+  ],
+  "scheduleDeclarations": [
+    {
+      "name": "booking-maintenance",
+      "cron": "*/5 * * * *",
+      "activatedByDraft": false
+    },
+    {
+      "name": "calendar-worker",
+      "cron": "*/5 * * * *",
+      "activatedByDraft": false
+    },
+    {
+      "name": "outbox-worker",
+      "cron": "*/5 * * * *",
+      "activatedByDraft": false
+    },
+    {
+      "name": "provider-intake",
+      "cron": "*/10 * * * *",
+      "activatedByDraft": false
+    }
+  ],
+  "legacyPreflight": {
+    "from": "2026-10-16T14:40:00Z",
+    "to": "2026-10-16T15:04:00Z",
+    "groups": {
+      "provider-intake": {
+        "requests": 9,
+        "statuses": {
+          "502": 9
+        },
+        "missingConfig": 7,
+        "noLog": 2,
+        "samples": [
+          {
+            "request_id": "01M52KNJSXM26JZ94SK13KDHX8",
+            "timestamp": "2026-10-16T15:00:43.453806555Z"
+          }
+        ]
+      },
+      "outbox-worker": {
+        "requests": 15,
+        "statuses": {
+          "502": 15
+        },
+        "missingConfig": 13,
+        "noLog": 2,
+        "samples": [
+          {
+            "request_id": "01M52KNJH9KE8M6QC6C0VMWP32",
+            "timestamp": "2026-10-16T15:00:43.177539798Z"
+          }
+        ]
+      },
+      "booking-maintenance": {
+        "requests": 15,
+        "statuses": {
+          "502": 15
+        },
+        "missingConfig": 13,
+        "noLog": 2,
+        "samples": [
+          {
+            "request_id": "01M52KNJT5AJ59VHKQD6GDSANB",
+            "timestamp": "2026-10-16T15:00:43.461723996Z"
+          }
+        ]
+      },
+      "calendar-worker": {
+        "requests": 15,
+        "statuses": {
+          "502": 15
+        },
+        "missingConfig": 13,
+        "noLog": 2,
+        "samples": [
+          {
+            "request_id": "01M52KNHY2SA2EBE4F7KJ7PJEX",
+            "timestamp": "2026-10-16T15:00:42.562487376Z"
+          }
+        ]
+      }
+    },
+    "meta": {
+      "responses": [
+        {
+          "from": 1792161600000,
+          "to": 1792163040000,
+          "page": 1,
+          "per_page": 100,
+          "has_next_page": false,
+          "type": "list"
+        }
+      ]
+    }
+  },
+  "legacyPostflight": {
+    "from": "2026-10-16T15:05:00Z",
+    "to": "2026-10-16T15:12:00Z",
+    "groups": {
+      "provider-intake": {
+        "requests": 3,
+        "statuses": {
+          "502": 3
+        },
+        "missingConfig": 3,
+        "noLog": 0,
+        "sample": {
+          "request_id": "01M52M72RDFDQBM4RYQ50A8DSR",
+          "timestamp": "2026-10-16T15:10:16.845526704Z"
+        }
+      },
+      "outbox-worker": {
+        "requests": 6,
+        "statuses": {
+          "502": 6
+        },
+        "missingConfig": 5,
+        "noLog": 1,
+        "sample": {
+          "request_id": "01M52M6Z5GV38VV1NMP7EY6GQN",
+          "timestamp": "2026-10-16T15:10:13.168531816Z"
+        }
+      },
+      "calendar-worker": {
+        "requests": 6,
+        "statuses": {
+          "502": 6
+        },
+        "missingConfig": 5,
+        "noLog": 1,
+        "sample": {
+          "request_id": "01M52M6ZJNMHM5Y37WBVEF0C22",
+          "timestamp": "2026-10-16T15:10:13.589733659Z"
+        }
+      },
+      "booking-maintenance": {
+        "requests": 6,
+        "statuses": {
+          "502": 6
+        },
+        "missingConfig": 4,
+        "noLog": 2,
+        "sample": {
+          "request_id": "01M52M6XQB7DW34STAJSN7CAA7",
+          "timestamp": "2026-10-16T15:10:11.691937506Z"
+        }
+      }
+    },
+    "meta": {
+      "responses": [
+        {
+          "from": 1792163100000,
+          "to": 1792163520000,
+          "page": 1,
+          "per_page": 100,
+          "has_next_page": false,
+          "type": "list"
+        }
+      ]
+    }
+  },
+  "unchangedSyntheticCounts": {
+    "studio": 1,
+    "lessons": 0,
+    "outboxMessages": 0,
+    "creditCoverageJobs": 0,
+    "lessonBulkJobs": 0,
+    "storageObjects": 0,
+    "authUsers": 4
+  },
+  "supabaseAuthConfigurationChanged": false,
+  "syntheticSignInPerformed": false,
+  "providerOperationPerformed": false,
+  "workerInvokedByAgent": false,
+  "fixtureMutationPerformed": false,
+  "productionOperationPerformed": false,
+  "secondDeploymentAuthorized": false,
+  "remaining": [
+    "Exact returned-host Supabase Auth configuration requires separate authorization.",
+    "Protected Playwright first-login checks require separate authorization; its session is separate from the in-app browser.",
+    "Full hosted acceptance, synthetic fixtures/mutations, cleanup and provider/worker acceptance remain separately gated.",
+    "Production remains NO-GO; no publication, merge or Wave 2 work."
+  ]
+}

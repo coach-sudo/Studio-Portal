@@ -1,5 +1,7 @@
 # Wave 1 first protected application deployment gate
 
+**Executed checkpoint:** [first authorized protected draft](wave-one-staging-draft-deployment.md) records the one completed staging upload and verification. No further deployment is authorized.
+
 **Current checkpoint:** [PR #46 blocker resolution](wave-one-staging-blocker-resolution.md) records the subsequently authorized local Linux installation, successful native/official-CLI packaging, evidence for all four legacy workers, and the revised narrow GO recommendation. The original assessment below is historical. Its original upload recipe has been withdrawn; use the corrected specification in that checkpoint only after explicit deployment authorization.
 
 October 16, 2026 (Eastern). **Staging deployment: NO-GO pending the gates below. Production: NO-GO. No deployment is authorized or executed by this document.**

@@ -1,5 +1,7 @@
 # Wave 1 staging blocker resolution — PR #46
 
+**Subsequent authorized execution:** [first protected draft result](wave-one-staging-draft-deployment.md) records the single completed deployment and read-only verification. The preparation assessment below is retained as history; it is not authorization for another deployment.
+
 October 16, 2026 (Eastern). **GO to request authorization for one protected, unpublished staging draft; do not execute it yet. Production remains NO-GO.** This is the current checkpoint after the [first deployment gate](wave-one-first-staging-deployment.md). It supersedes that report's missing-Linux blocker, legacy-worker evidence limit, and proposed upload command. It does not authorize deployment, containment, Auth changes or browser mutations.
 
 ## Identity and dependency checkpoint
