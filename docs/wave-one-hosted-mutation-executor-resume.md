@@ -1,6 +1,6 @@
 # Hosted executor — continuation checkpoint
 
-October 16, 2026. The user resumed after the usage-renewal hold. Implementation and local source/adversarial review are complete. This file supersedes the pending-review checklist saved in local checkpoint `c8cb566`; it does not authorize hosted execution.
+October 16, 2026. The user resumed after the usage-renewal hold. Implementation and local source/adversarial review are complete and delivered in draft [PR #48](https://github.com/coach-sudo/Studio-Portal/pull/48). This file supersedes the pending-review checklist saved in local checkpoint `c8cb566`; it does not authorize hosted execution.
 
 ## Saved implementation
 
@@ -23,7 +23,7 @@ Private local evidence: `C:/Users/dariu/.codex/private/studio-portal-staging/hos
 
 ## Next gate
 
-Deliver/review the directly dependent **draft** PR; do not merge or deploy. The existing CI branch filter excludes this dependent base, so report local checks accurately and never claim missing GitHub checks passed. All commits use `[skip netlify]`; stopped builds and protection must remain intact.
+Review draft PR #48; it is already created and attached to this chat. Its base is `codex/wave-one-hosted-acceptance`; implementation commit is `110bb74d58dd99929f85f291e05313f1562ad303` (later delivery metadata edits are documentation only). Do not create a duplicate, merge or deploy. The existing CI branch filter excludes this dependent base; no missing GitHub check is claimed as passing. All commits use `[skip netlify]`; stopped builds and protection remain intact.
 
 The one concrete hosted execution/cleanup authorization request is in the report. No hosted mutation is authorized yet. Execution additionally requires fresh credential/perimeter/schema/baseline/permission preflight, direct staging SQL connectivity and an existing project-scoped `auth_config_read` credential proving disabled Auth hooks, no SMTP/external provider and unchanged exact Auth URLs. Do not create/reset credentials or alter infrastructure to bypass a failed gate.
 

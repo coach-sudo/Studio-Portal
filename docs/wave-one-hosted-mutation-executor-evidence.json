@@ -1,5 +1,12 @@
 {
   "status": "LOCAL_VALIDATED_HOSTED_NOT_EXECUTED",
+  "delivery": {
+    "pullRequest": 48,
+    "url": "https://github.com/coach-sudo/Studio-Portal/pull/48",
+    "draft": true,
+    "implementationCommit": "110bb74d58dd99929f85f291e05313f1562ad303",
+    "dependentBase": "codex/wave-one-hosted-acceptance"
+  },
   "date": "2026-10-16",
   "dependency": {
     "pr": 47,
