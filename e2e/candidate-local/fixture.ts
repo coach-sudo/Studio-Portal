@@ -78,7 +78,7 @@ export async function installFixture(
     starts_at: "2027-01-20T18:00:00Z",
     ends_at: "2027-01-20T19:00:00Z",
     status: "scheduled",
-    location_type: "online",
+    location_type: "virtual",
     location_label: "Online",
     price_minor: 10000,
     paid_minor: 0,

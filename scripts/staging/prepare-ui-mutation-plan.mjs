@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import process from "node:process";
 export const runId = "e2e-wave1-ui-20261017-a";
 export function plannedUiId(name) {
   const hex = createHash("sha256")
@@ -56,6 +57,12 @@ export const plan = {
       "lesson-archive",
       "lesson-delete",
       "lesson-protected",
+      "lesson-page-07",
+      "lesson-page-08",
+      "lesson-page-09",
+      "lesson-page-10",
+      "lesson-page-11",
+      "lesson-page-12",
     ].map((name) => [name, plannedUiId(name)]),
   ),
   budgets: {
@@ -70,21 +77,70 @@ export const plan = {
     cashMinor: 0,
     lessonPriceMinor: 0,
     currency: "USD",
-    seededLessons: 6,
+    seededLessons: 12,
     uiCreatedLessons: 1,
-    lessonsTotal: 7,
-    reviewedBatchMaximum: 6,
+    lessonsTotal: 13,
+    reviewedBatchMaximum: 13,
     bulkReviews: 4,
     httpMutationRequests: 30,
     canonicalSqlRequests: 60,
     readRequests: 600,
     cleanupTransactions: 40,
     authMutationRequests: 8,
-    businessRowsPeak: 256,
-    cumulativeBusinessRowIdentities: 300,
+    businessRowsPeak: 384,
+    cumulativeBusinessRowIdentities: 512,
     providerCalls: 0,
     messagesDelivered: 0,
     scheduledWorkers: 0,
+  },
+  fixtureContent: {
+    initialAutoApply: false,
+    package: {
+      id: plannedUiId("package"),
+      name: "Studio lesson credits",
+      expiresAt: null,
+      initialCredits: 0,
+      priceMinor: 0,
+      currency: "USD",
+    },
+    lessons: [
+      ["lesson-edit", "scheduled", "2027-01-20"],
+      ["lesson-credit", "scheduled", "2027-01-21"],
+      ["lesson-cancel", "scheduled", "2027-01-22"],
+      ["lesson-archive", "cancelled", "2026-10-02"],
+      ["lesson-delete", "cancelled", "2026-10-01"],
+      ["lesson-protected", "completed", "2026-10-03"],
+      ...Array.from({ length: 6 }, (_, i) => [
+        `lesson-page-${String(i + 7).padStart(2, "0")}`,
+        "cancelled",
+        `2026-09-${String(i + 10).padStart(2, "0")}`,
+      ]),
+    ].map(([name, status, date]) => ({
+      name,
+      id: plannedUiId(name),
+      studentId: plannedUiId("student"),
+      status,
+      topic: `${runId} ${name}`,
+      startsAt: `${date}T18:00:00Z`,
+      endsAt: `${date}T19:00:00Z`,
+      locationType: "in_person",
+      locationLabel: "Synthetic staging room",
+      priceMinor: 0,
+      paidMinor: 0,
+      paymentStatus: "unpaid",
+      externalIdentity: null,
+    })),
+    uiCreate: {
+      startsAt: "2027-02-01T18:00:00Z",
+      endsAt: "2027-02-01T19:00:00Z",
+      locationType: "in_person",
+      recurrence: "none",
+      priceMinor: null,
+      expectedFinancialReviewBeforeCoverage: true,
+      generatedIdsMaximum: 1,
+    },
+    notificationPreferences:
+      "disabled for newly owned accounts/contacts; never change the existing studio's settings",
   },
   commands: {
     "/api/v2/lessons": [

@@ -177,15 +177,17 @@ test("summary loading, failure without stale values, retry and empty state", asy
   ).toBeVisible();
 });
 
-test("forged student context does not display the authorized student's identity", async ({
+test("forged student context returns to the roster without opening another record", async ({
   page,
   context,
 }) => {
   await installFixture(context, "coach");
   await page.goto("/coach/students/70000000-0000-4000-8000-000000000099");
+  await expect(page).toHaveURL(/\/coach\/students$/);
   await expect(
-    page.getByText("E2E Candidate Student", { exact: true }),
-  ).toHaveCount(0);
+    page.getByRole("heading", { name: "Students", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".student-record-header")).toHaveCount(0);
 });
 
 test("unrelated account returns to login", async ({ page, context }) => {

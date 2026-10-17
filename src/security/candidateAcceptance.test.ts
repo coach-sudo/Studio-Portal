@@ -5,6 +5,7 @@ import {
   classifyCandidateEndpoint,
 } from "./candidateAcceptance";
 import { hostedAcceptance } from "./hostedAcceptance";
+// Offline policy fixture; this is never a returned deployment identity.
 const target = {
   ...hostedAcceptance,
   site: "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
@@ -14,6 +15,18 @@ const target = {
   origin: "https://aaaaaaaaaaaaaaaaaaaaaaaa--coachd-staging.netlify.app",
 } as const;
 describe("candidate browser perimeter", () => {
+  it("rejects credential-bearing and encoded read wrappers before command classification", () => {
+    for (const url of [
+      target.origin.replace("https://", "https://user:password@") +
+        "/api/v2/lessons",
+      target.origin + "/api/v2/%6cessons",
+    ])
+      expect(
+        allowedCandidateRead(target, "POST", url, {
+          command: "bulk_candidates",
+        }),
+      ).toBe(false);
+  });
   it("requires an exact new immutable staging identity", () => {
     expect(candidateTargetSchema.parse(target)).toEqual(target);
     for (const patch of [

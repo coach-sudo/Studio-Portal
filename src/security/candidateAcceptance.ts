@@ -61,6 +61,14 @@ export function classifyCandidateEndpoint(
 ): EndpointClass {
   candidateTargetSchema.parse(target);
   const url = new URL(value);
+  if (
+    url.protocol !== "https:" ||
+    url.username ||
+    url.password ||
+    url.port ||
+    url.pathname.includes("%")
+  )
+    return "provider-prohibited";
   if (url.origin === target.origin && url.pathname === "/api/v2/lessons") {
     if (method !== "POST") return "provider-prohibited";
     if (readLessonCommands.has(body?.command || "")) return "read-only";

@@ -17,6 +17,19 @@ test("new UI proposal is independent, deterministic and bounded", () => {
     plan.budgets.seededLessons + plan.budgets.uiCreatedLessons,
     plan.budgets.lessonsTotal,
   );
+  assert.equal(plan.fixtureContent.lessons.length, plan.budgets.seededLessons);
+  assert.equal(
+    plan.fixtureContent.lessons.filter((l) => l.status === "scheduled").length +
+      plan.budgets.uiCreatedLessons,
+    plan.budgets.creditsGranted,
+  );
+  assert.equal(plan.fixtureContent.package.name, "Studio lesson credits");
+  assert.equal(plan.fixtureContent.package.expiresAt, null);
+  assert.equal(plan.fixtureContent.uiCreate.priceMinor, null);
+  assert.equal(
+    plan.fixtureContent.uiCreate.expectedFinancialReviewBeforeCoverage,
+    true,
+  );
   for (const name of [
     "cashMinor",
     "lessonPriceMinor",

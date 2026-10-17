@@ -5,6 +5,9 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { join } from "node:path";
+import { URL } from "node:url";
+import process from "node:process";
+import console from "node:console";
 import { privatePath } from "./protected-browser.mjs";
 import { schemaQuery } from "./mutations/seal.mjs";
 const sha = (value) =>

@@ -174,5 +174,12 @@
       "number": 49,
       "state": "OPEN"
     }
-  ]
+  ],
+  "credentialVerification": {
+    "checkedAt": "2026-10-17T14:59:50.388Z",
+    "bothAnonKeysMatchApprovedStagingKey": true,
+    "serviceSecretScope": "functions/deploy-preview",
+    "serviceValueVisibility": "opaque/write-only",
+    "hostedFunctionCredentialAcceptance": "separately gated protected authenticated reads; not executed in preparation"
+  }
 }

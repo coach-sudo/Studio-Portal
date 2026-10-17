@@ -11,5 +11,11 @@
   "originalAndRetainedRowsUnchanged": true,
   "completedJournalUnchanged": true,
   "executorInvocations": 0,
-  "hostedBusinessWrites": 0
+  "hostedBusinessWrites": 0,
+  "migrationIdentitiesCheckedAt": "2026-10-17T15:03:02.109Z",
+  "migrationVersionAndNameOrderMatchesCandidate": true,
+  "authRetentionCheckedAt": "2026-10-17T15:10:45.146Z",
+  "retainedCoachBannedAndWithoutMembership": true,
+  "otherThreeRunAuthUsersAbsent": true,
+  "originalFourConfirmedAuthAccountsPreserved": true
 }
