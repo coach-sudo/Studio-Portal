@@ -2,9 +2,28 @@
 
 October 16, 2026 (Eastern). **PARTIAL / BLOCKED — credential preflight failed before H01.** The user explicitly authorized one H01–H16 execution and reviewed cleanup; no additional execution proposal or approval is being requested. This report preserves the result of attempting to prepare that authorized run.
 
-## October 17 credential resolution checkpoint
+## October 17 authorized password reset and stopped verification
 
-**Current status: PARTIAL / BLOCKED solely on the unavailable existing direct staging PostgreSQL password.** The management credential prerequisite is now resolved for the exact staging Auth configuration read; no execution has started. The initial-attempt details below remain historical unless explicitly updated here.
+**Latest status: staging database password reset succeeded; H01–H16 remain PARTIAL / BLOCKED before execution.** The user's subsequent explicit instruction, “reset,” authorized this narrowly scoped staging PostgreSQL password change and superseded the earlier no-reset boundary for this operation only.
+
+Before the operation, the unchanged execution receipt was still valid, and the exact staging project returned the expected identity and `ACTIVE_HEALTHY` state. The existing CLI management credential was used for one supported [database-password update](https://supabase.com/docs/reference/api/v1-update-database-password): `PATCH /v1/projects/lrxrivfqjpkvygozphoz/database/password`, with **only `password`** in the body. A cryptographically random password was saved durably to the restricted local store before the single request. Supabase returned **HTTP 200** at approximately `2026-10-17T05:13:33Z` (October 17, 1:13 a.m. Eastern). No automatic reset retry occurred. The existing token's permission was sufficient; no management token was created or broadened.
+
+Only the staging database credential changed. No production operation, schema/migration change, Auth-user password reset, API-key rotation, Auth URL/provider change, deployment, publication, worker or provider invocation was performed. External direct clients using the previous staging database password will need the new credential; no such clients were reconfigured automatically.
+
+The new credential is in `C:/Users/dariu/.codex/private/studio-portal-staging/hosted-mutations-20261016-a/database-credential.json`, protected by the reviewed Owner/SYSTEM-only ACL and canonical-path checks. Private reset intent/result and sanitized verification evidence are beside it. No password, token, session or raw API response was printed or committed. The original authorization receipt was not edited or replaced.
+
+Two validation blockers prevent execution:
+
+1. **Direct SQL verified-TLS connection fails with `SELF_SIGNED_CERT_IN_CHAIN`.** The exact `db.lrxrivfqjpkvygozphoz.supabase.co:5432` endpoint was used with `ssl.rejectUnauthorized=true`. The TLS handshake failed before SQL/authentication, so the new password's database-login success, current schema seal and baseline are **not verified**. No certificate-validation bypass, alternate host/pooler, changed executor or database query fallback was attempted. A verified trust chain for the staging database must be established on the approved runner before this gate can pass.
+2. **Netlify's returned service credential was redacted and failed the reviewed JWT validation.** The anon credential's staging claims passed; the service credential did not. The incomplete configuration was withheld as private `mutation-config.unvalidated.json`, leaving **no runnable `mutation-config.json`**. A valid existing staging service key must be obtained through an authorized supported secret-read path, without creating/rotating a key or broadening its scopes. No attempt was made to use the redacted value for hosted Auth or business operations.
+
+The reviewed executor code hash still matches `5a5dbb032a9a5d62d4708e06611eb2e7a8a72b06530c6ea879659a01a44bf932`; PR #48 remains at the approved commit. Existing exact-host perimeter cookie metadata passed its local expiry check, but fresh protected health and the remaining Netlify/database preflight gates were **not completed**. This is not a hosted acceptance PASS.
+
+**H01–H16: 0/16 executed. Hosted business rows created/removed: 0/0. No execution journal or business cleanup started.** The authorized staging password reset is the only hosted mutation in this attempt. Production remains **NO-GO**. Resume only the same approved run after the blockers are resolved and all fresh gates pass; if the unchanged receipt has then expired, stop for fresh authorization.
+
+## Earlier October 17 credential resolution checkpoint
+
+**Status at that earlier checkpoint: PARTIAL / BLOCKED on the unavailable existing direct staging PostgreSQL password.** This missing-password status is superseded by the authorized reset above. The management credential prerequisite was resolved for the exact staging Auth configuration read; no execution had started. The initial-attempt details below remain historical unless explicitly updated here.
 
 The existing authorization receipt was checked before any credential investigation. It was valid at `2026-10-17T05:06:20Z`; its unchanged expiration is `2026-10-18T01:51:11.595Z` (**October 17, 9:51 p.m. Eastern**). No timestamp was extended or receipt replaced. PR #48 remains open/draft at approved executor commit `9b10d19c1fb48e637d1712e06694443725b017cd`; PR #49 still depends directly on its branch. No executor source changed.
 
@@ -111,7 +130,7 @@ Rows created/removed by this attempt: **0/0**. No new business audit/replay/dele
 
 ## Required handoff and safe continuation
 
-As updated October 17, supply only the missing **existing staging PostgreSQL password** through the restricted local credential handoff—not chat, stdout, source control or a PR. The existing management credential's exact configuration-read capability is verified above and can be reused without creating or broadening a token. The reviewed `mutation-config.json` format still requires `anonKey`, `serviceKey`, `database`, `netlifyToken`, `managementToken`; the database object requires only host/port/database/user/password/ssl and the approved verified-TLS settings. Do not reset/create/broaden credentials automatically.
+The authorized reset now supplies the staging PostgreSQL password privately; the original-password handoff is no longer needed. Resolve the verified-TLS trust-chain and valid existing service-key prerequisites described in the latest checkpoint before assembling a runnable configuration. The existing management credential's exact configuration-read capability is verified and can be reused without creating or broadening a token. The reviewed `mutation-config.json` format still requires `anonKey`, `serviceKey`, `database`, `netlifyToken`, `managementToken`; the database object requires only host/port/database/user/password/ssl and the approved verified-TLS settings. Do not repeat the reset, create new tokens, broaden credentials, weaken TLS or change the executor automatically.
 
 Once the credential prerequisite is satisfied, resume the **same authorized run** from reviewed executor commit `9b10d19c1fb48e637d1712e06694443725b017cd`, recheck receipt validity and all fresh live gates, and check again for any started journal/server receipts before execution. Do not overwrite this receipt or invent a second run/key sequence. A receipt that has expired must not have its timestamps edited to bypass the validity gate.
 
