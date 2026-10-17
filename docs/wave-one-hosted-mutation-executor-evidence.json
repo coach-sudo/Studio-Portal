@@ -16,7 +16,7 @@
     "run": "e2e-wave1-hosted-20261016-a"
   },
   "manifestHash": "eb847cb6be0ee29dccf626427b83abdae0811efff8496438c4cb43a0e49d908a",
-  "executorCodeHash": "2e2009f3d754fb0440b04ca99f0bb47745575f757b02a3b3aa3c070bcad3e672",
+  "executorCodeHash": "5a5dbb032a9a5d62d4708e06611eb2e7a8a72b06530c6ea879659a01a44bf932",
   "schemaSeal": {
     "candidate": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
     "sha256": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4"
@@ -31,6 +31,10 @@
     "scenarios": [
       {
         "name": "complete",
+        "passed": true
+      },
+      {
+        "name": "initial_snapshot",
         "passed": true
       },
       {
@@ -74,7 +78,7 @@
         "passed": true
       }
     ],
-    "offlineGuardTests": 11,
+    "offlineGuardTests": 14,
     "pgtapAssertions": 204,
     "concurrencySuites": 3,
     "commandRequests": 68,
@@ -174,8 +178,19 @@
     "applicationUnitTests": {
       "passed": 784,
       "total": 784,
-      "files": 116
-    }
+      "files": 116,
+      "carriedForwardReason": "Application and dependency sources are unchanged from PR #47; 784/784 tests passed before the usage hold."
+    },
+    "privateStorageCheck": {
+      "windowsAclAndCanonicalPath": true,
+      "ancestorJunctionRefusal": true
+    },
+    "finalReviewRepairs": [
+      "Repeated approval expiry and synthetic Auth role/identity checks",
+      "Message attempt/error and calendar history guards; future reminder timestamps",
+      "One read-only initial historical/preimage snapshot; two-session regression",
+      "Private physical path and role-specific Auth method restrictions"
+    ]
   },
   "hostedReadOnly": {
     "businessTablesVerified": 76,
@@ -185,7 +200,8 @@
     "teamLoginAllDeployments": true,
     "stoppedBuilds": true,
     "authHooksLiveVerification": false,
-    "directDatabaseCredentialPreflight": false
+    "directDatabaseCredentialPreflight": false,
+    "reverifiedAfterUsageHold": true
   },
   "budgets": {
     "authUsers": 4,
@@ -649,5 +665,5 @@
   ],
   "hostedMutations": 0,
   "productionOperations": 0,
-  "reviewStatus": "LOCAL_CHECKPOINT_PENDING_FINAL_REVIEW_AND_DRAFT_PR_DELIVERY"
+  "reviewStatus": "SOURCE_AND_ADVERSARIAL_LOCAL_REVIEW_COMPLETE_DRAFT_DELIVERY"
 }

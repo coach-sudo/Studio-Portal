@@ -10,6 +10,7 @@ import {
   renameSync,
   existsSync,
   lstatSync,
+  realpathSync,
 } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { join } from "node:path";
@@ -33,6 +34,11 @@ import { privatePath, perimeterState } from "../protected-browser.mjs";
 export function privateDirectory(path) {
   path = privatePath(path);
   assert(!lstatSync(path).isSymbolicLink());
+  assert.equal(
+    privatePath(realpathSync(path)).toLowerCase(),
+    path.toLowerCase(),
+    "Private path must not use junction or symlink aliases",
+  );
   assert.equal(process.platform, "win32", "Reviewed NTFS runner required");
   execFileSync(
     "powershell.exe",
@@ -171,9 +177,22 @@ export function validateAuthSettings(config) {
     )
       assert(value === false || value === null, "Unexpected Auth provider");
 }
+export function validateSyntheticUser(role, value) {
+  assert(users.includes(role), "Unknown synthetic role");
+  assert.equal(value.id, ids[role]);
+  assert.equal(value.email, email(role));
+  assert.equal(value.role, "authenticated", "Unexpected Auth permission");
+  assert.equal(value.aud, "authenticated");
+  assert(value.email_confirmed_at, "Unconfirmed synthetic identity");
+  assert.equal(
+    (value.app_metadata || value.raw_app_meta_data)?.acceptanceRun,
+    target.run,
+  );
+}
 export async function createHosted(directory, codeHash, authorization) {
   directory = privateDirectory(directory);
-  validateAuthorization(readSecret(authorization), codeHash);
+  const receipt = readSecret(authorization);
+  validateAuthorization(receipt, codeHash);
   const config = readSecret(join(directory, "mutation-config.json"));
   validateConfig(config);
   const require = createRequire(
@@ -208,6 +227,7 @@ export async function createHosted(directory, codeHash, authorization) {
     ).rows;
   }
   const attest = async () => {
+    validateAuthorization(receipt, codeHash);
     const authConfig = await safe(
       "GET",
       `https://api.supabase.com/v1/projects/${target.project}/config/auth`,
@@ -329,11 +349,9 @@ export async function createHosted(directory, codeHash, authorization) {
         for (const user of current.filter(
           (x) => !baseline.rows.some((b) => b.id === x.id),
         )) {
-          assert(
-            users.some((role) => ids[role] === user.id),
-            "Unexpected Auth identity",
-          );
-          assert.equal(user.value.raw_app_meta_data?.acceptanceRun, target.run);
+          const role = users.find((role) => ids[role] === user.id);
+          assert(role, "Unexpected Auth identity");
+          validateSyntheticUser(role, user.value);
         }
       }
     }
@@ -393,8 +411,7 @@ export async function createHosted(directory, codeHash, authorization) {
             },
           );
           assert([200, 201].includes(r.status));
-          assert.equal(r.body.id, id);
-          assert(r.body.email_confirmed_at);
+          validateSyntheticUser(role, r.body);
           journal.append({ type: "auth-created", name: role, id });
         } else {
           assert.equal(existing.status, 200);
@@ -402,9 +419,7 @@ export async function createHosted(directory, codeHash, authorization) {
             journal.find("auth-prepared", role),
             "Unowned pre-existing Auth identity",
           );
-          assert.equal(existing.body.email, email(role));
-          assert.equal(existing.body.app_metadata?.acceptanceRun, target.run);
-          assert(existing.body.email_confirmed_at);
+          validateSyntheticUser(role, existing.body);
           if (!journal.find("auth-created", role))
             journal.append({
               type: "auth-created",
@@ -422,7 +437,7 @@ export async function createHosted(directory, codeHash, authorization) {
           { apikey: config.anonKey },
         );
         assert.equal(r.status, 200);
-        assert.equal(r.body.user.id, ids.guardian);
+        validateSyntheticUser("guardian", r.body.user);
         secrets.guardian.accessToken = r.body.access_token;
         storeSecret(authStatePath, secrets);
       }
@@ -478,8 +493,7 @@ export async function createHosted(directory, codeHash, authorization) {
       }
       assert.equal(current.status, 200);
       assert(journal.find("auth-prepared", role), "Unowned Auth identity");
-      assert.equal(current.body.app_metadata?.acceptanceRun, target.run);
-      assert.equal(current.body.email, email(role));
+      validateSyntheticUser(role, current.body);
       if (role === "coach" && journal.find("auth-cleanup", role)) {
         assert(Date.parse(current.body.banned_until) > Date.now());
         return;

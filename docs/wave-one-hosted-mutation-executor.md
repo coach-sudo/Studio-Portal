@@ -2,7 +2,7 @@
 
 Prepared October 16, 2026. **No hosted mutation was executed. Production remains NO-GO.** This checkpoint depends directly on draft [PR #47](https://github.com/coach-sudo/Studio-Portal/pull/47), base `codex/wave-one-hosted-acceptance` at `3057d6cbdde6628a80d0c10b6ad9c6a323153592`. It changes the acceptance harness and documentation; it does not change the deployed application, migrations or provider behavior.
 
-**User-requested hold for usage renewal:** implementation and local validation are saved on `codex/wave-one-hosted-mutation-executor`. Final adversarial review and dependent draft PR delivery remain pending; no remote PR or push has been performed for this checkpoint. See [resume notes](wave-one-hosted-mutation-executor-resume.md).
+The user-requested usage hold has ended. Final source/adversarial review added attempt/error detection, a consistent initial baseline snapshot, repeated approval-expiry checks, stricter Auth identity/method checks and a canonical-path check for private storage. Delivery remains a directly dependent draft PR; hosted execution is still unauthorized. The [resume notes](wave-one-hosted-mutation-executor-resume.md) preserve checkpoint history.
 
 Read alongside the [hosted acceptance report](wave-one-hosted-acceptance.md), [reviewed proposal](wave-one-hosted-mutation-proposal.md), [76-table historical baseline](wave-one-hosted-business-verification.json), [master plan](studio-portal-modernization-master-plan.md), [integrated acceptance](wave-one-integrated-acceptance.md), [staging recovery](wave-one-staging-recovery.md), [deployment gate](wave-one-first-staging-deployment.md), [draft deployment](wave-one-staging-draft-deployment.md) and [Auth checkpoint](wave-one-staging-auth-configuration.md). Earlier approvals do not authorize this mutation lane.
 
@@ -76,9 +76,13 @@ Direct SQL permits only `db.lrxrivfqjpkvygozphoz.supabase.co:5432`, database/use
 
 On October 16, read-only staging inspection confirmed PostgreSQL **17.11**, all **57 migrations**, and the exact same SHA-256 schema seal as the native PostgreSQL 17.10 replay: `24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4`. Both reads use `search_path=pg_catalog`; deparser output otherwise changes qualification. Read-only comparison also reconfirmed **76/76 historical table fingerprints, zero changed tables**. Netlify still reports the exact ready, unpublished deploy-preview and all-deploy team login. This inspection performed no hosted writes.
 
+After the usage hold, the schema seal and all 76 business fingerprints were reverified again without changes. Netlify readback reconfirmed stopped automatic builds, all-deployment protection, the exact ready/unpublished preview and unchanged legacy publication. Historical aggregate verification and capture of initial row preimages now occur in one read-only repeatable-read transaction; a two-session regression proves a writer between these reads cannot be silently re-baselined.
+
 Initial provisioning refuses every planned UUID anywhere in the 76-table baseline, including JSON/array references, and every planned Auth ID. Each transactional operation verifies the target, schema and all pre-existing row hashes. New rows must satisfy the ownership graph, synthetic identities, studio, relations, currency, no-provider and no-attempt invariants. No original student, membership, contact, Auth identity, ledger or authored content is eligible for mutation. Changing a pre-existing row, an unknown run-owned row, an immutable receipt, a permission or a schema object stops execution.
 
 Pre-existing Auth identities receive a separate baseline excluding only operational `last_sign_in_at` and `updated_at`. Session operational tables are outside the 76-table business inventory. All new Auth identities have fixed IDs and `.example.test` addresses; admin creation confirms them directly without invitation/OTP/reset/email flows.
+
+Every owned Auth read/create result must also retain the exact email/ID/run marker, confirmation and ordinary `authenticated` role/audience. Role drift stops processing. Admin deletion is allowlisted only for the three identities intended for removal; PUT is permitted only for the retained coach. The written approval's expiry is rechecked on each preflight, not just process startup.
 
 ## Privileged cleanup review and blast radius
 
@@ -90,6 +94,8 @@ Cleanup briefly acquires `SHARE ROW EXCLUSIVE ... NOWAIT` fences on the exact 76
 
 Ordered removal: undelivered outbox → unattempted lesson effects → fixture note/invoice → participants/projections/recommendations/record state → fixture ledger → lessons → bookings/series/offering → package/coverage job → guardian relationship/contact/memberships → services. Every phase commits separately with its audit marker and journal evidence, making partial cleanup resumable. Student rows are then made inactive, soft-deleted, portal-disabled and unlinked; automatic credit use becomes false. No removed financial row is presented as a production refund/reversal.
 
+The same activity guard protects both postconditions and cleanup: outbox attempts must be zero, with no error/send/claim markers and an allowed undelivered status. Calendar projections must have zero attempts and no attempt/error/claim/external-version/projected-time markers. A requeued failed attempt is therefore protected rather than erased. Local SQL regressions inject only synthetic attempt/error markers, prove rollback/refusal, and never invoke a provider. Fixture reminders use the future lesson's start minus one day; they are not immediately due after seed.
+
 **Retained evidence:** all audit events, idempotency/credit/occurrence receipts, all bulk jobs/items/requests, and the immutable physical-deletion snapshot. Two terminal synthetic students and their credit-account rows remain because private receipts reference them. The new coach Auth identity is **retained and banned**, with no membership, because deleting it would null the audit actor through an Auth FK. The other three newly created Auth identities are removed. This intentionally refines the proposal's original four-Auth-deletions instruction; approval must accept this retention explicitly. Original manual-test accounts and students are untouched.
 
 The old `cleanup_lesson_bulk_fixture` bypass is deliberately absent from the executor and RPC allowlist. No `app.bulk_fixture_cleanup` setting is used by it. The original disposable concurrency suite still uses its pre-existing local-only helper; that is not the proposed hosted cleanup path.
@@ -99,6 +105,8 @@ Final proof requires every pre-existing business row unchanged; zero run-owned o
 ## Journal, interruption and recovery
 
 Use a dedicated absolute directory outside the repository with Windows Owner/SYSTEM-only NTFS access and no reparse point. `mutation-config.json`, exact-host `perimeter.json`, `mutation-auth.json`, `mutation-journal.jsonl` and the authorization receipt stay private. Passwords/tokens never enter stdout, Git, CI artifacts or PR comments. All transport failures suppress sensitive diagnostics. Existing manual-test credentials are not used or reset.
+
+The resolved physical path must also equal the supplied canonical path. A regression constructs an ancestor junction into the repository and proves refusal before file access; a local Windows read-only check confirmed that the existing private evidence directory satisfies the ACL/canonical-path check. No credential content was printed.
 
 The journal records prepared commands, real backend idempotency keys, generated IDs, full run-owned snapshots and results before SQL commit, using fsync and a SHA-256 chain. A transactional `acceptance.commit` audit receipt binds each result digest. On a lost response, explicit `--resume` queries that receipt before deciding whether a step committed. A committed step is recovered without resending; a rolled-back step can run again using its original stable key. No transport retries or redirect following are enabled. Application replay is also tested with actual duplicate requests. A successful item is never retried as a new operation.
 
@@ -128,6 +136,8 @@ The external runtime must already contain the reviewed PostgreSQL 17 Windows bin
 Local Auth uses the replay harness's Auth schema stub. It proves application RLS and ownership logic, not hosted GoTrue behavior, NTFS protection under another Windows user, Netlify transport availability or real provider behavior. Offline tests mock only the protected transport and never treat a mock as hosted evidence. PostgreSQL 17.10 and hosted 17.11 are distinct patch versions; their reviewed application catalog seals match.
 
 The existing application unit suite and native concurrency lane are run sequentially for final evidence. An intermediate Windows timing experiment exceeded the backend's three-second lock timeout and was discarded; application timeouts were not changed. The native transport retains the original scenario bodies/two-second holders and polls observed lock state for up to one extra second. Final results must be used rather than any interrupted/intermediate run.
+
+Final validation comprises **14 offline guard tests**, **12 native executor scenarios**, **204 pgTAP assertions** and **three actual concurrency suites**. The unchanged application's **784 tests across 116 files** passed at the saved checkpoint; subsequent edits affect only this harness/documentation and do not invalidate that application result. Typecheck and strict changed-file lint were rerun after review. No hosted mutation success is claimed by any of these results.
 
 ## Hosted side effects and readiness gate
 

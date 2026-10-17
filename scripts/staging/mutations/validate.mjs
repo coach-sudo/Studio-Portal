@@ -167,6 +167,39 @@ export async function validateExecutor({ Client, config, root }) {
       console.log("RPC requests:", e.rpcCount);
     });
     if (process.env.MUTATION_VALIDATE_QUICK !== "true") {
+      await run("initial_snapshot", async (e) => {
+        const other = new Client({ ...config, database: e.db.database });
+        await other.connect();
+        const path = join(dir, "initial-snapshot-second-journal");
+        mkdirSync(path);
+        const journal = new Journal(path, codeHash);
+        try {
+          const next = new Executor({
+            db: e.db,
+            journal,
+            auth: e.auth,
+            attest: async () => target,
+            verifyInitialBaseline: async () => {
+              await e.db.query("select id from public.students");
+              await other.query(
+                "update public.students set focus_area='Concurrent initial writer' where id='22222222-2222-4222-8222-222222222222'",
+              );
+            },
+          });
+          await next.initialize();
+          assert.equal(
+            [...next.baseline["public.students"].values()][0].row.focus_area,
+            null,
+          );
+          await assert.rejects(
+            next.op("H01.initial-stale", async () => true),
+            /Pre-existing business row changed/,
+          );
+        } finally {
+          journal.close();
+          await other.end();
+        }
+      });
       await run("interrupt", async (e, resume) => {
         await seed(e);
         await cases.H01(e);
@@ -360,6 +393,30 @@ export async function validateExecutor({ Client, config, root }) {
             return true;
           }),
           /Unowned/,
+        );
+        for (const [field, value] of [
+          ["attempts", 1],
+          ["last_error", "Synthetic failed attempt"],
+        ])
+          await assert.rejects(
+            e.op("H01.outbox-" + field, async () => {
+              await e.db.query(
+                `update public.outbox_messages set ${field}=$1 where lesson_id=$2`,
+                [value, ids["series-next"]],
+              );
+              return true;
+            }),
+            /Delivery activity/,
+          );
+        await assert.rejects(
+          e.op("H01.calendar-error", async () => {
+            await e.db.query(
+              "update public.calendar_projections set last_error='Synthetic failed projection' where lesson_id=$1",
+              [ids["series-next"]],
+            );
+            return true;
+          }),
+          /Calendar activity/,
         );
         e.verify(await e.snapshot(), false);
         await cleanup(e);

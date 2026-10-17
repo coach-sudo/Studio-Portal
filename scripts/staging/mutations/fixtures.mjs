@@ -1,5 +1,13 @@
 import assert from "node:assert/strict";
-import { ids, students, target, email, users, retained } from "./policy.mjs";
+import {
+  ids,
+  students,
+  target,
+  email,
+  users,
+  retained,
+  assertUnattempted,
+} from "./policy.mjs";
 import { identifier } from "./engine.mjs";
 
 export const seededLessons = [
@@ -169,7 +177,7 @@ export async function seed(e) {
         [ids[label]],
       );
       await e.db.query(
-        "insert into public.outbox_messages(studio_id,student_id,lesson_id,channel,recipient,subject,body,status,recipient_intent,dedupe_key) values($1,$2,$3,'email',$4,$5,$5,'queued','lesson_reminder',$6)",
+        "insert into public.outbox_messages(studio_id,student_id,lesson_id,channel,recipient,subject,body,status,recipient_intent,dedupe_key,send_at) values($1,$2,$3,'email',$4,$5,$5,'queued','lesson_reminder',$6,(select starts_at-interval '1 day' from public.lessons where id=$3))",
         [
           target.studio,
           ids["other-student"],
@@ -280,15 +288,12 @@ export async function cleanup(e) {
         assert(!table.includes("snapshot") && !table.includes("audit"));
         const rows = [...e.known[table].values()].map((x) => x.row);
         for (const row of rows) {
-          if (table === "public.calendar_projections")
-            assert(
-              !row.first_attempted_at &&
-                !row.claim_token &&
-                !row.external_event_id &&
-                row.attempts === 0,
-            );
-          if (table === "public.outbox_messages")
-            assert(!row.sent_at && !row.claim_token);
+          if (
+            ["public.calendar_projections", "public.outbox_messages"].includes(
+              table,
+            )
+          )
+            assertUnattempted(table, row);
           const key =
             table === "lesson_ops.lesson_record_state"
               ? "lesson_id"

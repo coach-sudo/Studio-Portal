@@ -116,24 +116,33 @@ export class Executor {
       this.verify(await this.snapshot(), false);
       return;
     }
-    await this.verifyInitialBaseline();
-    this.baseline = await this.snapshot();
-    this.known = Object.fromEntries(tableNames.map((t) => [t, new Map()]));
-    // Reject deterministic IDs anywhere, including JSON/array references, before Auth or business setup.
-    const forbidden = new Set(Object.values(ids));
-    for (const rows of Object.values(this.baseline))
-      for (const { row } of rows.values()) {
-        const text = JSON.stringify(row);
-        assert(
-          ![...forbidden].some((id) => text.includes(id)),
-          "Planned fixture ID already exists",
-        );
-      }
-    this.journal.append({
-      type: "state",
-      name: "baseline",
-      snapshot: serial(this.baseline),
-    });
+    // Bind historical aggregate checks and row preimages to the same snapshot.
+    // Otherwise a writer between those reads could be silently re-baselined.
+    await this.db.query("begin isolation level repeatable read read only");
+    try {
+      await this.verifyInitialBaseline();
+      this.baseline = await this.snapshot();
+      this.known = Object.fromEntries(tableNames.map((t) => [t, new Map()]));
+      // Reject deterministic IDs anywhere, including JSON/array references, before Auth or business setup.
+      const forbidden = new Set(Object.values(ids));
+      for (const rows of Object.values(this.baseline))
+        for (const { row } of rows.values()) {
+          const text = JSON.stringify(row);
+          assert(
+            ![...forbidden].some((id) => text.includes(id)),
+            "Planned fixture ID already exists",
+          );
+        }
+      this.journal.append({
+        type: "state",
+        name: "baseline",
+        snapshot: serial(this.baseline),
+      });
+      await this.db.query("commit");
+    } catch (error) {
+      await this.db.query("rollback");
+      throw error;
+    }
   }
   verify(current, adopt, cleanup = false) {
     const result = {};

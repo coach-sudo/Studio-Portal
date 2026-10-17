@@ -1,34 +1,32 @@
-# Resume checkpoint — user-requested hold
+# Hosted executor — continuation checkpoint
 
-October 16, 2026. The user requested a safe stopping point for usage renewal. Stop work here until resumed. No automation was created.
+October 16, 2026. The user resumed after the usage-renewal hold. Implementation and local source/adversarial review are complete. This file supersedes the pending-review checklist saved in local checkpoint `c8cb566`; it does not authorize hosted execution.
 
-## Saved state
+## Saved implementation
 
-- Local branch: `codex/wave-one-hosted-mutation-executor`, directly based on draft PR #47 head `3057d6cbdde6628a80d0c10b6ad9c6a323153592` (`codex/wave-one-hosted-acceptance`). No remote push/new PR yet.
-- [Implementation/review report](wave-one-hosted-mutation-executor.md), [sanitized evidence and full command inventory](wave-one-hosted-mutation-executor-evidence.json).
-- Executor code SHA-256: `2e2009f3d754fb0440b04ca99f0bb47745575f757b02a3b3aa3c070bcad3e672`. Manifest SHA-256: `eb847cb6be0ee29dccf626427b83abdae0811efff8496438c4cb43a0e49d908a`.
-- No application, migration, provider, deployment, production or Wave 2 change. No hosted mutations, Auth users, passwords, fixtures or approval receipt created. Existing manual-test accounts untouched.
+- Branch: `codex/wave-one-hosted-mutation-executor`, directly based on PR #47 head `3057d6cbdde6628a80d0c10b6ad9c6a323153592` / `codex/wave-one-hosted-acceptance`. PR #47 was reverified open/draft and unchanged after resume.
+- [Review/report and exact authorization request](wave-one-hosted-mutation-executor.md); [sanitized evidence and complete canonical command inventory](wave-one-hosted-mutation-executor-evidence.json).
+- Executor SHA-256: `5a5dbb032a9a5d62d4708e06611eb2e7a8a72b06530c6ea879659a01a44bf932`. Manifest SHA-256: `eb847cb6be0ee29dccf626427b83abdae0811efff8496438c4cb43a0e49d908a`.
+- Final review added shared outbox/calendar activity guards (including attempt/error history), future synthetic reminders, atomic read-only initial baseline capture, per-preflight approval expiry, strict new Auth identity/role checks and role-specific admin methods, plus physical-path/ancestor-junction refusal for private files.
+- No application, dependency, migration, deployed candidate, provider, production or Wave 2 change. No hosted mutations, new hosted Auth identities, passwords, fixtures or approval receipt. Existing manual-test accounts untouched.
 
-## Verified evidence
+## Validation
 
-- Final full application run: **784/784 tests, 116 files**.
-- Offline safety guards: **11/11** (`node --test scripts/staging/mutations/guards.node.mjs`). This file is intentionally named `.node.mjs` to keep Vitest from loading Node's separate test runner.
-- Disposable PostgreSQL **17.10**, full **57-migration** replay: **11 executor scenarios**, **204 pgTAP assertions**, all **three original concurrency suites**, actual observed separate-session lock contention. Latest full run exited zero after the final Auth preflight guard was added.
-- Normal H01–H16 run: **68 RPCs**, all **16 cases**, peak **231** business rows, **253** cumulative row identities, below the **512** ceiling.
-- Typecheck, changed-file ESLint with zero warnings, full format check and secret scan passed. No dependency/lockfile or application source change.
-- Read-only staging: PostgreSQL **17.11**, **57** migrations; exact schema seal matches native replay (`24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4`); all **76** historical business fingerprints unchanged.
-- Netlify exact preview remains ready/unpublished; team login applies to all deployments; CLI `getSite` confirmed stopped automatic builds and unchanged legacy published deployment `6ace53e7f850061d7c49b711`.
+- **14/14** zero-network guard tests.
+- **12/12** disposable PostgreSQL 17.10 executor scenarios, full **57-migration** replay, **204** pgTAP assertions and all **three** actual separate-session concurrency suites passed at the final executor code pin.
+- Normal H01–H16: **68 RPCs**, all **16 cases**, peak **231** business rows, **253** cumulative row identities, below the **512** cap.
+- **784/784 application tests, 116 files**, passed before the hold; application/dependency source is unchanged by the later harness-only review. That result is explicitly carried forward, not presented as a new run.
+- Typecheck, strict changed-file lint, formatting and secret checks are documented in the final delivery. No second human reviewer/sign-off is claimed.
+- Fresh read-only staging checks reconfirmed **76/76** historical business tables unchanged, and schema seal `24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4` matching native replay. Netlify remained protected for all deployments with stopped automatic builds, exact ready/unpublished preview, and unchanged legacy publication.
 
-Private local evidence is under `C:/Users/dariu/.codex/private/studio-portal-staging/hosted-acceptance-20261016/`. Use `executor-pinned-local.log`, `executor-unit-final-results.json`, `executor-typecheck.log`, `executor-format.log`. Full private executor journals are in the latest `mutation-validation-*` directory under `C:/Users/dariu/.codex/tmp/studio-pg17-runtime/`. Never print or upload private journals, account/session files, full environment responses or credentials. Native clusters stopped after testing; no hosted worker was invoked.
+Private local evidence: `C:/Users/dariu/.codex/private/studio-portal-staging/hosted-acceptance-20261016/`, particularly `executor-reviewed-final-local.log`, `executor-unit-final-results.json`, and `executor-resume-typecheck.log`. Full private journals are in the latest `mutation-validation-*` directory under `C:/Users/dariu/.codex/tmp/studio-pg17-runtime/`. Never print/upload private journals, sessions, credentials or full environment responses. Local clusters stopped after tests; no hosted worker was invoked.
 
-## Remaining work on resume
+## Next gate
 
-1. Reverify Git/PR #47 head and the local code/evidence pin before editing. Finish adversarial review of the privileged fixture/cleanup and hosted adapter; a second human reviewer has not signed off. In particular, review attempted-delivery detection (outbox attempt/error fields as well as status/sent/claim), and all Auth/config failure paths before calling this final delivery ready. Any repair needs appropriate focused/local validation and new code/evidence hashes.
-2. Review documentation for precise coverage and limits: H06 canonical SQL excludes the provider-capable HTTP wrapper; H16 tests bounded reads/frozen scope/progress, not browser result-route behavior. Native Auth is a schema stub, not hosted GoTrue.
-3. Fresh hosted execution preflight is still missing direct SQL credential/connectivity and a project-scoped `auth_config_read` management token/live hook checks. Do not create/reset credentials or alter Auth configuration. The adapter fails closed unless creation/password/access-token hooks are proven disabled, SMTP/external providers absent, exact Auth URLs preserved, private ACLs and perimeter valid, and all existing target/baseline/schema/provider guards pass.
-4. Once final review/checks are complete, commit any follow-up and create a **draft PR directly based on `codex/wave-one-hosted-acceptance`**, attach it to this chat. Preserve stopped Netlify builds; use `[skip netlify]` commits; do not push/merge main or deploy. The current CI branch filter does not automatically cover this dependent base; report actual checks honestly.
-5. Present the one exact hosted execution/cleanup authorization request already prepared in the report. Explicitly include the temporary 76-table staging cleanup write fence, retained audit/replay/bulk/deletion evidence, two terminal students/accounts and banned coach identity; delete only the other three newly created identities. No hosted mutation is authorized yet.
+Deliver/review the directly dependent **draft** PR; do not merge or deploy. The existing CI branch filter excludes this dependent base, so report local checks accurately and never claim missing GitHub checks passed. All commits use `[skip netlify]`; stopped builds and protection must remain intact.
 
-Intermediate test failures were resolved or explicitly discarded: the Node guard file originally entered Vitest discovery; one booking-loading assertion failed while heavy suites competed but all 784 passed sequentially; a five-second local lock-holder experiment exceeded backend lock timeout and was reverted. Original concurrency SQL/assertions/two-second holders remain unchanged; the native adapter now polls lock state for up to one additional second. Use final pinned results, not intermediate logs.
+The one concrete hosted execution/cleanup authorization request is in the report. No hosted mutation is authorized yet. Execution additionally requires fresh credential/perimeter/schema/baseline/permission preflight, direct staging SQL connectivity and an existing project-scoped `auth_config_read` credential proving disabled Auth hooks, no SMTP/external provider and unchanged exact Auth URLs. Do not create/reset credentials or alter infrastructure to bypass a failed gate.
 
-Production remains **NO-GO**. No deployment, merge, providers, real notifications/payments, hosted fixtures, scheduled workers or Wave 2 on resume without the necessary explicit authorization.
+Explicit approval must include cleanup's short 76-table staging write fence; retained immutable audit/replay/bulk/deletion evidence; two disabled terminal students/accounts and a banned coach Auth identity; removal of only the other three new identities. H06 proves canonical SQL, not provider-capable HTTP rescheduling; H16 proves bounded reads/frozen review/progress, not browser result routing. Native Auth is a schema stub, not hosted GoTrue.
+
+Production remains **NO-GO**. No deployment, merge, providers, real messages/payments, hosted fixtures, scheduled workers or Wave 2 without their required explicit authorization.

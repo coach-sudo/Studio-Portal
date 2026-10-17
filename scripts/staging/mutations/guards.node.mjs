@@ -1,7 +1,15 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { Buffer } from "node:buffer";
-import { mkdtempSync, readFileSync, writeFileSync, rmSync } from "node:fs";
+import {
+  mkdtempSync,
+  readFileSync,
+  writeFileSync,
+  rmSync,
+  symlinkSync,
+  unlinkSync,
+  rmdirSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { URL } from "node:url";
@@ -13,6 +21,7 @@ import {
   assertIdentity,
   endpoint,
   manifestHash,
+  assertUnattempted,
 } from "./policy.mjs";
 import { Journal } from "./journal.mjs";
 import {
@@ -20,6 +29,8 @@ import {
   validateAuthorization,
   validateConfig,
   validateAuthSettings,
+  privateDirectory,
+  validateSyntheticUser,
 } from "./hosted.mjs";
 import { perimeterState, privatePath } from "../protected-browser.mjs";
 import { assertMode } from "../hosted-mutations.mjs";
@@ -158,6 +169,29 @@ test("Auth configuration proves disabled hooks, no SMTP/provider and exact redir
     false,
   );
 });
+test("owned Auth IDs must keep their confirmed synthetic identity and ordinary user role", () => {
+  const value = {
+    id: ids.guardian,
+    email: target.run + "-guardian@coachd-staging.example.test",
+    role: "authenticated",
+    aud: "authenticated",
+    email_confirmed_at: "2026-10-16",
+    app_metadata: { acceptanceRun: target.run },
+  };
+  validateSyntheticUser("guardian", value);
+  for (const patch of [
+    { id: ids.coach },
+    { email: "manual@example.test" },
+    { role: "service_role" },
+    { aud: "different" },
+    { email_confirmed_at: null },
+    { app_metadata: { acceptanceRun: "other" } },
+  ])
+    assert.throws(() =>
+      validateSyntheticUser("guardian", { ...value, ...patch }),
+    );
+  assert.throws(() => validateSyntheticUser("unknown", value));
+});
 test("network allowlist refuses workers, providers, arbitrary previews and alternate auth IDs", () => {
   assert(endpoint("GET", target.origin + "/api/healthz"));
   assert(
@@ -188,6 +222,61 @@ test("network allowlist refuses workers, providers, arbitrary previews and alter
   ])
     assert.equal(endpoint(method, url), false, url);
   assert.throws(() => endpoint("GET", target.origin + "/%61pi/healthz"));
+  assert.equal(
+    endpoint(
+      "DELETE",
+      `https://${target.project}.supabase.co/auth/v1/admin/users/${ids.coach}`,
+    ),
+    false,
+  );
+  assert.equal(
+    endpoint(
+      "PUT",
+      `https://${target.project}.supabase.co/auth/v1/admin/users/${ids.guardian}`,
+    ),
+    false,
+  );
+});
+test("activity guards refuse previously attempted messages/projections even after requeue", () => {
+  const message = {
+    attempts: 0,
+    last_error: null,
+    sent_at: null,
+    claim_token: null,
+    status: "queued",
+  };
+  assertUnattempted("public.outbox_messages", message);
+  for (const patch of [
+    { attempts: 1 },
+    { attempts: undefined },
+    { last_error: "failed" },
+    { sent_at: "2026-10-16" },
+    { claim_token: "claimed" },
+    { status: "sending" },
+  ])
+    assert.throws(
+      () =>
+        assertUnattempted("public.outbox_messages", { ...message, ...patch }),
+      /Delivery activity/,
+    );
+  const projection = { attempts: 0 };
+  assertUnattempted("public.calendar_projections", projection);
+  for (const patch of [
+    { attempts: 1 },
+    { last_error: "failed" },
+    { first_attempted_at: "2026-10-16" },
+    { claim_until: "2026-10-16" },
+    { external_version: "v1" },
+    { last_projected_at: "2026-10-16" },
+  ])
+    assert.throws(
+      () =>
+        assertUnattempted("public.calendar_projections", {
+          ...projection,
+          ...patch,
+        }),
+      /Calendar activity/,
+    );
 });
 test("protected transport refuses unknown endpoints before a request and disables retry/redirect", async () => {
   const calls = [];
@@ -287,5 +376,22 @@ test("durable journal enforces one writer, hash chain, code pin and corruption r
   } finally {
     journal?.close();
     rmSync(directory, { recursive: true, force: true });
+  }
+});
+test("an ancestor junction cannot redirect restricted files into the repository", () => {
+  const directory = mkdtempSync(join(tmpdir(), "studio-mutation-alias-"));
+  const alias = join(directory, "repository-alias");
+  try {
+    symlinkSync(process.cwd(), alias, "junction");
+    assert.throws(
+      () => privateDirectory(join(alias, "docs")),
+      /outside the repository/,
+    );
+  } finally {
+    try {
+      unlinkSync(alias);
+    } finally {
+      rmdirSync(directory);
+    }
   }
 });

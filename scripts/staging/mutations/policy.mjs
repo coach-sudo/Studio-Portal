@@ -151,7 +151,13 @@ export function endpoint(method, value) {
   if (u.pathname === "/auth/v1/admin/users")
     return method === "POST" && !u.search;
   if (users.some((role) => u.pathname === `/auth/v1/admin/users/${ids[role]}`))
-    return ["GET", "DELETE", "PUT"].includes(method) && !u.search;
+    return (
+      !u.search &&
+      (method === "GET" ||
+        (u.pathname.endsWith(ids.coach)
+          ? method === "PUT"
+          : method === "DELETE"))
+    );
   if (u.pathname === "/auth/v1/token")
     return method === "POST" && u.search === "?grant_type=password";
   return (
@@ -192,6 +198,30 @@ export const recordLimits = Object.freeze({
   "lesson_ops.lesson_bulk_requests": 30,
   "lesson_ops.lesson_deletion_snapshots": 1,
 });
+export function assertUnattempted(table, row) {
+  if (table === "public.outbox_messages")
+    assert(
+      row.attempts === 0 &&
+        !row.last_error &&
+        !row.sent_at &&
+        !row.claim_token &&
+        ["queued", "cancelled", "suppressed", "draft"].includes(row.status),
+      "Delivery activity detected",
+    );
+  else if (table === "public.calendar_projections")
+    assert(
+      row.attempts === 0 &&
+        !row.first_attempted_at &&
+        !row.claim_token &&
+        !row.claim_until &&
+        !row.last_error &&
+        !row.external_event_id &&
+        !row.external_version &&
+        !row.last_projected_at,
+      "Calendar activity detected",
+    );
+  else assert.fail("Unsupported activity guard");
+}
 export function assertBudget(snapshot, rpcCount) {
   const rows = (table) =>
     [...(snapshot[table]?.values() || [])].map((x) => x.row);
@@ -239,20 +269,9 @@ export function assertBudget(snapshot, rpcCount) {
   ])
     assert.equal(r.currency, "USD");
   for (const r of rows("public.calendar_projections"))
-    assert(
-      !r.first_attempted_at &&
-        !r.claim_token &&
-        !r.external_event_id &&
-        r.attempts === 0,
-      "Calendar activity detected",
-    );
+    assertUnattempted("public.calendar_projections", r);
   for (const r of rows("public.outbox_messages"))
-    assert(
-      !r.sent_at &&
-        !r.claim_token &&
-        ["queued", "cancelled", "suppressed", "draft"].includes(r.status),
-      "Delivery activity detected",
-    );
+    assertUnattempted("public.outbox_messages", r);
 }
 export function owned(table, r, sets) {
   const own = (id) => sets.has(id);
