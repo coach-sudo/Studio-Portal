@@ -58,6 +58,19 @@ describe("candidate browser perimeter", () => {
       ).toBe(true);
     },
   );
+  it("rejects decorated read-wrapper URLs instead of widening the exact endpoint", () => {
+    for (const suffix of ["?command=create", "#preview_bulk"])
+      expect(
+        allowedCandidateRead(
+          target,
+          "POST",
+          target.origin + "/api/v2/lessons" + suffix,
+          {
+            command: "bulk_candidates",
+          },
+        ),
+      ).toBe(false);
+  });
   it.each([
     "create",
     "update_details",

@@ -71,7 +71,8 @@ export function classifyCandidateEndpoint(
     return "provider-prohibited";
   if (url.origin === target.origin && url.pathname === "/api/v2/lessons") {
     if (method !== "POST") return "provider-prohibited";
-    if (readLessonCommands.has(body?.command || "")) return "read-only";
+    if (!url.search && !url.hash && readLessonCommands.has(body?.command || ""))
+      return "read-only";
     // Rescheduling calls googleAccessToken/googleFreeBusy before executing SQL.
     if (body?.command === "execute_change" && body.payload?.action !== "cancel")
       return "provider-prohibited";

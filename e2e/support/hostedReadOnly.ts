@@ -166,6 +166,8 @@ export async function verifyRelease(api: APIRequestContext) {
 
 export async function guardContext(context: BrowserContext) {
   const blocked: { method: string; origin: string; path: string }[] = [];
+  const reads = new Map<string, number>();
+  traffic.set(context, reads);
   await context.route("**/*", async (route) => {
     const request = route.request();
     let body: unknown;
@@ -174,7 +176,12 @@ export async function guardContext(context: BrowserContext) {
     } catch {
       /* Non-JSON requests are checked without command permission. */
     }
-    if (permits(request.method(), request.url(), body)) return route.continue();
+    if (permits(request.method(), request.url(), body)) {
+      const url = new URL(request.url());
+      const key = `${request.method()} ${url.origin}${url.pathname}`;
+      reads.set(key, (reads.get(key) || 0) + 1);
+      return route.continue();
+    }
     const url = new URL(request.url());
     // Only sanitized endpoint identity is retained, never headers, query values or bodies.
     blocked.push({
@@ -194,6 +201,9 @@ export async function guardContext(context: BrowserContext) {
   });
   return blocked;
 }
+
+// Endpoint identities/counts only: never headers, query values, bodies or tokens.
+const traffic = new WeakMap<BrowserContext, Map<string, number>>();
 
 export async function roleHeaders(role: Role) {
   const state = await roleState(role);
@@ -230,6 +240,10 @@ export const test = base.extend<{
       await verifyRelease(context.request);
       const blocked = await guardContext(context);
       await use(blocked);
+      await privateJson(
+        `traffic-${testInfo.testId.replace(/[^\w-]/g, "")}-${testInfo.project.name}.json`,
+        Object.fromEntries(traffic.get(context) || []),
+      );
       if (blocked.length) {
         await privateJson(
           `blocked-${testInfo.testId.replace(/[^\w-]/g, "")}-${testInfo.project.name}.json`,
