@@ -44,6 +44,7 @@ for (const role of ["coach", "student", "guardian"] as const) {
         ),
       ).toBe(true);
       const axe = await new AxeBuilder({ page }).analyze();
+      expect(state.pageErrors).toEqual([]);
       await info.attach(`axe-${path.split("/").pop() || "overview"}`, {
         body: JSON.stringify(
           axe.violations.map((v) => ({

@@ -1,0 +1,178 @@
+{
+  "verifiedAt": "2026-10-17T14:45:25.929Z",
+  "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "existingDraft": {
+    "id": "6ad23d4f8b10c10447224155",
+    "state": "ready",
+    "context": "deploy-preview",
+    "publishedAt": null
+  },
+  "publishedDeploy": "6ace53e7f850061d7c49b711",
+  "teamLogin": "all",
+  "automaticBuildsStopped": true,
+  "sharedVariables": 0,
+  "buildHooks": 0,
+  "activeBuilds": 0,
+  "providerCredentialNames": [],
+  "environment": [
+    {
+      "key": "E2E_FIXTURE_TOKEN",
+      "scopes": ["functions"],
+      "secret": true,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "VITE_SUPABASE_ANON_KEY",
+      "scopes": ["builds"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "E2E_STUDIO_ID",
+      "scopes": ["functions"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "STUDIO_ID",
+      "scopes": ["functions"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "STUDIO_SLUG",
+      "scopes": ["functions"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "SUPABASE_ANON_KEY",
+      "scopes": ["functions"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "scopes": ["functions"],
+      "secret": true,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "SUPABASE_URL",
+      "scopes": ["functions"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "VITE_QUERY_LAYER_V2",
+      "scopes": ["builds"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    },
+    {
+      "key": "VITE_SUPABASE_URL",
+      "scopes": ["builds"],
+      "secret": false,
+      "contexts": ["deploy-preview"]
+    }
+  ],
+  "publicAndServerStagingValuesMatch": true,
+  "prChain": [
+    {
+      "baseRefName": "main",
+      "headRefName": "codex/credit-coverage-diagnostics",
+      "headRefOid": "f99f8cc0b7ae209e27562014e0743f39052f1dad",
+      "isDraft": true,
+      "number": 36,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/credit-coverage-diagnostics",
+      "headRefName": "codex/credit-lifecycle-reliability",
+      "headRefOid": "0badcc648ec715e20c2be7849d0bdbd8ec0955e0",
+      "isDraft": true,
+      "number": 37,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/credit-lifecycle-reliability",
+      "headRefName": "codex/occurrence-safe-lesson-changes",
+      "headRefOid": "c894f7f51f26aae0e9c396a4d791d2bbc0c1a545",
+      "isDraft": true,
+      "number": 38,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/occurrence-safe-lesson-changes",
+      "headRefName": "codex/bulk-lesson-management",
+      "headRefOid": "8b8a0aa173bfbc03f0bdb01a3a8953459f86cd0f",
+      "isDraft": true,
+      "number": 39,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/bulk-lesson-management",
+      "headRefName": "codex/bulk-lesson-interface",
+      "headRefOid": "c162fc292d4b9ba8d78c9ae2eb4c0c08485119ee",
+      "isDraft": true,
+      "number": 40,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/bulk-lesson-interface",
+      "headRefName": "codex/student-workspace-experience",
+      "headRefOid": "2470adf349cbf3995e375bd9c69a12b4945eb204",
+      "isDraft": true,
+      "number": 42,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/student-workspace-experience",
+      "headRefName": "codex/wave-one-integrated-acceptance",
+      "headRefOid": "fe63c57e928bca78c23e43877480b36a2d8e26c6",
+      "isDraft": true,
+      "number": 43,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/wave-one-staging-proposal",
+      "headRefName": "codex/wave-one-staging-configuration",
+      "headRefOid": "04768d281b0eca3a2c146dbf35d153b6b6301e77",
+      "isDraft": true,
+      "number": 45,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/wave-one-staging-configuration",
+      "headRefName": "codex/wave-one-first-deployment-gate",
+      "headRefOid": "451e409e1726ddd50722591c68f2bc3faf7789b1",
+      "isDraft": true,
+      "number": 46,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/wave-one-first-deployment-gate",
+      "headRefName": "codex/wave-one-hosted-acceptance",
+      "headRefOid": "3057d6cbdde6628a80d0c10b6ad9c6a323153592",
+      "isDraft": true,
+      "number": 47,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/wave-one-hosted-acceptance",
+      "headRefName": "codex/wave-one-hosted-mutation-executor",
+      "headRefOid": "9b10d19c1fb48e637d1712e06694443725b017cd",
+      "isDraft": true,
+      "number": 48,
+      "state": "OPEN"
+    },
+    {
+      "baseRefName": "codex/wave-one-hosted-mutation-executor",
+      "headRefName": "codex/wave-one-hosted-execution-checkpoint",
+      "headRefOid": "025fe0fd6efde25cf14a77ef77c330909224946d",
+      "isDraft": true,
+      "number": 49,
+      "state": "OPEN"
+    }
+  ]
+}

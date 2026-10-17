@@ -426,15 +426,27 @@ try {
         ["show", `${replayCandidate}:scripts/` + name],
         { cwd: repo, encoding: "utf8" },
       );
-      const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';
+      // Native Windows process startup can exceed the Docker scenarios' two-
+      // second sleeps. Hold their existing database locks behind a coordinator
+      // barrier until the original pg_stat_activity assertion observes the racer.
+      // All financial SQL and outcome assertions remain the original Git blobs.
+      const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';import {createRequire} from 'node:module';
 const args=[${JSON.stringify(root + "/pg-client-bridge.mjs")},'${port}'];
-const query=sql=>{const run=()=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();let value=run();if(sql.includes("wait_event_type='Lock'")){const until=Date.now()+1000;while(value==='0'&&Date.now()<until)value=run();}return value;};
-function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{windowsHide:true});let output='',error='';child.stdout.on('data',data=>{output+=data;onOutput(output)});child.stderr.on('data',data=>error+=data);child.on('error',reject);child.on('close',code=>code?reject(new Error(error)):resolve(output));child.stdin.end(sql)});}
+const {Client}=createRequire(${JSON.stringify(root + "/package.json")})('pg');
+const coordinator=new Client({host:'127.0.0.1',port:${port},user:'postgres',database:'postgres'});
+await coordinator.connect();
+assert.equal((await coordinator.query("select current_setting('studio.disposable_recovery',true) marker")).rows[0].marker,'wave-one-pr45-20261016');
+const barrierKey=String(7000000000+process.pid);let held=false,releasing=Promise.resolve();
+const query=sql=>{const run=()=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();let value=run();if(sql.includes("wait_event_type='Lock'")){const until=Date.now()+5000;while(value==='0'&&Date.now()<until)value=run();if(value==='1'&&held){held=false;releasing=coordinator.query('select pg_advisory_unlock($1)',[barrierKey]);}}return value;};
+async function session(sql,onOutput=()=>{}){if(/application_name='(?:credit-reliability|occurrence|bulk)-holder'/.test(sql)&&/select pg_sleep\\([23]\\);/.test(sql)){await releasing;await coordinator.query('select pg_advisory_lock($1)',[barrierKey]);held=true;sql=sql.replace(/select pg_sleep\\([23]\\);/, 'select pg_advisory_lock('+barrierKey+');select pg_advisory_unlock('+barrierKey+');');}return new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{windowsHide:true});let output='',error='';child.stdout.on('data',data=>{output+=data;onOutput(output)});child.stderr.on('data',data=>error+=data);child.on('error',reject);child.on('close',code=>code?reject(new Error(error)):resolve(output));child.stdin.end(sql)});}
 `;
       assert.ok(source.includes("const coach ="));
       writeFileSync(
         root + "/adapted-" + name,
-        prefix + source.slice(source.indexOf("const coach =")),
+        prefix +
+          "try {\n" +
+          source.slice(source.indexOf("const coach =")) +
+          "\n} finally { await releasing; await coordinator.end(); }\n",
       );
       const out = execFileSync(process.execPath, [root + "/adapted-" + name], {
         encoding: "utf8",
@@ -445,7 +457,7 @@ function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{cons
     console.log(
       "PASS: " +
         assertions +
-        " pgTAP assertions and all three original concurrency scenario bodies (bounded native lock polling)",
+        " pgTAP assertions and all three original concurrency scenario bodies (native coordinator barrier; observed lock contention)",
     );
     writeFileSync(
       root + "/recovery-test-result.json",

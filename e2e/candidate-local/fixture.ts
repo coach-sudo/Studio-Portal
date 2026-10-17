@@ -34,6 +34,10 @@ export async function installFixture(
   const jwt = `${Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url")}.${Buffer.from(JSON.stringify(claims)).toString("base64url")}.local-test-signature`;
   await context.addInitScript(
     ({ jwt, user }) => {
+      // Axe creates opaque sandbox frames. Synthetic auth belongs only to the
+      // top-level loopback application, never to those frames or other origins.
+      if (window !== window.top || location.origin !== "http://127.0.0.1:4187")
+        return;
       localStorage.setItem(
         "sb-127-auth-token",
         JSON.stringify({
@@ -89,7 +93,11 @@ export async function installFixture(
     user_id: ids.guardian,
     full_name: "Candidate Guardian",
     email: "guardian@example.test",
-    relationship: "parent",
+    relationship_type: "guardian",
+    relationship_label: "Parent",
+    is_primary_payer: true,
+    is_primary_scheduling_contact: true,
+    can_receive_notifications: false,
     portal_enabled: true,
     is_payer: true,
     can_manage_schedule: true,
@@ -110,6 +118,7 @@ export async function installFixture(
     version: 1,
   };
   const state = {
+    pageErrors: [] as string[],
     requests: [] as string[],
     commands: [] as string[],
     keys: [] as string[],
@@ -121,6 +130,11 @@ export async function installFixture(
     staleReview: false,
     accepted: false,
   };
+  for (const page of context.pages())
+    page.on("pageerror", (error) => state.pageErrors.push(error.message));
+  context.on("page", (page) =>
+    page.on("pageerror", (error) => state.pageErrors.push(error.message)),
+  );
   const jobId = "70000000-0000-4000-8000-000000000020";
   const reviewToken = "a".repeat(64);
   const progress = () => ({
