@@ -2,6 +2,8 @@
 
 This is a prepared test package, not permission to run it. The current read-only lane cannot execute these operations. Production, providers, scheduled workers, messages, publications and new deployments stay excluded.
 
+The [dedicated executor checkpoint](wave-one-hosted-mutation-executor.md) now implements this proposal with local validation only. Its exact supporting limits, canonical-SQL coverage boundaries, cleanup write fences and required retention of the banned new coach identity/two terminal students refine this proposal and require explicit approval. Hosted execution remains unauthorized.
+
 ## Exact scope
 
 Run ID: `e2e-wave1-hosted-20261016-a`. Target the existing protected, unpublished deploy `6ad23d4f8b10c10447224155`, application `0b18a5a2238daa49bec1290f5884d5792f4aefc9`, Netlify `d83ff6cb-f57b-4741-8c3c-3eaae7adab19`, Supabase `lrxrivfqjpkvygozphoz`, studio `4ceff683-e72f-4b2e-96ce-85db2dca4eb2` only.
