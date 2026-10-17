@@ -14,6 +14,26 @@ if (!process.env.STAGING_PG_RUNTIME_DIR)
   );
 const root = resolve(process.env.STAGING_PG_RUNTIME_DIR);
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const replayCandidate =
+  process.env.STAGING_REPLAY_CANDIDATE ||
+  "fe63c57e928bca78c23e43877480b36a2d8e26c6";
+assert.match(replayCandidate, /^[a-f0-9]{40}$/);
+// The recovery fixture characterizes this exact accepted migration chain.
+// Refuse to silently test a changed schema against historical expectations.
+assert.equal(
+  execFileSync("git", ["rev-parse", `${replayCandidate}:supabase/migrations`], {
+    cwd: repo,
+    encoding: "utf8",
+  }).trim(),
+  execFileSync(
+    "git",
+    [
+      "rev-parse",
+      "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations",
+    ],
+    { cwd: repo, encoding: "utf8" },
+  ).trim(),
+);
 if (
   root === repo ||
   root.startsWith(repo + "/") ||
@@ -102,11 +122,7 @@ try {
  `);
   const files = execFileSync(
     "git",
-    [
-      "ls-tree",
-      "--name-only",
-      "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations",
-    ],
+    ["ls-tree", "--name-only", `${replayCandidate}:supabase/migrations`],
     { cwd: repo, encoding: "utf8" },
   )
     .trim()
@@ -115,10 +131,7 @@ try {
   for (const file of files.slice(0, 35)) {
     let sql = execFileSync(
       "git",
-      [
-        "show",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" + file,
-      ],
+      ["show", `${replayCandidate}:supabase/migrations/` + file],
       { cwd: repo, encoding: "utf8" },
     );
     if (process.env.REPLAY_CRLF === "true") sql = sql.replace(/\n/g, "\r\n");
@@ -157,11 +170,7 @@ try {
     assert.equal(row.definition, before.definition);
     const failed = execFileSync(
       "git",
-      [
-        "show",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" +
-          files[35],
-      ],
+      ["show", `${replayCandidate}:supabase/migrations/` + files[35]],
       { cwd: repo, encoding: "utf8" },
     );
     await client.query("create role recovery_admin login superuser");
@@ -343,11 +352,7 @@ try {
     for (const file of files.slice(36)) {
       const sql = execFileSync(
         "git",
-        [
-          "show",
-          "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" +
-            file,
-        ],
+        ["show", `${replayCandidate}:supabase/migrations/` + file],
         { cwd: repo, encoding: "utf8" },
       );
       try {
@@ -377,11 +382,7 @@ try {
     writeFileSync(root + "/expected-full-schema.json", JSON.stringify(catalog));
     const tests = execFileSync(
       "git",
-      [
-        "ls-tree",
-        "--name-only",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/tests",
-      ],
+      ["ls-tree", "--name-only", `${replayCandidate}:supabase/tests`],
       { cwd: repo, encoding: "utf8" },
     )
       .trim()
@@ -397,10 +398,7 @@ try {
     for (const file of tests) {
       const sql = execFileSync(
         "git",
-        [
-          "show",
-          "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/tests/" + file,
-        ],
+        ["show", `${replayCandidate}:supabase/tests/` + file],
         { cwd: repo, encoding: "utf8" },
       );
       const results = await client.query(sql);
@@ -425,18 +423,30 @@ try {
     ]) {
       const source = execFileSync(
         "git",
-        ["show", "fe63c57e928bca78c23e43877480b36a2d8e26c6:scripts/" + name],
+        ["show", `${replayCandidate}:scripts/` + name],
         { cwd: repo, encoding: "utf8" },
       );
-      const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';
+      // Native Windows process startup can exceed the Docker scenarios' two-
+      // second sleeps. Hold their existing database locks behind a coordinator
+      // barrier until the original pg_stat_activity assertion observes the racer.
+      // All financial SQL and outcome assertions remain the original Git blobs.
+      const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';import {createRequire} from 'node:module';
 const args=[${JSON.stringify(root + "/pg-client-bridge.mjs")},'${port}'];
-const query=sql=>{const run=()=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();let value=run();if(sql.includes("wait_event_type='Lock'")){const until=Date.now()+1000;while(value==='0'&&Date.now()<until)value=run();}return value;};
-function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{windowsHide:true});let output='',error='';child.stdout.on('data',data=>{output+=data;onOutput(output)});child.stderr.on('data',data=>error+=data);child.on('error',reject);child.on('close',code=>code?reject(new Error(error)):resolve(output));child.stdin.end(sql)});}
+const {Client}=createRequire(${JSON.stringify(root + "/package.json")})('pg');
+const coordinator=new Client({host:'127.0.0.1',port:${port},user:'postgres',database:'postgres'});
+await coordinator.connect();
+assert.equal((await coordinator.query("select current_setting('studio.disposable_recovery',true) marker")).rows[0].marker,'wave-one-pr45-20261016');
+const barrierKey=String(7000000000+process.pid);let held=false,releasing=Promise.resolve();
+const query=sql=>{const run=()=>execFileSync(process.execPath,args,{input:sql,encoding:'utf8',windowsHide:true}).trim();let value=run();if(sql.includes("wait_event_type='Lock'")){const until=Date.now()+5000;while(value==='0'&&Date.now()<until)value=run();if(value==='1'&&held){held=false;releasing=coordinator.query('select pg_advisory_unlock($1)',[barrierKey]);}}return value;};
+async function session(sql,onOutput=()=>{}){if(/application_name='(?:credit-reliability|occurrence|bulk)-holder'/.test(sql)&&/select pg_sleep\\([23]\\);/.test(sql)){await releasing;await coordinator.query('select pg_advisory_lock($1)',[barrierKey]);held=true;sql=sql.replace(/select pg_sleep\\([23]\\);/, 'select pg_advisory_lock('+barrierKey+');select pg_advisory_unlock('+barrierKey+');');}return new Promise((resolve,reject)=>{const child=spawn(process.execPath,args,{windowsHide:true});let output='',error='';child.stdout.on('data',data=>{output+=data;onOutput(output)});child.stderr.on('data',data=>error+=data);child.on('error',reject);child.on('close',code=>code?reject(new Error(error)):resolve(output));child.stdin.end(sql)});}
 `;
       assert.ok(source.includes("const coach ="));
       writeFileSync(
         root + "/adapted-" + name,
-        prefix + source.slice(source.indexOf("const coach =")),
+        prefix +
+          "try {\n" +
+          source.slice(source.indexOf("const coach =")) +
+          "\n} finally { await releasing; await coordinator.end(); }\n",
       );
       const out = execFileSync(process.execPath, [root + "/adapted-" + name], {
         encoding: "utf8",
@@ -447,7 +457,7 @@ function session(sql,onOutput=()=>{}){return new Promise((resolve,reject)=>{cons
     console.log(
       "PASS: " +
         assertions +
-        " pgTAP assertions and all three original concurrency scenario bodies (bounded native lock polling)",
+        " pgTAP assertions and all three original concurrency scenario bodies (native coordinator barrier; observed lock contention)",
     );
     writeFileSync(
       root + "/recovery-test-result.json",

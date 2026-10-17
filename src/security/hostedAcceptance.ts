@@ -28,7 +28,11 @@ export function assertHostedAcceptanceTarget(value: string) {
 }
 
 /** Auth sessions are authorized; business writes and unreviewed RPCs are not. */
-export function allowedHostedRequest(method: string, value: string): boolean {
+export function allowedHostedRequest(
+  method: string,
+  value: string,
+  target: { origin: string; project: string } = hostedAcceptance,
+): boolean {
   let url: URL;
   try {
     url = new URL(value);
@@ -39,7 +43,7 @@ export function allowedHostedRequest(method: string, value: string): boolean {
     return false;
   if (url.pathname.includes("%")) return false;
   const read = ["GET", "HEAD", "OPTIONS"].includes(method);
-  if (url.origin === hostedAcceptance.origin) {
+  if (url.origin === target.origin) {
     if (url.pathname.startsWith("/.netlify/functions/")) return false;
     if (url.pathname.startsWith("/api/")) {
       return (
@@ -54,7 +58,7 @@ export function allowedHostedRequest(method: string, value: string): boolean {
     }
     return read;
   }
-  if (url.origin === `https://${hostedAcceptance.project}.supabase.co`) {
+  if (url.origin === `https://${target.project}.supabase.co`) {
     if (url.pathname.startsWith("/auth/v1/")) {
       return (
         (read &&

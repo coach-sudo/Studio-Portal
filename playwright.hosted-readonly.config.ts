@@ -1,6 +1,8 @@
 import { defineConfig } from "@playwright/test";
-import { hostedAcceptance } from "./src/security/hostedAcceptance";
-import { acceptanceDirectory } from "./e2e/support/hostedReadOnly";
+import {
+  acceptanceDirectory,
+  hostedAcceptance,
+} from "./e2e/support/hostedReadOnly";
 
 export default defineConfig({
   testDir: "./e2e/hosted-readonly",

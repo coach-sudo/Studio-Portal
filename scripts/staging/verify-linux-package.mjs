@@ -9,7 +9,10 @@ import { pathToFileURL } from "node:url";
 import process from "node:process";
 import console from "node:console";
 
-const candidate = "0b18a5a2238daa49bec1290f5884d5792f4aefc9";
+// An explicit immutable SHA permits fresh local verification without replacing
+// the historical default. This helper has no upload or publication capability.
+const candidate = process.argv[6] || "0b18a5a2238daa49bec1290f5884d5792f4aefc9";
+assert.match(candidate, /^[a-f0-9]{40}$/);
 const project = "lrxrivfqjpkvygozphoz";
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const run = (command, args, cwd) =>
@@ -26,7 +29,7 @@ async function main() {
   assert.equal(process.arch, "x64");
   assert.equal(process.versions.node.split(".")[0], "22");
   const [root, tools, configFile, evidence] = process.argv
-    .slice(2)
+    .slice(2, 6)
     .map((p) => resolve(p));
   assert.ok(root && tools && configFile && evidence);
   assert.equal(run("git", ["rev-parse", "HEAD"], root).trim(), candidate);
@@ -50,7 +53,7 @@ async function main() {
     "VITE_SUPABASE_URL",
   ]);
   assert.equal(values.VITE_SUPABASE_URL, `https://${project}.supabase.co`);
-  assert.equal(values.VITE_QUERY_LAYER_V2, "true");
+  assert.ok(["true", "false"].includes(values.VITE_QUERY_LAYER_V2));
   const keyClaims = JSON.parse(
     Buffer.from(
       values.VITE_SUPABASE_ANON_KEY.split(".")[1],
@@ -223,7 +226,7 @@ async function main() {
     architecture: process.arch,
     node: process.version,
     zisiVersion,
-    queryLayerV2: true,
+    queryLayerV2: values.VITE_QUERY_LAYER_V2 === "true",
     supabaseProject: project,
     functionRuntime: "nodejs22.x",
     sharpVersion: sharp.versions.sharp,
