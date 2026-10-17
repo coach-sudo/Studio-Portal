@@ -10,7 +10,8 @@ const site = "d83ff6cb-f57b-4741-8c3c-3eaae7adab19";
 const candidate = "0b18a5a2238daa49bec1290f5884d5792f4aefc9";
 
 /** Accept only a sanitized real deploy receipt after the authorized upload. */
-export function authConfiguration(receipt) {
+export function authConfiguration(receipt, expectedCandidate = candidate) {
+  assert.match(expectedCandidate, /^[a-f0-9]{40}$/);
   assert.equal(receipt.site_id, site, "Unexpected Netlify site");
   assert.equal(
     receipt.context,
@@ -31,16 +32,16 @@ export function authConfiguration(receipt) {
   );
   assert.equal(
     receipt.verified_source_sha,
-    candidate,
+    expectedCandidate,
     "Verified source/artifact identity is required",
   );
   assert.equal(receipt.verified_health?.release?.context, "deploy-preview");
   assert.equal(
     receipt.verified_health?.release?.commit,
-    candidate.slice(0, 12),
+    expectedCandidate.slice(0, 12),
   );
   if (receipt.commit_ref !== null && receipt.commit_ref !== undefined)
-    assert.equal(receipt.commit_ref, candidate);
+    assert.equal(receipt.commit_ref, expectedCandidate);
   const origin = deploymentOrigin(receipt.permalink);
   assert.equal(origin, `https://${receipt.id}--coachd-staging.netlify.app`);
   const callback = `${origin}/auth/callback`;
@@ -59,7 +60,7 @@ async function main() {
     await readFile(privatePath(process.argv[2]), "utf8"),
   );
   const directory = privatePath(process.argv[3]);
-  const config = authConfiguration(receipt);
+  const config = authConfiguration(receipt, process.argv[4] || candidate);
   await mkdir(join(directory, "supabase"), { recursive: true, mode: 0o700 });
   await writeFile(join(directory, "supabase/config.toml"), config, {
     flag: "wx",

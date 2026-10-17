@@ -54,3 +54,23 @@ test("rejects wrong site, publication, mutable origin and unverified candidate",
   ])
     assert.throws(() => authConfiguration({ ...receipt, ...change }));
 });
+
+test("an explicit new candidate still requires matching artifact and health identity", () => {
+  const candidate = "a".repeat(40);
+  const next = {
+    ...receipt,
+    verified_source_sha: candidate,
+    verified_health: {
+      release: { context: "deploy-preview", commit: candidate.slice(0, 12) },
+    },
+  };
+  assert.match(authConfiguration(next, candidate), /additional_redirect_urls/);
+  assert.throws(() => authConfiguration(next));
+  assert.throws(() => authConfiguration(next, "main"));
+  assert.throws(() =>
+    authConfiguration(
+      { ...next, commit_ref: receipt.verified_source_sha },
+      candidate,
+    ),
+  );
+});

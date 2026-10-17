@@ -14,6 +14,26 @@ if (!process.env.STAGING_PG_RUNTIME_DIR)
   );
 const root = resolve(process.env.STAGING_PG_RUNTIME_DIR);
 const repo = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+const replayCandidate =
+  process.env.STAGING_REPLAY_CANDIDATE ||
+  "fe63c57e928bca78c23e43877480b36a2d8e26c6";
+assert.match(replayCandidate, /^[a-f0-9]{40}$/);
+// The recovery fixture characterizes this exact accepted migration chain.
+// Refuse to silently test a changed schema against historical expectations.
+assert.equal(
+  execFileSync("git", ["rev-parse", `${replayCandidate}:supabase/migrations`], {
+    cwd: repo,
+    encoding: "utf8",
+  }).trim(),
+  execFileSync(
+    "git",
+    [
+      "rev-parse",
+      "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations",
+    ],
+    { cwd: repo, encoding: "utf8" },
+  ).trim(),
+);
 if (
   root === repo ||
   root.startsWith(repo + "/") ||
@@ -102,11 +122,7 @@ try {
  `);
   const files = execFileSync(
     "git",
-    [
-      "ls-tree",
-      "--name-only",
-      "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations",
-    ],
+    ["ls-tree", "--name-only", `${replayCandidate}:supabase/migrations`],
     { cwd: repo, encoding: "utf8" },
   )
     .trim()
@@ -115,10 +131,7 @@ try {
   for (const file of files.slice(0, 35)) {
     let sql = execFileSync(
       "git",
-      [
-        "show",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" + file,
-      ],
+      ["show", `${replayCandidate}:supabase/migrations/` + file],
       { cwd: repo, encoding: "utf8" },
     );
     if (process.env.REPLAY_CRLF === "true") sql = sql.replace(/\n/g, "\r\n");
@@ -157,11 +170,7 @@ try {
     assert.equal(row.definition, before.definition);
     const failed = execFileSync(
       "git",
-      [
-        "show",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" +
-          files[35],
-      ],
+      ["show", `${replayCandidate}:supabase/migrations/` + files[35]],
       { cwd: repo, encoding: "utf8" },
     );
     await client.query("create role recovery_admin login superuser");
@@ -343,11 +352,7 @@ try {
     for (const file of files.slice(36)) {
       const sql = execFileSync(
         "git",
-        [
-          "show",
-          "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/migrations/" +
-            file,
-        ],
+        ["show", `${replayCandidate}:supabase/migrations/` + file],
         { cwd: repo, encoding: "utf8" },
       );
       try {
@@ -377,11 +382,7 @@ try {
     writeFileSync(root + "/expected-full-schema.json", JSON.stringify(catalog));
     const tests = execFileSync(
       "git",
-      [
-        "ls-tree",
-        "--name-only",
-        "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/tests",
-      ],
+      ["ls-tree", "--name-only", `${replayCandidate}:supabase/tests`],
       { cwd: repo, encoding: "utf8" },
     )
       .trim()
@@ -397,10 +398,7 @@ try {
     for (const file of tests) {
       const sql = execFileSync(
         "git",
-        [
-          "show",
-          "fe63c57e928bca78c23e43877480b36a2d8e26c6:supabase/tests/" + file,
-        ],
+        ["show", `${replayCandidate}:supabase/tests/` + file],
         { cwd: repo, encoding: "utf8" },
       );
       const results = await client.query(sql);
@@ -425,7 +423,7 @@ try {
     ]) {
       const source = execFileSync(
         "git",
-        ["show", "fe63c57e928bca78c23e43877480b36a2d8e26c6:scripts/" + name],
+        ["show", `${replayCandidate}:scripts/` + name],
         { cwd: repo, encoding: "utf8" },
       );
       const prefix = `import assert from 'node:assert/strict';import {execFileSync,spawn} from 'node:child_process';

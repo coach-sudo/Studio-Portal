@@ -262,6 +262,9 @@ export async function invalidateStudioDomains(
 ) {
   const selected = new Set(domains);
   await Promise.all([
+    // Legacy snapshots own every domain. They need the same post-command
+    // refresh as V2 domain queries rather than waiting for the polling timer.
+    queryClient.invalidateQueries({ queryKey: ["studio-legacy"] }),
     queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
     queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
     ...(["finance", "lessons", "booking"].some((domain) =>

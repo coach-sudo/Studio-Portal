@@ -14,10 +14,31 @@ import {
 import {
   allowedHostedRequest,
   assertHostedAcceptanceTarget,
-  hostedAcceptance,
 } from "../../src/security/hostedAcceptance";
+import { readAcceptanceTarget } from "./candidateTarget";
+import {
+  candidateTargetSchema,
+  allowedCandidateRead,
+} from "../../src/security/candidateAcceptance";
+const hostedAcceptance = readAcceptanceTarget();
+const candidate = process.env.HOSTED_CANDIDATE_MANIFEST_FILE
+  ? candidateTargetSchema.parse(hostedAcceptance)
+  : undefined;
+function permits(method: string, url: string, data?: unknown) {
+  return candidate
+    ? allowedCandidateRead(
+        candidate,
+        method,
+        url,
+        data as { command?: string } | undefined,
+      )
+    : allowedHostedRequest(method, url);
+}
 
-assertHostedAcceptanceTarget(process.env.STAGING_BASE_URL || "");
+if (process.env.HOSTED_CANDIDATE_MANIFEST_FILE) {
+  if (process.env.STAGING_BASE_URL !== hostedAcceptance.origin)
+    throw Error("Wrong candidate immutable acceptance target");
+} else assertHostedAcceptanceTarget(process.env.STAGING_BASE_URL || "");
 if (process.env.HOSTED_READ_ONLY !== "true")
   throw Error("Explicit HOSTED_READ_ONLY=true required");
 export const acceptanceDirectory = privatePath(
@@ -121,7 +142,7 @@ export async function checkedRequest(
   options: { data?: unknown; headers?: Record<string, string> } = {},
 ) {
   const url = new URL(path, hostedAcceptance.origin).href;
-  if (!allowedHostedRequest(method, url))
+  if (!permits(method, url, options.data))
     throw Error("Read-only API perimeter rejected request");
   try {
     return await api.fetch(url, { method, ...options, maxRedirects: 0 });
@@ -147,8 +168,13 @@ export async function guardContext(context: BrowserContext) {
   const blocked: { method: string; origin: string; path: string }[] = [];
   await context.route("**/*", async (route) => {
     const request = route.request();
-    if (allowedHostedRequest(request.method(), request.url()))
-      return route.continue();
+    let body: unknown;
+    try {
+      body = request.postDataJSON();
+    } catch {
+      /* Non-JSON requests are checked without command permission. */
+    }
+    if (permits(request.method(), request.url(), body)) return route.continue();
     const url = new URL(request.url());
     // Only sanitized endpoint identity is retained, never headers, query values or bodies.
     blocked.push({
