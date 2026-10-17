@@ -2,6 +2,24 @@
 
 October 16, 2026 (Eastern). **PARTIAL / BLOCKED — credential preflight failed before H01.** The user explicitly authorized one H01–H16 execution and reviewed cleanup; no additional execution proposal or approval is being requested. This report preserves the result of attempting to prepare that authorized run.
 
+## October 17 credential resolution checkpoint
+
+**Current status: PARTIAL / BLOCKED solely on the unavailable existing direct staging PostgreSQL password.** The management credential prerequisite is now resolved for the exact staging Auth configuration read; no execution has started. The initial-attempt details below remain historical unless explicitly updated here.
+
+The existing authorization receipt was checked before any credential investigation. It was valid at `2026-10-17T05:06:20Z`; its unchanged expiration is `2026-10-18T01:51:11.595Z` (**October 17, 9:51 p.m. Eastern**). No timestamp was extended or receipt replaced. PR #48 remains open/draft at approved executor commit `9b10d19c1fb48e637d1712e06694443725b017cd`; PR #49 still depends directly on its branch. No executor source changed.
+
+The existing `Supabase CLI:supabase` Windows Credential Manager entry was read in memory through the native credential API, without displaying or persisting its secret. An authenticated **GET only** to `https://api.supabase.com/v1/projects/lrxrivfqjpkvygozphoz/config/auth` returned **HTTP 200** at `2026-10-17T05:07:33Z`. This proves the existing credential can read this project's Auth configuration; CLI login alone was not treated as proof, and no claims are made about other token scopes. No other project's configuration was requested.
+
+The response confirmed the exact approved Site URL and both callback entries, required hooks explicitly disabled, no enabled additional hooks, no SMTP host, and no enabled external provider other than the existing email authentication setting. Only sanitized booleans/status were recorded. Auth configuration was not modified. The secret and raw response were not placed in logs, source control, chat or a new credential file.
+
+The original PostgreSQL password was not found in the reviewed restricted staging files, staging runtime/deployment preparation directories, staging-linked project metadata, process/user/machine environment, standard PostgreSQL password files, CLI fallback files or staging-specific native credential inventory. The native Supabase entry is a management credential, not a database password. No browser-session extraction, unrelated-account access, guessed password, direct database connection or connection fallback was attempted.
+
+The approved private directory and sanitized evidence file passed the executor's Owner/SYSTEM ACL and canonical-path checks. Evidence is retained locally in `credential-preflight-20261017.json` beside the original receipt. No `mutation-config.json` or execution journal exists; an incomplete credential configuration was not invented. **H01–H16 remain NOT EXECUTED, hosted writes remain zero, and cleanup remains unnecessary/not started for these attempts.** Fresh database, 76-table baseline, Netlify/perimeter and other execution gates remain unrun, not passed.
+
+The supported user-controlled handoff is to locate the **original staging project's database password** in the password manager or secure record used at project creation and supply it only through the restricted local handoff directory below. Supabase documents that the original password [cannot be retrieved through the Management API](https://supabase.com/docs/guides/integrations/build-a-supabase-oauth-integration). If no original copy exists, the documented alternative is a [database password reset](https://supabase.com/docs/guides/database/postgres/roles#changing-your-project-password), which requires separate authorization and was not performed. Do not paste any password into chat. No new management token is needed for the verified read capability.
+
+Resume only the same approved run after the missing credential is securely available, rechecking the unchanged receipt's actual validity and every fresh safety gate. If the receipt has expired at that point, stop for fresh authorization. Production remains **NO-GO**.
+
 The approved executor remains draft [PR #48](https://github.com/coach-sudo/Studio-Portal/pull/48), commit **`9b10d19c1fb48e637d1712e06694443725b017cd`**. This documentation checkpoint does not modify its runtime source, manifest, command inventory or reviewed branch head.
 
 ## Exact scope and verified source
@@ -33,7 +51,7 @@ An existing management configuration-read credential is also **not supplied to t
 
 The user's instruction was to stop if a mandatory prerequisite fails. Accordingly, no alternative SQL script, MCP mutation, connection fallback, password reset, credential creation/broadening, altered guard, provider call or executor replacement was attempted.
 
-## Gate results
+## Initial attempt gate results
 
 | Gate                                                           | Result in this attempt                                          |
 | -------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -93,7 +111,7 @@ Rows created/removed by this attempt: **0/0**. No new business audit/replay/dele
 
 ## Required handoff and safe continuation
 
-Supply the **existing** staging PostgreSQL password and an authorized existing configuration-read credential through the restricted local credential handoff—not chat, stdout, source control or a PR. The reviewed `mutation-config.json` format requires `anonKey`, `serviceKey`, `database`, `netlifyToken`, `managementToken`; the database object requires only host/port/database/user/password/ssl and the approved verified-TLS settings. Do not reset/create/broaden credentials automatically.
+As updated October 17, supply only the missing **existing staging PostgreSQL password** through the restricted local credential handoff—not chat, stdout, source control or a PR. The existing management credential's exact configuration-read capability is verified above and can be reused without creating or broadening a token. The reviewed `mutation-config.json` format still requires `anonKey`, `serviceKey`, `database`, `netlifyToken`, `managementToken`; the database object requires only host/port/database/user/password/ssl and the approved verified-TLS settings. Do not reset/create/broaden credentials automatically.
 
 Once the credential prerequisite is satisfied, resume the **same authorized run** from reviewed executor commit `9b10d19c1fb48e637d1712e06694443725b017cd`, recheck receipt validity and all fresh live gates, and check again for any started journal/server receipts before execution. Do not overwrite this receipt or invent a second run/key sequence. A receipt that has expired must not have its timestamps edited to bypass the validity gate.
 
