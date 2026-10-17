@@ -1,10 +1,76 @@
-# Authorized H01–H16 execution — blocked before hosted writes
+# Authorized H01–H16 execution — hosted results and cleanup
 
-October 16, 2026 (Eastern). **PARTIAL / BLOCKED — credential preflight failed before H01.** The user explicitly authorized one H01–H16 execution and reviewed cleanup; no additional execution proposal or approval is being requested. This report preserves the result of attempting to prepare that authorized run.
+October 17, 2026 (Eastern). **PASS for the authorized H01–H16 canonical backend run and controlled cleanup. Production remains NO-GO.** The one approved run completed after the connection prerequisites and normal Netlify login refresh passed. The earlier blocked-attempt records below remain historical evidence, not current blockers. No second run or replacement authorization was created.
 
-## October 17 connection blockers resolved; protected login refresh pending
+## Final hosted execution and preserved-data proof
 
-**Current status: both connection prerequisites PASS; hosted execution remains stopped at the Netlify perimeter gate.** At `2026-10-17T05:26Z`, the existing perimeter state received **HTTP 401** from the exact protected deployment's `/api/healthz`, despite passing local cookie-expiry checks. All-deployment protection was not weakened. The reviewed capture helper has opened a fresh Chromium window for the user to complete normal Netlify team login, without synthetic application sign-in. H01–H16 remain **0/16**, with no execution journal or hosted business mutation.
+Run **`e2e-wave1-hosted-20261016-a`** started at **1:31:42 a.m. Eastern**; the separate post-cleanup read-only verification completed at **2:13:09 a.m. Eastern**, October 17 (`2026-10-17T05:31:42.589Z` through `2026-10-17T06:13:09.232Z`). Machine-readable evidence: [hosted result, budget measurements, command inventory and retention counts](wave-one-hosted-execution-result.json).
+
+The actual execution used a **clean detached checkout** at reviewed executor **`9b10d19c1fb48e637d1712e06694443725b017cd`**, with the unchanged code/manifest hashes recorded below. Application **`0b18a5a2238daa49bec1290f5884d5792f4aefc9`**, exact protected preview **`6ad23d4f8b10c10447224155`**, staging Supabase **`lrxrivfqjpkvygozphoz`**, staging Netlify **`d83ff6cb-f57b-4741-8c3c-3eaae7adab19`**, and studio **`4ceff683-e72f-4b2e-96ce-85db2dca4eb2`** remained pinned. This documentation is delivered on PR #49's directly dependent branch; PR #48's approved head/source is preserved.
+
+The original receipt remained valid throughout; its unchanged expiry is October 17, **9:51 p.m. Eastern**. After the user completed normal team login, the reviewed capture helper saved only exact-host perimeter state. The complete fresh host attestation passed: protected release health, exact ready/unpublished deploy-preview, unchanged published staging snapshot, all-deploy protection, stopped builds, zero build hooks/active builds, ten preview-only environment entries, function-only secrets, absent inherited/provider credentials, and correct Auth URL/hooks/provider settings. No deployment or protection setting changed.
+
+Direct verified TLS, the reviewed schema seal, all 57 migration identities, unused planned UUIDs, no prior journal/server receipts, correct original identities, and the consistent 76-table baseline passed before any run-owned provisioning. Normal execution completed **99 committed operations**, **68 canonical requests**, **two expected SQL denial checks** and **zero unexpected rolled-back operations**. No interruption or automatic retry occurred; H14's explicit bounded lease/retry scenario was the approved recovery test.
+
+| Case | Hosted canonical backend result | Verified behavior                                                                                             |
+| ---- | ------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| H01  | PASS                            | Grant replay creates no duplicate credit or audit effect                                                      |
+| H02  | PASS                            | Three eligible lessons reserve immediately; 4 remaining / 3 reserved / 1 available                            |
+| H03  | PASS                            | Repeated application reports zero newly reserved and preserves coverage/ledger                                |
+| H04  | PASS                            | Completion replay consumes once without a second debit                                                        |
+| H05  | PASS                            | Cancellation returns/reuses credit; unrelated reservations remain intact                                      |
+| H06  | PASS                            | Valid reschedule retains coverage; expiry preview blocks and execution refuses with review required           |
+| H07  | PASS                            | Recurring conversion immediately covers all three eligible series occurrences                                 |
+| H08  | PASS                            | One cancellation preserves sibling, shared booking, sibling reminder/projection                               |
+| H09  | PASS                            | Ambiguous prepaid and student-scoped class operations are refused                                             |
+| H10  | PASS                            | Frozen dependency review protects invoice/provider/note records and identifies eligible mistake               |
+| H11  | PASS                            | Eligible lesson physically deleted once; replay safe; immutable deletion snapshot retained                    |
+| H12  | PASS                            | Archive, restore and void preserve required history and notification boundaries                               |
+| H13  | PASS                            | Stale reviewed item conflicts while unchanged sibling succeeds                                                |
+| H14  | PASS                            | Expired lease reclaim, obsolete-token rejection and explicit retry preserve successful sibling                |
+| H15  | PASS                            | Old guardian JWT loses access immediately on permission revocation and regains permitted access after restore |
+| H16  | PASS                            | Bounded pages/exclusions and frozen review/progress refresh remain consistent                                 |
+
+### Actual budgets
+
+| Resource                        | Used                         | Approved maximum             |
+| ------------------------------- | ---------------------------- | ---------------------------- |
+| New Auth identities             | 4                            | 4                            |
+| Students                        | 2                            | 2                            |
+| Lessons                         | 13 seeded + 5 generated = 18 | 13 seeded + 6 generated = 19 |
+| Package lots                    | 1                            | 3                            |
+| Granted credits                 | 6                            | 12                           |
+| Synthetic paid history          | USD 100.00                   | USD 100.00                   |
+| Canonical requests              | 68                           | 100                          |
+| Maximum items in one review     | 8                            | 20                           |
+| Peak owned business rows        | 231                          | 512                          |
+| Cumulative owned row identities | 253                          | 512                          |
+
+The reviewed per-table and per-review caps remained enforced. This is synthetic paid-history data, not a charge, payment or reconciliation.
+
+### Controlled cleanup and intentional retention
+
+The reviewed exact-row/preimage cleanup completed in dependency order, using its authorized transient 76-table NOWAIT write fences. It removed the two reminder intents, three effects, one note, one invoice, eleven participant rows, nine projections, recommendations/record state, ten ledger entries, seventeen remaining lessons, two bookings, two series, one offering, one package, two coverage jobs, guardian relationship/contact, three memberships and two services. H11 had already physically deleted the eighteenth lesson through the actual application command. No trigger was disabled, no broad delete was used and no original row was removed.
+
+**Retained additions**, as approved: 115 audit events; four credit receipts; six occurrence receipts; one idempotency record; nine bulk jobs, 21 items and 17 requests; one immutable deletion snapshot; two inactive/soft-deleted, portal-disabled/unlinked students; their two accounts with automatic use disabled; and one **banned new coach Auth identity with zero memberships**. The other **three new Auth identities were removed**. The original four manual-test accounts remain confirmed, unbanned and unchanged in role/relationships.
+
+Bulk metadata intentionally retains **seven `running` job records with only terminal/blocked items**, plus two unaccepted `reviewed` records. The three retained pending items belong to unaccepted reviews, cannot be claimed and expire. There is **no processing lease or deliverable running job**. These metadata labels are not presented as completed browser workflow acceptance.
+
+The executor's final proof passed. A separate read-only check then verified the entire durable journal hash chain, exact original row fingerprints across **all 76 tables / 37 original rows**, current schema seal, approved retained additions only, terminal student/account states, banned/unlinked coach and removal of the other three new Auth users. **No run-owned lesson, ledger entry, outbox message, projection, effect, coverage job, contact or membership remains.** Full-table hashes are not claimed unchanged where approved evidence rows were intentionally added.
+
+The full journal, generated IDs, idempotency/review/lease data, authorization and credential/session material stay under Owner/SYSTEM protection at `C:/Users/dariu/.codex/private/studio-portal-staging/hosted-mutations-20261016-a/`. The local journal lock was released normally. Preserve these private artifacts until review/cleanup acceptance; do not erase original manual-test credentials or the separately authorized staging database password. The shared result file contains only sanitized measurements and statuses.
+
+### Acceptance limits and readiness
+
+**Scoped hosted backend acceptance: PASS. Production/release: NO-GO.** No provider call, real message/payment, worker invocation, deployment, publication, merge, production operation or Wave 2 work occurred in this run. The earlier separately authorized staging password reset is recorded below.
+
+These are canonical SQL/backend cases. They do **not** establish complete hosted mutation UI/HTTP-wrapper acceptance. H06 bypassed the provider-capable HTTP wrapper; H16 exercised candidate/review/progress reads rather than browser selection/result routes. The two PR #47 application fixes remain undeployed. Alternate query-mode journeys, isolated providers and scheduled cadence, authenticated mutation browser journeys, and human usability/final release review remain open. Existing local unit/pgTAP/concurrency evidence is historical and was not relabeled as freshly rerun here. Do not start Wave 2 or publish based on this result.
+
+## Earlier connection preparation and blocked attempts
+
+### October 17 connection blockers resolved; protected login refresh pending (historical)
+
+**Historical status, superseded by the final execution above:** both connection prerequisites passed, but execution initially stopped at the Netlify perimeter gate. At `2026-10-17T05:26Z`, the existing perimeter state received **HTTP 401** from the exact protected deployment's `/api/healthz`, despite passing local cookie-expiry checks. All-deployment protection was not weakened. The reviewed capture helper opened a fresh Chromium window for the user to complete normal Netlify team login, without synthetic application sign-in. At that point H01–H16 were **0/16**, with no execution journal or hosted business mutation.
 
 ### Verified database CA and TLS
 
@@ -171,7 +237,9 @@ No financial command, reconciliation, lesson change, permission change, provider
 
 Rows created/removed by this attempt: **0/0**. No new business audit/replay/deletion records, terminal students, banned coach identity or deliverable intent were created by it. Cleanup was **not required for this attempt and was not started**; no staging write fence was acquired. No current server-side UUID/receipt-absence or original-row comparison is claimed, because the corresponding live gates were not reached. This is not a cleanup PASS or a claim that full-table hashes remain identical after an executed run.
 
-## Required handoff and safe continuation
+## Historical handoff and safe continuation guidance
+
+This guidance records the earlier blocked state. The connection issues and login refresh were subsequently resolved and the single authorized run completed above. **Do not start or resume another execution of the completed run to repeat tests.** Retain its journal and evidence for review.
 
 The authorized reset now supplies the staging PostgreSQL password privately; the original-password handoff is no longer needed. Resolve the verified-TLS trust-chain and valid existing service-key prerequisites described in the latest checkpoint before assembling a runnable configuration. The existing management credential's exact configuration-read capability is verified and can be reused without creating or broadening a token. The reviewed `mutation-config.json` format still requires `anonKey`, `serviceKey`, `database`, `netlifyToken`, `managementToken`; the database object requires only host/port/database/user/password/ssl and the approved verified-TLS settings. Do not repeat the reset, create new tokens, broaden credentials, weaken TLS or change the executor automatically.
 
@@ -179,4 +247,4 @@ Once the credential prerequisite is satisfied, resume the **same authorized run*
 
 Remaining acceptance is unchanged: the two local application fixes in PR #47 await separately authorized redeployment; hosted browser mutation journeys, alternate query-mode coverage, isolated providers/scheduled cadence and human usability review remain pending. H06's canonical SQL and H16's backend continuity never substitute for those journeys.
 
-**Final classification: PARTIAL / BLOCKED before execution. Production remains NO-GO.** No new deployment, publication, merge, providers, scheduled workers or Wave 2 is authorized by this checkpoint.
+**Initial-attempt classification: PARTIAL / BLOCKED before execution; superseded by the final scoped backend/cleanup PASS above. Production remains NO-GO.** No deployment, publication, merge, providers, scheduled workers or Wave 2 is authorized by this checkpoint.
