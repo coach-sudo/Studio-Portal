@@ -2,9 +2,52 @@
 
 October 16, 2026 (Eastern). **PARTIAL / BLOCKED — credential preflight failed before H01.** The user explicitly authorized one H01–H16 execution and reviewed cleanup; no additional execution proposal or approval is being requested. This report preserves the result of attempting to prepare that authorized run.
 
-## October 17 authorized password reset and stopped verification
+## October 17 connection blockers resolved; protected login refresh pending
 
-**Latest status: staging database password reset succeeded; H01–H16 remain PARTIAL / BLOCKED before execution.** The user's subsequent explicit instruction, “reset,” authorized this narrowly scoped staging PostgreSQL password change and superseded the earlier no-reset boundary for this operation only.
+**Current status: both connection prerequisites PASS; hosted execution remains stopped at the Netlify perimeter gate.** At `2026-10-17T05:26Z`, the existing perimeter state received **HTTP 401** from the exact protected deployment's `/api/healthz`, despite passing local cookie-expiry checks. All-deployment protection was not weakened. The reviewed capture helper has opened a fresh Chromium window for the user to complete normal Netlify team login, without synthetic application sign-in. H01–H16 remain **0/16**, with no execution journal or hosted business mutation.
+
+### Verified database CA and TLS
+
+Credential-free PostgreSQL STARTTLS inspection of **only** `db.lrxrivfqjpkvygozphoz.supabase.co:5432` showed the exact-host leaf, `Supabase Intermediate 2021 CA`, and `Supabase Root 2021 CA`. The intermediate was present; the root was absent from Node's bundled public trust store. OpenSSL independently reproduced error 19 with its default trust. This identifies an unconfigured Supabase CA trust anchor, rather than a missing presented intermediate. The observed chain matches the authentic Supabase chain; there was no evidence of network TLS interception.
+
+Following [Supabase's certificate procedure](https://supabase.com/docs/guides/platform/ssl-enforcement), the Dashboard's official [SSL component](https://github.com/supabase/supabase/blob/master/apps/studio/components/interfaces/Settings/Database/SSLConfiguration.tsx) and [download template](https://github.com/supabase/supabase/blob/master/apps/studio/hooks/custom-content/custom-content.json) resolved to `https://supabase-downloads.s3-ap-southeast-1.amazonaws.com/prod/ssl/prod-ca-2021.crt`. Here `prod` identifies Supabase's hosted-platform CA, not either forbidden production project. The certificate was downloaded over verified HTTPS. Its DER bytes match the presented root, its CA/self-signature and both chain signatures verify, and the exact database hostname matches the leaf.
+
+CA SHA-256: **`80:70:25:AD:50:D4:ED:21:9D:2C:9C:7D:29:9C:00:4F:82:4E:B0:0C:F7:F6:5A:FE:F6:07:D0:7B:72:E6:CA:FA`**. The root is valid through April 26, 2031. Leaf SHA-256: `56:11:83:33:90:E6:B2:21:94:D4:B1:3F:AF:45:DE:49:75:13:5E:53:95:AA:4D:D4:61:2E:AA:A0:75:A0:60:E6`.
+
+The CA stays in the restricted run directory as `supabase-root-2021.crt`. **Only the explicitly launched Node runner process** references it through `NODE_EXTRA_CA_CERTS`; no OS/global trust store was changed. `connection-runtime.json` privately records the path/fingerprint and existing PostgreSQL runtime. The executor's `database.ssl` still contains only `rejectUnauthorized:true`; its code and configuration validator were not changed.
+
+Results: OpenSSL certificate and hostname verification **PASS**, TLS 1.3; direct `pg` login **PASS** with an authorized TLS socket and exact hostname; negative wrong-hostname verification rejects with `ERR_TLS_CERT_ALTNAME_INVALID`. The read-only connection verified PostgreSQL **17.11**, database/user `postgres`, 57 migrations and the intended studio. No insecure mode, alternate hostname, pooler or signing-secret retrieval was used.
+
+### Existing service-role credential
+
+Netlify marks the deploy-preview service value as a function-only secret. Its [Secrets Controller policy](https://docs.netlify.com/build/environment-variables/secrets-controller/) prevents returning unmasked non-development secret values through the UI/CLI/API. The earlier returned non-JWT value was not a usable service credential and was not used for hosted operations; Netlify configuration and scopes were not changed to expose it.
+
+The existing staging management credential successfully used the documented [project API-key read](https://supabase.com/docs/reference/api/v1-get-project-api-keys), **GET** `/v1/projects/lrxrivfqjpkvygozphoz/api-keys?reveal=true`. Only the existing `type=legacy`, `name=service_role` entry was selected. The single-key route rejects the legacy symbolic ID with HTTP 400; the supported list route returned HTTP 200. No key was generated, rotated or replaced, and no newer `sb_secret_` format was substituted.
+
+Validation **PASS**: three-part legacy JWT; exact staging `ref`; `role=service_role`; unexpired; algorithm HS256. Staging Auth accepted the credential for a read-only admin lookup of the fixed, unused run-coach ID and returned the expected authorized **404**. Thus server-side JWT/role acceptance was checked. Independent local HS256 signature verification was not claimed: it would require retrieving the symmetric signing secret, which was deliberately not done.
+
+The valid key was written only to the reviewed restricted `mutation-config.json`; the source secret remained in memory. Its five-property schema, exact database/TLS fields, staging claims and Owner/SYSTEM/canonical-path protections pass unchanged validation. Private verification evidence contains status/booleans only, never the key, raw response or session. The earlier unusable configuration remains clearly named `mutation-config.unvalidated.json` as private diagnostic evidence.
+
+### Fresh read-only safety results and remaining gate
+
+At approximately **October 17, 1:28 a.m. Eastern**:
+
+- Exact reviewed executor hash and manifest **PASS**, with PR #48 still at `9b10d19c1fb48e637d1712e06694443725b017cd`.
+- Original unchanged receipt **valid**; expiry remains October 17, 9:51 p.m. Eastern. No replacement or extension.
+- Reviewed schema seal **PASS** using the executor's `search_path=pg_catalog`. An initial diagnostic omitted this required session setting; its rejected digest was discarded, not adopted as a new baseline. No database schema changed.
+- All **76** business-table fingerprints/counts match the approved historical baseline in one consistent read-only snapshot: **37 original rows**; every planned UUID unused, including structured references.
+- All **57** migration versions/names match the pinned application tree; no migration was applied.
+- No prior run audit receipts or planned new Auth IDs found; no local execution journal/lock exists.
+- Four original synthetic identities confirmed, unbanned and correctly assigned; original student/guardian links and permissions intact. No application sign-in or password test was performed for these accounts.
+- Live exact-host Auth URLs, both redirects, disabled hooks, absent SMTP and disabled external providers **PASS**.
+- Staging build hooks **0**; active builds **0** across the single returned build page. No build was triggered.
+- **Protected health: BLOCKED, HTTP 401.** The reviewed host attestation stopped there; later deployment/environment checks are not represented as fresh passes. Recheck the complete attestation, baseline, receipt and all remaining gates after a valid perimeter refresh.
+
+No H01–H16 command, provisioning, delivery intent or cleanup ran. No provider, worker, deployment, publication, merge, production operation or Wave 2 occurred. The password reset in the preceding checkpoint remains the only hosted mutation. The user must complete the ordinary Netlify team login in the capture window before any further execution attempt; do not enter a synthetic account there. **Production remains NO-GO.**
+
+## Earlier October 17 authorized password reset and stopped verification
+
+**Status at that earlier checkpoint: staging database password reset succeeded; H01–H16 remained PARTIAL / BLOCKED before execution.** Its TLS/service-key blockers are resolved by the newer checkpoint above. The user's subsequent explicit instruction, “reset,” authorized this narrowly scoped staging PostgreSQL password change and superseded the earlier no-reset boundary for this operation only.
 
 Before the operation, the unchanged execution receipt was still valid, and the exact staging project returned the expected identity and `ACTIVE_HEALTHY` state. The existing CLI management credential was used for one supported [database-password update](https://supabase.com/docs/reference/api/v1-update-database-password): `PATCH /v1/projects/lrxrivfqjpkvygozphoz/database/password`, with **only `password`** in the body. A cryptographically random password was saved durably to the restricted local store before the single request. Supabase returned **HTTP 200** at approximately `2026-10-17T05:13:33Z` (October 17, 1:13 a.m. Eastern). No automatic reset retry occurred. The existing token's permission was sufficient; no management token was created or broadened.
 
