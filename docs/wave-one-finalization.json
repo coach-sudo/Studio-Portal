@@ -1,7 +1,7 @@
 {
-  "status": "AUTHORIZED_UI_ATTEMPT_STOPPED_LOCAL_RUNTIME_ACL",
+  "status": "LOCAL_ACL_REPAIRED_SAME_RUN_BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
   "dateEastern": "2026-10-18",
-  "verifiedAt": "2026-10-18T16:59:23.031Z",
+  "verifiedAt": "2026-10-18T21:27:24.833Z",
   "dependency": {
     "pr": 55,
     "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
@@ -342,12 +342,12 @@
       "fileSha256": "7b3493c6f659baf729e5d7f8225bf3ff924dc8221005f3a9dc8c09de7a90a388",
       "applicationLogins": 0
     },
-    "guardianBanner": "BLOCKED_LOCAL_RUNTIME_ACL",
-    "coachLandmarks": "BLOCKED_LOCAL_RUNTIME_ACL",
-    "accountCreditText": "BLOCKED_LOCAL_RUNTIME_ACL"
+    "guardianBanner": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+    "coachLandmarks": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+    "accountCreditText": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE"
   },
   "uiExecution": {
-    "status": "STOPPED_LOCAL_RUNTIME_ACL_BEFORE_HOSTED_EXECUTION",
+    "status": "BLOCKED_AFTER_LOCAL_ACL_REPAIR",
     "casesExecuted": 0,
     "setupMutations": 0,
     "businessMutations": 0,
@@ -382,21 +382,15 @@
       "UI09": "NOT_NEEDED_NO_FIXTURES_PRESERVATION_PASSED"
     },
     "blocker": {
-      "type": "LOCAL_PRIVATE_PATH_ACL",
-      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
-      "guard": "restricted(c.pgRuntime, true)",
-      "areAccessRulesProtected": false,
-      "guardExitStatus": 2,
-      "executorDatabaseConnections": 0,
-      "executorHostedRequests": 0,
-      "sourceModified": false,
-      "permissionsWeakened": false,
-      "permissionsChanged": false,
-      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry."
+      "type": "PROTECTED_PERIMETER_AND_EXECUTION_SCOPE",
+      "protectedHealthStatus": 401,
+      "configProtectionProofStale": true,
+      "receiptStillValid": true,
+      "repairInstructionAllowsRetry": false
     },
     "budget": {
-      "readCharged": 45,
-      "readActual": 44,
+      "readCharged": 68,
+      "readActual": 65,
       "unusedConservativeReadReservation": 1,
       "readMaximum": 600,
       "httpBusiness": 0,
@@ -414,7 +408,8 @@
       "deliveredMessages": 0,
       "workerInvocations": 0,
       "peakOwnedBusinessRows": 0,
-      "cumulativeOwnedIdentities": 0
+      "cumulativeOwnedIdentities": 0,
+      "localDeniedReadAttemptsCharged": 2
     },
     "cleanup": {
       "status": "NOT_NEEDED_NO_FIXTURES",
@@ -424,8 +419,22 @@
       "originalManualAccountsChanged": 0,
       "privateJournalRetained": true
     },
-    "journalSha256": "cb62e7155580c8b6e9e22d88d1cf4d0cb15e655dc294d62295006c76a6b6240e",
-    "nextStep": "Review and tighten only the existing local runtime directory ACL to Owner/SYSTEM, verify the unchanged executor and same journal, and explicitly decide whether to resume this stopped run. Do not replay automatically or extend the receipt; a fresh human authorization is required if it expires."
+    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
+    "nextStep": "Explicitly authorize resuming the same run after normal Netlify perimeter renewal and fresh protection/config preflight; retain the current receipt, original expiry and 68 charged reads. Do not retry the old launch wrapper or create another run.",
+    "startupBlocker": {
+      "type": "LOCAL_PRIVATE_PATH_ACL",
+      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
+      "guard": "restricted(c.pgRuntime, true)",
+      "areAccessRulesProtected": false,
+      "guardExitStatus": 2,
+      "executorDatabaseConnections": 0,
+      "executorHostedRequests": 0,
+      "sourceModified": false,
+      "permissionsWeakened": false,
+      "permissionsChanged": false,
+      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry.",
+      "resolvedByLocalAclRepair": true
+    }
   },
   "existingEvidence": {
     "reusedWithoutRedundantReruns": true,
@@ -472,7 +481,7 @@
     "waveTwoImplemented": false
   },
   "remainingGates": [
-    "Local runtime ACL prevents the approved UI executor starting; same run stopped with zero fixtures and zero commands. No automatic retry.",
+    "Local ACL repaired; same-run execution remains blocked by rejected saved Netlify perimeter, stale config protection proof and repair-only authorization scope.",
     "UI01–UI09 including three role lesson workflows, populated credit/audit history, revocation, frozen bulk replay/stale results and exact cleanup",
     "Nonzero monetary/invoice history; zero-cash UI credit tests cannot establish it",
     "Isolated Stripe/Google Calendar/email sink and scheduled cadence acceptance",
@@ -513,5 +522,153 @@
       "historicalFailures": 3,
       "clearedByLocalPasses": false
     }
-  ]
+  ],
+  "aclRepair": {
+    "verifiedAt": "2026-10-18T21:27:24.833Z",
+    "determination": "BLOCKED",
+    "aclRepair": "PASS",
+    "acl": {
+      "verifiedAt": "2026-10-18T21:27:21.7273558Z",
+      "ownerPreserved": true,
+      "protected": true,
+      "aceCount": 2,
+      "nonOwnerNonSystemRules": 0,
+      "inheritedRules": 0,
+      "denyRules": 0,
+      "fullControlRules": 2,
+      "inheritableRules": 2,
+      "childModuleAccessRestored": true
+    },
+    "guardResults": {
+      "verifiedAt": "2026-10-18T21:23:48.433Z",
+      "runtimeGuard": "PASS",
+      "runtimeModuleResolution": "PASS",
+      "unsafeInheritanceEnabledRejected": true,
+      "unsafeExplicitEveryoneRejected": true
+    },
+    "focusedGuardTests": {
+      "passed": 53,
+      "failed": 0,
+      "logSha256": "7691e10530149b2cd0b635d620c8dabffc824735e9cab53d245fae8eeb9f7833"
+    },
+    "originalReceipt": {
+      "verifiedAt": "2026-10-18T21:24:24.123Z",
+      "journalHashBeforeRepair": "cb62e7155580c8b6e9e22d88d1cf4d0cb15e655dc294d62295006c76a6b6240e",
+      "readChargedBefore": 45,
+      "protectedIntents": 0,
+      "sourceSealsMatch": true,
+      "receiptHashUnchanged": true,
+      "receiptValid": true,
+      "issuedAt": "2026-10-18T16:54:43.197Z",
+      "expiresAt": "2026-10-19T16:33:05.780Z",
+      "perimeter": "LOCALLY_UNEXPIRED_NOT_HOST_VERIFIED",
+      "protectionProofStale": true,
+      "configBytesUnchanged": true
+    },
+    "liveRecheck": {
+      "verifiedAt": "2026-10-18T21:25:45.345Z",
+      "target": {
+        "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+        "project": "lrxrivfqjpkvygozphoz",
+        "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+        "deployment": "6ad4c3817ca9519157e3e3b0",
+        "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+        "origin": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+        "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0"
+      },
+      "authorizationValid": true,
+      "authorizationExpiresAt": "2026-10-19T16:33:05.780Z",
+      "receiptHashUnchanged": true,
+      "sourceSealsUnchanged": true,
+      "verifiedTls": true,
+      "businessTables": 76,
+      "baselineRows": 215,
+      "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+      "originalFullAuthRowsUnchanged": true,
+      "allOriginalAuthIdentitiesUnchanged": true,
+      "all57FullMigrationRowsUnchanged": true,
+      "h01H16EvidenceUnchanged": true,
+      "proposedIdentitiesAbsent": true,
+      "providerCredentialsAbsent": true,
+      "environmentUnchanged": true,
+      "authUnchanged": true,
+      "deploymentReadyUnpublished": true,
+      "functionIdentities": 23,
+      "publicationUnchanged": true,
+      "previousDraftUnchanged": true,
+      "buildsStopped": true,
+      "anonymous": [
+        {
+          "path": "/",
+          "status": 401
+        },
+        {
+          "path": "/api/healthz",
+          "status": 401
+        }
+      ],
+      "perimeter": {
+        "status": "BLOCKED",
+        "httpStatus": 401
+      },
+      "additionalReadRequests": 15,
+      "chargedReadBudget": 68,
+      "readRequestsChargedIncludingDenials": 68,
+      "localDeniedDiagnosticReadAttempts": 2,
+      "unusedConservativeReadReservation": 1,
+      "protectedOperations": 0,
+      "executorInvocations": 0,
+      "configRewritten": false
+    },
+    "budgets": {
+      "read": 68,
+      "http-business": 0,
+      "http-total": 0,
+      "session": 0,
+      "sql": 0,
+      "cleanup": 0,
+      "auth-admin": 0,
+      "readActualNetworkAttempts": 65,
+      "localDeniedReadAttemptsCharged": 2,
+      "unusedConservativeReadReservation": 1
+    },
+    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
+    "sameRunRecovery": {
+      "supported": true,
+      "mode": "--execute",
+      "modeNotToUse": "--resume-cleanup",
+      "runId": "e2e-wave1-ui-20261017-a",
+      "replayNeeded": false,
+      "baselineEventExists": false,
+      "authIntents": 0,
+      "sessionIntents": 0,
+      "httpIntents": 0,
+      "sqlIntents": 0,
+      "passwordFileExists": false,
+      "originalAttemptMarkerRetained": true,
+      "originalLaunchWrapperMustNotBeRetried": true,
+      "sourceBasis": [
+        "UiJournal validates existing identity/hash-chain and restores budget counts",
+        "UiExecutor.initialize captures the original approved baseline if no baseline exists; no pending commands need replay",
+        "executeHosted rejects session-intent recovery and ambiguous Auth provisioning; neither exists",
+        "The old private one-attempt wrapper is not a recovery entrypoint; retain its marker. A later expressly authorized reviewed CLI invocation must record a new attempt without replacing the old marker."
+      ],
+      "requiredBeforeAnyExecution": [
+        "Explicit same-run resume instruction; repair-only scope excludes execution",
+        "Normal Netlify team-session renewal and exact-host capture; protected health must pass before fixtures",
+        "Fresh supported all-deployment protection proof installed in config before launch",
+        "Fresh read-only safety gates and unchanged seals; retain same receipt, expiry, journal and budgets"
+      ],
+      "authorizationExpiresAt": "2026-10-19T16:33:05.780Z",
+      "replaceReceipt": false,
+      "extendExpiry": false,
+      "executorInvokedDuringRepair": false
+    },
+    "repairNotes": [
+      "Initial non-inheritable ACEs removed inherited child access; native icacls inheritable Owner/SYSTEM grants restored module access without package changes",
+      "Set-Acl update attempts reported SeSecurityPrivilege errors; final DACL repair used native icacls without enabling privileges",
+      "Unsafe negative controls were empty directories under the protected private parent; both restored to protected Owner/SYSTEM access",
+      "No explicit recursive ACL command, ownership change, package installation, executor change or hosted mutation"
+    ]
+  }
 }
