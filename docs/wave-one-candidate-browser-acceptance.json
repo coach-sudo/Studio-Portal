@@ -1,13 +1,13 @@
 {
-  "status": "INCOMPLETE_PERIMETER_SESSION_REFRESH_REQUIRED",
+  "status": "READ_ONLY_EXECUTION_COMPLETE_WITH_KNOWN_UI_FAILURES",
   "application": "830c762bdaf085f5e20a91f4e6a7afbef4afa627",
   "deployment": "6ad39275e099502cb54a8f64",
   "dependentPR": 52,
   "dependentHead": "fdb84120602aa9b7c3a1768cd38ce199e92db03d",
   "hostedTotals": {
-    "distinct": 132,
-    "passed": 121,
-    "failed": 7,
+    "distinct": 139,
+    "passed": 132,
+    "failed": 3,
     "blocked": 4,
     "skipped": 0
   },
@@ -26,7 +26,7 @@
       "globalErrors": []
     },
     {
-      "name": "focused-results.json",
+      "name": "expired-session-results.json",
       "sha256": "9c08cd46e0f0cca984901d390cdfcde51fa2f59577159df92f150e016a7c8eb5",
       "stats": {
         "startTime": "2026-10-18T03:12:03.455Z",
@@ -41,6 +41,45 @@
           "message": "Error: Protected deployment session unavailable"
         }
       ]
+    },
+    {
+      "name": "focused-results.json",
+      "sha256": "b12d7826faedcbc477148268c26ead8abc7324f2fca42103a308aa7ee04e3000",
+      "stats": {
+        "startTime": "2026-10-18T03:26:20.294Z",
+        "duration": 45398.767,
+        "expected": 7,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "globalErrors": []
+    },
+    {
+      "name": "banner-results.json",
+      "sha256": "5e191882a4192386572f3c29e1b0d7317cb0829d29d2f0dfba6216dfd7b7cb09",
+      "stats": {
+        "startTime": "2026-10-18T03:27:14.305Z",
+        "duration": 23530.156,
+        "expected": 3,
+        "skipped": 0,
+        "unexpected": 3,
+        "flaky": 0
+      },
+      "globalErrors": []
+    },
+    {
+      "name": "logout-results.json",
+      "sha256": "cfdabc989d5dcc14ce2580240813ab3bd956d7c784e140cf676c880b4485f884",
+      "stats": {
+        "startTime": "2026-10-18T03:28:02.033Z",
+        "duration": 5516.699,
+        "expected": 1,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "globalErrors": []
     }
   ],
   "tests": [
@@ -544,9 +583,9 @@
       "scope": "acceptance.spec.ts > guardian",
       "title": "@responsive home, work and payments: overflow, landmarks, axe",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -853,9 +892,9 @@
       "scope": "extended.spec.ts > coach hosted depth",
       "title": "missing lesson detail returns safely to the authorized lesson list",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -973,9 +1012,9 @@
       "scope": "extended.spec.ts > student hosted depth",
       "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -993,9 +1032,9 @@
       "scope": "extended.spec.ts > student hosted depth",
       "title": "missing lesson detail returns safely to the authorized lesson list",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -1103,9 +1142,9 @@
       "scope": "extended.spec.ts > guardian hosted depth",
       "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -1133,9 +1172,9 @@
       "scope": "extended.spec.ts > guardian hosted depth",
       "title": "missing lesson detail returns safely to the authorized lesson list",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -1238,9 +1277,9 @@
       "scope": "extended.spec.ts > coach safe reviews",
       "title": "Household responsibilities and permissions open without saving or inviting",
       "project": "desktop-1440",
-      "outcome": "failed",
+      "outcome": "passed",
       "initialOutcome": "failed",
-      "attemptRuns": ["main-results.json"],
+      "attemptRuns": ["main-results.json", "focused-results.json"],
       "annotations": []
     },
     {
@@ -1441,20 +1480,90 @@
       "initialOutcome": "passed",
       "attemptRuns": ["main-results.json"],
       "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "tablet-768",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "mobile-320",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian banner layout",
+      "title": "@responsive household identity stays clear of the notification bell",
+      "project": "webkit-320",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["banner-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > session termination",
+      "title": "logout removes application session while keeping Netlify perimeter",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["logout-results.json"],
+      "annotations": []
     }
   ],
   "axe": {
-    "pages": 51,
+    "pages": 54,
     "severity": {
       "critical": 0,
       "serious": 0,
-      "moderate": 53,
+      "moderate": 56,
       "minor": 0,
       "unknown": 0
     },
     "byRule": {
       "landmark-unique": 2,
-      "region": 51
+      "region": 54
     }
   },
   "axePages": [
@@ -2548,8 +2657,84 @@
           ]
         }
       ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
     }
   ],
+  "network": {
+    "latestRetainedBrowserTrafficFiles": 139,
+    "browserRequestCount": 12938,
+    "v2SnapshotRequestCount": 1303,
+    "apiProbesExcludedFromTheseBrowserTrafficCounts": true,
+    "deliberateBoundaryOccurrences": {
+      "GET /api/v2/health": 1,
+      "POST /api/v2/auth/claim-access": 10
+    },
+    "initialUnexpectedBlockedRequests": 1,
+    "finalUnexpectedBlockedRequests": 0,
+    "initialUnexpectedRead": "GET absent-lesson delivery; blocked before transmission, independently reviewed and narrowly permitted before focused rerun"
+  },
   "local": {
     "securityUnitTests": 64,
     "helperTests": 7,
@@ -2568,7 +2753,7 @@
     }
   },
   "preservation": {
-    "verifiedAt": "2026-10-18T03:19:54.129Z",
+    "verifiedAt": "2026-10-18T03:28:31.536Z",
     "project": "lrxrivfqjpkvygozphoz",
     "tlsVerified": true,
     "readOnly": true,
@@ -3188,12 +3373,41 @@
       }
     ]
   },
+  "infrastructure": {
+    "verifiedAt": "2026-10-18T03:28:38.878Z",
+    "deployment": "6ad39275e099502cb54a8f64",
+    "project": "lrxrivfqjpkvygozphoz",
+    "ready": true,
+    "unpublished": true,
+    "context": "deploy-preview",
+    "publicationUnchanged": true,
+    "deployListUnchanged": true,
+    "buildsStopped": true,
+    "previewVariablesOnly": true,
+    "providersAbsent": true,
+    "authUnchanged": true,
+    "fourAccountsConfirmedAndRolesUnchanged": true,
+    "tablesUnchanged": 76,
+    "rows": 215,
+    "tlsVerified": true,
+    "anonymousRootAndHealth": 401
+  },
+  "protectedHealth": {
+    "status": "ok",
+    "release": {
+      "commit": "830c762bdaf0",
+      "context": "deploy-preview"
+    },
+    "checkedAt": "2026-10-18T03:29:40.550Z"
+  },
   "remainingHostedChecks": {
-    "affectedReruns": 7,
-    "newGuardianBannerChecks": 6,
-    "finalLogout": 1
+    "affectedReruns": 0,
+    "newGuardianBannerChecks": 0,
+    "finalLogout": 0,
+    "fixtureBlockedCases": 4
   },
   "production": "NO-GO",
+  "releaseAcceptance": "NOT_RELEASE_READY",
   "hostedBusinessMutations": 0,
   "deployments": 0,
   "providerCalls": 0,
