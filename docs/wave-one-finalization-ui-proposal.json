@@ -97,5 +97,7 @@
     "lintErrors": 0,
     "lintWarnings": 0
   },
-  "note": "This public proposal is not a valid approval. No hosted fixture, application session, business mutation or cleanup has been executed."
+  "note": "This public proposal is not a valid approval. No hosted fixture, application session, business mutation or cleanup has been executed.",
+  "protectionProofRefreshedAt": "2026-10-18T16:46:01.827Z",
+  "exactHostPerimeterAndHealthVerified": true
 }

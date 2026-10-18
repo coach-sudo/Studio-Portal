@@ -1,7 +1,7 @@
 {
   "status": "AUTHORIZED_FINALIZATION_COMPLETE_UI_AUTHORIZATION_REQUIRED",
   "dateEastern": "2026-10-18",
-  "verifiedAt": "2026-10-18T16:39:36.092Z",
+  "verifiedAt": "2026-10-18T16:47:00.342Z",
   "dependency": {
     "pr": 55,
     "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
@@ -90,7 +90,7 @@
     "productionOperations": 0
   },
   "infraAndPreservation": {
-    "verifiedAt": "2026-10-18T16:38:47.213Z",
+    "verifiedAt": "2026-10-18T16:46:07.999Z",
     "project": "lrxrivfqjpkvygozphoz",
     "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
     "deployment": "6ad4c3817ca9519157e3e3b0",
@@ -135,7 +135,204 @@
     "status": "BLOCKED_FOR_AUTHENTICATED_ROLE_JOURNEYS",
     "infrastructure": "PASS",
     "publicBrowser": {
-      "status": "BLOCKED_PENDING_NORMAL_NETLIFY_TEAM_LOGIN",
+      "status": "PASS_PUBLIC_SCOPE_PLATFORM_FINDING_RETAINED",
+      "protectedHealth": {
+        "status": "ok",
+        "release": {
+          "commit": "f5324b203387",
+          "context": "deploy-preview"
+        },
+        "checkedAt": "2026-10-18T16:44:04.974Z"
+      },
+      "seriousCritical": 0,
+      "viewports": 6,
+      "audits": 12,
+      "servedAssets": [
+        "assets/AuthRoutes-CfaMwcMK.js",
+        "assets/MagicLinkLogin-l-_HirZW.js",
+        "assets/PasswordInput-BKObBp0E.js",
+        "assets/apiClientError-D3ABCpjA.js",
+        "assets/branding-1zW_ugMs.js",
+        "assets/index--YvKZkqN.css",
+        "assets/index-sbibTtJm.js",
+        "assets/jsx-runtime-CIxEorsV.js",
+        "assets/public-CXs1Q8S_.css",
+        "assets/rolldown-runtime-QTnfLwEv.js",
+        "assets/supabase-yWOpPKVZ.js",
+        "assets/user-round-DGB_rupq.js",
+        "manifest.webmanifest"
+      ],
+      "violations": [
+        {
+          "engine": "chromium",
+          "width": 320,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 320,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 390,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 390,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 768,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 768,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 1440,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 1440,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 320,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 320,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 1440,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 1440,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        }
+      ],
+      "fileSha256": "7b3493c6f659baf729e5d7f8225bf3ff924dc8221005f3a9dc8c09de7a90a388",
       "applicationLogins": 0
     },
     "guardianBanner": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION",
@@ -223,5 +420,22 @@
     "merges": 0,
     "productionOperations": 0,
     "waveTwoChanges": 0
-  }
+  },
+  "openDefects": [
+    {
+      "id": "platform-toolbar-region",
+      "status": "FAIL",
+      "owner": "Netlify preview toolbar",
+      "impact": "moderate",
+      "currentOccurrences": 12,
+      "distinctIssue": 1,
+      "excluded": false
+    },
+    {
+      "id": "historical-guardian-geometry",
+      "status": "BLOCKED_RECHECK_HISTORICAL_FAIL_RETAINED",
+      "historicalFailures": 3,
+      "clearedByLocalPasses": false
+    }
+  ]
 }
