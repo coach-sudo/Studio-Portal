@@ -36,6 +36,10 @@ import { postcheck } from "./postcheck.mjs";
 
 export const schemaSeal =
   "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4";
+// Netlify may reorder unchanged variables between reads. Preserve every value,
+// scope, context and metadata field while making only row order irrelevant.
+export const environmentFingerprint = (rows) =>
+  sha([...rows].sort((a, b) => a.key.localeCompare(b.key)));
 const publication = "6ace53e7f850061d7c49b711";
 const account = "6877f0feedb69199c7837fb3";
 function jwt(key, role) {
@@ -221,7 +225,7 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
       c.netlifyToken,
     );
     assert.equal(
-      sha(env),
+      environmentFingerprint(env),
       c.safety.environmentHash,
       "Preview environment changed",
     );

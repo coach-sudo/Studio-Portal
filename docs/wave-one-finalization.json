@@ -1,0 +1,227 @@
+{
+  "status": "AUTHORIZED_FINALIZATION_COMPLETE_UI_AUTHORIZATION_REQUIRED",
+  "dateEastern": "2026-10-18",
+  "verifiedAt": "2026-10-18T16:39:36.092Z",
+  "dependency": {
+    "pr": 55,
+    "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
+    "branch": "codex/wave-one-final-ui-deployment"
+  },
+  "application": "f5324b203387a158df3c050569b95a9044368bc0",
+  "deployment": "6ad4c3817ca9519157e3e3b0",
+  "origin": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+  "auth": {
+    "status": "PASS_EXACT_HOST_AUTH_UPDATE",
+    "verifiedAt": "2026-10-18T16:28:05.635Z",
+    "project": "lrxrivfqjpkvygozphoz",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "deployment": "6ad4c3817ca9519157e3e3b0",
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "before": {
+      "site_url": "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app",
+      "additional_redirect_urls": [
+        "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback",
+        "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback\\?**"
+      ]
+    },
+    "after": {
+      "site_url": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+      "additional_redirect_urls": [
+        "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback",
+        "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback\\?**"
+      ]
+    },
+    "managementChangedProperties": ["site_url", "uri_allow_list"],
+    "cliChangedProperties": ["auth.additional_redirect_urls", "auth.site_url"],
+    "beforeFullAuthSha256": "5f42ae2f40c945c42ded8081780add40d874eba1c5c927e1567c6f05a256af92",
+    "afterFullAuthSha256": "cf4490d57d6cbf8f39b5093969b86093b34a84b6836123b308b4e27ff105c2fa",
+    "unrelatedAuthPropertiesUnchanged": true,
+    "unrelatedAuthPropertyCount": 241,
+    "unrelatedAuthSha256": "58c4ca70e8f9c25fb6eb9431b1bdd3a0d7af4b4b56a20070d8e15a1b1c5a7c49",
+    "desiredDiffUpdates": 0,
+    "oldConfigProbeUpdates": 2,
+    "unrelatedCliRemoteOnlyProperties": 9,
+    "cliUnmanagedUnchanged": true,
+    "tomlConfigSha256": "64703f9dcc6b9ba6235cb923f8be97405ec1053765b5a5fdf13aa3d001c91b28",
+    "literalQuestionMarkRoundTripVerified": true,
+    "manualAccounts": [
+      {
+        "role": "coach",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "student",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "guardian",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "unrelated",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      }
+    ],
+    "migrations": {
+      "count": 57,
+      "sha256": "ce98bf8958cfbf42981ebce73ec8d935329c06e43473fd2ad13c25824796c972",
+      "unchanged": true
+    },
+    "deploymentReady": true,
+    "context": "deploy-preview",
+    "publishedAt": null,
+    "oldStagingPublication": "6ace53e7f850061d7c49b711",
+    "oldStagingPublicationUnchanged": true,
+    "newDeployments": 0,
+    "buildsStopped": true,
+    "tlsVerified": true,
+    "applicationRoleSignIns": 0,
+    "messagesSent": 0,
+    "workerInvocations": 0,
+    "providerCalls": 0,
+    "productionOperations": 0
+  },
+  "infraAndPreservation": {
+    "verifiedAt": "2026-10-18T16:38:47.213Z",
+    "project": "lrxrivfqjpkvygozphoz",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "deployment": "6ad4c3817ca9519157e3e3b0",
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "ready": true,
+    "context": "deploy-preview",
+    "unpublished": true,
+    "newDeployments": 0,
+    "publicationUnchanged": true,
+    "previousDraftUnpublished": true,
+    "buildsStopped": true,
+    "environmentPerKeyValuesAndMetadataUnchanged": true,
+    "authMatchesApprovedReadback": true,
+    "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+    "migrations": 57,
+    "migrationFullRowsUnchanged": true,
+    "businessTables": 76,
+    "businessRows": 215,
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "businessRowsUnchanged": true,
+    "originalAuthHash": "343141ffdb5ea96d9fe5a1d5a867c3e3cf6dd0731ad86dcf1da7c8fbd8ee3c2d",
+    "allOriginalAuthIdentitiesUnchanged": true,
+    "tlsVerified": true,
+    "h01H16JournalUnchanged": true,
+    "h01H16JournalSha256": "73ac005baaa805fce0c088abec35c399b02fd6f5234768c078b66b598b62ef6b",
+    "anonymous": [
+      {
+        "path": "/",
+        "status": 401
+      },
+      {
+        "path": "/api/healthz",
+        "status": 401
+      }
+    ],
+    "hostedBusinessWrites": 0,
+    "applicationSessionsCreated": 0,
+    "uiJournalExists": false,
+    "approvedUiReceiptExists": false
+  },
+  "readOnly": {
+    "status": "BLOCKED_FOR_AUTHENTICATED_ROLE_JOURNEYS",
+    "infrastructure": "PASS",
+    "publicBrowser": {
+      "status": "BLOCKED_PENDING_NORMAL_NETLIFY_TEAM_LOGIN",
+      "applicationLogins": 0
+    },
+    "guardianBanner": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION",
+    "coachLandmarks": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION",
+    "accountCreditText": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION"
+  },
+  "uiExecution": {
+    "status": "BLOCKED_PENDING_AUTHORIZATION",
+    "casesExecuted": 0,
+    "setupMutations": 0,
+    "businessMutations": 0,
+    "cleanupStatus": "NOT_STARTED_NOT_NEEDED_NO_FIXTURES",
+    "runId": "e2e-wave1-ui-20261017-a",
+    "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
+    "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "proposedExpiresAt": "2026-10-19T16:33:05.780Z",
+    "approvedReceiptExists": false
+  },
+  "existingEvidence": {
+    "reusedWithoutRedundantReruns": true,
+    "unitIntegration": {
+      "passed": 818,
+      "files": 117
+    },
+    "localBrowser": {
+      "perMode": 102,
+      "modes": ["true", "false"]
+    },
+    "priorSecurityTests": 52,
+    "disposableExecutorScenarios": 17,
+    "pgTapAssertions": 204,
+    "concurrencySuites": 3,
+    "h01H16Passed": 16,
+    "h01H16Reruns": 0,
+    "functionHashes": 23,
+    "clientAssets": 117,
+    "staticFiles": 124,
+    "githubCiPassClaimed": false
+  },
+  "freshFocusedChecks": {
+    "environmentOrderRegressionGuardsPassed": 53,
+    "failed": 0,
+    "lintErrors": 0,
+    "lintWarnings": 0,
+    "guardLogSha256": "5f82cec597653c6de72326385a0e5b41b6af3ad05ec4b6bdd89e6226c285536e"
+  },
+  "historicalHostedFindingsPreserved": {
+    "checks": 139,
+    "passed": 132,
+    "guardianGeometryFailures": 3,
+    "fixtureBlockers": 4,
+    "platformRegionOccurrences": 54,
+    "duplicateLandmarks": true,
+    "creditTextTruncation": true,
+    "clearedByLocalPasses": false
+  },
+  "assessment": {
+    "waveOne": "INCOMPLETE_HOSTED_UI_ACCEPTANCE_PENDING",
+    "waveTwoDevelopment": "GO_FOR_ISOLATED_DEVELOPMENT_AFTER_FINAL_REVIEW",
+    "production": "NO-GO",
+    "waveTwoImplemented": false
+  },
+  "remainingGates": [
+    "UI01–UI09 including three role lesson workflows, populated credit/audit history, revocation, frozen bulk replay/stale results and exact cleanup",
+    "Nonzero monetary/invoice history; zero-cash UI credit tests cannot establish it",
+    "Isolated Stripe/Google Calendar/email sink and scheduled cadence acceptance",
+    "Manual native zoom, screen-reader and human usability acceptance",
+    "Legacy hosted mode and provider-capable HTTP wrappers remain unverified"
+  ],
+  "actions": {
+    "authConfigurationPushes": 1,
+    "authPropertiesChanged": 2,
+    "newDeployments": 0,
+    "applicationLogins": 0,
+    "syntheticAuthCreations": 0,
+    "hostedBusinessWrites": 0,
+    "uiExecutions": 0,
+    "cleanupExecutions": 0,
+    "providerCalls": 0,
+    "deliveredMessages": 0,
+    "workerInvocations": 0,
+    "publications": 0,
+    "merges": 0,
+    "productionOperations": 0,
+    "waveTwoChanges": 0
+  }
+}
