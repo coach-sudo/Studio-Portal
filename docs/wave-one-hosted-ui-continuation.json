@@ -1,0 +1,75 @@
+{
+  "run": "e2e-wave1-ui-20261017-a",
+  "status": "BLOCKED_READ_BUDGET_EXHAUSTED_CLEANUP_PENDING",
+  "stoppedAt": "2026-10-18T22:22:50.964Z",
+  "cases": {
+    "UI01": "PASS",
+    "UI02": "PASS",
+    "UI03": "PASS",
+    "UI04": "PASS",
+    "UI05": "BLOCKED_PARTIAL_ROLLED_BACK",
+    "UI06": "NOT_RUN_BLOCKED",
+    "UI07": "NOT_RUN_BLOCKED",
+    "UI08": "NOT_RUN_BLOCKED",
+    "UI09": "NOT_RUN_BLOCKED"
+  },
+  "budget": {
+    "read": 600,
+    "auth-admin": 4,
+    "sql": 10,
+    "session": 5,
+    "http-total": 19,
+    "http-business": 14
+  },
+  "fixtureAuthUsers": 4,
+  "fixtureStudents": 2,
+  "fixtureLessons": 13,
+  "grantedCredits": 4,
+  "ownedRowCounts": {
+    "public.lessons": 13,
+    "public.packages": 1,
+    "public.students": 2,
+    "public.memberships": 3,
+    "public.audit_events": 13,
+    "public.linked_contacts": 1,
+    "public.booking_services": 1,
+    "public.lesson_participants": 1,
+    "lesson_ops.lesson_bulk_jobs": 3,
+    "public.calendar_projections": 1,
+    "lesson_ops.lesson_bulk_items": 6,
+    "public.student_relationships": 1,
+    "public.package_credit_entries": 5,
+    "lesson_ops.lesson_record_state": 2,
+    "public.student_credit_accounts": 2,
+    "lesson_ops.lesson_bulk_requests": 6,
+    "credit_internal.credit_coverage_jobs": 1,
+    "credit_internal.credit_command_receipts": 3
+  },
+  "lastConfirmedAtCommand": "UI05.delete-accept",
+  "originalRowsPreservedInLastCommittedSnapshot": true,
+  "originalBaselineRows": 215,
+  "lastTransactionRolledBack": true,
+  "cleanupExecuted": false,
+  "independentPostStopHostedRead": false,
+  "readBudgetMayNotBeIncreased": true,
+  "retainedActiveAuthRoles": ["coach", "student", "guardian", "unrelated"],
+  "knownBulkStates": [
+    {
+      "operation": "restore",
+      "state": "running"
+    },
+    {
+      "operation": "delete",
+      "state": "running"
+    },
+    {
+      "operation": "archive",
+      "state": "running"
+    }
+  ],
+  "queuedInfrastructureRetained": true,
+  "providerCalls": 0,
+  "deliveredMessages": 0,
+  "workerInvocations": 0,
+  "requiredDecision": "Explicitly approve a narrowly scoped cleanup-only recovery, including sufficient separately bounded reads and reviewed incomplete-workflow recovery. Current authorization cannot increase the read limit or bypass existing guards; no further hosted action is taken."
+}

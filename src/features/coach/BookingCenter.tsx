@@ -1,3 +1,4 @@
+import { useUrlChoice } from "../../hooks/useWorkspaceLocation";
 import { WritingArea } from "../../components/WritingArea";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
@@ -84,10 +85,10 @@ export function BookingCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const openedAppointmentRequest = useRef("");
   const requestedView = searchParams.get("view");
-  const [tab, setTab] = useState<Tab>(() =>
-    tabs.some(([id]) => id === requestedView)
-      ? (requestedView as Tab)
-      : "calendar",
+  const [tab, setTab] = useUrlChoice(
+    "view",
+    tabs.map(([id]) => id),
+    "calendar",
   );
   const store = useStudioStore();
   const queryClient = useQueryClient();
@@ -127,6 +128,11 @@ export function BookingCenter() {
     const lessonId = searchParams.get("lesson");
     if (!bookingId && !lessonId) {
       openedAppointmentRequest.current = "";
+      setDialog((current) =>
+        current && ["booking", "lesson"].includes(current.type)
+          ? undefined
+          : current,
+      );
       return;
     }
     const request = JSON.stringify([bookingId, lessonId]);
@@ -157,6 +163,12 @@ export function BookingCenter() {
 
   function openCalendarLesson(lesson: Lesson) {
     const bookings = calendarBookings(lesson, data!);
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      next.set("lesson", lesson.id);
+      next.delete("booking");
+      return next;
+    });
     setDialog(
       bookings.length === 1
         ? { type: "booking", item: bookings[0], lessonId: lesson.id }

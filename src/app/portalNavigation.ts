@@ -12,13 +12,14 @@ import type { NavigationItem } from "./navigation";
 
 const studentNavigation: NavigationItem[] = [
   { to: "", label: "Home", icon: Home },
-  { to: "work", label: "Current Work", icon: BookOpen },
+  { to: "work", label: "My Work", icon: BookOpen },
   { to: "bookings", label: "Schedule", icon: CalendarDays },
-  { to: "inbox", label: "Inbox", icon: MessageSquare },
+  { to: "inbox", label: "Messages", icon: MessageSquare },
   { to: "payments", label: "Payments", icon: CircleDollarSign },
   { to: "referrals", label: "Referrals", icon: Gift },
   { to: "actor-page", label: "Actor Page", icon: Users },
   { to: "settings", label: "Settings", icon: Settings },
+  { to: "notes", label: "Published notes", icon: BookOpen },
 ];
 
 export function portalNavigation(
@@ -35,6 +36,11 @@ export function portalNavigation(
     .map((item) =>
       role === "guardian" && item.to === ""
         ? { ...item, label: "Overview" }
+        : item,
+    )
+    .map((item) =>
+      role === "guardian" && item.to === "work"
+        ? { ...item, label: "Student Work" }
         : item,
     )
     .filter((item) => {

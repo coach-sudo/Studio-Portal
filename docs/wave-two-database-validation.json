@@ -1,0 +1,32 @@
+{
+  "postgres": 17,
+  "migrations": 58,
+  "assertions": 60,
+  "passed": true,
+  "hostedConnections": 0,
+  "clusterStoppedOnExit": true,
+  "rpcCatalogSignatures": [
+    {
+      "proname": "portal_student_contexts",
+      "pronargdefaults": 2,
+      "proargnames": ["p_student", "p_page"],
+      "types": ["uuid", "integer"],
+      "result": "jsonb"
+    },
+    {
+      "proname": "studio_global_search",
+      "pronargdefaults": 3,
+      "proargnames": ["p_query", "p_student", "p_group", "p_page"],
+      "types": ["text", "uuid", "text", "integer"],
+      "result": "jsonb"
+    },
+    {
+      "proname": "studio_record_target",
+      "pronargdefaults": 1,
+      "proargnames": ["p_kind", "p_id", "p_student"],
+      "types": ["text", "uuid", "uuid"],
+      "result": "jsonb"
+    }
+  ],
+  "rpcTypesGeneratedFromIsolatedCatalog": true
+}

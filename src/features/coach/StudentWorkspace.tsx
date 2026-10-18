@@ -1,3 +1,8 @@
+import {
+  useUnsavedWorkspaceChanges,
+  useWorkspaceNavigation,
+} from "../../hooks/useWorkspaceLocation";
+import { RecordUnavailable } from "../../components/RecordRoute";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
@@ -115,6 +120,7 @@ export function StudentWorkspace() {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const workspace = useWorkspaceNavigation();
   const [dialog, setDialog] = useState<
     | "edit"
     | "lesson"
@@ -184,7 +190,7 @@ export function StudentWorkspace() {
     );
   }, [data, student, location.pathname, location.search, navigate]);
   if (!data) return <div className="loading">Opening student record…</div>;
-  if (!student) return <Navigate to="/coach/students" replace />;
+  if (!student) return <RecordUnavailable fallback="/coach/students" />;
 
   const base = `/coach/students/${student.id}`;
   const studentLessons = data.lessons
@@ -593,7 +599,8 @@ export function StudentWorkspace() {
       <header className="student-record-header">
         <button
           className="back-button"
-          onClick={() => navigate("/coach/students")}
+          aria-label="Back to students"
+          onClick={workspace.back}
         >
           <ArrowLeft />
           Students
@@ -688,6 +695,7 @@ export function StudentWorkspace() {
           <NavLink
             key={path}
             to={`${base}${path ? `/${path}` : ""}`}
+            state={location.state}
             end={!path}
           >
             {label}
@@ -1723,6 +1731,13 @@ function NoteForm({
       note?.lessonId || initialLessonId || lessons[0]?.id || "",
     );
   const [saving, setSaving] = useState(false);
+  const initial = useRef(JSON.stringify({ title, body, published, lessonId }));
+  const canDiscard = useUnsavedWorkspaceChanges(
+    JSON.stringify({ title, body, published, lessonId }) !== initial.current,
+  );
+  const close = () => {
+    if (canDiscard()) onClose();
+  };
   const editorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!editorRef.current) return;
@@ -1739,7 +1754,7 @@ function NoteForm({
     <Drawer
       title={note ? "Edit note" : "New note"}
       description={student.fullName}
-      onClose={onClose}
+      onClose={close}
     >
       <form
         className="workflow-form"
@@ -1894,7 +1909,7 @@ function NoteForm({
           </span>
         </label>
         <div className="form-actions full">
-          <button type="button" onClick={onClose}>
+          <button type="button" onClick={close}>
             Cancel
           </button>
           <button

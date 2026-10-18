@@ -1,3 +1,9 @@
+import {
+  useUrlValue,
+  useUrlNumber,
+  useUrlChoice,
+  useWorkspaceNavigation,
+} from "../../hooks/useWorkspaceLocation";
 import { Plus, Search, Upload, Users } from "lucide-react";
 import {
   useEffect,
@@ -71,8 +77,18 @@ export function StudentsIndex({
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const fileInput = useRef<HTMLInputElement>(null);
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState<"all" | StudentStatus>("all");
+  const [query, setQuery] = useUrlValue("q");
+  const workspace = useWorkspaceNavigation();
+  const [sort, setSort] = useUrlChoice(
+    "sort",
+    ["name", "newest"] as const,
+    "name",
+  );
+  const [status, setStatus] = useUrlChoice(
+    "status",
+    ["all", "active", "lead", "paused", "alumni", "inactive"] as const,
+    "all",
+  );
   const [adding, setAdding] = useState(
     new URLSearchParams(location.search).has("new"),
   );
@@ -80,8 +96,8 @@ export function StudentsIndex({
   const [importRows, setImportRows] = useState<ImportedStudent[]>([]);
   const [importing, setImporting] = useState(false);
   const [merging, setMerging] = useState(false);
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(coachPageSize);
+  const [page, setPage] = useUrlNumber("page", 1);
+  const [pageSize, setPageSize] = useUrlNumber("pageSize", coachPageSize, 100);
   const serverPaging = queryLayerV2Enabled && !isDemo;
   const studentPage = usePaginatedStudioRows(
     {
@@ -105,7 +121,10 @@ export function StudentsIndex({
         deleted_at: null,
         status: status === "all" ? undefined : status,
       },
-      sort: { column: "full_name", ascending: true },
+      sort:
+        sort === "newest"
+          ? { column: "created_at", ascending: false }
+          : { column: "full_name", ascending: true },
     },
     serverPaging,
   );
@@ -119,27 +138,45 @@ export function StudentsIndex({
     undefined,
     serverPaging && (importing || merging),
   );
-  useEffect(() => setPage(1), [query, status]);
 
   const students = useMemo(() => {
     if (serverPaging)
       return (studentPage.data?.items ?? []).map((row) => mapStudentRow(row));
-    return data.students.filter(
-      (student) =>
-        (status === "all" || student.status === status) &&
-        [
-          student.fullName,
-          student.email,
-          student.guardianEmail,
-          student.focusArea,
-          student.leadSource,
-        ].some((value) =>
-          String(value || "")
-            .toLowerCase()
-            .includes(query.toLowerCase()),
-        ),
-    );
-  }, [data.students, query, serverPaging, status, studentPage.data?.items]);
+    return data.students
+      .filter(
+        (student) =>
+          (status === "all" || student.status === status) &&
+          [
+            student.fullName,
+            student.email,
+            student.guardianEmail,
+            student.focusArea,
+            student.leadSource,
+          ].some((value) =>
+            String(value || "")
+              .toLowerCase()
+              .includes(query.toLowerCase()),
+          ),
+      )
+      .sort((a, b) =>
+        sort === "newest"
+          ? b.updatedAt.localeCompare(a.updatedAt)
+          : a.fullName.localeCompare(b.fullName),
+      );
+  }, [
+    data.students,
+    query,
+    serverPaging,
+    status,
+    studentPage.data?.items,
+    sort,
+  ]);
+  const totalStudents = serverPaging
+    ? studentPage.data?.total || 0
+    : students.length;
+  const visibleStudents = serverPaging
+    ? students
+    : students.slice((page - 1) * pageSize, page * pageSize);
   const reviewStudents = serverPaging
     ? (fullStudentQuery.data?.students ?? [])
     : data.students;
@@ -334,27 +371,34 @@ export function StudentsIndex({
             placeholder="Search name, email, focus, or source…"
           />
         </label>
-        {serverPaging &&
-          shouldShowPagination(studentPage.data?.total ?? 0, pageSize) && (
-            <ListControls
-              page={page}
-              pageCount={Math.max(
-                1,
-                Math.ceil((studentPage.data?.total ?? 0) / pageSize),
-              )}
-              pageSize={pageSize}
-              total={studentPage.data?.total ?? 0}
-              onPage={setPage}
-              onPageSize={setPageSize}
-              label="students"
-            />
-          )}
+        <label>
+          Sort
+          <select
+            aria-label="Sort students"
+            value={sort}
+            onChange={(e) => setSort(e.target.value as typeof sort)}
+          >
+            <option value="name">Name</option>
+            <option value="newest">Newest</option>
+          </select>
+        </label>
+        {shouldShowPagination(totalStudents, pageSize) && (
+          <ListControls
+            page={page}
+            pageCount={Math.max(1, Math.ceil(totalStudents / pageSize))}
+            pageSize={pageSize}
+            total={totalStudents}
+            onPage={setPage}
+            onPageSize={setPageSize}
+            label="students"
+          />
+        )}
         <div className="student-roster">
-          {students.map((student) => (
+          {visibleStudents.map((student) => (
             <button
               key={student.id}
               className="student-roster-row"
-              onClick={() => navigate(`/coach/students/${student.id}`)}
+              onClick={() => workspace.open(`/coach/students/${student.id}`)}
             >
               <span className="avatar">
                 {student.fullName

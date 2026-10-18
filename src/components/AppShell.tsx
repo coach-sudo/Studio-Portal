@@ -11,18 +11,17 @@ import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
 import { Dialog } from "./Primitives";
 import { ActivityCenter } from "./ActivityCenter";
-import { coachNavigation } from "../app/coachNavigation";
+import { WorkspaceSearch } from "./WorkspaceSearch";
+import { WorkspaceScrollRestoration } from "../hooks/useWorkspaceLocation";
+import { coachNavigation, studioNavigation } from "../app/coachNavigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
 import { supabase } from "../lib/supabase";
 import "./IdentityActions.css";
 
 export function AppShell() {
-  const { data } = useStudioRoute("coach", undefined, ["identity"]);
+  const { data, isDemo } = useStudioRoute("coach", undefined, ["identity"]);
   const [searchOpen, setSearchOpen] = useState(false);
-  const [query, setQuery] = useState("");
-  const destinations = coachNavigation.filter(({ label }) =>
-    label.toLowerCase().includes(query.toLowerCase()),
-  );
+  const [moreOpen, setMoreOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
   const navigate = useNavigate();
   useEffect(() => {
@@ -78,13 +77,12 @@ export function AppShell() {
           className="shell-search"
           onClick={(event) => {
             event.currentTarget.focus();
-            setQuery("");
             setSearchOpen(true);
           }}
-          aria-label="Search studio workflows"
+          aria-label="Search records and destinations"
         >
           <Search aria-hidden="true" />
-          <span>Find a workflow</span>
+          <span>Search</span>
           <kbd>Ctrl K</kbd>
         </button>
         <nav aria-label="Coach navigation">
@@ -135,6 +133,7 @@ export function AppShell() {
         </div>
       </aside>
       <main className="main" id="main-content" tabIndex={-1}>
+        <WorkspaceScrollRestoration />
         <Outlet />
       </main>
       {data && <ActivityCenter data={data} audience="coach" />}
@@ -148,53 +147,42 @@ export function AppShell() {
         <button
           onClick={(event) => {
             event.currentTarget.focus();
-            setSearchOpen(true);
+            setMoreOpen(true);
           }}
         >
           <Menu />
           <span>More</span>
         </button>
       </nav>
-      {searchOpen && (
-        <Dialog title="Go to" onClose={() => setSearchOpen(false)}>
-          <div className="command-search">
-            <label>
-              <Search aria-hidden="true" />
-              <input
-                autoFocus
-                value={query}
-                onChange={(event) => setQuery(event.target.value)}
-                placeholder="Find a workflow…"
-                aria-label="Find a workflow"
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && destinations[0]) {
-                    navigate(destinations[0].to);
-                    setSearchOpen(false);
-                  }
-                }}
-              />
-            </label>
-            <div>
-              {destinations.map(({ to, label, icon: Icon }) => (
-                <button
-                  key={to}
-                  onClick={() => {
-                    navigate(to);
-                    setSearchOpen(false);
-                  }}
-                >
+      {moreOpen && (
+        <Dialog title="More" onClose={() => setMoreOpen(false)}>
+          <nav className="workspace-more-group" aria-label="More destinations">
+            {[...coachNavigation.slice(4), ...studioNavigation].map(
+              ({ to, label, icon: Icon }) => (
+                <NavLink key={to} to={to} onClick={() => setMoreOpen(false)}>
                   <Icon aria-hidden="true" />
-                  <span>{label}</span>
-                </button>
-              ))}
-              {!destinations.length && (
-                <p role="status">
-                  No workflows match. Try a page name like Students or Bookings.
-                </p>
-              )}
-            </div>
-          </div>
+                  {label}
+                </NavLink>
+              ),
+            )}
+            <button
+              onClick={() => {
+                setMoreOpen(false);
+                setSearchOpen(true);
+              }}
+            >
+              Search
+            </button>
+          </nav>
         </Dialog>
+      )}
+      {searchOpen && (
+        <WorkspaceSearch
+          audience="coach"
+          destinations={[...coachNavigation, ...studioNavigation]}
+          demoData={isDemo ? data : undefined}
+          onClose={() => setSearchOpen(false)}
+        />
       )}
     </div>
   );

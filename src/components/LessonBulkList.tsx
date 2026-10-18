@@ -1,3 +1,5 @@
+import { useWorkspaceNavigation } from "../hooks/useWorkspaceLocation";
+import { recordLink } from "../app/recordLinks";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
@@ -62,6 +64,7 @@ function AuthenticatedLessonBulkList({
   studentId?: string;
   timezone: string;
 }) {
+  const workspace = useWorkspaceNavigation("/coach/bookings");
   const [params, setParams] = useSearchParams();
   const page = safePage(params.get("lessonPage"));
   const size = [10, 25, 50, 100].includes(Number(params.get("lessonSize")))
@@ -342,11 +345,12 @@ function AuthenticatedLessonBulkList({
                 </label>
                 <div className="bulk-lesson-identity">
                   <Link
-                    to={
-                      studentId || item.student_id
-                        ? `/coach/students/${studentId || item.student_id}/lessons/${item.id}`
-                        : `/coach/bookings?view=calendar&lesson=${item.id}`
-                    }
+                    state={workspace.returnState()}
+                    to={recordLink("coach", {
+                      kind: "lesson",
+                      id: item.id,
+                      studentId: studentId || item.student_id,
+                    })}
                   >
                     <strong>{item.topic}</strong>
                   </Link>

@@ -189,7 +189,7 @@ const domainQueryOptions = (
   enabled: enabled && isSupabaseConfigured && queryLayerV2Enabled,
   staleTime: domain === "identity" ? 5 * 60_000 : 30_000,
   gcTime: 30 * 60_000,
-  placeholderData: keepPreviousData,
+  placeholderData: studentId ? undefined : keepPreviousData,
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
   refetchInterval: false as const,

@@ -337,19 +337,36 @@ export function LessonsView({
     <Section title="Lesson calendar" marked>
       {notice && <p className="portal-notice">{notice}</p>}
       <LessonCalendar
-        viewOverride={isDemo ? undefined : calendarView}
-        onViewChange={
-          isDemo
-            ? undefined
-            : (view) =>
-                setCalendarParams(
-                  (current) => {
-                    const next = new URLSearchParams(current);
-                    next.set("calendarView", view);
-                    return next;
-                  },
-                  { preventScrollReset: true },
-                )
+        viewOverride={calendarView}
+        onViewChange={(view) =>
+          setCalendarParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              next.set("calendarView", view);
+              return next;
+            },
+            { preventScrollReset: true },
+          )
+        }
+        calendarState={{
+          date: calendarParams.get("calendarDate") || "",
+          query: calendarParams.get("calendarQuery") || "",
+          includeCancelled: calendarParams.get("calendarCancelled") === "true",
+        }}
+        onCalendarStateChange={(change) =>
+          setCalendarParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              if (change.date !== undefined)
+                next.set("calendarDate", change.date);
+              if (change.query !== undefined)
+                next.set("calendarQuery", change.query);
+              if (change.includeCancelled !== undefined)
+                next.set("calendarCancelled", String(change.includeCancelled));
+              return next;
+            },
+            { preventScrollReset: true },
+          )
         }
         listContent={
           isDemo ? undefined : (

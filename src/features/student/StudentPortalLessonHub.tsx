@@ -1,3 +1,8 @@
+import {
+  useUrlValue,
+  useUrlNumber,
+  useWorkspaceNavigation,
+} from "../../hooks/useWorkspaceLocation";
 import { ResourceBrowser } from "../library/ResourceBrowser";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
@@ -11,7 +16,7 @@ import {
   Video,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link, Navigate, useParams } from "react-router-dom";
+import { Link, Navigate, useParams, useSearchParams } from "react-router-dom";
 import { AssignmentActivity } from "../../components/AssignmentActivity";
 import "../../components/IdentityActions.css";
 import {
@@ -47,10 +52,23 @@ export function StudentNotes({
   data: Snapshot;
   isDemo: boolean;
 }) {
-  const [query, setQuery] = useState(""),
-    [selectedLessonId, setSelectedLessonId] = useState<string>();
-  const [serverPage, setServerPage] = useState(1);
-  const [serverPageSize, setServerPageSize] = useState(portalPageSize);
+  const [, setParams] = useSearchParams();
+  const closeNote = () =>
+    setParams((current) => {
+      const next = new URLSearchParams(current);
+      next.delete("note");
+      next.delete("lesson");
+      return next;
+    });
+  const [query, setQuery] = useUrlValue("q"),
+    [selectedLessonId, setSelectedLessonId] = useUrlValue("lesson"),
+    [selectedNote, setSelectedNote] = useUrlValue("note");
+  const [serverPage, setServerPage] = useUrlNumber("page", 1);
+  const [serverPageSize, setServerPageSize] = useUrlNumber(
+    "pageSize",
+    portalPageSize,
+    100,
+  );
   const serverPaging = queryLayerV2Enabled && !isDemo;
   const remoteNotes = usePaginatedStudioRows(
     {
@@ -59,12 +77,29 @@ export function StudentNotes({
       page: serverPage,
       pageSize: serverPageSize,
       search: query.trim() ? { column: "title", value: query } : undefined,
-      filters: { status: "published" },
+      filters: { status: "published", student_id: data.students[0]?.id },
       sort: { column: "updated_at", ascending: false },
     },
     serverPaging,
   );
-  useEffect(() => setServerPage(1), [query]);
+
+  const exactQuery = usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "notes",
+      page: 1,
+      pageSize: 1,
+      filters: {
+        id: selectedNote,
+        status: "published",
+        student_id: data.students[0]?.id,
+      },
+    },
+    serverPaging && !!selectedNote,
+  );
+  const exactNote = serverPaging
+    ? (exactQuery.data?.items || []).map(mapNoteRow)[0]
+    : data.notes.find((n) => n.id === selectedNote && n.status === "published");
   const notes = serverPaging
     ? (remoteNotes.data?.items ?? []).map((row) => mapNoteRow(row))
     : data.notes;
@@ -118,7 +153,13 @@ export function StudentNotes({
         total: remoteNotes.data?.total ?? 0,
       }
     : localPage;
-  const selected = groups.find((group) => group.lessonId === selectedLessonId);
+  const selected = exactNote
+    ? {
+        lessonId: exactNote.lessonId,
+        updatedAt: exactNote.updatedAt,
+        notes: [exactNote],
+      }
+    : groups.find((group) => group.lessonId === selectedLessonId);
   return (
     <div className="student-page">
       <header className="student-header">
@@ -199,7 +240,7 @@ export function StudentNotes({
                   )
                 : "General coaching note"
             }
-            onClose={() => setSelectedLessonId(undefined)}
+            onClose={closeNote}
           >
             <div className="lesson-note-stack">
               {selected.notes.map((note) => (
@@ -227,10 +268,7 @@ export function StudentNotes({
                   Open lesson workspace
                 </Link>
               )}
-              <button
-                type="button"
-                onClick={() => setSelectedLessonId(undefined)}
-              >
+              <button type="button" onClick={closeNote}>
                 Close
               </button>
             </div>
@@ -251,6 +289,10 @@ export function LessonHub({
   showFinance: boolean;
 }) {
   const { lessonId = "" } = useParams();
+  const workspace = useWorkspaceNavigation(
+    "/portal/bookings?student=" +
+      encodeURIComponent(data.students[0]?.id || ""),
+  );
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const store = useStudioStore();
   const queryClient = useQueryClient();
@@ -398,9 +440,9 @@ export function LessonHub({
     <div className="student-page lesson-hub">
       <header className="student-header lesson-hub-header">
         <div>
-          <Link className="text-link" to="/portal/bookings">
-            ‹ Back to bookings
-          </Link>
+          <button className="text-link" onClick={workspace.back}>
+            ‹ Back
+          </button>
           <h1>{lesson.topic}</h1>
           <p>
             {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}

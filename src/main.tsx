@@ -3,12 +3,14 @@ import ReactDOM from "react-dom/client";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter } from "react-router-dom";
 import { App } from "./app/App";
+import { installWorkspaceHistoryGuard } from "./hooks/useWorkspaceLocation";
 import "./styles.css";
 import "./cohesion.css";
 import "./app-system.css";
 import "./styles/tokens.css";
 import "./styles/product.css";
 
+installWorkspaceHistoryGuard();
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
