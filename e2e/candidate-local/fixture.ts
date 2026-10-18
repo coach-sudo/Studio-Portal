@@ -58,7 +58,7 @@ export async function installFixture(
     studio_id: ids.studio,
     user_id: ids.learner,
     full_name: names.student || "E2E Candidate Student",
-    preferred_name: "E2E Candidate Student",
+    preferred_name: names.student || "E2E Candidate Student",
     email: "student@example.test",
     status: "active",
     focus_area: "Audition preparation",
