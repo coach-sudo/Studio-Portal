@@ -1,6 +1,6 @@
 # Wave 1 consolidated acceptance and Wave 2 readiness
 
-October 18, 2026, Eastern. **Auth PASS; hosted infrastructure/public-page scope PASS with the platform accessibility finding retained; authenticated UI01–UI09 BLOCKED PENDING AUTHORIZATION. Production remains NO-GO.**
+October 18, 2026, Eastern. **Auth PASS; hosted infrastructure/public-page scope PASS with the platform accessibility finding retained; authorized UI01–UI09 attempt STOPPED by the local runtime ACL before hosted execution. Production remains NO-GO.**
 
 This single checkpoint is directly dependent on draft [PR #55](https://github.com/coach-sudo/Studio-Portal/pull/55), head `06e51be1eaad66abef39abff1e6fadb89349e131`. Draft #54 remains `49a9451472914b2310f941873e6b5b47fa30f888`, based on unchanged draft #53 at `825d5f2db33a3a3d2749e4fa45e54873faeee838`. All were verified open and draft. Application, functions, dependencies and migrations remain pinned to **`f5324b203387a158df3c050569b95a9044368bc0`**. The only code change here is the acceptance executor's environment-order comparison and its regression test; no Wave 2 implementation or new deployment occurred.
 
@@ -12,7 +12,7 @@ The [master plan](studio-portal-modernization-master-plan.md) remains the comple
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Staging Auth                | **PASS** — one supported narrow update; independent full read-back                                                                                     |
 | Hosted read-only acceptance | **BLOCKED in part** — infrastructure/public pages PASS; authenticated priorities require the separate UI gate; platform accessibility finding retained |
-| UI01–UI09                   | **BLOCKED PENDING AUTHORIZATION** — zero cases executed, no fixtures, cleanup not started or needed                                                    |
+| UI01–UI09                   | **STOPPED — local runtime ACL**; authorization received, one startup attempt, zero cases or fixtures; cleanup not needed                               |
 | Wave 1                      | **Incomplete acceptance** — implementation/local and H backend foundations verified; mandatory hosted UI closure remains open                          |
 | Wave 2 development          | **GO for isolated development after final review**, starting with PR 2.1 foundations; workflow activation/sign-off gates below remain explicit         |
 | Production                  | **NO-GO** — no release, publication, merge or production operation authorized                                                                          |
@@ -88,7 +88,33 @@ Historical #53 acceptance remains **139 checks: 132 passed, three guardian geome
 
 The rescheduling/conflict HTTP wrappers can call Google before SQL and remain prohibited in the provider-free UI run. H06's SQL result does not establish those wrappers. Native lesson creation remains a single submission with no ambiguous retry, and service-side actor-null audit entries remain accepted only for exact acknowledged actions/entities/UUIDs. These known boundaries are not silently repaired, broadened or called fully accepted here.
 
-## Prepared single UI execution gate
+## Authorized UI attempt — stopped before hosted execution
+
+The explicit final UI instruction authorized the exact proposal and all four seals at reviewed PR #56 head `e2addd127d52faba7359c66c878f7e193c3c5048`. The private approval receipt was issued at **`2026-10-18T16:54:43.197Z`**, with the unchanged upper expiry **`2026-10-19T16:33:05.780Z`**. The reviewed validator passed; provenance and receipt remain private. No timestamp was extended. The preparation history below describes the earlier unapproved state, not the current receipt.
+
+Fresh supported Netlify protection proof passed at `2026-10-18T16:57:03.162Z`; independent preflight passed at `2026-10-18T16:57:38.314Z`. It verified the exact protected deployment, 23 function identities, Auth, preview environment, empty shared environment, stopped builds, all 57 full migration records, the approved 76-table/215-row baseline, all four original full Auth rows, absence of every planned identity/run receipt, and unchanged H01–H16 evidence. Anonymous root and health returned 401; protected health identified the exact application. A legacy preparatory checker first rejected the newly present approval receipt because it required receipt absence. A separate read-only execution preflight required the valid receipt instead and retained every preservation assertion; no executor/source seal changed.
+
+The reviewed CLI was invoked **once**. It exited 1, reporting `Error`, before its first metadata read or any Auth/session/SQL/business intent. Local diagnosis reproduced the exact failing prerequisite: **`restricted(c.pgRuntime, true)` rejects `C:/Users/dariu/.codex/tmp/studio-pg17-runtime` because `AreAccessRulesProtected` is false** (guard exit status 2). This occurs before the database client is constructed. Config, receipt, artifact and UI-directory checks pass. The CLI does not retain the original exception detail; the independently reproduced ACL failure is sufficient to prevent startup. A separate read-only direct-database diagnostic passed verified TLS and hostname checks; it was not an executor retry. Runtime permissions and reviewed source were not changed, and no automatic retry occurred.
+
+| Case                                                  | Outcome                                                                                       |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| UI01 — roles and private reads                        | NOT RUN — startup blocked                                                                     |
+| UI02 — profile, Overview and Household                | NOT RUN — startup blocked                                                                     |
+| UI03 — native lesson creation/edit                    | NOT RUN — startup blocked                                                                     |
+| UI04 — credits, coverage and replay                   | NOT RUN — startup blocked                                                                     |
+| UI05 — selection, archive/restore/deletion            | NOT RUN — startup blocked                                                                     |
+| UI06 — frozen review, conflict and duplicate handling | NOT RUN — startup blocked                                                                     |
+| UI07 — occurrence cancellation and isolation          | NOT RUN — startup blocked                                                                     |
+| UI08 — guardian revocation and fresh denial           | NOT RUN — startup blocked                                                                     |
+| UI09 — fixture cleanup and preservation               | Fixture cleanup NOT NEEDED; independent preservation PASS; workflow case not claimed complete |
+
+**Actual consumption:** 44 hosted read requests; the durable journal charges **45/600** conservatively, including one unused reservation made while the startup cause was unresolved. The failed legacy checker and all read-only diagnostics/bookends are included. HTTP business/session requests **0/30**, canonical SQL mutations **0/60**, cleanup transactions **0/40**, Auth writes **0/8**. New Auth users, students, lessons, credits, owned business rows/identities, cash transactions, provider calls, delivered messages and worker invocations are all **zero**. Normal SQL read-only transaction/session statements are not business mutations. The private journal contains budget and diagnostic evidence only; it has no protected-operation intent or unresolved hosted outcome. No fixture password file was created.
+
+The post-stop independent bookend at **`2026-10-18T16:59:23.031Z`** again proves the exact baseline hash, all 215 rows and 76 tables, four full original Auth rows, all 57 migration rows, planned identity absence, H journal, Auth, environment, deployment list, unpublished drafts and old staging publication unchanged. No cleanup or retained UI records exist. Existing H retained records and manual accounts were preserved.
+
+**Next action:** review and tighten only the existing local runtime directory's ACL to Owner/SYSTEM, then verify the unchanged executor/config and retained same-run journal before an explicit decision to resume this stopped run. No retry, replacement run, rebaseline, receipt extension or permission weakening was performed. If the receipt expires, obtain fresh human authorization. The runtime ACL issue is an execution prerequisite, not a hosted application failure; the authenticated guardian, credit, bulk and accessibility findings remain unverified. Wave 1 acceptance is incomplete; the existing recommendation remains GO for isolated Wave 2 development after final review, with workflow gates retained, and production NO-GO. No Wave 2 code was started.
+
+## Historical preparation state before explicit UI authorization
 
 No independently authorized hosted UI receipt exists. The new run remains `e2e-wave1-ui-20261017-a`; deterministic proposed Auth/business IDs are all absent. Existing manual accounts and H identities/journal are not reused. A valid existing staging legacy service JWT was checked through a read-only planned-user lookup; no credential was generated, rotated or disclosed.
 
@@ -121,4 +147,4 @@ Failed, denied and duplicate attempts count. Approval must cover all UI01–UI09
 
 Before branching, recheck approved `main` and migration heads. Use `codex/` branches and short explicit dependencies where unmerged Wave 1 code is required; do not import old stacked PRs or PR #28. No Wave 2 migration is applied here. Monetary/provider/manual accessibility production gates do not block independent resolver/URL-state development, but mandatory unfinished Wave 1 acceptance remains tracked above.
 
-**One remaining execution-authorization request:** approve the exact reviewed UI01–UI09 synthetic workflow and its mandatory cleanup on this deployment, within the proposal's target/code/manifest/artifact/baseline hashes, expiration and unchanged hard limits. No other mutation, deployment, publication, merge, provider, worker, production or Wave 2 authority is included.
+The UI authorization was received and the single startup attempt is recorded above. The run is stopped at its local runtime prerequisite; no automatic retry was made. Evidence consistency, unchanged executor/manifest seals, scoped formatting, whitespace checks and the 956-file secret scan passed for this documentation update. Previously validated application suites were not rerun. No other mutation, deployment, publication, merge, provider, worker, production or Wave 2 authority is included.

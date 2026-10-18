@@ -1,7 +1,7 @@
 {
-  "status": "AUTHORIZED_FINALIZATION_COMPLETE_UI_AUTHORIZATION_REQUIRED",
+  "status": "AUTHORIZED_UI_ATTEMPT_STOPPED_LOCAL_RUNTIME_ACL",
   "dateEastern": "2026-10-18",
-  "verifiedAt": "2026-10-18T16:47:00.342Z",
+  "verifiedAt": "2026-10-18T16:59:23.031Z",
   "dependency": {
     "pr": 55,
     "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
@@ -90,7 +90,7 @@
     "productionOperations": 0
   },
   "infraAndPreservation": {
-    "verifiedAt": "2026-10-18T16:46:07.999Z",
+    "verifiedAt": "2026-10-18T16:59:23.031Z",
     "project": "lrxrivfqjpkvygozphoz",
     "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
     "deployment": "6ad4c3817ca9519157e3e3b0",
@@ -128,8 +128,15 @@
     ],
     "hostedBusinessWrites": 0,
     "applicationSessionsCreated": 0,
-    "uiJournalExists": false,
-    "approvedUiReceiptExists": false
+    "uiJournalExists": true,
+    "approvedUiReceiptExists": true,
+    "externalReadBudget": 15,
+    "fullOriginalAuthRowsUnchanged": true,
+    "plannedAuthAbsent": true,
+    "priorRunIdentitiesAbsent": true,
+    "protectedHealthPassed": true,
+    "legacyCheckerMismatch": "Stopped run has its private budget-only journal; all preservation checks retained",
+    "executorRetried": false
   },
   "readOnly": {
     "status": "BLOCKED_FOR_AUTHENTICATED_ROLE_JOURNEYS",
@@ -335,23 +342,90 @@
       "fileSha256": "7b3493c6f659baf729e5d7f8225bf3ff924dc8221005f3a9dc8c09de7a90a388",
       "applicationLogins": 0
     },
-    "guardianBanner": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION",
-    "coachLandmarks": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION",
-    "accountCreditText": "BLOCKED_PENDING_APPLICATION_AUTHORIZATION"
+    "guardianBanner": "BLOCKED_LOCAL_RUNTIME_ACL",
+    "coachLandmarks": "BLOCKED_LOCAL_RUNTIME_ACL",
+    "accountCreditText": "BLOCKED_LOCAL_RUNTIME_ACL"
   },
   "uiExecution": {
-    "status": "BLOCKED_PENDING_AUTHORIZATION",
+    "status": "STOPPED_LOCAL_RUNTIME_ACL_BEFORE_HOSTED_EXECUTION",
     "casesExecuted": 0,
     "setupMutations": 0,
     "businessMutations": 0,
-    "cleanupStatus": "NOT_STARTED_NOT_NEEDED_NO_FIXTURES",
+    "cleanupStatus": "NOT_NEEDED_NO_FIXTURES",
     "runId": "e2e-wave1-ui-20261017-a",
     "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
     "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
     "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
     "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
     "proposedExpiresAt": "2026-10-19T16:33:05.780Z",
-    "approvedReceiptExists": false
+    "approvedReceiptExists": true,
+    "journalExists": true,
+    "executorAttempts": 1,
+    "executorAutomaticRetries": 0,
+    "authorization": {
+      "issuedAt": "2026-10-18T16:54:43.197Z",
+      "expiresAt": "2026-10-19T16:33:05.780Z",
+      "receiptSha256": "8e6088ced8dacf1a9b4f204c356b27d14efd2aba71c7a5d65960698e2d649655",
+      "approved": true,
+      "expiredAtAttempt": false,
+      "timestampExtended": false
+    },
+    "cases": {
+      "UI01": "NOT_RUN_STARTUP_BLOCKED",
+      "UI02": "NOT_RUN_STARTUP_BLOCKED",
+      "UI03": "NOT_RUN_STARTUP_BLOCKED",
+      "UI04": "NOT_RUN_STARTUP_BLOCKED",
+      "UI05": "NOT_RUN_STARTUP_BLOCKED",
+      "UI06": "NOT_RUN_STARTUP_BLOCKED",
+      "UI07": "NOT_RUN_STARTUP_BLOCKED",
+      "UI08": "NOT_RUN_STARTUP_BLOCKED",
+      "UI09": "NOT_NEEDED_NO_FIXTURES_PRESERVATION_PASSED"
+    },
+    "blocker": {
+      "type": "LOCAL_PRIVATE_PATH_ACL",
+      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
+      "guard": "restricted(c.pgRuntime, true)",
+      "areAccessRulesProtected": false,
+      "guardExitStatus": 2,
+      "executorDatabaseConnections": 0,
+      "executorHostedRequests": 0,
+      "sourceModified": false,
+      "permissionsWeakened": false,
+      "permissionsChanged": false,
+      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry."
+    },
+    "budget": {
+      "readCharged": 45,
+      "readActual": 44,
+      "unusedConservativeReadReservation": 1,
+      "readMaximum": 600,
+      "httpBusiness": 0,
+      "httpSession": 0,
+      "httpTotal": 0,
+      "canonicalSqlMutations": 0,
+      "cleanupTransactions": 0,
+      "authMutations": 0,
+      "newAuthUsers": 0,
+      "newStudents": 0,
+      "lessons": 0,
+      "lessonCredits": 0,
+      "cashMinor": 0,
+      "providerCalls": 0,
+      "deliveredMessages": 0,
+      "workerInvocations": 0,
+      "peakOwnedBusinessRows": 0,
+      "cumulativeOwnedIdentities": 0
+    },
+    "cleanup": {
+      "status": "NOT_NEEDED_NO_FIXTURES",
+      "retainedUiBusinessRows": 0,
+      "unresolvedHostedIntents": 0,
+      "disposableAccountsCreated": 0,
+      "originalManualAccountsChanged": 0,
+      "privateJournalRetained": true
+    },
+    "journalSha256": "cb62e7155580c8b6e9e22d88d1cf4d0cb15e655dc294d62295006c76a6b6240e",
+    "nextStep": "Review and tighten only the existing local runtime directory ACL to Owner/SYSTEM, verify the unchanged executor and same journal, and explicitly decide whether to resume this stopped run. Do not replay automatically or extend the receipt; a fresh human authorization is required if it expires."
   },
   "existingEvidence": {
     "reusedWithoutRedundantReruns": true,
@@ -398,6 +472,7 @@
     "waveTwoImplemented": false
   },
   "remainingGates": [
+    "Local runtime ACL prevents the approved UI executor starting; same run stopped with zero fixtures and zero commands. No automatic retry.",
     "UI01–UI09 including three role lesson workflows, populated credit/audit history, revocation, frozen bulk replay/stale results and exact cleanup",
     "Nonzero monetary/invoice history; zero-cash UI credit tests cannot establish it",
     "Isolated Stripe/Google Calendar/email sink and scheduled cadence acceptance",
@@ -419,7 +494,8 @@
     "publications": 0,
     "merges": 0,
     "productionOperations": 0,
-    "waveTwoChanges": 0
+    "waveTwoChanges": 0,
+    "uiExecutorStartupAttempts": 1
   },
   "openDefects": [
     {
