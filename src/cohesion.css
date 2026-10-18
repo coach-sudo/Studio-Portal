@@ -2188,6 +2188,13 @@
 .guardian-context-shell {
   width: min(calc(100% - 32px), 830px);
   margin: 18px auto 0;
+  /* The shell notification bell occupies the banner's upper-right corner. */
+  padding-right: 72px;
+}
+
+.guardian-context-shell > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 768px) {

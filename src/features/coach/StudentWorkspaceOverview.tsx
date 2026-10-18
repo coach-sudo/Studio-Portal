@@ -152,7 +152,7 @@ function LiveOverview({
           </div>
         </details>
       </div>
-      <aside className="record-side">
+      <aside className="record-side" aria-label="Student context">
         <Section title="Needs attention">
           <div className="stack-actions">
             {summary.questions > 0 && (
@@ -314,7 +314,7 @@ function DemoOverview({
           </div>
         </Section>
       </div>
-      <aside className="record-side">
+      <aside className="record-side" aria-label="Student context">
         <Section title="Contact">
           <dl className="detail-list">
             <div>

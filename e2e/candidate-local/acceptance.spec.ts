@@ -3,6 +3,33 @@ import AxeBuilder from "@axe-core/playwright";
 import { ids, installFixture } from "./fixture";
 
 const studentPath = `/coach/students/${ids.student}`;
+test("guardian household identity stays clear of the notification bell", async ({
+  page,
+  context,
+}) => {
+  await installFixture(context, "guardian");
+  await page.goto("/portal");
+  const banner = page.getByRole("region", {
+    name: "Household context",
+    exact: true,
+  });
+  await expect(banner).toBeVisible();
+  const bell = await page.locator(".activity-bell").boundingBox();
+  expect(bell).not.toBeNull();
+  for (const locator of [banner.locator("strong"), banner.locator("span")]) {
+    const text = await locator.boundingBox();
+    expect(text).not.toBeNull();
+    const overlaps =
+      text!.x < bell!.x + bell!.width &&
+      text!.x + text!.width > bell!.x &&
+      text!.y < bell!.y + bell!.height &&
+      text!.y + text!.height > bell!.y;
+    expect(
+      overlaps,
+      "The bell must not cover household identity or relationship text",
+    ).toBe(false);
+  }
+});
 for (const role of ["coach", "student", "guardian"] as const) {
   test(`${role}: real query transport, navigation, refresh, financial labels and responsive axe`, async ({
     page,
@@ -44,6 +71,11 @@ for (const role of ["coach", "student", "guardian"] as const) {
         ),
       ).toBe(true);
       const axe = await new AxeBuilder({ page }).analyze();
+      // The deployed candidate has unnamed sidebar/student complementary
+      // landmarks. Keep the focused local fix covered in both query modes.
+      expect(axe.violations.filter((v) => v.id === "landmark-unique")).toEqual(
+        [],
+      );
       expect(state.pageErrors).toEqual([]);
       await info.attach(`axe-${path.split("/").pop() || "overview"}`, {
         body: JSON.stringify(

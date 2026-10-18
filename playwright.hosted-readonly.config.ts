@@ -11,6 +11,9 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   timeout: 60_000,
+  // Hosted lazy chunks and Auth restoration can exceed Playwright's 5s default.
+  // This changes waiting only; requests and responses remain real and fenced.
+  expect: { timeout: 20_000 },
   reporter: [
     ["list"],
     ["json", { outputFile: `${acceptanceDirectory}/hosted-results.json` }],

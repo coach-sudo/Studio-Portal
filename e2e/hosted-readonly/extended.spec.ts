@@ -10,6 +10,36 @@ import { formatMoney } from "../../src/domain/finance";
 import type { Page } from "@playwright/test";
 
 const studentPath = `/coach/students/${hostedAcceptance.student}`;
+test.describe("guardian banner layout", () => {
+  test.use({ role: "guardian" });
+  test("@responsive household identity stays clear of the notification bell", async ({
+    page,
+  }) => {
+    await settled(page, "/portal");
+    const banner = page.getByRole("region", {
+      name: "Household context",
+      exact: true,
+    });
+    await expect(banner).toBeVisible();
+    const bell = await page.locator(".activity-bell").boundingBox();
+    expect(bell).not.toBeNull();
+    for (const locator of [banner.locator("strong"), banner.locator("span")]) {
+      const text = await locator.boundingBox();
+      expect(text).not.toBeNull();
+      const overlaps =
+        text!.x < bell!.x + bell!.width &&
+        text!.x + text!.width > bell!.x &&
+        text!.y < bell!.y + bell!.height &&
+        text!.y + text!.height > bell!.y;
+      expect
+        .soft(
+          overlaps,
+          "The bell must not cover household identity or relationship text",
+        )
+        .toBe(false);
+    }
+  });
+});
 async function settled(page: Page, path: string) {
   await page.goto(path);
   await expect(page.locator("main")).toBeVisible();
@@ -216,7 +246,7 @@ test.describe("coach safe reviews", () => {
   }) => {
     await settled(page, `${studentPath}/household`);
     await expect(
-      page.getByText("Portal access on", { exact: true }),
+      page.locator(".status").filter({ hasText: /^Portal access on$/ }),
     ).toBeVisible();
     await expect(
       page.getByText("Activation: not verified", { exact: true }),

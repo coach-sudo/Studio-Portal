@@ -1,0 +1,3205 @@
+{
+  "status": "INCOMPLETE_PERIMETER_SESSION_REFRESH_REQUIRED",
+  "application": "830c762bdaf085f5e20a91f4e6a7afbef4afa627",
+  "deployment": "6ad39275e099502cb54a8f64",
+  "dependentPR": 52,
+  "dependentHead": "fdb84120602aa9b7c3a1768cd38ce199e92db03d",
+  "hostedTotals": {
+    "distinct": 132,
+    "passed": 121,
+    "failed": 7,
+    "blocked": 4,
+    "skipped": 0
+  },
+  "runs": [
+    {
+      "name": "main-results.json",
+      "sha256": "6f78e5cfb7b49ac59298aadebf1679c829d5bd3826ffb33faf15e740425d9626",
+      "stats": {
+        "startTime": "2026-10-17T16:39:29.490Z",
+        "duration": 681682.723,
+        "expected": 121,
+        "skipped": 4,
+        "unexpected": 7,
+        "flaky": 0
+      },
+      "globalErrors": []
+    },
+    {
+      "name": "focused-results.json",
+      "sha256": "9c08cd46e0f0cca984901d390cdfcde51fa2f59577159df92f150e016a7c8eb5",
+      "stats": {
+        "startTime": "2026-10-18T03:12:03.455Z",
+        "duration": 2286.9600000000005,
+        "expected": 0,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "globalErrors": [
+        {
+          "message": "Error: Protected deployment session unavailable"
+        }
+      ]
+    }
+  ],
+  "tests": [
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "session identity, refresh and isolation",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "session identity, refresh and isolation",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/today",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/bookings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked-boundary",
+          "description": "GET /api/v2/health: deliberately prevented; this endpoint was not tested"
+        }
+      ]
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/inbox",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/materials",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/finance",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/settings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/lessons",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/work",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "navigation /coach/students/be0657a3-0f36-477a-949a-491afb24809c/notes",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "authorized finance and coverage agree with empty synthetic account",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > coach",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "session identity, refresh and isolation",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "session identity, refresh and isolation",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/work",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/bookings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/inbox",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/payments",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/settings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/actor-page",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "navigation /portal/referrals",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "authorized finance and coverage agree with empty synthetic account",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "session identity, refresh and isolation",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "session identity, refresh and isolation",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal/work",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal/bookings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal/inbox",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal/payments",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "navigation /portal/settings",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "authorized finance and coverage agree with empty synthetic account",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian",
+      "title": "@responsive home, work and payments: overflow, landmarks, axe",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student authorization",
+      "title": "coach workspace summary denied without disclosure",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student authorization",
+      "title": "private credit schema remains unavailable",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student authorization",
+      "title": "forged student financial read denied",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian authorization",
+      "title": "coach workspace summary denied without disclosure",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian authorization",
+      "title": "private credit schema remains unavailable",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > guardian authorization",
+      "title": "forged student financial read denied",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > unrelated authorization",
+      "title": "coach workspace summary denied without disclosure",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > unrelated authorization",
+      "title": "private credit schema remains unavailable",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > unrelated authorization",
+      "title": "forged student financial read denied",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student boundaries",
+      "title": "coach route denies workspace; automatic access claim is blocked",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked",
+          "description": "Redirect completion uses claim-access, which was never sent"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        }
+      ]
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student boundaries",
+      "title": "keyboard focus reaches portal controls",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > student boundaries",
+      "title": "200 percent zoom equivalent has no page overflow",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "acceptance.spec.ts",
+      "scope": "acceptance.spec.ts > unrelated boundaries",
+      "title": "student rows, contacts and ledger are not disclosed",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts",
+      "title": "fixture boundary: coach exact existing lesson",
+      "project": "desktop-1440",
+      "outcome": "blocked",
+      "initialOutcome": "blocked",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked",
+          "description": "Verified existing fixtures contain no lessons, lots, invoices or notes; business writes are not authorized."
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts",
+      "title": "fixture boundary: student exact existing lesson",
+      "project": "desktop-1440",
+      "outcome": "blocked",
+      "initialOutcome": "blocked",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked",
+          "description": "Verified existing fixtures contain no lessons, lots, invoices or notes; business writes are not authorized."
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts",
+      "title": "fixture boundary: guardian exact existing lesson",
+      "project": "desktop-1440",
+      "outcome": "blocked",
+      "initialOutcome": "blocked",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked",
+          "description": "Verified existing fixtures contain no lessons, lots, invoices or notes; business writes are not authorized."
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts",
+      "title": "fixture boundary: nonzero financial and populated history",
+      "project": "desktop-1440",
+      "outcome": "blocked",
+      "initialOutcome": "blocked",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked",
+          "description": "Verified existing fixtures contain no lessons, lots, invoices or notes; business writes are not authorized."
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "authenticated invoice HTTP wrapper returns caller-visible empty invoices",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "missing lesson detail returns safely to the authorized lesson list",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "authenticated invoice HTTP wrapper returns caller-visible empty invoices",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "missing lesson detail returns safely to the authorized lesson list",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "authenticated invoice HTTP wrapper returns caller-visible empty invoices",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "missing lesson detail returns safely to the authorized lesson list",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive real V2 snapshot transport and identity survive navigation and reload",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian hosted depth",
+      "title": "@responsive UI financial totals agree with real authorized reads after navigation and refresh",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach safe reviews",
+      "title": "summary loading transitions to the real empty response without a mock",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "real-response-with-delay",
+          "description": "Only request timing was delayed locally; the actual hosted response continued unchanged through the read fence."
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach safe reviews",
+      "title": "Household responsibilities and permissions open without saving or inviting",
+      "project": "desktop-1440",
+      "outcome": "failed",
+      "initialOutcome": "failed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach safe reviews",
+      "title": "automatic credit preview is a read; closing preserves the setting",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach safe reviews",
+      "title": "bounded candidate read wrapper returns no lessons and creates no review",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > coach safe reviews",
+      "title": "unknown student route returns safely to the roster",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > student direct-route fences",
+      "title": "coach finance, household and administration never expose their workspace",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > guardian direct-route fences",
+      "title": "coach finance, household and administration never expose their workspace",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > unrelated direct-route fences",
+      "title": "coach finance, household and administration never expose their workspace",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": [
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        },
+        {
+          "type": "blocked-boundary",
+          "description": "POST /api/v2/auth/claim-access: deliberately prevented; this endpoint was not tested"
+        }
+      ]
+    },
+    {
+      "file": "extended.spec.ts",
+      "scope": "extended.spec.ts > unrelated private reads",
+      "title": "private schedules, household, finance and administration are denied by RLS",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts",
+      "title": "anonymous financial reads are denied; invoices require application authentication",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts",
+      "title": "served client modules contain no service key or service-role JWT",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "webkit-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "320 px student header gives long names a readable column",
+      "project": "desktop-1440",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "tablet-768",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "mobile-390",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "mobile-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    },
+    {
+      "file": "security.spec.ts",
+      "scope": "security.spec.ts > coach keyboard",
+      "title": "@keyboard search repeatedly traps forward/reverse focus and restores the opener",
+      "project": "webkit-320",
+      "outcome": "passed",
+      "initialOutcome": "passed",
+      "attemptRuns": ["main-results.json"],
+      "annotations": []
+    }
+  ],
+  "axe": {
+    "pages": 51,
+    "severity": {
+      "critical": 0,
+      "serious": 0,
+      "moderate": 53,
+      "minor": 0,
+      "unknown": 0
+    },
+    "byRule": {
+      "landmark-unique": 2,
+      "region": 51
+    }
+  },
+  "axePages": [
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": [".sidebar"],
+              "failureSummary": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": [".sidebar"],
+              "failureSummary": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
+            }
+          ]
+        },
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/household",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > coach",
+      "path": "/coach/students/be0657a3-0f36-477a-949a-491afb24809c/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "desktop-1440",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/work",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > student",
+      "path": "/portal/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-1440",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 1440,
+        "content": 1440
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "tablet-768",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 768,
+        "content": 768
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-390",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 390,
+        "content": 390
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "mobile-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/work",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "project": "webkit-320",
+      "scope": "acceptance.spec.ts > guardian",
+      "path": "/portal/payments",
+      "size": {
+        "width": 320,
+        "content": 320
+      },
+      "violations": [
+        {
+          "id": "region",
+          "impact": "moderate",
+          "nodes": [
+            {
+              "target": ["#nl-hud-frame", ".nl-bar"],
+              "failureSummary": "Fix any of the following:\n  Some page content is not contained by landmarks"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "local": {
+    "securityUnitTests": 64,
+    "helperTests": 7,
+    "browserChecks": 14,
+    "typecheck": "PASS",
+    "build": "PASS",
+    "lint": {
+      "errors": 0,
+      "existingWarnings": 2
+    },
+    "bundle": {
+      "javascriptGzipBytes": 111672,
+      "cssGzipBytes": 23127,
+      "cssWarning": true,
+      "failureBudgets": "PASS"
+    }
+  },
+  "preservation": {
+    "verifiedAt": "2026-10-18T03:19:54.129Z",
+    "project": "lrxrivfqjpkvygozphoz",
+    "tlsVerified": true,
+    "readOnly": true,
+    "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+    "migrations": 57,
+    "tablesVerified": 76,
+    "rows": 215,
+    "changed": [],
+    "tables": [
+      {
+        "table": "credit_internal.coverage_sweep",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeSha256": "5dcfa32abde8418e716482d5b60b4e21e3c1407086ad4af1b223e0bc1f4a452d",
+        "afterSha256": "5dcfa32abde8418e716482d5b60b4e21e3c1407086ad4af1b223e0bc1f4a452d",
+        "unchanged": true
+      },
+      {
+        "table": "credit_internal.credit_command_receipts",
+        "beforeCount": 4,
+        "afterCount": 4,
+        "beforeSha256": "3502ba06525161587073a29e94e2f907123a96b3e0fe40ec298927b65c7a171a",
+        "afterSha256": "3502ba06525161587073a29e94e2f907123a96b3e0fe40ec298927b65c7a171a",
+        "unchanged": true
+      },
+      {
+        "table": "credit_internal.credit_coverage_jobs",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.effects",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_items",
+        "beforeCount": 21,
+        "afterCount": 21,
+        "beforeSha256": "5359ee20f0ac5bb8571f63a93cc104deaed64a8790ca74f8112fba42bd9509cd",
+        "afterSha256": "5359ee20f0ac5bb8571f63a93cc104deaed64a8790ca74f8112fba42bd9509cd",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_jobs",
+        "beforeCount": 9,
+        "afterCount": 9,
+        "beforeSha256": "08675c5bee3f987754ad1533ff75770075f0b5eff84019e3afe892ad240101ba",
+        "afterSha256": "08675c5bee3f987754ad1533ff75770075f0b5eff84019e3afe892ad240101ba",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_requests",
+        "beforeCount": 17,
+        "afterCount": 17,
+        "beforeSha256": "78c598fed6ce5474b92261b354403ce7ea3468f19ee4a12ce93878ac3927db26",
+        "afterSha256": "78c598fed6ce5474b92261b354403ce7ea3468f19ee4a12ce93878ac3927db26",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_deletion_snapshots",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeSha256": "7c7aba861060734be9b8472c4ccd920bb95866f85380b9369b3dcc59df16555c",
+        "afterSha256": "7c7aba861060734be9b8472c4ccd920bb95866f85380b9369b3dcc59df16555c",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_record_state",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.receipts",
+        "beforeCount": 6,
+        "afterCount": 6,
+        "beforeSha256": "28f14aa57a3729f5e8d5d75bbb0707b823985e5a0245882e8ab249261bce99ac",
+        "afterSha256": "28f14aa57a3729f5e8d5d75bbb0707b823985e5a0245882e8ab249261bce99ac",
+        "unchanged": true
+      },
+      {
+        "table": "public.actor_profile_revisions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.actor_profiles",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.assignments",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.audit_events",
+        "beforeCount": 115,
+        "afterCount": 115,
+        "beforeSha256": "482e320af8912f6d441ca9092ddbab376945634fa1cc44f689210785f92baf51",
+        "afterSha256": "482e320af8912f6d441ca9092ddbab376945634fa1cc44f689210785f92baf51",
+        "unchanged": true
+      },
+      {
+        "table": "public.automation_rules",
+        "beforeCount": 20,
+        "afterCount": 20,
+        "beforeSha256": "ca1537d4772748b0c764d9bbea63d1e8fffe7a41b4ed798ac84ffed4523d4ce8",
+        "afterSha256": "ca1537d4772748b0c764d9bbea63d1e8fffe7a41b4ed798ac84ffed4523d4ce8",
+        "unchanged": true
+      },
+      {
+        "table": "public.automation_runs",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.availability_exceptions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.availability_rules",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_admin_overrides",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_holds",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_services",
+        "beforeCount": 3,
+        "afterCount": 3,
+        "beforeSha256": "a3bf357d004868e017c9f63ccbf8f95d97e1ca2c1e13001a25e5e76e4d5d154b",
+        "afterSha256": "a3bf357d004868e017c9f63ccbf8f95d97e1ca2c1e13001a25e5e76e4d5d154b",
+        "unchanged": true
+      },
+      {
+        "table": "public.bookings",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.calendar_connections",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.calendar_projections",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.conversation_messages",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.conversation_states",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.conversations",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.delivery_attempts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.discount_codes",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.discount_redemptions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.email_campaigns",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.file_assets",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.idempotency_keys",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeSha256": "28ce635dc064eb3002b5ded371345cb2c22eddd8b1103869548dc45f57621837",
+        "afterSha256": "28ce635dc064eb3002b5ded371345cb2c22eddd8b1103869548dc45f57621837",
+        "unchanged": true
+      },
+      {
+        "table": "public.integration_imports",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.invoice_settlements",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.lesson_messages",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.lesson_participants",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.lessons",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.linked_contacts",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeSha256": "5b1a38bae0a78f0614cff5ee655af9f62a4fe7cd93daf63f9a06941d8d822ec0",
+        "afterSha256": "5b1a38bae0a78f0614cff5ee655af9f62a4fe7cd93daf63f9a06941d8d822ec0",
+        "unchanged": true
+      },
+      {
+        "table": "public.mailing_list_contacts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_assignment_private",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collection_assignments",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collection_members",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collections",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_links",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_option_links",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.material_options",
+        "beforeCount": 5,
+        "afterCount": 5,
+        "beforeSha256": "add20062a454279a92e3c062a692d4139e3ca84be1f152717d1d2194a799cee7",
+        "afterSha256": "add20062a454279a92e3c062a692d4139e3ca84be1f152717d1d2194a799cee7",
+        "unchanged": true
+      },
+      {
+        "table": "public.materials",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.memberships",
+        "beforeCount": 3,
+        "afterCount": 3,
+        "beforeSha256": "bb85cc418b957da8b562c39ab6da5870d9bd1456dfd5a7b788226965e3172827",
+        "afterSha256": "bb85cc418b957da8b562c39ab6da5870d9bd1456dfd5a7b788226965e3172827",
+        "unchanged": true
+      },
+      {
+        "table": "public.notes",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.notification_receipts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.offering_messages",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.outbox_messages",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.package_billing_options",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.package_credit_entries",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.package_definitions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.package_gifts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.package_subscriptions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.packages",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.payment_entries",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.portal_accounts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.profile_submissions",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.recommendations",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.recurring_series",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.referral_rewards",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.referrals",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.service_offerings",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.student_credit_accounts",
+        "beforeCount": 2,
+        "afterCount": 2,
+        "beforeSha256": "00da84203f89fe881b782e0c2310049368a5f05ca4c148d061865aa222cc94b8",
+        "afterSha256": "00da84203f89fe881b782e0c2310049368a5f05ca4c148d061865aa222cc94b8",
+        "unchanged": true
+      },
+      {
+        "table": "public.student_pricing_rules",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.student_relationships",
+        "beforeCount": 1,
+        "afterCount": 1,
+        "beforeSha256": "84b0fc78a528bffdda9f4981a9e2401b588192a98907f737c9f3c4cafa504154",
+        "afterSha256": "84b0fc78a528bffdda9f4981a9e2401b588192a98907f737c9f3c4cafa504154",
+        "unchanged": true
+      },
+      {
+        "table": "public.students",
+        "beforeCount": 3,
+        "afterCount": 3,
+        "beforeSha256": "5ee83db73130fc0180f6e0487f15db7863f2afb2d235337a98c5c35dc1b0a93d",
+        "afterSha256": "5ee83db73130fc0180f6e0487f15db7863f2afb2d235337a98c5c35dc1b0a93d",
+        "unchanged": true
+      },
+      {
+        "table": "public.studio_invoices",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.studios",
+        "beforeCount": 2,
+        "afterCount": 2,
+        "beforeSha256": "961090d3a385edb51c56167af3c3d5f61603d1beed68a37d87c7b007dc603608",
+        "afterSha256": "961090d3a385edb51c56167af3c3d5f61603d1beed68a37d87c7b007dc603608",
+        "unchanged": true
+      },
+      {
+        "table": "public.sync_conflicts",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.terms_acceptances",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      },
+      {
+        "table": "public.webhook_events",
+        "beforeCount": 0,
+        "afterCount": 0,
+        "beforeSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "afterSha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "unchanged": true
+      }
+    ]
+  },
+  "remainingHostedChecks": {
+    "affectedReruns": 7,
+    "newGuardianBannerChecks": 6,
+    "finalLogout": 1
+  },
+  "production": "NO-GO",
+  "hostedBusinessMutations": 0,
+  "deployments": 0,
+  "providerCalls": 0,
+  "workerInvocations": 0,
+  "undeployedFixes": [
+    "Named complementary landmarks",
+    "Guardian banner notification-bell clearance"
+  ]
+}
