@@ -897,6 +897,13 @@ input[type="radio"] {
 .portal-account-summary .portal-row > div {
   min-width: 0;
 }
+.portal-account-summary .portal-row strong,
+.portal-account-summary .portal-row small {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: clip;
+  overflow-wrap: anywhere;
+}
 .portal-account-summary .portal-row > button {
   min-height: 44px;
   font-size: 13px;
