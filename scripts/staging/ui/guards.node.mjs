@@ -19,7 +19,7 @@ import {
 import { UiJournal } from "./journal.mjs";
 import { envelope } from "./cases.mjs";
 import { networkRead, sessionRequest, nodeEndpoint } from "./network.mjs";
-import { configGuard, schemaSeal } from "./hosted.mjs";
+import { configGuard, schemaSeal, environmentFingerprint } from "./hosted.mjs";
 import { Buffer } from "node:buffer";
 import { sourceHash } from "./private.mjs";
 const target = {
@@ -61,6 +61,41 @@ const state = () => ({
     portalEnabled: false,
     canReceiveNotifications: false,
   },
+});
+
+test("Netlify environment attestation accepts reordered identical API rows without mutation", () => {
+  const rows = [
+    {
+      key: "VITE_QUERY_LAYER_V2",
+      scopes: ["builds"],
+      is_secret: false,
+      values: [{ context: "deploy-preview", value: "true" }],
+    },
+    {
+      key: "SUPABASE_SERVICE_ROLE_KEY",
+      scopes: ["functions"],
+      is_secret: true,
+      values: [{ context: "deploy-preview", value: "LOCAL-REDACTED-TEST" }],
+    },
+  ];
+  const saved = globalThis.structuredClone(rows);
+  assert.equal(
+    environmentFingerprint(rows),
+    environmentFingerprint([...rows].reverse()),
+  );
+  assert.deepEqual(rows, saved);
+  for (const patch of [
+    { scopes: ["builds"] },
+    { is_secret: false },
+    { values: [{ context: "production", value: "LOCAL-REDACTED-TEST" }] },
+    { values: [{ context: "deploy-preview", value: "OTHER-LOCAL-TEST" }] },
+    { updated_at: "changed" },
+  ])
+    assert.notEqual(
+      environmentFingerprint([rows[0], { ...rows[1], ...patch }]),
+      environmentFingerprint(rows),
+      "Value, context, scope, secret status and metadata changes must fail",
+    );
 });
 test("new exact candidate binding accepted (offline identity only)", () =>
   binding(target));

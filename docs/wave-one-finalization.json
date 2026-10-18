@@ -1,0 +1,674 @@
+{
+  "status": "LOCAL_ACL_REPAIRED_SAME_RUN_BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+  "dateEastern": "2026-10-18",
+  "verifiedAt": "2026-10-18T21:27:24.833Z",
+  "dependency": {
+    "pr": 55,
+    "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
+    "branch": "codex/wave-one-final-ui-deployment"
+  },
+  "application": "f5324b203387a158df3c050569b95a9044368bc0",
+  "deployment": "6ad4c3817ca9519157e3e3b0",
+  "origin": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+  "auth": {
+    "status": "PASS_EXACT_HOST_AUTH_UPDATE",
+    "verifiedAt": "2026-10-18T16:28:05.635Z",
+    "project": "lrxrivfqjpkvygozphoz",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "deployment": "6ad4c3817ca9519157e3e3b0",
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "before": {
+      "site_url": "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app",
+      "additional_redirect_urls": [
+        "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback",
+        "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback\\?**"
+      ]
+    },
+    "after": {
+      "site_url": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+      "additional_redirect_urls": [
+        "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback",
+        "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback\\?**"
+      ]
+    },
+    "managementChangedProperties": ["site_url", "uri_allow_list"],
+    "cliChangedProperties": ["auth.additional_redirect_urls", "auth.site_url"],
+    "beforeFullAuthSha256": "5f42ae2f40c945c42ded8081780add40d874eba1c5c927e1567c6f05a256af92",
+    "afterFullAuthSha256": "cf4490d57d6cbf8f39b5093969b86093b34a84b6836123b308b4e27ff105c2fa",
+    "unrelatedAuthPropertiesUnchanged": true,
+    "unrelatedAuthPropertyCount": 241,
+    "unrelatedAuthSha256": "58c4ca70e8f9c25fb6eb9431b1bdd3a0d7af4b4b56a20070d8e15a1b1c5a7c49",
+    "desiredDiffUpdates": 0,
+    "oldConfigProbeUpdates": 2,
+    "unrelatedCliRemoteOnlyProperties": 9,
+    "cliUnmanagedUnchanged": true,
+    "tomlConfigSha256": "64703f9dcc6b9ba6235cb923f8be97405ec1053765b5a5fdf13aa3d001c91b28",
+    "literalQuestionMarkRoundTripVerified": true,
+    "manualAccounts": [
+      {
+        "role": "coach",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "student",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "guardian",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      },
+      {
+        "role": "unrelated",
+        "intact": true,
+        "confirmed": true,
+        "fullUserRowUnchanged": true
+      }
+    ],
+    "migrations": {
+      "count": 57,
+      "sha256": "ce98bf8958cfbf42981ebce73ec8d935329c06e43473fd2ad13c25824796c972",
+      "unchanged": true
+    },
+    "deploymentReady": true,
+    "context": "deploy-preview",
+    "publishedAt": null,
+    "oldStagingPublication": "6ace53e7f850061d7c49b711",
+    "oldStagingPublicationUnchanged": true,
+    "newDeployments": 0,
+    "buildsStopped": true,
+    "tlsVerified": true,
+    "applicationRoleSignIns": 0,
+    "messagesSent": 0,
+    "workerInvocations": 0,
+    "providerCalls": 0,
+    "productionOperations": 0
+  },
+  "infraAndPreservation": {
+    "verifiedAt": "2026-10-18T16:59:23.031Z",
+    "project": "lrxrivfqjpkvygozphoz",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "deployment": "6ad4c3817ca9519157e3e3b0",
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "ready": true,
+    "context": "deploy-preview",
+    "unpublished": true,
+    "newDeployments": 0,
+    "publicationUnchanged": true,
+    "previousDraftUnpublished": true,
+    "buildsStopped": true,
+    "environmentPerKeyValuesAndMetadataUnchanged": true,
+    "authMatchesApprovedReadback": true,
+    "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+    "migrations": 57,
+    "migrationFullRowsUnchanged": true,
+    "businessTables": 76,
+    "businessRows": 215,
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "businessRowsUnchanged": true,
+    "originalAuthHash": "343141ffdb5ea96d9fe5a1d5a867c3e3cf6dd0731ad86dcf1da7c8fbd8ee3c2d",
+    "allOriginalAuthIdentitiesUnchanged": true,
+    "tlsVerified": true,
+    "h01H16JournalUnchanged": true,
+    "h01H16JournalSha256": "73ac005baaa805fce0c088abec35c399b02fd6f5234768c078b66b598b62ef6b",
+    "anonymous": [
+      {
+        "path": "/",
+        "status": 401
+      },
+      {
+        "path": "/api/healthz",
+        "status": 401
+      }
+    ],
+    "hostedBusinessWrites": 0,
+    "applicationSessionsCreated": 0,
+    "uiJournalExists": true,
+    "approvedUiReceiptExists": true,
+    "externalReadBudget": 15,
+    "fullOriginalAuthRowsUnchanged": true,
+    "plannedAuthAbsent": true,
+    "priorRunIdentitiesAbsent": true,
+    "protectedHealthPassed": true,
+    "legacyCheckerMismatch": "Stopped run has its private budget-only journal; all preservation checks retained",
+    "executorRetried": false
+  },
+  "readOnly": {
+    "status": "BLOCKED_FOR_AUTHENTICATED_ROLE_JOURNEYS",
+    "infrastructure": "PASS",
+    "publicBrowser": {
+      "status": "PASS_PUBLIC_SCOPE_PLATFORM_FINDING_RETAINED",
+      "protectedHealth": {
+        "status": "ok",
+        "release": {
+          "commit": "f5324b203387",
+          "context": "deploy-preview"
+        },
+        "checkedAt": "2026-10-18T16:44:04.974Z"
+      },
+      "seriousCritical": 0,
+      "viewports": 6,
+      "audits": 12,
+      "servedAssets": [
+        "assets/AuthRoutes-CfaMwcMK.js",
+        "assets/MagicLinkLogin-l-_HirZW.js",
+        "assets/PasswordInput-BKObBp0E.js",
+        "assets/apiClientError-D3ABCpjA.js",
+        "assets/branding-1zW_ugMs.js",
+        "assets/index--YvKZkqN.css",
+        "assets/index-sbibTtJm.js",
+        "assets/jsx-runtime-CIxEorsV.js",
+        "assets/public-CXs1Q8S_.css",
+        "assets/rolldown-runtime-QTnfLwEv.js",
+        "assets/supabase-yWOpPKVZ.js",
+        "assets/user-round-DGB_rupq.js",
+        "manifest.webmanifest"
+      ],
+      "violations": [
+        {
+          "engine": "chromium",
+          "width": 320,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 320,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 390,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 390,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 768,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 768,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 1440,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "chromium",
+          "width": 1440,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 320,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 320,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 1440,
+          "state": "login",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        },
+        {
+          "engine": "webkit",
+          "width": 1440,
+          "state": "password-disclosure",
+          "violations": [
+            {
+              "id": "region",
+              "impact": "moderate",
+              "nodes": 1,
+              "targets": [["#nl-hud-frame", ".nl-bar"]],
+              "owner": "Netlify preview toolbar"
+            }
+          ]
+        }
+      ],
+      "fileSha256": "7b3493c6f659baf729e5d7f8225bf3ff924dc8221005f3a9dc8c09de7a90a388",
+      "applicationLogins": 0
+    },
+    "guardianBanner": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+    "coachLandmarks": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+    "accountCreditText": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE"
+  },
+  "uiExecution": {
+    "status": "BLOCKED_AFTER_LOCAL_ACL_REPAIR",
+    "casesExecuted": 0,
+    "setupMutations": 0,
+    "businessMutations": 0,
+    "cleanupStatus": "NOT_NEEDED_NO_FIXTURES",
+    "runId": "e2e-wave1-ui-20261017-a",
+    "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
+    "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "proposedExpiresAt": "2026-10-19T16:33:05.780Z",
+    "approvedReceiptExists": true,
+    "journalExists": true,
+    "executorAttempts": 1,
+    "executorAutomaticRetries": 0,
+    "authorization": {
+      "issuedAt": "2026-10-18T16:54:43.197Z",
+      "expiresAt": "2026-10-19T16:33:05.780Z",
+      "receiptSha256": "8e6088ced8dacf1a9b4f204c356b27d14efd2aba71c7a5d65960698e2d649655",
+      "approved": true,
+      "expiredAtAttempt": false,
+      "timestampExtended": false
+    },
+    "cases": {
+      "UI01": "NOT_RUN_STARTUP_BLOCKED",
+      "UI02": "NOT_RUN_STARTUP_BLOCKED",
+      "UI03": "NOT_RUN_STARTUP_BLOCKED",
+      "UI04": "NOT_RUN_STARTUP_BLOCKED",
+      "UI05": "NOT_RUN_STARTUP_BLOCKED",
+      "UI06": "NOT_RUN_STARTUP_BLOCKED",
+      "UI07": "NOT_RUN_STARTUP_BLOCKED",
+      "UI08": "NOT_RUN_STARTUP_BLOCKED",
+      "UI09": "NOT_NEEDED_NO_FIXTURES_PRESERVATION_PASSED"
+    },
+    "blocker": {
+      "type": "PROTECTED_PERIMETER_AND_EXECUTION_SCOPE",
+      "protectedHealthStatus": 401,
+      "configProtectionProofStale": true,
+      "receiptStillValid": true,
+      "repairInstructionAllowsRetry": false
+    },
+    "budget": {
+      "readCharged": 68,
+      "readActual": 65,
+      "unusedConservativeReadReservation": 1,
+      "readMaximum": 600,
+      "httpBusiness": 0,
+      "httpSession": 0,
+      "httpTotal": 0,
+      "canonicalSqlMutations": 0,
+      "cleanupTransactions": 0,
+      "authMutations": 0,
+      "newAuthUsers": 0,
+      "newStudents": 0,
+      "lessons": 0,
+      "lessonCredits": 0,
+      "cashMinor": 0,
+      "providerCalls": 0,
+      "deliveredMessages": 0,
+      "workerInvocations": 0,
+      "peakOwnedBusinessRows": 0,
+      "cumulativeOwnedIdentities": 0,
+      "localDeniedReadAttemptsCharged": 2
+    },
+    "cleanup": {
+      "status": "NOT_NEEDED_NO_FIXTURES",
+      "retainedUiBusinessRows": 0,
+      "unresolvedHostedIntents": 0,
+      "disposableAccountsCreated": 0,
+      "originalManualAccountsChanged": 0,
+      "privateJournalRetained": true
+    },
+    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
+    "nextStep": "Explicitly authorize resuming the same run after normal Netlify perimeter renewal and fresh protection/config preflight; retain the current receipt, original expiry and 68 charged reads. Do not retry the old launch wrapper or create another run.",
+    "startupBlocker": {
+      "type": "LOCAL_PRIVATE_PATH_ACL",
+      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
+      "guard": "restricted(c.pgRuntime, true)",
+      "areAccessRulesProtected": false,
+      "guardExitStatus": 2,
+      "executorDatabaseConnections": 0,
+      "executorHostedRequests": 0,
+      "sourceModified": false,
+      "permissionsWeakened": false,
+      "permissionsChanged": false,
+      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry.",
+      "resolvedByLocalAclRepair": true
+    }
+  },
+  "existingEvidence": {
+    "reusedWithoutRedundantReruns": true,
+    "unitIntegration": {
+      "passed": 818,
+      "files": 117
+    },
+    "localBrowser": {
+      "perMode": 102,
+      "modes": ["true", "false"]
+    },
+    "priorSecurityTests": 52,
+    "disposableExecutorScenarios": 17,
+    "pgTapAssertions": 204,
+    "concurrencySuites": 3,
+    "h01H16Passed": 16,
+    "h01H16Reruns": 0,
+    "functionHashes": 23,
+    "clientAssets": 117,
+    "staticFiles": 124,
+    "githubCiPassClaimed": false
+  },
+  "freshFocusedChecks": {
+    "environmentOrderRegressionGuardsPassed": 53,
+    "failed": 0,
+    "lintErrors": 0,
+    "lintWarnings": 0,
+    "guardLogSha256": "5f82cec597653c6de72326385a0e5b41b6af3ad05ec4b6bdd89e6226c285536e"
+  },
+  "historicalHostedFindingsPreserved": {
+    "checks": 139,
+    "passed": 132,
+    "guardianGeometryFailures": 3,
+    "fixtureBlockers": 4,
+    "platformRegionOccurrences": 54,
+    "duplicateLandmarks": true,
+    "creditTextTruncation": true,
+    "clearedByLocalPasses": false
+  },
+  "assessment": {
+    "waveOne": "INCOMPLETE_HOSTED_UI_ACCEPTANCE_PENDING",
+    "waveTwoDevelopment": "GO_FOR_ISOLATED_DEVELOPMENT_AFTER_FINAL_REVIEW",
+    "production": "NO-GO",
+    "waveTwoImplemented": false
+  },
+  "remainingGates": [
+    "Local ACL repaired; same-run execution remains blocked by rejected saved Netlify perimeter, stale config protection proof and repair-only authorization scope.",
+    "UI01–UI09 including three role lesson workflows, populated credit/audit history, revocation, frozen bulk replay/stale results and exact cleanup",
+    "Nonzero monetary/invoice history; zero-cash UI credit tests cannot establish it",
+    "Isolated Stripe/Google Calendar/email sink and scheduled cadence acceptance",
+    "Manual native zoom, screen-reader and human usability acceptance",
+    "Legacy hosted mode and provider-capable HTTP wrappers remain unverified"
+  ],
+  "actions": {
+    "authConfigurationPushes": 1,
+    "authPropertiesChanged": 2,
+    "newDeployments": 0,
+    "applicationLogins": 0,
+    "syntheticAuthCreations": 0,
+    "hostedBusinessWrites": 0,
+    "uiExecutions": 0,
+    "cleanupExecutions": 0,
+    "providerCalls": 0,
+    "deliveredMessages": 0,
+    "workerInvocations": 0,
+    "publications": 0,
+    "merges": 0,
+    "productionOperations": 0,
+    "waveTwoChanges": 0,
+    "uiExecutorStartupAttempts": 1
+  },
+  "openDefects": [
+    {
+      "id": "platform-toolbar-region",
+      "status": "FAIL",
+      "owner": "Netlify preview toolbar",
+      "impact": "moderate",
+      "currentOccurrences": 12,
+      "distinctIssue": 1,
+      "excluded": false
+    },
+    {
+      "id": "historical-guardian-geometry",
+      "status": "BLOCKED_RECHECK_HISTORICAL_FAIL_RETAINED",
+      "historicalFailures": 3,
+      "clearedByLocalPasses": false
+    }
+  ],
+  "aclRepair": {
+    "verifiedAt": "2026-10-18T21:27:24.833Z",
+    "determination": "BLOCKED",
+    "aclRepair": "PASS",
+    "acl": {
+      "verifiedAt": "2026-10-18T21:27:21.7273558Z",
+      "ownerPreserved": true,
+      "protected": true,
+      "aceCount": 2,
+      "nonOwnerNonSystemRules": 0,
+      "inheritedRules": 0,
+      "denyRules": 0,
+      "fullControlRules": 2,
+      "inheritableRules": 2,
+      "childModuleAccessRestored": true
+    },
+    "guardResults": {
+      "verifiedAt": "2026-10-18T21:23:48.433Z",
+      "runtimeGuard": "PASS",
+      "runtimeModuleResolution": "PASS",
+      "unsafeInheritanceEnabledRejected": true,
+      "unsafeExplicitEveryoneRejected": true
+    },
+    "focusedGuardTests": {
+      "passed": 53,
+      "failed": 0,
+      "logSha256": "7691e10530149b2cd0b635d620c8dabffc824735e9cab53d245fae8eeb9f7833"
+    },
+    "originalReceipt": {
+      "verifiedAt": "2026-10-18T21:24:24.123Z",
+      "journalHashBeforeRepair": "cb62e7155580c8b6e9e22d88d1cf4d0cb15e655dc294d62295006c76a6b6240e",
+      "readChargedBefore": 45,
+      "protectedIntents": 0,
+      "sourceSealsMatch": true,
+      "receiptHashUnchanged": true,
+      "receiptValid": true,
+      "issuedAt": "2026-10-18T16:54:43.197Z",
+      "expiresAt": "2026-10-19T16:33:05.780Z",
+      "perimeter": "LOCALLY_UNEXPIRED_NOT_HOST_VERIFIED",
+      "protectionProofStale": true,
+      "configBytesUnchanged": true
+    },
+    "liveRecheck": {
+      "verifiedAt": "2026-10-18T21:25:45.345Z",
+      "target": {
+        "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+        "project": "lrxrivfqjpkvygozphoz",
+        "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+        "deployment": "6ad4c3817ca9519157e3e3b0",
+        "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+        "origin": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+        "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0"
+      },
+      "authorizationValid": true,
+      "authorizationExpiresAt": "2026-10-19T16:33:05.780Z",
+      "receiptHashUnchanged": true,
+      "sourceSealsUnchanged": true,
+      "verifiedTls": true,
+      "businessTables": 76,
+      "baselineRows": 215,
+      "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+      "originalFullAuthRowsUnchanged": true,
+      "allOriginalAuthIdentitiesUnchanged": true,
+      "all57FullMigrationRowsUnchanged": true,
+      "h01H16EvidenceUnchanged": true,
+      "proposedIdentitiesAbsent": true,
+      "providerCredentialsAbsent": true,
+      "environmentUnchanged": true,
+      "authUnchanged": true,
+      "deploymentReadyUnpublished": true,
+      "functionIdentities": 23,
+      "publicationUnchanged": true,
+      "previousDraftUnchanged": true,
+      "buildsStopped": true,
+      "anonymous": [
+        {
+          "path": "/",
+          "status": 401
+        },
+        {
+          "path": "/api/healthz",
+          "status": 401
+        }
+      ],
+      "perimeter": {
+        "status": "BLOCKED",
+        "httpStatus": 401
+      },
+      "additionalReadRequests": 15,
+      "chargedReadBudget": 68,
+      "readRequestsChargedIncludingDenials": 68,
+      "localDeniedDiagnosticReadAttempts": 2,
+      "unusedConservativeReadReservation": 1,
+      "protectedOperations": 0,
+      "executorInvocations": 0,
+      "configRewritten": false
+    },
+    "budgets": {
+      "read": 68,
+      "http-business": 0,
+      "http-total": 0,
+      "session": 0,
+      "sql": 0,
+      "cleanup": 0,
+      "auth-admin": 0,
+      "readActualNetworkAttempts": 65,
+      "localDeniedReadAttemptsCharged": 2,
+      "unusedConservativeReadReservation": 1
+    },
+    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
+    "sameRunRecovery": {
+      "supported": true,
+      "mode": "--execute",
+      "modeNotToUse": "--resume-cleanup",
+      "runId": "e2e-wave1-ui-20261017-a",
+      "replayNeeded": false,
+      "baselineEventExists": false,
+      "authIntents": 0,
+      "sessionIntents": 0,
+      "httpIntents": 0,
+      "sqlIntents": 0,
+      "passwordFileExists": false,
+      "originalAttemptMarkerRetained": true,
+      "originalLaunchWrapperMustNotBeRetried": true,
+      "sourceBasis": [
+        "UiJournal validates existing identity/hash-chain and restores budget counts",
+        "UiExecutor.initialize captures the original approved baseline if no baseline exists; no pending commands need replay",
+        "executeHosted rejects session-intent recovery and ambiguous Auth provisioning; neither exists",
+        "The old private one-attempt wrapper is not a recovery entrypoint; retain its marker. A later expressly authorized reviewed CLI invocation must record a new attempt without replacing the old marker."
+      ],
+      "requiredBeforeAnyExecution": [
+        "Explicit same-run resume instruction; repair-only scope excludes execution",
+        "Normal Netlify team-session renewal and exact-host capture; protected health must pass before fixtures",
+        "Fresh supported all-deployment protection proof installed in config before launch",
+        "Fresh read-only safety gates and unchanged seals; retain same receipt, expiry, journal and budgets"
+      ],
+      "authorizationExpiresAt": "2026-10-19T16:33:05.780Z",
+      "replaceReceipt": false,
+      "extendExpiry": false,
+      "executorInvokedDuringRepair": false
+    },
+    "repairNotes": [
+      "Initial non-inheritable ACEs removed inherited child access; native icacls inheritable Owner/SYSTEM grants restored module access without package changes",
+      "Set-Acl update attempts reported SeSecurityPrivilege errors; final DACL repair used native icacls without enabling privileges",
+      "Unsafe negative controls were empty directories under the protected private parent; both restored to protected Owner/SYSTEM access",
+      "No explicit recursive ACL command, ownership change, package installation, executor change or hosted mutation"
+    ]
+  }
+}
