@@ -43,6 +43,10 @@ export default defineConfig({
       name: "webkit",
       use: { browserName: "webkit", viewport: { width: 1440, height: 1000 } },
     },
+    {
+      name: "webkit-narrow",
+      use: { browserName: "webkit", viewport: { width: 320, height: 740 } },
+    },
   ],
   webServer: {
     command:

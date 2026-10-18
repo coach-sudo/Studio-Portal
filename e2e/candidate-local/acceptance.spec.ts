@@ -3,33 +3,90 @@ import AxeBuilder from "@axe-core/playwright";
 import { ids, installFixture } from "./fixture";
 
 const studentPath = `/coach/students/${ids.student}`;
-test("guardian household identity stays clear of the notification bell", async ({
-  page,
-  context,
-}) => {
-  await installFixture(context, "guardian");
-  await page.goto("/portal");
-  const banner = page.getByRole("region", {
-    name: "Household context",
-    exact: true,
+for (const long of [false, true])
+  test(`guardian ${long ? "long" : "short"} household identity stays clear of the notification bell`, async ({
+    page,
+    context,
+  }, info) => {
+    const name = long
+      ? "Alexandria-Margaret Montgomery de la Cruz-Journigan"
+      : "E2E Candidate Student";
+    await installFixture(context, "guardian", {
+      student: name,
+      guardian: long ? "Theodora Montgomery de la Cruz" : "Candidate Guardian",
+      relationship: long
+        ? "Authorized guardian and scheduling support person"
+        : "Parent",
+    });
+    for (const path of ["/portal", "/portal/work", "/portal/payments"]) {
+      await page.goto(path);
+      const banner = page.getByRole("region", {
+        name: "Household context",
+        exact: true,
+      });
+      await expect(banner).toBeVisible();
+      await expect(banner.locator("strong")).toContainText(name);
+      const bell = await page.locator(".activity-bell").boundingBox();
+      expect(bell).not.toBeNull();
+      for (const locator of [
+        banner.locator("strong"),
+        banner.locator("span"),
+      ]) {
+        const text = await locator.boundingBox();
+        expect(text).not.toBeNull();
+        const overlaps =
+          text!.x < bell!.x + bell!.width &&
+          text!.x + text!.width > bell!.x &&
+          text!.y < bell!.y + bell!.height &&
+          text!.y + text!.height > bell!.y;
+        expect(
+          overlaps,
+          "Bell must not cover household identity or relationship",
+        ).toBe(false);
+        expect(
+          await locator.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+        ).toBe(true);
+      }
+      await page.screenshot({
+        path: info.outputPath(
+          `guardian-${long ? "long" : "short"}-${path.split("/").pop()}.png`,
+        ),
+        fullPage: true,
+      });
+    }
   });
-  await expect(banner).toBeVisible();
-  const bell = await page.locator(".activity-bell").boundingBox();
-  expect(bell).not.toBeNull();
-  for (const locator of [banner.locator("strong"), banner.locator("span")]) {
-    const text = await locator.boundingBox();
-    expect(text).not.toBeNull();
-    const overlaps =
-      text!.x < bell!.x + bell!.width &&
-      text!.x + text!.width > bell!.x &&
-      text!.y < bell!.y + bell!.height &&
-      text!.y + text!.height > bell!.y;
-    expect(
-      overlaps,
-      "The bell must not cover household identity or relationship text",
-    ).toBe(false);
-  }
-});
+for (const role of ["student", "guardian"] as const)
+  test(`${role}: account credit summary wraps without truncation`, async ({
+    page,
+    context,
+  }) => {
+    await installFixture(context, role);
+    await page.goto("/portal");
+    const account = page.getByRole("region", { name: "Account", exact: true });
+    await expect(
+      account.getByText("0 lesson credits available", { exact: true }),
+    ).toBeVisible();
+    for (const text of await account.locator("strong,small").all()) {
+      expect(
+        await text.evaluate((el) => getComputedStyle(el).textOverflow),
+      ).not.toBe("ellipsis");
+      expect(
+        await text.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+      ).toBe(true);
+    }
+    await account
+      .getByRole("button", { name: "View payments›", exact: true })
+      .click();
+    await expect(
+      page.getByText("Amount due · USD", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Dollar account credit · USD", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Lesson credits", { exact: true }).first(),
+    ).toBeVisible();
+  });
 for (const role of ["coach", "student", "guardian"] as const) {
   test(`${role}: real query transport, navigation, refresh, financial labels and responsive axe`, async ({
     page,

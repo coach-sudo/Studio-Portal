@@ -366,6 +366,29 @@ try {
       }
     }
     console.log("PASS: all 57 original migrations replayed on PostgreSQL 17");
+    if (process.env.VALIDATE_UI_EXECUTOR === "true") {
+      const output = process.env.UI_VALIDATION_DIRECTORY;
+      assert(
+        output && !output.startsWith(repo),
+        "Private UI validation directory required",
+      );
+      await client.end();
+      const result = execFileSync(
+        process.execPath,
+        [
+          repo + "/node_modules/tsx/dist/cli.mjs",
+          repo + "/scripts/staging/ui/validate.mjs",
+          root,
+          String(port),
+          output,
+        ],
+        { encoding: "utf8", windowsHide: true },
+      );
+      console.log(result.trim());
+      client = new Client(config);
+      await client.connect();
+      await client.query("set search_path=public,extensions");
+    }
     if (process.env.VALIDATE_MUTATION_EXECUTOR === "true") {
       await client.end();
       const { validateExecutor } = await import("./mutations/validate.mjs");

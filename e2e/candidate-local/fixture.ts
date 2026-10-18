@@ -15,6 +15,7 @@ export type FixtureRole = "coach" | "student" | "guardian" | "unrelated";
 export async function installFixture(
   context: BrowserContext,
   role: FixtureRole,
+  names: { student?: string; guardian?: string; relationship?: string } = {},
 ) {
   const identity = role === "student" ? ids.learner : ids[role];
   const user = {
@@ -56,8 +57,8 @@ export async function installFixture(
     id: ids.student,
     studio_id: ids.studio,
     user_id: ids.learner,
-    full_name: "E2E Candidate Student",
-    preferred_name: "E2E Candidate Student",
+    full_name: names.student || "E2E Candidate Student",
+    preferred_name: names.student || "E2E Candidate Student",
     email: "student@example.test",
     status: "active",
     focus_area: "Audition preparation",
@@ -91,10 +92,10 @@ export async function installFixture(
     studio_id: ids.studio,
     student_id: ids.student,
     user_id: ids.guardian,
-    full_name: "Candidate Guardian",
+    full_name: names.guardian || "Candidate Guardian",
     email: "guardian@example.test",
     relationship_type: "guardian",
-    relationship_label: "Parent",
+    relationship_label: names.relationship || "Parent",
     is_primary_payer: true,
     is_primary_scheduling_contact: true,
     can_receive_notifications: false,
