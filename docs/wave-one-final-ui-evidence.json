@@ -653,7 +653,7 @@
     }
   },
   "staging": {
-    "verifiedAt": "2026-10-18T04:27:57.739Z",
+    "verifiedAt": "2026-10-18T12:48:39.985Z",
     "deployment": "6ad39275e099502cb54a8f64",
     "project": "lrxrivfqjpkvygozphoz",
     "ready": true,
@@ -725,5 +725,14 @@
     "ownerAndSystemOnly": true,
     "realNonsecretWriteReadProbe": true
   },
-  "executorSealLineEndings": "LF canonical text; raw artifact and journal hashes unchanged"
+  "executorSealLineEndings": "LF canonical text; raw artifact and journal hashes unchanged",
+  "github": {
+    "draftPR": 54,
+    "basePR": 53,
+    "base": "codex/wave-one-hosted-browser-acceptance",
+    "baseHead": "825d5f2db33a3a3d2749e4fa45e54873faeee838",
+    "executorImplementationCommit": "7b09545c2a820778f28c311e65687c50fe4d87ac",
+    "checksReportedByGitHub": 0,
+    "localChecksNotRepresentedAsCI": true
+  }
 }
