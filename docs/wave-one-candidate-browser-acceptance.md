@@ -103,6 +103,8 @@ Only presentation and testing code changed. No migration, financial, credit life
 
 No database lifecycle replay, concurrency suite, H01–H16 mutation run or full historical unit suite is claimed as freshly rerun for these presentation changes.
 
+GitHub reported no checks on this dependent branch at delivery. The results above are executed local/hosted verification, not a claim of a successful GitHub CI run.
+
 ## Infrastructure and data preservation
 
 The initial preflight and fresh revalidation at `2026-10-18T03:15:46.081Z` agree: all **76 business-table counts and SHA-256 fingerprints match**, totaling **215 rows** including retained H01–H16 evidence. Four original accounts remain confirmed with their original roles; the unrelated account has no studio membership. Existing student/contact/relationship permissions were verified before sign-in and are included in the unchanged table fingerprints.
