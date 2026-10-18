@@ -1,0 +1,907 @@
+{
+  "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+  "deployId": "6ad4c3817ca9519157e3e3b0",
+  "allStaticFiles": [
+    {
+      "file": "assets/ActorProfilePreview-BHcMxdFe.js",
+      "bytes": 3556,
+      "sha256": "9c7e3abedd4ca9fc5df05fa24c283290797bf0835e95acbc92cf7e46871e574e"
+    },
+    {
+      "file": "assets/ActorProfilePreview-C49bc7fA.css",
+      "bytes": 3197,
+      "sha256": "0d9410ca8d027e7aeffbd59d39f8266a8e762e2319d4ad634d758bd1fd83cd10"
+    },
+    {
+      "file": "assets/apiClientError-D3ABCpjA.js",
+      "bytes": 608,
+      "sha256": "ef26706a5dcefc89cf725526de4b5fa967bb27e8dec7e19e67b061e7802d9d92"
+    },
+    {
+      "file": "assets/AppShell-D43NG_yZ.js",
+      "bytes": 5460,
+      "sha256": "66977be91a1c73b0dd2572751af90ddf236d881f2a31d413a1be4ba622000a78"
+    },
+    {
+      "file": "assets/arrow-left-BAO1Z9jp.js",
+      "bytes": 154,
+      "sha256": "95229f709a7906a1217198c390a9725cef84d7326c49725bf2ab7cb67d91a632"
+    },
+    {
+      "file": "assets/AssignmentActivity-Cdy66MfX.js",
+      "bytes": 2199,
+      "sha256": "3b50885f210288493b5c0060387222d605f851dc4d333dd658f49dedf132c0c7"
+    },
+    {
+      "file": "assets/AuthCallback-DhX-M2wH.js",
+      "bytes": 2352,
+      "sha256": "a83e347c8ca68e2bb7f08801b57ee37095cbc1d9330ea4a83bb083825889aad0"
+    },
+    {
+      "file": "assets/AuthRoutes-CfaMwcMK.js",
+      "bytes": 4498,
+      "sha256": "686ad453edf744fba385a475340dd084084e61c164fd07474a97298f32fd0a4f"
+    },
+    {
+      "file": "assets/booking-D6J_Z-K8.js",
+      "bytes": 3623,
+      "sha256": "da8a1c25e13cc1be4b6386629dc3c5e93e6aac8afd268014087a0ac35e552d85"
+    },
+    {
+      "file": "assets/BookingCenter-CyivRUii.js",
+      "bytes": 54760,
+      "sha256": "63dd408ba7e71fe150c73b010b4471a9a096bd3013f8f3cbd7b552d3438b2255"
+    },
+    {
+      "file": "assets/bookingCommands-Df-P_hcz.js",
+      "bytes": 3226,
+      "sha256": "52db79ca752fe70d74c1ea764b5ef0bef1587cf723503e37898a708a834e3a3c"
+    },
+    {
+      "file": "assets/branding-1zW_ugMs.js",
+      "bytes": 233,
+      "sha256": "a27dfa3143b6a3e83e08b4c3a384b7978fe02fdf20d61ef20089e781d906c7ec"
+    },
+    {
+      "file": "assets/calendar-days-DvzGGhrL.js",
+      "bytes": 483,
+      "sha256": "d56a9096f05083e92345e70ffb421696413b5d3085506e3d9462b0e81bbe2603"
+    },
+    {
+      "file": "assets/Campaigns-D1zn3JvF.css",
+      "bytes": 3059,
+      "sha256": "ba956ded1548a70fe7a6aa0bf997b70a7db37077023839049309cae49efea227"
+    },
+    {
+      "file": "assets/Campaigns-dHisMFrM.js",
+      "bytes": 10621,
+      "sha256": "67fae7dc837f7831750c05ed5efa2dcfa5ae1b8d05e7af22002951c12a9d72d2"
+    },
+    {
+      "file": "assets/ChangeTemporaryPassword-CYEEnXXZ.js",
+      "bytes": 3061,
+      "sha256": "ecb658fc034a6d790ecf6900ea8a404d2688fa451dceecaa5f8e438f7f4e489c"
+    },
+    {
+      "file": "assets/chevron-right-D5LhB35L.js",
+      "bytes": 119,
+      "sha256": "d898d5f69d0b1454fc3f5caca1dcdce9cbb45668e6c9529fe83c358cf3b8f8a8"
+    },
+    {
+      "file": "assets/circle-dollar-sign-9pRfGOuT.js",
+      "bytes": 237,
+      "sha256": "cbd47201af092cc1b22e6f971f01c540ed0a7147d769bd04b05a286c65590b17"
+    },
+    {
+      "file": "assets/clapperboard-B09UjOaK.js",
+      "bytes": 349,
+      "sha256": "20de6faafb866692e6516c7d21c692bda5a76e8416c79a056355829900e0a0b0"
+    },
+    {
+      "file": "assets/ClassWorkspace-CClUCHZF.js",
+      "bytes": 6443,
+      "sha256": "b84a9ef98dd7475681c7c76c8b8cdae1114d68fbec0a04900e120a9f939b4aec"
+    },
+    {
+      "file": "assets/clock-3-BdxKRa03.js",
+      "bytes": 158,
+      "sha256": "33cb4750a46207a861b84b7bbe25b65a1ce538460a42d1e07a4585176e1d1af0"
+    },
+    {
+      "file": "assets/CoachHome-Dz49jpRy.js",
+      "bytes": 7022,
+      "sha256": "effd6981cc6bac985289a239e126c294693ced83b0018363a2d41f54161d5e01"
+    },
+    {
+      "file": "assets/CoachSection-BU86nlDI.js",
+      "bytes": 56663,
+      "sha256": "fc5b7c0d15b06d781e36f6149bfe20d66a72cd7344278c378ec8b6678d544c16"
+    },
+    {
+      "file": "assets/credit-card-DsCdeIxf.js",
+      "bytes": 196,
+      "sha256": "4cfc0a5e657cb7c561b8f532769dea2454abcaeea49e5e5bf654650d43aebed9"
+    },
+    {
+      "file": "assets/DailyPopup-DLCP47dn.css",
+      "bytes": 1508,
+      "sha256": "cb6040769c2e5d38ec046dcc62cff0bcba95316a52672a0d3724859f7476e6fe"
+    },
+    {
+      "file": "assets/DailyPopup-DzygBcyB.js",
+      "bytes": 1985,
+      "sha256": "a763592a519854e6f110640d439163f71607b93c6d91d27423780a0689d952a0"
+    },
+    {
+      "file": "assets/downloadInvoice-CW1Le5HJ.js",
+      "bytes": 2386,
+      "sha256": "def70bfab535a073f66fdab23cea606b0502f5d97a38efe8f632720c2ce50b6b"
+    },
+    {
+      "file": "assets/file-text-Cv8Jfg8g.js",
+      "bytes": 374,
+      "sha256": "294f416dc8ebb86fdbd5d86bc5c48071e1d3647a69159b97a98c3bde6e49d2c2"
+    },
+    {
+      "file": "assets/folder-open-DMG0auej.js",
+      "bytes": 281,
+      "sha256": "70f0855b13ab988994fdb43422904af89215e72a53156bf899b3dd1833128507"
+    },
+    {
+      "file": "assets/gift-BMVl8grP.js",
+      "bytes": 338,
+      "sha256": "1eb68a555a634bc4910b66bf770370838d1149191afbf299f3e83abb7db9c4a7"
+    },
+    {
+      "file": "assets/IdentityActions-CW--Fodq.js",
+      "bytes": 10569,
+      "sha256": "ae18c9b84af49fbaee9af13746b7bda8ce5606ca4632ff2a6db249450fd3da42"
+    },
+    {
+      "file": "assets/IdentityActions-DkyGWBTY.css",
+      "bytes": 2372,
+      "sha256": "706042bbfb6e084d413684cb8c0560c52596b0c85835adb5e8cbe65753361e72"
+    },
+    {
+      "file": "assets/Inbox-CDehh50U.js",
+      "bytes": 17479,
+      "sha256": "563fbb81c2fb203ab4a118e9a24fed3775c0e5adf6ca4bcebade0f7ee080ce49"
+    },
+    {
+      "file": "assets/index--YvKZkqN.css",
+      "bytes": 127830,
+      "sha256": "572f2eb0c4bfb1947b0c7294ffdd92d105bc5c4c4672906fded737100676eb99"
+    },
+    {
+      "file": "assets/index-sbibTtJm.js",
+      "bytes": 310878,
+      "sha256": "5804f0255d0a3fe2dfd0ce3629d2b45a8457c9fc3814c0c5604799419259ab1c"
+    },
+    {
+      "file": "assets/invoice-font-metrics-D7dKORWb.js",
+      "bytes": 175211,
+      "sha256": "b61fd1062a109b3325ca9ddb9e119589e556563da7d793e1004041d70c3de127"
+    },
+    {
+      "file": "assets/invoicePdf-BNX9PtVM.js",
+      "bytes": 248086,
+      "sha256": "4ee212ca96ea09061a442d34f24096484911a44b0e62eb1e7a225ed5247fc030"
+    },
+    {
+      "file": "assets/InvoiceWorkspace-CSRy-cEP.css",
+      "bytes": 2955,
+      "sha256": "8d7d1248ec231f4596ba28753acf117a28990cdab1075acc6805b86e7ba2d3c5"
+    },
+    {
+      "file": "assets/InvoiceWorkspace-DGqz9jgj.js",
+      "bytes": 31023,
+      "sha256": "b077859303c58fc5ddca10f15f5c27c4f7e3176f95c04e74e7db537840307448"
+    },
+    {
+      "file": "assets/JoinLessonBanner-rS7HTJMd.js",
+      "bytes": 2687,
+      "sha256": "07ffb9605612fa8e595caadabfd5afcad0953fcd50c6329ec544cf6185154a6d"
+    },
+    {
+      "file": "assets/jsx-runtime-CIxEorsV.js",
+      "bytes": 7899,
+      "sha256": "746b3bf847361bcee24b6a188dce1a6cae9bac7fa8972753abc7718e70fbed8b"
+    },
+    {
+      "file": "assets/lessonReadiness-CNpFeZpm.js",
+      "bytes": 5580,
+      "sha256": "f1b2def41c6d34b6e02e1802f5a4b9dec297093082e26aa350c21b4307cfb0ad"
+    },
+    {
+      "file": "assets/LessonReadinessPanel-D3xyc3R8.js",
+      "bytes": 39911,
+      "sha256": "6bca0541b7eb11105c15a1923ec7c6dbf687ef413fa41e37b7cc2685384aea48"
+    },
+    {
+      "file": "assets/LessonReadinessPanel-n6m-hDdK.css",
+      "bytes": 4816,
+      "sha256": "40e360b0414bb6522c9be543c6d997f94beb26374ef3eae537194ab132387b7d"
+    },
+    {
+      "file": "assets/library-BkJoS1pr.js",
+      "bytes": 5951,
+      "sha256": "2ced60c32a03b37d9b061fc5fac3a5131893788f468ac9308d5bafa23eecd5e4"
+    },
+    {
+      "file": "assets/MagicLinkLogin-l-_HirZW.js",
+      "bytes": 6933,
+      "sha256": "6658d49005bb447aec4df0f36db1f2a28bbe0a62c8c102c44b4a067419adf375"
+    },
+    {
+      "file": "assets/mail-CCn-aS61.js",
+      "bytes": 202,
+      "sha256": "a2ebbb4ed8f30b050dffe16b0c0756cd3051683872477cc8c4c53caf5e4a5bc6"
+    },
+    {
+      "file": "assets/map-pin-BfyTZ5r6.js",
+      "bytes": 248,
+      "sha256": "616b734f59ca67c58af7d58620d2e16590e81af55628a07e3ef4edb3a226211f"
+    },
+    {
+      "file": "assets/megaphone-BSOjAm4s.js",
+      "bytes": 335,
+      "sha256": "c85bae09a68675fefe21ce7a585b6a21a374363f72f4d43da7f396cfd5cfa705"
+    },
+    {
+      "file": "assets/message-square-oN42X6_0.js",
+      "bytes": 222,
+      "sha256": "2b0889f559514ee28586d5d7e5c0959daf76ba425f8c609b7cdb7294535a9ad8"
+    },
+    {
+      "file": "assets/operational-intelligence-D1uUEjVR.css",
+      "bytes": 4159,
+      "sha256": "3cb989bbb9ff99530256475aaa6fe2cdcc0ae8acd8a9fa1fa61d4e0d79795f9d"
+    },
+    {
+      "file": "assets/PackageGift-D9gpBUo9.js",
+      "bytes": 5098,
+      "sha256": "6482203957272cda5368cb62ed7e2fbc17b69a1f57ab453c7ac95b90b8fb3474"
+    },
+    {
+      "file": "assets/PackageLanding-DjfOHg7n.js",
+      "bytes": 2286,
+      "sha256": "10e76c27fba9ea9e15fb43e7ee3a6af4ea57173a9cbca4b763b4541c0791062c"
+    },
+    {
+      "file": "assets/packagePresentation-BV20Uylj.js",
+      "bytes": 509,
+      "sha256": "a2c115d7baa712266d60290eb4667daa2ec8769b38c87c41c91b62553ac22468"
+    },
+    {
+      "file": "assets/PasswordInput-BKObBp0E.js",
+      "bytes": 588,
+      "sha256": "18a2bdc43d4cf2c9507b011853b3e1b619cd267b08c712bc6c9967d6f33c7e5a"
+    },
+    {
+      "file": "assets/paymentReminder-DOTJQG3B.js",
+      "bytes": 2106,
+      "sha256": "73b88166c7beebca1be1b31a1f09706fe0b966aa37ba34155f1b05ac1b511cdf"
+    },
+    {
+      "file": "assets/paymentResponsibility-C_hDxbuC.js",
+      "bytes": 1245,
+      "sha256": "6b05919551b159e3b8f369f78e61ab42b0b73ed099387a8def43530596388fb1"
+    },
+    {
+      "file": "assets/phone-BGl0nfzi.js",
+      "bytes": 311,
+      "sha256": "29f6eeccbe48d131869876ecb7bc5826a98796c4eb3a15add429ccf24e8df157"
+    },
+    {
+      "file": "assets/plus-XTo68lOn.js",
+      "bytes": 142,
+      "sha256": "9b2976b17ff20257e42d225d5fd6313f69751951956d6164f27543ae9ef902da"
+    },
+    {
+      "file": "assets/presentation-D_sumFQq.js",
+      "bytes": 2312,
+      "sha256": "fd591705e3959cc748971d1f80450fc8d15c0902c8e957cfc7e8eaa49f30e587"
+    },
+    {
+      "file": "assets/public-CXs1Q8S_.css",
+      "bytes": 1896,
+      "sha256": "718814d2fca2eef3a50f176182ab95c6d3f8c6748c0997a6370ba04c8c627125"
+    },
+    {
+      "file": "assets/PublicActorPage-BIuKMY_-.css",
+      "bytes": 9055,
+      "sha256": "c06831fdb916ac877afd8caf83bca67404074a5ef836dcf47431be29d855d8c4"
+    },
+    {
+      "file": "assets/PublicActorPage-DkERSu1a.js",
+      "bytes": 7061,
+      "sha256": "b16bd6eff379935b257a5132141a361084ffdd1c5d378489b1a003f7d5cfc091"
+    },
+    {
+      "file": "assets/PublicBooking-CSvCY0wg.js",
+      "bytes": 39321,
+      "sha256": "e5e6ec04a80dbb073ffe5f09905932324b14bbf840b3958ef939b3ef6adc134f"
+    },
+    {
+      "file": "assets/purify.es-Byem_CGp.js",
+      "bytes": 26935,
+      "sha256": "e3843cee8405d48f9bd228d900de4512059282e20e18c002f80d506182bcc03f"
+    },
+    {
+      "file": "assets/readinessPresentation-CILAzgAQ.js",
+      "bytes": 308,
+      "sha256": "b3377ac03ab31347bad1b6182a79a803b7426ba4cc446ac17ea80859c687df1a"
+    },
+    {
+      "file": "assets/Referrals-B830LiGY.css",
+      "bytes": 2022,
+      "sha256": "8b96431a60114da6a116de242bb16bd470321ffceca795c419442352a1049a8a"
+    },
+    {
+      "file": "assets/Referrals-prSmFRib.js",
+      "bytes": 8406,
+      "sha256": "c3e093daf2cd5801d4b1d475cd9980d37550d22a143fe66262afe32ebb494937"
+    },
+    {
+      "file": "assets/refresh-cw-DEBUhN95.js",
+      "bytes": 310,
+      "sha256": "00dd5bbae6781e5f241817924393b18c471fe92ec703ec2ca437f31eb3388017"
+    },
+    {
+      "file": "assets/ResourceBrowser-Ccza_6cF.js",
+      "bytes": 34610,
+      "sha256": "f09976762fbecbd8e88902b58d5928d2dfb8d67fc54d9b7aab02dc13f3fca87b"
+    },
+    {
+      "file": "assets/ResourceBrowser-THwJL3Hk.css",
+      "bytes": 2456,
+      "sha256": "c0a94952ba0277958d0b0490a97a3e33111ff0f21a99f5df60727fbd0f40dffa"
+    },
+    {
+      "file": "assets/rolldown-runtime-QTnfLwEv.js",
+      "bytes": 694,
+      "sha256": "5db5ba82eef00d1dee7e86e663098c9427d01183a88d357437daff295aec3e75"
+    },
+    {
+      "file": "assets/rotate-ccw-iv9KdhY7.js",
+      "bytes": 189,
+      "sha256": "4bd19bf55f150b6fd5b561a4c3b49f2e28c0b34c05452edce80cced490bcbce1"
+    },
+    {
+      "file": "assets/routeDomains-Ctfq7Hcr.js",
+      "bytes": 1641,
+      "sha256": "7c90951f3a932a53c9c2e1e9288c33c7fd3a939bf9cf751d8c63f7a06ce57754"
+    },
+    {
+      "file": "assets/schemas-QrXFzKFJ.js",
+      "bytes": 69122,
+      "sha256": "4fbf65d10ee96932c9430b0e03d66684a6a7c74afd294c1af8f1788910d6ee01"
+    },
+    {
+      "file": "assets/search-Cd_uNYTc.js",
+      "bytes": 163,
+      "sha256": "8d1e00d45cbaa6360a44e20fe0143f82297b14d5cfcc48d0efda699405fb4f1e"
+    },
+    {
+      "file": "assets/send-BOfNRCx2.js",
+      "bytes": 279,
+      "sha256": "280bad4e2c7ba608a89cfeff6750c81e4ef1607d0d026da093c03c4113cfaa84"
+    },
+    {
+      "file": "assets/shield-check-DhmTRHTz.js",
+      "bytes": 309,
+      "sha256": "e78c3adbaa202433c72a194d3b4168980eb6967e8cd3f35f969efb5ce2769702"
+    },
+    {
+      "file": "assets/square-check-big-CfssM3PN.js",
+      "bytes": 218,
+      "sha256": "c97c068da8ef4e4b2dec1fc9489fb26e65a48d44003993abb3e9abd1dcde244c"
+    },
+    {
+      "file": "assets/StudentFinancialSummary-BmR-iWE9.js",
+      "bytes": 28472,
+      "sha256": "5032456833f9851f6f31b6e03b5e9dd85365b0fa0a9b0dcd12343c53c8a72f33"
+    },
+    {
+      "file": "assets/StudentFinancialSummary-C0FlG9y8.css",
+      "bytes": 451,
+      "sha256": "d01fbdf39d2d6c21eb7b530c4166d00a5aaa341f0a5be18905fc892eecd91437"
+    },
+    {
+      "file": "assets/StudentPortal-CaAti0MV.css",
+      "bytes": 1236,
+      "sha256": "5f6c6857c0803d104cebf7a264d5f77020a68fe978e8776cf188f001dafcbe37"
+    },
+    {
+      "file": "assets/StudentPortal-gB6Knu_X.js",
+      "bytes": 16256,
+      "sha256": "f572230ed9f5aca04ba5e4bbca8ab968611b378485c0fc32093821a5b104da4e"
+    },
+    {
+      "file": "assets/StudentPortal.shared-Ch-tF3hT.js",
+      "bytes": 1155,
+      "sha256": "4e8fc6e76d34301de5fba12f0eac764b53a4c216f2a10c7ba6a920ad94b771cd"
+    },
+    {
+      "file": "assets/StudentPortalActorPage-L4o6Tfg7.js",
+      "bytes": 9281,
+      "sha256": "29f039cfa31f32281c93d80dabd5d9ed8f3e783f8fd41206698286f12ff9f9b9"
+    },
+    {
+      "file": "assets/StudentPortalLessonHub-Dg26Yi5V.js",
+      "bytes": 11192,
+      "sha256": "a9929ecb2a15eb00186354ef7579ac1ebde8b0784046ee215219d3764062d3ad"
+    },
+    {
+      "file": "assets/StudentPortalPayments-DOOSf9ld.js",
+      "bytes": 8758,
+      "sha256": "a77403052d2fd1e3e8802fb14fa79830ce6c8907ccefabe68a5cbebd59ac754e"
+    },
+    {
+      "file": "assets/StudentPortalSchedule-zlDitU4V.js",
+      "bytes": 10266,
+      "sha256": "098459a530cffdb0d3f629863c49b0c409ab719d53fb7453ccefad83f34ee797"
+    },
+    {
+      "file": "assets/StudentPortalSettings-DeJcryD9.js",
+      "bytes": 10622,
+      "sha256": "9d188adbfd0f06037db78aef383a11e3159b552643e1ab65f45f856fd750980f"
+    },
+    {
+      "file": "assets/StudentPortalWork-BltHXZnD.js",
+      "bytes": 2646,
+      "sha256": "03928384f504ff6031e4271f26971191f010c6a3f360565293d5c631857c228d"
+    },
+    {
+      "file": "assets/StudentPortalWorkContent-Ba-tP_X6.js",
+      "bytes": 11057,
+      "sha256": "9a4124ca39f08651bffb634d77d7e0f8b34e909c7a551424aee5e471ab262287"
+    },
+    {
+      "file": "assets/StudentWorkspace-BvFM1zJ0.js",
+      "bytes": 34856,
+      "sha256": "0d1f769425a878782ba251d97e9238fdde2fac21bba947d8a7a36272482be881"
+    },
+    {
+      "file": "assets/StudentWorkspace.shared-BAdlhyZa.js",
+      "bytes": 396,
+      "sha256": "3857d140997fc607a8ff41303245aa9636bcac065c8007cbd0a807a699d0ec0d"
+    },
+    {
+      "file": "assets/StudentWorkspaceAccount-B9Iqkfku.js",
+      "bytes": 25040,
+      "sha256": "0429f5573f01d4cf5e2dc2945316a784df597a8114fb770ae354267cbdde95d1"
+    },
+    {
+      "file": "assets/StudentWorkspaceActorPage-Br6iX7VS.js",
+      "bytes": 3380,
+      "sha256": "1be70f20b409ef00a47091b882aa1cd387342d6afb0d4bcccd2ba5cda8bc7e5d"
+    },
+    {
+      "file": "assets/StudentWorkspaceLessons-BkMnPHj7.js",
+      "bytes": 15738,
+      "sha256": "f04102a410d1663217df86484fcfe5453a78d5ec40b51537ee112f9e824851a5"
+    },
+    {
+      "file": "assets/StudentWorkspaceNotes-BjSkipNm.js",
+      "bytes": 4115,
+      "sha256": "14e6e87c5aef91e9498b2114f6b09712a00207ee49040800b722c4f2198db715"
+    },
+    {
+      "file": "assets/StudentWorkspaceOverview-BGyY3rSL.js",
+      "bytes": 7581,
+      "sha256": "b2d3bfa493048a7026f1dd4c286304cdbd24d61f1568e2535a29146c56442b09"
+    },
+    {
+      "file": "assets/StudentWorkspacePayments-CgHsZgMx.js",
+      "bytes": 19821,
+      "sha256": "4c4ae8e83ec9dfae073c977e231985edd90290af3a98b3ea0ef405e1495b1a2b"
+    },
+    {
+      "file": "assets/StudentWorkspaceWork-C0g_U8uk.js",
+      "bytes": 3593,
+      "sha256": "8ba6329b401fe4583e45a1128f09ecce4cd2d3d573e1df7679b4ca67b6adb566"
+    },
+    {
+      "file": "assets/StudioOperations-Dmrp5aKw.css",
+      "bytes": 12293,
+      "sha256": "a26af0f04da4b1f26566a37c618941752af4c9e68d3b1c2a1435fea480841fe3"
+    },
+    {
+      "file": "assets/StudioOperations-Z8S39dOB.js",
+      "bytes": 63681,
+      "sha256": "2977ce1acd1b0a679684d6d3079102be45126f7d7da2b5f8bdb171a9273d19ef"
+    },
+    {
+      "file": "assets/supabase-yWOpPKVZ.js",
+      "bytes": 202939,
+      "sha256": "3ebbe0d1eb4965cac2b8f047fb878518a26806edcd6b49a57d14b12f99f7782f"
+    },
+    {
+      "file": "assets/TermsPage-DRAZ3AsG.js",
+      "bytes": 26107,
+      "sha256": "d40d494b41a4c437f4cda3870884e15fb83d698a14d2f34b84b7e71eeeba9b11"
+    },
+    {
+      "file": "assets/TimezoneSelect-CwUTEX7x.js",
+      "bytes": 3834,
+      "sha256": "e6e7e0349d0d0b116fb3114eda730f19ff6d11d20a99c4b01276133f8c3ec6a7"
+    },
+    {
+      "file": "assets/trash-2-kW1itSaF.js",
+      "bytes": 317,
+      "sha256": "e42e69ad22dc17cfe1779ad9bbf15f9a700a64216007c082b25231a6061e5946"
+    },
+    {
+      "file": "assets/uploads-KnT9QSQk.js",
+      "bytes": 2460,
+      "sha256": "48f9dcead483c2bdf007303865b6d9d7e57f4a7dc1c4417e7b8d882180fa94ea"
+    },
+    {
+      "file": "assets/usePaginatedStudioRows-BG9321cL.js",
+      "bytes": 3454,
+      "sha256": "d2f261342f17a709654d8352177033638e4eac44065b1d825c72b7c9728983a9"
+    },
+    {
+      "file": "assets/usePrivateIdentity-DisygJsf.js",
+      "bytes": 2061,
+      "sha256": "b7a7fe60c7d4f4de4110c662805864ce88b1b8f539fef917fa4dda8847131b97"
+    },
+    {
+      "file": "assets/user-round-DGB_rupq.js",
+      "bytes": 171,
+      "sha256": "1668a8797ddd986b5ca1f06752cfab7a409dbe4f89c50fd6d5c2268fa4f8a3b4"
+    },
+    {
+      "file": "assets/users-CDlLbYk-.js",
+      "bytes": 295,
+      "sha256": "f060caf8d45e2ebc84040cb3ea62313dc79e38555b368d982397a44db07a2856"
+    },
+    {
+      "file": "assets/useStudio-B8jpIZ72.js",
+      "bytes": 36817,
+      "sha256": "87e260c0bbe490c30d461b403c9dc48a117cc32b5ac8a5b72b20e956e45684f5"
+    },
+    {
+      "file": "assets/useStudioMutation-CnaYVgqU.js",
+      "bytes": 684,
+      "sha256": "5cff302ac8c9e9e3039fd1d87d912e7dfbc63acffa06edc531829fa61053b622"
+    },
+    {
+      "file": "assets/video-DajDwTCi.js",
+      "bytes": 237,
+      "sha256": "0380aae731cfaa323efd8c10e287792ef9a488271907e49e692c6a1ec4c3e143"
+    },
+    {
+      "file": "assets/waypoints-yIqXiv0Q.js",
+      "bytes": 409,
+      "sha256": "f5c0ba1e529f977de3b944c02764723a03f85546eedc27238bfffcdd6f0f7070"
+    },
+    {
+      "file": "assets/WritingArea-BzCxXBl5.js",
+      "bytes": 575,
+      "sha256": "715ceabbb02d2c96e7a10ed2d31d02eb6a085b89a43c9dc550b390dd298535c1"
+    },
+    {
+      "file": "assets/WritingArea-DmbkpnXF.css",
+      "bytes": 642,
+      "sha256": "77e677e7a6add6cb0bf69bd6f383f5823474650542268b85eccd0722b75fa2eb"
+    },
+    {
+      "file": "coachd-mark.svg",
+      "bytes": 365,
+      "sha256": "3e546120776d6d770adc8646fab144b60a319711805b55007080c3d17a5fda86"
+    },
+    {
+      "file": "fonts/invoice-sans.ttf",
+      "bytes": 2049096,
+      "sha256": "bfb7bb691513f12e734dc346c03a03f784912432d7e3fa8e56efcf906fe86b3d"
+    },
+    {
+      "file": "fonts/OFL.txt",
+      "bytes": 4395,
+      "sha256": "e2e177a32561584d4fc13aaa3cd8e53758a12910f013fe9ca125419111722029"
+    },
+    {
+      "file": "index.html",
+      "bytes": 2565,
+      "sha256": "7c336bd8592559b4b26ab54792c00d9a0567dbc626c9f55c448c349c3704951e"
+    },
+    {
+      "file": "manifest.webmanifest",
+      "bytes": 678,
+      "sha256": "bbee88c1ad9f6d3f2c27897d39c87364d0709457f0018105aabd7f699e1be2cf"
+    },
+    {
+      "file": "og.png",
+      "bytes": 2062246,
+      "sha256": "feddde8d2e99b87d6edec7a763b060881d09f43468f4809c5459148baafc815e"
+    },
+    {
+      "file": "sw.js",
+      "bytes": 1183,
+      "sha256": "71e5dabbd42022bf392b2ee7c51a98e18f15bceabd1c7da94ea67a5558f15e6b"
+    }
+  ],
+  "functions": [
+    {
+      "name": "booking-admin",
+      "runtime": "nodejs22.x",
+      "sha256": "56a1781e08f0fc4b6ca01bcb5e518263ff04c1ea1b2584faca6830e45d7e9bc6",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/booking/:resource",
+          "expression": "^\\/api\\/v2\\/admin\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "booking-maintenance",
+      "runtime": "nodejs22.x",
+      "sha256": "0fadbec7b6efd992ce5ae992364c76370e597cc39691da4ac38f02fd27dc7161",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "booking-portal",
+      "runtime": "nodejs22.x",
+      "sha256": "c616ee028c4a94475751df51358551fa71f51218fcedaa5835615d1de719fd4f",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/bookings/:action",
+          "expression": "^\\/api\\/v2\\/portal\\/bookings(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "calendar-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "8c344e897e2ab9d2a3104b6da752706c77634155dbc090c7f2d05e848477bcde",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "campaign-unsubscribe",
+      "runtime": "nodejs22.x",
+      "sha256": "76b3c214c7ba77af06b426449a84de83a9112e41c48c4678331e37df7caeaf1e",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/unsubscribe/:token",
+          "expression": "^\\/unsubscribe(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "campaigns",
+      "runtime": "nodejs22.x",
+      "sha256": "5ee00a7f876847ac4a16f6b17f471e0ae8e380b4821500add850b05b071e7014",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/campaigns",
+          "literal": "/api/v2/admin/campaigns",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "e2e-fixtures",
+      "runtime": "nodejs22.x",
+      "sha256": "db453473798bd273c79d3d4bd1e74e35ba74379151ad85e3c2742a5dd6eaf326",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/e2e/fixtures",
+          "literal": "/api/e2e/fixtures",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "healthz",
+      "runtime": "nodejs22.x",
+      "sha256": "a9e1b5617db6eb8f83ce07c2956442b00172caaff9ab984ee744b3dcc14ba192",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/healthz",
+          "literal": "/api/healthz",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoice-pdf",
+      "runtime": "nodejs22.x",
+      "sha256": "b8da9f37fea5f56ed9840784344506f1324d8ed09425db46c067546b212a7802",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoice-pdf",
+          "literal": "/api/invoice-pdf",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoices",
+      "runtime": "nodejs22.x",
+      "sha256": "3dcf6ee443b4d0ce6d1e2de58ca9914443c48726edfebf37407efb3dc5b7a4b2",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoices",
+          "literal": "/api/invoices",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "lesson-delivery-status",
+      "runtime": "nodejs22.x",
+      "sha256": "705ff2940917b1efc6a2cdb220cfed7f48e73f1e391d67bf82b9b97f2fd007da",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/lessons/:lessonId/delivery",
+          "expression": "^\\/api\\/v2\\/portal\\/lessons(?:\\/([^\\/]+?))\\/delivery\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "outbox-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "f2419d12c20b75ff810a65872f555967d1785d0e35c2dfee425a51aec14bb256",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "package-gifts",
+      "runtime": "nodejs22.x",
+      "sha256": "8cafb530bcc0e94bb300381a1aac56a1d2b5e9ced9ea521526782b4ea9e1bd4d",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/package-gifts/:action",
+          "expression": "^\\/api\\/v2\\/public\\/package-gifts(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "platform-health",
+      "runtime": "nodejs22.x",
+      "sha256": "a655af9bccdbdd90d4dc47741149b14846229d1c10d8d6f5208ddcadd45b4063",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/health",
+          "literal": "/api/v2/health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "portal-auth",
+      "runtime": "nodejs22.x",
+      "sha256": "c4a9300729e3a4982a8d34338f5dbd35becd97e688647bcfee4835dbb5eaa692",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/auth/:action",
+          "expression": "^\\/api\\/v2\\/auth(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake-background",
+      "runtime": "nodejs22.x",
+      "sha256": "170ab7b10cd2c52b9579faa9e07d09276fa8411b707e780b46b02ac55280506b",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/provider-intake",
+          "literal": "/api/v2/admin/provider-intake",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake",
+      "runtime": "nodejs22.x",
+      "sha256": "b1496bc9a94f3ed7a5922c5c15bc5a6021c76eb58d6f752e9f8d9dbb55822b26",
+      "schedule": "*/10 * * * *",
+      "routes": []
+    },
+    {
+      "name": "public-actor",
+      "runtime": "nodejs22.x",
+      "sha256": "48c3bbeaa8609bd0355d68ae804b0800be66158190c2091372411e88ddd49ee3",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/actors/:slug",
+          "expression": "^\\/api\\/v2\\/public\\/actors(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "public-booking",
+      "runtime": "nodejs22.x",
+      "sha256": "e90037c862768c3727ecc0cb8552d33b511c8cc710a2220e497c6444146768a0",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/booking/:action",
+          "expression": "^\\/api\\/v2\\/public\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "referrals",
+      "runtime": "nodejs22.x",
+      "sha256": "f8caa216456424570a7736f45fef91db935f2270a868927b8bd82be43687c36d",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/referrals",
+          "literal": "/api/v2/referrals",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "storage-health",
+      "runtime": "nodejs22.x",
+      "sha256": "06d4affc8be4381fcf9bfdfcf326515b4fa7d4f04dda0f43131bd1033f4c4ca0",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/storage-health",
+          "literal": "/api/v2/storage-health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "stripe-webhook-v2",
+      "runtime": "nodejs22.x",
+      "sha256": "a39d9f9e76dee4560058a8d261c45375007fc1f3ba66c9cbc4c0a2ee71966e74",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/stripe-webhook",
+          "literal": "/api/v2/stripe-webhook",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "v2",
+      "runtime": "nodejs22.x",
+      "sha256": "e051f1332a1df1f76567ca06cbf31f6bb2af4324a510a39fabbfed54b9b8cd7a",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/:domain",
+          "expression": "^\\/api\\/v2(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    }
+  ],
+  "officialManifestSha256": "09ecbe45d2693ddae828f802b57bbbffaaf385fc5b174fb7fa4153df2fefd041",
+  "clientMatchesIndependentBuild": true,
+  "hostedFunctionDigestsMatch": true,
+  "verifiedAt": "2026-10-18T13:05:55.949Z"
+}
