@@ -15,6 +15,27 @@ const target = {
   origin: "https://aaaaaaaaaaaaaaaaaaaaaaaa--coachd-staging.netlify.app",
 } as const;
 describe("candidate browser perimeter", () => {
+  it("permits only the reviewed missing-lesson delivery denial probe", () => {
+    const path =
+      "/api/v2/portal/lessons/00000000-0000-4000-8000-000000000001/delivery";
+    expect(allowedCandidateRead(target, "GET", target.origin + path)).toBe(
+      true,
+    );
+    for (const suffix of ["?send=true", "#send"])
+      expect(
+        allowedCandidateRead(target, "GET", target.origin + path + suffix),
+      ).toBe(false);
+    expect(allowedCandidateRead(target, "POST", target.origin + path)).toBe(
+      false,
+    );
+    expect(
+      allowedCandidateRead(
+        target,
+        "GET",
+        target.origin + path.replace(/000000000001/, "000000000002"),
+      ),
+    ).toBe(false);
+  });
   it("rejects credential-bearing and encoded read wrappers before command classification", () => {
     for (const url of [
       target.origin.replace("https://", "https://user:password@") +
@@ -58,6 +79,19 @@ describe("candidate browser perimeter", () => {
       ).toBe(true);
     },
   );
+  it("rejects decorated read-wrapper URLs instead of widening the exact endpoint", () => {
+    for (const suffix of ["?command=create", "#preview_bulk"])
+      expect(
+        allowedCandidateRead(
+          target,
+          "POST",
+          target.origin + "/api/v2/lessons" + suffix,
+          {
+            command: "bulk_candidates",
+          },
+        ),
+      ).toBe(false);
+  });
   it.each([
     "create",
     "update_details",

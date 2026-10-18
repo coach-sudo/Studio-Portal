@@ -49,7 +49,7 @@ export function AppShell() {
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <aside className="sidebar">
+      <aside className="sidebar" aria-label="Studio sidebar">
         <div className="shell-brand">
           {data?.settings.branding?.logoUrl && (
             <img src={data.settings.branding.logoUrl} alt="" />

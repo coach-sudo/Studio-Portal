@@ -8,29 +8,42 @@ import {
 
 test.describe("coach keyboard", () => {
   test.use({ role: "coach" });
-  test("search dialog traps focus, closes with Escape and restores focus", async ({
+  test("@keyboard search repeatedly traps forward/reverse focus and restores the opener", async ({
     page,
   }) => {
     await page.goto("/coach");
     const trigger = page.getByRole("button", {
-      name: "Search studio workflows",
+      name:
+        page.viewportSize()!.width <= 900 ? "More" : "Search studio workflows",
       exact: true,
     });
+    for (let cycle = 0; cycle < 2; cycle++) {
+      await trigger.click();
+      const dialog = page.getByRole("dialog", { name: "Go to", exact: true });
+      await expect(dialog).toBeVisible();
+      await expect(
+        dialog.getByLabel("Find a workflow", { exact: true }),
+      ).toBeFocused();
+      for (const key of ["Tab", "Shift+Tab"]) {
+        for (let i = 0; i < 16; i++) {
+          await page.keyboard.press(key);
+          expect(
+            await dialog.evaluate((el) => el.contains(document.activeElement)),
+          ).toBe(true);
+        }
+      }
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(trigger).toBeFocused();
+    }
     await trigger.click();
     const dialog = page.getByRole("dialog", { name: "Go to", exact: true });
-    await expect(dialog).toBeVisible();
-    await expect
-      .soft(dialog.getByLabel("Find a workflow", { exact: true }))
-      .toBeFocused();
-    for (let i = 0; i < 16; i++) {
-      await page.keyboard.press("Tab");
-      expect(
-        await dialog.evaluate((el) => el.contains(document.activeElement)),
-      ).toBe(true);
-    }
-    await page.keyboard.press("Escape");
+    await dialog
+      .getByLabel("Find a workflow", { exact: true })
+      .fill("Students");
+    await dialog.getByRole("button", { name: "Students", exact: true }).click();
+    await expect(page).toHaveURL(`${hostedAcceptance.origin}/coach/students`);
     await expect(dialog).toHaveCount(0);
-    await expect(trigger).toBeFocused();
   });
   test("320 px student header gives long names a readable column", async ({
     page,

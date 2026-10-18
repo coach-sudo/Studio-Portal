@@ -11,6 +11,9 @@ export default defineConfig({
   retries: 0,
   workers: 1,
   timeout: 60_000,
+  // Hosted lazy chunks and Auth restoration can exceed Playwright's 5s default.
+  // This changes waiting only; requests and responses remain real and fenced.
+  expect: { timeout: 20_000 },
   reporter: [
     ["list"],
     ["json", { outputFile: `${acceptanceDirectory}/hosted-results.json` }],
@@ -26,7 +29,7 @@ export default defineConfig({
   projects: [
     {
       name: "webkit-1440",
-      grep: /session identity|@responsive/,
+      grep: /session identity|@responsive|@keyboard/,
       use: { browserName: "webkit", viewport: { width: 1440, height: 1000 } },
     },
     {
@@ -35,12 +38,12 @@ export default defineConfig({
     },
     {
       name: "tablet-768",
-      grep: /@responsive/,
+      grep: /@responsive|@keyboard/,
       use: { browserName: "chromium", viewport: { width: 768, height: 1024 } },
     },
     {
       name: "mobile-390",
-      grep: /@responsive/,
+      grep: /@responsive|@keyboard/,
       use: {
         browserName: "chromium",
         viewport: { width: 390, height: 844 },
@@ -50,13 +53,18 @@ export default defineConfig({
     },
     {
       name: "mobile-320",
-      grep: /@responsive/,
+      grep: /@responsive|@keyboard/,
       use: {
         browserName: "chromium",
         viewport: { width: 320, height: 740 },
         isMobile: true,
         hasTouch: true,
       },
+    },
+    {
+      name: "webkit-320",
+      grep: /@responsive|@keyboard/,
+      use: { browserName: "webkit", viewport: { width: 320, height: 740 } },
     },
   ],
 });

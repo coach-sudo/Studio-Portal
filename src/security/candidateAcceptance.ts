@@ -69,9 +69,22 @@ export function classifyCandidateEndpoint(
     url.pathname.includes("%")
   )
     return "provider-prohibited";
+  // Independently reviewed lesson-delivery-status.ts performs an RLS lesson
+  // lookup before read-only projection/outbox queries. Probe only this absent
+  // fixture ID; this does not authorize workers, delivery or arbitrary IDs.
+  if (
+    url.origin === target.origin &&
+    method === "GET" &&
+    !url.search &&
+    !url.hash &&
+    url.pathname ===
+      "/api/v2/portal/lessons/00000000-0000-4000-8000-000000000001/delivery"
+  )
+    return "read-only";
   if (url.origin === target.origin && url.pathname === "/api/v2/lessons") {
     if (method !== "POST") return "provider-prohibited";
-    if (readLessonCommands.has(body?.command || "")) return "read-only";
+    if (!url.search && !url.hash && readLessonCommands.has(body?.command || ""))
+      return "read-only";
     // Rescheduling calls googleAccessToken/googleFreeBusy before executing SQL.
     if (body?.command === "execute_change" && body.payload?.action !== "cancel")
       return "provider-prohibited";
