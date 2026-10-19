@@ -64,7 +64,7 @@ beforeAll(async () => {
  create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('test.user',true),'')::uuid$$;
  create table auth.users(id uuid primary key);
  create table public.studios(id uuid primary key);
- create table public.students(id uuid primary key,studio_id uuid,user_id uuid,deleted_at timestamptz,full_name text default 'Student',profile_photo_asset_id uuid);
+ create table public.students(id uuid primary key,studio_id uuid,user_id uuid,deleted_at timestamptz,portal_enabled boolean default true,full_name text default 'Student',profile_photo_asset_id uuid);
  create table public.memberships(studio_id uuid,user_id uuid,role text,profile_photo_asset_id uuid);
  create table public.lessons(id uuid primary key,studio_id uuid,student_id uuid,topic text default 'Lesson');
  create table public.lesson_participants(lesson_id uuid,student_id uuid,topic text default 'Lesson');
@@ -94,6 +94,15 @@ beforeAll(async () => {
   await db.exec(
     readFileSync(
       "supabase/migrations/20261008203319_studio_library_resources.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(
+    "create function public.merge_studio_students(keep_student_id uuid,remove_student_id uuid) returns jsonb language sql as $$select '{}'::jsonb$$",
+  );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261019165111_material_resource_study_workspace.sql",
       "utf8",
     ),
   );
@@ -587,4 +596,141 @@ it("keeps a coach-uploaded private profile photo accessible only through its aut
       .rows,
   ).toHaveLength(0);
   await as(coach);
+});
+
+it("keeps study notes owner-only, versions content anchors and rejects mismatched assignment contexts", async () => {
+  await as(coach);
+  const created = await command("resource_create", {
+    title: "Study workspace",
+    text: "Original paragraphs",
+    inLibrary: true,
+    sharedInstructions: "Shared instruction",
+  });
+  const id = created.id;
+  await command("resource_assign", {
+    id,
+    studentIds: [studentA, studentB],
+    instructions: "Assignment instruction",
+  });
+  const detail = async () =>
+    (
+      await db.query<{ r: { contentIdentity: string; version: number } }>(
+        "select public.get_material_resource($1) r",
+        [id],
+      )
+    ).rows[0].r;
+  const first = await detail();
+  await as(userA);
+  expect((await detail()).contentIdentity).toBe(first.contentIdentity);
+  const annotation = "a7000000-0000-4000-8000-000000000001";
+  const save = (
+    body: string,
+    version = 0,
+    content = first.contentIdentity,
+    student = studentA,
+  ) =>
+    db.query<{ r: { version: number } }>(
+      "select public.save_material_study($1,$2,$3,'note',$4,$7,$5,$6) r",
+      [
+        id,
+        student,
+        content,
+        annotation,
+        body,
+        version,
+        JSON.stringify({ page: 2 }),
+      ],
+    );
+  expect((await save("My private thought")).rows[0].r.version).toBe(1);
+  expect((await save("My private thought")).rows[0].r.version).toBe(1);
+  expect((await save("Updated thought", 1)).rows[0].r.version).toBe(2);
+  await expect(save("Stale overwrite", 1)).rejects.toThrow("VERSION_CONFLICT");
+  await expect(
+    save("Wrong student", 0, first.contentIdentity, studentB),
+  ).rejects.toThrow("Resource unavailable");
+  for (const user of [coach, userB]) {
+    await as(user);
+    expect(
+      (await db.query("select * from public.material_study_annotations")).rows,
+    ).toEqual([]);
+  }
+  await db.exec("reset role; set role service_role");
+  await expect(
+    db.query("select * from public.material_study_annotations"),
+  ).rejects.toThrow("permission denied");
+  await as(coach);
+  const wrong = (
+    await db.query<{ id: string }>(
+      "select id from public.material_links where material_id=$1 and student_id=$2",
+      [resource, studentA],
+    )
+  ).rows[0].id;
+  expect(
+    (
+      await db.query<{ r: unknown }>(
+        "select public.material_resource_workspace($1,$2,$3) r",
+        [id, studentA, wrong],
+      )
+    ).rows[0].r,
+  ).toBeNull();
+  await command(
+    "resource_update",
+    {
+      id,
+      title: "Metadata edit",
+      text: "Original paragraphs",
+      inLibrary: true,
+      sharedInstructions: "Changed shared instructions",
+    },
+    1,
+  );
+  expect((await detail()).contentIdentity).toBe(first.contentIdentity);
+  await command(
+    "resource_update",
+    {
+      id,
+      title: "Metadata edit",
+      text: "Replacement content",
+      inLibrary: true,
+    },
+    2,
+  );
+  expect((await detail()).contentIdentity).not.toBe(first.contentIdentity);
+  await as(userA);
+  await expect(save("Incorrect old anchor", 2)).rejects.toThrow(
+    "Resource unavailable",
+  );
+  expect(
+    (
+      await db.query(
+        "select body from public.material_study_annotations where id=$1",
+        [annotation],
+      )
+    ).rows,
+  ).toEqual([{ body: "Updated thought" }]);
+  await db.exec("reset role");
+  await db.query(
+    "delete from public.material_links where material_id=$1 and student_id=$2",
+    [id, studentA],
+  );
+  await as(userA);
+  expect(
+    (
+      await db.query(
+        "select * from public.material_study_annotations where id=$1",
+        [annotation],
+      )
+    ).rows,
+  ).toEqual([]);
+  await as(coach);
+  await command("resource_assign", { id, studentIds: [studentA] });
+  await as(userA);
+  expect(
+    (
+      await db.query(
+        "select * from public.material_study_annotations where id=$1",
+        [annotation],
+      )
+    ).rows,
+  ).toHaveLength(1);
 });

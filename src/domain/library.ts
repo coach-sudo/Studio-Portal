@@ -47,6 +47,37 @@ export interface ResourceDetail {
   storagePath?: string;
   externalUrl?: string;
   version: number;
+  mimeType?: string;
+  mediaKind?: string;
+  contentIdentity?: string;
+  sharedInstructions?: string;
+  options?: ResourceOption[];
+}
+export interface ResourceAssignment {
+  id: string;
+  resourceId: string;
+  studentId: string;
+  lessonId?: string;
+  noteId?: string;
+  instructions: string;
+  coachNotes: string | null;
+  version: number;
+}
+export interface ResourceWorkspace {
+  resource: ResourceDetail;
+  assignment: ResourceAssignment | null;
+}
+export type StudyAnchor = {
+  page?: number;
+  paragraph?: number;
+  seconds?: number;
+};
+export interface StudyRecord {
+  id?: string;
+  kind?: "bookmark" | "note";
+  anchor: StudyAnchor;
+  body?: string;
+  version: number;
 }
 export interface ResourcePage {
   items: LibraryResource[];
@@ -65,6 +96,8 @@ export interface ResourceSearch {
   pinned: boolean;
   sort: string;
   lessonId?: string;
+  collectionId?: string;
+  excludeScripts?: boolean;
 }
 export interface ResourceCollection {
   id: string;

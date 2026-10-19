@@ -12,6 +12,11 @@ export default defineConfig(({ mode }) => ({
         codeSplitting: {
           groups: [
             {
+              name: "pdf-renderer",
+              test: /node_modules[\\/]pdfjs-dist/,
+              includeDependenciesRecursively: false,
+            },
+            {
               name: "invoice-font-metrics",
               test: /node_modules[\\/]@pdf-lib[\\/]standard-fonts/,
             },

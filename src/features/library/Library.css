@@ -148,6 +148,137 @@
 .resource-form .resource-classifications {
   grid-column: 1 / -1;
 }
+.resource-advanced {
+  margin-block: 12px;
+}
+.resource-advanced > summary {
+  cursor: pointer;
+  padding-block: 8px;
+}
+.resource-study-layout {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+  align-items: start;
+}
+.resource-study-layout.with-study {
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 320px);
+}
+.resource-viewer {
+  min-width: 0;
+  background: var(--app-surface, #fff);
+  border: 1px solid var(--line, #d8ddd7);
+  border-radius: 12px;
+  padding: 12px;
+}
+.resource-viewer:fullscreen {
+  padding: 20px;
+  overflow: auto;
+}
+.viewer-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.viewer-toolbar label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+}
+.viewer-toolbar input {
+  min-width: 0;
+  max-width: 100%;
+}
+.viewer-toolbar input[type="number"] {
+  width: 5em;
+}
+.viewer-toolbar button,
+.viewer-toolbar a {
+  min-height: 44px;
+}
+.pdf-canvas,
+.image-reader {
+  max-height: 72vh;
+  overflow: auto;
+  min-width: 0;
+  background: #f3f3f1;
+}
+.pdf-canvas canvas {
+  display: block;
+  margin: auto;
+}
+.pdf-matches {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  max-height: 120px;
+  overflow: auto;
+  margin-bottom: 12px;
+}
+.text-reader {
+  max-height: 72vh;
+  overflow: auto;
+  padding: 16px;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.text-reader p {
+  margin-block: 0 1.4em;
+}
+.text-match {
+  background: #fff2b3;
+  color: #252218;
+}
+.resource-viewer video,
+.resource-viewer audio {
+  width: 100%;
+  max-height: 72vh;
+}
+.resource-viewer iframe {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border: 0;
+}
+.private-study {
+  min-width: 0;
+  border: 1px solid var(--line, #d8ddd7);
+  border-radius: 12px;
+  padding: 16px;
+}
+.private-study h2 {
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+.private-study label {
+  display: grid;
+  gap: 8px;
+}
+.private-study textarea {
+  min-height: 160px;
+  width: 100%;
+  box-sizing: border-box;
+}
+.private-study details {
+  margin-block: 16px;
+}
+.private-study article {
+  border-bottom: 1px solid var(--line, #d8ddd7);
+  padding-block: 12px;
+}
+.private-study article > p {
+  max-height: 12em;
+  overflow: auto;
+}
+@media (max-width: 1000px) {
+  .resource-study-layout.with-study {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 @media (max-width: 600px) {
   .resource-results article {
     padding: 12px;

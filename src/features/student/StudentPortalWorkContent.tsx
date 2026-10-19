@@ -232,6 +232,7 @@ export function Materials(props: {
         isDemo={props.isDemo}
         studentId={props.data.students[0]?.id}
         catalog={false}
+        excludeScripts={props.embedded}
       />
       <details className="disclosure-section">
         <summary>Current script upload</summary>

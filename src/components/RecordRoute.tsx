@@ -17,7 +17,7 @@ import { useStudioRoute } from "../hooks/useStudio";
 import { useWorkspaceNavigation } from "../hooks/useWorkspaceLocation";
 import { PageSkeleton } from "./Primitives";
 import { ResourceDetailView } from "../features/library/ResourceBrowser";
-import { getResourceDetail } from "../data/library";
+import { getResourceWorkspace } from "../data/library";
 
 export function RecordUnavailable({
   fallback = "/coach/today",
@@ -55,16 +55,35 @@ export function RecordRoute({
       identity,
       role,
       params.get("student"),
+      kind === "resource" ? params.get("assignment") : null,
       kind,
       recordId,
     ],
-    queryFn: ({ signal }) =>
-      loadRecordTarget(
+    queryFn: async ({ signal }) => {
+      if (kind === "resource") {
+        const opened = await getResourceWorkspace(
+          recordId,
+          params.get("student") || undefined,
+          params.get("assignment") || undefined,
+          signal,
+        );
+        return opened
+          ? {
+              kind: "resource" as const,
+              id: recordId,
+              studentId: params.get("student") || opened.assignment?.studentId,
+              assignmentId: opened.assignment?.id,
+              lessonId: opened.assignment?.lessonId,
+            }
+          : null;
+      }
+      return loadRecordTarget(
         kind,
         recordId,
         params.get("student") || undefined,
         signal,
-      ),
+      );
+    },
     enabled: !isDemo && !!identity && isRecordKind(kind),
     retry: false,
     staleTime: 0,
@@ -99,6 +118,10 @@ function ResourceRecord({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  const [params] = useSearchParams();
+  const studentId = params.get("student") || target.studentId || undefined;
+  const assignmentId =
+    params.get("assignment") || target.assignmentId || undefined;
   const identity = useSearchIdentity(),
     workspace = useWorkspaceNavigation(
       data.role === "coach" ? "/coach/materials" : "/portal/work",
@@ -108,12 +131,15 @@ function ResourceRecord({
       "workspace-resource",
       identity,
       data.role,
-      target.studentId,
+      studentId,
       target.id,
+      assignmentId,
     ],
-    queryFn: ({ signal }) => getResourceDetail(target.id, signal),
-    enabled: !isDemo,
+    queryFn: ({ signal }) =>
+      getResourceWorkspace(target.id, studentId, assignmentId, signal),
+    enabled: !isDemo && !!identity,
     retry: false,
+    gcTime: 0,
   });
   const original = data.materials.find(
     (m) => (m.resourceId || m.id) === target.id,
@@ -126,7 +152,7 @@ function ResourceRecord({
         source: original.source || "",
         version: original.version,
       }
-    : full.data;
+    : full.data?.resource;
   if (full.isError || (!detail && !full.isPending))
     return (
       <RecordUnavailable
@@ -150,25 +176,11 @@ function ResourceRecord({
           resourceStatus: "active",
           createdAt: "",
           options: [],
-          assignmentId: target.assignmentId || undefined,
+          ownerStudentId: studentId,
+          assignmentId,
           lessonId: target.lessonId || undefined,
         }}
       />
-      {target.lessonId && (
-        <button
-          onClick={() =>
-            workspace.open(
-              resolvedRecordLink(data.role, {
-                kind: "lesson",
-                id: target.lessonId!,
-                studentId: target.studentId,
-              }),
-            )
-          }
-        >
-          Open related lesson
-        </button>
-      )}
     </section>
   );
 }

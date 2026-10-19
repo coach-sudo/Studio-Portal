@@ -1,3 +1,4 @@
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import {
   test,
   expect,
@@ -26,11 +27,17 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   const attempt =
     ["alpha", "beta", "gamma"][test.info().retry] || crypto.randomUUID();
   const title = `${runtime.runId} Shakespeare Lexicon ${attempt}`;
-  const lexiconBytes = Buffer.from(
-    `%PDF-1.4\nDeterministic reusable lexicon fixture attempt-${test.info().retry}\n%%EOF`,
-  );
+  const pdf = await PDFDocument.create(),
+    font = await pdf.embedFont(StandardFonts.Helvetica);
+  pdf
+    .addPage()
+    .drawText("Reusable study lexicon " + attempt, { font, size: 16 });
+  const lexiconBytes = Buffer.from(await pdf.save());
   await page.goto("/coach/materials");
-  await page.getByRole("button", { name: "New resource", exact: true }).click();
+  await page.getByRole("button", { name: "Add material", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Add New Resource", exact: true })
+    .click();
   const editor = page.getByRole("dialog", {
     name: "Add New Resource",
     exact: true,
@@ -91,24 +98,18 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     .locator(".resource-results article")
     .filter({ has: student.page.getByText(title, { exact: true }) });
   await expect(studentRow).toBeVisible();
-  await studentRow.getByRole("button", { name: "Details" }).click();
-  const resourceDetail = student.page.locator(".resource-detail");
-  await expect(
-    resourceDetail.getByRole("button", { name: "Open file" }),
-  ).toBeVisible();
-  const filePopup = student.page.waitForEvent("popup");
   const fileRequest = student.context.waitForEvent("request", {
     predicate: (request) =>
       request.method() === "GET" &&
       request.url().includes("/storage/v1/object/sign/studio-materials/") &&
       new URL(request.url()).searchParams.has("token"),
   });
-  await resourceDetail.getByRole("button", { name: "Open file" }).click();
-  const filePage = await filePopup;
+  await studentRow.getByRole("button", { name: "Details" }).click();
+  const resourceDetail = student.page.locator(".resource-detail");
+  await expect(resourceDetail.locator("canvas")).toBeVisible();
   const download = await student.context.request.get((await fileRequest).url());
   expect(download.ok()).toBe(true);
   expect(await download.body()).toEqual(lexiconBytes);
-  await filePage.close();
   await expect(resourceDetail).toContainText("Read the shared glossary.");
   await expect(
     student.page.getByText("Private assessment; never student-visible."),

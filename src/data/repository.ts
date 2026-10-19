@@ -23,6 +23,7 @@ export type StudioDomain = (typeof studioDomains)[number];
 
 const allStudioDomains = new Set<StudioDomain>(studioDomains);
 const signedUrlCache = new Map<string, { url: string; refreshAfter: number }>();
+let signedUrlIdentity: string | undefined;
 
 type QueryResult = { data: any; error: any };
 
@@ -40,6 +41,10 @@ function selectedQuery(
 async function signedUrlsForPaths(database: any, paths: string[]) {
   const { data: sessionData } = await database.auth.getSession();
   const identity = sessionData?.session?.user?.id;
+  if (identity !== signedUrlIdentity) {
+    signedUrlCache.clear();
+    signedUrlIdentity = identity;
+  }
   if (!identity) return new Map<string, string>();
   const now = Date.now();
   const urls = new Map<string, string>();
@@ -53,6 +58,9 @@ async function signedUrlsForPaths(database: any, paths: string[]) {
     const { data } = await database.storage
       .from("studio-materials")
       .createSignedUrls(missing, 300);
+    const current = await database.auth.getSession();
+    if (current.data?.session?.user?.id !== identity)
+      return new Map<string, string>();
     for (const row of data ?? []) {
       if (!row.path || !row.signedUrl) continue;
       signedUrlCache.set(`${identity}:${row.path}`, {
@@ -65,9 +73,12 @@ async function signedUrlsForPaths(database: any, paths: string[]) {
   return urls;
 }
 
-export async function getSignedMaterialUrl(path: string) {
+export async function getSignedMaterialUrl(path: string, forceRefresh = false) {
   if (!supabase)
     throw new Error("Production database configuration is unavailable.");
+  if (forceRefresh)
+    for (const key of signedUrlCache.keys())
+      if (key.endsWith(`:${path}`)) signedUrlCache.delete(key);
   const urls = await signedUrlsForPaths(supabase, [path]);
   const url = urls.get(path);
   if (!url) throw new Error("The material could not be opened.");

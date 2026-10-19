@@ -5,6 +5,9 @@ import {
   useWorkspaceNavigation,
 } from "../../hooks/useWorkspaceLocation";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { ResourceWorkspace } from "./ResourceWorkspace";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer, EmptyState, Section } from "../../components/Primitives";
 import { WritingArea } from "../../components/WritingArea";
@@ -17,18 +20,17 @@ import {
 } from "../../domain/library";
 import type { StudioSnapshot } from "../../domain/model";
 import {
-  getResourceDetail,
-  getAssignment,
+  getResourceWorkspace,
   resourceCommand,
   useResourceSearch,
 } from "../../data/library";
-import { getSignedMaterialUrl } from "../../data/repository";
 import { useStudioStore } from "../../state/StudioStore";
 import { MetadataPicker } from "./MetadataPicker";
 import { ResourceEditor } from "./ResourceEditor";
 import { MetadataManager } from "./MetadataManager";
 import { CollectionsManager } from "./CollectionsManager";
 import { AssignmentEditor } from "./AssignmentEditor";
+import { CollectionFilter } from "./CollectionFilter";
 import "./Library.css";
 
 export function ResourceDetailView({
@@ -40,22 +42,29 @@ export function ResourceDetailView({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
-  const identity = useSearchIdentity();
-  const [error, setError] = useState("");
-  const assignment = useQuery({
+  const identity = useSearchIdentity(),
+    [params] = useSearchParams();
+  const studentId =
+    params.get("student") ||
+    resource.ownerStudentId ||
+    (data.role === "student" ? data.students[0]?.id : undefined);
+  const assignmentId = params.get("assignment") || resource.assignmentId;
+  const full = useQuery({
     queryKey: [
-      "material-assignment",
+      "resource-workspace",
       identity,
       data.role,
-      resource.assignmentId,
+      studentId,
+      resource.id,
+      assignmentId,
     ],
-    queryFn: ({ signal }) => getAssignment(resource.assignmentId!, signal),
-    enabled: !isDemo && !!resource.assignmentId,
-  });
-  const full = useQuery({
-    queryKey: ["material-detail", identity, data.role, resource.id],
-    queryFn: ({ signal }) => getResourceDetail(resource.id, signal),
-    enabled: !isDemo,
+    queryFn: ({ signal }) =>
+      getResourceWorkspace(resource.id, studentId, assignmentId, signal),
+    enabled: !isDemo && !!identity,
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+    refetchInterval: 60000,
   });
   const original = data.materials.find(
     (m) => (m.resourceId || m.id) === resource.id,
@@ -71,80 +80,97 @@ export function ResourceDetailView({
         externalUrl: original?.externalUrl,
         keywords: original?.keywords || [],
         version: resource.version,
+        mimeType: resource.mimeType,
+        mediaKind: resource.mediaKind,
       }
-    : full.data;
-  const open = async () => {
-    const target = window.open("about:blank", "_blank");
-    if (target) target.opener = null;
-    try {
-      const url = detail?.storagePath
-        ? await getSignedMaterialUrl(detail.storagePath)
-        : detail?.externalUrl;
-      if (!url || !/^https?:\/\//i.test(url))
-        throw new Error("The resource link is unavailable.");
-      if (target) target.location.href = url;
-      else throw new Error("Allow a new tab to open the resource.");
-    } catch (reason) {
-      target?.close();
-      setError(
-        reason instanceof Error ? reason.message : "Could not open resource.",
-      );
-    }
-  };
+    : full.data?.resource;
+  if (!isDemo && (full.isPending || !identity))
+    return <p role="status">Loading resource…</p>;
+  if (!isDemo && (full.isError || !detail))
+    return (
+      <div role="alert">
+        <p>
+          This resource or assignment is unavailable in the selected student
+          context.
+        </p>
+        <button onClick={() => void full.refetch()}>Retry access</button>
+      </div>
+    );
+  if (!detail) return null;
+  const assignment = full.data?.assignment;
   return (
     <div className="resource-detail">
-      {!isDemo && full.isPending && <p role="status">Loading resource…</p>}
-      {!isDemo && full.isError && (
-        <p role="alert">
-          {full.error.message}
-          <button type="button" onClick={() => void full.refetch()}>
-            Retry
-          </button>
-        </p>
+      {detail.sharedInstructions && (
+        <details open className="resource-instructions">
+          <summary>Resource instructions</summary>
+          <p>{detail.sharedInstructions}</p>
+        </details>
       )}
-      {full.isSuccess && !detail && (
-        <p role="alert">This resource is no longer available.</p>
+      {(isDemo ? resource.instructions : assignment?.instructions) && (
+        <details open className="resource-instructions">
+          <summary>Assignment instructions</summary>
+          <p>{isDemo ? resource.instructions : assignment?.instructions}</p>
+        </details>
       )}
-      {detail && (
-        <>
-          {(isDemo ? resource.instructions : assignment.data?.instructions) && (
-            <div className="resource-instructions">
-              <strong>Instructions</strong>
-              <p>
-                {isDemo ? resource.instructions : assignment.data?.instructions}
-              </p>
+      {data.role === "coach" && assignment?.coachNotes && (
+        <details>
+          <summary>Private coach notes</summary>
+          <p className="resource-instructions">{assignment.coachNotes}</p>
+        </details>
+      )}
+      {(assignment?.lessonId || assignment?.noteId) && (
+        <nav className="viewer-toolbar" aria-label="Resource context">
+          {assignment.lessonId && (
+            <Link
+              to={recordLink(data.role, {
+                kind: "lesson",
+                id: assignment.lessonId,
+                studentId: assignment.studentId,
+              })}
+            >
+              Related lesson
+            </Link>
+          )}
+          {assignment.noteId && (
+            <Link
+              to={recordLink(data.role, {
+                kind: "note",
+                id: assignment.noteId,
+                studentId: assignment.studentId,
+              })}
+            >
+              Related feedback
+            </Link>
+          )}
+        </nav>
+      )}
+      {detail.description ||
+      detail.source ||
+      detail.keywords.length ||
+      detail.options?.length ? (
+        <details>
+          <summary>About this resource</summary>
+          <p className="resource-text">{detail.description}</p>
+          {detail.source && <p>Source: {detail.source}</p>}
+          {detail.keywords.length > 0 && <p>{detail.keywords.join(", ")}</p>}
+          {!!detail.options?.length && (
+            <div className="resource-tags">
+              {detail.options.map((o) => (
+                <span key={o.id}>{o.name}</span>
+              ))}
             </div>
           )}
-          {data.role === "coach" && assignment.data?.coachNotes && (
-            <details>
-              <summary>Private coach notes</summary>
-              <p className="resource-instructions">
-                {assignment.data.coachNotes}
-              </p>
-            </details>
-          )}
-          <p>{detail.description}</p>
-          {detail.source && <small>Source: {detail.source}</small>}
-          {detail.keywords.length > 0 && (
-            <small>Keywords: {detail.keywords.join(", ")}</small>
-          )}
-          {detail.text && <div className="resource-text">{detail.text}</div>}
-          {(detail.storagePath || detail.externalUrl) && (
-            <button type="button" onClick={() => void open()}>
-              {detail.storagePath ? "Open file" : "Visit source link"}
-            </button>
-          )}
-        </>
-      )}
-      {error && <p role="alert">{error}</p>}
-      {assignment.isError && (
-        <p role="alert">
-          Instructions could not be loaded.
-          <button type="button" onClick={() => void assignment.refetch()}>
-            Retry instructions
-          </button>
-        </p>
-      )}
+        </details>
+      ) : null}
+      <ResourceWorkspace
+        key={identity + ":" + detail.id + ":" + detail.contentIdentity}
+        resource={detail}
+        studentId={studentId}
+        assignmentId={assignmentId || undefined}
+        identity={identity}
+        allowStudy={data.role === "student"}
+        isDemo={isDemo}
+      />
     </div>
   );
 }
@@ -352,6 +378,7 @@ export function ResourceBrowser({
   onChoose,
   showActions = true,
   title,
+  excludeScripts = false,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
@@ -362,6 +389,7 @@ export function ResourceBrowser({
   onChoose?: (resource: LibraryResource) => void;
   showActions?: boolean;
   title?: string;
+  excludeScripts?: boolean;
 }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -377,6 +405,7 @@ export function ResourceBrowser({
     data.role === "coach" ? "/coach/materials" : "/portal/work",
   );
   const [search, setSearch] = useUrlValue("q"),
+    [collectionId, setCollectionId] = useUrlValue("collection"),
     [visibility, setVisibility] = useUrlValue("access", "all"),
     [filterIds, setFilterIds] = useUrlValue("filters"),
     [status, setStatus] = useUrlValue("resourceStatus", "active"),
@@ -429,6 +458,8 @@ export function ResourceBrowser({
       pinned,
       sort,
       lessonId,
+      collectionId,
+      excludeScripts,
     },
     source,
     isDemo,
@@ -513,11 +544,7 @@ export function ResourceBrowser({
         canManage && (
           <div className="page-actions">
             <button type="button" onClick={() => setAdding(true)}>
-              {catalog
-                ? "New resource"
-                : lessonId
-                  ? "Attach resource"
-                  : "Add material"}
+              {lessonId ? "Attach resource" : "Add material"}
             </button>
             {coach && catalog && (
               <button type="button" onClick={() => setCollections(true)}>
@@ -595,27 +622,36 @@ export function ResourceBrowser({
           </label>
         )}
       </div>
-      <div className="resource-filters">
-        {metadataKinds.map((kind) => (
-          <MetadataPicker
-            key={kind}
+      <details className="resource-advanced">
+        <summary>Filters{filters.length ? ` (${filters.length})` : ""}</summary>
+        <div className="resource-filters">
+          <CollectionFilter
             data={source}
             isDemo={isDemo}
-            kind={kind}
-            label={
-              kind === "category"
-                ? "Categories"
-                : kind === "medium"
-                  ? "Mediums"
-                  : `${kind[0].toUpperCase()}${kind.slice(1)}s`
-            }
-            selected={filters.filter((o) => o.kind === kind)}
-            onChange={(next) =>
-              setFilters([...filters.filter((o) => o.kind !== kind), ...next])
-            }
+            value={collectionId}
+            onChange={setCollectionId}
           />
-        ))}
-      </div>
+          {metadataKinds.map((kind) => (
+            <MetadataPicker
+              key={kind}
+              data={source}
+              isDemo={isDemo}
+              kind={kind}
+              label={
+                kind === "category"
+                  ? "Categories"
+                  : kind === "medium"
+                    ? "Mediums"
+                    : `${kind[0].toUpperCase()}${kind.slice(1)}s`
+              }
+              selected={filters.filter((o) => o.kind === kind)}
+              onChange={(next) =>
+                setFilters([...filters.filter((o) => o.kind !== kind), ...next])
+              }
+            />
+          ))}
+        </div>
+      </details>
       <div className="resource-result-status" aria-live="polite">
         {query.isFetching
           ? "Searching…"
@@ -623,6 +659,7 @@ export function ResourceBrowser({
             ? ""
             : `${total} resource${total === 1 ? "" : "s"}`}
         {(search ||
+          collectionId ||
           filters.length ||
           pinned ||
           status !== "active" ||
@@ -631,6 +668,7 @@ export function ResourceBrowser({
             type="button"
             onClick={() => {
               setSearch("");
+              setCollectionId("");
               setFilters([]);
               setStatus("active");
               setPinned(false);
@@ -786,24 +824,16 @@ export function ResourceBrowser({
           {query.isFetchingNextPage ? "Loading…" : "Load More"}
         </button>
       )}
-      {adding &&
-        (catalog && !studentId ? (
-          <ResourceEditor
-            data={data}
-            isDemo={isDemo}
-            onClose={() => setAdding(false)}
-            onSaved={() => setAdding(false)}
-          />
-        ) : (
-          <AddResourceFlow
-            data={data}
-            isDemo={isDemo}
-            studentId={studentId}
-            lessonId={lessonId}
-            noteId={noteId}
-            onClose={() => setAdding(false)}
-          />
-        ))}
+      {adding && (
+        <AddResourceFlow
+          data={data}
+          isDemo={isDemo}
+          studentId={studentId}
+          lessonId={lessonId}
+          noteId={noteId}
+          onClose={() => setAdding(false)}
+        />
+      )}
       {editing && (
         <ResourceEditor
           data={data}

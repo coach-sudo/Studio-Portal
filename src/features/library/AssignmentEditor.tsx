@@ -5,6 +5,7 @@ import { WritingArea } from "../../components/WritingArea";
 import { getAssignment, resourceCommand } from "../../data/library";
 import type { LibraryResource } from "../../domain/library";
 import { useStudioStore } from "../../state/StudioStore";
+import { useSearchIdentity } from "../../data/globalSearch";
 
 export function AssignmentEditor({
   resource,
@@ -17,12 +18,13 @@ export function AssignmentEditor({
 }) {
   const store = useStudioStore(),
     client = useQueryClient();
+  const identity = useSearchIdentity();
   const [instructions, setInstructions] = useState<string>(),
     [coachNotes, setCoachNotes] = useState<string>(),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
   const detail = useQuery({
-    queryKey: ["material-assignment", resource.assignmentId],
+    queryKey: ["material-assignment", identity, resource.assignmentId],
     queryFn: ({ signal }) => getAssignment(resource.assignmentId!, signal),
     enabled: !isDemo,
   });
