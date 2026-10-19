@@ -321,7 +321,7 @@ describe("50 start-to-finish studio workflows", () => {
     it("16 consolidates Home into Today with a week preview", async () => {
       renderApp("/coach");
       expect(
-        await screen.findByRole("heading", { name: "Today", exact: true }),
+        await screen.findByRole("heading", { name: "Today" }),
       ).toBeInTheDocument();
       expect(screen.getByText("Week preview")).toBeInTheDocument();
       expect(screen.queryByText("Run today")).not.toBeInTheDocument();

@@ -28,5 +28,5 @@
       "result": "jsonb"
     }
   ],
-  "rpcTypesGeneratedFromIsolatedCatalog": true
+  "rpcTypesGeneratedFromIsolatedCatalog": false
 }
