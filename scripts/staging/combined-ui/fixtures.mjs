@@ -80,14 +80,6 @@ export async function seed(e) {
         "insert into public.student_credit_accounts(student_id,auto_apply) values($1,false)",
         [id],
       );
-    await e.db.query(
-      "insert into public.packages(id,student_id,name,currency,price_minor) values($1,$2,'Studio lesson credits','USD',0)",
-      [ids.package, ids.student],
-    );
-    await e.db.query(
-      "insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values($1,$2,$3,$3,'private',60,0)",
-      [ids.service, plan.target.studio, plan.runId],
-    );
     for (const l of plan.fixtureContent.lessons)
       await e.db.query(
         "insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,price_minor,paid_minor,payment_status,source_provider) values($1,$2,$3,$4,$5,$6,$7,'in_person',$8,0,0,'due','studio')",
@@ -126,56 +118,7 @@ export async function seed(e) {
       "insert into public.material_links(id,material_id,student_id,role,visible_to_student) values($1,$2,$3,'lesson_material',false)",
       [ids["material-link"], ids["material-private"], ids["other-student"]],
     );
-    return { seededLessons: 12, students };
-  });
-}
-export async function processJob(e, jobId) {
-  const allowed = e.jobs.get(jobId);
-  assert(allowed, "Unknown bulk job");
-  return e.sql("process." + jobId, async () => {
-    const job = (
-      await e.db.query(
-        "select * from lesson_ops.lesson_bulk_jobs where id=$1 for update",
-        [jobId],
-      )
-    ).rows[0];
-    assert.equal(job.actor_id, authIds.coach);
-    assert.equal(job.studio_id, plan.target.studio);
-    assert.equal(job.state, "running");
-    const items = (
-      await e.db.query(
-        "select * from lesson_ops.lesson_bulk_items where job_id=$1 order by ordinal",
-        [jobId],
-      )
-    ).rows;
-    assert(items.length <= 13);
-    assert(items.every((i) => allowed.ids.includes(i.lesson_id)));
-    assert.equal(items.length, allowed.ids.length);
-    e.journal.reserve("sql", 60);
-    const claimed = (
-      await e.db.query("select public.claim_lesson_bulk_items($1,$2) value", [
-        13,
-        jobId,
-      ])
-    ).rows[0].value;
-    assert(claimed.length <= items.length);
-    for (const c of claimed) {
-      assert.equal(c.job_id, jobId);
-      const i = items.find((i) => i.id === c.id);
-      assert(i && allowed.ids.includes(i.lesson_id));
-      e.journal.append({
-        type: "bulk-lease",
-        name: c.id,
-        jobId,
-        token: c.claim_token,
-      });
-      e.journal.reserve("sql", 60);
-      await e.db.query("select public.process_lesson_bulk_item($1,$2)", [
-        c.id,
-        c.claim_token,
-      ]);
-    }
-    return { jobId, processed: claimed.length };
+    return { seededLessons: plan.fixtureContent.lessons.length, students };
   });
 }
 export async function cleanup(e) {
@@ -232,14 +175,14 @@ export async function cleanup(e) {
             wholeClass: false,
             reason: plan.runId + " cleanup",
           };
-          e.journal.reserve("sql", 60);
+          e.journal.reserve("sql", plan.budgets.canonicalSqlRequests);
           const preview = (
             await e.db.query(
               "select public.preview_lesson_occurrence_change($1,$2::jsonb) value",
               [authIds.coach, JSON.stringify(value)],
             )
           ).rows[0].value;
-          e.journal.reserve("sql", 60);
+          e.journal.reserve("sql", plan.budgets.canonicalSqlRequests);
           e.journal.append({
             type: "rpc-intent",
             name: "cleanup.cancel." + l.id,

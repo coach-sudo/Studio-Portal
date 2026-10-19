@@ -534,8 +534,8 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
         );
       }
       authorization(receipt(), target, codeHash);
-      journal.reserve("session", 6);
-      journal.reserve("http-total", 30);
+      journal.reserve("session", plan.budgets.sessionRequests);
+      journal.reserve("http-total", plan.budgets.httpMutationRequests);
       journal.append({
         type: "session-intent",
         name: role + ":" + journal.count("session"),
@@ -598,7 +598,7 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
           assert.equal(data.studentId, plan.records.student);
         }
       }
-      await renderViews(phase);
+      if (phase === "revoked") await renderViews(phase);
       if (phase === "before-revocation") {
         assert(
           !journal.find("workspace-browser-proof", "webkit"),
@@ -630,11 +630,8 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
         } finally {
           await second.close();
         }
-        assert(
-          journal.find("workspace-browser-proof", "chromium") &&
-            journal.find("workspace-browser-proof", "webkit"),
-        );
-        journal.append({ type: "case", name: "WAVE2" });
+        assert(journal.find("workspace-browser-proof", "webkit"));
+        journal.append({ type: "case", name: "WEBKIT" });
       }
     };
     // Team session is verified before application sign-in; no automatic login
@@ -673,8 +670,8 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
           passwords[role],
           sessionState,
         );
-        journal.reserve("session", 6);
-        journal.reserve("http-total", 30);
+        journal.reserve("session", plan.budgets.sessionRequests);
+        journal.reserve("http-total", plan.budgets.httpMutationRequests);
         const r = await raw(
           `https://${target.project}.supabase.co/auth/v1/token?grant_type=password`,
           {
@@ -711,8 +708,8 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
       passwords.guardian,
       sessionState,
     );
-    journal.reserve("session", 6);
-    journal.reserve("http-total", 30);
+    journal.reserve("session", plan.budgets.sessionRequests);
+    journal.reserve("http-total", plan.budgets.httpMutationRequests);
     journal.append({
       type: "session-intent",
       name: "guardian:logout",

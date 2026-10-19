@@ -4,7 +4,7 @@ import {
   plan as historical,
   plannedUiId as oldId,
 } from "./prepare-ui-mutation-plan.mjs";
-export const runId = "e2e-waves12-ui-20261019-a";
+export const runId = "e2e-waves12-ui-20261019-b";
 export function plannedUiId(name) {
   const h = createHash("sha256")
     .update(`${runId}:${name}`)
@@ -55,10 +55,21 @@ for (const n of [
 Object.assign(plan.budgets, {
   contacts: 2,
   relationships: 2,
-  seededLessons: 12,
+  services: 0,
+  packageLots: 0,
+  creditsGranted: 0,
+  seededLessons: 2,
+  lessonsTotal: 2,
+  reviewedBatchMaximum: 0,
+  bulkReviews: 0,
   uiCreatedLessons: 0,
-  readRequests: 1200,
-  browserReadCeiling: 1100,
+  readRequests: 900,
+  browserReadCeiling: 800,
+  httpMutationRequests: 12,
+  businessMutationRequests: 6,
+  sessionRequests: 6,
+  canonicalSqlRequests: 30,
+  cleanupTransactions: 20,
   notes: 2,
   materials: 1,
   materialLinks: 1,
@@ -67,17 +78,20 @@ plan.fixtureContent.lessons.find((l) => l.name === "lesson-edit").startsAt =
   "2026-10-19T18:00:00Z";
 plan.fixtureContent.lessons.find((l) => l.name === "lesson-edit").endsAt =
   "2026-10-19T19:00:00Z";
-plan.cases = ["UI05", "UI06", "UI07", "UI08", "WAVE2"];
-plan.commands["/api/v2/lessons"] = plan.commands["/api/v2/lessons"].filter(
-  (x) => x !== "create",
+plan.fixtureContent.lessons = plan.fixtureContent.lessons.filter((l) =>
+  ["lesson-edit", "lesson-credit"].includes(l.name),
 );
+delete plan.fixtureContent.package;
+delete plan.fixtureContent.uiCreate;
+plan.cases = ["WEBKIT", "UI08"];
+plan.commands = { "/api/v2/students": ["save_linked_contact"] };
 plan.budgetRationale = {
   readRequests:
-    "1200 total hard attempts, fixed before any hosted receipt. The full two-engine local rehearsal measured 1036 including deliberately interrupted cleanup and guard probes. Allow 120 for live perimeter/metadata/Auth attestation and 44 margin. Browser requests stop at 1100 (one denied attempt remains charged), leaving at least 99 reads for cleanup, whose measured local tail used 48. No snapshot polling loop; original 600-read authority remains exhausted and unchanged.",
+    "900 total hard attempts. WebKit journeys only; Chromium is used solely for UI08. Stop browser reads at 800, preserving at least 99 cleanup reads after a charged denial. All prior closed-run budgets remain unchanged.",
   httpMutationRequests:
-    "30 total: at most 24 business submissions plus six fixed session operations. No automatically retried sign-in or business command.",
+    "12 total: at most six business submissions and six session operations. Only the exact owned contact revocation is permitted. No automatic retries.",
   canonicalSqlRequests:
-    "60 includes setup, four owned batch processors and exact canonical cleanup; no global workers.",
+    "30 includes setup and exact canonical cleanup; no bulk processors or global workers.",
   cleanupTransactions:
-    "40 ceiling; expected ten exact-ID transactions; retained authored/financial/audit history is never deleted.",
+    "20 ceiling; expected nine exact-ID transactions; authored/audit history is retained. Zero credit grants, packages or cash.",
 };

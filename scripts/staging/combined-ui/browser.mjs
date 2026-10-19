@@ -37,8 +37,14 @@ export class UiBrowserDriver {
           ) {
             assert(!this.revokedClaimBlocked, "Repeated access-claim attempt");
             this.revokedClaimBlocked = true;
-            this.e.journal.reserve("http-business", 24);
-            this.e.journal.reserve("http-total", 30);
+            this.e.journal.reserve(
+              "http-business",
+              plan.budgets.businessMutationRequests,
+            );
+            this.e.journal.reserve(
+              "http-total",
+              plan.budgets.httpMutationRequests,
+            );
             this.e.journal.append({
               type: "expected-boundary-denial",
               name: "guardian:claim-access",

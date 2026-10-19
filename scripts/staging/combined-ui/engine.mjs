@@ -256,17 +256,18 @@ export class UiExecutor {
       "public.memberships": 3,
       "public.linked_contacts": 2,
       "public.student_relationships": 2,
-      "public.booking_services": 1,
-      "public.packages": 1,
-      "public.lessons": 13,
-      "lesson_ops.lesson_bulk_jobs": 4,
+      "public.booking_services": plan.budgets.services,
+      "public.packages": plan.budgets.packageLots,
+      "public.lessons": plan.budgets.lessonsTotal,
+      "lesson_ops.lesson_bulk_jobs": plan.budgets.bulkReviews,
     };
     for (const [t, max] of Object.entries(limited))
       assert(delta[t].length <= max, "Record budget: " + t);
     assert(
       delta["public.package_credit_entries"]
         .filter((r) => ["purchase", "adjustment"].includes(r.kind))
-        .reduce((n, r) => n + Math.max(0, r.quantity), 0) <= 4,
+        .reduce((n, r) => n + Math.max(0, r.quantity), 0) <=
+        plan.budgets.creditsGranted,
       "Granted credit budget",
     );
     for (const r of [...delta["public.lessons"], ...delta["public.packages"]]) {
@@ -460,8 +461,11 @@ export class UiExecutor {
       );
       return done.value;
     }
-    this.journal.reserve("http-business", 24);
-    this.journal.reserve("http-total", 30);
+    this.journal.reserve(
+      "http-business",
+      plan.budgets.businessMutationRequests,
+    );
+    this.journal.reserve("http-total", plan.budgets.httpMutationRequests);
     guardCommand(path, body, role, this);
     assert(
       !JSON.stringify(this.baseline).includes(body.idempotencyKey),

@@ -17,6 +17,7 @@ import {
   sha,
   authorization,
   manifestHash,
+  guardCommand,
 } from "./combined-ui/policy.mjs";
 import { seed, cleanup } from "./combined-ui/fixtures.mjs";
 import { runCases, envelope } from "./combined-ui/cases.mjs";
@@ -135,6 +136,22 @@ try {
   };
   let e = new UiExecutor(args);
   await e.initialize();
+  assert.equal(plan.budgets.creditsGranted, 0);
+  assert.equal(plan.budgets.lessonsTotal, 2);
+  for (const [path, command] of [
+    ["/api/v2/credits", "set_total"],
+    ["/api/v2/lessons", "preview_bulk"],
+    ["/api/v2/students", "update"],
+  ])
+    assert.throws(() =>
+      guardCommand(
+        path,
+        envelope("deny", command, { studentId: ids.student, total: 4 }),
+        "coach",
+        e,
+      ),
+    );
+  passed.push("completed_cases_financial_and_bulk_commands_denied");
   await seed(e);
   passed.push("full_58_schema_seed_two_guardian_contexts");
   await assert.rejects(
@@ -181,13 +198,11 @@ try {
   } else await runCases(e, { submit: (n, p, b) => e.http(n, p, b) });
   assert.deepEqual(
     journal.events.filter((x) => x.type === "case").map((x) => x.name),
-    ["UI05", "UI06", "UI07", "UI08"],
+    ["UI08"],
   );
-  passed.push(
-    "ui05_08_real_handlers_replay_stale_deletion_credit_cancel_revocation",
-  );
+  passed.push("ui08_real_handler_revocation_and_webkit_only");
   assert(
-    !journal.events.some((x) => x.type === "case" && /^UI0[1-4]$/.test(x.name)),
+    !journal.events.some((x) => x.type === "case" && /^UI0[1-7]$/.test(x.name)),
   );
   passed.push("historical_cases_not_repeated_or_fabricated");
   let interrupted = false;
@@ -211,18 +226,6 @@ try {
   await e.initialize();
   assert(journal.find("committed", "local.interrupt")?.recovered);
   passed.push("committed_interruption_recovered_without_resend");
-  const staleItem = e
-    .ownRows("lesson_ops.lesson_bulk_items")
-    .find((i) => ["conflicted", "skipped"].includes(i.status));
-  assert(staleItem);
-  await e.sql("local.pending-cleanup", async () => {
-    const r = await db.query(
-      "update lesson_ops.lesson_bulk_items set status='pending',finished_at=null where id=$1",
-      [staleItem.id],
-    );
-    assert.equal(r.rowCount, 1);
-    return { localSyntheticPendingItem: staleItem.id };
-  });
   e.inject = async (type, name) => {
     if (type === "after-sql-commit" && name === "cleanup.terminal")
       throw Error("Local interrupted cleanup");
@@ -235,11 +238,6 @@ try {
   assert(journal.find("committed", "cleanup.terminal")?.recovered);
   passed.push("partial_cleanup_resumes_without_repeating_committed_mutation");
   const proof = await cleanup(e);
-  assert.equal(
-    e.ownRows("lesson_ops.lesson_bulk_items").find((i) => i.id === staleItem.id)
-      .reason_code,
-    "synthetic_cleanup_abandoned",
-  );
   await postcheck({
     db,
     baseline: e.baseline,
@@ -248,9 +246,16 @@ try {
   });
   assert(e.ownRows("public.notes").length === 2);
   assert(e.ownRows("public.materials").length === 1);
-  assert.equal(e.ownRows("public.lessons").length, 11);
+  assert.equal(e.ownRows("public.lessons").length, 2);
+  for (const t of [
+    "public.packages",
+    "public.package_credit_entries",
+    "public.booking_services",
+    "lesson_ops.lesson_bulk_jobs",
+  ])
+    assert.equal(e.ownRows(t).length, 0);
   passed.push(
-    "independent_76_table_cleanup_retains_authored_financial_history",
+    "independent_76_table_cleanup_retains_authored_history_zero_finance",
   );
   const target = {
     ...plan.target,
@@ -267,9 +272,9 @@ try {
     baselineHash: sha(e.baseline),
     issuedAt: new Date().toISOString(),
     expiresAt: new Date(Date.now() + 3600000).toISOString(),
-    scope: "UI05-UI08+WAVE2",
+    scope: "WEBKIT+UI08",
     allowCleanup: true,
-    approvedBy: "User coordinated release authorization",
+    approvedBy: "User focused WebKit and UI08 follow-up authorization",
   };
   authorization(approval, target, "a".repeat(64));
   assert.throws(() =>
@@ -347,7 +352,9 @@ try {
     ),
     baselineHash: sha(e.baseline),
     hostedAuthOrBrowserClaimed: false,
-    localBrowsers: process.env.UI_BROWSER_DIST ? ["chromium", "webkit"] : [],
+    localBrowsers: process.env.UI_BROWSER_DIST
+      ? ["webkit", "chromium-ui08-only"]
+      : [],
     executorHash: executedCodeSeal,
   };
   assert.equal(
@@ -356,7 +363,7 @@ try {
     "Executor source changed during validation",
   );
   fs.writeFileSync(
-    "docs/waves-one-two-focused-executor-local.json",
+    "docs/waves-one-two-followup-executor-local.json",
     JSON.stringify(result, null, 2) + "\n",
   );
   console.log(JSON.stringify(result, null, 2));

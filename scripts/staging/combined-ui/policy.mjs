@@ -106,7 +106,7 @@ export function authorization(r, target, codeHash, now = Date.now()) {
   assert.equal(r.manifestHash, manifestHash);
   assert.equal(r.executorHash, codeHash);
   assert.match(r.baselineHash, /^[a-f0-9]{64}$/);
-  assert.equal(r.scope, "UI05-UI08+WAVE2");
+  assert.equal(r.scope, "WEBKIT+UI08");
   assert.equal(r.allowCleanup, true);
   assert(typeof r.approvedBy === "string" && r.approvedBy.trim().length > 2);
   assert(
@@ -379,6 +379,12 @@ export function guardCommand(path, b, role, state) {
   );
   const p = b.payload;
   assert(p);
+  assert.equal(path, "/api/v2/students", "Only UI08 is authorized");
+  assert.equal(
+    b.command,
+    "save_linked_contact",
+    "Completed cases are prohibited",
+  );
   const ownLesson = (id) =>
     plan.fixtureContent.lessons.some((l) => l.id === id) ||
     state.generated.has(id);
