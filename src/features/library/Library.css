@@ -169,7 +169,7 @@
   background: var(--app-surface, #fff);
   border: 1px solid var(--line, #d8ddd7);
   border-radius: 12px;
-  padding: 12px;
+  padding: 20px;
 }
 .resource-viewer:fullscreen {
   padding: 20px;
@@ -246,12 +246,14 @@
 }
 .private-study {
   min-width: 0;
-  border: 1px solid var(--line, #d8ddd7);
-  border-radius: 12px;
-  padding: 16px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-card);
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+  padding: 20px;
 }
 .private-study h2 {
-  margin-top: 0;
+  margin: 0 0 6px;
   font-size: 1.15rem;
 }
 .private-study label {
@@ -268,11 +270,181 @@
 }
 .private-study article {
   border-bottom: 1px solid var(--line, #d8ddd7);
-  padding-block: 12px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-control);
+  background: var(--app-surface-soft);
+  margin-block: 10px;
 }
 .private-study article > p {
   max-height: 12em;
   overflow: auto;
+  margin-block: 10px;
+  line-height: 1.7;
+}
+.resource-search {
+  padding: 16px;
+  border-radius: var(--radius-card);
+  background: var(--app-surface-soft);
+}
+.resource-search label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.resource-search input,
+.resource-search select,
+.metadata-picker input[type="search"] {
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--radius-control);
+  padding: 10px 12px;
+  background: var(--app-surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+}
+.resource-result-status {
+  color: var(--muted);
+  font-size: 13px;
+}
+.resource-results article {
+  background: var(--app-surface);
+  border-color: var(--app-border);
+  box-shadow: var(--app-shadow-card);
+  padding: 20px;
+}
+.resource-results article:hover {
+  border-color: var(--app-border-strong);
+}
+.resource-results strong {
+  font-size: 17px;
+  line-height: 1.4;
+  color: var(--ink);
+}
+.resource-results small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.resource-tags span {
+  background: var(--app-surface-soft);
+  color: var(--ink);
+  font-size: 12px;
+  padding: 4px 9px;
+}
+:is(
+    .resource-actions,
+    .viewer-toolbar,
+    .metadata-paging,
+    .resource-flow-choices
+  )
+  :is(button, a),
+.metadata-picker > div > button,
+.private-study > button,
+.private-study article > button {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: 10px;
+  background: var(--app-surface);
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.resource-flow-choices {
+  display: flex;
+  gap: 8px;
+  padding: 4px;
+  background: var(--app-surface-soft);
+  border-radius: var(--radius-control);
+}
+.resource-flow-choices button {
+  flex: 1;
+}
+.resource-flow-choices button[aria-pressed="true"] {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+.resource-instructions {
+  background: var(--app-surface-soft);
+  border-left: 3px solid var(--sage);
+  border-radius: 0 12px 12px 0;
+  padding: 14px 18px;
+}
+.resource-instructions p {
+  margin: 10px 0 0;
+  font-size: 14px;
+}
+.resource-viewer .viewer-toolbar {
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 13px;
+}
+.pdf-canvas,
+.image-reader {
+  border: 1px solid var(--app-border);
+  border-radius: 10px;
+  padding-block: 12px;
+  background: var(--app-surface-soft);
+}
+.text-reader {
+  padding: clamp(16px, 3vw, 36px);
+  max-width: 76ch;
+  margin-inline: auto;
+}
+.private-study > .muted,
+.private-study > [role="status"] {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.private-study > .viewer-toolbar {
+  justify-content: space-between;
+  padding: 12px;
+  margin-block: 16px 8px;
+  background: var(--app-surface-soft);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.private-study > button {
+  margin-bottom: 20px;
+  font-size: 12px;
+}
+.private-study summary {
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--app-border);
+  font-size: 14px;
+  font-weight: 600;
+}
+.private-study form {
+  display: grid;
+  gap: 12px;
+}
+.private-study textarea {
+  border: 1px solid var(--app-border-strong);
+  border-radius: 10px;
+  padding: 12px;
+  font: inherit;
+  line-height: 1.65;
+  background: var(--app-surface);
+  color: var(--ink);
+}
+.private-study .form-actions {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 600px) {
+  .resource-viewer,
+  .private-study,
+  .resource-search {
+    padding: 14px;
+  }
+  .viewer-toolbar :is(button, a),
+  .private-study article > button {
+    min-height: 44px;
+  }
 }
 @media (max-width: 1000px) {
   .resource-study-layout.with-study {

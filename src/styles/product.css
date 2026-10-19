@@ -2,6 +2,7 @@
 body {
   background: var(--app-canvas);
   font-size: var(--text-body);
+  line-height: 1.55;
 }
 button,
 input,
@@ -253,8 +254,9 @@ summary:focus-visible {
   box-shadow: var(--app-shadow-card);
 }
 .section > header {
-  border: 0;
+  border-bottom: 1px solid var(--app-border);
   padding-bottom: 16px;
+  margin-bottom: 20px;
   min-height: 44px;
   flex-wrap: wrap;
   gap: 12px;
@@ -458,15 +460,16 @@ input[type="radio"] {
   padding: 14px;
 }
 .empty-state {
-  border: 0;
-  min-height: 148px;
+  border: 1px dashed var(--app-border-strong);
+  border-radius: var(--radius-card);
+  min-height: 132px;
   background: var(--app-surface-soft);
   padding: 28px;
   gap: 16px;
 }
 .empty-state strong {
   font-size: 16px;
-  font-weight: 500;
+  font-weight: 600;
 }
 .empty-state small {
   font-size: 13px;
@@ -658,15 +661,15 @@ input[type="radio"] {
 .student-bookings > article,
 .portal-row,
 .booking-table-row {
-  border: 0;
+  border: 1px solid var(--app-border);
   border-radius: 12px;
-  background: var(--app-surface-soft);
+  background: var(--app-surface);
   padding: 16px;
 }
 .table-list > article strong,
 .workflow-list > article strong {
-  font-size: 15px;
-  font-weight: 500;
+  font-size: 16px;
+  font-weight: 600;
 }
 .table-list > article {
   flex-wrap: wrap;
@@ -1436,6 +1439,243 @@ input[type="radio"] {
 }
 .compact-metrics {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+}
+/* Shared finish for every coach, learner and guardian workspace. */
+.metric-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 140px), 1fr));
+  gap: 12px;
+  margin-block: 20px;
+}
+.metric-strip > div {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--app-surface-soft);
+}
+.metric-strip strong {
+  font-size: 28px;
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.workspace-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-card);
+  background: var(--app-surface);
+}
+.workspace-summary > strong,
+.workspace-summary > span {
+  grid-column: 1 / -1;
+}
+.workspace-summary > span {
+  color: var(--muted);
+  font-size: 13px;
+}
+.workspace-summary > button {
+  min-height: 60px;
+  padding: 12px;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-control);
+  background: var(--app-surface-soft);
+  text-align: left;
+  white-space: normal;
+}
+.workspace-summary small {
+  display: block;
+  margin-top: 4px;
+}
+.workspace-summary + details {
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--app-border);
+}
+.workspace-summary + details > summary {
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+.student-shell > main > .workspace-student-context {
+  padding: 16px 72px 16px 24px;
+  margin: 0;
+  border-bottom: 1px solid var(--app-border);
+  background: var(--app-surface);
+}
+.workspace-student-context > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.workspace-student-context > button svg {
+  width: 18px;
+  height: 18px;
+}
+.student-shell > aside nav > button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 46px;
+  padding: 12px 14px;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: transparent;
+  color: var(--muted);
+  text-align: left;
+}
+.student-shell > aside nav > button:hover {
+  background: var(--app-surface-soft);
+  color: var(--ink);
+}
+.current-script-card > .button-link {
+  margin: 12px 20px;
+}
+.assignment-card > header,
+.current-script-card > header {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border);
+}
+:is(.page, .student-page, .workflow-dialog) :where(h3, h4) {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-block: 0 12px;
+}
+:is(.page, .student-page) :where(p, li, dd) {
+  line-height: 1.65;
+  overflow-wrap: anywhere;
+}
+:is(.page, .student-page) :where(dt, label, legend) {
+  font-size: 13px;
+  font-weight: 600;
+}
+:is(.page, .student-page) :where(dt, small, .muted) {
+  color: var(--muted);
+}
+:is(.app-shell, .student-shell, .workflow-dialog) button {
+  font-family: inherit;
+  line-height: 1.4;
+}
+:where(
+    .page-actions,
+    .header-actions,
+    .form-actions,
+    .section > header,
+    .workspace-more-group,
+    .workspace-student-context
+  )
+  > button {
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--app-surface);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 600;
+}
+:is(.page, .student-page, .workflow-dialog)
+  :where(
+    input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+    select,
+    textarea
+  ) {
+  min-height: 44px;
+  border: 1px solid var(--app-border-strong);
+  border-radius: var(--radius-control);
+  background: var(--app-surface);
+  color: var(--ink);
+  font: inherit;
+  padding: 10px 12px;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+:is(.page, .student-page, .workflow-dialog)
+  :where(input, textarea)::placeholder {
+  color: var(--muted);
+  opacity: 0.8;
+}
+:is(.page, .student-page, .workflow-dialog)
+  :where(button, a.button-link):hover:not(:disabled) {
+  border-color: var(--app-border-strong);
+}
+.sidebar nav a.active,
+.student-shell > aside nav a.active {
+  box-shadow: inset 3px 0 var(--forest);
+}
+.section > p,
+.workflow-content > p {
+  max-width: 74ch;
+  margin-block: 8px 16px;
+  line-height: 1.65;
+}
+.section > header > h2 {
+  margin: 0;
+}
+.table-list > article small,
+.workflow-list > article small,
+.action-row small {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+}
+.table-list > article:hover,
+.workflow-list > article:hover,
+.workspace-destinations a:hover {
+  border-color: var(--app-border-strong);
+}
+.workspace-destinations a {
+  background: var(--app-surface);
+  box-shadow: var(--app-shadow-card);
+  font-size: 15px;
+  font-weight: 600;
+  min-height: 76px;
+}
+.workspace-destinations svg,
+.empty-state > svg {
+  color: var(--ink);
+  padding: 10px;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: var(--app-surface-soft);
+  flex-shrink: 0;
+}
+.list-controls {
+  gap: 12px;
+  font-size: 12px;
+  padding-block: 12px;
+  border-top: 1px solid var(--app-border);
+}
+.list-controls button,
+.list-controls select {
+  min-height: 40px;
+  font-size: 13px;
+}
+.workflow-dialog > header {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+}
+.disclosure-section > summary,
+.section details > summary {
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.section details[open] > summary {
+  margin-bottom: 12px;
+}
+.status {
+  font-weight: 600;
 }
 @media (max-width: 600px) {
   .table-list > article > .financial-amount {

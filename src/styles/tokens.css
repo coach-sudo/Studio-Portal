@@ -42,10 +42,10 @@
   --surface-warning: #faf2e2;
   --surface-danger: #faeef0;
   --surface-info: #edf3f3;
-  --app-canvas: #f7f8f5;
+  --app-canvas: #f3f5f2;
   --app-surface: #ffffff;
   --app-surface-soft: #f3f6f1;
-  --app-border: color-mix(in srgb, var(--forest), transparent 90%);
+  --app-border: color-mix(in srgb, var(--forest), transparent 85%);
   --app-border-strong: color-mix(in srgb, var(--forest), transparent 76%);
   --app-focus: color-mix(in srgb, var(--forest), white 35%);
   --app-radius-control: var(--radius-control);
