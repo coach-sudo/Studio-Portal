@@ -69,8 +69,8 @@ try {
     .readdirSync("supabase/migrations")
     .filter((f) => f.endsWith(".sql"))
     .sort();
-  assert.equal(files.length, 59);
-  for (const f of files.slice(0, -1))
+  assert.equal(files.length, 60);
+  for (const f of files.slice(0, -2))
     await db.query(
       fs
         .readFileSync(join("supabase/migrations", f), "utf8")
@@ -209,6 +209,11 @@ try {
   const before = (
     await db.query("select to_jsonb(o) value from public.outbox_messages o")
   ).rows;
+  await db.query(
+    fs
+      .readFileSync(join("supabase/migrations", files.at(-2)), "utf8")
+      .replace(/\r\n/g, "\n"),
+  );
   await db.query(
     fs
       .readFileSync(join("supabase/migrations", files.at(-1)), "utf8")
@@ -477,6 +482,28 @@ try {
     await b.end();
   }
   passed.push("rolled_back_first_producer_does_not_lose_notice");
+  await db.query(
+    "grant insert,select on public.outbox_messages to service_role",
+  );
+  await db.query("set role service_role");
+  assert(
+    (await insert(db, notice(fail, "new", "service-role@example.test")))
+      .inserted,
+  );
+  await db.query("reset role");
+  passed.push("actual_service_role_can_queue_through_guard");
+  await db.query(
+    "grant insert on public.outbox_messages to anon, authenticated",
+  );
+  for (const role of ["anon", "authenticated"]) {
+    await db.query("set role " + role);
+    await assert.rejects(
+      () => insert(db, notice(fail)),
+      /permission denied for lesson change notification/,
+    );
+    await db.query("reset role");
+  }
+  passed.push("public_insert_grants_cannot_probe_private_effects_before_rls");
   await db.query("set role authenticated");
   await assert.rejects(
     () =>
@@ -489,13 +516,14 @@ try {
     status: "PASS",
     checkedAt: new Date().toISOString(),
     postgres: 17,
-    migrations: 59,
+    migrations: 60,
     localOnly: true,
     scenarios: passed,
     productionAndHostedCalls: 0,
     providers: 0,
     messagesDelivered: 0,
     migration: files.at(-1),
+    identityMigration: files.at(-2),
     migrationSha256LF: createHash("sha256")
       .update(
         fs
