@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-19T11:36:00.232Z",
+  "checkedAt": "2026-10-19T11:43:13.467Z",
   "status": "NO_GO",
   "stagingAcceptance": "PASS (retained prior evidence plus UI05–UI08 and Chromium/WebKit)",
   "stagingCleanup": "PASS",
@@ -52,6 +52,10 @@
     {
       "file": "20261019111534_lesson_notice_cutover_identity.sql",
       "sha256LF": "5d29eeb3ee39b20016ab6d653c406f06e849a45b23c250a2929375abafeb85a9"
+    },
+    {
+      "file": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+      "sha256LF": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a"
     }
   ],
   "failedGate": 9,
@@ -69,12 +73,17 @@
   ],
   "productionChanged": false,
   "notificationCompatibility": {
-    "status": "PASS_LOCAL_AND_STAGING_SCHEMA",
+    "status": "PASS_15_LOCAL_SCENARIOS_AND_STAGING_SCHEMA_ARTIFACTS",
     "migration": "20261019111534_lesson_notice_cutover_identity.sql",
     "validation": "waves-one-two-notice-cutover-validation.json",
     "stagingSchema": "waves-one-two-notice-staging-schema.json",
-    "proof": "Authoritative effect identity, indexed pre-trigger anchors, transaction advisory serialization and existing outbox uniqueness. Old/new both orders and real concurrent sessions tested; no mutable historical message backfill."
+    "proof": "Authoritative effect identity, indexed pre-trigger anchors, transaction advisory serialization and existing outbox uniqueness. Old/new both orders and real concurrent sessions tested; no mutable historical message backfill.",
+    "callerGuardMigration": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+    "stagingGuardProof": "waves-one-two-notice-guard-staging.json"
   },
   "replacementCandidate": "7fb211e84bf031f4fb4e3b8f59b86f6ef59aebdf",
-  "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4"
+  "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4",
+  "protectedHealth": "PENDING_NORMAL_TEAM_LOGIN",
+  "productionMigrationCount": 51,
+  "stagingMigrationCount": 60
 }

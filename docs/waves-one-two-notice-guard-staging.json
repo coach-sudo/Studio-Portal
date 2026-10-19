@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "at": "2026-10-19T11:41:28.401Z",
+  "project": "lrxrivfqjpkvygozphoz",
+  "migration": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+  "hash": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a",
+  "migrations": 60,
+  "businessRows": 401,
+  "originalBusinessAndAuthPreserved": true,
+  "original59MigrationsPreserved": true,
+  "privateFunctionPermissionsVerified": true,
+  "oldSeal": "23a31d17aa5971ad969b369b44f47def7b388ed936fa0e930daf41363abe0bce",
+  "newSeal": "9fccc91cbcfeab3ccc7c00e16fd89eb2d974a47cf8af181eda6958208a498f17",
+  "hostedBusinessMutations": 0,
+  "providerCalls": 0,
+  "productionChanged": false
+}
