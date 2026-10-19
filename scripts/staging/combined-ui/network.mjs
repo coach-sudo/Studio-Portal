@@ -1,6 +1,7 @@
 import { URL } from "node:url";
 import assert from "node:assert/strict";
 import { plan, ids, authIds, binding } from "./policy.mjs";
+import { approvedStaticRead } from "./static-files.mjs";
 export function nodeEndpoint(method, value, target) {
   binding(target);
   const u = new URL(value);
@@ -76,6 +77,7 @@ const reads = new Set([
 export function networkRead(method, value, body, target, state) {
   const u = new URL(value);
   assert(!u.username && !u.password && !u.hash && !u.pathname.includes("%"));
+  if (approvedStaticRead(method, value, target)) return true;
   if (u.origin === target.origin) {
     if (
       ["GET", "HEAD"].includes(method) &&

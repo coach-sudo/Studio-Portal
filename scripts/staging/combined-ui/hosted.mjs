@@ -33,6 +33,7 @@ import { UiBrowserDriver } from "./browser.mjs";
 import { seed, cleanup } from "./fixtures.mjs";
 import { runCases } from "./cases.mjs";
 import { postcheck } from "./postcheck.mjs";
+import { approvedStaticRead } from "./static-files.mjs";
 
 export const schemaSeal =
   "a0c65b1df65ce59082005af18d9f2b40c890b04f8be744076c7a49b3ac7ccf65";
@@ -484,10 +485,11 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
       if (networkRead(r.method(), r.url(), body, target, e)) {
         e.browserRead();
         const url = new URL(r.url()),
-          asset = artifact.client.find(
-            (f) =>
-              url.origin === target.origin && "/" + f.file === url.pathname,
-          );
+          asset =
+            artifact.client.find(
+              (f) =>
+                url.origin === target.origin && "/" + f.file === url.pathname,
+            ) || approvedStaticRead(r.method(), r.url(), target);
         if (asset) {
           const reply = await route.fetch({ maxRedirects: 0, maxRetries: 0 });
           assert.equal(reply.status(), 200);
@@ -502,15 +504,35 @@ export async function executeHosted(configFile, { cleanupOnly = false } = {}) {
         }
         return route.continue();
       }
-      sessionRequest(
-        r.method(),
-        r.url(),
-        body,
-        target,
-        role,
-        passwords[role],
-        sessionState,
-      );
+      try {
+        sessionRequest(
+          r.method(),
+          r.url(),
+          body,
+          target,
+          role,
+          passwords[role],
+          sessionState,
+        );
+      } catch {
+        e.read();
+        const denied = new URL(r.url());
+        journal.append({
+          type: "blocked-network",
+          name: role,
+          method: r.method(),
+          origin: denied.origin,
+          path: denied.pathname,
+          transmitted: false,
+        });
+        throw Error(
+          "Unreviewed network request blocked: " +
+            r.method() +
+            " " +
+            denied.origin +
+            denied.pathname,
+        );
+      }
       authorization(receipt(), target, codeHash);
       journal.reserve("session", 6);
       journal.reserve("http-total", 30);
