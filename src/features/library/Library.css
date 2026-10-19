@@ -327,7 +327,7 @@
 }
 .resource-tags span {
   background: var(--app-surface-soft);
-  color: var(--forest);
+  color: var(--ink);
   font-size: 12px;
   padding: 4px 9px;
 }
@@ -363,8 +363,8 @@
   flex: 1;
 }
 .resource-flow-choices button[aria-pressed="true"] {
-  border-color: var(--forest);
-  color: var(--forest);
+  border-color: var(--ink);
+  color: var(--ink);
 }
 .resource-instructions {
   background: var(--app-surface-soft);

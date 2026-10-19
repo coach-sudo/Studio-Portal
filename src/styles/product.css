@@ -1636,7 +1636,7 @@ input[type="radio"] {
 }
 .workspace-destinations svg,
 .empty-state > svg {
-  color: var(--forest);
+  color: var(--ink);
   padding: 10px;
   width: 42px;
   height: 42px;
