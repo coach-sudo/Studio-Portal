@@ -1,0 +1,27 @@
+{
+  "verifiedAt": "2026-10-19T04:29:01.097Z",
+  "status": "PASS",
+  "project": "lrxrivfqjpkvygozphoz",
+  "deployment": "6ad59afc32390ffd00c5d20e",
+  "candidate": "36f446392dd940ad25b0ba7449b7dad8d938c636",
+  "before": {
+    "siteURL": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+    "redirects": [
+      "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback",
+      "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app/auth/callback\\?**"
+    ]
+  },
+  "after": {
+    "siteURL": "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app",
+    "redirects": [
+      "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app/auth/callback",
+      "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app/auth/callback\\?**"
+    ]
+  },
+  "changedProperties": ["site_url", "uri_allow_list"],
+  "unrelatedAuthUnchanged": true,
+  "businessAndAuthRowsUnchanged": true,
+  "migrations": 58,
+  "providersCalled": 0,
+  "applicationLogins": 0
+}

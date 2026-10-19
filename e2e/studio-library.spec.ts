@@ -92,8 +92,9 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     .filter({ has: student.page.getByText(title, { exact: true }) });
   await expect(studentRow).toBeVisible();
   await studentRow.getByRole("button", { name: "Details" }).click();
+  const resourceDetail = student.page.locator(".resource-detail");
   await expect(
-    studentRow.getByRole("button", { name: "Open file" }),
+    resourceDetail.getByRole("button", { name: "Open file" }),
   ).toBeVisible();
   const filePopup = student.page.waitForEvent("popup");
   const fileRequest = student.context.waitForEvent("request", {
@@ -102,16 +103,18 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
       request.url().includes("/storage/v1/object/sign/studio-materials/") &&
       new URL(request.url()).searchParams.has("token"),
   });
-  await studentRow.getByRole("button", { name: "Open file" }).click();
+  await resourceDetail.getByRole("button", { name: "Open file" }).click();
   const filePage = await filePopup;
   const download = await student.context.request.get((await fileRequest).url());
   expect(download.ok()).toBe(true);
   expect(await download.body()).toEqual(lexiconBytes);
   await filePage.close();
-  await expect(studentRow).toContainText("Read the shared glossary.");
+  await expect(resourceDetail).toContainText("Read the shared glossary.");
   await expect(
     student.page.getByText("Private assessment; never student-visible."),
   ).toHaveCount(0);
+  await student.page.getByRole("button", { name: "Back", exact: true }).click();
+  await expect(studentRow).toBeVisible();
   await studentRow.getByRole("button", { name: "Vault", exact: true }).click();
   await expect(studentRow).toHaveCount(0);
   await student.page
