@@ -8,5 +8,5 @@ afterEach(() => {
 });
 
 beforeEach(() => {
-  window.scrollTo = vi.fn();
+  if (typeof window !== "undefined") window.scrollTo = vi.fn();
 });
