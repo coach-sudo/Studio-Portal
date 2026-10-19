@@ -1,0 +1,246 @@
+{
+  "status": "PASS_H01_H16_AND_REVIEWED_CLEANUP",
+  "verifiedAt": "2026-10-17T06:13:09.232Z",
+  "target": {
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "project": "lrxrivfqjpkvygozphoz",
+    "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+    "origin": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+    "application": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+    "deployment": "6ad23d4f8b10c10447224155",
+    "run": "e2e-wave1-hosted-20261016-a"
+  },
+  "executorCommit": "9b10d19c1fb48e637d1712e06694443725b017cd",
+  "codeHash": "5a5dbb032a9a5d62d4708e06611eb2e7a8a72b06530c6ea879659a01a44bf932",
+  "manifestHash": "eb847cb6be0ee29dccf626427b83abdae0811efff8496438c4cb43a0e49d908a",
+  "journalChainVerified": true,
+  "cases": [
+    {
+      "id": "H01",
+      "status": "PASS"
+    },
+    {
+      "id": "H02",
+      "status": "PASS"
+    },
+    {
+      "id": "H03",
+      "status": "PASS"
+    },
+    {
+      "id": "H04",
+      "status": "PASS"
+    },
+    {
+      "id": "H05",
+      "status": "PASS"
+    },
+    {
+      "id": "H06",
+      "status": "PASS"
+    },
+    {
+      "id": "H07",
+      "status": "PASS"
+    },
+    {
+      "id": "H08",
+      "status": "PASS"
+    },
+    {
+      "id": "H09",
+      "status": "PASS"
+    },
+    {
+      "id": "H10",
+      "status": "PASS"
+    },
+    {
+      "id": "H11",
+      "status": "PASS"
+    },
+    {
+      "id": "H12",
+      "status": "PASS"
+    },
+    {
+      "id": "H13",
+      "status": "PASS"
+    },
+    {
+      "id": "H14",
+      "status": "PASS"
+    },
+    {
+      "id": "H15",
+      "status": "PASS"
+    },
+    {
+      "id": "H16",
+      "status": "PASS"
+    }
+  ],
+  "baseline": {
+    "tables": 76,
+    "originalRows": 37,
+    "allOriginalRowFingerprintsUnchanged": true
+  },
+  "budgets": {
+    "authCreated": 4,
+    "students": 2,
+    "cumulativeLessons": 18,
+    "generatedLessons": 5,
+    "packageLots": 1,
+    "creditsGranted": 6,
+    "syntheticPaidHistoryMinor": 10000,
+    "currency": "USD",
+    "canonicalRequests": 68,
+    "peakBusinessRows": 231,
+    "cumulativeBusinessRowIdentities": 253,
+    "maximumItemsInOneReview": 8
+  },
+  "cleanup": {
+    "status": "PASS",
+    "exactRowRemovals": {
+      "public.outbox_messages": 2,
+      "lesson_ops.effects": 3,
+      "public.notes": 1,
+      "public.studio_invoices": 1,
+      "public.lesson_participants": 11,
+      "public.calendar_projections": 9,
+      "public.recommendations": 1,
+      "lesson_ops.lesson_record_state": 3,
+      "public.package_credit_entries": 10,
+      "public.lessons": 17,
+      "public.bookings": 2,
+      "public.recurring_series": 2,
+      "public.service_offerings": 1,
+      "public.packages": 1,
+      "credit_internal.credit_coverage_jobs": 2,
+      "public.student_relationships": 1,
+      "public.linked_contacts": 1,
+      "public.memberships": 3,
+      "public.booking_services": 2
+    },
+    "retainedTableCounts": {
+      "credit_internal.credit_command_receipts": 4,
+      "lesson_ops.lesson_bulk_items": 21,
+      "lesson_ops.lesson_bulk_jobs": 9,
+      "lesson_ops.lesson_bulk_requests": 17,
+      "lesson_ops.lesson_deletion_snapshots": 1,
+      "lesson_ops.receipts": 6,
+      "public.audit_events": 115,
+      "public.idempotency_keys": 1,
+      "public.student_credit_accounts": 2,
+      "public.students": 2
+    },
+    "retainedAuth": 1,
+    "retainedCoachBanned": true,
+    "retainedCoachMemberships": 0,
+    "newAuthDeleted": 3,
+    "originalAuthUsersPreserved": 4,
+    "noRemainingRunOwnedLessonsLedgerOutboxProjectionsEffectsCoverageJobsOrMemberships": true,
+    "activeProcessingLease": false,
+    "readOnlyPostcheck": "PASS",
+    "terminalStudentsVerified": true,
+    "creditAccountsAutoDisabled": true,
+    "retainedBulkJobStates": {
+      "reviewed": 2,
+      "running": 7
+    },
+    "retainedBulkItemStatuses": {
+      "blocked": 9,
+      "succeeded": 8,
+      "pending": 3,
+      "conflicted": 1
+    },
+    "pendingReviewExplanation": "Any pending retained H16 items belong to an unaccepted reviewed job, cannot be claimed, and expire; retained audit/review evidence is intentional.",
+    "pendingItemsByJobState": {
+      "reviewed": 3
+    },
+    "deliverableRunningItems": 0
+  },
+  "forbiddenEffects": {
+    "production": 0,
+    "deployments": 0,
+    "publications": 0,
+    "merges": 0,
+    "providers": 0,
+    "messagesDelivered": 0,
+    "workersInvoked": 0
+  },
+  "remainingGates": [
+    "H06 provider-capable HTTP/browser journey",
+    "H16 browser selection/results-route journey",
+    "Two PR47 application fixes remain undeployed",
+    "Alternate query-mode acceptance",
+    "Isolated provider acceptance and scheduled cadence",
+    "Human usability and final release review"
+  ],
+  "startedAt": "2026-10-17T05:31:42.589Z",
+  "commandInventory": [
+    {
+      "functionName": "command_grant_student_credits",
+      "requests": 3
+    },
+    {
+      "functionName": "command_student_credit_settings",
+      "requests": 3
+    },
+    {
+      "functionName": "command_create_lesson",
+      "requests": 3
+    },
+    {
+      "functionName": "command_complete_lesson",
+      "requests": 2
+    },
+    {
+      "functionName": "reserve_student_upcoming_credits",
+      "requests": 1
+    },
+    {
+      "functionName": "preview_lesson_occurrence_change",
+      "requests": 5
+    },
+    {
+      "functionName": "execute_lesson_occurrence_change",
+      "requests": 4
+    },
+    {
+      "functionName": "command_make_lesson_recurring",
+      "requests": 1
+    },
+    {
+      "functionName": "preview_lesson_bulk",
+      "requests": 9
+    },
+    {
+      "functionName": "lesson_bulk_progress",
+      "requests": 3
+    },
+    {
+      "functionName": "execute_lesson_bulk",
+      "requests": 8
+    },
+    {
+      "functionName": "claim_lesson_bulk_items",
+      "requests": 13
+    },
+    {
+      "functionName": "process_lesson_bulk_item",
+      "requests": 10
+    },
+    {
+      "functionName": "retry_lesson_bulk",
+      "requests": 1
+    },
+    {
+      "functionName": "lesson_bulk_candidates",
+      "requests": 2
+    }
+  ],
+  "committedOperations": 99,
+  "expectedDeniedOperations": 2,
+  "unexpectedRolledBackOperations": 0
+}

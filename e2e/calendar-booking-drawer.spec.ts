@@ -64,7 +64,14 @@ test("@visual @mobile @a11y Calendar appointments stay in contextual drawers", a
   await page.keyboard.press("Escape");
   await expect(drawer).toBeHidden();
   await expect(appointment).toBeFocused();
-  await expect(page).toHaveURL(/\/coach\/bookings$/);
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/coach/bookings" &&
+      url.searchParams.get("calendarQuery") ===
+        `${runtime.runId} Calendar booking` &&
+      !url.searchParams.has("booking") &&
+      !url.searchParams.has("lesson"),
+  );
 
   for (const query of [
     `booking=${ids.bookingPending}`,

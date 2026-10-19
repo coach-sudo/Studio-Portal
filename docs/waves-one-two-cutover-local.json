@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-10-19T05:16:32.411Z",
+  "localOnly": true,
+  "postgres": 17,
+  "schemaMigrations": 58,
+  "legacyRpcCreatesQueuedEffect": true,
+  "legacyReturnedVersionEqualsEffectVersion": true,
+  "transactionRolledBack": true,
+  "hostedOperations": 0,
+  "interpretation": "Confirmed cutover prerequisite, not a safety PASS. The published handler queues a version-keyed notice; the candidate worker queues the durable effect with an effect-ID key. See the focused notification characterization test. A rolling upgrade is not validated safe."
+}

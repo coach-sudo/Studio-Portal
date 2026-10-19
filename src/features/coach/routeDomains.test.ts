@@ -85,6 +85,24 @@ describe("V2 route data contracts", () => {
     expect(selectedData(domains)?.actorProfiles.length).toBeGreaterThan(0);
   });
 
+  it("keeps the live bounded list independent of broad lesson/work/finance snapshots", () => {
+    expect(bookingCenterDomains("calendar", true)).toEqual([
+      "identity",
+      "students",
+    ]);
+    expect(
+      studentWorkspaceDomains("/coach/students/student-maya/lessons", true),
+    ).toEqual(["identity", "students"]);
+    expect(
+      studentWorkspaceDomains(
+        "/coach/students/student-maya/lessons/lesson-one",
+        true,
+      ),
+    ).toContain("lessons");
+    expect(
+      studentWorkspaceDomains("/coach/students/student-maya/lessons", false),
+    ).toContain("lessons");
+  });
   it("loads lesson work and credits only on the booking calendar tab", () => {
     expect(bookingCenterDomains("calendar")).toEqual(
       expect.arrayContaining(["lessons", "work", "finance"]),

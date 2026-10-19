@@ -1,7 +1,15 @@
+import { recordLink } from "../app/recordLinks";
 import type { StudioSnapshot } from "./model";
 import { formatStudioDateTime } from "./presentation";
 
-export type ActivityKind = "booking" | "lesson" | "material" | "assignment" | "note" | "import" | "message";
+export type ActivityKind =
+  | "booking"
+  | "lesson"
+  | "material"
+  | "assignment"
+  | "note"
+  | "import"
+  | "message";
 export type ActivityPriority = "action" | "update";
 export interface ActivityItem {
   key: string;
@@ -24,10 +32,7 @@ function lessonRoute(
   studentId: string,
   lessonId: string,
 ) {
-  const encodedLessonId = encodeURIComponent(lessonId);
-  return audience === "coach"
-    ? `/coach/students/${encodeURIComponent(studentId)}/lessons/${encodedLessonId}`
-    : `/portal/lessons/${encodedLessonId}`;
+  return recordLink(audience, { kind: "lesson", id: lessonId, studentId });
 }
 
 function stableValue(value: unknown): string {
@@ -56,10 +61,11 @@ function collapseByEntity(items: ActivityItem[]) {
   for (const item of items) {
     const current = latest.get(item.entityKey);
     if (
-      !current
-      || item.occurredAt > current.occurredAt
-      || (item.occurredAt === current.occurredAt && item.key > current.key)
-    ) latest.set(item.entityKey, item);
+      !current ||
+      item.occurredAt > current.occurredAt ||
+      (item.occurredAt === current.occurredAt && item.key > current.key)
+    )
+      latest.set(item.entityKey, item);
   }
   return [...latest.values()];
 }
@@ -76,18 +82,24 @@ export function buildActivityFeed(
   const items: ActivityItem[] = [];
   for (const message of data.conversationMessages) {
     if (!withinRetention(message.createdAt, now)) continue;
-    const incoming = audience === "coach"
-      ? message.authorRole !== "coach"
-      : message.authorRole === "coach";
+    const incoming =
+      audience === "coach"
+        ? message.authorRole !== "coach"
+        : message.authorRole === "coach";
     if (!incoming) continue;
-    const conversation = data.conversations.find((item) => item.id === message.conversationId);
+    const conversation = data.conversations.find(
+      (item) => item.id === message.conversationId,
+    );
     if (!conversation) continue;
     items.push({
       key: `message:${message.id}`,
       entityKey: `conversation:${conversation.id}`,
       kind: "message",
       priority: "action",
-      title: conversation.kind === "class" ? `New class message` : `New message from ${message.authorName}`,
+      title:
+        conversation.kind === "class"
+          ? `New class message`
+          : `New message from ${message.authorName}`,
       detail: `${conversation.title} · ${message.body}`,
       occurredAt: message.createdAt,
       route: `${audience === "coach" ? "/coach" : "/portal"}/inbox?conversation=${encodeURIComponent(conversation.id)}`,
@@ -95,23 +107,27 @@ export function buildActivityFeed(
   }
   for (const booking of data.bookings) {
     if (!withinRetention(booking.updatedAt, now)) continue;
-    const participant = data.lessonParticipants.find((item) => item.bookingId === booking.id);
-    const linkedLesson = participant
-      ? data.lessons.find((item) => item.id === participant.lessonId)
-      : undefined;
     items.push({
       key: `booking:${booking.id}:${booking.version}`,
       entityKey: `booking:${booking.id}`,
       kind: "booking",
-      priority: booking.status === "needs_attention" || booking.paymentStatus === "failed" || booking.paymentStatus === "past_due" ? "action" : "update",
-      title: booking.status === "confirmed" ? "Booking confirmed" : "Booking updated",
+      priority:
+        booking.status === "needs_attention" ||
+        booking.paymentStatus === "failed" ||
+        booking.paymentStatus === "past_due"
+          ? "action"
+          : "update",
+      title:
+        booking.status === "confirmed"
+          ? "Booking confirmed"
+          : "Booking updated",
       detail: `${booking.guestName} · ${formatStudioDateTime(booking.startsAt, data.settings.timezone)}`,
       occurredAt: booking.updatedAt,
-      route: linkedLesson
-        ? lessonRoute(audience, linkedLesson.studentId, linkedLesson.id)
-        : booking.manageToken
-          ? `/booking/${encodeURIComponent(booking.manageToken)}`
-          : audience === "coach" ? "/coach/bookings?view=overview" : "/portal/bookings",
+      route: recordLink(audience, {
+        kind: "booking",
+        id: booking.id,
+        studentId: booking.studentId,
+      }),
     });
   }
   for (const lesson of data.lessons) {
@@ -120,10 +136,17 @@ export function buildActivityFeed(
       key: `lesson:${lesson.id}:${lesson.version}`,
       entityKey: `lesson:${lesson.id}`,
       kind: "lesson",
-      priority: lesson.paymentStatus === "due" || lesson.paymentStatus === "partially_paid" ? "action" : "update",
-      title: lesson.status === "cancelled" || lesson.status === "late_cancelled"
-        ? "Lesson cancelled"
-        : lesson.status === "completed" ? "Lesson completed" : "Lesson updated",
+      priority:
+        lesson.paymentStatus === "due" ||
+        lesson.paymentStatus === "partially_paid"
+          ? "action"
+          : "update",
+      title:
+        lesson.status === "cancelled" || lesson.status === "late_cancelled"
+          ? "Lesson cancelled"
+          : lesson.status === "completed"
+            ? "Lesson completed"
+            : "Lesson updated",
       detail: `${student(lesson.studentId)} · ${formatStudioDateTime(lesson.startsAt, data.settings.timezone)}`,
       occurredAt: lesson.updatedAt,
       route: lessonRoute(audience, lesson.studentId, lesson.id),
@@ -135,17 +158,30 @@ export function buildActivityFeed(
       key: `material:${material.id}:${material.version}`,
       entityKey: `material:${material.id}`,
       kind: "material",
-      priority: audience === "coach"
-        ? material.approvalStatus === "pending_review" ? "action" : "update"
-        : material.approvalStatus === "changes_requested" ? "action" : "update",
-      title: material.approvalStatus === "pending_review" ? "Material submitted" : "Material updated",
+      priority:
+        audience === "coach"
+          ? material.approvalStatus === "pending_review"
+            ? "action"
+            : "update"
+          : material.approvalStatus === "changes_requested"
+            ? "action"
+            : "update",
+      title:
+        material.approvalStatus === "pending_review"
+          ? "Material submitted"
+          : "Material updated",
       detail: `${student(material.studentId)} · ${material.title}`,
       occurredAt: material.updatedAt,
-      route: material.lessonId
-        ? lessonRoute(audience, material.studentId, material.lessonId)
-        : material.role === "actor_material"
-          ? audience === "coach" ? `/coach/students/${encodeURIComponent(material.studentId)}/actor-page` : "/portal/actor-page"
-          : audience === "coach" ? `/coach/students/${encodeURIComponent(material.studentId)}/work` : "/portal/work",
+      route:
+        material.role === "actor_material"
+          ? audience === "coach"
+            ? `/coach/students/${encodeURIComponent(material.studentId)}/actor-page`
+            : `/portal/actor-page?student=${encodeURIComponent(material.studentId)}`
+          : recordLink(audience, {
+              kind: "resource",
+              id: material.resourceId || material.id,
+              studentId: material.studentId,
+            }),
     });
   }
   for (const assignment of data.assignments) {
@@ -154,15 +190,28 @@ export function buildActivityFeed(
       key: `assignment:${assignment.id}:${assignment.version}`,
       entityKey: `assignment:${assignment.id}`,
       kind: "assignment",
-      priority: audience === "coach"
-        ? assignment.helpRequested || assignment.status === "completed" ? "action" : "update"
-        : assignment.status === "assigned" || assignment.status === "in_progress" || assignment.status === "reopened" ? "action" : "update",
-      title: assignment.helpRequested ? "Practice help requested" : assignment.status === "completed" ? "Assignment completed" : "Assignment updated",
+      priority:
+        audience === "coach"
+          ? assignment.helpRequested || assignment.status === "completed"
+            ? "action"
+            : "update"
+          : assignment.status === "assigned" ||
+              assignment.status === "in_progress" ||
+              assignment.status === "reopened"
+            ? "action"
+            : "update",
+      title: assignment.helpRequested
+        ? "Practice help requested"
+        : assignment.status === "completed"
+          ? "Assignment completed"
+          : "Assignment updated",
       detail: `${student(assignment.studentId)} · ${assignment.title}`,
       occurredAt: assignment.updatedAt,
       route: assignment.lessonId
         ? lessonRoute(audience, assignment.studentId, assignment.lessonId)
-        : audience === "coach" ? `/coach/students/${encodeURIComponent(assignment.studentId)}/work` : "/portal/work",
+        : audience === "coach"
+          ? `/coach/students/${encodeURIComponent(assignment.studentId)}/work`
+          : "/portal/work",
     });
   }
   for (const note of data.notes) {
@@ -171,18 +220,29 @@ export function buildActivityFeed(
       key: `note:${note.id}:${note.version}`,
       entityKey: `note:${note.id}`,
       kind: "note",
-      priority: audience === "coach" && note.status === "draft" ? "action" : "update",
-      title: note.status === "published" ? "Lesson note published" : "Note draft updated",
+      priority:
+        audience === "coach" && note.status === "draft" ? "action" : "update",
+      title:
+        note.status === "published"
+          ? "Lesson note published"
+          : "Note draft updated",
       detail: `${student(note.studentId)} · ${note.title}`,
       occurredAt: note.updatedAt,
-      route: note.lessonId
-        ? lessonRoute(audience, note.studentId, note.lessonId)
-        : audience === "coach" ? `/coach/students/${encodeURIComponent(note.studentId)}/notes` : "/portal/notes",
+      route: recordLink(audience, {
+        kind: "note",
+        id: note.id,
+        studentId: note.studentId,
+        lessonId: note.lessonId,
+      }),
     });
   }
   if (audience === "coach") {
     for (const item of data.integrationImports) {
-      if (item.status !== "needs_review" || !withinRetention(item.updatedAt, now)) continue;
+      if (
+        item.status !== "needs_review" ||
+        !withinRetention(item.updatedAt, now)
+      )
+        continue;
       items.push({
         key: `import:${item.id}:${semanticHash({
           status: item.status,
@@ -204,10 +264,11 @@ export function buildActivityFeed(
     }
   }
   return collapseByEntity(items)
-    .sort((a, b) =>
-      priorityRank[a.priority] - priorityRank[b.priority]
-      || b.occurredAt.localeCompare(a.occurredAt)
-      || a.entityKey.localeCompare(b.entityKey),
+    .sort(
+      (a, b) =>
+        priorityRank[a.priority] - priorityRank[b.priority] ||
+        b.occurredAt.localeCompare(a.occurredAt) ||
+        a.entityKey.localeCompare(b.entityKey),
     )
     .slice(0, 40);
 }

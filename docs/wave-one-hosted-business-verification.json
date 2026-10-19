@@ -1,0 +1,617 @@
+{
+  "project": "lrxrivfqjpkvygozphoz",
+  "tablesVerified": 76,
+  "changed": 0,
+  "hashMethod": "md5 of deterministic JSONB row aggregation, read-only in a single SQL snapshot per comparison",
+  "excluded": "Auth/session and public_endpoint_rate_limits operational activity was authorized by password sign-in tests",
+  "tables": [
+    {
+      "table": "credit_internal.coverage_sweep",
+      "beforeCount": 1,
+      "afterCount": 1,
+      "beforeHash": "a7e730ee1ecda10f9230b50842f0f574",
+      "afterHash": "a7e730ee1ecda10f9230b50842f0f574",
+      "unchanged": true
+    },
+    {
+      "table": "credit_internal.credit_command_receipts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "credit_internal.credit_coverage_jobs",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.effects",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.lesson_bulk_items",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.lesson_bulk_jobs",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.lesson_bulk_requests",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.lesson_deletion_snapshots",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.lesson_record_state",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "lesson_ops.receipts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.actor_profile_revisions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.actor_profiles",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.assignments",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.audit_events",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.automation_rules",
+      "beforeCount": 20,
+      "afterCount": 20,
+      "beforeHash": "b19fe68b20a79c7073e090759b1334bc",
+      "afterHash": "b19fe68b20a79c7073e090759b1334bc",
+      "unchanged": true
+    },
+    {
+      "table": "public.automation_runs",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.availability_exceptions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.availability_rules",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.booking_admin_overrides",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.booking_holds",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.booking_services",
+      "beforeCount": 3,
+      "afterCount": 3,
+      "beforeHash": "8aed59389f53a9c29b1ba291604ab693",
+      "afterHash": "8aed59389f53a9c29b1ba291604ab693",
+      "unchanged": true
+    },
+    {
+      "table": "public.bookings",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.calendar_connections",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.calendar_projections",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.conversation_messages",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.conversation_states",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.conversations",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.delivery_attempts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.discount_codes",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.discount_redemptions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.email_campaigns",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.file_assets",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.idempotency_keys",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.integration_imports",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.invoice_settlements",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.lesson_messages",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.lesson_participants",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.lessons",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.linked_contacts",
+      "beforeCount": 1,
+      "afterCount": 1,
+      "beforeHash": "8877efc15f12a644a757a901254a033f",
+      "afterHash": "8877efc15f12a644a757a901254a033f",
+      "unchanged": true
+    },
+    {
+      "table": "public.mailing_list_contacts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_assignment_private",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_collection_assignments",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_collection_members",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_collections",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_links",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_option_links",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.material_options",
+      "beforeCount": 5,
+      "afterCount": 5,
+      "beforeHash": "e6a8b8d9aaa16edc39e5d9194db6dfd8",
+      "afterHash": "e6a8b8d9aaa16edc39e5d9194db6dfd8",
+      "unchanged": true
+    },
+    {
+      "table": "public.materials",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.memberships",
+      "beforeCount": 3,
+      "afterCount": 3,
+      "beforeHash": "9a409f09c511a200440b67eb79aaf06c",
+      "afterHash": "9a409f09c511a200440b67eb79aaf06c",
+      "unchanged": true
+    },
+    {
+      "table": "public.notes",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.notification_receipts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.offering_messages",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.outbox_messages",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.package_billing_options",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.package_credit_entries",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.package_definitions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.package_gifts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.package_subscriptions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.packages",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.payment_entries",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.portal_accounts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.profile_submissions",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.recommendations",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.recurring_series",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.referral_rewards",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.referrals",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.service_offerings",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.student_credit_accounts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.student_pricing_rules",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.student_relationships",
+      "beforeCount": 1,
+      "afterCount": 1,
+      "beforeHash": "c0d810f13107e43e2d01b492dd66d06e",
+      "afterHash": "c0d810f13107e43e2d01b492dd66d06e",
+      "unchanged": true
+    },
+    {
+      "table": "public.students",
+      "beforeCount": 1,
+      "afterCount": 1,
+      "beforeHash": "834ad2849c713ab8030729529e6d1d8d",
+      "afterHash": "834ad2849c713ab8030729529e6d1d8d",
+      "unchanged": true
+    },
+    {
+      "table": "public.studio_invoices",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.studios",
+      "beforeCount": 2,
+      "afterCount": 2,
+      "beforeHash": "ff1cfbfa00a4273fb15d87b0410e431b",
+      "afterHash": "ff1cfbfa00a4273fb15d87b0410e431b",
+      "unchanged": true
+    },
+    {
+      "table": "public.sync_conflicts",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.terms_acceptances",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    },
+    {
+      "table": "public.webhook_events",
+      "beforeCount": 0,
+      "afterCount": 0,
+      "beforeHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "afterHash": "d41d8cd98f00b204e9800998ecf8427e",
+      "unchanged": true
+    }
+  ]
+}

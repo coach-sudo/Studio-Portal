@@ -401,7 +401,17 @@ export default async (request: Request, context: Context) => {
         );
       const service = serviceClient();
       if (offering.lesson_ids?.length)
-        await service.from("lessons").delete().in("id", offering.lesson_ids);
+        throw new Error(
+          "REVIEW_REQUIRED: Classes with lesson history must use reviewed occurrence changes. Safe deletion will be available through bulk management.",
+        );
+      const linked = await service
+        .from("lessons")
+        .select("id")
+        .eq("offering_id", offering.id)
+        .limit(1);
+      if (linked.error) throw linked.error;
+      if (linked.data?.length)
+        throw new Error("REVIEW_REQUIRED: This class has lesson history.");
       const { error } = await service
         .from("service_offerings")
         .delete()

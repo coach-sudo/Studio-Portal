@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "localOnly": true,
+  "postgres": 17,
+  "migrations": 58,
+  "scenarios": [
+    "completed_cases_financial_and_bulk_commands_denied",
+    "full_58_schema_seed_two_guardian_contexts",
+    "unknown_record_rolls_back",
+    "original_preimage_preserved",
+    "ui08_real_handler_revocation_and_webkit_only",
+    "historical_cases_not_repeated_or_fabricated",
+    "committed_interruption_recovered_without_resend",
+    "partial_cleanup_resumes_without_repeating_committed_mutation",
+    "independent_76_table_cleanup_retains_authored_history_zero_finance",
+    "expired_or_changed_receipt_denied",
+    "production_foreign_studio_provider_and_unapproved_rpc_denied",
+    "browser_cutoff_preserves_independently_charged_cleanup_reads",
+    "independent_new_read_hard_ceiling"
+  ],
+  "requests": {
+    "read": 576,
+    "sql": 17,
+    "http-total": 1,
+    "http-business": 1,
+    "cleanup": 9,
+    "auth-admin": 8
+  },
+  "baselineHash": "fc047449570b35077ab9bdc9bc620a9503b3185005aecf13029bb22483bb8bf0",
+  "hostedAuthOrBrowserClaimed": false,
+  "localBrowsers": ["webkit", "chromium-ui08-only"],
+  "executorHash": "afe84322bac70f431643ef0b9a7462653f54afc5a4267e68785e5861921b2c1f"
+}

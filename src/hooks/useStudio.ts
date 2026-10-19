@@ -189,7 +189,7 @@ const domainQueryOptions = (
   enabled: enabled && isSupabaseConfigured && queryLayerV2Enabled,
   staleTime: domain === "identity" ? 5 * 60_000 : 30_000,
   gcTime: 30 * 60_000,
-  placeholderData: keepPreviousData,
+  placeholderData: studentId ? undefined : keepPreviousData,
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
   refetchInterval: false as const,
@@ -262,6 +262,16 @@ export async function invalidateStudioDomains(
 ) {
   const selected = new Set(domains);
   await Promise.all([
+    // Legacy snapshots own every domain. They need the same post-command
+    // refresh as V2 domain queries rather than waiting for the polling timer.
+    queryClient.invalidateQueries({ queryKey: ["studio-legacy"] }),
+    queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
+    queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
+    ...(["finance", "lessons", "booking"].some((domain) =>
+      selected.has(domain as StudioDomain),
+    )
+      ? [queryClient.invalidateQueries({ queryKey: ["credit-coverage"] })]
+      : []),
     queryClient.invalidateQueries({
       predicate: (query) =>
         query.queryKey[0] === "studio-domain" &&

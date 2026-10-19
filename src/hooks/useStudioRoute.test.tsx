@@ -46,6 +46,69 @@ const wrapperFor = (
     );
   };
 
+describe.each(["true", "false"])("query-mode compatibility %s", (mode) => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.stubEnv("VITE_QUERY_LAYER_V2", mode);
+    loadStudioSnapshot.mockReset();
+    loadStudioSnapshot.mockResolvedValue(structuredClone(demoSnapshot));
+  });
+  it.each(["coach", "student", "guardian"] as const)(
+    "preserves %s data and refreshes after financial changes",
+    async (role) => {
+      const [
+        { useStudioRoute, invalidateStudioDomains },
+        { StudioStoreProvider },
+      ] = await Promise.all([
+        import("./useStudio"),
+        import("../state/StudioStore"),
+      ]);
+      const client = new QueryClient({
+        defaultOptions: { queries: { retry: false } },
+      });
+      const route = renderHook(
+        () =>
+          useStudioRoute(role, "student-maya", [
+            "identity",
+            "students",
+            "finance",
+            "lessons",
+          ]),
+        { wrapper: wrapperFor(client, StudioStoreProvider) },
+      );
+      await waitFor(() => expect(route.result.current.data).toBeDefined(), {
+        timeout: 5000,
+      });
+      expect(route.result.current.data?.students[0]?.id).toBe(
+        demoSnapshot.students[0].id,
+      );
+      expect(route.result.current.isDemo).toBe(false);
+      const calls = loadStudioSnapshot.mock.calls;
+      expect(calls.length).toBeGreaterThan(0);
+      expect(
+        calls.every((call) => call[0] === role && call[1] === "student-maya"),
+      ).toBe(true);
+      expect(calls.some((call) => call[2].length === 11)).toBe(
+        mode === "false",
+      );
+      loadStudioSnapshot.mockClear();
+      const changed = structuredClone(demoSnapshot);
+      changed.lessons[0].topic = "Changed after coverage refresh";
+      loadStudioSnapshot.mockResolvedValue(changed);
+      await act(async () => {
+        await invalidateStudioDomains(client, ["finance", "lessons"]);
+      });
+      await waitFor(() =>
+        expect(route.result.current.data?.lessons[0].topic).toBe(
+          "Changed after coverage refresh",
+        ),
+      );
+      route.unmount();
+      client.clear();
+    },
+  );
+});
+
 describe("V2 domain query behavior", () => {
   beforeEach(() => {
     vi.resetModules();

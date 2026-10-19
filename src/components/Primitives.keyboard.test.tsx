@@ -2,8 +2,57 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Drawer, Dialog } from "./Primitives";
+import { StrictMode } from "react";
 
 describe("overlay keyboard navigation", () => {
+  it("preserves an autofocus field and returns focus to the opener on repeated visits", async () => {
+    const opener = document.createElement("button");
+    document.body.append(opener);
+    for (let visit = 0; visit < 2; visit++) {
+      opener.focus();
+      const { unmount } = render(
+        <StrictMode>
+          <Dialog title="Go to" onClose={vi.fn()}>
+            <input autoFocus aria-label="Find a workflow" />
+          </Dialog>
+        </StrictMode>,
+      );
+      expect(
+        screen.getByRole("textbox", { name: "Find a workflow" }),
+      ).toHaveFocus();
+      unmount();
+      expect(opener).toHaveFocus();
+    }
+    opener.remove();
+  });
+  it("wraps through disclosure summaries without focusing collapsed consequence controls", async () => {
+    const user = userEvent.setup();
+    render(
+      <Dialog title="Review lesson consequences" onClose={vi.fn()}>
+        <button>Confirm batch</button>
+        <details>
+          <summary>Consequences</summary>
+          <button>Hidden history action</button>
+        </details>
+      </Dialog>,
+    );
+    const close = screen.getByRole("button", { name: "Close" });
+    const summary = screen.getByText("Consequences", { exact: true });
+    summary.focus();
+    await user.tab();
+    expect(close).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(summary).toHaveFocus();
+    await user.click(summary);
+    expect(summary.parentElement).toHaveAttribute("open");
+    close.focus();
+    await user.tab({ shift: true });
+    expect(
+      screen.getByRole("button", { name: "Hidden history action" }),
+    ).toHaveFocus();
+    await user.tab();
+    expect(close).toHaveFocus();
+  });
   it("wraps focus past disabled and hidden fields and restores the opener", async () => {
     const user = userEvent.setup();
     const opener = document.createElement("button");

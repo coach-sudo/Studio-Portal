@@ -1,0 +1,211 @@
+{
+  "verifiedAt": "2026-10-15",
+  "project": "htwthzshhilrjtqwprlo",
+  "commit": "6df35d700cc13d60ceab3e92293635575479ec4d",
+  "migrations": [
+    {
+      "version": "202607030001",
+      "name": "core"
+    },
+    {
+      "version": "202607030002",
+      "name": "rls"
+    },
+    {
+      "version": "202607030003",
+      "name": "commands"
+    },
+    {
+      "version": "202608070004",
+      "name": "booking_platform"
+    },
+    {
+      "version": "20260820054301",
+      "name": "configurable_business_rules"
+    },
+    {
+      "version": "20260820055359",
+      "name": "live_content_and_personalization"
+    },
+    {
+      "version": "20260820055805",
+      "name": "booking_branding_and_location_pricing"
+    },
+    {
+      "version": "20260820061547",
+      "name": "email_automation_and_locations"
+    },
+    {
+      "version": "20260820184240",
+      "name": "actor_view_security_invoker"
+    },
+    {
+      "version": "20260820184248",
+      "name": "actor_portfolios_and_provider_intake"
+    },
+    {
+      "version": "20260820184252",
+      "name": "merge_student_profiles"
+    },
+    {
+      "version": "20260820184254",
+      "name": "portal_credentials_terms"
+    },
+    {
+      "version": "20260820184601",
+      "name": "global_portal_usernames"
+    },
+    {
+      "version": "20260824062936",
+      "name": "lesson_hubs_and_offerings"
+    },
+    {
+      "version": "20260824063423",
+      "name": "enrolled_offering_access_and_indexes"
+    },
+    {
+      "version": "20260824072704",
+      "name": "cohesive_portal_operations"
+    },
+    {
+      "version": "20260824072802",
+      "name": "cohesive_portal_indexes"
+    },
+    {
+      "version": "20260825172349",
+      "name": "operational_calendar_controls"
+    },
+    {
+      "version": "20260825173126",
+      "name": "booking_contact_preferences"
+    },
+    {
+      "version": "20260825174213",
+      "name": "server_command_execution_hardening"
+    },
+    {
+      "version": "20260825183731",
+      "name": "storage_retention"
+    },
+    {
+      "version": "20260826022808",
+      "name": "unified_lesson_operations"
+    },
+    {
+      "version": "20260826072918",
+      "name": "close_production_workflow_gaps"
+    },
+    {
+      "version": "20260826073351",
+      "name": "portal_account_grants_and_whiteboard_removal"
+    },
+    {
+      "version": "20260826190425",
+      "name": "optional_booking_portal_invites"
+    },
+    {
+      "version": "20260830214801",
+      "name": "activity_receipts_student_pricing_and_lesson_financials"
+    },
+    {
+      "version": "20260830220952",
+      "name": "notification_receipt_related_access"
+    },
+    {
+      "version": "20260830221230",
+      "name": "sync_lesson_booking_financials"
+    },
+    {
+      "version": "20260902011922",
+      "name": "cleanup_non_lesson_provider_reviews"
+    },
+    {
+      "version": "20260902172443",
+      "name": "packages_households_notifications_pwa"
+    },
+    {
+      "version": "20260902223243",
+      "name": "fix_lesson_rls_recursion"
+    },
+    {
+      "version": "20260902223544",
+      "name": "harden_household_and_package_lifecycle"
+    },
+    {
+      "version": "20260902224107",
+      "name": "revoke_anonymous_household_helpers"
+    },
+    {
+      "version": "20260903051455",
+      "name": "add_group_class_workspace"
+    },
+    {
+      "version": "20260903153607",
+      "name": "unified_inbox_and_undoable_manual_email"
+    },
+    {
+      "version": "20260903161123",
+      "name": "repair_legacy_procedure_lint"
+    },
+    {
+      "version": "20260904123000",
+      "name": "household_contact_sync_and_inbox_state"
+    },
+    {
+      "version": "20260905141058",
+      "name": "google_portal_identity_claim"
+    },
+    {
+      "version": "20260913160351",
+      "name": "email_campaigns_and_daily_popup"
+    },
+    {
+      "version": "20260913190801",
+      "name": "student_referrals"
+    },
+    {
+      "version": "20260913191600",
+      "name": "repair_referral_notification"
+    },
+    {
+      "version": "20260919090000",
+      "name": "visible_inbox_realtime"
+    },
+    {
+      "version": "20260919091000",
+      "name": "route_snapshot_rpc"
+    },
+    {
+      "version": "20260919092000",
+      "name": "restrict_route_snapshot_anon_execute"
+    },
+    {
+      "version": "20260920120823",
+      "name": "material_library_page"
+    },
+    {
+      "version": "20260922125950",
+      "name": "pr6_product_polish_configuration"
+    },
+    {
+      "version": "20261005014016",
+      "name": "lesson_operational_intelligence"
+    },
+    {
+      "version": "20261006204647",
+      "name": "unified_credits_and_invoices"
+    },
+    {
+      "version": "20261008120000",
+      "name": "preserve_package_gift_price"
+    },
+    {
+      "version": "20261008203319",
+      "name": "studio_library_resources"
+    },
+    {
+      "version": "20261008220659",
+      "name": "bounded_legacy_material_snapshots"
+    }
+  ]
+}

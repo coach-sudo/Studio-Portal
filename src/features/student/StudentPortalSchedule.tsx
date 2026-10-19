@@ -1,3 +1,5 @@
+import { useUrlValue } from "../../hooks/useWorkspaceLocation";
+import { RecordUnavailable } from "../../components/RecordRoute";
 import { useQueryClient } from "@tanstack/react-query";
 import { CalendarDays, Repeat2, ShieldCheck, Video } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -43,7 +45,9 @@ export function StudentBookings({
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
-  const [selected, setSelected] = useState<Booking>();
+  const [bookingId, setBookingId] = useUrlValue("booking");
+  const selected = data.bookings.find((b) => b.id === bookingId);
+  const setSelected = (booking?: Booking) => setBookingId(booking?.id || "");
   const [mode, setMode] = useState<"manage" | "reschedule">("manage");
   const [nextStart, setNextStart] = useState<string>();
   const [scope, setScope] = useState<"occurrence" | "series">("occurrence");
@@ -79,7 +83,7 @@ export function StudentBookings({
   const [slots, setSlots] = useState(demoPortalSlots);
   useEffect(() => {
     setSlots(demoPortalSlots);
-    if (isDemo || !service) return;
+    if (isDemo || !service || mode !== "reschedule") return;
     fetch(
       `/api/v2/public/booking/availability?serviceId=${encodeURIComponent(service.id)}`,
     )
@@ -97,7 +101,7 @@ export function StudentBookings({
           "Live alternatives are unavailable. Your current booking is unchanged.",
         ),
       );
-  }, [demoPortalSlots, isDemo, service]);
+  }, [demoPortalSlots, isDemo, service, mode]);
 
   async function change(command: "cancel" | "reschedule") {
     if (!selected) return;
@@ -215,6 +219,8 @@ export function StudentBookings({
     }
   }
 
+  if (bookingId && !selected)
+    return <RecordUnavailable fallback="/portal/bookings" />;
   return (
     <div className="student-page">
       <header className="student-header">

@@ -1,0 +1,202 @@
+{
+  "verifiedAt": "2026-10-19T04:56:49.821Z",
+  "run": "e2e-waves12-ui-20261019-a",
+  "candidate": "36f446392dd940ad25b0ba7449b7dad8d938c636",
+  "deployment": "6ad59afc32390ffd00c5d20e",
+  "origin": "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app",
+  "status": "BLOCKED_AFTER_SAFE_CLEANUP",
+  "hostedCasesPassed": ["UI05", "UI06", "UI07"],
+  "browserProofs": [
+    {
+      "engine": "chromium",
+      "journeys": [
+        "coach-return-filter-search-today",
+        "dirty-note-declined-pop",
+        "student-work-schedule-record",
+        "guardian-two-context-refresh-history-forged",
+        "four-width-axe-keyboard",
+        "200-percent-text-reflow"
+      ]
+    }
+  ],
+  "remaining": [
+    "UI08 guardian revocation/fresh denial",
+    "WebKit authenticated journeys"
+  ],
+  "failure": {
+    "kind": "executor_read_allowlist",
+    "message": "GET rejected by POST-only session classifier",
+    "diagnosis": "Protected read-only WebKit reproduction requested /manifest.webmanifest, which the executor did not allow; application sign-in page rendered normally.",
+    "manifestRequestNotTransmitted": true
+  },
+  "cleanup": {
+    "status": "PASS",
+    "originalBusinessRows": 294,
+    "originalAuthAccounts": 6,
+    "migrations": 58,
+    "originalRowsAndAccountsUnchanged": true,
+    "originalMigrationRowsUnchanged": true,
+    "originalExhaustedJournalUnchanged": true,
+    "independentTables": 76,
+    "retainedRows": 80,
+    "retainedCounts": {
+      "public.notes": 2,
+      "public.lessons": 11,
+      "public.packages": 1,
+      "public.students": 2,
+      "public.materials": 1,
+      "lesson_ops.receipts": 6,
+      "public.audit_events": 25,
+      "public.material_links": 1,
+      "lesson_ops.lesson_bulk_jobs": 4,
+      "lesson_ops.lesson_bulk_items": 7,
+      "public.package_credit_entries": 5,
+      "lesson_ops.lesson_record_state": 2,
+      "public.student_credit_accounts": 2,
+      "lesson_ops.lesson_bulk_requests": 8,
+      "lesson_ops.lesson_deletion_snapshots": 1,
+      "credit_internal.credit_command_receipts": 2
+    },
+    "newDisposableAuthRemoved": 3,
+    "newCoachBannedAndUnlinked": true,
+    "noActiveLessonsOrRunnableJobs": true,
+    "noQueuedProviderOrDeliveryIntents": true
+  },
+  "budgets": {
+    "read": 827,
+    "sql": 28,
+    "http-business": 14,
+    "http-total": 19,
+    "session": 5,
+    "auth-admin": 8,
+    "cleanup": 9
+  },
+  "deniedGetChargedRetrospectively": 1,
+  "axe": {
+    "audits": 12,
+    "violations": [
+      {
+        "view": "chromium:coach:320",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:coach:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:coach:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:coach:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:student:320",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:student:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:student:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:student:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:guardian:320",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:guardian:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:guardian:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "chromium:guardian:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "newRunCanBeReused": false,
+  "productionChanged": false
+}

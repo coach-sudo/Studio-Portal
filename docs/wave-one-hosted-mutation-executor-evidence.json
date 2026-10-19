@@ -1,0 +1,676 @@
+{
+  "status": "LOCAL_VALIDATED_HOSTED_NOT_EXECUTED",
+  "delivery": {
+    "pullRequest": 48,
+    "url": "https://github.com/coach-sudo/Studio-Portal/pull/48",
+    "draft": true,
+    "implementationCommit": "110bb74d58dd99929f85f291e05313f1562ad303",
+    "dependentBase": "codex/wave-one-hosted-acceptance"
+  },
+  "date": "2026-10-16",
+  "dependency": {
+    "pr": 47,
+    "head": "3057d6cbdde6628a80d0c10b6ad9c6a323153592",
+    "base": "codex/wave-one-hosted-acceptance"
+  },
+  "target": {
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "project": "lrxrivfqjpkvygozphoz",
+    "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+    "origin": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+    "application": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+    "deployment": "6ad23d4f8b10c10447224155",
+    "run": "e2e-wave1-hosted-20261016-a"
+  },
+  "manifestHash": "eb847cb6be0ee29dccf626427b83abdae0811efff8496438c4cb43a0e49d908a",
+  "executorCodeHash": "5a5dbb032a9a5d62d4708e06611eb2e7a8a72b06530c6ea879659a01a44bf932",
+  "schemaSeal": {
+    "candidate": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+    "sha256": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4"
+  },
+  "environment": {
+    "node": "v24.14.1",
+    "localPostgres": "17.10",
+    "hostedPostgresReadOnly": "17.11",
+    "migrationCount": 57
+  },
+  "local": {
+    "scenarios": [
+      {
+        "name": "complete",
+        "passed": true
+      },
+      {
+        "name": "initial_snapshot",
+        "passed": true
+      },
+      {
+        "name": "interrupt",
+        "passed": true
+      },
+      {
+        "name": "lost_apply_response",
+        "passed": true
+      },
+      {
+        "name": "rollback",
+        "passed": true
+      },
+      {
+        "name": "partial_cleanup",
+        "passed": true
+      },
+      {
+        "name": "permission",
+        "passed": true
+      },
+      {
+        "name": "concurrent",
+        "passed": true
+      },
+      {
+        "name": "guards",
+        "passed": true
+      },
+      {
+        "name": "partial_provisioning",
+        "passed": true
+      },
+      {
+        "name": "cleanup_writer",
+        "passed": true
+      },
+      {
+        "name": "foreign_dependency",
+        "passed": true
+      }
+    ],
+    "offlineGuardTests": 14,
+    "pgtapAssertions": 204,
+    "concurrencySuites": 3,
+    "commandRequests": 68,
+    "caseCount": 16,
+    "peakBusinessRows": 231,
+    "cumulativeBusinessRows": 253,
+    "recordMaximums": {
+      "credit_internal.coverage_sweep": 0,
+      "credit_internal.credit_command_receipts": 4,
+      "credit_internal.credit_coverage_jobs": 2,
+      "lesson_ops.effects": 3,
+      "lesson_ops.lesson_bulk_items": 21,
+      "lesson_ops.lesson_bulk_jobs": 9,
+      "lesson_ops.lesson_bulk_requests": 17,
+      "lesson_ops.lesson_deletion_snapshots": 1,
+      "lesson_ops.lesson_record_state": 3,
+      "lesson_ops.receipts": 6,
+      "public.actor_profile_revisions": 0,
+      "public.actor_profiles": 0,
+      "public.assignments": 0,
+      "public.audit_events": 115,
+      "public.automation_rules": 0,
+      "public.automation_runs": 0,
+      "public.availability_exceptions": 0,
+      "public.availability_rules": 0,
+      "public.booking_admin_overrides": 0,
+      "public.booking_holds": 0,
+      "public.booking_services": 2,
+      "public.bookings": 2,
+      "public.calendar_connections": 0,
+      "public.calendar_projections": 9,
+      "public.conversation_messages": 0,
+      "public.conversation_states": 0,
+      "public.conversations": 0,
+      "public.delivery_attempts": 0,
+      "public.discount_codes": 0,
+      "public.discount_redemptions": 0,
+      "public.email_campaigns": 0,
+      "public.file_assets": 0,
+      "public.idempotency_keys": 1,
+      "public.integration_imports": 0,
+      "public.invoice_settlements": 0,
+      "public.lesson_messages": 0,
+      "public.lesson_participants": 11,
+      "public.lessons": 18,
+      "public.linked_contacts": 1,
+      "public.mailing_list_contacts": 0,
+      "public.material_assignment_private": 0,
+      "public.material_collection_assignments": 0,
+      "public.material_collection_members": 0,
+      "public.material_collections": 0,
+      "public.material_links": 0,
+      "public.material_option_links": 0,
+      "public.material_options": 0,
+      "public.materials": 0,
+      "public.memberships": 3,
+      "public.notes": 1,
+      "public.notification_receipts": 0,
+      "public.offering_messages": 0,
+      "public.outbox_messages": 2,
+      "public.package_billing_options": 0,
+      "public.package_credit_entries": 10,
+      "public.package_definitions": 0,
+      "public.package_gifts": 0,
+      "public.package_subscriptions": 0,
+      "public.packages": 1,
+      "public.payment_entries": 0,
+      "public.portal_accounts": 0,
+      "public.profile_submissions": 0,
+      "public.recommendations": 1,
+      "public.recurring_series": 2,
+      "public.referral_rewards": 0,
+      "public.referrals": 0,
+      "public.service_offerings": 1,
+      "public.student_credit_accounts": 2,
+      "public.student_pricing_rules": 0,
+      "public.student_relationships": 1,
+      "public.students": 2,
+      "public.studio_invoices": 1,
+      "public.studios": 0,
+      "public.sync_conflicts": 0,
+      "public.terms_acceptances": 0,
+      "public.webhook_events": 0
+    },
+    "retainedCounts": {
+      "credit_internal.credit_command_receipts": 4,
+      "lesson_ops.lesson_bulk_items": 21,
+      "lesson_ops.lesson_bulk_jobs": 9,
+      "lesson_ops.lesson_bulk_requests": 17,
+      "lesson_ops.lesson_deletion_snapshots": 1,
+      "lesson_ops.receipts": 6,
+      "public.audit_events": 115,
+      "public.idempotency_keys": 1,
+      "public.student_credit_accounts": 2,
+      "public.students": 2
+    },
+    "applicationUnitTests": {
+      "passed": 784,
+      "total": 784,
+      "files": 116,
+      "carriedForwardReason": "Application and dependency sources are unchanged from PR #47; 784/784 tests passed before the usage hold."
+    },
+    "privateStorageCheck": {
+      "windowsAclAndCanonicalPath": true,
+      "ancestorJunctionRefusal": true
+    },
+    "finalReviewRepairs": [
+      "Repeated approval expiry and synthetic Auth role/identity checks",
+      "Message attempt/error and calendar history guards; future reminder timestamps",
+      "One read-only initial historical/preimage snapshot; two-session regression",
+      "Private physical path and role-specific Auth method restrictions"
+    ]
+  },
+  "hostedReadOnly": {
+    "businessTablesVerified": 76,
+    "changedTables": 0,
+    "schemaSealMatches": true,
+    "readyUnpublishedPreview": true,
+    "teamLoginAllDeployments": true,
+    "stoppedBuilds": true,
+    "authHooksLiveVerification": false,
+    "directDatabaseCredentialPreflight": false,
+    "reverifiedAfterUsageHold": true
+  },
+  "budgets": {
+    "authUsers": 4,
+    "students": 2,
+    "seededLessons": 13,
+    "commandCreatedLessons": 6,
+    "packageLots": 3,
+    "creditGrants": 12,
+    "syntheticCashMinor": 10000,
+    "currency": "USD",
+    "bulkItemsPerReview": 20,
+    "canonicalRequests": 100,
+    "businessRowsMaximum": 512,
+    "recordLimits": {
+      "public.students": 2,
+      "public.lessons": 19,
+      "public.packages": 3,
+      "public.package_credit_entries": 40,
+      "public.memberships": 3,
+      "public.linked_contacts": 1,
+      "public.student_relationships": 1,
+      "public.student_credit_accounts": 2,
+      "credit_internal.credit_coverage_jobs": 2,
+      "public.booking_services": 2,
+      "public.bookings": 2,
+      "public.recurring_series": 2,
+      "public.service_offerings": 1,
+      "public.studio_invoices": 1,
+      "public.notes": 1,
+      "public.lesson_participants": 20,
+      "public.calendar_projections": 19,
+      "public.outbox_messages": 2,
+      "public.recommendations": 10,
+      "public.audit_events": 256,
+      "public.idempotency_keys": 40,
+      "credit_internal.credit_command_receipts": 12,
+      "lesson_ops.receipts": 8,
+      "lesson_ops.effects": 4,
+      "lesson_ops.lesson_record_state": 5,
+      "lesson_ops.lesson_bulk_jobs": 9,
+      "lesson_ops.lesson_bulk_items": 40,
+      "lesson_ops.lesson_bulk_requests": 30,
+      "lesson_ops.lesson_deletion_snapshots": 1
+    }
+  },
+  "commands": [
+    {
+      "name": "H01.grant",
+      "function": "command_grant_student_credits",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:grant",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H01.grant"
+    },
+    {
+      "name": "H01.repeat",
+      "function": "command_grant_student_credits",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:grant",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H01.repeat"
+    },
+    {
+      "name": "H02.enable",
+      "function": "command_student_credit_settings",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:enable",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H02.enable"
+    },
+    {
+      "name": "H02.create-0",
+      "function": "command_create_lesson",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H02.create-0"
+    },
+    {
+      "name": "H02.create-1",
+      "function": "command_create_lesson",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H02.create-1"
+    },
+    {
+      "name": "H02.create-2",
+      "function": "command_create_lesson",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H02.create-2"
+    },
+    {
+      "name": "H03.apply-0",
+      "function": "command_student_credit_settings",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:apply-repeat",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H03.apply-0"
+    },
+    {
+      "name": "H03.apply-1",
+      "function": "command_student_credit_settings",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:apply-repeat",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H03.apply-1"
+    },
+    {
+      "name": "H04.complete",
+      "function": "command_complete_lesson",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:complete",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H04.complete"
+    },
+    {
+      "name": "H04.repeat",
+      "function": "command_complete_lesson",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:complete",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H04.repeat"
+    },
+    {
+      "name": "H05.reserve-return",
+      "function": "reserve_student_upcoming_credits",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H05.reserve-return"
+    },
+    {
+      "name": "H05.cancel.preview",
+      "function": "preview_lesson_occurrence_change",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H05.cancel.preview"
+    },
+    {
+      "name": "H05.cancel.execute",
+      "function": "execute_lesson_occurrence_change",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H05.cancel",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H05.cancel.execute"
+    },
+    {
+      "name": "H06.valid.preview",
+      "function": "preview_lesson_occurrence_change",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H06.valid.preview"
+    },
+    {
+      "name": "H06.valid.execute",
+      "function": "execute_lesson_occurrence_change",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H06.valid",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H06.valid.execute"
+    },
+    {
+      "name": "H06.expiry-preview",
+      "function": "preview_lesson_occurrence_change",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H06.expiry-preview"
+    },
+    {
+      "name": "H06.expiry-execute",
+      "function": "execute_lesson_occurrence_change",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H06-expiry",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H06.expiry-execute"
+    },
+    {
+      "name": "H07.extra-credit",
+      "function": "command_grant_student_credits",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:recurring-grant",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H07.extra-credit"
+    },
+    {
+      "name": "H07.recurring",
+      "function": "command_make_lesson_recurring",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H07.recurring"
+    },
+    {
+      "name": "H08.cancel.preview",
+      "function": "preview_lesson_occurrence_change",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H08.cancel.preview"
+    },
+    {
+      "name": "H08.cancel.execute",
+      "function": "execute_lesson_occurrence_change",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H08.cancel",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H08.cancel.execute"
+    },
+    {
+      "name": "H09.prepaid",
+      "function": "preview_lesson_occurrence_change",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H09.prepaid"
+    },
+    {
+      "name": "H09.class",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H09.class",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H09.class"
+    },
+    {
+      "name": "H10.review",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H10.review",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H10.review"
+    },
+    {
+      "name": "H10.progress",
+      "function": "lesson_bulk_progress",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H10.progress"
+    },
+    {
+      "name": "H11.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H11.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H11.accept"
+    },
+    {
+      "name": "H11.repeat",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H11.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H11.repeat"
+    },
+    {
+      "name": "H11.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H11.claim"
+    },
+    {
+      "name": "H11.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H11.process-0"
+    },
+    {
+      "name": "H12.archive.preview",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.archive.preview",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.archive.preview"
+    },
+    {
+      "name": "H12.archive.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.archive.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.archive.accept"
+    },
+    {
+      "name": "H12.archive.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.archive.claim"
+    },
+    {
+      "name": "H12.archive.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.archive.process-0"
+    },
+    {
+      "name": "H12.restore.preview",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.restore.preview",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.restore.preview"
+    },
+    {
+      "name": "H12.restore.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.restore.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.restore.accept"
+    },
+    {
+      "name": "H12.restore.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.restore.claim"
+    },
+    {
+      "name": "H12.restore.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.restore.process-0"
+    },
+    {
+      "name": "H12.void.preview",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.void.preview",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.void.preview"
+    },
+    {
+      "name": "H12.void.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H12.void.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.void.accept"
+    },
+    {
+      "name": "H12.void.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.void.claim"
+    },
+    {
+      "name": "H12.void.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H12.void.process-0"
+    },
+    {
+      "name": "H13.review",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H13.review",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H13.review"
+    },
+    {
+      "name": "H13.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H13.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H13.accept"
+    },
+    {
+      "name": "H13.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H13.claim"
+    },
+    {
+      "name": "H13.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H13.process-0"
+    },
+    {
+      "name": "H13.process-1",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H13.process-1"
+    },
+    {
+      "name": "H14.prepare.preview",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H14.prepare.preview",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.prepare.preview"
+    },
+    {
+      "name": "H14.prepare.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H14.prepare.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.prepare.accept"
+    },
+    {
+      "name": "H14.prepare.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.prepare.claim"
+    },
+    {
+      "name": "H14.prepare.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.prepare.process-0"
+    },
+    {
+      "name": "H14.review",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H14.review",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.review"
+    },
+    {
+      "name": "H14.accept",
+      "function": "execute_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H14.accept",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.accept"
+    },
+    {
+      "name": "H14.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.claim"
+    },
+    {
+      "name": "H14.sibling",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.sibling"
+    },
+    {
+      "name": "H14.reclaim-0",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.reclaim-0"
+    },
+    {
+      "name": "H14.obsolete-token",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.obsolete-token"
+    },
+    {
+      "name": "H14.reclaim-1",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.reclaim-1"
+    },
+    {
+      "name": "H14.reclaim-2",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.reclaim-2"
+    },
+    {
+      "name": "H14.reclaim-3",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.reclaim-3"
+    },
+    {
+      "name": "H14.reclaim-4",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.reclaim-4"
+    },
+    {
+      "name": "H14.retry",
+      "function": "retry_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:failed-only-retry",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.retry"
+    },
+    {
+      "name": "H14.final.claim",
+      "function": "claim_lesson_bulk_items",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.final.claim"
+    },
+    {
+      "name": "H14.final.process-0",
+      "function": "process_lesson_bulk_item",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H14.final.process-0"
+    },
+    {
+      "name": "H16.page-0",
+      "function": "lesson_bulk_candidates",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H16.page-0"
+    },
+    {
+      "name": "H16.page-1",
+      "function": "lesson_bulk_candidates",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H16.page-1"
+    },
+    {
+      "name": "H16.review",
+      "function": "preview_lesson_bulk",
+      "idempotencyKey": "e2e-wave1-hosted-20261016-a:H16.review",
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H16.review"
+    },
+    {
+      "name": "H16.progress",
+      "function": "lesson_bulk_progress",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H16.progress"
+    },
+    {
+      "name": "H16.refresh",
+      "function": "lesson_bulk_progress",
+      "idempotencyKey": null,
+      "transactionKey": "e2e-wave1-hosted-20261016-a:H16.refresh"
+    }
+  ],
+  "limits": [
+    "Canonical PostgreSQL commands; no application mutation HTTP endpoint coverage",
+    "H16 data/review continuity; no browser result-route certification",
+    "Native Auth stub; hosted GoTrue administration/session behavior unexecuted",
+    "No provider, scheduled worker, message delivery or calendar synchronization acceptance"
+  ],
+  "hostedMutations": 0,
+  "productionOperations": 0,
+  "reviewStatus": "SOURCE_AND_ADVERSARIAL_LOCAL_REVIEW_COMPLETE_DRAFT_DELIVERY"
+}

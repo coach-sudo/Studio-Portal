@@ -3,7 +3,6 @@ import {
   CheckSquare,
   CircleDollarSign,
   FileText,
-  FolderOpen,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Section } from "../../components/Primitives";
@@ -16,12 +15,203 @@ import {
 } from "../../domain/presentation";
 
 import { belongsToStudent, type Data } from "./StudentWorkspace.shared";
+import { useQuery } from "@tanstack/react-query";
+import { loadWorkspaceSummary } from "../../data/studentWorkspace";
+import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 
 export function Overview({
   data,
   student,
   onAddAssignment,
   onAddMaterial,
+  isDemo = false,
+}: {
+  data: Data;
+  student: Student;
+  onAddAssignment: () => void;
+  onAddMaterial: () => void;
+  isDemo?: boolean;
+}) {
+  return isDemo ? (
+    <DemoOverview
+      data={data}
+      student={student}
+      onAddAssignment={onAddAssignment}
+      onAddMaterial={onAddMaterial}
+    />
+  ) : (
+    <LiveOverview student={student} timezone={data.settings.timezone} />
+  );
+}
+
+function LiveOverview({
+  student,
+  timezone,
+}: {
+  student: Student;
+  timezone: string;
+}) {
+  const identity = usePrivateIdentity();
+  const query = useQuery({
+    queryKey: ["student-workspace-summary", identity, student.id],
+    enabled: !!identity,
+    queryFn: ({ signal }) => loadWorkspaceSummary(student.id, signal),
+    refetchInterval: 30000,
+  });
+  const summary = query.isError ? undefined : query.data;
+  const base = `/coach/students/${student.id}`;
+  if (!summary)
+    return (
+      <Section title="Overview">
+        <p role={query.isError ? "alert" : "status"}>
+          {query.isError
+            ? "Student summary unavailable."
+            : "Loading current context…"}
+        </p>
+        {query.isError && (
+          <button onClick={() => void query.refetch()}>Retry summary</button>
+        )}
+      </Section>
+    );
+  return (
+    <div className="record-overview">
+      <div className="record-main">
+        <Section title="What matters now" marked>
+          <div className="focus-grid">
+            <RecordCard
+              icon={CalendarDays}
+              label="Next lesson"
+              value={
+                summary.nextLesson
+                  ? formatStudioDateTime(summary.nextLesson.startsAt, timezone)
+                  : "Nothing scheduled"
+              }
+              detail={summary.nextLesson?.topic || ""}
+              link={
+                summary.nextLesson
+                  ? `${base}/lessons/${summary.nextLesson.id}`
+                  : `${base}/lessons`
+              }
+            />
+            <RecordCard
+              icon={FileText}
+              label="Latest coaching note"
+              value={summary.latestNote?.title || "No coaching note yet"}
+              detail={
+                summary.latestNote
+                  ? `${summary.latestNote.status} · ${summary.latestNote.takeaway}`
+                  : ""
+              }
+              link={
+                summary.latestNote
+                  ? `${base}/notes?note=${summary.latestNote.id}&lesson=${summary.latestNote.lessonId}`
+                  : `${base}/notes`
+              }
+            />
+          </div>
+        </Section>
+        <Section title="Current work">
+          <div className="table-list">
+            {summary.work.map((item) => (
+              <article key={item.assignmentId}>
+                <div>
+                  <Link
+                    to={`${base}/work?resource=${item.id}&assignment=${item.assignmentId}`}
+                  >
+                    {item.title}
+                  </Link>
+                  <small>
+                    {item.role === "current_script"
+                      ? "Current script"
+                      : "Assigned resource"}
+                  </small>
+                </div>
+              </article>
+            ))}
+            {summary.practice.map((item) => (
+              <article key={item.id}>
+                <div>
+                  <Link to={`${base}/work?practice=${item.id}`}>
+                    {item.title}
+                  </Link>
+                  {item.helpRequested && <small>Help requested</small>}
+                </div>
+              </article>
+            ))}
+            {!summary.work.length && !summary.practice.length && (
+              <p>No active work assigned.</p>
+            )}
+          </div>
+          <Link to={`${base}/work`}>All work and history</Link>
+        </Section>
+        <details className="disclosure-section">
+          <summary>Goals and private coaching context</summary>
+          <div className="record-copy">
+            <p>{student.goals || "No goals recorded."}</p>
+            <p>{student.privateNotes || "No private context recorded."}</p>
+          </div>
+        </details>
+      </div>
+      <aside className="record-side" aria-label="Student context">
+        <Section title="Needs attention">
+          <div className="stack-actions">
+            {summary.questions > 0 && (
+              <Link to={`${base}/work?help=1`}>
+                {summary.questions} practice question(s)
+              </Link>
+            )}
+            {summary.approvals > 0 && (
+              <Link to={`${base}/actor-page`}>
+                {summary.approvals} approval(s)
+              </Link>
+            )}
+            {(summary.finance.reviewRequired ||
+              summary.finance.pendingPayments > 0 ||
+              summary.finance.renewalExceptions > 0 ||
+              summary.finance.expiringPackages > 0 ||
+              summary.finance.unpaidInvoices > 0 ||
+              summary.finance.balances.some((item) => item.dueMinor > 0)) && (
+              <Link to={`${base}/payments`}>
+                {summary.finance.reviewRequired
+                  ? "Financial review required"
+                  : summary.finance.unpaidInvoices
+                    ? `${summary.finance.unpaidInvoices} unpaid invoice(s)`
+                    : summary.finance.pendingPayments
+                      ? "Payment processing needs review"
+                      : summary.finance.balances.some(
+                            (item) => item.dueMinor > 0,
+                          )
+                        ? "Recorded payment is due"
+                        : "Package expiry or renewal needs review"}
+              </Link>
+            )}
+            {!student.portalEnabled && (
+              <Link to={`${base}/household`}>Student portal access is off</Link>
+            )}
+            {!summary.questions &&
+              !summary.approvals &&
+              !summary.finance.reviewRequired &&
+              !summary.finance.unpaidInvoices &&
+              !summary.finance.pendingPayments &&
+              !summary.finance.renewalExceptions &&
+              !summary.finance.expiringPackages &&
+              !summary.finance.balances.some((item) => item.dueMinor > 0) &&
+              student.portalEnabled && <p>No current exceptions.</p>}
+          </div>
+        </Section>
+        <Section title="Contact">
+          <p>{student.email || "No email recorded"}</p>
+          <p>{student.phone}</p>
+          <Link to={`${base}/household`}>Household and responsibilities</Link>
+        </Section>
+      </aside>
+    </div>
+  );
+}
+
+function DemoOverview({
+  data,
+  student,
 }: {
   data: Data;
   student: Student;
@@ -124,7 +314,7 @@ export function Overview({
           </div>
         </Section>
       </div>
-      <aside className="record-side">
+      <aside className="record-side" aria-label="Student context">
         <Section title="Contact">
           <dl className="detail-list">
             <div>
@@ -163,18 +353,6 @@ export function Overview({
               </dd>
             </div>
           </dl>
-        </Section>
-        <Section title="Quick add">
-          <div className="stack-actions">
-            <button onClick={onAddAssignment}>
-              <CheckSquare />
-              Assign practice
-            </button>
-            <button onClick={onAddMaterial}>
-              <FolderOpen />
-              Add material
-            </button>
-          </div>
         </Section>
       </aside>
     </div>

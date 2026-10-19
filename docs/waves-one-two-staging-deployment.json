@@ -1,0 +1,32 @@
+{
+  "verifiedAt": "2026-10-19T04:24:12.903Z",
+  "status": "PASS",
+  "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "id": "6ad59afc32390ffd00c5d20e",
+  "origin": "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app",
+  "candidate": "36f446392dd940ad25b0ba7449b7dad8d938c636",
+  "state": "ready",
+  "context": "deploy-preview",
+  "publishedAt": null,
+  "functions": 23,
+  "uploadedFunctionDigestsMatch": true,
+  "clientAssets": 122,
+  "anonymous": [
+    {
+      "path": "/",
+      "status": 401
+    },
+    {
+      "path": "/api/healthz",
+      "status": 401
+    }
+  ],
+  "oldPublication": "6ace53e7f850061d7c49b711",
+  "oldDraftPreserved": "6ad4c3817ca9519157e3e3b0",
+  "authUnchanged": true,
+  "environmentUnchanged": true,
+  "buildsStopped": true,
+  "migrations": 58,
+  "businessAndAuthRowsUnchanged": true,
+  "artifactHash": "6537e01f14221fdfe90c8aa54b0b125b1166dc3c8a984ef5dd402bd658500829"
+}

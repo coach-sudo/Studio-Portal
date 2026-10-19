@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "checkedAt": "2026-10-19T11:40:25.812Z",
+  "postgres": 17,
+  "migrations": 60,
+  "localOnly": true,
+  "scenarios": [
+    "migration_preserves_pretrigger_delivered_legacy_anchor",
+    "legacy_only_and_legacy_then_effect_retry",
+    "effect_only_and_effect_then_legacy_retry",
+    "pre_effect_legacy_fallback_preserved",
+    "queued_suppressed_cancelled_delivered_states_not_reset",
+    "partial_queue_failure_and_interrupted_worker_retry_fill_only_missing_recipients",
+    "separate_reschedule_and_cancellation_events_preserved",
+    "recipient_student_and_studio_contexts_fenced",
+    "same_version_guest_withdrawals_keep_distinct_booking_contexts",
+    "forged_effect_and_stale_snapshot_isolation_rejected",
+    "two_real_sessions_old_new_both_orders_block_and_commit_once",
+    "rolled_back_first_producer_does_not_lose_notice",
+    "actual_service_role_can_queue_through_guard",
+    "public_insert_grants_cannot_probe_private_effects_before_rls",
+    "private_functions_not_callable_by_portal_roles"
+  ],
+  "productionAndHostedCalls": 0,
+  "providers": 0,
+  "messagesDelivered": 0,
+  "migration": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+  "identityMigration": "20261019111534_lesson_notice_cutover_identity.sql",
+  "migrationSha256LF": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a"
+}

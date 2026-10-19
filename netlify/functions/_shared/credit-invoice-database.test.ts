@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { PGlite } from "@electric-sql/pglite";
 import { pgcrypto } from "@electric-sql/pglite/contrib/pgcrypto";
 import { beforeAll, afterAll, describe, expect, it } from "vitest";
+import { creditCoverageSchema } from "../../../src/domain/creditCoverage";
 const studio = "10000000-0000-4000-8000-000000000001",
   student = "20000000-0000-4000-8000-000000000001",
   other = "20000000-0000-4000-8000-000000000002",
@@ -21,7 +22,7 @@ beforeAll(async () => {
  create type public.payment_entry_kind as enum('payment','refund','adjustment');
  create type public.credit_entry_kind as enum('purchase','reservation','consumption','release','adjustment','expiration');
  create table public.studios(id uuid primary key,name text,timezone text,settings jsonb default '{}');
- create table public.students(id uuid primary key,studio_id uuid references public.studios, user_id uuid,deleted_at timestamptz,full_name text,email text,guardian_name text,guardian_email text,updated_at timestamptz default now());
+ create table public.students(id uuid primary key,studio_id uuid references public.studios, user_id uuid,deleted_at timestamptz,full_name text,email text,guardian_name text,guardian_email text,updated_at timestamptz default now(),is_minor boolean default false,portal_enabled boolean default true);
  create table public.memberships(user_id uuid,studio_id uuid,role text);
  create function public.is_studio_coach(studio uuid) returns boolean language sql stable security definer set search_path='' as $$ select exists(select 1 from public.memberships where user_id=auth.uid() and studio_id=studio and role='coach') $$;
  create function public.can_view_student_finance(sid uuid) returns boolean language sql stable security definer set search_path='' as $$ select exists(select 1 from public.students where id=sid and (user_id=auth.uid() or public.is_studio_coach(studio_id))) $$;
@@ -65,6 +66,35 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(`create function public.can_view_student_schedule(sid uuid) returns boolean
+    language sql stable as $$select public.can_view_student_finance(sid)$$;`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014142813_credit_coverage_diagnostics.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(`alter table public.packages add column stripe_price_id text;
+    alter table public.lessons add column join_url text;
+    alter table public.recurring_series alter column id set default gen_random_uuid();
+    alter table public.recurring_series add column studio_id uuid,add column service_id uuid,add column student_id uuid,
+      add column status text,add column starts_on timestamptz,add column payment_policy text,
+      add column recurrence_rule jsonb,add column meeting_provider text;
+    create table public.webhook_events(id text primary key,provider text,event_type text,payload jsonb,status text,error text,processed_at timestamptz);
+    create table public.package_gifts(id uuid primary key,definition_id uuid,studio_id uuid,status text,claimed_student_id uuid,
+      package_id uuid,expires_at timestamptz,deliver_at timestamptz,updated_at timestamptz,stripe_checkout_session_id text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014151934_credit_lifecycle_reliability.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20260830221230_sync_lesson_booking_financials.sql",
+      "utf8",
+    ),
+  );
   preservedExplicitBalance = (await scalar(
     `select sum(case when kind='refund' then amount_minor else -amount_minor end) filter(where account_credit) balance,
     count(*) entries, count(*) filter(where external_reference like 'opening-account-credit:%') openings,
@@ -72,15 +102,1875 @@ beforeAll(async () => {
     from public.payment_entries where student_id=$1`,
     [other],
   ))!;
+  await db.exec(`alter table lessons add column offering_id uuid;
+    alter table recurring_series add column updated_at timestamptz default now();
+    alter table outbox_messages add column suppression_reason text,add column student_id uuid;
+    alter table calendar_projections add column id uuid default gen_random_uuid(),add column external_event_id text,
+      add column external_version text,add column last_projected_at timestamptz;
+    create table sync_conflicts(entity_type text,entity_id uuid,status text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014163444_occurrence_safe_lesson_changes.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(`alter table lessons add column created_at timestamptz default now(),add column source_external_id text;
+    alter table audit_events add column created_at timestamptz default now();
+    create table notes(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade,body text);
+    create table assignments(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete set null,body text);
+    create table material_links(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade);
+    create table integration_imports(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete set null,payload jsonb);
+    create table lesson_whiteboards(id uuid primary key default gen_random_uuid(),lesson_id uuid references lessons on delete cascade,body jsonb);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261014203257_bulk_lesson_management.sql",
+      "utf8",
+    ),
+  );
+  await db.exec(`alter type public.lesson_status add value if not exists 'draft';
+    alter table studios add column if not exists settings jsonb default '{}';
+    alter table notes add column student_id uuid,add column title text default '',add column status text default 'draft',add column updated_at timestamptz default now();
+    alter table assignments add column student_id uuid,add column title text default '',add column status text default 'assigned',add column help_requested boolean default false,add column due_at timestamptz;
+    create table materials(id uuid primary key default gen_random_uuid(),title text,status text default 'active',text_content text default '',source text default '',version integer default 1,in_library boolean default false,catalog_visibility text default 'assigned',created_at timestamptz default now());
+    alter table material_links add column material_id uuid,add column student_id uuid,add column role text default 'library',add column status text default 'active',add column pinned boolean default false,add column updated_at timestamptz default now(),add column version integer default 1;
+    create table package_subscriptions(id uuid primary key,student_id uuid,status text);
+    create table actor_profiles(id uuid primary key,student_id uuid);
+    create table profile_submissions(id uuid primary key,actor_profile_id uuid,approval_status text);`);
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261015123428_student_workspace_summary.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
 });
+
+describe("student workspace summaries and explicit credit intent", () => {
+  it("retains a recorded standalone late-cancellation obligation without subtracting dollar credit", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const lid = await lesson();
+    await db.query(
+      `update lessons set status='late_cancelled',payment_status='due',price_minor=3000 where id=$1`,
+      [lid],
+    );
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 3000, dollarCreditMinor: 1200 }],
+    });
+  });
+  it("does not aggregate another studio's amounts through a corrupted student association", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await db.exec("begin");
+    try {
+      const foreignStudio = crypto.randomUUID(),
+        lid = await lesson();
+      await db.query(
+        `insert into studios(id,name) values($1,'Foreign studio')`,
+        [foreignStudio],
+      );
+      await db.query(
+        `update lessons set studio_id=$1,price_minor=99999,payment_status='due' where id=$2`,
+        [foreignStudio, lid],
+      );
+      expect(
+        (await scalar(`select student_financial_overview($1) result`, [
+          student,
+        ]))!.result,
+      ).toMatchObject({
+        reviewRequired: true,
+        balances: [{ currency: "USD", dueMinor: 0, dollarCreditMinor: 1200 }],
+      });
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+  it("keeps a fully reserved package active and flags an invalid legacy expiry for review", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const pkg = await lot(1),
+      lid = await lesson();
+    await db.query(
+      `update lessons set price_minor=4000,payment_status='due' where id=$1`,
+      [lid],
+    );
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      lid,
+      student,
+    ]);
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ activePackages: 1, reviewRequired: false });
+    await db.query(
+      `update packages set expires_at=now()+interval '1 day' where id=$1`,
+      [pkg],
+    );
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ reviewRequired: true });
+  });
+  it("deduplicates canonical work, bounds its summary, and validates exact assignment/student context", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await db.exec("begin");
+    try {
+      const materials = Array.from({ length: 8 }, () => crypto.randomUUID());
+      materials[0] = "ffffffff-ffff-4fff-8fff-ffffffffffff";
+      const links = Array.from({ length: 8 }, () => crypto.randomUUID());
+      for (let n = 0; n < 8; n++) {
+        await db.query(
+          `insert into materials(id,title,text_content) values($1,$2,'Private resource body')`,
+          [materials[n], `Work ${n}`],
+        );
+        await db.query(
+          `insert into material_links(id,material_id,student_id,role) values($1,$2,$3,'library')`,
+          [links[n], materials[n], student],
+        );
+      }
+      await db.query(
+        `insert into material_links(material_id,student_id,role) values($1,$2,'current_script')`,
+        [materials[0], student],
+      );
+      const result = (await scalar(
+        `select student_workspace_summary($1) result`,
+        [student],
+      ))!.result as any;
+      expect(result.work).toHaveLength(5);
+      expect(result.work[0]).toMatchObject({
+        id: materials[0],
+        role: "current_script",
+      });
+      expect(new Set(result.work.map((item: any) => item.id)).size).toBe(5);
+      expect(JSON.stringify(result.work)).not.toContain(
+        "Private resource body",
+      );
+      const target = (await scalar(
+        `select student_workspace_resource($1,$2,$3) result`,
+        [student, materials[7], links[7]],
+      ))!.result;
+      expect(target).toMatchObject({
+        id: materials[7],
+        assignmentId: links[7],
+      });
+      // The exact record need not be present on the current five-item summary page.
+      await db.exec("savepoint wrong_context");
+      await expect(
+        db.query(`select student_workspace_resource($1,$2,$3)`, [
+          other,
+          materials[7],
+          links[7],
+        ]),
+      ).rejects.toThrow("NOT_FOUND");
+      await db.exec("rollback to savepoint wrong_context");
+    } finally {
+      await db.exec("rollback");
+    }
+  });
+  async function booking(ids: string[]) {
+    const b = (await scalar(
+      `insert into bookings(studio_id,student_id,starts_at,ends_at) select studio_id,student_id,starts_at,ends_at from lessons where id=$1 returning id`,
+      [ids[0]],
+    ))!.id as string;
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, student, b, student + "@example.test"],
+      );
+    return b;
+  }
+
+  it("counts a partially paid shared booking once across its occurrences", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson(),
+      next = await lesson("now()+interval '8 days'");
+    const bid = await booking([first, next]);
+    await db.query(
+      `update bookings set total_minor=10000,paid_minor=2500,payment_status='partially_paid' where id=$1`,
+      [bid],
+    );
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 7500, dollarCreditMinor: 1200 }],
+    });
+  });
+  it("flags mixed invoice and shared-booking associations instead of charging the full booking twice", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson(),
+      next = await lesson("now()+interval '8 days'");
+    await booking([first, next]);
+    await invoice(await service(), "service", [first]);
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      reviewRequired: true,
+      unpaidInvoices: 1,
+      balances: [{ currency: "USD", dueMinor: 4000 }],
+    });
+  });
+  it("counts an issued invoice once instead of adding its lesson obligation", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const lid = await lesson();
+    await db.query(
+      `update lessons set price_minor=4000,payment_status='due' where id=$1`,
+      [lid],
+    );
+    await invoice(await service(), "service", [lid]);
+    const result = (await scalar(
+      `select student_financial_overview($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      unpaidInvoices: 1,
+      reviewRequired: false,
+      balances: [{ currency: "USD", dueMinor: 4000, dollarCreditMinor: 1200 }],
+    });
+  });
+  it("reports unknown lesson prices for review without inventing a zero balance", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    await lesson();
+    expect(
+      (await scalar(`select student_financial_overview($1) result`, [student]))!
+        .result,
+    ).toMatchObject({ reviewRequired: true });
+  });
+  it("bounds current context and denies the coach-private summary to a student", async () => {
+    await reset();
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+    const first = await lesson("now()+interval '1 day'");
+    await lesson("now()+interval '2 days'");
+    const result = (await scalar(
+      `select student_workspace_summary($1) result`,
+      [student],
+    ))!.result;
+    expect(result).toMatchObject({
+      studentId: student,
+      nextLesson: { id: first },
+      work: [],
+      practice: [],
+      latestNote: null,
+    });
+    await db.query(`select set_config('app.uid',$1,false)`, [student]);
+    await expect(
+      db.query(`select student_workspace_summary($1)`, [student]),
+    ).rejects.toThrow("FORBIDDEN");
+    await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+  });
+  it("retains a failed manual request for recovery while automatic use remains off", async () => {
+    await reset();
+    await lot(1);
+    const lid = await lesson();
+    await db.exec(`create function pg_temp.manual_fail() returns trigger language plpgsql as $$begin if new.quantity<0 then raise exception 'fixture failure';end if;return new;end$$;
+      create trigger manual_failure after insert on package_credit_entries for each row execute function pg_temp.manual_fail();`);
+    const args = [
+      student,
+      "apply_upcoming",
+      {},
+      (await summary()).version,
+      "manual-recovery",
+      coach,
+    ];
+    const first = (await scalar(
+      `select command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+      args,
+    ))!.result;
+    expect(first).toMatchObject({
+      applied: 0,
+      failed: 1,
+      autoApplyPending: true,
+      autoApply: false,
+    });
+    await db.exec(`drop trigger manual_failure on package_credit_entries`);
+    await db.query(
+      `update credit_internal.credit_coverage_jobs set next_attempt_at=now()-interval '1 second' where student_id=$1`,
+      [student],
+    );
+    expect(
+      (await scalar(`select process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toMatchObject({ applied: 1, failed: 0 });
+    expect((await summary()).autoApply).toBe(false);
+    expect(
+      (await scalar(
+        `select count(*) n from package_credit_entries where lesson_id=$1 and quantity<0`,
+        [lid],
+      ))!.n,
+    ).toBe(1);
+    expect(
+      (await scalar(
+        `select command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+        args,
+      ))!.result,
+    ).toEqual({ ...(first as Record<string, unknown>), duplicate: true });
+  });
+});
+
+describe("occurrence-safe lesson changes against the dependent SQL stack", () => {
+  it("does not acknowledge or project through a provider conflict that opens after a calendar claim", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
+      [l],
+    );
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/20261014224415_lesson_bulk_review_context.sql",
+        "utf8",
+      ),
+    );
+    const claimed = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
+      l,
+    ]);
+    expect(
+      (await scalar(`select calendar_claim_current($1,$2) result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      (await scalar(`select finish_calendar_projection($1,$2,'{}') result`, [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    expect(
+      await scalar(
+        `select status,last_error from calendar_projections where lesson_id=$1`,
+        [l],
+      ),
+    ).toEqual({
+      status: "failed",
+      last_error: "synchronization_review_required",
+    });
+  });
+  it("rejects mismatched studio/booking associations without returning another studio's booking identity", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const foreign = "10000000-0000-4000-8000-000000000099";
+    await db.query(
+      `insert into studios(id,name) values($1,'Other studio') on conflict do nothing`,
+      [foreign],
+    );
+    await db.query(`update bookings set studio_id=$1 where id=$2`, [
+      foreign,
+      b,
+    ]);
+    const r = await review(l);
+    expect(r.preview.items[0]).toMatchObject({
+      eligible: false,
+      reasonCode: "booking_ownership_review_required",
+      bookings: [],
+    });
+    await expect(change(l)).rejects.toThrow(
+      "booking_ownership_review_required",
+    );
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+  });
+  it("retains a shared booking and its completed occurrence when its last scheduled occurrence changes", async () => {
+    await reset();
+    const upcoming = await lesson(),
+      past = await lesson("now()-interval '7 days'");
+    await db.query(`update lessons set status='completed' where id=$1`, [past]);
+    const b = await booking([upcoming, past]);
+    await db.query(
+      `update lesson_participants set status='attended' where lesson_id=$1`,
+      [past],
+    );
+    const before = await scalar(
+      `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+      [b, past],
+    );
+    await change(upcoming);
+    expect(
+      await scalar(
+        `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) history from bookings b where id=$1`,
+        [b, past],
+      ),
+    ).toEqual(before);
+  });
+  it("keeps local time and durations across DST for explicitly requested booking-series reschedules", async () => {
+    await reset();
+    const first = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),
+      next = await lesson("'2027-03-20T14:00:00Z'::timestamptz");
+    const b = await booking([first, next]);
+    await db.query(
+      `update bookings set timezone='America/New_York' where id=$1`,
+      [b],
+    );
+    await db.query(
+      `select reschedule_booking_occurrences($1,1,'2027-03-14T14:00:00Z','2027-03-14T15:30:00Z','series')`,
+      [b],
+    );
+    expect(
+      (await scalar(`select starts_at,ends_at from lessons where id=$1`, [
+        next,
+      ]))!,
+    ).toEqual({
+      starts_at: new Date("2027-03-28T14:00:00Z"),
+      ends_at: new Date("2027-03-28T15:30:00Z"),
+    });
+  });
+  it("keeps withdrawal notification intent valid after another participant changes the class", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=2 where id=$1`,
+      [l],
+    );
+    const b = await booking([l]);
+    await booking([l], other);
+    await db.query(`select cancel_booking_credit($1,1,false,true)`, [b]);
+    const claimed = (
+      (await scalar(`select claim_lesson_change_effects() result`))!
+        .result as any
+    ).effects[0];
+    await db.query(
+      `update lessons set starts_at=starts_at+interval '1 day',ends_at=ends_at+interval '1 day',version=version+1 where id=$1`,
+      [l],
+    );
+    expect(
+      (await scalar(`select lesson_change_effect_current($1,$2) result`, [
+        claimed.id,
+        claimed.claim_token,
+      ]))!.result,
+    ).toBe(true);
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}')`, [
+      claimed.id,
+      claimed.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects where id=$1`, [
+        claimed.id,
+      ]))!.status,
+    ).toBe("completed");
+  });
+  it("keeps an ongoing contract generating after its last visible occurrence is cancelled, until future scope is explicitly selected", async () => {
+    await reset();
+    const l = await lesson();
+    const b = await booking([l]);
+    const series = await scalar(
+      `insert into recurring_series(studio_id,student_id,service_id,kind,cadence,status,starts_on,payment_policy)
+      select studio_id,student_id,service_id,'ongoing','weekly','active',starts_at,payment_policy from bookings where id=$1 returning id`,
+      [b],
+    );
+    await db.query(`update lessons set series_id=$1 where id=$2`, [
+      series!.id,
+      l,
+    ]);
+    await db.query(
+      `update bookings set series_id=$1,timezone='America/New_York',location='in_person' where id=$2`,
+      [series!.id, b],
+    );
+    await change(l);
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(`select extend_ongoing_series() n`))!.n,
+    ).toBeGreaterThan(0);
+    const next = (await scalar(
+      `select id from lessons where status='scheduled' and series_id=$1 order by starts_at limit 1`,
+      [series!.id],
+    ))!.id as string;
+    await execute((await review(next, { scope: "future" })).value);
+    expect(
+      (await scalar(`select status from recurring_series where id=$1`, [
+        series!.id,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("cancelled");
+    expect((await scalar(`select extend_ongoing_series() n`))!.n).toBe(0);
+  });
+  it("keeps a previously withdrawn student's upcoming work and ledger unchanged in a whole-class change", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=3 where id=$1`,
+      [l],
+    );
+    await booking([l]);
+    const old = await booking([l], other);
+    await db.query(
+      `update lesson_participants set status='cancelled' where booking_id=$1`,
+      [old],
+    );
+    const next = await lesson("now()+interval '12 days'", other);
+    const p = await lot(1);
+    await db.query(`update packages set student_id=$1 where id=$2`, [other, p]);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [other],
+    );
+    const before = await scalar(
+      `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+      [next],
+    );
+    await execute((await review(l, { wholeClass: true })).value);
+    expect(
+      await scalar(
+        `select to_jsonb(l) lesson,(select jsonb_agg(to_jsonb(e) order by e.id) from package_credit_entries e) ledger from lessons l where id=$1`,
+        [next],
+      ),
+    ).toEqual(before);
+    expect(
+      (await scalar(
+        `select student_ids from lesson_ops.effects where lesson_id=$1`,
+        [l],
+      ))!.student_ids,
+    ).toEqual([student]);
+  });
+  it("booking financial triggers never treat an uncovered recurring occurrence as paid credit or cash", async () => {
+    await reset();
+    await lot(1);
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      first,
+      student,
+    ]);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).not.toBe("paid");
+    expect(
+      (await scalar(
+        `select count(*) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(0);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+    await change(first);
+    expect(
+      (await scalar(`select payment_status from lessons where id=$1`, [next]))!
+        .payment_status,
+    ).toBe("paid_by_credit");
+    expect(
+      (await scalar(`select status from bookings where id=$1`, [b]))!.status,
+    ).toBe("confirmed");
+    expect(
+      (await scalar(
+        `select sum(quantity) n from package_credit_entries where lesson_id=$1`,
+        [next],
+      ))!.n,
+    ).toBe(-1);
+  });
+  it("blocks a multi-occurrence invoice line without waiving unrelated charges or changing its associations", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const inv = await invoice(await service(), "service", [first]);
+    // Characterize an existing legacy/imported JSON line; current authoring already refuses it.
+    await db.query(
+      `update studio_invoices set items=jsonb_set(items,'{0,lessonIds}',$2::jsonb) where id=$1`,
+      [inv.id, JSON.stringify([first, next])],
+    );
+    const before = await scalar(
+      `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+      [inv.id],
+    );
+    await expect(change(first)).rejects.toThrow(
+      "shared_invoice_review_required",
+    );
+    expect(
+      await scalar(
+        `select to_jsonb(i) invoice from studio_invoices i where id=$1`,
+        [inv.id],
+      ),
+    ).toEqual(before);
+  });
+  it("increments the shared booking's reschedule counter without moving its contract and rejects stale repeats", async () => {
+    await reset();
+    const first = await lesson(),
+      next = await lesson("now()+interval '12 days'");
+    const b = await booking([first, next]);
+    const before = await scalar(
+      `select starts_at,ends_at from bookings where id=$1`,
+      [b],
+    );
+    const startsAt = new Date(Date.now() + 7 * 86400000).toISOString(),
+      endsAt = new Date(Date.now() + 7 * 86400000 + 3600000).toISOString();
+    const moved = (await scalar(
+      `select to_jsonb(reschedule_booking_occurrences($1,1,$2,$3)) result`,
+      [b, startsAt, endsAt],
+    ))!.result as any;
+    expect(moved.reschedule_count).toBe(1);
+    expect(
+      await scalar(`select starts_at,ends_at from bookings where id=$1`, [b]),
+    ).toEqual(before);
+    await expect(
+      db.query(`select reschedule_booking_occurrences($1,1,$2,$3)`, [
+        b,
+        startsAt,
+        endsAt,
+      ]),
+    ).rejects.toThrow("VERSION_CONFLICT");
+  });
+  async function booking(ids: string[], sid = student, paid = false) {
+    const b = await scalar(
+      `insert into bookings(studio_id,student_id,service_id,starts_at,ends_at,payment_policy,payment_status,total_minor,paid_minor,policy_snapshot)
+      select studio_id,$2,$3,starts_at,ends_at,$4,$5,$6,$6,'{"rescheduleLimit":5}' from lessons where id=$1 returning id`,
+      [
+        ids[0],
+        sid,
+        await service(),
+        paid ? "pay_now" : "pay_later",
+        paid ? "paid" : "due",
+        paid ? 10000 : 0,
+      ],
+    );
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, sid, b!.id, sid + "@example.test"],
+      );
+    return b!.id as string;
+  }
+  async function change(
+    id: string,
+    action = "cancel",
+    extra: Record<string, unknown> = {},
+  ) {
+    const v = (await scalar(`select version from lessons where id=$1`, [id]))!
+      .version;
+    return (await scalar(
+      `select command_change_lesson_state($1,$2,$3,$4,$5) result`,
+      [id, v, action, extra.startsAt || null, extra.endsAt || null],
+    ))!.result as any;
+  }
+  async function review(id: string, extra: Record<string, unknown> = {}) {
+    const value = {
+      lessonId: id,
+      action: "cancel",
+      scope: "occurrence",
+      reason: "Reviewed occurrence change",
+      wholeClass: false,
+      useCredit: false,
+      ...extra,
+    };
+    const preview = (await scalar(
+      `select preview_lesson_occurrence_change($1,$2) result`,
+      [coach, value],
+    ))!.result as any;
+    return { preview, value: { ...value, reviewToken: preview.reviewToken } };
+  }
+  async function execute(value: unknown, key = "review-change-key") {
+    return (await scalar(
+      `select execute_lesson_occurrence_change($1,$2,$3) result`,
+      [coach, key, value],
+    ))!.result as any;
+  }
+  it("cancels only one shared-booking occurrence, leaves history/reminders/participants untouched, and replays once", async () => {
+    await reset();
+    const first = await lesson("now()+interval '2 days'"),
+      next = await lesson("now()+interval '9 days'");
+    const b = await booking([first, next]);
+    await db.query(
+      `insert into outbox_messages(id,lesson_id,booking_id,event_key,status) values(gen_random_uuid(),$1,$3,'booking.reminder.student','queued'),(gen_random_uuid(),$2,$3,'booking.reminder.student','queued')`,
+      [first, next, b],
+    );
+    const before = await scalar(
+      `select to_jsonb(l) lesson,(select to_jsonb(b) from bookings b where id=$2) booking,(select jsonb_agg(to_jsonb(p)) from lesson_participants p where lesson_id=$1) participants from lessons l where id=$1`,
+      [next, b],
+    );
+    const changed = await change(first);
+    expect(
+      await scalar(
+        `select to_jsonb(l) lesson,(select to_jsonb(b) from bookings b where id=$2) booking,(select jsonb_agg(to_jsonb(p)) from lesson_participants p where lesson_id=$1) participants from lessons l where id=$1`,
+        [next, b],
+      ),
+    ).toEqual(before);
+    expect(
+      (await scalar(`select status from outbox_messages where lesson_id=$1`, [
+        next,
+      ]))!.status,
+    ).toBe("queued");
+    expect(
+      (await scalar(`select status from outbox_messages where lesson_id=$1`, [
+        first,
+      ]))!.status,
+    ).toBe("cancelled");
+    const replay = (await scalar(
+      `select command_change_lesson_state($1,1,'cancel') result`,
+      [first],
+    ))!.result as any;
+    expect(replay).toEqual({ ...changed, duplicate: true });
+    expect((await scalar(`select count(*) n from lesson_ops.effects`))!.n).toBe(
+      1,
+    );
+    expect(
+      (await scalar(
+        `select count(*) n from audit_events where action='lesson.cancelled'`,
+      ))!.n,
+    ).toBe(1);
+  });
+  it("reschedules one occurrence without shifting the shared booking or its next occurrence", async () => {
+    await reset();
+    const first = await lesson("now()+interval '2 days'"),
+      next = await lesson("now()+interval '9 days'");
+    const b = await booking([first, next], student, true);
+    const before = await scalar(
+      `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) lesson from bookings b where id=$1`,
+      [b, next],
+    );
+    await change(first, "reschedule", {
+      startsAt: new Date(Date.now() + 3 * 86400000).toISOString(),
+      endsAt: new Date(Date.now() + 3 * 86400000 + 3600000).toISOString(),
+    });
+    expect(
+      await scalar(
+        `select to_jsonb(b) booking,(select to_jsonb(l) from lessons l where id=$2) lesson from bookings b where id=$1`,
+        [b, next],
+      ),
+    ).toEqual(before);
+  });
+  it("blocks ambiguous shared prepaid cancellation without changing any financial or coaching records", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    await booking([a, b], student, true);
+    const before = await scalar(
+      `select jsonb_agg(to_jsonb(l) order by id) lessons from lessons l`,
+    );
+    await expect(change(a)).rejects.toThrow("shared_prepaid_review_required");
+    expect(
+      await scalar(
+        `select jsonb_agg(to_jsonb(l) order by id) lessons from lessons l`,
+      ),
+    ).toEqual(before);
+    expect((await scalar(`select count(*) n from lesson_ops.effects`))!.n).toBe(
+      0,
+    );
+  });
+  it("permits a paid standalone cancellation while preserving the cash receipt and booking payment history", async () => {
+    await reset();
+    const a = await lesson();
+    const b = await booking([a], student, true);
+    await db.query(
+      `update lessons set paid_minor=10000,payment_status='paid' where id=$1`,
+      [a],
+    );
+    await change(a);
+    expect(
+      await scalar(
+        `select status,paid_minor,payment_status from bookings where id=$1`,
+        [b],
+      ),
+    ).toMatchObject({
+      status: "cancelled",
+      paid_minor: 10000,
+      payment_status: "paid",
+    });
+  });
+  it("requires explicit whole-class review and refuses student-scoped class changes", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(`update lessons set capacity=2 where id=$1`, [l]);
+    await booking([l]);
+    await booking([l], other);
+    await expect(change(l)).rejects.toThrow("class_scope_required");
+    const blocked = await review(l, { studentContextId: student });
+    expect(blocked.preview.items[0]).toMatchObject({
+      eligible: false,
+      reasonCode: "class_scope_required",
+    });
+    const r = await review(l, { wholeClass: true });
+    expect(r.preview.items[0].notificationParticipantCount).toBe(2);
+    await execute(r.value);
+    expect(
+      (await scalar(
+        `select count(*) n from lesson_participants where status='confirmed'`,
+      ))!.n,
+    ).toBe(0);
+    expect(
+      (await scalar(
+        `select cardinality(student_ids) n from lesson_ops.effects`,
+      ))!.n,
+    ).toBe(2);
+  });
+  it("withdrawing a booked student leaves a booking-free class participant, reminders and credit ledger intact", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `update lessons set student_id=null,capacity=2 where id=$1`,
+      [l],
+    );
+    const b = await booking([l]);
+    await db.query(
+      `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'native@example.test')`,
+      [l, other],
+    );
+    await db.query(
+      `insert into outbox_messages(id,lesson_id,student_id,status,event_key) values(gen_random_uuid(),$1,$2,'queued','booking.reminder.student'),(gen_random_uuid(),$1,$3,'queued','booking.reminder.student')`,
+      [l, student, other],
+    );
+    await lot(2);
+    await db.query(`select reserve_student_lesson_credit($1,$2,null,true)`, [
+      l,
+      student,
+    ]);
+    const before = await scalar(
+      `select to_jsonb(lp) participant from lesson_participants lp where student_id=$1`,
+      [other],
+    );
+    const v = (await scalar(`select version from bookings where id=$1`, [b]))!
+      .version;
+    await db.query(`select cancel_booking_credit($1,$2,false,true)`, [b, v]);
+    expect(
+      (await scalar(`select status from lessons where id=$1`, [l]))!.status,
+    ).toBe("scheduled");
+    expect(
+      await scalar(
+        `select to_jsonb(lp) participant from lesson_participants lp where student_id=$1`,
+        [other],
+      ),
+    ).toEqual(before);
+    expect((await summary()).reserved).toBe(0);
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        student,
+      ]))!.status,
+    ).toBe("cancelled");
+    expect(
+      (await scalar(`select status from outbox_messages where student_id=$1`, [
+        other,
+      ]))!.status,
+    ).toBe("queued");
+    expect(
+      (await scalar(`select student_ids from lesson_ops.effects`))!.student_ids,
+    ).toEqual([student]);
+  });
+  it("rejects pending invoice JSON associations and unresolved provider synchronization", async () => {
+    await reset();
+    const l = await lesson();
+    const inv = await invoice(await service(), "service", [l]);
+    await db.query(
+      `update studio_invoices set checkout_key='pending' where id=$1`,
+      [inv.id],
+    );
+    await expect(change(l)).rejects.toThrow("payment_pending");
+    await db.query(`update studio_invoices set checkout_key=null where id=$1`, [
+      inv.id,
+    ]);
+    await db.query(
+      `update lessons set source_provider='google_calendar' where id=$1`,
+      [l],
+    );
+    await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
+      l,
+    ]);
+    await expect(change(l)).rejects.toThrow("synchronization_review_required");
+  });
+  it("executes a frozen selection and rejects dependencies added after review", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    const r = await review(a, { scope: "selected", selectedIds: [a, b] });
+    await db.query(
+      `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'added@example.test')`,
+      [b, student],
+    );
+    await expect(execute(r.value)).rejects.toThrow("VERSION_CONFLICT");
+    expect(
+      (await scalar(`select count(*) n from lessons where status='scheduled'`))!
+        .n,
+    ).toBe(2);
+    const fresh = await review(a, { scope: "selected", selectedIds: [a, b] });
+    const extra = await lesson("now()+interval '16 days'");
+    await execute(fresh.value);
+    expect(
+      (await scalar(`select status from lessons where id=$1`, [extra]))!.status,
+    ).toBe("scheduled");
+    expect((await execute(fresh.value)).duplicate).toBe(true);
+  });
+  it("stops future generation only for explicit future scope and freezes expanded IDs", async () => {
+    await reset();
+    const a = await lesson(),
+      b = await lesson("now()+interval '9 days'");
+    const series = await scalar(
+      `insert into recurring_series(studio_id,student_id,kind,status) values($1,$2,'ongoing','active') returning id`,
+      [studio, student],
+    );
+    await db.query(`update lessons set series_id=$1`, [series!.id]);
+    const r = await review(a, { scope: "future" });
+    const extra = await lesson("now()+interval '16 days'");
+    await db.query(`update lessons set series_id=$1 where id=$2`, [
+      series!.id,
+      extra,
+    ]);
+    await expect(execute(r.value)).rejects.toThrow("VERSION_CONFLICT");
+    await execute((await review(a)).value, "single-occurrence");
+    expect((await scalar(`select status from recurring_series`))!.status).toBe(
+      "active",
+    );
+    await execute(
+      (await review(b, { scope: "future" })).value,
+      "future-occurrences",
+    );
+    expect((await scalar(`select status from recurring_series`))!.status).toBe(
+      "cancelled",
+    );
+  });
+  it("reschedules multiple occurrences before allocating credits and preserves wall-clock time across DST", async () => {
+    await reset();
+    await lot(2);
+    await db.query(
+      `update student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+    const a = await lesson("'2027-03-06T15:00:00Z'::timestamptz"),
+      b = await lesson("'2027-03-13T15:00:00Z'::timestamptz");
+    const r = await review(a, {
+      scope: "selected",
+      selectedIds: [a, b],
+      action: "reschedule",
+      startsAt: "2027-03-07T15:00:00Z",
+      endsAt: "2027-03-07T16:30:00Z",
+    });
+    await execute(r.value);
+    expect(
+      (await scalar(`select starts_at from lessons where id=$1`, [b]))!
+        .starts_at,
+    ).toEqual(new Date("2027-03-14T14:00:00Z"));
+    expect((await summary()).reserved).toBe(2);
+  });
+  it("fences late calendar completions, preserves obtained identity and retries an expired lease", async () => {
+    await reset();
+    const l = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'queued')`,
+      [l],
+    );
+    const claimed = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await change(l);
+    const done = (await scalar(
+      `select finish_calendar_projection($1,$2,$3) result`,
+      [
+        claimed.projection.id,
+        claimed.projection.claim_token,
+        { id: "individual-event", etag: "etag" },
+      ],
+    ))!.result;
+    expect(done).toBe(false);
+    const p = await scalar(
+      `select status,external_event_id,projected_version,first_attempted_at from calendar_projections`,
+    );
+    expect(p).toMatchObject({
+      status: "queued",
+      external_event_id: "individual-event",
+    });
+    expect(p!.first_attempted_at).toBeTruthy();
+    const next = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    await db.exec(
+      `update calendar_projections set claim_until=now()-interval '1 second'`,
+    );
+    const recovered = (
+      await db.query<any>(`select * from claim_calendar_projections(10)`)
+    ).rows[0];
+    expect(recovered.projection.claim_token).not.toBe(
+      next.projection.claim_token,
+    );
+    expect(
+      (await scalar(`select finish_calendar_projection($1,$2,'{}') result`, [
+        next.projection.id,
+        next.projection.claim_token,
+      ]))!.result,
+    ).toBe(false);
+  });
+  it("recovers notification intent failures with a stable cohort and refuses an old worker token", async () => {
+    await reset();
+    const l = await lesson();
+    await change(l);
+    const claim = (await scalar(`select claim_lesson_change_effects() result`))!
+      .result as any;
+    const e = claim.effects[0];
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}',true)`, [
+      e.id,
+      e.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects`))!.status,
+    ).toBe("failed");
+    expect(
+      (
+        (await scalar(`select claim_lesson_change_effects() result`))!
+          .result as any
+      ).effects,
+    ).toHaveLength(0);
+    await db.exec(
+      `update lesson_ops.effects set next_attempt_at=now()-interval '1 second'`,
+    );
+    const retry = (
+      (await scalar(`select claim_lesson_change_effects() result`))!
+        .result as any
+    ).effects[0];
+    expect(retry.student_ids).toEqual(e.student_ids);
+    expect(
+      (await scalar(`select finish_lesson_change_effect($1,$2,'{}') result`, [
+        e.id,
+        e.claim_token,
+      ]))!.result,
+    ).toBe(false);
+    await db.query(`select finish_lesson_change_effect($1,$2,'{}')`, [
+      e.id,
+      retry.claim_token,
+    ]);
+    expect(
+      (await scalar(`select status from lesson_ops.effects`))!.status,
+    ).toBe("completed");
+  });
+});
+
+describe("read-only credit coverage diagnostics", () => {
+  async function coverage(page = 1, size = 25, preview = false) {
+    await db.exec(`reset role;select set_config('app.uid','${coach}',false);`);
+    const result = await scalar(
+      `select public.student_credit_coverage($1,$2,$3,$4) result`,
+      [student, page, size, preview],
+    );
+    return creditCoverageSchema.parse(result!.result);
+  }
+
+  it("allocates before pagination and never writes the ledger, lessons or preference", async () => {
+    await reset();
+    await lot(1);
+    const first = await lesson("now()+interval '1 day'");
+    const second = await lesson("now()+interval '2 days'");
+    const before = await scalar(
+      `select public.student_credit_summary($1) summary,
+      (select jsonb_agg(to_jsonb(l) order by id) from public.lessons l) lessons,
+      (select jsonb_agg(to_jsonb(e) order by id) from public.package_credit_entries e) ledger`,
+      [student],
+    );
+    const page1 = await coverage(1, 1, true);
+    const page2 = await coverage(2, 1, true);
+    expect(page1.items[0]).toMatchObject({
+      lessonId: first,
+      state: "eligible_unreserved",
+      reasonCode: "eligible",
+    });
+    expect(page2.items[0]).toMatchObject({
+      lessonId: second,
+      reasonCode: "no_available_credits",
+    });
+    expect(page2.counts).toEqual({
+      covered: 0,
+      eligible: 1,
+      uncovered: 1,
+      reviewRequired: 0,
+    });
+    expect(page1.hasMore).toBe(true);
+    expect(page2.hasMore).toBe(false);
+    expect(
+      await scalar(
+        `select public.student_credit_summary($1) summary,
+      (select jsonb_agg(to_jsonb(l) order by id) from public.lessons l) lessons,
+      (select jsonb_agg(to_jsonb(e) order by id) from public.package_credit_entries e) ledger`,
+        [student],
+      ),
+    ).toEqual(before);
+    expect(
+      (await coverage()).items.every(
+        (item) => item.reasonCode === "auto_disabled",
+      ),
+    ).toBe(true);
+  });
+
+  it("uses earliest expiry and explains credits that expire before a lesson", async () => {
+    await reset();
+    const expiry = new Date(Date.now() + 3 * 86400000).toISOString();
+    const earlyLot = await lot(1, expiry);
+    const lastingLot = await lot(1);
+    await lesson("now()+interval '1 day'");
+    await lesson("now()+interval '5 days'");
+    const result = await coverage(1, 25, true);
+    expect(result.items.map((item) => item.packageId)).toEqual([
+      earlyLot,
+      lastingLot,
+    ]);
+    await db.query(
+      `delete from public.package_credit_entries where package_id=$1`,
+      [lastingLot],
+    );
+    expect((await coverage(1, 25, true)).items[1].reasonCode).toBe(
+      "no_available_credits",
+    );
+    await db.query(
+      `delete from public.lessons where starts_at < now()+interval '3 days'`,
+    );
+    expect((await coverage(1, 25, true)).items[0].reasonCode).toBe(
+      "expires_before_lesson",
+    );
+  });
+
+  it("recognizes existing reservations even when automatic use is off", async () => {
+    await reset();
+    const p = await lot(2);
+    const l = await lesson();
+    await db.query(
+      `select public.reserve_student_lesson_credit($1,$2,$3,true)`,
+      [l, student, p],
+    );
+    expect((await coverage()).items[0]).toMatchObject({
+      state: "covered",
+      reasonCode: "already_reserved",
+      eligible: false,
+    });
+    expect((await coverage()).summary).toMatchObject({
+      available: 1,
+      reserved: 1,
+      remaining: 2,
+      autoApply: false,
+    });
+  });
+
+  it("protects paid, partial, waived and invoice-checkout lessons", async () => {
+    await reset();
+    await lot(10);
+    for (const status of ["paid", "partially_paid", "waived"]) {
+      const l = await lesson();
+      await db.query(
+        `update public.lessons set payment_status=$2 where id=$1`,
+        [l, status],
+      );
+    }
+    const pending = await lesson();
+    const inv = await invoice(await service(), "service", [pending]);
+    await db.query(
+      `update public.studio_invoices set checkout_key='pending-key' where id=$1`,
+      [inv.id],
+    );
+    expect(
+      (await coverage(1, 25, true)).items.map((item) => item.reasonCode).sort(),
+    ).toEqual([
+      "cash_paid",
+      "lesson_ineligible",
+      "partially_paid",
+      "payment_pending",
+    ]);
+  });
+
+  it("explains booking processing without reserving a credit", async () => {
+    await reset();
+    await lot(2);
+    const l = await lesson();
+    const b = await scalar(
+      `insert into public.bookings(studio_id,student_id,payment_policy,payment_status)
+      values($1,$2,'pay_later','processing') returning id`,
+      [studio, student],
+    );
+    await db.query(
+      `insert into public.lesson_participants(lesson_id,student_id,booking_id) values($1,$2,$3)`,
+      [l, student, b!.id],
+    );
+    expect((await coverage(1, 25, true)).items[0].reasonCode).toBe(
+      "payment_pending",
+    );
+    expect((await summary()).available).toBe(2);
+  });
+
+  it("keeps mixed legacy flags for review without automatic spending", async () => {
+    await reset();
+    const on = await lot(1);
+    await lot(1);
+    await db.query(`update public.packages set auto_apply=true where id=$1`, [
+      on,
+    ]);
+    await db.query(
+      `update public.student_credit_accounts set auto_apply=null where student_id=$1`,
+      [student],
+    );
+    await lesson("now()+interval '1 day'");
+    await lesson("now()+interval '2 days'");
+    const result = await coverage();
+    expect(result.settingReasonCode).toBe("mixed_settings_review");
+    expect(result.items.map((item) => item.reasonCode)).toEqual([
+      "mixed_settings_review",
+      "mixed_settings_review",
+    ]);
+    expect((await coverage(1, 25, true)).counts?.eligible).toBe(2);
+  });
+
+  it("flags ambiguous ledger records instead of repairing them", async () => {
+    await reset();
+    const p = await lot(1);
+    const l = await lesson();
+    await db.query(
+      `insert into public.package_credit_entries(package_id,lesson_id,kind,quantity,reason)
+      values($1,$2,'reservation',-2,'Legacy duplicate')`,
+      [p, l],
+    );
+    expect((await coverage(1, 25, true)).items[0]).toMatchObject({
+      state: "review_required",
+      reasonCode: "reconciliation_required",
+    });
+    expect((await coverage()).summary.needsReview).toBe(true);
+  });
+
+  it("covers only an active student's group participation", async () => {
+    await reset();
+    await lot(1);
+    const group = await lesson("now()+interval '1 day'", other);
+    await db.query(`update public.lessons set student_id=null where id=$1`, [
+      group,
+    ]);
+    await db.query(
+      `insert into public.lesson_participants(lesson_id,student_id,status) values($1,$2,'confirmed')`,
+      [group, student],
+    );
+    expect((await coverage(1, 25, true)).items[0].lessonId).toBe(group);
+    await db.query(
+      `update public.lesson_participants set status='cancelled' where lesson_id=$1`,
+      [group],
+    );
+    expect((await coverage()).items).toEqual([]);
+  });
+
+  it("rejects anonymous and unrelated access through public and private readers", async () => {
+    await reset();
+    await lot(1);
+    await db.exec(
+      `grant usage on schema public,auth to authenticated;select set_config('app.uid','${other}',false);set role authenticated;`,
+    );
+    await expect(
+      db.query(`select public.student_credit_coverage($1)`, [student]),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      db.query(
+        `select credit_internal.read_student_credit_coverage($1,1,25,false)`,
+        [student],
+      ),
+    ).rejects.toThrow("FORBIDDEN");
+    await expect(
+      db.query(
+        `select credit_internal.evaluate_student_lesson_credit($1,gen_random_uuid())`,
+        [student],
+      ),
+    ).rejects.toThrow(/permission denied/);
+    await db.exec(`reset role;set role anon;`);
+    await expect(
+      db.query(`select public.student_credit_coverage($1)`, [student]),
+    ).rejects.toThrow(/permission denied/);
+    await db.exec(`reset role;`);
+  });
+
+  it("never exposes another studio's logistics through a malformed participation", async () => {
+    await reset();
+    const otherStudio = "10000000-0000-4000-8000-000000000002";
+    await db.query(
+      `insert into public.studios(id,name) values($1,'Other studio') on conflict do nothing`,
+      [otherStudio],
+    );
+    const foreign = await lesson();
+    await db.query(
+      `update public.lessons set studio_id=$2,student_id=null where id=$1`,
+      [foreign, otherStudio],
+    );
+    await db.query(
+      `insert into public.lesson_participants(lesson_id,student_id) values($1,$2)`,
+      [foreign, student],
+    );
+    expect((await coverage()).items).toEqual([]);
+  });
+
+  it("handles empty results and rejects invalid paging", async () => {
+    await reset();
+    expect((await coverage()).counts).toEqual({
+      covered: 0,
+      eligible: 0,
+      uncovered: 0,
+      reviewRequired: 0,
+    });
+    await expect(coverage(0)).rejects.toThrow("VALIDATION_FAILED");
+    await expect(coverage(1, 101)).rejects.toThrow("VALIDATION_FAILED");
+  });
+
+  it("counts existing reservations separately from newly applied credits", async () => {
+    await reset();
+    const p = await lot(1);
+    const l = await lesson();
+    await db.query(
+      `select public.reserve_student_lesson_credit($1,$2,$3,true)`,
+      [l, student, p],
+    );
+    const result = await scalar(
+      `select public.reserve_student_upcoming_credits($1) result`,
+      [student],
+    );
+    expect(result!.result).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+      skipped: 0,
+      failed: 0,
+    });
+    expect((await coverage()).counts?.eligible).toBe(0);
+    expect((await summary()).reserved).toBe(1);
+  });
+});
 async function reset() {
+  await db.exec(`delete from lesson_ops.effects;delete from lesson_ops.receipts;delete from sync_conflicts;delete from outbox_messages;
+    select set_config('app.lesson_actor','',false),set_config('app.lesson_class','false',false),set_config('app.lesson_reason','',false),set_config('app.lesson_defer_coverage','false',false);`);
   await db.exec(
-    `reset role; update public.lessons set invoice_id=null;delete from public.payment_entries where reason not in ('Legacy credit','Preserved opening dollar credit balance');delete from public.invoice_settlements;delete from public.studio_invoices;delete from public.package_credit_entries;delete from public.lesson_participants;delete from public.calendar_projections;delete from public.lessons;delete from public.bookings;delete from public.packages;update public.student_credit_accounts set version=1,auto_apply=false;`,
+    `select set_config('app.use_credit','false',false),set_config('app.student_cancel','false',false),set_config('app.invoice_checkout_key','',false);`,
+  );
+  await db.exec(
+    `reset role;delete from credit_internal.credit_command_receipts;delete from credit_internal.credit_coverage_jobs;update credit_internal.coverage_sweep set cursor=null;delete from public.audit_events;delete from public.idempotency_keys;delete from public.recommendations;delete from public.package_gifts;delete from public.webhook_events;update public.lessons set invoice_id=null;delete from public.payment_entries where reason not in ('Legacy credit','Preserved opening dollar credit balance');delete from public.invoice_settlements;delete from public.studio_invoices;delete from public.package_credit_entries;delete from public.lesson_participants;delete from public.calendar_projections;delete from public.lessons;delete from public.bookings;delete from public.recurring_series;delete from public.packages;update public.student_credit_accounts set version=1,auto_apply=false;`,
   );
 }
+describe("credit lifecycle reliability", () => {
+  async function grant(key: string, quantity = 2, extra = {}) {
+    return (await scalar(
+      `select public.command_grant_student_credits($1,$2,$3,$4) result`,
+      [
+        student,
+        key,
+        {
+          quantity,
+          kind: "adjustment",
+          reason: "Regression credit grant",
+          ...extra,
+        },
+        coach,
+      ],
+    ))!.result as any;
+  }
+  async function scan() {
+    return (await scalar(
+      `select public.reserve_student_upcoming_credits($1) result`,
+      [student],
+    ))!.result as any;
+  }
+  async function enable() {
+    await db.query(
+      `update public.student_credit_accounts set auto_apply=true where student_id=$1`,
+      [student],
+    );
+  }
+  it("atomically grants, reserves and audits once on exact replay; rejects changed requests", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    await lesson("now()+interval '3 days'");
+    const first = await grant("grant-repeat");
+    expect(first.coverage).toMatchObject({
+      applied: 2,
+      alreadyCovered: 0,
+      skipped: 0,
+      failed: 0,
+    });
+    expect(await grant("grant-repeat")).toEqual({
+      ...(first as Record<string, unknown>),
+      duplicate: true,
+    });
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      alreadyCovered: 2,
+      failed: 0,
+    });
+    expect(
+      (await scalar(
+        `select count(*) n from public.audit_events where correlation_id='grant-repeat'`,
+      ))!.n,
+    ).toBe(1);
+    await expect(grant("grant-repeat", 3)).rejects.toThrow(
+      "IDEMPOTENCY_CONFLICT",
+    );
+    expect((await summary()).remaining).toBe(2);
+  });
+  it("creates a reviewed package exactly once and rolls back grant if audit persistence fails", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const definition = await scalar(
+      `insert into public.package_definitions(id,studio_id,name,session_count) values(gen_random_uuid(),$1,'Reviewed package',2) returning id`,
+      [studio],
+    );
+    const payload = {
+      package: {
+        definitionId: definition!.id,
+        name: "Reviewed package",
+        priceMinor: 12345,
+        currency: "USD",
+        stripePriceId: null,
+      },
+    };
+    const first = await grant("package-repeat", 2, payload);
+    expect(first.package.price_minor).toBe(12345);
+    expect(first.coverage.applied).toBe(1);
+    expect((await grant("package-repeat", 2, payload)).package.id).toBe(
+      first.package.id,
+    );
+    await db.exec(`create function public.fail_credit_audit() returns trigger language plpgsql as $$begin if new.correlation_id='fail-audit' then raise exception 'audit unavailable'; end if; return new;end$$;
+      create trigger fail_credit_audit before insert on public.audit_events for each row execute function public.fail_credit_audit();`);
+    try {
+      await expect(grant("fail-audit", 2, payload)).rejects.toThrow(
+        "audit unavailable",
+      );
+    } finally {
+      await db.exec(
+        `drop trigger fail_credit_audit on public.audit_events;drop function public.fail_credit_audit();`,
+      );
+    }
+    expect((await scalar(`select count(*) n from public.packages`))!.n).toBe(1);
+    expect((await summary()).remaining).toBe(2);
+  });
+  it("preserves a grant and durable recovery when invoice synchronization fails, then retries once", async () => {
+    await reset();
+    await enable();
+    const l = await lesson();
+    await db.exec(`create function public.fail_credit_sync() returns trigger language plpgsql as $$begin if new.quantity<0 then raise exception 'simulated invoice sync failure'; end if;return new;end$$;
+      create trigger fail_credit_sync after insert on public.package_credit_entries for each row execute function public.fail_credit_sync();`);
+    try {
+      const result = await grant("recovery-grant", 1);
+      expect(result.coverage).toMatchObject({
+        applied: 0,
+        failed: 1,
+        autoApplyPending: true,
+      });
+      expect(await summary()).toMatchObject({ available: 1, reserved: 0 });
+      expect(
+        await scalar(
+          `select generation>completed_generation pending,attempts from credit_internal.credit_coverage_jobs where student_id=$1`,
+          [student],
+        ),
+      ).toEqual({ pending: true, attempts: 1 });
+      expect(
+        (await scalar(`select public.process_credit_coverage_job($1) result`, [
+          student,
+        ]))!.result,
+      ).toEqual({ processed: false });
+    } finally {
+      await db.exec(
+        `drop trigger fail_credit_sync on public.package_credit_entries;drop function public.fail_credit_sync();`,
+      );
+    }
+    await db.query(
+      `update credit_internal.credit_coverage_jobs set next_attempt_at=now()-interval '1 second' where student_id=$1`,
+      [student],
+    );
+    expect(
+      (await scalar(`select public.process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toMatchObject({ processed: true, applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select public.process_credit_coverage_job($1) result`, [
+        student,
+      ]))!.result,
+    ).toEqual({ processed: false });
+    expect(
+      (await scalar(
+        `select count(*) n from public.package_credit_entries where lesson_id=$1 and quantity<0`,
+        [l],
+      ))!.n,
+    ).toBe(1);
+  });
+  it("manual application works with automatic use off and replays without changing the preference", async () => {
+    await reset();
+    await lot(1);
+    await lesson();
+    const version = (await summary()).version;
+    const args = [
+      student,
+      "apply_upcoming",
+      {},
+      version,
+      "explicit-apply",
+      coach,
+    ];
+    const first = (await scalar(
+      `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+      args,
+    ))!.result as any;
+    expect(first).toMatchObject({ applied: 1, autoApply: false, failed: 0 });
+    expect(
+      (await scalar(
+        `select public.command_student_credit_settings($1,$2,$3,$4,$5,$6) result`,
+        args,
+      ))!.result,
+    ).toEqual({ ...(first as Record<string, unknown>), duplicate: true });
+    expect((await summary()).autoApply).toBe(false);
+  });
+  it("enable, disable and adjust report accurate coverage while preserving existing holds", async () => {
+    await reset();
+    await lot(1);
+    await lesson();
+    await lesson("now()+interval '4 days'");
+    const on = (await scalar(
+      `select public.set_student_credit_auto($1,true,$2) result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(on).toMatchObject({
+      applied: 1,
+      alreadyCovered: 0,
+      skipped: 1,
+      skipReasons: { no_available_credits: 1 },
+    });
+    const adjust = (await scalar(
+      `select public.set_student_credit_total($1,2,$2,'More lesson credits','total-add') result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(adjust).toMatchObject({ applied: 1, alreadyCovered: 1, failed: 0 });
+    const off = (await scalar(
+      `select public.set_student_credit_auto($1,false,$2) result`,
+      [student, (await summary()).version],
+    ))!.result;
+    expect(off).toMatchObject({
+      applied: 0,
+      alreadyCovered: 2,
+      autoApply: false,
+    });
+    await expect(grant("negative-grant", -1)).rejects.toThrow(
+      "Reserved credits cannot be removed",
+    );
+    expect((await summary()).reserved).toBe(2);
+  });
+  it("covers actual recurring conversion immediately and does not double consume completed lessons", async () => {
+    await reset();
+    await enable();
+    await lot(4);
+    const l = await lesson();
+    const result = (await scalar(
+      `select public.command_make_lesson_recurring($1,1,'weekly',3,'America/New_York') result`,
+      [l],
+    ))!.result as any;
+    expect(result.creditCoverage[student]).toMatchObject({
+      applied: 3,
+      failed: 0,
+    });
+    expect(await scan()).toMatchObject({ applied: 0, alreadyCovered: 3 });
+    await db.exec(`select set_config('app.uid','${coach}',false);`);
+    const version = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [l],
+    ))!.version;
+    const args = [
+      l,
+      version,
+      "Completed regression lesson",
+      "complete-repeat",
+      "complete-repeat",
+    ];
+    const completed = (await scalar(
+      `select public.command_complete_lesson($1,$2,$3,$4,$5) result`,
+      args,
+    ))!.result;
+    expect(
+      (await scalar(
+        `select public.command_complete_lesson($1,$2,$3,$4,$5) result`,
+        args,
+      ))!.result,
+    ).toEqual(completed);
+    expect(await summary()).toMatchObject({
+      available: 1,
+      reserved: 2,
+      remaining: 3,
+    });
+  });
+  it("applies returned cancellation credit to the next lesson and keeps valid rescheduled holds", async () => {
+    await reset();
+    await enable();
+    await lot(1);
+    const first = await lesson("now()+interval '1 day'");
+    const next = await lesson("now()+interval '5 days'");
+    await scan();
+    const version = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [first],
+    ))!.version;
+    const cancelled = (await scalar(
+      `select public.command_cancel_lesson_credit($1,$2,false) result`,
+      [first, version],
+    ))!.result as any;
+    expect(
+      cancelled.creditCoverage[student],
+      JSON.stringify(cancelled.creditCoverage[student]),
+    ).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select payment_status from public.lessons where id=$1`, [
+        next,
+      ]))!.payment_status,
+    ).toBe("paid_by_credit");
+    const nextVersion = (await scalar(
+      `select version from public.lessons where id=$1`,
+      [next],
+    ))!.version;
+    const moved = (await scalar(
+      `select public.command_change_lesson_state($1,$2,'reschedule',now()+interval '4 days',now()+interval '4 days 1 hour') result`,
+      [next, nextVersion],
+    ))!.result as any;
+    expect(moved.creditCoverage[student]).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+    });
+    expect(await summary()).toMatchObject({
+      available: 0,
+      reserved: 1,
+      remaining: 1,
+    });
+  });
+  it("reserves after moving an uncovered lesson inside validity, and refuses to move a hold past expiry", async () => {
+    await reset();
+    await enable();
+    await lot(1, new Date(Date.now() + 3 * 86400000).toISOString());
+    const l = await lesson("now()+interval '10 days'");
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      skipped: 1,
+      skipReasons: { expires_before_lesson: 1 },
+    });
+    const moved = (await scalar(
+      `select public.command_change_lesson_state($1,1,'reschedule',now()+interval '1 day',now()+interval '1 day 1 hour') result`,
+      [l],
+    ))!.result as any;
+    expect(moved.creditCoverage[student].applied).toBe(1);
+    await expect(
+      db.query(
+        `select public.command_change_lesson_state($1,$2,'reschedule',now()+interval '5 days',now()+interval '5 days 1 hour')`,
+        [l, moved.lesson.version],
+      ),
+    ).rejects.toThrow("expires before that date");
+    expect((await summary()).reserved).toBe(1);
+  });
+  it("manual replay finds an existing reservation with zero available credits and keeps automatic use off", async () => {
+    await reset();
+    await lot(1);
+    const l = await lesson();
+    const first = (await scalar(
+      `select public.command_apply_lesson_credit($1,null,'Explicit lesson coverage','manual-repeat') result`,
+      [l],
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({
+      applied: 1,
+      alreadyCovered: 0,
+      autoApply: false,
+    });
+    expect((await summary()).available).toBe(0);
+    const repeat = (await scalar(
+      `select public.command_apply_lesson_credit($1,null,'Explicit lesson coverage','manual-repeat') result`,
+      [l],
+    ))!.result as any;
+    expect(repeat.creditCoverage).toMatchObject({
+      applied: 0,
+      alreadyCovered: 1,
+      autoApply: false,
+    });
+    expect(repeat.entry.id).toBe(first.entry.id);
+    expect(await summary()).toMatchObject({ remaining: 1, reserved: 1 });
+  });
+  it("self-service booking rescheduling covers newly valid lessons and protects expiry/checkout", async () => {
+    await reset();
+    await enable();
+    await lot(1, new Date(Date.now() + 3 * 86400000).toISOString());
+    const l = await lesson("now()+interval '10 days'");
+    const serviceId = await service();
+    const b = await scalar(
+      `insert into public.bookings(studio_id,student_id,service_id,starts_at,ends_at,policy_snapshot)
+      select studio_id,student_id,$2,starts_at,ends_at,'{"rescheduleLimit":5}' from public.lessons where id=$1 returning id`,
+      [l, serviceId],
+    );
+    await db.query(
+      `insert into public.lesson_participants(lesson_id,student_id,booking_id) values($1,$2,$3)`,
+      [l, student, b!.id],
+    );
+    await scan();
+    const moved = (await scalar(
+      `select to_jsonb(public.reschedule_booking_occurrences($1,1,now()+interval '1 day',now()+interval '1 day 1 hour')) result`,
+      [b!.id],
+    ))!.result as any;
+    expect(moved.payment_policy).toBe("credits");
+    expect(moved.payment_status).toBe("paid");
+    expect(moved.creditCoverage).toBeUndefined();
+    expect(await summary()).toMatchObject({ available: 0, reserved: 1 });
+    await expect(
+      db.query(
+        `select public.reschedule_booking_occurrences($1,$2,now()+interval '5 days',now()+interval '5 days 1 hour')`,
+        [b!.id, moved.version],
+      ),
+    ).rejects.toThrow("expires before that date");
+    await db.query(
+      `update public.lessons set invoice_payment_pending=true where id=$1`,
+      [l],
+    );
+    await expect(
+      db.query(
+        `select public.reschedule_booking_occurrences($1,$2,now()+interval '2 days',now()+interval '2 days 1 hour')`,
+        [b!.id, moved.version],
+      ),
+    ).rejects.toThrow("pending online invoice");
+    expect((await summary()).reserved).toBe(1);
+  });
+  it("classifies uncertain imported payment policy for review; paid imports stay cash covered", async () => {
+    await reset();
+    await enable();
+    await lot(2);
+    const imported = await lesson();
+    const paid = await lesson();
+    await db.query(
+      `update public.lessons set source_provider='lessonface' where id in ($1,$2)`,
+      [imported, paid],
+    );
+    await db.query(
+      `update public.lessons set payment_status='paid',paid_minor=10000 where id=$1`,
+      [paid],
+    );
+    expect(await scan()).toMatchObject({
+      applied: 0,
+      skipped: 2,
+      skipReasons: { reconciliation_required: 1, cash_paid: 1 },
+    });
+    expect((await summary()).available).toBe(2);
+  });
+  it("recovers a pre-upgrade provider key without granting twice and bounds sweep progress", async () => {
+    await reset();
+    await enable();
+    const p = await lot(1);
+    await lesson();
+    await db.query(
+      `update public.package_credit_entries set idempotency_key='legacy-provider' where package_id=$1`,
+      [p],
+    );
+    const result = await grant("legacy-provider", 1, {
+      packageId: p,
+      kind: "purchase",
+    });
+    expect(result.coverage.applied).toBe(1);
+    expect((await summary()).remaining).toBe(1);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([student]);
+    await db.query(`select public.process_credit_coverage_job($1)`, [student]);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([]);
+    expect(
+      (await scalar(`select public.credit_coverage_work(1) result`))!.result,
+    ).toEqual([student]);
+  });
+  it("keeps checkout grants exactly once across provider event replay", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const pkg = await scalar(
+      `insert into public.packages(student_id,name,credit_quantity) values($1,'Purchased snapshot',2) returning id`,
+      [student],
+    );
+    const args = [
+      "checkout-event",
+      "checkout.session.completed",
+      {},
+      "checkout-session",
+      student,
+      pkg!.id,
+      20000,
+      "usd",
+    ];
+    const first = (await scalar(
+      `select public.process_stripe_checkout($1,$2,$3,$4,$5,$6,$7,$8) result`,
+      args,
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(
+        `select public.process_stripe_checkout($1,$2,$3,$4,$5,$6,$7,$8) result`,
+        args,
+      ))!.result,
+    ).toMatchObject({ duplicate: true });
+    expect(await summary()).toMatchObject({
+      remaining: 2,
+      reserved: 1,
+      available: 1,
+    });
+    expect(
+      (await scalar(
+        `select count(*) n from public.payment_entries where external_reference='checkout-session'`,
+      ))!.n,
+    ).toBe(1);
+  });
+  it("gift delivery uses the account preference, preserves paid price, and replays without another lot", async () => {
+    await reset();
+    await enable();
+    await lesson();
+    const def = await scalar(
+      `insert into public.package_definitions(id,studio_id,name,session_count,price_minor) values(gen_random_uuid(),$1,'Gift snapshot',2,99999) returning id`,
+      [studio],
+    );
+    const gift = await scalar(
+      `insert into public.package_gifts(id,studio_id,definition_id,status,expires_at,stripe_checkout_session_id) values(gen_random_uuid(),$1,$2,'purchased',now()+interval '20 days','gift-session') returning id`,
+      [studio, def!.id],
+    );
+    await db.query(
+      `insert into public.webhook_events(id,provider,event_type,status,payload) values('gift-receipt','stripe','checkout.session.completed','processed',$1)`,
+      [
+        {
+          data: {
+            object: {
+              id: "gift-session",
+              payment_status: "paid",
+              metadata: {
+                package_gift_id: gift!.id,
+                package_price_minor: "12345",
+                package_currency: "USD",
+              },
+            },
+          },
+        },
+      ],
+    );
+    const first = (await scalar(
+      `select public.claim_package_gift($1,$2,false) result`,
+      [gift!.id, student],
+    ))!.result as any;
+    expect(first.creditCoverage).toMatchObject({ applied: 1, failed: 0 });
+    expect(
+      (await scalar(`select price_minor from public.packages where id=$1`, [
+        first.packageId,
+      ]))!.price_minor,
+    ).toBe(12345);
+    expect(
+      (await scalar(`select public.claim_package_gift($1,$2,false) result`, [
+        gift!.id,
+        student,
+      ]))!.result,
+    ).toMatchObject({ duplicate: true, packageId: first.packageId });
+    expect((await summary()).remaining).toBe(2);
+    expect((await scalar(`select count(*) n from public.packages`))!.n).toBe(1);
+  });
+});
 async function lot(quantity = 10, expires?: string) {
   const p = await scalar(
     `insert into public.packages(student_id,name,expires_at) values($1,'Package',$2) returning id`,
@@ -104,6 +1994,7 @@ async function summary() {
     student,
   ]))!.summary as {
     available: number;
+    autoApply: boolean | null;
     reserved: number;
     remaining: number;
     version: number;
@@ -766,4 +2657,737 @@ describe("credit and invoice migration against PostgreSQL", () => {
     ).rejects.toThrow(/permission denied/);
     await db.exec(`reset role;`);
   });
+});
+
+// Every bulk scenario rolls back its synthetic fixtures, including immutable
+// tombstones. No real or historical fixture is deleted during migration replay.
+describe("persisted bulk management on the credit/occurrence stack", () => {
+  async function checked<T>(run: () => Promise<T>): Promise<T> {
+    await db.exec("savepoint bulk_expected_error");
+    try {
+      return await run();
+    } catch (error) {
+      await db.exec("rollback to savepoint bulk_expected_error");
+      throw error;
+    } finally {
+      await db.exec("release savepoint bulk_expected_error");
+    }
+  }
+  const scalar = async (sql: string, params: unknown[] = []) =>
+    (await checked(() => db.query<Record<string, unknown>>(sql, params)))
+      .rows[0];
+  async function booking(ids: string[]) {
+    const b = (await scalar(
+      `insert into bookings(studio_id,student_id,starts_at,ends_at) select studio_id,student_id,starts_at,ends_at from lessons where id=$1 returning id`,
+      [ids[0]],
+    ))!.id as string;
+    for (const id of ids)
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,booking_id,email) values($1,$2,$3,$4)`,
+        [id, student, b, student + "@example.test"],
+      );
+    return b;
+  }
+  async function isolated(run: () => Promise<void>) {
+    await db.exec("begin");
+    try {
+      await reset();
+      await run();
+    } finally {
+      await db.exec("rollback");
+    }
+  }
+  async function native(status = "scheduled") {
+    const id = await lesson();
+    await db.query(
+      `update lessons set source_provider='studio',status=$2::lesson_status where id=$1`,
+      [id, status],
+    );
+    return id;
+  }
+  async function preview(ids: string[], operation = "delete", extra = {}) {
+    return (await scalar(`select preview_lesson_bulk($1,$2,$3,$4) result`, [
+      coach,
+      studio,
+      crypto.randomUUID(),
+      {
+        selectedIds: ids,
+        operation,
+        reason: "Erroneous fixture records",
+        ...extra,
+      },
+    ]))!.result as any;
+  }
+  async function execute(r: any, key = crypto.randomUUID()) {
+    return (await scalar(`select execute_lesson_bulk($1,$2,$3,$4) result`, [
+      coach,
+      r.jobId,
+      r.reviewToken,
+      key,
+    ]))!.result as any;
+  }
+  async function progress(r: any, offset = 0, limit = 100) {
+    return (await scalar(`select lesson_bulk_progress($1,$2,$3,$4) result`, [
+      coach,
+      r.jobId,
+      offset,
+      limit,
+    ]))!.result as any;
+  }
+  async function work(r: any, limit = 25) {
+    const claimed = (await scalar(
+      `select claim_lesson_bulk_items($1,$2) result`,
+      [limit, r.jobId],
+    ))!.result as any[];
+    return Promise.all(
+      claimed.map(
+        async (c) =>
+          (await scalar(`select process_lesson_bulk_item($1,$2) result`, [
+            c.id,
+            c.claim_token,
+          ]))!.result as any,
+      ),
+    );
+  }
+  it("returns owner-only resumable review context and exact waiting/processing totals", () =>
+    isolated(async () => {
+      const id = await native();
+      const r = await preview([id], "cancel");
+      const first = await progress(r, 0, 1);
+      expect(first.reviewContext).toMatchObject({
+        reviewToken: r.reviewToken,
+        reason: "Erroneous fixture records",
+        selectionMode: "ids",
+        wholeClass: false,
+        useCredit: false,
+        stopsFutureGeneration: false,
+      });
+      expect(first.items[0].studentNames).toEqual(["Taylor"]);
+      expect(first.counts).toMatchObject({
+        waiting: 1,
+        processing: 0,
+        pending: 1,
+      });
+      await expect(
+        scalar(`select lesson_bulk_progress($1,$2,0,1)`, [other, r.jobId]),
+      ).rejects.toThrow(/FORBIDDEN/);
+      await execute(r);
+      await db.query(`select claim_lesson_bulk_items(1,$1)`, [r.jobId]);
+      expect((await progress(r)).counts).toMatchObject({
+        waiting: 0,
+        processing: 1,
+        pending: 1,
+      });
+    }));
+  it("labels archived bounded candidates without exposing hidden rows in ordinary lists", () =>
+    isolated(async () => {
+      const id = await native("cancelled");
+      const r = await preview([id], "archive");
+      await execute(r);
+      await work(r);
+      const normal = (await scalar(
+        `select lesson_bulk_candidates($1,$2,'{}',0,1) result`,
+        [coach, studio],
+      ))!.result as any;
+      expect(normal.count).toBe(0);
+      const included = (await scalar(
+        `select lesson_bulk_candidates($1,$2,'{"includeArchived":true}',0,1) result`,
+        [coach, studio],
+      ))!.result as any;
+      expect(included.count).toBe(1);
+      expect(included.items[0].coachArchivedAt).toBeTruthy();
+      expect(included.items[0].studentNames).toEqual(["Taylor"]);
+    }));
+  it("physically deletes a reviewed mistake and only positively identified scaffolding; retains immutable audit", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,display_name,email,status,created_at) select id,student_id,'Taylor','taylor@example.test','confirmed',created_at from lessons where id=$1`,
+        [l],
+      );
+      await db.query(
+        `update students set email='taylor@example.test' where id=$1`,
+        [student],
+      );
+      // The initial participant had no matching identity; replace it at creation.
+      await db.query(`delete from lesson_participants where lesson_id=$1`, [l]);
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,display_name,email,status,created_at) select id,student_id,'Taylor','taylor@example.test','confirmed',created_at from lessons where id=$1`,
+        [l],
+      );
+      await db.query(
+        `insert into calendar_projections(lesson_id,status,projected_version) values($1,'queued',0)`,
+        [l],
+      );
+      const r = await preview([l]);
+      expect(r.eligible).toBe(1);
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [l]))!.n,
+      ).toBe(0);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_participants where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(0);
+      const history = (await scalar(
+        `select lesson_record_history($1,$2,$3) result`,
+        [coach, studio, l],
+      ))!.result as any;
+      expect(history.deletion.snapshot.lesson.id).toBe(l);
+      expect(history.deletion.reason).toBe("Erroneous fixture records");
+      await expect(
+        scalar(
+          `insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at) values($1,$2,$3,'Reused identity',now(),now()+interval '1 hour')`,
+          [l, studio, student],
+        ),
+      ).rejects.toThrow("permanently deleted");
+      expect(
+        history.audit.some((a: any) => a.action === "lesson.bulk_delete"),
+      ).toBe(true);
+      await expect(
+        db.query(
+          `delete from lesson_ops.lesson_deletion_snapshots where lesson_id=$1`,
+          [l],
+        ),
+      ).rejects.toThrow("immutable");
+    }));
+  it.each(["completed", "late_cancelled"])("protects %s history", (status) =>
+    isolated(async () => {
+      const r = await preview([await native(status)]);
+      expect(r.blocked).toBe(1);
+      expect((await progress(r)).items[0].reasonCode).toBe(
+        "historical_record_protected",
+      );
+    }),
+  );
+  it.each([
+    ["notes", `insert into notes(lesson_id,body) values($1,'Authored note')`],
+    [
+      "assignments",
+      `insert into assignments(lesson_id,body) values($1,'Assigned practice')`,
+    ],
+    ["material_links", `insert into material_links(lesson_id) values($1)`],
+    [
+      "integration_imports",
+      `insert into integration_imports(lesson_id,payload) values($1,'{}')`,
+    ],
+    [
+      "lesson_whiteboards",
+      `insert into lesson_whiteboards(lesson_id,body) values($1,'{}')`,
+    ],
+    [
+      "outbox_messages",
+      `insert into outbox_messages(id,lesson_id,event_key,status) values(gen_random_uuid(),$1,'booking.reminder.student','queued')`,
+    ],
+    [
+      "service_offerings",
+      `insert into service_offerings(id,lesson_ids) values(gen_random_uuid(),array[$1::uuid])`,
+    ],
+    [
+      "nested JSON",
+      `insert into integration_imports(payload) values(jsonb_build_object('nested',jsonb_build_object('lessonId',$1::text)))`,
+    ],
+  ])(
+    "rejects %s dependency without cascade or SET NULL data loss",
+    (_label, sql) =>
+      isolated(async () => {
+        const l = await native();
+        await db.query(sql, [l]);
+        const r = await preview([l]);
+        expect(r.blocked).toBe(1);
+        expect(
+          Object.keys((await progress(r)).items[0].assessment.dependencies)
+            .length,
+        ).toBeGreaterThan(0);
+        await execute(r);
+        expect(await work(r)).toEqual([]);
+        expect(
+          (await scalar(`select count(*) n from lessons where id=$1`, [l]))!.n,
+        ).toBe(1);
+      }),
+  );
+  it.each([
+    [
+      "paid",
+      `update lessons set paid_minor=100,payment_status='paid' where id=$1`,
+      "financial_history",
+    ],
+    [
+      "waived",
+      `update lessons set payment_status='waived' where id=$1`,
+      "financial_history",
+    ],
+    [
+      "provider",
+      `update lessons set source_provider='calendly' where id=$1`,
+      "provider_history",
+    ],
+    [
+      "calendar attempted",
+      `insert into calendar_projections(lesson_id,status,attempts) values($1,'queued',1)`,
+      "calendar_history",
+    ],
+    [
+      "calendar claimed",
+      `insert into calendar_projections(lesson_id,status,claim_token,claim_until) values($1,'queued',gen_random_uuid(),now()+interval '2 minutes')`,
+      "calendar_history",
+    ],
+    [
+      "external event",
+      `insert into calendar_projections(lesson_id,status,external_event_id) values($1,'queued','external')`,
+      "calendar_history",
+    ],
+    [
+      "participant",
+      `insert into lesson_participants(lesson_id,student_id,display_name,email) values($1,'20000000-0000-4000-8000-000000000002','Other','other@example.test')`,
+      "participant_history",
+    ],
+  ])("protects %s evidence", (_label, sql, code) =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(sql, [l]);
+      const r = await preview([l]);
+      expect((await progress(r)).items[0].reasonCode).toBe(code);
+    }),
+  );
+  it("blocks released credit history, booking associations and pending invoices", () =>
+    isolated(async () => {
+      const l = await native();
+      await lot();
+      await db.query(
+        `insert into package_credit_entries(package_id,lesson_id,kind,quantity,reason) select id,$1,'reservation',-1,'Fixture' from packages limit 1`,
+        [l],
+      );
+      await db.query(
+        `insert into package_credit_entries(package_id,lesson_id,kind,quantity,reason) select id,$1,'release',1,'Fixture release' from packages limit 1`,
+        [l],
+      );
+      expect((await progress(await preview([l]))).items[0].reasonCode).toBe(
+        "credit_history",
+      );
+      const booked = await native();
+      await booking([booked]);
+      expect((await preview([booked])).blocked).toBe(1);
+      const pending = await native();
+      await db.query(
+        `update lessons set invoice_payment_pending=true where id=$1`,
+        [pending],
+      );
+      expect((await preview([pending])).blocked).toBe(1);
+    }));
+  it("freezes all-matching IDs with exclusions, keeps new matches out and rejects changed dependencies", () =>
+    isolated(async () => {
+      const first = await native(),
+        excluded = await native();
+      const r = await preview([], "delete", {
+        selectionMode: "matching",
+        filter: { query: "Lesson" },
+        excludedIds: [excluded],
+      });
+      expect(r.count).toBe(1);
+      const later = await native();
+      await db.query(
+        `insert into notes(lesson_id,body) values($1,'Late note')`,
+        [first],
+      );
+      await execute(r);
+      expect((await work(r))[0].status).toBe("conflicted");
+      const p = await progress(r);
+      expect(p.counts.conflicted).toBe(1);
+      expect(p.items.map((i: any) => i.lessonId)).toEqual([first]);
+      expect(
+        (await scalar(
+          `select count(*) n from lessons where id=any($1::uuid[])`,
+          [[excluded, later]],
+        ))!.n,
+      ).toBe(2);
+    }));
+  it("rejects expired, forged and cross-studio reviews and conflicting execution keys", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_jobs set expires_at=now()-interval '1 minute' where id=$1`,
+        [r.jobId],
+      );
+      await expect(execute(r)).rejects.toThrow("REVIEW_EXPIRED");
+      const active = await preview([await native()]);
+      await expect(
+        execute({ ...active, reviewToken: "0".repeat(64) }),
+      ).rejects.toThrow("FORBIDDEN");
+      await expect(
+        checked(() =>
+          db.query(`select lesson_bulk_progress($1,$2)`, [
+            student,
+            active.jobId,
+          ]),
+        ),
+      ).rejects.toThrow("FORBIDDEN");
+      await expect(
+        scalar(`select preview_lesson_bulk($1,$2,$3,$4)`, [
+          student,
+          studio,
+          crypto.randomUUID(),
+          {
+            operation: "delete",
+            selectedIds: [await native()],
+            reason: "Unauthorized fixture",
+          },
+        ]),
+      ).rejects.toThrow("FORBIDDEN");
+      const key = crypto.randomUUID();
+      await execute(active, key);
+      expect((await execute(active, key)).duplicate).toBe(true);
+      await expect(execute(active, crypto.randomUUID())).rejects.toThrow(
+        "IDEMPOTENCY_CONFLICT",
+      );
+    }));
+  it("archives and restores only coach visibility without touching lifecycle or notifications; void preserves content", () =>
+    isolated(async () => {
+      const l = await native("cancelled");
+      await db.query(
+        `insert into notes(lesson_id,body) values($1,'Preserve note')`,
+        [l],
+      );
+      const before = await scalar(
+        `select to_jsonb(l) record from lessons l where id=$1`,
+        [l],
+      );
+      const r = await preview([l], "archive");
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      await db.query(`select set_config('app.uid',$1,false)`, [coach]);
+      expect(
+        (await scalar(`select lesson_coach_record_visible($1) visible`, [l]))!
+          .visible,
+      ).toBe(false);
+      await db.query(`select set_config('app.uid',$1,false)`, [student]);
+      expect(
+        (await scalar(`select lesson_coach_record_visible($1) visible`, [l]))!
+          .visible,
+      ).toBe(true);
+      const restore = await preview([l], "restore");
+      await execute(restore);
+      expect((await work(restore))[0].status).toBe("succeeded");
+      const v = await preview([l], "void");
+      await execute(v);
+      expect((await work(v))[0].status).toBe("succeeded");
+      expect(
+        await scalar(`select to_jsonb(l) record from lessons l where id=$1`, [
+          l,
+        ]),
+      ).toEqual(before);
+      expect(
+        (await scalar(`select count(*) n from notes where lesson_id=$1`, [l]))!
+          .n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(0);
+      expect((await preview([l], "void")).blocked).toBe(1);
+    }));
+  it("cancels one shared occurrence through the existing core and reports synchronization separately", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const b = await booking([first, next]);
+      const before = await scalar(
+        `select to_jsonb(b) record from bookings b where id=$1`,
+        [b],
+      );
+      const r = await preview([first], "cancel");
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        await scalar(`select to_jsonb(b) record from bookings b where id=$1`, [
+          b,
+        ]),
+      ).toEqual(before);
+      expect(
+        (await scalar(`select status from lessons where id=$1`, [next]))!
+          .status,
+      ).toBe("scheduled");
+      expect((await progress(r)).counts).toMatchObject({
+        succeeded: 1,
+        synchronizationPending: 1,
+      });
+      expect(await work(r)).toEqual([]);
+    }));
+  it("partial execution retries only failed items and rolls back a failed deletion snapshot/audit", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const r = await preview([first, next]);
+      await execute(r);
+      await db.exec(
+        `create function public.bulk_fixture_fail() returns trigger language plpgsql as $$begin if new.entity_id='${next}'::uuid then raise exception 'Fixture failure';end if;return new;end$$; create trigger bulk_fixture_fail before insert on audit_events for each row execute function public.bulk_fixture_fail();`,
+      );
+      const results = await work(r);
+      expect(results.map((i) => i.status).sort()).toEqual([
+        "failed",
+        "succeeded",
+      ]);
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [next]))!.n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.lesson_deletion_snapshots where lesson_id=$1`,
+          [next],
+        ))!.n,
+      ).toBe(0);
+      await db.exec(
+        `drop trigger bulk_fixture_fail on audit_events;drop function bulk_fixture_fail()`,
+      );
+      const key = crypto.randomUUID();
+      const retry = await scalar(
+        `select retry_lesson_bulk($1,$2,$3,$4) result`,
+        [coach, r.jobId, r.reviewToken, key],
+      );
+      expect((retry!.result as any).retried).toBe(1);
+      expect(
+        await scalar(`select retry_lesson_bulk($1,$2,$3,$4) result`, [
+          coach,
+          r.jobId,
+          r.reviewToken,
+          key,
+        ]),
+      ).toEqual(retry);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect((await progress(r)).counts.succeeded).toBe(2);
+    }));
+  it("recovers an interrupted claim and rejects its obsolete token", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await execute(r);
+      const old = (await scalar(`select claim_lesson_bulk_items(1,$1) result`, [
+        r.jobId,
+      ]))!.result as any[];
+      expect(await work(r)).toEqual([]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_items set claim_until=now()-interval '1 minute' where id=$1`,
+        [old[0].id],
+      );
+      const current = (await scalar(
+        `select claim_lesson_bulk_items(1,$1) result`,
+        [r.jobId],
+      ))!.result as any[];
+      await expect(
+        checked(() =>
+          db.query(`select process_lesson_bulk_item($1,$2)`, [
+            old[0].id,
+            old[0].claim_token,
+          ]),
+        ),
+      ).rejects.toThrow("VERSION_CONFLICT");
+      expect(
+        (await scalar(`select process_lesson_bulk_item($1,$2) result`, [
+          current[0].id,
+          current[0].claim_token,
+        ]))!.result,
+      ).toMatchObject({ status: "succeeded" });
+    }));
+  it(
+    "supports 5,000 frozen records, bounded pages and rejects 5,001 without truncation",
+    () =>
+      isolated(async () => {
+        await db.exec(`insert into lessons(studio_id,student_id,topic,starts_at,ends_at,status,source_provider)
+      select '${studio}','${student}','Capacity fixture '||i,now()+i*interval '2 hours',now()+i*interval '2 hours'+interval '1 hour','completed','studio' from generate_series(1,5000) i`);
+        const r = await preview([], "archive", {
+          selectionMode: "matching",
+          filter: { query: "Capacity fixture" },
+        });
+        expect(r.count).toBe(5000);
+        expect(r.eligible).toBe(5000);
+        expect((await progress(r, 4999, 1)).items).toHaveLength(1);
+        expect((await progress(r, 5000, 1)).items).toHaveLength(0);
+        await expect(progress(r, 0, 101)).rejects.toThrow("VALIDATION_FAILED");
+        await db.exec(
+          `insert into lessons(studio_id,student_id,topic,starts_at,ends_at,status,source_provider) values('${studio}','${student}','Capacity fixture extra',now()+interval '20000 days',now()+interval '20000 days 1 hour','completed','studio')`,
+        );
+        await expect(
+          preview([], "archive", {
+            selectionMode: "matching",
+            filter: { query: "Capacity fixture" },
+          }),
+        ).rejects.toThrow("BATCH_TOO_LARGE");
+        expect((await progress(r)).counts.total).toBe(5000);
+        await execute(r);
+        await expect(work(r, 26)).rejects.toThrow("VALIDATION_FAILED");
+        expect(await work(r, 25)).toHaveLength(25);
+        expect((await progress(r)).counts).toMatchObject({
+          total: 5000,
+          succeeded: 25,
+          pending: 4975,
+        });
+      }),
+    60000,
+  );
+  it("freezes expanded series, stops generation only after explicit approval, and preserves the series when deleting occurrences", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      const series = (await scalar(
+        `insert into recurring_series(studio_id,student_id,status,kind) values($1,$2,'active','ongoing') returning id`,
+        [studio, student],
+      ))!.id;
+      await db.query(
+        `update lessons set series_id=$1 where id=any($2::uuid[])`,
+        [series, [first, next]],
+      );
+      const r = await preview([first], "cancel", { scope: "future" });
+      expect(r.count).toBe(2);
+      expect(
+        (await scalar(`select status from recurring_series where id=$1`, [
+          series,
+        ]))!.status,
+      ).toBe("active");
+      await execute(r);
+      expect(
+        (await scalar(`select status from recurring_series where id=$1`, [
+          series,
+        ]))!.status,
+      ).toBe("cancelled");
+      expect((await work(r)).every((i) => i.status === "succeeded")).toBe(true);
+      const mistake = await native();
+      await db.query(`update lessons set series_id=$1 where id=$2`, [
+        series,
+        mistake,
+      ]);
+      const d = await preview([mistake]);
+      await execute(d);
+      expect((await work(d))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(`select count(*) n from recurring_series where id=$1`, [
+          series,
+        ]))!.n,
+      ).toBe(1);
+    }));
+  it("blocks student-scoped classes; studio whole-class cancellation preserves the participant cohort", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(`update lessons set capacity=2 where id=$1`, [l]);
+      await db.query(
+        `insert into lesson_participants(lesson_id,student_id,email) values($1,$2,'other@example.test')`,
+        [l, other],
+      );
+      const blocked = await preview([l], "cancel", {
+        studentContextId: student,
+      });
+      expect(blocked.blocked).toBe(1);
+      expect((await progress(blocked)).items[0].reasonCode).toBe(
+        "class_scope_required",
+      );
+      const r = await preview([l], "cancel", { wholeClass: true });
+      await execute(r);
+      expect((await work(r))[0].status).toBe("succeeded");
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_participants where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(1);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=$1`,
+          [l],
+        ))!.n,
+      ).toBe(1);
+    }));
+  it("rejects stale versions and revoked coach membership; successful replay produces no extra audit or effects", () =>
+    isolated(async () => {
+      const l = await native();
+      const r = await preview([l]);
+      await db.query(`update lessons set version=version+1 where id=$1`, [l]);
+      await execute(r);
+      expect((await work(r))[0].status).toBe("conflicted");
+      const otherLesson = await native();
+      const active = await preview([otherLesson]);
+      await execute(active);
+      await db.query(`delete from memberships where user_id=$1`, [coach]);
+      expect((await work(active))[0].status).toBe("failed");
+      expect(
+        (await scalar(`select count(*) n from lessons where id=$1`, [
+          otherLesson,
+        ]))!.n,
+      ).toBe(1);
+    }));
+  it("protects uppercase/object-key JSON and foreign keys outside public", () =>
+    isolated(async () => {
+      const l = await native();
+      await db.query(
+        `insert into integration_imports(payload) values(jsonb_build_object(upper($1::text),jsonb_build_object('linked',true)))`,
+        [l],
+      );
+      expect((await preview([l])).blocked).toBe(1);
+      const fk = await native();
+      await db.exec(
+        `create schema bulk_hidden_test;create table bulk_hidden_test.refs(lesson_id uuid references public.lessons on delete cascade)`,
+      );
+      await db.query(`insert into bulk_hidden_test.refs values($1)`, [fk]);
+      expect((await preview([fk])).blocked).toBe(1);
+    }));
+  it("returns each held credit once across multiple cancellations and repeats", () =>
+    isolated(async () => {
+      const first = await native(),
+        next = await native();
+      await lot(2);
+      await db.query(
+        `select set_student_credit_auto($1,true,(student_credit_summary($1)->>'version')::integer)`,
+        [student],
+      );
+      const r = await preview([first, next], "cancel");
+      expect(r.eligible).toBe(2);
+      await execute(r);
+      expect((await work(r)).map((i) => i.status)).toEqual([
+        "succeeded",
+        "succeeded",
+      ]);
+      expect(await work(r)).toEqual([]);
+      expect(
+        (await scalar(
+          `select count(*) n from package_credit_entries where lesson_id=any($1::uuid[]) and kind='release'`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+      expect(
+        (await scalar(
+          `select sum(quantity) n from package_credit_entries where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(0);
+      expect(
+        (await scalar(
+          `select count(*) n from lesson_ops.effects where lesson_id=any($1::uuid[])`,
+          [[first, next]],
+        ))!.n,
+      ).toBe(2);
+    }));
+  it("turns a fifth interrupted lease into a recoverable failure", () =>
+    isolated(async () => {
+      const r = await preview([await native()]);
+      await execute(r);
+      await db.query(`select claim_lesson_bulk_items(1,$1)`, [r.jobId]);
+      await db.query(
+        `update lesson_ops.lesson_bulk_items set attempts=5,claim_until=now()-interval '1 minute' where job_id=$1`,
+        [r.jobId],
+      );
+      expect(await work(r)).toEqual([]);
+      expect((await progress(r)).counts).toMatchObject({
+        failed: 1,
+        pending: 0,
+      });
+      await scalar(`select retry_lesson_bulk($1,$2,$3,$4)`, [
+        coach,
+        r.jobId,
+        r.reviewToken,
+        crypto.randomUUID(),
+      ]);
+      expect((await work(r))[0].status).toBe("succeeded");
+    }));
 });

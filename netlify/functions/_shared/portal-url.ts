@@ -9,13 +9,34 @@ export interface PortalDeployment {
   testUrl?: string;
 }
 const productionOrigin = "https://portal.d-a-j.com";
+const productionHosts = [
+  "portal.d-a-j.com",
+  "portal.daj.com",
+  "studio-portal.netlify.app",
+];
 
 /** Only trusted deployment metadata is accepted. Never read a request Origin/header. */
 export function resolvePortalOrigin(deployment: PortalDeployment): string {
-  if (deployment.context === "production") return productionOrigin;
+  if (deployment.context === "production") {
+    // Context alone cannot distinguish the production site from a staging site's
+    // published deploy. Require the trusted site URL to identify production too.
+    const site = deployment.siteUrl ? new URL(deployment.siteUrl) : undefined;
+    if (
+      !site ||
+      site.protocol !== "https:" ||
+      site.username ||
+      site.password ||
+      site.port ||
+      !productionHosts.includes(site.hostname)
+    )
+      throw new Error(
+        "PROVIDER_UNAVAILABLE: Production context requires a trusted production site URL.",
+      );
+    return productionOrigin;
+  }
   const configured = deployment.ephemeral
     ? deployment.testUrl
-    : deployment.deployPrimeUrl || deployment.deployUrl || deployment.siteUrl;
+    : deployment.deployUrl || deployment.deployPrimeUrl || deployment.siteUrl;
   if (!configured)
     throw new Error(
       "PROVIDER_UNAVAILABLE: A trusted portal URL is not configured for this deployment.",
@@ -30,11 +51,9 @@ export function resolvePortalOrigin(deployment: PortalDeployment): string {
   )
     throw new Error("PROVIDER_UNAVAILABLE: The trusted portal URL is invalid.");
   if (
-    [
-      "portal.d-a-j.com",
-      "portal.daj.com",
-      "studio-portal.netlify.app",
-    ].includes(url.hostname)
+    productionHosts.some(
+      (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
+    )
   )
     throw new Error(
       "PROVIDER_UNAVAILABLE: A non-production deployment must use its own portal URL.",

@@ -1,3 +1,8 @@
+import { formatMoney } from "../../domain/finance";
+import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
+import { recordLink } from "../../app/recordLinks";
+import { JoinLessonBanner } from "../../components/JoinLessonBanner";
+import { coachOperationalSummary } from "../../domain/coachOperationalSummary";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   CalendarDays,
@@ -7,7 +12,6 @@ import {
   UserRound,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
@@ -47,7 +51,7 @@ export function TodayView({
 }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
-    navigate = useNavigate(),
+    navigate = useWorkspaceNavigation("/coach/today").open,
     [notice, setNotice] = useState(""),
     [reviewing, setReviewing] = useState<IntegrationImport>(),
     [rescheduling, setRescheduling] = useState<Lesson>(),
@@ -62,6 +66,7 @@ export function TodayView({
     )
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const now = Date.now();
+  const operational = coachOperationalSummary(data, now);
   const featuredLessonId =
     lessons.find(
       (lesson) =>
@@ -228,6 +233,56 @@ export function TodayView({
   };
   return (
     <>
+      <JoinLessonBanner lessons={data.lessons} />
+      <aside className="workspace-summary" aria-label="Today at a glance">
+        <strong>Today at a glance</strong>
+        <span>
+          {lessons.length} lessons · {operational.readyCount} ready
+        </span>
+        <button onClick={() => navigate("/coach/finance")}>
+          {operational.financialAttention} financial exceptions
+          {operational.moneyAtRisk > 0 && (
+            <small>
+              {formatMoney(operational.moneyAtRisk, data.settings.currency)} at
+              risk
+            </small>
+          )}
+        </button>
+        <button onClick={() => navigate("/coach/inbox")}>
+          {operational.upcomingCommunication} communications queued ·{" "}
+          {data.outbox.filter((m) => m.status === "failed").length} failed
+        </button>
+      </aside>
+      <details>
+        <summary>Week preview</summary>
+        <div className="table-list">
+          {data.lessons
+            .filter(
+              (l) =>
+                l.status === "scheduled" &&
+                Date.parse(l.startsAt) >= now &&
+                Date.parse(l.startsAt) < now + 7 * 86400000,
+            )
+            .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
+            .map((l) => (
+              <button
+                key={l.id}
+                onClick={() =>
+                  navigate(
+                    recordLink("coach", {
+                      kind: "lesson",
+                      id: l.id,
+                      studentId: l.studentId,
+                    }),
+                  )
+                }
+              >
+                {studentName(data, l.studentId)} · {l.topic} ·{" "}
+                {formatStudioDateTime(l.startsAt, data.settings.timezone)}
+              </button>
+            ))}
+        </div>
+      </details>
       <Section title="Today’s lessons" marked>
         {notice && <p className="portal-notice">{notice}</p>}
         <div className="workflow-list">
@@ -281,6 +336,19 @@ export function TodayView({
                   {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
                 </Status>
                 <div className="row-actions">
+                  <button
+                    onClick={() =>
+                      navigate(
+                        recordLink("coach", {
+                          kind: "lesson",
+                          id: lesson.id,
+                          studentId: lesson.studentId,
+                        }),
+                      )
+                    }
+                  >
+                    Open lesson
+                  </button>
                   <button onClick={() => setRescheduling(lesson)}>
                     Reschedule
                   </button>
@@ -294,7 +362,7 @@ export function TodayView({
           {!lessons.length && (
             <EmptyState
               title="The rest of today is clear"
-              detail="See Home for the week ahead."
+              detail="Open the week preview for upcoming lessons."
             />
           )}
         </div>
@@ -332,7 +400,9 @@ export function TodayView({
                 </Status>
                 <button
                   onClick={() =>
-                    navigate(`/coach/students/${lesson.studentId}/notes`)
+                    navigate(
+                      `/coach/students/${lesson.studentId}/lessons/${lesson.id}?writeNote=${lesson.id}`,
+                    )
                   }
                 >
                   Write note
@@ -418,7 +488,17 @@ export function TodayView({
                   </small>
                 </div>
                 <Status tone="warn">approval</Status>
-                <button onClick={() => navigate("/coach/materials")}>
+                <button
+                  onClick={() =>
+                    navigate(
+                      recordLink("coach", {
+                        kind: "resource",
+                        id: item.resourceId || item.id,
+                        studentId: item.studentId,
+                      }),
+                    )
+                  }
+                >
                   Review
                 </button>
               </article>
@@ -431,7 +511,11 @@ export function TodayView({
                   <small>Requested by the student</small>
                 </div>
                 <Status tone="warn">approval</Status>
-                <button onClick={() => navigate("/coach/actor-pages")}>
+                <button
+                  onClick={() =>
+                    navigate(`/coach/students/${item.studentId}/actor-page`)
+                  }
+                >
                   Review
                 </button>
               </article>
@@ -465,7 +549,17 @@ export function TodayView({
                   <small>Booking or integration delivery needs attention</small>
                 </div>
                 <Status tone="warn">resolve</Status>
-                <button onClick={() => navigate("/coach/bookings")}>
+                <button
+                  onClick={() =>
+                    navigate(
+                      recordLink("coach", {
+                        kind: "booking",
+                        id: item.id,
+                        studentId: item.studentId,
+                      }),
+                    )
+                  }
+                >
                   Open
                 </button>
               </article>

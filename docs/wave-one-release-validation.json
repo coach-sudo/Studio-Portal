@@ -1,0 +1,188 @@
+{
+  "candidate": "830c762bdaf085f5e20a91f4e6a7afbef4afa627",
+  "verifiedAt": "2026-10-17T15:11:21.795Z",
+  "recommendation": "GO_FOR_ONE_AUTHORIZED_PROTECTED_UNPUBLISHED_STAGING_DRAFT_ONLY",
+  "production": "NO_GO",
+  "unit": {
+    "status": "PASS",
+    "tests": 815,
+    "files": 117,
+    "command": "VITE_QUERY_LAYER_V2=false npm test -- --maxWorkers=1",
+    "logSha256": "5c498a39ab6729d8767ca1d5c1d79a20adee5b8c9315906af2e99f8c321394ad",
+    "earlierParallelRun": "2 lazy-route one-second timing failures; 813 passed; isolated 20/20 and full serial 815/815 subsequently passed"
+  },
+  "postgres": {
+    "status": "PASS",
+    "version": "17.10",
+    "migrations": 57,
+    "pgtapAssertions": 204,
+    "pgtapFiles": 8,
+    "concurrencySuites": 3,
+    "actualLockContentionObserved": true,
+    "transport": "native coordinator barrier; original financial SQL/assertion bodies retained",
+    "logSha256": "b7fecdd3c32ea59f4795158650304f558160e247c60e57cb771046de83ae5297",
+    "earlierRuns": "Short holder sleeps missed lock-observation windows; barrier implementation resolves timing without removing contention assertions"
+  },
+  "browser": {
+    "localOnly": true,
+    "applicationDemoMode": false,
+    "transport": "real application hooks/repository with loopback-only REST/RPC/Auth/command fixtures; no hosted requests",
+    "v2": {
+      "status": "PASS",
+      "stats": {
+        "startTime": "2026-10-17T14:49:56.155Z",
+        "duration": 330620.853,
+        "expected": 65,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "seriousCritical": 0,
+      "findings": [
+        {
+          "test": "coach: real query transport, navigation, refresh, financial labels and responsive axe",
+          "project": "desktop",
+          "route": "axe-70000000-0000-4000-8000-000000000002",
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "targets": [[".sidebar"]]
+        },
+        {
+          "test": "coach: real query transport, navigation, refresh, financial labels and responsive axe",
+          "project": "webkit",
+          "route": "axe-70000000-0000-4000-8000-000000000002",
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "targets": [[".sidebar"]]
+        }
+      ]
+    },
+    "legacy": {
+      "status": "PASS",
+      "stats": {
+        "startTime": "2026-10-17T14:55:28.745Z",
+        "duration": 318529.933,
+        "expected": 65,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "seriousCritical": 0,
+      "findings": [
+        {
+          "test": "coach: real query transport, navigation, refresh, financial labels and responsive axe",
+          "project": "desktop",
+          "route": "axe-70000000-0000-4000-8000-000000000002",
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "targets": [[".sidebar"]]
+        },
+        {
+          "test": "coach: real query transport, navigation, refresh, financial labels and responsive axe",
+          "project": "webkit",
+          "route": "axe-70000000-0000-4000-8000-000000000002",
+          "id": "landmark-unique",
+          "impact": "moderate",
+          "targets": [[".sidebar"]]
+        }
+      ]
+    },
+    "deliveryHelperFollowup": {
+      "v2": {
+        "status": "PASS",
+        "stats": {
+          "startTime": "2026-10-17T15:01:49.401Z",
+          "duration": 64413.849,
+          "expected": 13,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      },
+      "legacy": {
+        "status": "PASS",
+        "stats": {
+          "startTime": "2026-10-17T15:02:55.251Z",
+          "duration": 62774.987,
+          "expected": 13,
+          "skipped": 0,
+          "unexpected": 0,
+          "flaky": 0
+        }
+      },
+      "changes": [
+        "Wait for actual forged-route redirect/roster heading",
+        "Schema-valid virtual location fixture",
+        "Top-level-only local fake session"
+      ],
+      "note": "Delivery-only browser helpers; application runtime remains byte-identical to candidate"
+    }
+  },
+  "focus": {
+    "status": "PASS",
+    "tests": 4,
+    "browsers": ["Chromium", "WebKit"],
+    "logSha256": "007f0dd8e6e49cf7113cbbb3a18cefab3dde205eb26c5ba6a7476938dc48dbf2"
+  },
+  "helpers": {
+    "status": "PASS",
+    "nodeTests": 8,
+    "focusedGuardModeAndOriginTests": 88,
+    "originAndReleaseTests": 18
+  },
+  "quality": {
+    "typecheck": "PASS",
+    "lint": {
+      "status": "PASS",
+      "errors": 0,
+      "warnings": 756
+    },
+    "format": "PASS",
+    "secretScan": {
+      "status": "PASS",
+      "files": 922
+    },
+    "diffCheck": "PASS",
+    "ci": "Not run: dependent PR base is outside existing workflow filters; no publication-triggering merge or base change"
+  },
+  "linux": {
+    "status": "PASS",
+    "architecture": "x64",
+    "node": "22.22.0",
+    "lockfileSha256": "c1de2bdb184e932b9647d5d0648e6243ed185b58f755f377e31031c7cabaa3e9",
+    "queryModes": [true, false],
+    "clientAssetsPerMode": 117,
+    "functionBundlesPerMode": 23,
+    "functionRuntime": "nodejs22.x",
+    "officialCli": "27.8.0 offline build; no upload",
+    "invoice": "Both independent and official CLI bundles import and answer GET 405 with fetch disabled; Linux Sharp 0.35.5/libvips 8.18.7 render passed",
+    "clientIdentityAgreesBetweenBuilders": true,
+    "budgets": {
+      "jsGzipBytes": 111672,
+      "jsFailureBudget": 130000,
+      "cssGzipBytes": 23108,
+      "cssFailureBudget": 25000,
+      "cssWarningBudget": 22000
+    }
+  },
+  "staging": {
+    "baselineReport": "wave-one-release-baseline.json",
+    "infrastructureReport": "wave-one-release-infrastructure.json",
+    "originalRowsUnchanged": 37,
+    "allRowsUnchanged": 215,
+    "businessTables": 76,
+    "hostedBusinessWrites": 0,
+    "oldExecutorInvocations": 0,
+    "deployments": 0,
+    "authConfigurationChanges": 0
+  },
+  "limitations": [
+    "Candidate not deployed; no fresh hosted candidate browser/HTTP-wrapper acceptance",
+    "No provider, payment, email delivery, worker cadence or production acceptance",
+    "Moderate duplicate complementary landmarks on coach Overview retained for follow-up",
+    "Service key is write-only in Netlify; effective new-deploy authenticated HTTP reads separately gated",
+    "Native PostgreSQL uses local auth/storage scaffolding; Docker-managed Supabase full platform lint/type generation not rerun; migrations/types/runtime source unchanged",
+    "Manual accessibility, 200 percent zoom, large fixtures, immediate multi-tab guardian revocation and human usability review remain gates",
+    "Hosted mutation proposal requires separate execution driver/cleanup review and authorization; rescheduling wrapper remains prohibited; lesson create has no transactional replay key"
+  ]
+}

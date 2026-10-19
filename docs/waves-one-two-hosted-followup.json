@@ -1,0 +1,202 @@
+{
+  "verifiedAt": "2026-10-19T05:15:03.866Z",
+  "run": "e2e-waves12-ui-20261019-b",
+  "candidate": "36f446392dd940ad25b0ba7449b7dad8d938c636",
+  "deployment": "6ad59afc32390ffd00c5d20e",
+  "origin": "https://6ad59afc32390ffd00c5d20e--coachd-staging.netlify.app",
+  "status": "PASS",
+  "hostedCasesPassed": ["WEBKIT", "UI08", "UI09"],
+  "browserProofs": [
+    {
+      "engine": "webkit",
+      "journeys": [
+        "coach-return-filter-search-today",
+        "dirty-note-declined-pop",
+        "student-work-schedule-record",
+        "guardian-two-context-refresh-history-forged",
+        "four-width-axe-keyboard",
+        "200-percent-text-reflow"
+      ]
+    }
+  ],
+  "remaining": [],
+  "cleanup": {
+    "status": "PASS",
+    "originalBusinessRows": 374,
+    "originalAuthAccounts": 7,
+    "migrations": 58,
+    "originalRowsAndAccountsUnchanged": true,
+    "originalMigrationRowsUnchanged": true,
+    "originalExhaustedJournalUnchanged": true,
+    "independentTables": 76,
+    "retainedRows": 27,
+    "retainedCounts": {
+      "public.notes": 2,
+      "public.lessons": 2,
+      "public.students": 2,
+      "public.materials": 1,
+      "lesson_ops.receipts": 4,
+      "public.audit_events": 13,
+      "public.material_links": 1,
+      "public.student_credit_accounts": 2
+    },
+    "newDisposableAuthRemoved": 3,
+    "newCoachBannedAndUnlinked": true,
+    "noActiveLessonsOrRunnableJobs": true,
+    "noQueuedProviderOrDeliveryIntents": true
+  },
+  "budgets": {
+    "read": 772,
+    "sql": 14,
+    "http-business": 1,
+    "http-total": 7,
+    "session": 6,
+    "auth-admin": 8,
+    "cleanup": 9
+  },
+  "axe": {
+    "audits": 12,
+    "violations": [
+      {
+        "view": "webkit:coach:320",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:coach:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:coach:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:coach:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:student:320",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:student:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:student:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:student:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:guardian:320",
+        "violations": [
+          {
+            "id": "landmark-one-main",
+            "impact": "moderate",
+            "count": 2
+          },
+          {
+            "id": "page-has-heading-one",
+            "impact": "moderate",
+            "count": 2
+          },
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:guardian:390",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:guardian:768",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      },
+      {
+        "view": "webkit:guardian:1440",
+        "violations": [
+          {
+            "id": "region",
+            "impact": "moderate",
+            "count": 1
+          }
+        ]
+      }
+    ]
+  },
+  "newRunCanBeReused": false,
+  "productionChanged": false,
+  "providersCalled": 0,
+  "messagesDelivered": 0,
+  "workersInvoked": 0,
+  "creditsGranted": 0,
+  "cashMinor": 0,
+  "packagesCreated": 0,
+  "servicesCreated": 0,
+  "applicationChanged": false
+}

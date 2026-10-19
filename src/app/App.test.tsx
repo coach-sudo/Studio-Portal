@@ -19,22 +19,17 @@ describe("studio surfaces", () => {
   it("keeps the weekly overview and a consolidated Today summary", async () => {
     renderApp();
     expect(
-      await screen.findByRole("heading", {
-        name: /good (morning|afternoon|evening)/i,
+      await screen.findByRole("heading", { name: "Today" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Week preview")).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Today’s lessons" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("heading", {
+        name: /good morning|good afternoon|good evening/i,
       }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Coming up this week" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /lessons?.*Open Today/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("heading", { name: "Today is your action queue" }),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /imports to verify/i }),
-    ).toBeInTheDocument();
   });
   it("prioritizes the student's next action", async () => {
     renderApp("/portal");

@@ -53,9 +53,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "Maya Kim" }),
       ).toBeInTheDocument();
-      expect(
-        screen.getByRole("link", { name: "Current work" }),
-      ).toBeInTheDocument();
+      expect(screen.getByRole("link", { name: "My Work" })).toBeInTheDocument();
     });
     it("02 filters interested students", async () => {
       const user = userEvent.setup();
@@ -171,6 +169,9 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-maya");
       await user.click(
+        await screen.findByText("Assign", { selector: "summary", exact: true }),
+      );
+      await user.click(
         await screen.findByRole("button", { name: /Assign practice/i }),
       );
       const dialog = screen.getByRole("dialog");
@@ -188,6 +189,9 @@ describe("50 start-to-finish studio workflows", () => {
     it("08 adds a private student resource", async () => {
       const user = userEvent.setup();
       renderApp("/coach/students/student-liam");
+      await user.click(
+        await screen.findByText("Assign", { selector: "summary", exact: true }),
+      );
       await user.click(
         await screen.findByRole("button", { name: /Add material/i }),
       );
@@ -207,7 +211,7 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(
         within(dialog).getByRole("button", { name: "Add resource" }),
       );
-      await user.click(screen.getByRole("link", { name: "Current work" }));
+      await user.click(screen.getByRole("link", { name: "My Work" }));
       expect(await screen.findByText("Hamlet sides")).toBeInTheDocument();
     });
     it("09 saves a private coach note", async () => {
@@ -314,12 +318,12 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByText(/Lesson rates and reminder timing saved/i),
       ).toBeInTheDocument();
     });
-    it("16 keeps Home oriented around the week and one Today action", async () => {
+    it("16 consolidates Home into Today with a week preview", async () => {
       renderApp("/coach");
       expect(
-        (await screen.findAllByRole("button", { name: /Open Today/ })).length,
-      ).toBeGreaterThan(0);
-      expect(screen.getByText("Coming up this week")).toBeInTheDocument();
+        await screen.findByRole("heading", { name: "Today" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Week preview")).toBeInTheDocument();
       expect(screen.queryByText("Run today")).not.toBeInTheDocument();
     });
     it("17 keeps Today as the preparation and action queue", async () => {
@@ -380,14 +384,14 @@ describe("50 start-to-finish studio workflows", () => {
     it("17 opens current work", async () => {
       renderApp("/portal/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });
     it("18 keeps current work focused on assigned studio work", async () => {
       renderApp("/portal/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /Request a reader/i }),
@@ -488,7 +492,7 @@ describe("50 start-to-finish studio workflows", () => {
         screen.getByRole("heading", { name: "Your packages" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Account credit" }),
+        screen.getByRole("heading", { name: "Dollar account credit" }),
       ).toBeInTheDocument();
     });
     it("26 sees one primary action and related workspace actions on Home", async () => {
@@ -692,7 +696,7 @@ describe("50 start-to-finish studio workflows", () => {
     it("35 preserves the legacy student URL by redirecting to the portal", async () => {
       renderApp("/student/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });
@@ -724,7 +728,7 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("heading", { name: "Payments" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Account credit" }),
+        screen.getByRole("heading", { name: "Dollar account credit" }),
       ).toBeInTheDocument();
     });
     it("G4 can open the linked actor-page workspace", async () => {

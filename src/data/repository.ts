@@ -209,7 +209,7 @@ export async function loadStudioSnapshot(
       () => database.from("students").select("*").is("deleted_at", null),
     ),
     pick("lessons", wants("lessons", "booking"), () =>
-      database.from("lessons").select("*"),
+      database.from("lesson_list_rows").select("*"),
     ),
     pick("notes", wants("work"), () => database.from("notes").select("*")),
     pick("assignments", wants("work"), () =>
@@ -363,7 +363,9 @@ export async function loadStudioSnapshot(
     ? String(aggregate.currentUserId)
     : (await supabase.auth.getUser()).data.user?.id;
   const currentLinkedContact = (linkedContacts.data ?? []).find(
-    (row: any) => row.user_id === authUserId,
+    (row: any) =>
+      row.user_id === authUserId &&
+      (!studentId || row.student_id === studentId),
   );
   const materialLinks = links.data ?? [];
   const studentRows = students.data ?? [];
@@ -402,7 +404,7 @@ export async function loadStudioSnapshot(
     ? await signedUrlsForPaths(database, storagePaths)
     : new Map<string, string>();
   const currentStudent = studentId
-    ? (studentRows.find((row: any) => row.id === studentId) ?? studentRows[0])
+    ? studentRows.find((row: any) => row.id === studentId)
     : studentRows[0];
   const displayName = resolveAccountDisplayName(
     role,

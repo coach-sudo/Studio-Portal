@@ -1,3 +1,7 @@
+import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
+import { RecordUnavailable } from "../../components/RecordRoute";
+import { LessonChangeReview } from "../../components/LessonChangeReview";
+import { LessonBulkList } from "../../components/LessonBulkList";
 import { ResourceBrowser } from "../library/ResourceBrowser";
 import { useResourceSearch } from "../../data/library";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -41,7 +45,30 @@ import { useStudioStore } from "../../state/StudioStore";
 
 import { belongsToStudent, type Data } from "./StudentWorkspace.shared";
 
-export function Lessons({ data, student }: { data: Data; student: Student }) {
+export function Lessons({
+  data,
+  student,
+  isDemo = false,
+}: {
+  data: Data;
+  student: Student;
+  isDemo?: boolean;
+}) {
+  return isDemo ? (
+    <DemoLessons data={data} student={student} />
+  ) : (
+    <Section title="Lessons" marked>
+      <LessonBulkList
+        studioId={data.studioId}
+        studentId={student.id}
+        timezone={data.settings.timezone}
+      />
+    </Section>
+  );
+}
+
+function DemoLessons({ data, student }: { data: Data; student: Student }) {
+  const workspace = useWorkspaceNavigation(`/coach/students/${student.id}`);
   const currentTime = Date.now();
   const lessons = data.lessons.filter((item) =>
     belongsToStudent(data, item, student.id),
@@ -63,6 +90,7 @@ export function Lessons({ data, student }: { data: Data; student: Student }) {
       className="student-roster-row"
       key={lesson.id}
       to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+      state={workspace.returnState()}
     >
       <CalendarDays />
       <div>
@@ -156,6 +184,9 @@ export function CoachLessonHub({
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const workspace = useWorkspaceNavigation(
+    `/coach/students/${student.id}/lessons`,
+  );
   const store = useStudioStore();
   const resourceQuery = useResourceSearch(
     {
@@ -192,7 +223,9 @@ export function CoachLessonHub({
     String((lesson?.paidMinor || 0) / 100),
   );
   if (!lesson)
-    return <Navigate to={`/coach/students/${student.id}/lessons`} replace />;
+    return (
+      <RecordUnavailable fallback={`/coach/students/${student.id}/lessons`} />
+    );
   const notes = data.notes.filter((item) => item.lessonId === lesson.id);
   const assignments = data.assignments.filter(
     (item) => item.lessonId === lesson.id,
@@ -404,12 +437,9 @@ export function CoachLessonHub({
   };
   return (
     <div>
-      <Link
-        className="back-button"
-        to={`/coach/students/${student.id}/lessons`}
-      >
-        <ArrowLeft /> Lesson history
-      </Link>
+      <button className="back-button" onClick={workspace.back}>
+        <ArrowLeft /> Back
+      </button>
       <Section title={lesson.topic} marked>
         <Status tone={lesson.status === "scheduled" ? "good" : "neutral"}>
           {lesson.status}
@@ -513,28 +543,48 @@ export function CoachLessonHub({
           description="This removes the lesson from active calendars and updates Google Calendar."
           onClose={() => !cancelling && setConfirmCancellation(false)}
         >
-          {paidByCredit && (
-            <CreditCancellationChoice
-              useCredit={consumeCredit}
-              onChange={setConsumeCredit}
+          {!isDemo ? (
+            <LessonChangeReview
+              lesson={lesson}
+              action="cancel"
+              studentContextId={student.id}
+              onCancel={() => setConfirmCancellation(false)}
+              onApplied={async () => {
+                await invalidateStudioDomains(queryClient, [
+                  "lessons",
+                  "booking",
+                  "finance",
+                  "messaging",
+                ]);
+                navigate("/coach/students/" + student.id + "/lessons");
+              }}
             />
+          ) : (
+            <>
+              {paidByCredit && (
+                <CreditCancellationChoice
+                  useCredit={consumeCredit}
+                  onChange={setConsumeCredit}
+                />
+              )}
+              <div className="form-actions">
+                <button
+                  disabled={cancelling}
+                  onClick={() => setConfirmCancellation(false)}
+                >
+                  Keep lesson
+                </button>
+                <button
+                  className="danger-button"
+                  disabled={cancelling}
+                  onClick={() => void cancelLesson()}
+                >
+                  Confirm cancellation
+                </button>
+              </div>
+              {notice && <p role="alert">{notice}</p>}
+            </>
           )}
-          <div className="form-actions">
-            <button
-              disabled={cancelling}
-              onClick={() => setConfirmCancellation(false)}
-            >
-              Keep lesson
-            </button>
-            <button
-              className="danger-button"
-              disabled={cancelling}
-              onClick={() => void cancelLesson()}
-            >
-              Confirm cancellation
-            </button>
-          </div>
-          {notice && <p role="alert">{notice}</p>}
         </Dialog>
       )}
       {lessonAction === "details" && (
@@ -585,6 +635,31 @@ export function CoachLessonHub({
                 : checkSchedulingConflicts(startsAt, endsAt, lesson.id)
             }
             onCancel={() => setLessonAction(null)}
+            renderReview={
+              isDemo
+                ? undefined
+                : (times, back) => (
+                    <LessonChangeReview
+                      lesson={lesson}
+                      action="reschedule"
+                      studentContextId={student.id}
+                      times={times}
+                      onCancel={back}
+                      onApplied={async () => {
+                        await invalidateStudioDomains(queryClient, [
+                          "lessons",
+                          "booking",
+                          "finance",
+                          "messaging",
+                        ]);
+                        setLessonAction(null);
+                        setNotice(
+                          "Lesson changed. Calendar and notifications are pending synchronization.",
+                        );
+                      }}
+                    />
+                  )
+            }
             onSubmit={rescheduleLesson}
           />
         </Dialog>

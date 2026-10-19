@@ -15,7 +15,11 @@ export function usePaginatedStudioRows<Table extends StudioTable>(
     queryKey: paginatedQueryKey(request),
     queryFn: ({ signal }) => loadPaginatedRows(request, signal),
     enabled: enabled && isSupabaseConfigured,
-    placeholderData: keepPreviousData,
+    placeholderData:
+      request.filters &&
+      ("student_id" in request.filters || "id" in request.filters)
+        ? undefined
+        : keepPreviousData,
     staleTime: 30_000,
     gcTime: 30 * 60_000,
     refetchOnWindowFocus: true,
