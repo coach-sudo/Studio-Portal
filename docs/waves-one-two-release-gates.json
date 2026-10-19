@@ -1,25 +1,70 @@
 {
-  "checkedAt": "2026-10-19T12:13:43.201Z",
-  "status": "PENDING_FINAL_PRODUCTION_GATES",
+  "checkedAt": "2026-10-19T16:40:41.061Z",
+  "status": "PRODUCTION_PUBLISHED_WAVES_1_2",
   "stagingAcceptance": "PASS (retained prior evidence plus UI05–UI08 and Chromium/WebKit)",
   "stagingCleanup": "PASS",
   "production": {
     "site": "93829451-dbcf-4863-a07f-fa448cb17494",
     "project": "htwthzshhilrjtqwprlo",
-    "publishedDeployment": "6ace53e7fc5a52ffa29128bc",
+    "url": "https://portal.d-a-j.com",
+    "publishedDeployment": "6ad646eeb54a92db1b8db663",
     "health": {
       "status": "ok",
       "release": {
-        "commit": "6df35d700cc1",
+        "commit": "231bbc6d89d2",
         "context": "production"
       }
     },
-    "source": "6df35d700cc13d60ceab3e92293635575479ec4d",
-    "verifiedMigrationCount": 51,
-    "latestMigration": "20261008220659_bounded_legacy_material_snapshots",
-    "verificationMethod": "Fresh read-only backup/schema verification, Netlify GET site, public GET healthz"
+    "source": "231bbc6d89d2defba84ca006fc5220f29a8f918b",
+    "publishedAt": "2026-10-19T16:40:26.992Z",
+    "verifiedMigrationCount": 60,
+    "latestMigration": "20261019113845_guard_lesson_notice_trigger_roles",
+    "verificationMethod": "Exact merged Git source; immutable artifact and public health readback; read-only TLS-verified migration history and passive worker/notification checks"
   },
-  "pendingMigrations": [
+  "failedGate": null,
+  "blocker": null,
+  "localEvidence": [
+    "waves-one-two-cutover-local.json",
+    "netlify/functions/_shared/lesson-notifications.test.ts"
+  ],
+  "minimumCorrection": null,
+  "notAttempted": [
+    "new hosted fixtures or repeat authenticated acceptance",
+    "real provider, payment or message operations for testing",
+    "Wave 3"
+  ],
+  "productionChanged": true,
+  "notificationCompatibility": {
+    "status": "PASS_15_LOCAL_SCENARIOS_AND_STAGING_SCHEMA_ARTIFACTS",
+    "migration": "20261019111534_lesson_notice_cutover_identity.sql",
+    "validation": "waves-one-two-notice-cutover-validation.json",
+    "stagingSchema": "waves-one-two-notice-staging-schema.json",
+    "proof": "Authoritative effect identity, indexed pre-trigger anchors, transaction advisory serialization and existing outbox uniqueness. Old/new both orders and real concurrent sessions tested; no mutable historical message backfill.",
+    "callerGuardMigration": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+    "stagingGuardProof": "waves-one-two-notice-guard-staging.json"
+  },
+  "replacementCandidate": "7fb211e84bf031f4fb4e3b8f59b86f6ef59aebdf",
+  "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4",
+  "protectedHealth": "PASS_200_7fb211e84bf0_DEPLOY_PREVIEW",
+  "productionMigrationCount": 60,
+  "stagingMigrationCount": 60,
+  "productionBackup": {
+    "status": "PASS_DATABASE_AND_STORAGE_RECOVERY_COVERAGE",
+    "evidence": "waves-one-two-production-backup.json",
+    "originalVerifiedArchiveSha256": "86203dd9a838b73196fe470283962407e0c5d84041505484fde501317b17878c",
+    "independentRestore": "Retained PostgreSQL 17 restore evidence; not repeated",
+    "freshPrepublicationSnapshot": "2026-10-19T16:23:55.246Z",
+    "freshPrepublicationArchiveSha256": "df58260fbe2499caa8edc2e3aa22117b52de8ae18e687a160c11a42b15391a7c",
+    "freshPrepublicationTables": 124,
+    "freshPrepublicationMigrations": 60,
+    "storageFileBodiesPreserved": 13,
+    "storageBytes": 3236088,
+    "storageInventorySha256": "188f11b8dd160e8693423100ceb8779f5cbb5168d4c748f1df7d9ddf3b055006",
+    "location": "Restricted local studio-portal-production/backup-20261019 directory outside Git",
+    "limitations": "Logical snapshots, not PITR. Managed Auth/provider settings, platform encryption keys, credentials and role passwords require preserved platform configuration."
+  },
+  "remainingPreReleaseGates": [],
+  "appliedReleaseMigrations": [
     {
       "file": "20261014142813_credit_coverage_diagnostics.sql",
       "sha256LF": "25c5ae5f18c8942457df3fdc762f3d1b7cdca31705972522fed0d3337dd85f94"
@@ -57,45 +102,77 @@
       "sha256LF": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a"
     }
   ],
-  "failedGate": null,
-  "blocker": null,
-  "localEvidence": [
-    "waves-one-two-cutover-local.json",
-    "netlify/functions/_shared/lesson-notifications.test.ts"
-  ],
-  "minimumCorrection": "Production database backup and protected staging health are verified. Complete the remaining production artifact, source integration/automatic-publication control, exact migration and tested application recovery gates before release.",
-  "notAttempted": [
-    "production schema/data/Auth/environment changes",
-    "merge",
-    "production build/deployment/publication",
-    "password reset or paid backup provisioning"
-  ],
-  "productionChanged": false,
-  "notificationCompatibility": {
-    "status": "PASS_15_LOCAL_SCENARIOS_AND_STAGING_SCHEMA_ARTIFACTS",
-    "migration": "20261019111534_lesson_notice_cutover_identity.sql",
-    "validation": "waves-one-two-notice-cutover-validation.json",
-    "stagingSchema": "waves-one-two-notice-staging-schema.json",
-    "proof": "Authoritative effect identity, indexed pre-trigger anchors, transaction advisory serialization and existing outbox uniqueness. Old/new both orders and real concurrent sessions tested; no mutable historical message backfill.",
-    "callerGuardMigration": "20261019113845_guard_lesson_notice_trigger_roles.sql",
-    "stagingGuardProof": "waves-one-two-notice-guard-staging.json"
-  },
-  "replacementCandidate": "7fb211e84bf031f4fb4e3b8f59b86f6ef59aebdf",
-  "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4",
-  "protectedHealth": "PASS_200_7fb211e84bf0_DEPLOY_PREVIEW",
-  "productionMigrationCount": 51,
-  "stagingMigrationCount": 60,
-  "productionBackup": {
-    "status": "PASS_DATABASE_RECOVERY_VERIFIED",
-    "evidence": "waves-one-two-production-backup.json",
-    "snapshot": "2026-10-19T11:59:12.528Z",
-    "storageFileBodiesIncluded": false,
-    "productionMutations": 0
-  },
-  "remainingPreReleaseGates": [
-    "Exact production build/configuration/artifact identity",
-    "Control automatic publication before source integration",
-    "Final exact-nine migration dry run and immediate snapshot freshness",
-    "Tested application rollback and forward-only schema recovery procedure"
-  ]
+  "release": {
+    "pullRequest": 58,
+    "mergedSource": "231bbc6d89d2defba84ca006fc5220f29a8f918b",
+    "requiredChecksRun": 39256553902,
+    "mechanism": "Git-connected Netlify build with previous publication locked, followed by explicit publication of the verified immutable candidate",
+    "manualUploadsCreatedDeployments": 0,
+    "functions": 23,
+    "runtime": "nodejs22.x",
+    "clientAssets": 122,
+    "artifactValidation": "122 client assets scanned; correct existing production publishable key; no staging references or embedded server secrets; bundle budgets passed",
+    "productionEnvironmentChange": "VITE_QUERY_LAYER_V2=true, production context, builds scope only; existing credentials unchanged",
+    "smoke": {
+      "routes": [
+        {
+          "path": "/coach/today",
+          "status": 200
+        },
+        {
+          "path": "/coach/students",
+          "status": 200
+        },
+        {
+          "path": "/coach/studio",
+          "status": 200
+        },
+        {
+          "path": "/portal/work",
+          "status": 200
+        },
+        {
+          "path": "/portal/bookings",
+          "status": 200
+        },
+        {
+          "path": "/portal/payments",
+          "status": 200
+        }
+      ],
+      "publicIndexMatches": true,
+      "selectedAssetsVerified": 14,
+      "health": {
+        "status": "ok",
+        "release": {
+          "commit": "231bbc6d89d2",
+          "context": "production"
+        }
+      },
+      "linuxInvoiceImportGet": 405,
+      "anonymousSearchDenied": 401,
+      "browserLoginBoundaryVerified": true,
+      "applicationLogins": 0,
+      "authenticatedAcceptance": "Previously accepted Chromium/WebKit staging journeys retained; not repeated in production",
+      "passive": {
+        "migrations": 60,
+        "failed_effects": 0,
+        "coverage_errors": 0,
+        "duplicate_notice_keys": 0,
+        "auth_users": 14,
+        "lessons": 79,
+        "credit_ledger_entries": 43,
+        "invoices": 2
+      },
+      "dataCountsPreserved": true,
+      "providersInvokedForTesting": 0,
+      "hostedFixturesCreated": 0
+    },
+    "publicationLocked": true,
+    "automaticBuildsStopped": true,
+    "gitOnlyPolicyPreserved": true,
+    "priorDeploymentRetained": "6ace53e7fc5a52ffa29128bc",
+    "rollbackInvoked": false,
+    "forwardOnlySchemaRecovery": "Retain additive migrations and ledger/audit history; restore previous immutable application only for a critical failure"
+  }
 }
