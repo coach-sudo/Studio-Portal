@@ -1,0 +1,32 @@
+{
+  "status": "PASS",
+  "localOnly": true,
+  "postgres": 17,
+  "migrations": 58,
+  "scenarios": [
+    "full_58_schema_seed_two_guardian_contexts",
+    "unknown_record_rolls_back",
+    "original_preimage_preserved",
+    "ui05_08_real_handlers_replay_stale_deletion_credit_cancel_revocation",
+    "historical_cases_not_repeated_or_fabricated",
+    "committed_interruption_recovered_without_resend",
+    "partial_cleanup_resumes_without_repeating_committed_mutation",
+    "independent_76_table_cleanup_retains_authored_financial_history",
+    "expired_or_changed_receipt_denied",
+    "production_foreign_studio_provider_and_unapproved_rpc_denied",
+    "browser_cutoff_preserves_independently_charged_cleanup_reads",
+    "independent_new_read_hard_ceiling"
+  ],
+  "requests": {
+    "read": 1032,
+    "sql": 33,
+    "http-total": 15,
+    "http-business": 15,
+    "cleanup": 10,
+    "auth-admin": 8
+  },
+  "baselineHash": "a15ebb482f5f96f6927f8af1a3ced6b7f0491c95548de8700ad737999f4d251a",
+  "hostedAuthOrBrowserClaimed": false,
+  "localBrowsers": ["chromium", "webkit"],
+  "executorHash": "3c0b75a8767c0ecab78d2f57d712123291a48efde90c57d264e2f4db42a1ad2c"
+}
