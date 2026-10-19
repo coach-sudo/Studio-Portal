@@ -34,6 +34,8 @@ export function LessonCalendar({
   listContent,
   viewOverride,
   onViewChange,
+  calendarState,
+  onCalendarStateChange,
 }: {
   lessons: Lesson[];
   timezone: string;
@@ -43,6 +45,10 @@ export function LessonCalendar({
   listContent?: ReactNode;
   viewOverride?: CalendarView;
   onViewChange?: (view: CalendarView) => void;
+  calendarState?: { date: string; query: string; includeCancelled: boolean };
+  onCalendarStateChange?: (
+    change: Partial<{ date: string; query: string; includeCancelled: boolean }>,
+  ) => void;
 }) {
   const [localView, setLocalView] = useState<CalendarView>("month");
   const view = viewOverride || localView;
@@ -50,11 +56,31 @@ export function LessonCalendar({
     setLocalView(next);
     onViewChange?.(next);
   };
-  const [anchor, setAnchor] = useState(() =>
+  const [localAnchor, setLocalAnchor] = useState(() =>
     studioCalendarDate(new Date(), timezone),
   );
-  const [query, setQuery] = useState("");
-  const [showCancelled, setShowCancelled] = useState(false);
+  const parsed =
+    calendarState?.date && /^\d{4}-\d{2}-\d{2}$/.test(calendarState.date)
+      ? new Date(calendarState.date + "T12:00:00")
+      : undefined;
+  const anchor =
+    parsed && Number.isFinite(parsed.getTime()) ? parsed : localAnchor;
+  const setAnchor = (next: Date) => {
+    setLocalAnchor(next);
+    onCalendarStateChange?.({ date: calendarDateKey(next) });
+  };
+  const [localQuery, setLocalQuery] = useState("");
+  const [localCancelled, setLocalCancelled] = useState(false);
+  const query = calendarState?.query ?? localQuery,
+    showCancelled = calendarState?.includeCancelled ?? localCancelled;
+  const setQuery = (value: string) => {
+    setLocalQuery(value);
+    onCalendarStateChange?.({ query: value.slice(0, 120) });
+  };
+  const setShowCancelled = (value: boolean) => {
+    setLocalCancelled(value);
+    onCalendarStateChange?.({ includeCancelled: value });
+  };
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return lessons

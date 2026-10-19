@@ -318,12 +318,12 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByText(/Lesson rates and reminder timing saved/i),
       ).toBeInTheDocument();
     });
-    it("16 keeps Home oriented around the week and one Today action", async () => {
+    it("16 consolidates Home into Today with a week preview", async () => {
       renderApp("/coach");
       expect(
-        (await screen.findAllByRole("button", { name: /Open Today/ })).length,
-      ).toBeGreaterThan(0);
-      expect(screen.getByText("Coming up this week")).toBeInTheDocument();
+        await screen.findByRole("heading", { name: "Today" }),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Week preview")).toBeInTheDocument();
       expect(screen.queryByText("Run today")).not.toBeInTheDocument();
     });
     it("17 keeps Today as the preparation and action queue", async () => {
@@ -384,14 +384,14 @@ describe("50 start-to-finish studio workflows", () => {
     it("17 opens current work", async () => {
       renderApp("/portal/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });
     it("18 keeps current work focused on assigned studio work", async () => {
       renderApp("/portal/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(
         screen.queryByRole("button", { name: /Request a reader/i }),
@@ -696,7 +696,7 @@ describe("50 start-to-finish studio workflows", () => {
     it("35 preserves the legacy student URL by redirecting to the portal", async () => {
       renderApp("/student/work");
       expect(
-        await screen.findByRole("heading", { name: "Current Work" }),
+        await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
       expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
     });

@@ -1,3 +1,4 @@
+import { WorkspaceLocationProvider } from "../hooks/useWorkspaceLocation";
 import { PageSkeleton } from "../components/Primitives";
 import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
@@ -12,10 +13,16 @@ const PortalRole = lazy(() =>
 const RoleLanding = lazy(() =>
   import("./AuthRoutes").then((module) => ({ default: module.RoleLanding })),
 );
-const CoachHome = lazy(() =>
-  import("../features/coach/CoachHome").then((module) => ({
-    default: module.CoachHome,
+const StudioHub = lazy(() =>
+  import("../features/coach/StudioHub").then((m) => ({ default: m.StudioHub })),
+);
+const CoachToday = lazy(() =>
+  import("../features/coach/CoachToday").then((m) => ({
+    default: m.CoachToday,
   })),
+);
+const RecordRoute = lazy(() =>
+  import("../components/RecordRoute").then((m) => ({ default: m.RecordRoute })),
 );
 const AppShell = lazy(() =>
   import("../components/AppShell").then((module) => ({
@@ -93,8 +100,10 @@ const CoachReferrals = lazy(() =>
 export function App() {
   return (
     <StudioStoreProvider>
-      <AppRoutes />
-      <InstallPrompt />
+      <WorkspaceLocationProvider>
+        <AppRoutes />
+        <InstallPrompt />
+      </WorkspaceLocationProvider>
     </StudioStoreProvider>
   );
 }
@@ -167,7 +176,10 @@ function AppRoutes() {
             </AuthGate>
           }
         >
-          <Route index element={<CoachHome />} />
+          <Route index element={<CoachIndexRedirect />} />
+          <Route path="today" element={<CoachToday />} />
+          <Route path="studio" element={<StudioHub />} />
+          <Route path="records/:kind/:recordId" element={<RecordRoute />} />
           <Route path="bookings" element={<BookingCenter />} />
           <Route path="students/:studentId/*" element={<StudentWorkspace />} />
           <Route path="inbox" element={<CoachInbox />} />
@@ -176,11 +188,16 @@ function AppRoutes() {
           <Route path="classes/:offeringId" element={<CoachClassWorkspace />} />
           <Route
             path="lessons"
-            element={<Navigate to="/coach/bookings?view=calendar" replace />}
+            element={
+              <CoachCompatibilityRedirect
+                to="/coach/bookings"
+                defaults={{ view: "calendar" }}
+              />
+            }
           />
           <Route
             path="notes"
-            element={<Navigate to="/coach/today" replace />}
+            element={<CoachCompatibilityRedirect to="/coach/today" />}
           />
           <Route path=":section" element={<CoachSection />} />
         </Route>
@@ -224,5 +241,27 @@ function LegacyCoachRedirect({ section }: { section: string }) {
     suffix = location.pathname.replace(new RegExp(`^/${section}`), "");
   return (
     <Navigate to={`/coach/${section}${suffix}${location.search}`} replace />
+  );
+}
+
+function CoachIndexRedirect() {
+  return <CoachCompatibilityRedirect to="/coach/today" />;
+}
+function CoachCompatibilityRedirect({
+  to,
+  defaults = {},
+}: {
+  to: string;
+  defaults?: Record<string, string>;
+}) {
+  const location = useLocation(),
+    p = new URLSearchParams(location.search);
+  for (const [k, v] of Object.entries(defaults)) if (!p.has(k)) p.set(k, v);
+  return (
+    <Navigate
+      replace
+      to={to + (p.size ? "?" + p : "") + location.hash}
+      state={location.state}
+    />
   );
 }

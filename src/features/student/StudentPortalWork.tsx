@@ -1,3 +1,4 @@
+import { useUrlNumber } from "../../hooks/useWorkspaceLocation";
 import { FileText } from "lucide-react";
 import "../../components/IdentityActions.css";
 import {
@@ -13,6 +14,8 @@ import { type Snapshot } from "./StudentPortal.shared";
 import { Materials, Practice } from "./StudentPortalWorkContent";
 
 export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
+  const [archivePage, setArchivePage] = useUrlNumber("archivePage", 1),
+    [archiveSize, setArchiveSize] = useUrlNumber("archiveSize", 10, 100);
   const work = data.materials.filter(
       (item) => item.role === "current_script" && item.status === "active",
     ),
@@ -24,7 +27,7 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
   return (
     <div className="student-page">
       <header className="student-header">
-        <h1>Current Work</h1>
+        <h1>My Work</h1>
       </header>
       <Section title="Active script" marked>
         <div className="table-list">
@@ -76,32 +79,34 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       <Materials data={data} isDemo={isDemo} embedded />
       <Section title="Script archive">
         <ListControls
-          page={1}
-          pageCount={1}
-          pageSize={Math.max(10, archived.length)}
+          page={archivePage}
+          pageCount={Math.max(1, Math.ceil(archived.length / archiveSize))}
+          pageSize={archiveSize}
           total={archived.length}
-          onPage={() => undefined}
-          onPageSize={() => undefined}
+          onPage={setArchivePage}
+          onPageSize={setArchiveSize}
           label="archived scripts"
         />
         <div className="table-list">
-          {archived.map((item) => (
-            <article key={item.id}>
-              <FileText />
-              <div>
-                <strong>{item.title}</strong>
-                <small>
-                  {item.category} · archived{" "}
-                  {formatStudioDate(item.updatedAt, data.settings.timezone)}
-                </small>
-              </div>
-              {item.externalUrl && (
-                <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                  Open
-                </a>
-              )}
-            </article>
-          ))}
+          {archived
+            .slice((archivePage - 1) * archiveSize, archivePage * archiveSize)
+            .map((item) => (
+              <article key={item.id}>
+                <FileText />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.category} · archived{" "}
+                    {formatStudioDate(item.updatedAt, data.settings.timezone)}
+                  </small>
+                </div>
+                {item.externalUrl && (
+                  <a href={item.externalUrl} target="_blank" rel="noreferrer">
+                    Open
+                  </a>
+                )}
+              </article>
+            ))}
           {!archived.length && (
             <EmptyState
               title="No archived scripts"

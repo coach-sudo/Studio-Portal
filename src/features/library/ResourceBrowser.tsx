@@ -1,3 +1,9 @@
+import { useSearchIdentity } from "../../data/globalSearch";
+import { recordLink } from "../../app/recordLinks";
+import {
+  useUrlValue,
+  useWorkspaceNavigation,
+} from "../../hooks/useWorkspaceLocation";
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer, EmptyState, Section } from "../../components/Primitives";
@@ -34,14 +40,20 @@ export function ResourceDetailView({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
+  const identity = useSearchIdentity();
   const [error, setError] = useState("");
   const assignment = useQuery({
-    queryKey: ["material-assignment", resource.assignmentId],
+    queryKey: [
+      "material-assignment",
+      identity,
+      data.role,
+      resource.assignmentId,
+    ],
     queryFn: ({ signal }) => getAssignment(resource.assignmentId!, signal),
     enabled: !isDemo && !!resource.assignmentId,
   });
   const full = useQuery({
-    queryKey: ["material-detail", resource.id],
+    queryKey: ["material-detail", identity, data.role, resource.id],
     queryFn: ({ signal }) => getResourceDetail(resource.id, signal),
     enabled: !isDemo,
   });
@@ -354,20 +366,22 @@ export function ResourceBrowser({
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     coach = data.role === "coach";
-  const source = isDemo ? { ...store.snapshot, role: data.role } : data;
+  const source = isDemo && coach ? store.snapshot : data;
   const canManage =
     coach ||
     data.role === "student" ||
     !!data.linkedContacts.find(
       (contact) => contact.id === data.currentLinkedContactId,
     )?.canManageProfile;
-  const [search, setSearch] = useState(""),
-    [visibility, setVisibility] = useState("all"),
-    [filters, setFilters] = useState<ResourceOption[]>([]),
-    [status, setStatus] = useState("active"),
-    [pinned, setPinned] = useState(false),
-    [sort, setSort] = useState("title"),
-    [expanded, setExpanded] = useState<string>(),
+  const workspace = useWorkspaceNavigation(
+    data.role === "coach" ? "/coach/materials" : "/portal/work",
+  );
+  const [search, setSearch] = useUrlValue("q"),
+    [visibility, setVisibility] = useUrlValue("access", "all"),
+    [filterIds, setFilterIds] = useUrlValue("filters"),
+    [status, setStatus] = useUrlValue("resourceStatus", "active"),
+    [pinnedValue, setPinnedValue] = useUrlValue("pinned"),
+    [sort, setSort] = useUrlValue("sort", "title"),
     [editing, setEditing] = useState<LibraryResource>(),
     [editingAssignment, setEditingAssignment] = useState<LibraryResource>(),
     [assigning, setAssigning] = useState<LibraryResource>(),
@@ -376,6 +390,28 @@ export function ResourceBrowser({
     [collections, setCollections] = useState(false),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState("");
+  const filters: ResourceOption[] = filterIds
+    .split(",")
+    .slice(0, 100)
+    .flatMap((value) => {
+      const [kind, id] = value.split(":");
+      return metadataKinds.includes(kind as ResourceOption["kind"]) && id
+        ? [
+            source.materialOptions?.find(
+              (o) => o.id === id && o.kind === kind,
+            ) || {
+              id,
+              kind: kind as ResourceOption["kind"],
+              name: `Selected ${kind}`,
+              archived: false,
+            },
+          ]
+        : [];
+    });
+  const setFilters = (next: ResourceOption[]) =>
+    setFilterIds(next.map((o) => `${o.kind}:${o.id}`).join(","));
+  const pinned = pinnedValue === "true",
+    setPinned = (value: boolean) => setPinnedValue(value ? "true" : "");
   const query = useResourceSearch(
     {
       studioId: data.studioId,
@@ -635,14 +671,18 @@ export function ResourceBrowser({
             <div className="resource-actions">
               <button
                 type="button"
-                aria-expanded={
-                  expanded === (resource.assignmentId || resource.id)
-                }
                 onClick={() =>
-                  setExpanded(
-                    expanded === (resource.assignmentId || resource.id)
-                      ? undefined
-                      : resource.assignmentId || resource.id,
+                  workspace.open(
+                    recordLink(
+                      data.role,
+                      {
+                        kind: "resource",
+                        id: resource.id,
+                        studentId: studentId || resource.ownerStudentId,
+                        assignmentId: resource.assignmentId,
+                      },
+                      studentId,
+                    ),
                   )
                 }
               >
@@ -722,13 +762,6 @@ export function ResourceBrowser({
                 </>
               ) : null}
             </div>
-            {expanded === (resource.assignmentId || resource.id) && (
-              <ResourceDetailView
-                resource={resource}
-                data={source}
-                isDemo={isDemo}
-              />
-            )}
           </article>
         ))}
       </div>

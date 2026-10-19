@@ -1,12 +1,26 @@
 # Wave 1 consolidated acceptance and Wave 2 readiness
 
-October 18, 2026, Eastern. **Local runtime ACL repaired; same-run UI recovery remains BLOCKED by the Netlify perimeter and repair-only execution scope. Auth/preservation PASS. Production remains NO-GO.**
+October 18, 2026, Eastern. **UI01–UI04 PASS; the authorized same-run continuation stopped at its 600-read limit during UI05. Cleanup remains pending. Wave 1 core acceptance is incomplete. Production remains NO-GO.**
 
-This single checkpoint is directly dependent on draft [PR #55](https://github.com/coach-sudo/Studio-Portal/pull/55), head `06e51be1eaad66abef39abff1e6fadb89349e131`. Draft #54 remains `49a9451472914b2310f941873e6b5b47fa30f888`, based on unchanged draft #53 at `825d5f2db33a3a3d2749e4fa45e54873faeee838`. All were verified open and draft. Application, functions, dependencies and migrations remain pinned to **`f5324b203387a158df3c050569b95a9044368bc0`**. The only code change here is the acceptance executor's environment-order comparison and its regression test; no Wave 2 implementation or new deployment occurred.
+This single checkpoint is directly dependent on draft [PR #55](https://github.com/coach-sudo/Studio-Portal/pull/55), head `06e51be1eaad66abef39abff1e6fadb89349e131`. Draft #54 remains `49a9451472914b2310f941873e6b5b47fa30f888`, based on unchanged draft #53 at `825d5f2db33a3a3d2749e4fa45e54873faeee838`. All were verified open and draft. Application, functions, dependencies and migrations remain pinned to **`f5324b203387a158df3c050569b95a9044368bc0`**. At that earlier checkpoint, the only code change was the acceptance executor's environment-order comparison and its regression test; no Wave 2 implementation or new deployment had occurred at that checkpoint.
 
 The [master plan](studio-portal-modernization-master-plan.md) remains the complete required scope. Read this report with the [final application candidate](wave-one-final-ui-candidate.md), [actual deployment](wave-one-final-ui-deployment.md), [historical hosted browser results](wave-one-candidate-browser-acceptance.md), [completed H01–H16 backend acceptance](wave-one-hosted-execution-checkpoint.md), and [UI executor/cleanup review](wave-one-ui-mutation-executor.md). Historical failures and verification limits remain valid records.
 
-## Decision
+## Latest authorized continuation — supersedes earlier zero-fixture status
+
+The current implementation effort is based on draft PR #56 at `e0567286feeb3d2a8b8314aebb833e0f89fb3aa3`. Its one authorized continuation renewed only the protected perimeter, passed fresh exact-target/seal/Auth/schema/baseline preflight, then resumed the original receipt and journal without resetting budgets. The staging application/deployment/Auth and 57 hosted migrations were not changed. Wave 2 now exists only as local source and one additional, unapplied migration; see [the combined implementation report](wave-two-workspace.md).
+
+At `2026-10-18T22:22:50.964Z`, the executor refused a further read during UI05 processing. That transaction rolled back. UI01–UI04 passed; UI05 is partially executed/BLOCKED; UI06–UI09 are NOT RUN/BLOCKED. Archive/restore and deletion review/acceptance are not completion of the full bulk acceptance case.
+
+Charged consumption: **600/600 reads; 19/30 HTTP attempts (5 session, 14 business); 10/60 canonical SQL mutations; 4/8 Auth writes; 0/40 cleanup transactions**. Four temporary Auth users, two students, thirteen lessons, one four-credit package and their owned dependencies remain. The last committed owned snapshot contains three bulk jobs still marked running and queued infrastructure. No worker/provider/delivery was invoked. No additional hosted call or automatic retry followed the stop.
+
+The last committed command snapshot preserved all original 215 rows across the 76-table baseline. **Independent post-stop preservation and cleanup verification were not performed** because the read budget is exhausted. The full private journal and exact owned-record recovery inventory are retained locally; secrets and record snapshots are excluded from Git.
+
+The sealed cleanup entry requires completion markers for UI01–UI08 and cannot recover this incomplete run within the exhausted budget. Further hosted work requires **separate, narrowly scoped cleanup-only recovery authorization**, explicitly bounded reads, and a reviewed incomplete-workflow path. Do not reset the existing budget, manufacture markers, expand this run, or delete financial/audit history. Original expiry remains `2026-10-19T16:33:05.780Z`.
+
+[Sanitized case, budget and retained-state evidence](wave-one-hosted-ui-continuation.json) is authoritative for the current disposition. All sections below describe the earlier PR #56 checkpoints and historical evidence, not the post-continuation state. Wave 1 will not be released separately.
+
+## Historical PR #56 decision before continuation
 
 | Decision                    | Status and exact boundary                                                                                                                              |
 | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |

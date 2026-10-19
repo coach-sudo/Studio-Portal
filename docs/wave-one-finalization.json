@@ -1,7 +1,7 @@
 {
-  "status": "LOCAL_ACL_REPAIRED_SAME_RUN_BLOCKED_PERIMETER_AND_EXECUTION_SCOPE",
+  "status": "BLOCKED_READ_BUDGET_EXHAUSTED_CLEANUP_PENDING",
   "dateEastern": "2026-10-18",
-  "verifiedAt": "2026-10-18T21:27:24.833Z",
+  "verifiedAt": "2026-10-18T22:22:50.964Z",
   "dependency": {
     "pr": 55,
     "head": "06e51be1eaad66abef39abff1e6fadb89349e131",
@@ -347,21 +347,79 @@
     "accountCreditText": "BLOCKED_PERIMETER_AND_EXECUTION_SCOPE"
   },
   "uiExecution": {
-    "status": "BLOCKED_AFTER_LOCAL_ACL_REPAIR",
-    "casesExecuted": 0,
-    "setupMutations": 0,
-    "businessMutations": 0,
-    "cleanupStatus": "NOT_NEEDED_NO_FIXTURES",
-    "runId": "e2e-wave1-ui-20261017-a",
-    "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
-    "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
-    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
-    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
-    "proposedExpiresAt": "2026-10-19T16:33:05.780Z",
-    "approvedReceiptExists": true,
-    "journalExists": true,
-    "executorAttempts": 1,
-    "executorAutomaticRetries": 0,
+    "run": "e2e-wave1-ui-20261017-a",
+    "status": "BLOCKED_READ_BUDGET_EXHAUSTED_CLEANUP_PENDING",
+    "stoppedAt": "2026-10-18T22:22:50.964Z",
+    "cases": {
+      "UI01": "PASS",
+      "UI02": "PASS",
+      "UI03": "PASS",
+      "UI04": "PASS",
+      "UI05": "BLOCKED_PARTIAL_ROLLED_BACK",
+      "UI06": "NOT_RUN_BLOCKED",
+      "UI07": "NOT_RUN_BLOCKED",
+      "UI08": "NOT_RUN_BLOCKED",
+      "UI09": "NOT_RUN_BLOCKED"
+    },
+    "budget": {
+      "read": 600,
+      "auth-admin": 4,
+      "sql": 10,
+      "session": 5,
+      "http-total": 19,
+      "http-business": 14
+    },
+    "fixtureAuthUsers": 4,
+    "fixtureStudents": 2,
+    "fixtureLessons": 13,
+    "grantedCredits": 4,
+    "ownedRowCounts": {
+      "public.lessons": 13,
+      "public.packages": 1,
+      "public.students": 2,
+      "public.memberships": 3,
+      "public.audit_events": 13,
+      "public.linked_contacts": 1,
+      "public.booking_services": 1,
+      "public.lesson_participants": 1,
+      "lesson_ops.lesson_bulk_jobs": 3,
+      "public.calendar_projections": 1,
+      "lesson_ops.lesson_bulk_items": 6,
+      "public.student_relationships": 1,
+      "public.package_credit_entries": 5,
+      "lesson_ops.lesson_record_state": 2,
+      "public.student_credit_accounts": 2,
+      "lesson_ops.lesson_bulk_requests": 6,
+      "credit_internal.credit_coverage_jobs": 1,
+      "credit_internal.credit_command_receipts": 3
+    },
+    "lastConfirmedAtCommand": "UI05.delete-accept",
+    "originalRowsPreservedInLastCommittedSnapshot": true,
+    "originalBaselineRows": 215,
+    "lastTransactionRolledBack": true,
+    "cleanupExecuted": false,
+    "independentPostStopHostedRead": false,
+    "readBudgetMayNotBeIncreased": true,
+    "retainedActiveAuthRoles": ["coach", "student", "guardian", "unrelated"],
+    "knownBulkStates": [
+      {
+        "operation": "restore",
+        "state": "running"
+      },
+      {
+        "operation": "delete",
+        "state": "running"
+      },
+      {
+        "operation": "archive",
+        "state": "running"
+      }
+    ],
+    "queuedInfrastructureRetained": true,
+    "providerCalls": 0,
+    "deliveredMessages": 0,
+    "workerInvocations": 0,
+    "requiredDecision": "Explicitly approve a narrowly scoped cleanup-only recovery, including sufficient separately bounded reads and reviewed incomplete-workflow recovery. Current authorization cannot increase the read limit or bypass existing guards; no further hosted action is taken.",
     "authorization": {
       "issuedAt": "2026-10-18T16:54:43.197Z",
       "expiresAt": "2026-10-19T16:33:05.780Z",
@@ -370,71 +428,12 @@
       "expiredAtAttempt": false,
       "timestampExtended": false
     },
-    "cases": {
-      "UI01": "NOT_RUN_STARTUP_BLOCKED",
-      "UI02": "NOT_RUN_STARTUP_BLOCKED",
-      "UI03": "NOT_RUN_STARTUP_BLOCKED",
-      "UI04": "NOT_RUN_STARTUP_BLOCKED",
-      "UI05": "NOT_RUN_STARTUP_BLOCKED",
-      "UI06": "NOT_RUN_STARTUP_BLOCKED",
-      "UI07": "NOT_RUN_STARTUP_BLOCKED",
-      "UI08": "NOT_RUN_STARTUP_BLOCKED",
-      "UI09": "NOT_NEEDED_NO_FIXTURES_PRESERVATION_PASSED"
-    },
-    "blocker": {
-      "type": "PROTECTED_PERIMETER_AND_EXECUTION_SCOPE",
-      "protectedHealthStatus": 401,
-      "configProtectionProofStale": true,
-      "receiptStillValid": true,
-      "repairInstructionAllowsRetry": false
-    },
-    "budget": {
-      "readCharged": 68,
-      "readActual": 65,
-      "unusedConservativeReadReservation": 1,
-      "readMaximum": 600,
-      "httpBusiness": 0,
-      "httpSession": 0,
-      "httpTotal": 0,
-      "canonicalSqlMutations": 0,
-      "cleanupTransactions": 0,
-      "authMutations": 0,
-      "newAuthUsers": 0,
-      "newStudents": 0,
-      "lessons": 0,
-      "lessonCredits": 0,
-      "cashMinor": 0,
-      "providerCalls": 0,
-      "deliveredMessages": 0,
-      "workerInvocations": 0,
-      "peakOwnedBusinessRows": 0,
-      "cumulativeOwnedIdentities": 0,
-      "localDeniedReadAttemptsCharged": 2
-    },
-    "cleanup": {
-      "status": "NOT_NEEDED_NO_FIXTURES",
-      "retainedUiBusinessRows": 0,
-      "unresolvedHostedIntents": 0,
-      "disposableAccountsCreated": 0,
-      "originalManualAccountsChanged": 0,
-      "privateJournalRetained": true
-    },
-    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
-    "nextStep": "Explicitly authorize resuming the same run after normal Netlify perimeter renewal and fresh protection/config preflight; retain the current receipt, original expiry and 68 charged reads. Do not retry the old launch wrapper or create another run.",
-    "startupBlocker": {
-      "type": "LOCAL_PRIVATE_PATH_ACL",
-      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
-      "guard": "restricted(c.pgRuntime, true)",
-      "areAccessRulesProtected": false,
-      "guardExitStatus": 2,
-      "executorDatabaseConnections": 0,
-      "executorHostedRequests": 0,
-      "sourceModified": false,
-      "permissionsWeakened": false,
-      "permissionsChanged": false,
-      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry.",
-      "resolvedByLocalAclRepair": true
-    }
+    "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
+    "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "cleanupStatus": "BLOCKED_PENDING_REVIEWED_RECOVERY",
+    "automaticRetries": 0
   },
   "existingEvidence": {
     "reusedWithoutRedundantReruns": true,
@@ -670,5 +669,96 @@
       "Unsafe negative controls were empty directories under the protected private parent; both restored to protected Owner/SYSTEM access",
       "No explicit recursive ACL command, ownership change, package installation, executor change or hosted mutation"
     ]
-  }
+  },
+  "uiExecutionBeforeContinuation": {
+    "status": "BLOCKED_AFTER_LOCAL_ACL_REPAIR",
+    "casesExecuted": 0,
+    "setupMutations": 0,
+    "businessMutations": 0,
+    "cleanupStatus": "NOT_NEEDED_NO_FIXTURES",
+    "runId": "e2e-wave1-ui-20261017-a",
+    "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
+    "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0",
+    "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+    "proposedExpiresAt": "2026-10-19T16:33:05.780Z",
+    "approvedReceiptExists": true,
+    "journalExists": true,
+    "executorAttempts": 1,
+    "executorAutomaticRetries": 0,
+    "authorization": {
+      "issuedAt": "2026-10-18T16:54:43.197Z",
+      "expiresAt": "2026-10-19T16:33:05.780Z",
+      "receiptSha256": "8e6088ced8dacf1a9b4f204c356b27d14efd2aba71c7a5d65960698e2d649655",
+      "approved": true,
+      "expiredAtAttempt": false,
+      "timestampExtended": false
+    },
+    "cases": {
+      "UI01": "NOT_RUN_STARTUP_BLOCKED",
+      "UI02": "NOT_RUN_STARTUP_BLOCKED",
+      "UI03": "NOT_RUN_STARTUP_BLOCKED",
+      "UI04": "NOT_RUN_STARTUP_BLOCKED",
+      "UI05": "NOT_RUN_STARTUP_BLOCKED",
+      "UI06": "NOT_RUN_STARTUP_BLOCKED",
+      "UI07": "NOT_RUN_STARTUP_BLOCKED",
+      "UI08": "NOT_RUN_STARTUP_BLOCKED",
+      "UI09": "NOT_NEEDED_NO_FIXTURES_PRESERVATION_PASSED"
+    },
+    "blocker": {
+      "type": "PROTECTED_PERIMETER_AND_EXECUTION_SCOPE",
+      "protectedHealthStatus": 401,
+      "configProtectionProofStale": true,
+      "receiptStillValid": true,
+      "repairInstructionAllowsRetry": false
+    },
+    "budget": {
+      "readCharged": 68,
+      "readActual": 65,
+      "unusedConservativeReadReservation": 1,
+      "readMaximum": 600,
+      "httpBusiness": 0,
+      "httpSession": 0,
+      "httpTotal": 0,
+      "canonicalSqlMutations": 0,
+      "cleanupTransactions": 0,
+      "authMutations": 0,
+      "newAuthUsers": 0,
+      "newStudents": 0,
+      "lessons": 0,
+      "lessonCredits": 0,
+      "cashMinor": 0,
+      "providerCalls": 0,
+      "deliveredMessages": 0,
+      "workerInvocations": 0,
+      "peakOwnedBusinessRows": 0,
+      "cumulativeOwnedIdentities": 0,
+      "localDeniedReadAttemptsCharged": 2
+    },
+    "cleanup": {
+      "status": "NOT_NEEDED_NO_FIXTURES",
+      "retainedUiBusinessRows": 0,
+      "unresolvedHostedIntents": 0,
+      "disposableAccountsCreated": 0,
+      "originalManualAccountsChanged": 0,
+      "privateJournalRetained": true
+    },
+    "journalSha256": "9b85014b37e0454b6b0a77a147bdf645ec7a4d0edce8bd487861cf5285fa4d5c",
+    "nextStep": "Explicitly authorize resuming the same run after normal Netlify perimeter renewal and fresh protection/config preflight; retain the current receipt, original expiry and 68 charged reads. Do not retry the old launch wrapper or create another run.",
+    "startupBlocker": {
+      "type": "LOCAL_PRIVATE_PATH_ACL",
+      "runtime": "C:/Users/dariu/.codex/tmp/studio-pg17-runtime",
+      "guard": "restricted(c.pgRuntime, true)",
+      "areAccessRulesProtected": false,
+      "guardExitStatus": 2,
+      "executorDatabaseConnections": 0,
+      "executorHostedRequests": 0,
+      "sourceModified": false,
+      "permissionsWeakened": false,
+      "permissionsChanged": false,
+      "explanation": "Runtime directory inherits permissions. Reviewed private-path guard rejects it before constructing the database client. A separate read-only connection diagnostic passed verified TLS; it is not an executor retry.",
+      "resolvedByLocalAclRepair": true
+    }
+  },
+  "currentDisposition": "Historical pre-continuation fields are retained for provenance. uiExecution and wave-one-hosted-ui-continuation.json supersede prior zero-fixture and ACL/perimeter blockers. Wave 1 acceptance remains incomplete; Wave 2 source-only development authorized; no deployment."
 }
