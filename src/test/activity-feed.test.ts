@@ -138,7 +138,7 @@ describe("activity feed", () => {
       "/coach/records/booking/booking-managed?student=student-maya",
     );
     expect(buildActivityFeed(data, "student", now)[0].route).toBe(
-      "/booking/booking%20token%2Fvalue",
+      "/portal/records/booking/booking-managed?student=student-maya",
     );
   });
 
