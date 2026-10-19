@@ -49,6 +49,14 @@ if (
 )
   throw new Error("Lazy PDF renderer/worker assets are missing.");
 
+// A shared preload helper must never drag the renderer onto ordinary routes.
+for (const file of files.filter((name) => name.endsWith(".js"))) {
+  if (file.startsWith("PdfReader-")) continue;
+  const contents = await readFile(join(assetsDirectory, file), "utf8");
+  if (/(?:from\s*|import\s*)["']\.\/pdf-renderer-[^"']+\.js["']/.test(contents))
+    throw new Error(`PDF renderer is eagerly imported by ${file}.`);
+}
+
 if (!javascript || !stylesheet) {
   throw new Error("Build assets are missing. Run npm run build first.");
 }

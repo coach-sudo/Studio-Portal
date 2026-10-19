@@ -14,6 +14,7 @@ export default defineConfig(({ mode }) => ({
             {
               name: "pdf-renderer",
               test: /node_modules[\\/]pdfjs-dist/,
+              includeDependenciesRecursively: false,
             },
             {
               name: "invoice-font-metrics",
