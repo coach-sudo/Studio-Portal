@@ -1,0 +1,66 @@
+{
+  "checkedAt": "2026-10-19T05:16:58.207Z",
+  "status": "NO_GO",
+  "stagingAcceptance": "PASS (retained prior evidence plus UI05–UI08 and Chromium/WebKit)",
+  "stagingCleanup": "PASS",
+  "production": {
+    "site": "93829451-dbcf-4863-a07f-fa448cb17494",
+    "project": "htwthzshhilrjtqwprlo",
+    "publishedDeployment": "6ace53e7fc5a52ffa29128bc",
+    "health": {
+      "status": "ok",
+      "release": {
+        "commit": "6df35d700cc1",
+        "context": "production"
+      },
+      "checkedAt": "2026-10-19T05:16:57.803Z"
+    },
+    "source": "6df35d700cc13d60ceab3e92293635575479ec4d",
+    "verifiedMigrationCount": 51,
+    "latestMigration": "20261008220659_bounded_legacy_material_snapshots",
+    "verificationMethod": "read-only Supabase list_migrations, Netlify GET site, public GET healthz"
+  },
+  "pendingMigrations": [
+    {
+      "file": "20261014142813_credit_coverage_diagnostics.sql",
+      "sha256LF": "25c5ae5f18c8942457df3fdc762f3d1b7cdca31705972522fed0d3337dd85f94"
+    },
+    {
+      "file": "20261014151934_credit_lifecycle_reliability.sql",
+      "sha256LF": "fde7a14b784f0a6b6452e74e0ef0e34d6d626eed74980dcec291d231b96e91f9"
+    },
+    {
+      "file": "20261014163444_occurrence_safe_lesson_changes.sql",
+      "sha256LF": "2b48214e759e1d8f9810c44dce4ebdd1a34a676bae244915915eface2d695eac"
+    },
+    {
+      "file": "20261014203257_bulk_lesson_management.sql",
+      "sha256LF": "d195fd9f73df626f2d7adcf749ae1d1933779e84e36f05b7ac19fa50b08e8ff1"
+    },
+    {
+      "file": "20261014224415_lesson_bulk_review_context.sql",
+      "sha256LF": "3443ec91c11baaee91364a8a77b962d296e0c0b9767fc00d714eae3c32fbf83e"
+    },
+    {
+      "file": "20261015123428_student_workspace_summary.sql",
+      "sha256LF": "f13d1433f8361d7544904b80de7474a2c44dbf0bbccc7da8df740f942227a394"
+    },
+    {
+      "file": "20261018222228_workspace_navigation_search.sql",
+      "sha256LF": "701d36703afb4166d3ca8e69d92ae1db9d9764bc6163b8443082959d3080e272"
+    }
+  ],
+  "failedGate": 10,
+  "blocker": "Old version-keyed notification enqueue can overlap new SQL durable effect creation, then the new worker enqueues the same notice under a different effect-ID key. No validated quiesced cutover or concurrency-safe compatibility bridge exists.",
+  "localEvidence": [
+    "waves-one-two-cutover-local.json",
+    "netlify/functions/_shared/lesson-notifications.test.ts"
+  ],
+  "minimumCorrection": "Establish and test exactly-once notification behavior across the old/new cutover (including overlapping requests and retries), or validate a fully quiesced cutover covering API writes and scheduled workers. Revalidate only affected scope; do not repeat completed hosted UI cases.",
+  "notAttempted": [
+    "production schema/data/Auth/environment changes",
+    "merge",
+    "production build/deployment/publication"
+  ],
+  "productionChanged": false
+}

@@ -26,7 +26,7 @@ const effect = {
   lesson_version: 2,
   student_ids: ["affected"],
   participant_ids: ["participant-one"],
-  booking_id: "booking-one",
+  booking_id: "booking-one" as string | null,
   snapshot: {
     startsAt: "2099-01-01T12:00:00Z",
     endsAt: "2099-01-01T13:00:00Z",
@@ -41,7 +41,7 @@ function client(kind = "cancelled") {
   const lesson = {
     id: effect.lesson_id,
     studio_id: "studio",
-    student_id: null,
+    student_id: null as string | null,
     version: 12,
     topic: "Shared class",
     starts_at: effect.snapshot.startsAt,
@@ -107,7 +107,7 @@ function client(kind = "cancelled") {
       return q;
     },
   } as unknown as SupabaseClient;
-  return { db, rpc, filters, lesson };
+  return { db, rpc, filters, lesson, current };
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -117,6 +117,34 @@ beforeEach(() => {
   );
 });
 describe("occurrence notification intent", () => {
+  it("characterizes the unresolved legacy/effect dedupe gap during a rolling cutover", async () => {
+    const { db, lesson, current } = client();
+    current.booking_id = null;
+    current.snapshot = { ...current.snapshot, status: "cancelled" };
+    lesson.student_id = "affected";
+    lesson.status = "cancelled";
+    lesson.version = current.lesson_version;
+    // Published 6df35d7 queues by the returned lesson version after the RPC.
+    // Migrated SQL also leaves a durable effect for the replacement worker.
+    // The partial unique index compares exact dedupe keys, not semantic events.
+    const legacyKey = `lesson:${lesson.id}:${lesson.version}:cancelled:student:affected@example.test`;
+    const queuedKeys = new Set([legacyKey]);
+    vi.mocked(queuePresentedMessages).mockImplementation(
+      async (_db, messages) => {
+        for (const message of messages) queuedKeys.add(message.dedupe_key!);
+        return messages.map((m, i) => ({ id: String(i), ...m })) as never;
+      },
+    );
+    expect((await processLessonChangeEffects(db)).failed).toBe(0);
+    expect(queuedKeys).toEqual(
+      new Set([
+        legacyKey,
+        "lesson:lesson-one:effect-1:cancelled:student:affected@example.test",
+      ]),
+    );
+    // Characterization of a blocked release path; this is NOT a safety PASS.
+    // A validated cutover or concurrency-safe bridge must reduce this to one.
+  });
   it("retains the withdrawn occurrence's original time when the remaining class changes", async () => {
     const { db, lesson } = client();
     lesson.status = "cancelled";
