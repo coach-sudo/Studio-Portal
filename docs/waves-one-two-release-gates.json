@@ -1,5 +1,5 @@
 {
-  "checkedAt": "2026-10-19T05:16:58.207Z",
+  "checkedAt": "2026-10-19T11:36:00.232Z",
   "status": "NO_GO",
   "stagingAcceptance": "PASS (retained prior evidence plus UI05–UI08 and Chromium/WebKit)",
   "stagingCleanup": "PASS",
@@ -48,19 +48,33 @@
     {
       "file": "20261018222228_workspace_navigation_search.sql",
       "sha256LF": "701d36703afb4166d3ca8e69d92ae1db9d9764bc6163b8443082959d3080e272"
+    },
+    {
+      "file": "20261019111534_lesson_notice_cutover_identity.sql",
+      "sha256LF": "5d29eeb3ee39b20016ab6d653c406f06e849a45b23c250a2929375abafeb85a9"
     }
   ],
-  "failedGate": 10,
-  "blocker": "Old version-keyed notification enqueue can overlap new SQL durable effect creation, then the new worker enqueues the same notice under a different effect-ID key. No validated quiesced cutover or concurrency-safe compatibility bridge exists.",
+  "failedGate": 9,
+  "blocker": "A recoverable production backup cannot currently be verified: supported backup API returns no listed restore point/physical metadata, PITR is disabled, and no existing production database credential is available in approved local/CLI/Netlify configuration. The user confirmed they do not have the password. No password reset or paid backup service is authorized or performed.",
   "localEvidence": [
     "waves-one-two-cutover-local.json",
     "netlify/functions/_shared/lesson-notifications.test.ts"
   ],
-  "minimumCorrection": "Establish and test exactly-once notification behavior across the old/new cutover (including overlapping requests and retries), or validate a fully quiesced cutover covering API writes and scheduled workers. Revalidate only affected scope; do not repeat completed hosted UI cases.",
+  "minimumCorrection": "Establish a verified recoverable production backup, using an existing production database credential or a separately authorized secure password recovery/reset. Do not reset credentials automatically.",
   "notAttempted": [
     "production schema/data/Auth/environment changes",
     "merge",
-    "production build/deployment/publication"
+    "production build/deployment/publication",
+    "password reset or paid backup provisioning"
   ],
-  "productionChanged": false
+  "productionChanged": false,
+  "notificationCompatibility": {
+    "status": "PASS_LOCAL_AND_STAGING_SCHEMA",
+    "migration": "20261019111534_lesson_notice_cutover_identity.sql",
+    "validation": "waves-one-two-notice-cutover-validation.json",
+    "stagingSchema": "waves-one-two-notice-staging-schema.json",
+    "proof": "Authoritative effect identity, indexed pre-trigger anchors, transaction advisory serialization and existing outbox uniqueness. Old/new both orders and real concurrent sessions tested; no mutable historical message backfill."
+  },
+  "replacementCandidate": "7fb211e84bf031f4fb4e3b8f59b86f6ef59aebdf",
+  "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4"
 }

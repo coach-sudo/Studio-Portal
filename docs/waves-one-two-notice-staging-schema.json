@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "at": "2026-10-19T11:28:56.778Z",
+  "project": "lrxrivfqjpkvygozphoz",
+  "migration": "20261019111534_lesson_notice_cutover_identity.sql",
+  "hash": "5d29eeb3ee39b20016ab6d653c406f06e849a45b23c250a2929375abafeb85a9",
+  "migrations": 59,
+  "businessRows": 401,
+  "originalBusinessAndAuthPreserved": true,
+  "original58MigrationsPreserved": true,
+  "privateFunctionPermissionsVerified": true,
+  "oldSeal": "a0c65b1df65ce59082005af18d9f2b40c890b04f8be744076c7a49b3ac7ccf65",
+  "newSeal": "23a31d17aa5971ad969b369b44f47def7b388ed936fa0e930daf41363abe0bce",
+  "hostedBusinessMutations": 0,
+  "providerCalls": 0,
+  "productionChanged": false
+}
