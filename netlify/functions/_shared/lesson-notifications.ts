@@ -18,7 +18,7 @@ async function queueLessonChangeMessages(
   lessonId: string,
   kind: "rescheduled" | "cancelled",
   correlationId: string,
-  scope?: { studentId: string; bookingId: string },
+  scope?: { studentId?: string; bookingId: string },
   effect?: {
     id: string;
     booking_id?: string | null;
@@ -69,7 +69,10 @@ async function queueLessonChangeMessages(
       .eq("lesson_id", lesson.id)
       .match(
         scope
-          ? { booking_id: scope.bookingId, student_id: scope.studentId }
+          ? {
+              booking_id: scope.bookingId,
+              ...(scope.studentId ? { student_id: scope.studentId } : {}),
+            }
           : {},
       ),
     studentId
@@ -172,9 +175,11 @@ async function queueLessonChangeMessages(
     .eq("event_key", "booking.reminder.student")
     .eq("lesson_id", lesson.id);
   if (scope)
-    cancelQuery = cancelQuery.or(
-      `booking_id.eq.${scope.bookingId},and(booking_id.is.null,student_id.eq.${scope.studentId})`,
-    );
+    cancelQuery = scope.studentId
+      ? cancelQuery.or(
+          `booking_id.eq.${scope.bookingId},and(booking_id.is.null,student_id.eq.${scope.studentId})`,
+        )
+      : cancelQuery.eq("booking_id", scope.bookingId);
   const canceled = await cancelQuery;
   if (canceled.error) throw canceled.error;
   const values = {
@@ -334,10 +339,14 @@ export async function processLessonChangeEffects(
         if (finished.error) throw finished.error;
         continue;
       }
-      const scope =
-        effect.booking_id && effect.student_ids.length === 1
-          ? { bookingId: effect.booking_id, studentId: effect.student_ids[0] }
-          : undefined;
+      const scope = effect.booking_id
+        ? {
+            bookingId: effect.booking_id,
+            ...(effect.student_ids.length === 1
+              ? { studentId: effect.student_ids[0] }
+              : {}),
+          }
+        : undefined;
       const queued = await queueLessonChangeMessages(
         client,
         effect.lesson_id,
