@@ -1536,6 +1536,11 @@ input[type="radio"] {
 .current-script-card > .button-link {
   margin: 12px 20px;
 }
+.assignment-card > header,
+.current-script-card > header {
+  background: var(--app-surface-soft);
+  border-color: var(--app-border);
+}
 :is(.page, .student-page, .workflow-dialog) :where(h3, h4) {
   color: var(--ink);
   font-size: 17px;
