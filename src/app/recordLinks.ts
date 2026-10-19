@@ -36,6 +36,8 @@ export function recordLink(
   const params = new URLSearchParams();
   if (studentId || record.studentId)
     params.set("student", studentId || record.studentId!);
+  if (record.kind === "resource" && record.assignmentId)
+    params.set("assignment", record.assignmentId);
   return `${shell}/records/${record.kind}/${encodeURIComponent(record.id)}${params.size ? `?${params}` : ""}`;
 }
 /** Call only with an authorized backend result, never an arbitrary route ID. */

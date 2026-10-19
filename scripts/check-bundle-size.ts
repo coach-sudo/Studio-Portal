@@ -8,7 +8,9 @@ const files = await readdir(assetsDirectory);
 async function largestAsset(extension: ".js" | ".css") {
   const candidates = await Promise.all(
     files
-      .filter((file) => file.endsWith(extension))
+      .filter(
+        (file) => file.endsWith(extension) && !file.startsWith("pdf-renderer-"),
+      )
       .map(async (file) => {
         const contents = await readFile(join(assetsDirectory, file));
         return {
@@ -25,6 +27,27 @@ const [javascript, stylesheet] = await Promise.all([
   largestAsset(".js"),
   largestAsset(".css"),
 ]);
+const pdfAssets = await Promise.all(
+  files
+    .filter(
+      (file) =>
+        file.startsWith("pdf-renderer-") || /^pdf\.worker.*\.mjs$/.test(file),
+    )
+    .map(async (file) => {
+      const contents = await readFile(join(assetsDirectory, file));
+      const worker = file.endsWith(".mjs");
+      return {
+        file,
+        gzipBytes: gzipSync(contents).byteLength,
+        failureGzipBytes: worker ? 500_000 : 250_000,
+      };
+    }),
+);
+if (
+  !pdfAssets.some((file) => file.file.startsWith("pdf-renderer-")) ||
+  !pdfAssets.some((file) => file.file.endsWith(".mjs"))
+)
+  throw new Error("Lazy PDF renderer/worker assets are missing.");
 
 if (!javascript || !stylesheet) {
   throw new Error("Build assets are missing. Run npm run build first.");
@@ -52,6 +75,7 @@ const report = {
   generatedAt: new Date().toISOString(),
   javascript,
   stylesheet,
+  pdfAssets,
   budgets: {
     javascriptWarningGzipBytes: 120_000,
     javascriptFailureGzipBytes: 130_000,
@@ -79,7 +103,8 @@ for (const warning of warnings) console.warn(`[bundle-warning] ${warning}`);
 
 if (
   javascript.gzipBytes > report.budgets.javascriptFailureGzipBytes ||
-  stylesheet.gzipBytes > report.budgets.stylesheetFailureGzipBytes
+  stylesheet.gzipBytes > report.budgets.stylesheetFailureGzipBytes ||
+  pdfAssets.some((file) => file.gzipBytes > file.failureGzipBytes)
 ) {
   process.exitCode = 1;
 }

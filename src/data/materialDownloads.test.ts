@@ -45,3 +45,34 @@ it("never reuses another account's signed download link and requests a short exp
   );
   expect(mock.sign).toHaveBeenCalledTimes(3);
 });
+it("can refresh a signed URL after an authorized retry", async () => {
+  mock.user = "retry-student";
+  mock.authorized = true;
+  mock.sign.mockClear();
+  await getSignedMaterialUrl("private/retry");
+  await getSignedMaterialUrl("private/retry", true);
+  expect(mock.sign).toHaveBeenCalledTimes(2);
+});
+it("rejects a signing response if the account changed while it was pending", async () => {
+  let complete: (value: unknown) => void = () => {};
+  mock.user = "old-user";
+  mock.sign.mockImplementation(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  const pending = getSignedMaterialUrl("private/identity-switch");
+  await Promise.resolve();
+  await Promise.resolve();
+  mock.user = "new-user";
+  complete({
+    data: [
+      {
+        path: "private/identity-switch",
+        signedUrl: "https://example.test/old-user/private",
+      },
+    ],
+  });
+  await expect(pending).rejects.toThrow("could not be opened");
+});

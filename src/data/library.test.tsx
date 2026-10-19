@@ -6,7 +6,17 @@ import { demoSnapshot } from "./demo";
 import type { ResourceSearch } from "../domain/library";
 const mock = vi.hoisted(() => ({ rpc: vi.fn() }));
 vi.mock("../lib/supabase", () => ({
-  supabase: { rpc: mock.rpc },
+  supabase: {
+    rpc: mock.rpc,
+    auth: {
+      getSession: async () => ({
+        data: { session: { user: { id: "library-user" } } },
+      }),
+      onAuthStateChange: () => ({
+        data: { subscription: { unsubscribe: () => {} } },
+      }),
+    },
+  },
   isSupabaseConfigured: true,
 }));
 import { loadResourcePage, useResourceSearch } from "./library";
@@ -50,6 +60,7 @@ it("sends a bounded server query with combined classifications and cancellation"
         level: ["beginner", "intermediate"],
         topic: ["shakespeare"],
         visibility: ["studio"],
+        collection: [],
       },
     }),
   );

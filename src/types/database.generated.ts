@@ -2344,6 +2344,122 @@ export type Database = {
           },
         ]
       }
+      material_study_annotations: {
+        Row: {
+          anchor: Json
+          body: string
+          content_identity: string
+          created_at: string
+          id: string
+          kind: string
+          material_id: string
+          student_id: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          anchor?: Json
+          body?: string
+          content_identity: string
+          created_at?: string
+          id: string
+          kind: string
+          material_id: string
+          student_id: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          anchor?: Json
+          body?: string
+          content_identity?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          material_id?: string
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_study_annotations_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_study_annotations_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_study_annotations_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      material_study_state: {
+        Row: {
+          anchor: Json
+          content_identity: string
+          material_id: string
+          student_id: string
+          updated_at: string
+          user_id: string
+          version: number
+        }
+        Insert: {
+          anchor?: Json
+          content_identity: string
+          material_id: string
+          student_id: string
+          updated_at?: string
+          user_id: string
+          version?: number
+        }
+        Update: {
+          anchor?: Json
+          content_identity?: string
+          material_id?: string
+          student_id?: string
+          updated_at?: string
+          user_id?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "material_study_state_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "material_library_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_study_state_material_id_fkey"
+            columns: ["material_id"]
+            isOneToOne: false
+            referencedRelation: "materials"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "material_study_state_student_id_fkey"
+            columns: ["student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       materials: {
         Row: {
           approval_status: Database["public"]["Enums"]["approval_status"]
@@ -2358,6 +2474,7 @@ export type Database = {
           id: string
           in_library: boolean
           keywords: string[]
+          learner_instructions: string
           media_kind: string
           mime_type: string | null
           owner_student_id: string | null
@@ -2387,6 +2504,7 @@ export type Database = {
           id?: string
           in_library?: boolean
           keywords?: string[]
+          learner_instructions?: string
           media_kind?: string
           mime_type?: string | null
           owner_student_id?: string | null
@@ -2416,6 +2534,7 @@ export type Database = {
           id?: string
           in_library?: boolean
           keywords?: string[]
+          learner_instructions?: string
           media_kind?: string
           mime_type?: string | null
           owner_student_id?: string | null
@@ -5281,6 +5400,10 @@ export type Database = {
         }
         Returns: Json
       }
+      material_resource_workspace: {
+        Args: { p_assignment?: string; p_id: string; p_student?: string }
+        Returns: Json
+      }
       merge_studio_students: {
         Args: { keep_student_id: string; remove_student_id: string }
         Returns: Json
@@ -5452,6 +5575,19 @@ export type Database = {
       }
       retry_lesson_bulk: {
         Args: { p_actor: string; p_job: string; p_key: string; p_token: string }
+        Returns: Json
+      }
+      save_material_study: {
+        Args: {
+          p_anchor: Json
+          p_body: string
+          p_content: string
+          p_id: string
+          p_kind: string
+          p_material: string
+          p_student: string
+          p_version?: number
+        }
         Returns: Json
       }
       save_studio_invoice: {

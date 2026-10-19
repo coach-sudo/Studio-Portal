@@ -7,9 +7,11 @@ import type {
   ResourceOption,
   ResourcePage,
   ResourceSearch,
+  ResourceWorkspace,
 } from "../domain/library";
 import type { Material, StudioSnapshot } from "../domain/model";
 import { studioCommand } from "./bookingCommands";
+import { useSearchIdentity } from "./globalSearch";
 
 export async function loadMaterialActivity(
   studioId: string,
@@ -103,6 +105,7 @@ export function loadResourcePage(
       p_search: request.search,
       p_filters: {
         ...request.filters,
+        collection: request.collectionId ? [request.collectionId] : [],
         visibility:
           request.visibility && request.visibility !== "all"
             ? [request.visibility]
@@ -126,6 +129,7 @@ export function demoResourcePage(
   const seen = new Set<string>();
   const items = data.materials
     .filter((m) => m.role !== "actor_material")
+    .filter((m) => request.catalog || m.role !== "current_script")
     .filter((m) =>
       request.catalog ? m.inLibrary : m.studentId === request.studentId,
     )
@@ -136,6 +140,15 @@ export function demoResourcePage(
         m.catalogVisibility === "studio",
     )
     .filter((m) => !request.lessonId || m.lessonId === request.lessonId)
+    .filter(
+      (m) =>
+        !request.collectionId ||
+        data.materialCollections?.some(
+          (c) =>
+            c.id === request.collectionId &&
+            c.resourceIds?.includes(m.resourceId || m.id),
+        ),
+    )
     .filter(
       (m) =>
         !request.visibility ||
@@ -218,10 +231,18 @@ export function useResourceSearch(
   data: StudioSnapshot,
   isDemo: boolean,
 ) {
+  const identity = useSearchIdentity();
   const search = useDebouncedValue(request.search);
   const current = { ...request, search };
   return useInfiniteQuery({
-    queryKey: ["material-resources", current, isDemo ? data.materials : null],
+    queryKey: [
+      "material-resources",
+      identity,
+      data.role,
+      current,
+      isDemo ? data.materials : null,
+    ],
+    enabled: isDemo || !!identity,
     initialPageParam: 1,
     queryFn: ({ pageParam, signal }) =>
       isDemo
@@ -240,10 +261,12 @@ export function useResourceOptions(
   includeArchived = false,
   enabled = true,
 ) {
+  const identity = useSearchIdentity();
   const query = useDebouncedValue(search);
   return useQuery({
     queryKey: [
       "material-options",
+      identity,
       studioId,
       kind,
       query,
@@ -262,7 +285,7 @@ export function useResourceOptions(
         },
         signal,
       ),
-    enabled: !!supabase && enabled,
+    enabled: !!supabase && !!identity && enabled,
     staleTime: 30_000,
   });
 }
@@ -270,6 +293,22 @@ export function getResourceDetail(id: string, signal?: AbortSignal) {
   return rpc<ResourceDetail | null>(
     "get_material_resource",
     { p_id: id },
+    signal,
+  );
+}
+export function getResourceWorkspace(
+  id: string,
+  studentId?: string,
+  assignmentId?: string,
+  signal?: AbortSignal,
+) {
+  return rpc<ResourceWorkspace | null>(
+    "material_resource_workspace",
+    {
+      p_id: id,
+      p_student: studentId || null,
+      p_assignment: assignmentId || null,
+    },
     signal,
   );
 }

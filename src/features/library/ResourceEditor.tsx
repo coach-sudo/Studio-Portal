@@ -12,6 +12,8 @@ import { getResourceDetail, resourceCommand } from "../../data/library";
 import { uploadStudioFile } from "../../data/uploads";
 import { useStudioStore } from "../../state/StudioStore";
 import { MetadataPicker } from "./MetadataPicker";
+import { useSearchIdentity } from "../../data/globalSearch";
+import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
 
 export function ResourceEditor({
   data,
@@ -35,6 +37,10 @@ export function ResourceEditor({
   const coach = data.role === "coach",
     store = useStudioStore(),
     queryClient = useQueryClient();
+  const identity = useSearchIdentity();
+  const [assignedStudent, setAssignedStudent] = useState(studentId || ""),
+    [studentSearch, setStudentSearch] = useState(""),
+    [sharedInstructions, setSharedInstructions] = useState("");
   const [title, setTitle] = useState(resource?.title || ""),
     [description, setDescription] = useState(resource?.description || ""),
     [source, setSource] = useState(resource?.source || ""),
@@ -53,9 +59,9 @@ export function ResourceEditor({
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState("");
   const detail = useQuery({
-    queryKey: ["material-detail", resource?.id],
+    queryKey: ["material-detail", identity, data.role, resource?.id],
     queryFn: ({ signal }) => getResourceDetail(resource!.id, signal),
-    enabled: !!resource && !isDemo,
+    enabled: !!resource && !isDemo && !!identity,
   });
   const demoOriginal = resource
     ? data.materials.find((m) => (m.resourceId || m.id) === resource.id)
@@ -66,11 +72,32 @@ export function ResourceEditor({
     if (!initialized.current && loaded) {
       setKeywords((loaded.keywords || []).join(", "));
       setText("text" in loaded ? loaded.text : loaded.textContent || "");
+      if ("sharedInstructions" in loaded)
+        setSharedInstructions(loaded.sharedInstructions || "");
       initialized.current = true;
     }
   }, [detail.data, demoOriginal, isDemo]);
   const ready = !resource || isDemo || (detail.isSuccess && !!detail.data);
+  const confirmDiscard = useUnsavedWorkspaceChanges(
+    title !== (resource?.title || "") ||
+      !!file ||
+      !!instructions ||
+      !!coachNotes ||
+      text !== (detail.data?.text || demoOriginal?.textContent || "") ||
+      sharedInstructions !== (detail.data?.sharedInstructions || ""),
+  );
   const save = async () => {
+    if (busy) return;
+    if (
+      coach &&
+      library &&
+      visibility === "studio" &&
+      (!resource || resource.visibility !== "studio") &&
+      !window.confirm(
+        "Share this resource with everyone who can access the student catalog?",
+      )
+    )
+      return;
     setBusy(true);
     setNotice("");
     try {
@@ -135,7 +162,7 @@ export function ResourceEditor({
             const id = crypto.randomUUID();
             draft.materials.push({
               id,
-              studentId: studentId || "",
+              studentId: assignedStudent || "",
               resourceId: id,
               lessonId,
               noteId,
@@ -163,7 +190,7 @@ export function ResourceEditor({
         const uploaded = file
           ? await uploadStudioFile({
               studioId: data.studioId,
-              studentId: library ? undefined : studentId,
+              studentId: library ? undefined : assignedStudent || undefined,
               entityType: "material",
               file,
               visibility: noteId ? "private" : "student",
@@ -174,7 +201,7 @@ export function ResourceEditor({
           {
             studioId: data.studioId,
             id: resource?.id,
-            studentId,
+            studentId: assignedStudent || undefined,
             lessonId,
             noteId,
             title,
@@ -189,6 +216,7 @@ export function ResourceEditor({
             optionIds: selected.map((o) => o.id),
             instructions,
             coachNotes,
+            ...(coach ? { sharedInstructions } : {}),
           },
           resource?.version || 0,
         );
@@ -212,7 +240,9 @@ export function ResourceEditor({
   return (
     <Drawer
       title={resource ? "Edit resource" : "Add New Resource"}
-      onClose={onClose}
+      onClose={() => {
+        if (!busy && confirmDiscard()) onClose();
+      }}
     >
       <form
         className="workflow-form resource-form"
@@ -221,6 +251,42 @@ export function ResourceEditor({
           void save();
         }}
       >
+        {coach && !resource && !studentId && (
+          <fieldset className="full">
+            <legend>Assign now (optional)</legend>
+            <label>
+              Find student
+              <input
+                type="search"
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+              />
+            </label>
+            <label>
+              Student
+              <select
+                value={assignedStudent}
+                onChange={(e) => setAssignedStudent(e.target.value)}
+              >
+                <option value="">Assign later</option>
+                {data.students
+                  .filter(
+                    (s) =>
+                      s.id === assignedStudent ||
+                      s.fullName
+                        .toLowerCase()
+                        .includes(studentSearch.toLowerCase()),
+                  )
+                  .slice(0, 25)
+                  .map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.fullName}
+                    </option>
+                  ))}
+              </select>
+            </label>
+          </fieldset>
+        )}
         {detail.isError && (
           <p className="full" role="alert">
             {detail.error.message}
@@ -247,6 +313,16 @@ export function ResourceEditor({
             onChange={(e) => setDescription(e.target.value)}
           />
         </label>
+        {coach && (
+          <label className="full">
+            Shared learner instructions
+            <WritingArea
+              value={sharedInstructions}
+              maxLength={10000}
+              onChange={(e) => setSharedInstructions(e.target.value)}
+            />
+          </label>
+        )}
         <div className="resource-classifications full">
           {metadataKinds.map((kind) => (
             <MetadataPicker
@@ -359,7 +435,7 @@ export function ResourceEditor({
             />
           </label>
         )}
-        {coach && studentId && (
+        {coach && (studentId || !resource) && (
           <label className="check-row full">
             <input
               type="checkbox"
@@ -367,7 +443,7 @@ export function ResourceEditor({
               disabled={!!resource?.inLibrary && !resource.ownerStudentId}
               onChange={(e) => setLibrary(e.target.checked)}
             />
-            Also add to Studio Library
+            Add to Shared Library
           </label>
         )}
         {coach && library && (
@@ -388,7 +464,7 @@ export function ResourceEditor({
             </select>
           </label>
         )}
-        {studentId && !resource && (
+        {assignedStudent && !resource && (
           <>
             <label className="full">
               Student-facing instructions
@@ -421,10 +497,18 @@ export function ResourceEditor({
           </p>
         )}
         <div className="form-actions full">
-          <button type="button" onClick={onClose}>
+          <button
+            type="button"
+            onClick={() => {
+              if (!busy && confirmDiscard()) onClose();
+            }}
+          >
             Cancel
           </button>
-          <button className="primary" disabled={busy || !ready}>
+          <button
+            className="primary"
+            disabled={busy || !ready || (!library && !assignedStudent)}
+          >
             {busy ? "Saving…" : resource ? "Save resource" : "Add resource"}
           </button>
         </div>

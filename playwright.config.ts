@@ -16,6 +16,7 @@ export default defineConfig({
     "**/focus-local/**",
     "**/candidate-local/**",
     "**/workspace-local/**",
+    "**/materials-local/**",
   ],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",

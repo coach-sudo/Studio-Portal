@@ -1,4 +1,6 @@
 import { useUrlNumber } from "../../hooks/useWorkspaceLocation";
+import { Link } from "react-router-dom";
+import { recordLink } from "../../app/recordLinks";
 import { FileText } from "lucide-react";
 import "../../components/IdentityActions.css";
 import {
@@ -41,30 +43,16 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                 </div>
                 <Status tone="good">current</Status>
               </header>
-              {item.externalUrl && (
-                <details className="material-preview">
-                  <summary>Read or view here</summary>
-                  {item.mediaKind === "image" ? (
-                    <img src={item.externalUrl} alt={item.title} />
-                  ) : item.mediaKind === "video" ? (
-                    <video src={item.externalUrl} controls />
-                  ) : item.mediaKind === "audio" ? (
-                    <audio src={item.externalUrl} controls />
-                  ) : (
-                    <object data={item.externalUrl} title={item.title}>
-                      <p>This file cannot be previewed in this browser.</p>
-                    </object>
-                  )}
-                  <a
-                    className="button-link"
-                    href={item.externalUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Open full size
-                  </a>
-                </details>
-              )}
+              <Link
+                className="button-link"
+                to={recordLink(data.role, {
+                  kind: "resource",
+                  id: item.resourceId || item.id,
+                  studentId: item.studentId,
+                })}
+              >
+                Open resource
+              </Link>
             </article>
           ))}
           {!work.length && (
@@ -100,11 +88,15 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
                     {formatStudioDate(item.updatedAt, data.settings.timezone)}
                   </small>
                 </div>
-                {item.externalUrl && (
-                  <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
-                )}
+                <Link
+                  to={recordLink(data.role, {
+                    kind: "resource",
+                    id: item.resourceId || item.id,
+                    studentId: item.studentId,
+                  })}
+                >
+                  Open resource
+                </Link>
               </article>
             ))}
           {!archived.length && (
