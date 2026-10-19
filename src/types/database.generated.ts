@@ -5290,10 +5290,7 @@ export type Database = {
         Returns: number
       }
       portal_student_contexts: {
-        Args: {
-          p_page?: number
-          p_student?: string
-        }
+        Args: { p_page?: number; p_student?: string }
         Returns: Json
       }
       preview_lesson_bulk: {
@@ -5571,11 +5568,7 @@ export type Database = {
         Returns: Json
       }
       studio_record_target: {
-        Args: {
-          p_id: string
-          p_kind: string
-          p_student?: string
-        }
+        Args: { p_id: string; p_kind: string; p_student?: string }
         Returns: Json
       }
       studio_route_snapshot: {
