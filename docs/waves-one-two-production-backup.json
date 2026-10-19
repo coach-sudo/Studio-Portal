@@ -1,0 +1,85 @@
+{
+  "status": "PASS_DATABASE_BACKUP_AND_ISOLATED_RESTORE",
+  "verifiedAt": "2026-10-19T12:09:19.364Z",
+  "backupAt": "2026-10-19T11:59:12.528Z",
+  "project": "htwthzshhilrjtqwprlo",
+  "readOnly": true,
+  "credentialSource": "Existing restricted local file; password neither reset nor exposed",
+  "archive": {
+    "format": "PostgreSQL custom",
+    "bytes": 1708596,
+    "sha256": "86203dd9a838b73196fe470283962407e0c5d84041505484fde501317b17878c",
+    "bundleManifestSha256": "b9145c28f41429cadd3dded3d63f29ea9c75b209ef044e52b94e6d0131cbcec4",
+    "location": "Restricted local production backup directory outside Git; no backup uploaded"
+  },
+  "restore": {
+    "postgres": "17.6",
+    "imageSha256": "6942962433a569e87f228b4d4ab7e11db5deca64e43babb3a038443ad6c4f1bb",
+    "network": "none",
+    "publishedPorts": 0,
+    "collation": "en_US.UTF-8",
+    "tables": 114,
+    "rows": 2139,
+    "migrations": 51,
+    "fullMigrationRowsEqual": true,
+    "schemaCategories": [
+      "views",
+      "tables",
+      "columns",
+      "indexes",
+      "schemas",
+      "policies",
+      "triggers",
+      "functions",
+      "defaultAcl",
+      "constraints"
+    ],
+    "schemaEqual": true,
+    "extensionsEqual": true,
+    "roleAttributes": 31,
+    "effectiveMemberships": 22,
+    "sourceSnapshotHashesMatched": true,
+    "cleanSecondRestoreMatched": true,
+    "managedPlatformSupplementDocumented": true,
+    "roleGrantorsNormalizedLocally": true,
+    "originalArchiveAndRolesUnmodified": true,
+    "isolatedRestoreContainerRemoved": true
+  },
+  "storage": {
+    "buckets": 1,
+    "objects": 13,
+    "metadataIncluded": true,
+    "fileBodiesIncluded": false,
+    "separateFileBackupRequiredForFullDisasterRecovery": true
+  },
+  "limitations": [
+    "Storage object bytes are not in PostgreSQL backups; 13 objects require separate file backup for full disaster recovery.",
+    "Managed Auth/provider settings, platform encryption root keys, API credentials and Netlify environment are outside the SQL archive.",
+    "Role grantors were normalized to the isolated bootstrap superuser for local restoration; original role definitions and grantor statements remain in roles.sql.",
+    "This is a logical point-in-time snapshot, not PITR; later production activity is outside the snapshot."
+  ],
+  "productionReadback": {
+    "verifiedAt": "2026-10-19T12:13:43.201Z",
+    "productionSite": "93829451-dbcf-4863-a07f-fa448cb17494",
+    "publication": "6ace53e7fc5a52ffa29128bc",
+    "source": "6df35d700cc13d60ceab3e92293635575479ec4d",
+    "health": {
+      "status": "ok",
+      "release": {
+        "commit": "6df35d700cc1",
+        "context": "production"
+      }
+    },
+    "productionBuildsStopped": false,
+    "productionLocked": null,
+    "productionBranch": "main",
+    "stagingSite": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "stagingPublication": "6ace53e7f850061d7c49b711",
+    "replacementDraft": "6ad5ff9be7ade2a901fe7fa4",
+    "draftState": "ready",
+    "draftContext": "deploy-preview",
+    "draftPublishedAt": null,
+    "productionMutations": 0
+  },
+  "productionMutations": 0
+}

@@ -29,9 +29,24 @@
   "migrations": 59,
   "businessAndAuthRowsUnchanged": true,
   "artifactHash": "a777ea6bba2b94334960d3e2915468bc38bc5b0d88a2fa8cf829063cd10da663",
-  "protectedHealth": "PENDING_NORMAL_TEAM_AUTHENTICATION",
+  "protectedHealth": "PASS",
   "applicationLogins": 0,
   "newHostedFixtures": 0,
   "creditsPaymentsProvidersMessagesWorkers": 0,
-  "productionChanged": false
+  "productionChanged": false,
+  "protectedHealthEvidence": {
+    "verifiedAt": "2026-10-19T11:55:36.5Z",
+    "origin": "https://6ad5ff9be7ade2a901fe7fa4--coachd-staging.netlify.app",
+    "status": 200,
+    "body": {
+      "status": "ok",
+      "release": {
+        "commit": "7fb211e84bf0",
+        "context": "deploy-preview"
+      },
+      "checkedAt": "2026-10-19T11:55:36.346Z"
+    },
+    "applicationLoginPerformed": false,
+    "requestedPaths": ["/api/healthz"]
+  }
 }

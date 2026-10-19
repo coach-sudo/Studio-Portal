@@ -1,6 +1,6 @@
 {
-  "checkedAt": "2026-10-19T11:43:13.467Z",
-  "status": "NO_GO",
+  "checkedAt": "2026-10-19T12:13:43.201Z",
+  "status": "PENDING_FINAL_PRODUCTION_GATES",
   "stagingAcceptance": "PASS (retained prior evidence plus UI05–UI08 and Chromium/WebKit)",
   "stagingCleanup": "PASS",
   "production": {
@@ -12,13 +12,12 @@
       "release": {
         "commit": "6df35d700cc1",
         "context": "production"
-      },
-      "checkedAt": "2026-10-19T05:16:57.803Z"
+      }
     },
     "source": "6df35d700cc13d60ceab3e92293635575479ec4d",
     "verifiedMigrationCount": 51,
     "latestMigration": "20261008220659_bounded_legacy_material_snapshots",
-    "verificationMethod": "read-only Supabase list_migrations, Netlify GET site, public GET healthz"
+    "verificationMethod": "Fresh read-only backup/schema verification, Netlify GET site, public GET healthz"
   },
   "pendingMigrations": [
     {
@@ -58,13 +57,13 @@
       "sha256LF": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a"
     }
   ],
-  "failedGate": 9,
-  "blocker": "A recoverable production backup cannot currently be verified: supported backup API returns no listed restore point/physical metadata, PITR is disabled, and no existing production database credential is available in approved local/CLI/Netlify configuration. The user confirmed they do not have the password. No password reset or paid backup service is authorized or performed.",
+  "failedGate": null,
+  "blocker": null,
   "localEvidence": [
     "waves-one-two-cutover-local.json",
     "netlify/functions/_shared/lesson-notifications.test.ts"
   ],
-  "minimumCorrection": "Establish a verified recoverable production backup, using an existing production database credential or a separately authorized secure password recovery/reset. Do not reset credentials automatically.",
+  "minimumCorrection": "Production database backup and protected staging health are verified. Complete the remaining production artifact, source integration/automatic-publication control, exact migration and tested application recovery gates before release.",
   "notAttempted": [
     "production schema/data/Auth/environment changes",
     "merge",
@@ -83,7 +82,20 @@
   },
   "replacementCandidate": "7fb211e84bf031f4fb4e3b8f59b86f6ef59aebdf",
   "replacementStagingDeployment": "6ad5ff9be7ade2a901fe7fa4",
-  "protectedHealth": "PENDING_NORMAL_TEAM_LOGIN",
+  "protectedHealth": "PASS_200_7fb211e84bf0_DEPLOY_PREVIEW",
   "productionMigrationCount": 51,
-  "stagingMigrationCount": 60
+  "stagingMigrationCount": 60,
+  "productionBackup": {
+    "status": "PASS_DATABASE_RECOVERY_VERIFIED",
+    "evidence": "waves-one-two-production-backup.json",
+    "snapshot": "2026-10-19T11:59:12.528Z",
+    "storageFileBodiesIncluded": false,
+    "productionMutations": 0
+  },
+  "remainingPreReleaseGates": [
+    "Exact production build/configuration/artifact identity",
+    "Control automatic publication before source integration",
+    "Final exact-nine migration dry run and immediate snapshot freshness",
+    "Tested application rollback and forward-only schema recovery procedure"
+  ]
 }
