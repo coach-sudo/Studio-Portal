@@ -33,8 +33,8 @@ export default function PdfReader({
   const canvas = useRef<HTMLCanvasElement>(null),
     container = useRef<HTMLDivElement>(null),
     searchRun = useRef(0);
-  const callbacks = useRef({ onFailure, onPosition });
-  callbacks.current = { onFailure, onPosition };
+  const callbacks = useRef({ onFailure, onPosition, anchor });
+  callbacks.current = { onFailure, onPosition, anchor };
   const page = Math.max(
     1,
     Math.min(anchor.page || 1, document?.numPages || Infinity),
@@ -58,6 +58,12 @@ export default function PdfReader({
         if (alive) {
           setDocument(pdf);
           setBusy(false);
+          callbacks.current.onPosition({
+            page: Math.max(
+              1,
+              Math.min(callbacks.current.anchor.page || 1, pdf.numPages),
+            ),
+          });
         }
       })
       .catch(() => {
@@ -236,7 +242,12 @@ export default function PdfReader({
           ))}
         </div>
       )}
-      <div className="pdf-canvas" aria-busy={busy}>
+      <div
+        className="pdf-canvas"
+        aria-busy={busy}
+        tabIndex={0}
+        aria-label="PDF page viewport"
+      >
         <canvas ref={canvas} aria-label={`PDF page ${page}`} role="img" />
       </div>
       <details>

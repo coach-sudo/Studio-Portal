@@ -112,6 +112,7 @@ test("PDF reading, search, zoom, private saves, recovery and responsive controls
     page.getByRole("button", { name: "Next page", exact: true }),
   ).toBeEnabled();
   await expect(page.locator("canvas")).toBeVisible();
+  await expect(page.locator(".private-study")).toContainText("Page 1");
   expect(signs).toBe(2);
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(
@@ -277,6 +278,8 @@ test("text search, paragraph resume, image zoom and unsafe SVG fallback", async 
   await page.getByRole("button", { name: "Next match", exact: true }).click();
   await expect.poll(() => state.position()?.anchor.paragraph).toBe(2);
   await page.reload();
+  await expect(page.locator(".private-study")).toContainText("Paragraph 2");
+  await page.waitForTimeout(1500);
   await expect(page.locator(".private-study")).toContainText("Paragraph 2");
   await page.unroute("http://127.0.0.1:54321/**");
   await prepareMedia(

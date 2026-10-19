@@ -23,7 +23,9 @@ function TextReader({
 }) {
   const [search, setSearch] = useState("");
   const root = useRef<HTMLDivElement>(null),
-    current = useRef(0);
+    current = useRef(0),
+    scrolled = useRef(false),
+    visible = useRef(new Set<Element>());
   const paragraphs = text.split(/\n\s*\n/),
     found = search.trim()
       ? paragraphs.flatMap((p, i) =>
@@ -35,6 +37,11 @@ function TextReader({
   const report = useRef(onPosition);
   report.current = onPosition;
   useEffect(() => {
+    if (!anchor.paragraph) {
+      current.current = 1;
+      report.current({ paragraph: 1 });
+      return;
+    }
     if (anchor.paragraph && anchor.paragraph !== current.current) {
       current.current = anchor.paragraph;
       root.current
@@ -45,14 +52,16 @@ function TextReader({
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        const first = entries
-          .filter((e) => e.isIntersecting)
-          .sort(
-            (a, b) => a.boundingClientRect.top - b.boundingClientRect.top,
-          )[0];
-        const n = Number(
-          (first?.target as HTMLElement | undefined)?.dataset.paragraph,
-        );
+        for (const entry of entries) {
+          if (entry.isIntersecting) visible.current.add(entry.target);
+          else visible.current.delete(entry.target);
+        }
+        if (!scrolled.current) return;
+        const first = [...visible.current].sort(
+          (a, b) =>
+            a.getBoundingClientRect().top - b.getBoundingClientRect().top,
+        )[0];
+        const n = Number((first as HTMLElement | undefined)?.dataset.paragraph);
         if (n && n !== current.current) {
           current.current = n;
           report.current({ paragraph: n });
@@ -95,6 +104,9 @@ function TextReader({
       </div>
       <div
         ref={root}
+        onScroll={() => {
+          scrolled.current = true;
+        }}
         className="text-reader"
         style={{ fontSize: `${zoom}em` }}
         tabIndex={0}
