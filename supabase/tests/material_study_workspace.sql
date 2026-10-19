@@ -20,10 +20,12 @@ insert into public.materials(id,studio_id,title,text_content,in_library,learner_
 insert into public.material_links(id,material_id,student_id,role,visible_to_student,instructions) values
  ('e3500000-0000-4000-8000-000000000001','e3400000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001','library',true,'Assignment instruction'),
  ('e3500000-0000-4000-8000-000000000002','e3400000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000002','library',true,''),
- ('e3500000-0000-4000-8000-000000000003','e3400000-0000-4000-8000-000000000002','e3300000-0000-4000-8000-000000000001','library',true,'');
+ ('e3500000-0000-4000-8000-000000000003','e3400000-0000-4000-8000-000000000002','e3300000-0000-4000-8000-000000000001','current_script',true,'');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','e3100000-0000-4000-8000-000000000002',true);
 select set_config('test.wave3.content',library_internal.material_content_identity('e3400000-0000-4000-8000-000000000001'),true);
+select is(public.search_material_resources('e3200000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001',false)->>'total','2','Default bounded search preserves legacy scripts');
+select is(public.search_material_resources('e3200000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001',false,p_filters=>'{"excluded_roles":["current_script"]}')->>'total','1','My Work can exclude already displayed scripts explicitly');
 select is(public.material_resource_workspace('e3400000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001','e3500000-0000-4000-8000-000000000001')->'assignment'->>'instructions','Assignment instruction','Exact assignment instructions are available');
 select is(public.material_resource_workspace('e3400000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001','e3500000-0000-4000-8000-000000000003'),null::jsonb,'Assignment from another resource is rejected');
 select is(public.material_resource_workspace('e3400000-0000-4000-8000-000000000001','e3300000-0000-4000-8000-000000000001','e3500000-0000-4000-8000-000000000002'),null::jsonb,'Other student assignment is rejected');

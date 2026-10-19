@@ -106,6 +106,7 @@ export function loadResourcePage(
       p_filters: {
         ...request.filters,
         collection: request.collectionId ? [request.collectionId] : [],
+        excluded_roles: request.excludeScripts ? ["current_script"] : [],
         visibility:
           request.visibility && request.visibility !== "all"
             ? [request.visibility]
@@ -129,7 +130,7 @@ export function demoResourcePage(
   const seen = new Set<string>();
   const items = data.materials
     .filter((m) => m.role !== "actor_material")
-    .filter((m) => request.catalog || m.role !== "current_script")
+    .filter((m) => !request.excludeScripts || m.role !== "current_script")
     .filter((m) =>
       request.catalog ? m.inLibrary : m.studentId === request.studentId,
     )

@@ -378,6 +378,7 @@ export function ResourceBrowser({
   onChoose,
   showActions = true,
   title,
+  excludeScripts = false,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
@@ -388,6 +389,7 @@ export function ResourceBrowser({
   onChoose?: (resource: LibraryResource) => void;
   showActions?: boolean;
   title?: string;
+  excludeScripts?: boolean;
 }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -457,6 +459,7 @@ export function ResourceBrowser({
       sort,
       lessonId,
       collectionId,
+      excludeScripts,
     },
     source,
     isDemo,

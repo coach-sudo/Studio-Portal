@@ -61,6 +61,7 @@ it("sends a bounded server query with combined classifications and cancellation"
         topic: ["shakespeare"],
         visibility: ["studio"],
         collection: [],
+        excluded_roles: [],
       },
     }),
   );

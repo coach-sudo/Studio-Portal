@@ -97,6 +97,7 @@ export interface ResourceSearch {
   sort: string;
   lessonId?: string;
   collectionId?: string;
+  excludeScripts?: boolean;
 }
 export interface ResourceCollection {
   id: string;

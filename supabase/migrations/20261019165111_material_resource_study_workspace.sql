@@ -211,14 +211,15 @@ with matches as (
  from public.materials m
  left join public.material_links l on not p_catalog and l.material_id=m.id and coalesce(l.student_id,(select student_id from public.lessons where id=l.lesson_id))=p_student_id
  where m.studio_id=p_studio_id
- and ((p_catalog and m.in_library and (public.is_studio_coach(m.studio_id) or m.catalog_visibility='studio')) or (not p_catalog and l.id is not null and l.role in ('library','lesson_material')))
+ and ((p_catalog and m.in_library and (public.is_studio_coach(m.studio_id) or m.catalog_visibility='studio')) or (not p_catalog and l.id is not null and l.role<>'actor_material'))
+ and (not (p_filters ? 'excluded_roles') or not (coalesce(l.role::text,'')=any(array(select jsonb_array_elements_text(p_filters->'excluded_roles')))))
  and (not (p_filters ? 'collection') or jsonb_array_length(p_filters->'collection')=0 or exists(select 1 from public.material_collection_members cm where cm.material_id=m.id and cm.collection_id::text in (select jsonb_array_elements_text(p_filters->'collection'))))
  and (p_lesson_id is null or l.lesson_id=p_lesson_id)
  and (p_status='all' or case when p_catalog then m.status::text else l.status::text end=p_status)
  and (not p_pinned or coalesce(l.pinned,false))
  and (not (p_filters ? 'visibility') or jsonb_array_length(p_filters->'visibility')=0 or m.catalog_visibility in(select jsonb_array_elements_text(p_filters->'visibility')))
  and (length(trim(p_search))=0 or (m.search_document @@ websearch_to_tsquery('simple'::regconfig,left(p_search,200)) or m.search_document @@ to_tsquery('simple'::regconfig,array_to_string(array(select quote_literal(lexeme)||':*' from unnest(tsvector_to_array(to_tsvector('simple'::regconfig,left(p_search,200)))) lexeme),' & '))))
- and not exists(select 1 from jsonb_each(p_filters) f where f.key not in ('visibility','collection') and jsonb_typeof(f.value)='array' and jsonb_array_length(f.value)>0 and not exists(select 1 from public.material_option_links ml join public.material_options o on o.id=ml.option_id where ml.material_id=m.id and o.kind=f.key and o.id::text in(select jsonb_array_elements_text(f.value))))
+ and not exists(select 1 from jsonb_each(p_filters) f where f.key not in ('visibility','collection','excluded_roles') and jsonb_typeof(f.value)='array' and jsonb_array_length(f.value)>0 and not exists(select 1 from public.material_option_links ml join public.material_options o on o.id=ml.option_id where ml.material_id=m.id and o.kind=f.key and o.id::text in(select jsonb_array_elements_text(f.value))))
 ), ordered as (
  select *,row_number() over(order by case when p_sort='date' then coalesce("assignedAt","createdAt") end desc,case when p_sort='pinned' then pinned end desc nulls last,lower(title),id,"assignmentId") as ordinal from matches
 ), paged as (select * from ordered order by ordinal limit greatest(1,least(coalesce(p_limit,25),50)) offset (greatest(coalesce(p_page,1),1)-1)*greatest(1,least(coalesce(p_limit,25),50)))
