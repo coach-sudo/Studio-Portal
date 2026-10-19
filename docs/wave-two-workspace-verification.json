@@ -1,0 +1,96 @@
+{
+  "candidate": "95188fbf08206aca8d47adfc729e12a82f7e0d60",
+  "basedOn": {
+    "pr": 56,
+    "sha": "e0567286feeb3d2a8b8314aebb833e0f89fb3aa3"
+  },
+  "waveOneApplication": "f5324b203387a158df3c050569b95a9044368bc0",
+  "hostedApplicationChanged": false,
+  "hostedMigrationsChanged": false,
+  "hostedWaveOneStatus": "BLOCKED_READ_BUDGET_EXHAUSTED_CLEANUP_PENDING",
+  "waveTwoImplementation": "ALL_THREE_WORKSTREAMS_IMPLEMENTED_LOCAL_ACCEPTANCE_PASSED",
+  "production": "NO_GO",
+  "checks": {
+    "database": {
+      "postgres": 17,
+      "migrations": 58,
+      "assertions": 60,
+      "passed": true
+    },
+    "unit": {
+      "legacy": 56,
+      "v2": 56,
+      "passed": true
+    },
+    "browser": {
+      "startTime": "2026-10-18T23:07:18.733Z",
+      "duration": 87656.64700000001,
+      "expected": 27,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0,
+      "projects": ["legacy-chromium", "v2-chromium", "v2-webkit"],
+      "viewportWidths": [320, 390, 768, 1440],
+      "hosted": false,
+      "seriousCriticalAxeFindings": 0
+    },
+    "typecheck": "PASS",
+    "build": "PASS",
+    "format": "PASS",
+    "secrets": "PASS",
+    "lint": {
+      "errors": 0,
+      "warningsAtFullRun": 782,
+      "finalHistoryBootstrapScopedPass": true
+    },
+    "bundles": {
+      "generatedAt": "2026-10-18T23:10:10.098Z",
+      "javascript": {
+        "file": "invoice-font-metrics-D7dKORWb.js",
+        "bytes": 175211,
+        "gzipBytes": 111672
+      },
+      "stylesheet": {
+        "file": "index--YvKZkqN.css",
+        "bytes": 127830,
+        "gzipBytes": 23156
+      },
+      "budgets": {
+        "javascriptWarningGzipBytes": 120000,
+        "javascriptFailureGzipBytes": 130000,
+        "stylesheetWarningGzipBytes": 22000,
+        "stylesheetFailureGzipBytes": 25000
+      }
+    }
+  },
+  "build": {
+    "context": "deploy-preview",
+    "metadataCommit": "95188fbf0820",
+    "browserConfig": "INERT_CI_PUBLIC_PLACEHOLDERS_NOT_FOR_DEPLOYMENT",
+    "queryLayerV2": true,
+    "clientFileCount": 130,
+    "artifactInventorySha256": "48cc3534508aed0c83627497d3c31749186da114ab9b298a9d982fcc6e0c20ed",
+    "serverlessSourceChanged": false,
+    "linuxFunctionPackaging": "UNCHANGED_PRIOR_EVIDENCE_NOT_RERUN"
+  },
+  "evidenceHashes": {
+    "wave-two-build.log": "fd44be589afa06bacb80fa19741fd967646c96c6ea4d619e67550ab789e0c3d2",
+    "wave-two-browser-final.log": "1bd0de9ff889b80dd31f7e4abab01cad2fbe0a0828e652495ee0b0e3377f4da8",
+    "wave-two-integrated-unit.log": "07597f20f60ec16e7c94736ad269fcb44720bdd1f790d1b3dc1f80c464a37a39",
+    "wave-two-legacy-unit.log": "496174beea501dfd772f65e7e25c32e80929a8fe7036535129c2ca43929e374e",
+    "wave-two-full-lint.json": "51f4012b6c6b61ff627df4bb4d9e7a61af7dc987e00b18db37507b429c1a2ebc",
+    "wave-two-format.log": "676856e4919b163f7821338ff8734b55b40055933b9ad4685c9f31815f76ca5c",
+    "wave-two-secrets.log": "00f8f9af640c800086fc5265399b4683878ceb828f56797ca873d8071ec64380",
+    "wave-two-db.log": "ef73134c65d4d58e86c70a6776ccd46a9ad737f4f62f944677cb2cdf198a4fc5"
+  },
+  "newMigration": "20261018222228_workspace_navigation_search.sql",
+  "newMigrationAppliedHosted": false,
+  "remaining": [
+    "Wave 1 cleanup-only recovery authorization and reviewed incomplete-run path",
+    "UI05-UI09 completion and independent preservation",
+    "CI migration lint/pgTAP/full type generation",
+    "Combined protected hosted acceptance after separately authorized migration/deployment",
+    "Manual accessibility and retained platform toolbar issue",
+    "Nonzero monetary/provider/delivery/cadence release gates"
+  ]
+}

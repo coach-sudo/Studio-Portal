@@ -1,3 +1,4 @@
+import { useUrlValue, useUrlChoice } from "../../hooks/useWorkspaceLocation";
 import { WritingArea } from "../../components/WritingArea";
 import {
   ArrowLeft,
@@ -189,9 +190,11 @@ function Inbox({
   const queryClient = useQueryClient();
   const store = useStudioStore();
   const threads = useMemo(() => threadCandidates(data, role), [data, role]);
-  const [threadFilter, setThreadFilter] = useState<
-    "recent" | "unread" | "drafts"
-  >("recent");
+  const [threadFilter, setThreadFilter] = useUrlChoice(
+    "filter",
+    ["recent", "unread", "drafts"] as const,
+    "recent",
+  );
   const [newMessageOpen, setNewMessageOpen] = useState(false);
   const [recipientSearch, setRecipientSearch] = useState("");
   const requested = params.get("conversation");
@@ -201,7 +204,10 @@ function Inbox({
     threads.find((item) => item.id === requested) ||
     threads.find((item) => item.studentId === requestedStudent) ||
     threads.find((item) => item.offeringId === requestedOffering);
-  const [selectedKey, setSelectedKey] = useState(initial?.id || "");
+  const [selectedKey, setSelectedKey] = useUrlValue(
+    "conversation",
+    initial?.id || "",
+  );
   const selected = selectedKey
     ? threads.find((item) => item.id === selectedKey) || initial
     : undefined;

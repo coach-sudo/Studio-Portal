@@ -1,0 +1,199 @@
+{
+  "status": "PASS_PROTECTED_UNPUBLISHED_CANDIDATE_DEPLOYMENT",
+  "verifiedAt": "2026-10-17T15:25:20.433Z",
+  "candidate": "830c762bdaf085f5e20a91f4e6a7afbef4afa627",
+  "dependency": {
+    "pr": 50,
+    "branch": "codex/wave-one-staging-release-candidate",
+    "head": "1842f4f51a1cdad90d4605a7a3406f77a9cdf8d4"
+  },
+  "target": {
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "project": "lrxrivfqjpkvygozphoz",
+    "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+    "deployment": "6ad39275e099502cb54a8f64",
+    "origin": "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app"
+  },
+  "execution": {
+    "attempts": 1,
+    "createdDeployments": 1,
+    "cli": "27.8.0",
+    "mechanism": "netlify deploy --draft --context deploy-preview --site d83ff6cb-f57b-4741-8c3c-3eaae7adab19 --message \"Wave 1 reviewed 830c762bdaf085f5e20a91f4e6a7afbef4afa627\" --json",
+    "integratedFreshBuild": true,
+    "sourceClean": true,
+    "commitRefFromGit": true,
+    "contextAndDeploymentURLsInjected": false,
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v22.22.0",
+    "queryLayerV2": true,
+    "lockfileSha256": "c1de2bdb184e932b9647d5d0648e6243ed185b58f755f377e31031c7cabaa3e9"
+  },
+  "deployment": {
+    "state": "ready",
+    "context": "deploy-preview",
+    "publishedAt": null,
+    "apiCommitRef": null,
+    "commitIdentityEvidence": "Exact clean source + release metadata + artifact hashes; manual deploy API commit_ref is null",
+    "functions": 23,
+    "functionRuntime": "nodejs22.x",
+    "allHostedFunctionDigestsMatchLocalUpload": true,
+    "clientAssets": 117,
+    "clientMatchesIndependentBuild": true,
+    "manifestSha256": "ba899eb9da9979df3c56349d1106b4dc469551bb6a79fab25f3b49afbbd3ab01"
+  },
+  "access": {
+    "productionVisibility": "Private",
+    "deployPreviewVisibility": "Private",
+    "teamLoginScope": "all",
+    "evidence": "Netlify dashboard project visibility before and after; supported project connector; independent anonymous HTTP",
+    "anonymous": [
+      {
+        "path": "/",
+        "status": 401,
+        "redirectOrigin": null
+      },
+      {
+        "path": "/api/healthz",
+        "status": 401,
+        "redirectOrigin": null
+      }
+    ],
+    "protectedHealth": {
+      "url": "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/api/healthz",
+      "method": "GET",
+      "body": {
+        "status": "ok",
+        "release": {
+          "commit": "830c762bdaf0",
+          "context": "deploy-preview"
+        },
+        "checkedAt": "2026-10-17T15:23:10.092Z"
+      },
+      "authentication": "Existing authorized Netlify team browser session; no app login"
+    }
+  },
+  "isolation": {
+    "publicBuildProject": "lrxrivfqjpkvygozphoz",
+    "previewVariables": 10,
+    "environmentPerKeyResponsesUnchanged": true,
+    "environmentHashOrderingNote": "API array ordering varies. Reordering current rows by recorded preflight key order reproduced exact original full response digest, including metadata and values.",
+    "functionOnlySecretsPreserved": true,
+    "providerCredentialNames": [],
+    "sharedVariables": 0,
+    "buildHooks": 0,
+    "activeBuilds": 0,
+    "automaticBuildsStopped": true,
+    "oldPublication": "6ace53e7f850061d7c49b711",
+    "oldProtectedDraft": "6ad23d4f8b10c10447224155",
+    "oldDraftPreserved": true,
+    "authConfigurationUnchanged": true,
+    "authConfigurationDigest": "8242d25916e8c84f6c7d13af2cd5a303c4270b35c00380ca159d8d03c2eb1915",
+    "authSiteURL": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+    "authRedirectAllowlist": [
+      "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback",
+      "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback\\?**"
+    ]
+  },
+  "database": {
+    "before": {
+      "verifiedAt": "2026-10-17T15:17:48.311Z",
+      "project": "lrxrivfqjpkvygozphoz",
+      "tlsVerified": true,
+      "readOnly": true,
+      "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+      "migrations": 57,
+      "tables": 76,
+      "originalRows": 37,
+      "currentRows": 215,
+      "originalAndRetainedRowsUnchanged": true,
+      "completedJournalUnchanged": true,
+      "executorInvocations": 0,
+      "hostedBusinessWrites": 0
+    },
+    "after": {
+      "verifiedAt": "2026-10-17T15:23:39.595Z",
+      "project": "lrxrivfqjpkvygozphoz",
+      "tlsVerified": true,
+      "readOnly": true,
+      "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+      "migrations": 57,
+      "tables": 76,
+      "originalRows": 37,
+      "currentRows": 215,
+      "originalAndRetainedRowsUnchanged": true,
+      "completedJournalUnchanged": true,
+      "executorInvocations": 0,
+      "hostedBusinessWrites": 0
+    },
+    "completedH01H16EvidenceUnchanged": true,
+    "completedJournalSha256": "73ac005baaa805fce0c088abec35c399b02fd6f5234768c078b66b598b62ef6b",
+    "h01H16Reruns": 0,
+    "hostedBusinessWrites": 0
+  },
+  "legacySchedules": {
+    "verifiedAt": "2026-10-17T15:20:30.023Z",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "source": "Existing Netlify observability logs; no workers invoked",
+    "samples": [
+      {
+        "name": "booking-maintenance",
+        "sampledRequests": 18,
+        "allSampledStatus502": true,
+        "missingConfigurationObserved": true,
+        "evidenceRequestId": "01M556KQA6SNQ0DJ8YESYNHGE7",
+        "timestamp": "2026-10-17T15:10:14.342779383Z"
+      },
+      {
+        "name": "calendar-worker",
+        "sampledRequests": 18,
+        "allSampledStatus502": true,
+        "missingConfigurationObserved": true,
+        "evidenceRequestId": "01M556WYCWFVV7V18R8ETWCWZ4",
+        "timestamp": "2026-10-17T15:15:16.508817968Z"
+      },
+      {
+        "name": "outbox-worker",
+        "sampledRequests": 18,
+        "allSampledStatus502": true,
+        "missingConfigurationObserved": true,
+        "evidenceRequestId": "01M556WYBA8ZM6VMDE8DCYFWN3",
+        "timestamp": "2026-10-17T15:15:16.458340722Z"
+      },
+      {
+        "name": "provider-intake",
+        "sampledRequests": 9,
+        "allSampledStatus502": true,
+        "missingConfigurationObserved": true,
+        "evidenceRequestId": "01M556KR22JWYK8XVBT5XKWBY1",
+        "timestamp": "2026-10-17T15:10:15.106428319Z"
+      }
+    ]
+  },
+  "invoice": {
+    "linuxOnly": true,
+    "sharp": "0.35.5",
+    "libvips": "8.18.7",
+    "renderSha256": "387684da1448471d0b16aa2db5e5f80ce6c0a790311ab6ead4802ceae02b3f1c",
+    "localBundledModuleGET": "405 with fetch disabled",
+    "hostedInvoiceInvocations": 0
+  },
+  "exclusions": {
+    "applicationRoleLogins": 0,
+    "authChanges": 0,
+    "environmentChanges": 0,
+    "providerCalls": 0,
+    "messages": 0,
+    "workerInvocationsByAgent": 0,
+    "merges": 0,
+    "publications": 0,
+    "productionOperations": 0,
+    "waveTwoWork": 0
+  },
+  "limits": [
+    "Health is release/liveness only; it does not verify the database, service secret or application commands.",
+    "No hosted application role acceptance performed; new-host Auth configuration remains separately authorized.",
+    "Four previously published timers remain declared and fail before Supabase access in observed logs; they were not disabled or invoked.",
+    "Runtime DEPLOY_URL not exposed by health; CLI used no URL override and metadata identifies the actual immutable deploy_ssl_url."
+  ]
+}

@@ -1,0 +1,738 @@
+{
+  "status": "LOCAL_VALIDATED_REVIEW_CHECKPOINT_NO_HOSTED_EXECUTION",
+  "dateEastern": "2026-10-18",
+  "application": "f5324b203387a158df3c050569b95a9044368bc0",
+  "dependentPR": 53,
+  "dependentHead": "825d5f2db33a3a3d2749e4fa45e54873faeee838",
+  "executorHash": "0506113373274c39716caca818b116f69a2224b75a6057084db632f9db2a55a0",
+  "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+  "unit": {
+    "files": 117,
+    "passed": 818,
+    "failed": 0,
+    "logSha256": "7de544d466fc7ec4368d58debed7d670f0b25981293480d52115ddb0e82797cc"
+  },
+  "browser": [
+    {
+      "mode": "true",
+      "sha256": "e28287d2bd5f772a4b5233415244a90efefa67f43c1547cd8b04dfebd43d6879",
+      "stats": {
+        "startTime": "2026-10-18T03:58:15.241Z",
+        "duration": 495701.886,
+        "expected": 102,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "projects": [
+        "desktop",
+        "tablet",
+        "mobile",
+        "narrow",
+        "webkit",
+        "webkit-narrow"
+      ],
+      "axeAudits": 78,
+      "axeViolations": []
+    },
+    {
+      "mode": "false",
+      "sha256": "c2988a2710956ccba496868eab5d94941596b12e3b0d0d347d91305ce0f4d79f",
+      "stats": {
+        "startTime": "2026-10-18T03:49:11.428Z",
+        "duration": 481827.422,
+        "expected": 102,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "projects": [
+        "desktop",
+        "tablet",
+        "mobile",
+        "narrow",
+        "webkit",
+        "webkit-narrow"
+      ],
+      "axeAudits": 78,
+      "axeViolations": []
+    }
+  ],
+  "types": {
+    "passed": true,
+    "logSha256": "6946c803b152bedabef31c02bfdf8b53defcfe86b4e3e0d7e6aa3568b9135441"
+  },
+  "lint": {
+    "passed": true,
+    "errors": 0,
+    "warnings": 756,
+    "logSha256": "51d7efe7839a7f735ea99feb2307c8043f7d8072ce88c4d13e51e69b7b85bab4"
+  },
+  "origin": {
+    "passed": 14,
+    "failed": 0,
+    "logSha256": "becd0ac6eef6c44629751e32374d200aa36495395c27ad65826f7603be7307f5"
+  },
+  "helpers": {
+    "passed": 8,
+    "failed": 0,
+    "logSha256": "f3d252a9035f270f4f4438cb1dcd07c15eadd78ceb74684476d06f447a078f80"
+  },
+  "guards": {
+    "passed": 52,
+    "failed": 0,
+    "logSha256": "fc539fc55aa8293c33969c99fe436197a9fcd545b9c82504595b9b2c771c6121"
+  },
+  "postgres": {
+    "environment": "Disposable native PostgreSQL 17; real v2 handler/SQL/RLS; local Auth and REST compatibility adapter",
+    "major": 17,
+    "migrationsReplayed": 57,
+    "pgTapAssertions": 204,
+    "concurrencySuites": 3,
+    "observedSeparateSessionLockContention": true,
+    "executorScenarios": [
+      {
+        "name": "browser",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 21,
+          "http-total": 21,
+          "sql": 30,
+          "read": 471,
+          "cleanup": 9,
+          "auth-admin": 8
+        }
+      },
+      {
+        "name": "complete",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 20,
+          "http-total": 20,
+          "sql": 30,
+          "read": 118,
+          "cleanup": 9,
+          "auth-admin": 8
+        }
+      },
+      {
+        "name": "unknown_record",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "original_row",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "cash_budget",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "delivery_activity",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "durable_http_recovery",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 1,
+          "http-total": 1,
+          "sql": 1,
+          "read": 17,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "lost_create_response",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 1,
+          "http-total": 1,
+          "sql": 1,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "partial_cleanup",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 20,
+          "http-total": 20,
+          "sql": 30,
+          "read": 116,
+          "cleanup": 9,
+          "auth-admin": 8
+        }
+      },
+      {
+        "name": "concurrent_writer",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 1,
+          "http-total": 1,
+          "sql": 1,
+          "read": 12,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "permission_denied",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 1,
+          "http-total": 1,
+          "sql": 1,
+          "read": 11,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "forged_receipt",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "parallel_executor",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 3,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "baseline_approval",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 0,
+          "read": 6,
+          "cleanup": 0,
+          "auth-admin": 0
+        }
+      },
+      {
+        "name": "credit_budget",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 2,
+          "read": 14,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      },
+      {
+        "name": "auth_ambiguity",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 0,
+          "read": 6,
+          "cleanup": 0,
+          "auth-admin": 1
+        }
+      },
+      {
+        "name": "auth_role_drift",
+        "status": "PASS",
+        "budgets": {
+          "http-business": 0,
+          "http-total": 0,
+          "sql": 1,
+          "read": 13,
+          "cleanup": 0,
+          "auth-admin": 4
+        }
+      }
+    ],
+    "validationSha256": "737f198b5b6d19784a618a34a571cbc1c9b61d6784a3d8039f43eda70fb741e9",
+    "logSha256": "a97a9acf8d2d613e60edcbe46b9385e9611b91e2177d6a31202af0240420bc29"
+  },
+  "localCleanup": {
+    "originalTables": 76,
+    "originalRows": 32,
+    "originalRowsUnchanged": true,
+    "retainedCounts": {
+      "public.lessons": 12,
+      "public.packages": 1,
+      "public.students": 2,
+      "lesson_ops.receipts": 8,
+      "public.audit_events": 31,
+      "public.lesson_participants": 1,
+      "lesson_ops.lesson_bulk_jobs": 4,
+      "lesson_ops.lesson_bulk_items": 7,
+      "public.package_credit_entries": 6,
+      "lesson_ops.lesson_record_state": 2,
+      "public.student_credit_accounts": 2,
+      "lesson_ops.lesson_bulk_requests": 8,
+      "lesson_ops.lesson_deletion_snapshots": 1,
+      "credit_internal.credit_command_receipts": 3
+    },
+    "retainedManifestSha256": "18ac8c4370c64e62dd9a67974116bf66b44eddfd6bc49655423668f40d459d05",
+    "authAdapter": "LOCAL stub: four creations, three deletions and simulated retained-coach ban; hosted Auth/admin not exercised",
+    "postRevocationClaimBlockedBeforeTransmission": true,
+    "axe": [
+      {
+        "name": "initial:coach",
+        "violations": []
+      },
+      {
+        "name": "initial:student",
+        "violations": []
+      },
+      {
+        "name": "initial:guardian",
+        "violations": []
+      },
+      {
+        "name": "funded:coach",
+        "violations": []
+      },
+      {
+        "name": "funded:student",
+        "violations": []
+      },
+      {
+        "name": "funded:guardian",
+        "violations": []
+      }
+    ]
+  },
+  "linux": {
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "platform": "linux",
+    "architecture": "x64",
+    "node": "v22.22.0",
+    "cli": "27.8.0",
+    "officialOffline": true,
+    "uploaded": false,
+    "release": "deploy-preview/f5324b203387",
+    "manifestSha256": "ea3cd835b3ddfb8edfef76ea5ea2b09b2afb974a42f472689924be6647f55995",
+    "artifactReceiptSha256": "513c47836c7ae1cc7d2ad3bc465f00781275fe3e359cdd0fa8e0bf16e3d2030c",
+    "functions": [
+      {
+        "name": "booking-admin",
+        "runtime": "nodejs22.x",
+        "sha256": "21c3fc27971e3ccdc5492978b3b2f48693df17501536358b335aa1c4a48f7170",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/admin/booking/:resource",
+            "expression": "^\\/api\\/v2\\/admin\\/booking(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "booking-maintenance",
+        "runtime": "nodejs22.x",
+        "sha256": "1b0b72dd9aeafed48d294f386805167695eb232174d84437a798da5daebed5b0",
+        "schedule": "*/5 * * * *",
+        "routes": []
+      },
+      {
+        "name": "booking-portal",
+        "runtime": "nodejs22.x",
+        "sha256": "0dc5e407979e4fd4f248e9e1b7d08ce0f6714565a8fd8f47a99ba67fb67832d1",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/portal/bookings/:action",
+            "expression": "^\\/api\\/v2\\/portal\\/bookings(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "calendar-worker",
+        "runtime": "nodejs22.x",
+        "sha256": "12dfc102fd90919a649d056e1a9d64d73b12923acc9aba4f55f3271a29191066",
+        "schedule": "*/5 * * * *",
+        "routes": []
+      },
+      {
+        "name": "campaign-unsubscribe",
+        "runtime": "nodejs22.x",
+        "sha256": "e3c70a1a6ccd2627e3093ef8d0ac49eb9e534c02bdba7f7286c7aab1a017a117",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/unsubscribe/:token",
+            "expression": "^\\/unsubscribe(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "campaigns",
+        "runtime": "nodejs22.x",
+        "sha256": "4205609dc3a2c6b73a9569b52a4edb29c8206a29dd8c2ac01fc0e7b2c32d5175",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/admin/campaigns",
+            "literal": "/api/v2/admin/campaigns",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "e2e-fixtures",
+        "runtime": "nodejs22.x",
+        "sha256": "8ac63d766780244667ebe2ed104b16912a5e257f8cd45ce3af4d12129bb3342c",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/e2e/fixtures",
+            "literal": "/api/e2e/fixtures",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "healthz",
+        "runtime": "nodejs22.x",
+        "sha256": "df783bdbd5c1a5ff159530bb79702522df0f20ab0947361c1c0f0ba78242ed08",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/healthz",
+            "literal": "/api/healthz",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "invoice-pdf",
+        "runtime": "nodejs22.x",
+        "sha256": "9284792f9ce4e9000dc3659f5cdb841654d353bbdff28ffad3e93cb990a0507b",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/invoice-pdf",
+            "literal": "/api/invoice-pdf",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "invoices",
+        "runtime": "nodejs22.x",
+        "sha256": "aa0ff5dd2e8715d96d7f880793d52eb681d15a20f8b08dafbb049fd7504c7d96",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/invoices",
+            "literal": "/api/invoices",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "lesson-delivery-status",
+        "runtime": "nodejs22.x",
+        "sha256": "8b5bdd896825ed16cb57d135aa38ef35e71ddef4664bd5ba257807b1a1f3a0d0",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/portal/lessons/:lessonId/delivery",
+            "expression": "^\\/api\\/v2\\/portal\\/lessons(?:\\/([^\\/]+?))\\/delivery\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "outbox-worker",
+        "runtime": "nodejs22.x",
+        "sha256": "a37686a36f60fdf904082d995ea7f83ee7d0124809047ca86a8821415bbe4f43",
+        "schedule": "*/5 * * * *",
+        "routes": []
+      },
+      {
+        "name": "package-gifts",
+        "runtime": "nodejs22.x",
+        "sha256": "9fdc6952ea46892a6aafebdfcef41752a250cf9ce3177e40a723ae67bcdc6519",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/public/package-gifts/:action",
+            "expression": "^\\/api\\/v2\\/public\\/package-gifts(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "platform-health",
+        "runtime": "nodejs22.x",
+        "sha256": "bac966b70e93c77dbcac6c2763b88e3e9fb7c775d229137765d01d1dfa6d38f5",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/health",
+            "literal": "/api/v2/health",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "portal-auth",
+        "runtime": "nodejs22.x",
+        "sha256": "29646990efb4402770ec789a9b884b7e12fab168d23454ca7f641b8ac40c8369",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/auth/:action",
+            "expression": "^\\/api\\/v2\\/auth(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "provider-intake-background",
+        "runtime": "nodejs22.x",
+        "sha256": "fbf61ff57d7b7142f44e3cedb8d0ec813d9c400208a07ac55e91d3bf304b0f65",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/admin/provider-intake",
+            "literal": "/api/v2/admin/provider-intake",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "provider-intake",
+        "runtime": "nodejs22.x",
+        "sha256": "e797aa57705b56f2232c2dcf12c22be1e2b4d42811003911984042de4e28795a",
+        "schedule": "*/10 * * * *",
+        "routes": []
+      },
+      {
+        "name": "public-actor",
+        "runtime": "nodejs22.x",
+        "sha256": "3c1b6104dffacda64830ce6470c77796675c983f568adf6fb4ef37fe964559a0",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/public/actors/:slug",
+            "expression": "^\\/api\\/v2\\/public\\/actors(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "public-booking",
+        "runtime": "nodejs22.x",
+        "sha256": "6f056a048fa69c7c6cc5055f1d2a0b06a7330695aa3c2ce8f2aacb39431905cc",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/public/booking/:action",
+            "expression": "^\\/api\\/v2\\/public\\/booking(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "referrals",
+        "runtime": "nodejs22.x",
+        "sha256": "aa5466d734e12ad6d928b33747417fd1d4e485937be495414881930d18a87d7b",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/referrals",
+            "literal": "/api/v2/referrals",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "storage-health",
+        "runtime": "nodejs22.x",
+        "sha256": "d84957d1524133098742abfb16e8984dfbf70dd699cb134f09c7b7b22dff578b",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/storage-health",
+            "literal": "/api/v2/storage-health",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "stripe-webhook-v2",
+        "runtime": "nodejs22.x",
+        "sha256": "29975cf87fe940166f55f93781e9f251f991096d1e9ff70848c06d305cb9a3f5",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/stripe-webhook",
+            "literal": "/api/v2/stripe-webhook",
+            "methods": []
+          }
+        ]
+      },
+      {
+        "name": "v2",
+        "runtime": "nodejs22.x",
+        "sha256": "3e38b794171c57d8b8eb455b7c7d932d8896aaea842a4905d59c90cb83fd56b3",
+        "schedule": null,
+        "routes": [
+          {
+            "pattern": "/api/v2/:domain",
+            "expression": "^\\/api\\/v2(?:\\/([^\\/]+?))\\/?$",
+            "methods": []
+          }
+        ]
+      }
+    ],
+    "hashedStaticFiles": 125,
+    "clientMatchesIndependentBuild": true,
+    "sharpVersion": "0.35.5",
+    "libvipsVersion": "8.18.7",
+    "invoiceLocalImportAndGet": "405 with fetch disabled",
+    "sharpRenderSha256": "387684da1448471d0b16aa2db5e5f80ce6c0a790311ab6ead4802ceae02b3f1c",
+    "budgets": {
+      "javascriptGzip": 111672,
+      "javascriptFailureCap": 130000,
+      "cssGzip": 23156,
+      "cssFailureCap": 25000,
+      "cssWarningCap": 22000,
+      "warningRetained": true
+    }
+  },
+  "staging": {
+    "verifiedAt": "2026-10-18T12:48:39.985Z",
+    "deployment": "6ad39275e099502cb54a8f64",
+    "project": "lrxrivfqjpkvygozphoz",
+    "ready": true,
+    "unpublished": true,
+    "context": "deploy-preview",
+    "publicationUnchanged": true,
+    "deployListUnchanged": true,
+    "buildsStopped": true,
+    "previewVariablesOnly": true,
+    "providersAbsent": true,
+    "authUnchanged": true,
+    "fourAccountsConfirmedAndRolesUnchanged": true,
+    "tablesUnchanged": 76,
+    "rows": 215,
+    "tlsVerified": true,
+    "anonymousRootAndHealth": 401
+  },
+  "protection": {
+    "supportedProjectRead": true,
+    "requiresSSOTeamLogin": true,
+    "whichProjectsRequireSSOTeamLogin": "all",
+    "sharedTeamVariables": 0,
+    "functionOnlySecrets": true
+  },
+  "historicalHostedTotalsPreserved": {
+    "checks": 139,
+    "passed": 132,
+    "failed": 3,
+    "fixtureBlocked": 4,
+    "platformRegionOccurrences": 54
+  },
+  "knownLimits": [
+    "Loopback matrices are fixtures, not hosted acceptance",
+    "Native Auth and REST compatibility adapters are not real Supabase Auth/PostgREST",
+    "Fresh guardian root claim-access is deliberately prevented, not tested successfully",
+    "Monetary invoice/payment and authored note/material history remain outside the UI proposal",
+    "Provider rescheduling, Calendar/email/Stripe delivery and hosted legacy remain untested",
+    "Existing V2 service audit helper can omit actor_id; only exact acknowledged action/type/entity/audit IDs accepted",
+    "Native PG replay/pgTAP/concurrency is not a full running Supabase CLI/Docker stack"
+  ],
+  "actions": {
+    "hostedDeployments": 0,
+    "hostedBusinessMutations": 0,
+    "hostedAuthChanges": 0,
+    "hostedLogins": 0,
+    "providerCalls": 0,
+    "workerInvocations": 0,
+    "merges": 0,
+    "waveTwoStarted": false
+  },
+  "readiness": {
+    "oneProtectedV2Deployment": "GO_AFTER_SEPARATE_AUTHORIZATION_AND_FRESH_PREFLIGHT",
+    "hostedUiMutations": "NOT_AUTHORIZED_REQUIRES_ACTUAL_NEW_DEPLOY_AUTH_AND_FRESH_RECEIPT",
+    "production": "NO-GO"
+  },
+  "format": {
+    "passed": true,
+    "logSha256": "676856e4919b163f7821338ff8734b55b40055933b9ad4685c9f31815f76ca5c"
+  },
+  "secrets": {
+    "passed": true,
+    "files": 950,
+    "logSha256": "799bd356f6e75a673355b877931debb7c7e2e71cedd57064f16f0df75287c1dc"
+  },
+  "privateFileGuards": {
+    "passed": true,
+    "windowsRuntime": "PowerShell 7 pwsh.exe",
+    "canonicalPath": true,
+    "ownerAndSystemOnly": true,
+    "realNonsecretWriteReadProbe": true
+  },
+  "executorSealLineEndings": "LF canonical text; raw artifact and journal hashes unchanged",
+  "github": {
+    "draftPR": 54,
+    "basePR": 53,
+    "base": "codex/wave-one-hosted-browser-acceptance",
+    "baseHead": "825d5f2db33a3a3d2749e4fa45e54873faeee838",
+    "executorImplementationCommit": "7b09545c2a820778f28c311e65687c50fe4d87ac",
+    "checksReportedByGitHub": 0,
+    "localChecksNotRepresentedAsCI": true
+  }
+}

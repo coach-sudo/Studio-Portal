@@ -1,0 +1,19 @@
+{
+  "status": "PASS",
+  "postgres": 17,
+  "migrations": 57,
+  "tests": [
+    "57 migrations and genuine UI01-UI04 plus interrupted UI05 fixture",
+    "original row drift rejected before cleanup",
+    "committed interruption reconciled by exact durable snapshot without resend",
+    "partial cleanup resumes canonically with retained ledger and history",
+    "independent 76-table fingerprints, Auth cleanup and immutable original journal",
+    "application requests and new acceptance activity rejected",
+    "off-target and expired receipt rejection",
+    "independent hard read ceiling cannot be reset or overrun"
+  ],
+  "hostedConnections": 0,
+  "authAdapter": "LOCAL_ONLY",
+  "originalRows": 215,
+  "originalJournalUnchanged": true
+}

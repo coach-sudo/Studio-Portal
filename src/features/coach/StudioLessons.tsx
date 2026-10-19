@@ -1,3 +1,5 @@
+import { LessonChangeReview } from "../../components/LessonChangeReview";
+import { LessonBulkList } from "../../components/LessonBulkList";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
 import {
   lessonCreditDebit,
@@ -5,8 +7,11 @@ import {
 } from "../../domain/credits";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { LessonCalendar } from "../../components/LessonCalendar";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import {
+  LessonCalendar,
+  type CalendarView,
+} from "../../components/LessonCalendar";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
 import {
@@ -30,6 +35,19 @@ export function LessonsView({
   isDemo: boolean;
   onOpenLesson?: (lesson: Lesson) => void;
 }) {
+  const [calendarParams, setCalendarParams] = useSearchParams();
+  const requestedCalendarView = calendarParams.get("lessonBatch")
+    ? "list"
+    : calendarParams.get("calendarView");
+  const calendarView: CalendarView = [
+    "day",
+    "week",
+    "month",
+    "year",
+    "list",
+  ].includes(requestedCalendarView || "")
+    ? (requestedCalendarView as CalendarView)
+    : "month";
   const navigate = useNavigate(),
     store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -319,6 +337,45 @@ export function LessonsView({
     <Section title="Lesson calendar" marked>
       {notice && <p className="portal-notice">{notice}</p>}
       <LessonCalendar
+        viewOverride={calendarView}
+        onViewChange={(view) =>
+          setCalendarParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              next.set("calendarView", view);
+              return next;
+            },
+            { preventScrollReset: true },
+          )
+        }
+        calendarState={{
+          date: calendarParams.get("calendarDate") || "",
+          query: calendarParams.get("calendarQuery") || "",
+          includeCancelled: calendarParams.get("calendarCancelled") === "true",
+        }}
+        onCalendarStateChange={(change) =>
+          setCalendarParams(
+            (current) => {
+              const next = new URLSearchParams(current);
+              if (change.date !== undefined)
+                next.set("calendarDate", change.date);
+              if (change.query !== undefined)
+                next.set("calendarQuery", change.query);
+              if (change.includeCancelled !== undefined)
+                next.set("calendarCancelled", String(change.includeCancelled));
+              return next;
+            },
+            { preventScrollReset: true },
+          )
+        }
+        listContent={
+          isDemo ? undefined : (
+            <LessonBulkList
+              studioId={data.studioId}
+              timezone={data.settings.timezone}
+            />
+          )
+        }
         lessons={data.lessons}
         timezone={data.settings.timezone}
         studentName={(id) => studentName(data, id)}
@@ -367,6 +424,30 @@ export function LessonsView({
                   : checkSchedulingConflicts(startsAt, endsAt, selected.id)
               }
               onCancel={() => setPanel("details")}
+              renderReview={
+                isDemo
+                  ? undefined
+                  : (times, back) => (
+                      <LessonChangeReview
+                        lesson={selected}
+                        action="reschedule"
+                        times={times}
+                        onCancel={back}
+                        onApplied={async () => {
+                          await invalidateStudioDomains(queryClient, [
+                            "lessons",
+                            "booking",
+                            "finance",
+                            "messaging",
+                          ]);
+                          setSelected(undefined);
+                          setNotice(
+                            "Reviewed occurrences changed. Calendar and notifications are pending synchronization.",
+                          );
+                        }}
+                      />
+                    )
+              }
               onSubmit={move}
             />
           ) : (
@@ -634,30 +715,50 @@ export function LessonsView({
                     {busy === "completed" ? "Saving…" : "Mark complete"}
                   </button>
                   {confirmCancel ? (
-                    <>
-                      {paidByCredit && (
-                        <CreditCancellationChoice
-                          useCredit={consumeCredit}
-                          onChange={setConsumeCredit}
-                        />
-                      )}
-                      <span>
-                        This removes it from active calendars and sends the
-                        cancellation to Google.
-                      </span>
-                      <button
-                        className="danger-button"
-                        disabled={Boolean(busy)}
-                        onClick={() => void update("cancelled")}
-                      >
-                        {busy === "cancelled"
-                          ? "Cancelling…"
-                          : "Confirm cancellation"}
-                      </button>
-                      <button onClick={() => setConfirmCancel(false)}>
-                        Keep lesson
-                      </button>
-                    </>
+                    !isDemo ? (
+                      <LessonChangeReview
+                        lesson={selected}
+                        action="cancel"
+                        onCancel={() => setConfirmCancel(false)}
+                        onApplied={async () => {
+                          await invalidateStudioDomains(queryClient, [
+                            "lessons",
+                            "booking",
+                            "finance",
+                            "messaging",
+                          ]);
+                          setSelected(undefined);
+                          setNotice(
+                            "Reviewed occurrences changed. Calendar and notifications are pending synchronization.",
+                          );
+                        }}
+                      />
+                    ) : (
+                      <>
+                        {paidByCredit && (
+                          <CreditCancellationChoice
+                            useCredit={consumeCredit}
+                            onChange={setConsumeCredit}
+                          />
+                        )}
+                        <span>
+                          This removes it from active calendars and sends the
+                          cancellation to Google.
+                        </span>
+                        <button
+                          className="danger-button"
+                          disabled={Boolean(busy)}
+                          onClick={() => void update("cancelled")}
+                        >
+                          {busy === "cancelled"
+                            ? "Cancelling…"
+                            : "Confirm cancellation"}
+                        </button>
+                        <button onClick={() => setConfirmCancel(false)}>
+                          Keep lesson
+                        </button>
+                      </>
+                    )
                   ) : (
                     <button
                       className="danger-button"

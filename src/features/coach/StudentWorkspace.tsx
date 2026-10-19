@@ -1,3 +1,8 @@
+import {
+  useUnsavedWorkspaceChanges,
+  useWorkspaceNavigation,
+} from "../../hooks/useWorkspaceLocation";
+import { RecordUnavailable } from "../../components/RecordRoute";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
@@ -16,6 +21,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type FormEvent,
 } from "react";
 import {
@@ -50,6 +56,11 @@ import { studentWorkspaceDomains } from "./routeDomains";
 const Account = lazy(() =>
   import("./StudentWorkspaceAccount").then((module) => ({
     default: module.Account,
+  })),
+);
+const LinkedContacts = lazy(() =>
+  import("./StudentWorkspaceAccount").then((module) => ({
+    default: module.LinkedContacts,
   })),
 );
 const HouseholdContactProfile = lazy(() =>
@@ -93,17 +104,23 @@ const Work = lazy(() =>
   })),
 );
 
+const narrowQuery = "(max-width: 600px)";
+const narrowSnapshot = () => window.matchMedia?.(narrowQuery).matches ?? false;
+const subscribeNarrow = (notify: () => void) => {
+  const query = window.matchMedia?.(narrowQuery);
+  if (!query) return () => {};
+  query.addEventListener("change", notify);
+  return () => query.removeEventListener("change", notify);
+};
+
 export function StudentWorkspace() {
+  const narrow = useSyncExternalStore(subscribeNarrow, narrowSnapshot);
   const { studentId = "" } = useParams();
   const location = useLocation();
-  const { data, isDemo } = useStudioRoute(
-    "coach",
-    undefined,
-    studentWorkspaceDomains(location.pathname),
-  );
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const workspace = useWorkspaceNavigation();
   const [dialog, setDialog] = useState<
     | "edit"
     | "lesson"
@@ -115,6 +132,11 @@ export function StudentWorkspace() {
     | "note"
     | null
   >(null);
+  const { data, isDemo } = useStudioRoute(
+    "coach",
+    undefined,
+    studentWorkspaceDomains(location.pathname, !dialog),
+  );
   const [editingNote, setEditingNote] = useState<Note>();
   const [notice, setNotice] = useState("");
   const studentMutation = useStudioMutation();
@@ -124,6 +146,13 @@ export function StudentWorkspace() {
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [recordMenuOpen, setRecordMenuOpen] = useState(false);
   const [workflowLessonId, setWorkflowLessonId] = useState<string>();
+  useEffect(() => {
+    setDialog(null);
+    setEditingNote(undefined);
+    setWorkflowLessonId(undefined);
+    setRecordMenuOpen(false);
+    setNotice("");
+  }, [studentId]);
   const student = data?.students.find((item) => item.id === studentId);
   useEffect(() => {
     const tabs = document.querySelector<HTMLElement>(".record-tabs");
@@ -136,8 +165,32 @@ export function StudentWorkspace() {
           (tabs.clientWidth - active.clientWidth) / 2,
       );
   }, [location.pathname]);
+  useEffect(() => {
+    const requested = new URLSearchParams(location.search).get("writeNote");
+    if (!requested || !data || !student) return;
+    const lesson = data.lessons.find(
+      (item) =>
+        item.id === requested && belongsToStudent(data, item, student.id),
+    );
+    if (!lesson) return;
+    const draft = data.notes.find(
+      (item) =>
+        item.lessonId === requested &&
+        item.studentId === student.id &&
+        item.status === "draft",
+    );
+    setWorkflowLessonId(requested);
+    setEditingNote(draft);
+    setDialog("note");
+    const params = new URLSearchParams(location.search);
+    params.delete("writeNote");
+    navigate(
+      { pathname: location.pathname, search: params.toString() },
+      { replace: true },
+    );
+  }, [data, student, location.pathname, location.search, navigate]);
   if (!data) return <div className="loading">Opening student record…</div>;
-  if (!student) return <Navigate to="/coach/students" replace />;
+  if (!student) return <RecordUnavailable fallback="/coach/students" />;
 
   const base = `/coach/students/${student.id}`;
   const studentLessons = data.lessons
@@ -146,11 +199,10 @@ export function StudentWorkspace() {
   const tabs = [
     ["", "Overview"],
     ["lessons", "Lessons"],
-    ["work", "Current work"],
+    ["work", "My Work"],
     ["notes", "Notes"],
-    ["account", "Account"],
+    ["household", "Household"],
     ["payments", "Payments"],
-    ["actor-page", "Actor page"],
   ] as const;
   const saveStudent = async (updates: Partial<Student>) => {
     if (studentMutation.isPending()) return;
@@ -547,7 +599,8 @@ export function StudentWorkspace() {
       <header className="student-record-header">
         <button
           className="back-button"
-          onClick={() => navigate("/coach/students")}
+          aria-label="Back to students"
+          onClick={workspace.back}
         >
           <ArrowLeft />
           Students
@@ -579,31 +632,48 @@ export function StudentWorkspace() {
           </Status>
         </div>
         <div className="record-actions">
-          <button onClick={() => setDialog("lesson")}>
-            <Plus />
-            Add lesson
+          {!narrow && (
+            <>
+              <button className="primary" onClick={() => setDialog("lesson")}>
+                <Plus />
+                Add lesson
+              </button>
+              <button onClick={() => setDialog("note")}>Write note</button>
+            </>
+          )}
+          <details className="record-add-menu">
+            <summary className="button-link">
+              {narrow ? "Add" : "Assign"}
+            </summary>
+            <div className="stack-actions">
+              {narrow && (
+                <button onClick={() => setDialog("note")}>Write note</button>
+              )}
+              <button onClick={() => setDialog("material")}>
+                Add material
+              </button>
+              <button onClick={() => setDialog("assignment")}>
+                Assign practice
+              </button>
+              {narrow && (
+                <button onClick={() => setDialog("lesson")}>
+                  <Plus />
+                  Add lesson
+                </button>
+              )}
+            </div>
+          </details>
+          <Link
+            className="button-link"
+            to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}
+          >
+            <MessageSquare />
+            Message
+          </Link>
+          <button onClick={() => setRecordMenuOpen(true)}>
+            <MoreHorizontal />
+            More actions
           </button>
-          {student.email && (
-            <Link
-              className="button-link"
-              to={`/coach/inbox?student=${encodeURIComponent(student.id)}`}
-            >
-              <MessageSquare />
-              Message
-            </Link>
-          )}
-          {student.email && (
-            <button onClick={() => setRecordMenuOpen(true)}>
-              <MoreHorizontal />
-              More actions
-            </button>
-          )}
-          {!student.email && (
-            <button onClick={() => setRecordMenuOpen(true)}>
-              <MoreHorizontal />
-              More actions
-            </button>
-          )}
         </div>
       </header>
       {notice && (
@@ -625,6 +695,7 @@ export function StudentWorkspace() {
           <NavLink
             key={path}
             to={`${base}${path ? `/${path}` : ""}`}
+            state={location.state}
             end={!path}
           >
             {label}
@@ -645,6 +716,7 @@ export function StudentWorkspace() {
               <Overview
                 data={data}
                 student={student}
+                isDemo={isDemo}
                 onAddAssignment={() => setDialog("assignment")}
                 onAddMaterial={() => setDialog("material")}
               />
@@ -652,7 +724,7 @@ export function StudentWorkspace() {
           />
           <Route
             path="lessons"
-            element={<Lessons data={data} student={student} />}
+            element={<Lessons data={data} student={student} isDemo={isDemo} />}
           />
           <Route
             path="lessons/:lessonId"
@@ -706,9 +778,29 @@ export function StudentWorkspace() {
             }
           />
           <Route
+            path="household"
+            element={
+              <div>
+                <SectionHouseholdStudent
+                  student={student}
+                  onManage={() => navigate(`${base}/account`)}
+                />
+                <LinkedContacts
+                  key={student.id}
+                  data={data}
+                  student={student}
+                  busy={settingCredentials}
+                  isDemo={isDemo}
+                  onInvite={sendPortalInvite}
+                />
+              </div>
+            }
+          />
+          <Route
             path="account"
             element={
               <Account
+                key={student.id}
                 data={data}
                 student={student}
                 isDemo={isDemo}
@@ -731,7 +823,14 @@ export function StudentWorkspace() {
           />
           <Route
             path="payments"
-            element={<Payments data={data} student={student} isDemo={isDemo} />}
+            element={
+              <Payments
+                key={student.id}
+                data={data}
+                student={student}
+                isDemo={isDemo}
+              />
+            }
           />
           <Route
             path="actor-page"
@@ -790,6 +889,20 @@ export function StudentWorkspace() {
           onClose={() => setRecordMenuOpen(false)}
         >
           <div className="stack-actions student-overflow-actions">
+            <Link
+              className="button-link"
+              to={`${base}/account`}
+              onClick={() => setRecordMenuOpen(false)}
+            >
+              Account administration
+            </Link>
+            <Link
+              className="button-link"
+              to={`${base}/actor-page`}
+              onClick={() => setRecordMenuOpen(false)}
+            >
+              Actor Page
+            </Link>
             <button
               onClick={() => {
                 setRecordMenuOpen(false);
@@ -1618,6 +1731,13 @@ function NoteForm({
       note?.lessonId || initialLessonId || lessons[0]?.id || "",
     );
   const [saving, setSaving] = useState(false);
+  const initial = useRef(JSON.stringify({ title, body, published, lessonId }));
+  const canDiscard = useUnsavedWorkspaceChanges(
+    JSON.stringify({ title, body, published, lessonId }) !== initial.current,
+  );
+  const close = () => {
+    if (canDiscard()) onClose();
+  };
   const editorRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!editorRef.current) return;
@@ -1634,7 +1754,7 @@ function NoteForm({
     <Drawer
       title={note ? "Edit note" : "New note"}
       description={student.fullName}
-      onClose={onClose}
+      onClose={close}
     >
       <form
         className="workflow-form"
@@ -1789,7 +1909,7 @@ function NoteForm({
           </span>
         </label>
         <div className="form-actions full">
-          <button type="button" onClick={onClose}>
+          <button type="button" onClick={close}>
             Cancel
           </button>
           <button
@@ -1808,5 +1928,32 @@ function NoteForm({
         </div>
       </form>
     </Drawer>
+  );
+}
+
+function SectionHouseholdStudent({
+  student,
+  onManage,
+}: {
+  student: Student;
+  onManage: () => void;
+}) {
+  return (
+    <section className="section">
+      <h2>Student access</h2>
+      <div className="table-list">
+        <article>
+          <div>
+            <strong>{student.fullName}</strong>
+            <small>
+              {student.email || "No email recorded"}
+              {student.phone ? ` · ${student.phone}` : ""}
+            </small>
+          </div>
+          <span>Portal access {student.portalEnabled ? "on" : "off"}</span>
+          <button onClick={onManage}>Manage student access</button>
+        </article>
+      </div>
+    </section>
   );
 }

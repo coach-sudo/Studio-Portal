@@ -1,0 +1,103 @@
+{
+  "preparedAt": "2026-10-18T16:33:05.780Z",
+  "status": "READY_FOR_HUMAN_REVIEW_NOT_AUTHORIZED",
+  "run": "e2e-wave1-ui-20261017-a",
+  "target": {
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "project": "lrxrivfqjpkvygozphoz",
+    "studio": "4ceff683-e72f-4b2e-96ce-85db2dca4eb2",
+    "deployment": "6ad4c3817ca9519157e3e3b0",
+    "candidate": "f5324b203387a158df3c050569b95a9044368bc0",
+    "origin": "https://6ad4c3817ca9519157e3e3b0--coachd-staging.netlify.app",
+    "artifactHash": "d40563129c278b073ee94c7ec2a69f2df5810b50262af4f653875877f1f53ff0"
+  },
+  "executorHash": "b6a1dc4c2ece66c954340d6f3bba4a5e82f5ae442909490a0050bfa57e3d3a35",
+  "priorExecutorHash": "0506113373274c39716caca818b116f69a2224b75a6057084db632f9db2a55a0",
+  "manifestHash": "e508538878797da0dd6d5aa695b679f86c661f2135162e0094eb32ad070a37f0",
+  "baselineHash": "a7f6f630d7eb57ca3dca8e2323c3853d5085fbac6fb7817165e3a932de4ed4c2",
+  "baselineTables": 76,
+  "baselineRows": 215,
+  "newIdentitiesAbsent": true,
+  "serviceJwtValidatedByStagingAuth": true,
+  "configFormatAndPrivateAclVerified": true,
+  "approvedReceiptExists": false,
+  "hostedJournalExists": false,
+  "proposedWindow": {
+    "issuedAt": "2026-10-18T16:33:05.780Z",
+    "expiresAt": "2026-10-19T16:33:05.780Z"
+  },
+  "budget": {
+    "authUsers": 4,
+    "students": 2,
+    "contacts": 1,
+    "relationships": 1,
+    "memberships": 3,
+    "services": 1,
+    "packageLots": 1,
+    "creditsGranted": 4,
+    "cashMinor": 0,
+    "lessonPriceMinor": 0,
+    "currency": "USD",
+    "seededLessons": 12,
+    "uiCreatedLessons": 1,
+    "lessonsTotal": 13,
+    "reviewedBatchMaximum": 13,
+    "bulkReviews": 4,
+    "httpMutationRequests": 30,
+    "canonicalSqlRequests": 60,
+    "readRequests": 600,
+    "cleanupTransactions": 40,
+    "authMutationRequests": 8,
+    "businessRowsPeak": 384,
+    "cumulativeBusinessRowIdentities": 512,
+    "providerCalls": 0,
+    "messagesDelivered": 0,
+    "scheduledWorkers": 0
+  },
+  "authSetupWrites": 0,
+  "hostedBusinessWrites": 0,
+  "executionRequests": 0,
+  "cleanupStarted": false,
+  "refreshBeforeExecution": [
+    "supported protection proof within ten minutes",
+    "perimeter session and protected health",
+    "exact Auth/environment/migration/original-user/baseline fingerprints; stop on change",
+    "human approval bound to proposed executor, manifest, artifact, target and baseline hashes"
+  ],
+  "authorizationRequired": true,
+  "proposedReceiptHasNoApprover": true,
+  "identityMode": "Reviewed deterministic IDs; verified absent; not provisioned",
+  "inventory": [
+    ["UI01", "New-role identity, private reads and cross-student denial"],
+    ["UI02", "Owned profile focus edit, Overview and Household"],
+    ["UI03", "Exactly one native UI lesson create and topic edit"],
+    [
+      "UI04",
+      "Four-credit settings, authoritative coverage and stable-key replay"
+    ],
+    [
+      "UI05",
+      "Cross-page selection; archive, restore, protected deletion, duplicate acceptance"
+    ],
+    [
+      "UI06",
+      "Frozen stale review, exact-item conflict and saved result reopening"
+    ],
+    ["UI07", "Occurrence cancellation; sibling/ledger/notification isolation"],
+    ["UI08", "Owned guardian revocation and fresh read denial"],
+    ["UI09", "All-table preservation, exact-ID cleanup and independent proof"]
+  ],
+  "executorRepair": {
+    "type": "Netlify environment row order only",
+    "observedRawDigestChanged": true,
+    "observedPerKeyValuesAndMetadataUnchanged": true,
+    "allFieldsStillHashed": true,
+    "guardTestsPassed": 53,
+    "guardTestsFailed": 0,
+    "lintErrors": 0,
+    "lintWarnings": 0
+  },
+  "note": "This public proposal is not a valid approval. No hosted fixture, application session, business mutation or cleanup has been executed.",
+  "protectionProofRefreshedAt": "2026-10-18T16:46:01.827Z",
+  "exactHostPerimeterAndHealthVerified": true
+}

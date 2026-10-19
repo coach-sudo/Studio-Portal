@@ -1,0 +1,38 @@
+{
+  "status": "STAGING_MIGRATION_PASS",
+  "verifiedAt": "2026-10-19T04:10:35.999Z",
+  "project": "lrxrivfqjpkvygozphoz",
+  "migration": "20261018222228_workspace_navigation_search.sql",
+  "migrationHash": "701d36703afb4166d3ca8e69d92ae1db9d9764bc6163b8443082959d3080e272",
+  "migrations": 58,
+  "original57HistoryRowsPreserved": true,
+  "allBusinessRowsPreserved": true,
+  "authAccountsPreserved": true,
+  "cleanupPreserved": true,
+  "functions": [
+    {
+      "proname": "portal_student_contexts",
+      "prosecdef": false,
+      "proconfig": ["search_path=\"\""],
+      "anon_execute": false,
+      "authenticated_execute": true
+    },
+    {
+      "proname": "studio_global_search",
+      "prosecdef": false,
+      "proconfig": ["search_path=\"\""],
+      "anon_execute": false,
+      "authenticated_execute": true
+    },
+    {
+      "proname": "studio_record_target",
+      "prosecdef": false,
+      "proconfig": ["search_path=\"\""],
+      "anon_execute": false,
+      "authenticated_execute": true
+    }
+  ],
+  "unauthorizedReadDenied": true,
+  "vaultSkipped": true,
+  "productionChanged": false
+}

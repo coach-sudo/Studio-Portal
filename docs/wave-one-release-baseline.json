@@ -1,0 +1,21 @@
+{
+  "verifiedAt": "2026-10-17T14:35:56.459Z",
+  "project": "lrxrivfqjpkvygozphoz",
+  "tlsVerified": true,
+  "readOnly": true,
+  "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+  "migrations": 57,
+  "tables": 76,
+  "originalRows": 37,
+  "currentRows": 215,
+  "originalAndRetainedRowsUnchanged": true,
+  "completedJournalUnchanged": true,
+  "executorInvocations": 0,
+  "hostedBusinessWrites": 0,
+  "migrationIdentitiesCheckedAt": "2026-10-17T15:03:02.109Z",
+  "migrationVersionAndNameOrderMatchesCandidate": true,
+  "authRetentionCheckedAt": "2026-10-17T15:10:45.146Z",
+  "retainedCoachBannedAndWithoutMembership": true,
+  "otherThreeRunAuthUsersAbsent": true,
+  "originalFourConfirmedAuthAccountsPreserved": true
+}

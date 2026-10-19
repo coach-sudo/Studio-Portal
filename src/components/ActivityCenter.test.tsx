@@ -65,7 +65,7 @@ describe("ActivityCenter", () => {
     );
 
     expect(screen.getByLabelText("current route")).toHaveTextContent(
-      "/coach/bookings?view=overview",
+      "/coach/records/booking/booking-notification?student=student-maya",
     );
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(
@@ -113,7 +113,7 @@ describe("ActivityCenter", () => {
     fireEvent.click(screen.getByRole("button", { name: /lesson updated/i }));
 
     expect(screen.getByLabelText("current route")).toHaveTextContent(
-      "/coach/students/student-maya/lessons/lesson-notification",
+      "/coach/records/lesson/lesson-notification?student=student-maya",
     );
   });
 

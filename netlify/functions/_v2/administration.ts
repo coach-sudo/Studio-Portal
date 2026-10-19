@@ -225,8 +225,16 @@ export async function handleAdministrationCommands(
       .in("id", importIds)
       .select();
     if (error) throw error;
+    const coverage = await service.rpc("reserve_student_upcoming_credits", {
+      p_student: targetStudentId,
+    });
+    if (coverage.error) throw coverage.error;
     return json({
-      resource: { reviewed: data?.length || 0, studentId: targetStudentId },
+      resource: {
+        reviewed: data?.length || 0,
+        studentId: targetStudentId,
+        creditCoverage: coverage.data,
+      },
       recommendations: [],
       auditEventId: await audit(
         studioId,

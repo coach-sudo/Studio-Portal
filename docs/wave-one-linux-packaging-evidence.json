@@ -1,0 +1,879 @@
+{
+  "candidate": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+  "lockfileSha256": "c1de2bdb184e932b9647d5d0648e6243ed185b58f755f377e31031c7cabaa3e9",
+  "platform": "linux",
+  "architecture": "x64",
+  "node": "v22.22.0",
+  "zisiVersion": "16.0.0",
+  "queryLayerV2": true,
+  "supabaseProject": "lrxrivfqjpkvygozphoz",
+  "functionRuntime": "nodejs22.x",
+  "sharpVersion": "0.35.5",
+  "libvipsVersion": "8.18.7",
+  "sharpRenderSha256": "387684da1448471d0b16aa2db5e5f80ce6c0a790311ab6ead4802ceae02b3f1c",
+  "invoiceLocalImportAndGet": "405 without network access",
+  "client": [
+    {
+      "file": "assets/ActorProfilePreview-C49bc7fA.css",
+      "bytes": 3197,
+      "sha256": "0d9410ca8d027e7aeffbd59d39f8266a8e762e2319d4ad634d758bd1fd83cd10"
+    },
+    {
+      "file": "assets/ActorProfilePreview-RqBciXtI.js",
+      "bytes": 3556,
+      "sha256": "0dfef739758e0ed48814fbcaed237537287495c957228637fa825cf1441253c4"
+    },
+    {
+      "file": "assets/AppShell-DBbeB0cR.js",
+      "bytes": 5382,
+      "sha256": "c93225e46c9df7e47e0dfe9b506d9ad31e88e8fc4a46636c4b12a1421e4ed231"
+    },
+    {
+      "file": "assets/AssignmentActivity-Cdy66MfX.js",
+      "bytes": 2199,
+      "sha256": "3b50885f210288493b5c0060387222d605f851dc4d333dd658f49dedf132c0c7"
+    },
+    {
+      "file": "assets/AuthCallback-CDklP0Du.js",
+      "bytes": 2352,
+      "sha256": "551119dd7897f678071a4efd9cb8aef96c8dd35129f6c1f0737fc6a78f2d20ef"
+    },
+    {
+      "file": "assets/AuthRoutes-DhZ9_cp8.js",
+      "bytes": 4498,
+      "sha256": "99c4db95aeae577b1c5e26302a680fc543a2f5d9e9093e006eeb27da2d084186"
+    },
+    {
+      "file": "assets/BookingCenter-BiM2AuWm.js",
+      "bytes": 54760,
+      "sha256": "c5e37542814eac7160803929beceb045c25b8e75c53437c2c6e62fd723c12ba7"
+    },
+    {
+      "file": "assets/Campaigns-D1zn3JvF.css",
+      "bytes": 3059,
+      "sha256": "ba956ded1548a70fe7a6aa0bf997b70a7db37077023839049309cae49efea227"
+    },
+    {
+      "file": "assets/Campaigns-qrvV2vGB.js",
+      "bytes": 10621,
+      "sha256": "17dc1633c60c65333020eecbe719bf03fc647bdbc81c5c3ebb365fee3f391a19"
+    },
+    {
+      "file": "assets/ChangeTemporaryPassword-CDeIoaSV.js",
+      "bytes": 3061,
+      "sha256": "b1d140fcd739dd5b873e64a5c897e653c80c464dd40ee71f2e1a6627b08b53c4"
+    },
+    {
+      "file": "assets/ClassWorkspace-Dsoluzr9.js",
+      "bytes": 6443,
+      "sha256": "1b147b21409dc19c40dc4c5f96105efd79e8ba632a9caab663a465aeb7487c31"
+    },
+    {
+      "file": "assets/CoachHome-CopZ1VH6.js",
+      "bytes": 7022,
+      "sha256": "80360b0391446ea55f56eca077e257a77641f9eec4d438b0157126e241c21889"
+    },
+    {
+      "file": "assets/CoachSection-DjBBD0Bn.js",
+      "bytes": 56663,
+      "sha256": "7acc1553312c7745373c6c99ee7a531e88e83db5367cbebbe374d7791cf6e955"
+    },
+    {
+      "file": "assets/DailyPopup-BFMHHIsl.js",
+      "bytes": 1985,
+      "sha256": "a8afdae4ae1b7eabdda03af3dd48fb9676ba2965b159d533ac71f76fd2bf2fd0"
+    },
+    {
+      "file": "assets/DailyPopup-DLCP47dn.css",
+      "bytes": 1508,
+      "sha256": "cb6040769c2e5d38ec046dcc62cff0bcba95316a52672a0d3724859f7476e6fe"
+    },
+    {
+      "file": "assets/IdentityActions-D6ls16Xs.js",
+      "bytes": 10569,
+      "sha256": "ba22db5e941bed013a0b093dcc41993f672f707c4f5f34ff002b224452501a0b"
+    },
+    {
+      "file": "assets/IdentityActions-DkyGWBTY.css",
+      "bytes": 2372,
+      "sha256": "706042bbfb6e084d413684cb8c0560c52596b0c85835adb5e8cbe65753361e72"
+    },
+    {
+      "file": "assets/Inbox-CRonaW6x.js",
+      "bytes": 17479,
+      "sha256": "a249834a8d1aaf03cc8948afb0d62b3a385784dd80971895b0efe2f86fe76120"
+    },
+    {
+      "file": "assets/InvoiceWorkspace-CSRy-cEP.css",
+      "bytes": 2955,
+      "sha256": "8d7d1248ec231f4596ba28753acf117a28990cdab1075acc6805b86e7ba2d3c5"
+    },
+    {
+      "file": "assets/InvoiceWorkspace-Cw7XGiK-.js",
+      "bytes": 31023,
+      "sha256": "fe99de56543320f581a1e477c5e2c432f7323106f5bbf15f899d0e318e01c7fc"
+    },
+    {
+      "file": "assets/JoinLessonBanner-D-944kbT.js",
+      "bytes": 2687,
+      "sha256": "c10eb350d76470180caaed2accf6ece00eced8351c1746179f4b39ba1f6f7006"
+    },
+    {
+      "file": "assets/LessonReadinessPanel-kwgEgU98.js",
+      "bytes": 39911,
+      "sha256": "c758a444b8a269a8cba582310cf84c22cb59fe721eef487c2b408f4d3a0fe4b0"
+    },
+    {
+      "file": "assets/LessonReadinessPanel-n6m-hDdK.css",
+      "bytes": 4816,
+      "sha256": "40e360b0414bb6522c9be543c6d997f94beb26374ef3eae537194ab132387b7d"
+    },
+    {
+      "file": "assets/MagicLinkLogin-CM2qCuCA.js",
+      "bytes": 6933,
+      "sha256": "3963e68453333bcece6e879903b584e9bae968f66677cd6dc5820c70b41071e8"
+    },
+    {
+      "file": "assets/PackageGift-D8gykTzT.js",
+      "bytes": 5098,
+      "sha256": "470a0c4e524f8138e2723c106911145acf5841d5fc231f4bac33f9d58fdf360b"
+    },
+    {
+      "file": "assets/PackageLanding-DiuG3p9H.js",
+      "bytes": 2286,
+      "sha256": "7beae0774d4bd6c3c70ae69342bc25b52b892724b8597d3e37d67b5f5f0fb6b1"
+    },
+    {
+      "file": "assets/PasswordInput-BKObBp0E.js",
+      "bytes": 588,
+      "sha256": "18a2bdc43d4cf2c9507b011853b3e1b619cd267b08c712bc6c9967d6f33c7e5a"
+    },
+    {
+      "file": "assets/PublicActorPage-8COrUuUk.js",
+      "bytes": 7061,
+      "sha256": "83a99cf776e023a697128020b7e175b79f0d59175a6afb326a8152815512fe42"
+    },
+    {
+      "file": "assets/PublicActorPage-BIuKMY_-.css",
+      "bytes": 9055,
+      "sha256": "c06831fdb916ac877afd8caf83bca67404074a5ef836dcf47431be29d855d8c4"
+    },
+    {
+      "file": "assets/PublicBooking-B3IROn0d.js",
+      "bytes": 39321,
+      "sha256": "f0c1297c898b0e7d53c18e7c92704a02893b0aeb28eb29af108587ed458c687c"
+    },
+    {
+      "file": "assets/Referrals-B830LiGY.css",
+      "bytes": 2022,
+      "sha256": "8b96431a60114da6a116de242bb16bd470321ffceca795c419442352a1049a8a"
+    },
+    {
+      "file": "assets/Referrals-DWJJpjBr.js",
+      "bytes": 8406,
+      "sha256": "65e2bcf9c59b14455e88e4a432eaa05afa54d158b731f92eccfb783ac8dfbaa3"
+    },
+    {
+      "file": "assets/ResourceBrowser-CqMVxVhk.js",
+      "bytes": 34610,
+      "sha256": "7371039cf723c485ef7404ae6090b1dd3a33effe3d3767ce18fd13d131014fd2"
+    },
+    {
+      "file": "assets/ResourceBrowser-THwJL3Hk.css",
+      "bytes": 2456,
+      "sha256": "c0a94952ba0277958d0b0490a97a3e33111ff0f21a99f5df60727fbd0f40dffa"
+    },
+    {
+      "file": "assets/StudentFinancialSummary-0takMqMm.js",
+      "bytes": 28472,
+      "sha256": "9204eb750213681b8031b59b71f3961b67d7cd114b8a7d981818263d94cdd0f3"
+    },
+    {
+      "file": "assets/StudentFinancialSummary-C0FlG9y8.css",
+      "bytes": 451,
+      "sha256": "d01fbdf39d2d6c21eb7b530c4166d00a5aaa341f0a5be18905fc892eecd91437"
+    },
+    {
+      "file": "assets/StudentPortal-CaAti0MV.css",
+      "bytes": 1236,
+      "sha256": "5f6c6857c0803d104cebf7a264d5f77020a68fe978e8776cf188f001dafcbe37"
+    },
+    {
+      "file": "assets/StudentPortal-wnp-UNaS.js",
+      "bytes": 16256,
+      "sha256": "b23fc09a7d1ab9b1e26236673845bdd728ca60d38acbf42292c5ac17640e647f"
+    },
+    {
+      "file": "assets/StudentPortal.shared-t3diCiAj.js",
+      "bytes": 1155,
+      "sha256": "074eb5934d0c6e71fef5a6f9e04ba803c8aa76b97bf6b23fdbfb04dc3afab774"
+    },
+    {
+      "file": "assets/StudentPortalActorPage-CDqgRUNO.js",
+      "bytes": 9281,
+      "sha256": "36ec4b54db9f8deaf476dc424cb47a33f58d5e3db4780a79d0dd9cf73e81ac56"
+    },
+    {
+      "file": "assets/StudentPortalLessonHub-ClyV6ztJ.js",
+      "bytes": 11192,
+      "sha256": "33d5ec47c8d7c52836bec8f9e6c066e78c89fb1d23b72fe30338cf6e19d88bb8"
+    },
+    {
+      "file": "assets/StudentPortalPayments-D81A3fZa.js",
+      "bytes": 8758,
+      "sha256": "c3c58f168c15bdc5a6beef14d1962c50ca9bb52eae3fac8eb42df9bfbac2be22"
+    },
+    {
+      "file": "assets/StudentPortalSchedule-CgWyTV5j.js",
+      "bytes": 10266,
+      "sha256": "4b1253ea98631f3747d5c2771dc325d54890b4a411988bb8d49854bf6f72a9aa"
+    },
+    {
+      "file": "assets/StudentPortalSettings-EBHUvSzj.js",
+      "bytes": 10622,
+      "sha256": "f874d50fcbdd5a72ddeb67eb7f638fe8b4eafcc77e4487dbc2a5d5d3298045f1"
+    },
+    {
+      "file": "assets/StudentPortalWork-CrY36cOW.js",
+      "bytes": 2646,
+      "sha256": "1d43e1a21b24260cd9117adf15a2f177f383bbb4b4b8e6e6a97a5f9d85f366c0"
+    },
+    {
+      "file": "assets/StudentPortalWorkContent-2ZzvyiZl.js",
+      "bytes": 11057,
+      "sha256": "710b7902c70ac80c9864e69f2b156ff43527c5e77579d607ca882ad480f41642"
+    },
+    {
+      "file": "assets/StudentWorkspace-CTYDFthR.js",
+      "bytes": 34856,
+      "sha256": "b4d9b9adb170a2dd972b474894b1b453b799bb17417020afa28aa6bda4d0ffa9"
+    },
+    {
+      "file": "assets/StudentWorkspace.shared-BAdlhyZa.js",
+      "bytes": 396,
+      "sha256": "3857d140997fc607a8ff41303245aa9636bcac065c8007cbd0a807a699d0ec0d"
+    },
+    {
+      "file": "assets/StudentWorkspaceAccount-h1WvlYNT.js",
+      "bytes": 25040,
+      "sha256": "855d45d09edc8c90c69643dc8d410ff2102443710b861b3907f1234688885a2f"
+    },
+    {
+      "file": "assets/StudentWorkspaceActorPage-DcC02fPr.js",
+      "bytes": 3380,
+      "sha256": "bd3cd4f553a1ad0b1d745253accbd1928a4bd4fee37e43d2276400c2c56ae391"
+    },
+    {
+      "file": "assets/StudentWorkspaceLessons-64R9-akA.js",
+      "bytes": 15738,
+      "sha256": "4063b1fadf4921ecf878688b2b45deefdc3507c42d3720ce09c0fe35462d6f76"
+    },
+    {
+      "file": "assets/StudentWorkspaceNotes-CdFIgjQh.js",
+      "bytes": 4115,
+      "sha256": "6b896580d5fcdc7f07e430fe3392d31e9cfc9d75c07e824e3b7166b7374acdae"
+    },
+    {
+      "file": "assets/StudentWorkspaceOverview-humhVDsq.js",
+      "bytes": 7519,
+      "sha256": "9f36391a776e9b419d93e96d08c02ceac599b2902d19acfd004e4a19a503e95f"
+    },
+    {
+      "file": "assets/StudentWorkspacePayments-DH7u6ypC.js",
+      "bytes": 19821,
+      "sha256": "526f1e8269101245c31d39b1dc4449e3365ae8187ba75bb3cbf1cdf7fbf13192"
+    },
+    {
+      "file": "assets/StudentWorkspaceWork-CyVSaFfF.js",
+      "bytes": 3593,
+      "sha256": "2e80356542afa28f827f16dc0edf49fd030171dedc87345e99a2715855a4c5b6"
+    },
+    {
+      "file": "assets/StudioOperations-Bp1c8a4u.js",
+      "bytes": 63681,
+      "sha256": "8408ae35d8dc29815959e59fd7d5a1a2277a8a4c18c2d87f3ae69d07c8097d69"
+    },
+    {
+      "file": "assets/StudioOperations-Dmrp5aKw.css",
+      "bytes": 12293,
+      "sha256": "a26af0f04da4b1f26566a37c618941752af4c9e68d3b1c2a1435fea480841fe3"
+    },
+    {
+      "file": "assets/TermsPage-Cc0Ty0so.js",
+      "bytes": 26107,
+      "sha256": "2964e2387a6d9b6528138c448423a7295eaf23ad0defaccdda71256c45e877fc"
+    },
+    {
+      "file": "assets/TimezoneSelect-CwUTEX7x.js",
+      "bytes": 3834,
+      "sha256": "e6e7e0349d0d0b116fb3114eda730f19ff6d11d20a99c4b01276133f8c3ec6a7"
+    },
+    {
+      "file": "assets/WritingArea-BzCxXBl5.js",
+      "bytes": 575,
+      "sha256": "715ceabbb02d2c96e7a10ed2d31d02eb6a085b89a43c9dc550b390dd298535c1"
+    },
+    {
+      "file": "assets/WritingArea-DmbkpnXF.css",
+      "bytes": 642,
+      "sha256": "77e677e7a6add6cb0bf69bd6f383f5823474650542268b85eccd0722b75fa2eb"
+    },
+    {
+      "file": "assets/apiClientError-D3ABCpjA.js",
+      "bytes": 608,
+      "sha256": "ef26706a5dcefc89cf725526de4b5fa967bb27e8dec7e19e67b061e7802d9d92"
+    },
+    {
+      "file": "assets/arrow-left-cjtYyqAp.js",
+      "bytes": 154,
+      "sha256": "f265e53d6a8663c29f4ea8180f55e1b5c840fcbb073996167bbb6019a45d0228"
+    },
+    {
+      "file": "assets/booking-CwsktXkv.js",
+      "bytes": 3623,
+      "sha256": "06fe7ecb19072633db6c94f247ae642ca82351dcfa9ba6b041f1c3059651c433"
+    },
+    {
+      "file": "assets/bookingCommands-oVWanTYn.js",
+      "bytes": 3226,
+      "sha256": "7ca4b4dc9b404c4289b59e7c1729b58280c332a390fe7aa1fb3b0acde47a0ab1"
+    },
+    {
+      "file": "assets/branding-1zW_ugMs.js",
+      "bytes": 233,
+      "sha256": "a27dfa3143b6a3e83e08b4c3a384b7978fe02fdf20d61ef20089e781d906c7ec"
+    },
+    {
+      "file": "assets/calendar-days-Fl_mz5qN.js",
+      "bytes": 483,
+      "sha256": "391f54cd58a15ccf5dc82fcb57ca3addfc4d3207a4d9a691d175d7f39c466398"
+    },
+    {
+      "file": "assets/chevron-right-HMQDfJ1D.js",
+      "bytes": 119,
+      "sha256": "416971c276f4747cd3b91976228a4bbec5599be393eded4e3b69b0ba9484582a"
+    },
+    {
+      "file": "assets/circle-dollar-sign-CZVaBnr6.js",
+      "bytes": 237,
+      "sha256": "4e63a32fbe3b8b1ed54b5e6240c88b31a672064ad6cc6ca29107b72355f33c8f"
+    },
+    {
+      "file": "assets/clapperboard-xPi22UGD.js",
+      "bytes": 349,
+      "sha256": "1f6b12182d30c25672fc435b9713eceb3f5ce8f6d46f6edb014e29ad17979c2e"
+    },
+    {
+      "file": "assets/clock-3-D-FJIQnA.js",
+      "bytes": 158,
+      "sha256": "ee49db25fcc5f8c9a72cb64b447e0e6666694052dbcc1744c73a12c9f2a8685e"
+    },
+    {
+      "file": "assets/credit-card-NOGo3cTX.js",
+      "bytes": 196,
+      "sha256": "7837b59fa52c9eaa95a54d32b060ecbbfc50334d9f9e05baf24c316e1741a409"
+    },
+    {
+      "file": "assets/downloadInvoice-BQyhCfu0.js",
+      "bytes": 2386,
+      "sha256": "51dc62a2c4379e061ac2c895114c05a507b28ba3af6ece06e4665acf5999b32b"
+    },
+    {
+      "file": "assets/file-text-wiVhq_4C.js",
+      "bytes": 374,
+      "sha256": "c6caeefc24fe7ae1133b6361749228dbb521dfb0c16d9adec0728700319317b9"
+    },
+    {
+      "file": "assets/folder-open-DBmvKCUv.js",
+      "bytes": 281,
+      "sha256": "8d1c7df0371853ded98632685fefdf55ccea14088d998cfa7c5435029a050863"
+    },
+    {
+      "file": "assets/gift-B8lBEniE.js",
+      "bytes": 338,
+      "sha256": "06938a1d428585086c2dbf7004085cea7e70ee3c8100fe65287eaff4d365a3c4"
+    },
+    {
+      "file": "assets/index-54N_8SOi.css",
+      "bytes": 127492,
+      "sha256": "a11dd43d8488b7bf6a0ba76640ebe2a75ed3278ed82ec87bc821261e3a55258f"
+    },
+    {
+      "file": "assets/index-JleQC4lU.js",
+      "bytes": 310602,
+      "sha256": "b227eb6896bd74bdf1f12fa1f1f107bf871e130ce02bdbca8cf4797554e76f6f"
+    },
+    {
+      "file": "assets/invoice-font-metrics-D7dKORWb.js",
+      "bytes": 175211,
+      "sha256": "b61fd1062a109b3325ca9ddb9e119589e556563da7d793e1004041d70c3de127"
+    },
+    {
+      "file": "assets/invoicePdf-CwwkffwU.js",
+      "bytes": 248086,
+      "sha256": "6e0e27a906a96d723004f00aff82fedbca8473a69ff3a60e529fba8af049fee9"
+    },
+    {
+      "file": "assets/jsx-runtime-CIxEorsV.js",
+      "bytes": 7899,
+      "sha256": "746b3bf847361bcee24b6a188dce1a6cae9bac7fa8972753abc7718e70fbed8b"
+    },
+    {
+      "file": "assets/lessonReadiness-CieNYN_c.js",
+      "bytes": 5580,
+      "sha256": "8754a6dc5b4cb604f3c1fbdaa5a59078de07c0b54d1de35002da552680bcdf88"
+    },
+    {
+      "file": "assets/library-D_JvlSZ8.js",
+      "bytes": 5951,
+      "sha256": "9876bd7252f5d6ef2d4b48382d4d9bbbd8699c4380081abb9b2f4c5308f6f0c9"
+    },
+    {
+      "file": "assets/mail-B39LnVue.js",
+      "bytes": 202,
+      "sha256": "b40910c2985c7aa170462433f67bc0b15bbeaa280563e6982848744c89c82cad"
+    },
+    {
+      "file": "assets/map-pin-BiGXjoGo.js",
+      "bytes": 248,
+      "sha256": "ebce9a18dd95bf47a8f302e5a8084317ecd86561a38b39dd133ecd02906c30bc"
+    },
+    {
+      "file": "assets/megaphone-BekHgDrj.js",
+      "bytes": 335,
+      "sha256": "55b1f4e481a0f6b36ea9475591680e0b5c5959927e52909a04462fd5d4c5f62e"
+    },
+    {
+      "file": "assets/message-square-OfFK2NfU.js",
+      "bytes": 222,
+      "sha256": "e75e7687ea2d0ff92516a597a392fb58ca002093a7acf991d5630d619f6efbcd"
+    },
+    {
+      "file": "assets/operational-intelligence-D1uUEjVR.css",
+      "bytes": 4159,
+      "sha256": "3cb989bbb9ff99530256475aaa6fe2cdcc0ae8acd8a9fa1fa61d4e0d79795f9d"
+    },
+    {
+      "file": "assets/packagePresentation-CsBt3dgX.js",
+      "bytes": 509,
+      "sha256": "f643d53169233adaf27e9a9eb84672b440ac79c4942650597c2f5dd268c5a41f"
+    },
+    {
+      "file": "assets/paymentReminder-DOTJQG3B.js",
+      "bytes": 2106,
+      "sha256": "73b88166c7beebca1be1b31a1f09706fe0b966aa37ba34155f1b05ac1b511cdf"
+    },
+    {
+      "file": "assets/paymentResponsibility-C_hDxbuC.js",
+      "bytes": 1245,
+      "sha256": "6b05919551b159e3b8f369f78e61ab42b0b73ed099387a8def43530596388fb1"
+    },
+    {
+      "file": "assets/phone-BU8LoT1v.js",
+      "bytes": 311,
+      "sha256": "a5d27535850129db8de7a092f2f2132014e08c154dcbb28b2b9209891ca713ca"
+    },
+    {
+      "file": "assets/plus-By3eK77n.js",
+      "bytes": 142,
+      "sha256": "0aaace460694386324b8269c7b5c5fd28b647ff408142a5bf62bc25b3ac2cead"
+    },
+    {
+      "file": "assets/presentation-D_sumFQq.js",
+      "bytes": 2312,
+      "sha256": "fd591705e3959cc748971d1f80450fc8d15c0902c8e957cfc7e8eaa49f30e587"
+    },
+    {
+      "file": "assets/public-CXs1Q8S_.css",
+      "bytes": 1896,
+      "sha256": "718814d2fca2eef3a50f176182ab95c6d3f8c6748c0997a6370ba04c8c627125"
+    },
+    {
+      "file": "assets/purify.es-Byem_CGp.js",
+      "bytes": 26935,
+      "sha256": "e3843cee8405d48f9bd228d900de4512059282e20e18c002f80d506182bcc03f"
+    },
+    {
+      "file": "assets/readinessPresentation-CILAzgAQ.js",
+      "bytes": 308,
+      "sha256": "b3377ac03ab31347bad1b6182a79a803b7426ba4cc446ac17ea80859c687df1a"
+    },
+    {
+      "file": "assets/refresh-cw-D1Cs1rNo.js",
+      "bytes": 310,
+      "sha256": "138641641d1c7a72611a2164b99fe3bc81de7f4e15571cf16ed24af7d20142a1"
+    },
+    {
+      "file": "assets/rolldown-runtime-QTnfLwEv.js",
+      "bytes": 694,
+      "sha256": "5db5ba82eef00d1dee7e86e663098c9427d01183a88d357437daff295aec3e75"
+    },
+    {
+      "file": "assets/rotate-ccw-B_XQRz3b.js",
+      "bytes": 189,
+      "sha256": "05bf6b171f8739ff2d8d8e1db5c2af92a8f45f2bff79f0c498969e26de00ff26"
+    },
+    {
+      "file": "assets/routeDomains-Du855SK3.js",
+      "bytes": 1641,
+      "sha256": "f60ce1ae0d1aa64df08d15acf0b080a94f447be6ec873d349d55bf09b0016664"
+    },
+    {
+      "file": "assets/schemas-QrXFzKFJ.js",
+      "bytes": 69122,
+      "sha256": "4fbf65d10ee96932c9430b0e03d66684a6a7c74afd294c1af8f1788910d6ee01"
+    },
+    {
+      "file": "assets/search-CqZMJp_z.js",
+      "bytes": 163,
+      "sha256": "e38ccf61ee771a0e90edb22eb7eeb652abae59c03aea326b2b3f791b10ed4109"
+    },
+    {
+      "file": "assets/send-DaDaEMJj.js",
+      "bytes": 279,
+      "sha256": "843a0785afd8d04a0f85d13e8646e6d0041e7ad4c0660f2c75b765f9e1240a62"
+    },
+    {
+      "file": "assets/shield-check-BrjUu4Ry.js",
+      "bytes": 309,
+      "sha256": "24c797b93f2e51e6a82943465f1a2f83a9003afcd9613a29d5eeda6d0e4a95f6"
+    },
+    {
+      "file": "assets/square-check-big-Bjom_Xjs.js",
+      "bytes": 218,
+      "sha256": "f3a8472d06b766ad6ad62d1270c071dd415bca2d7eb5d73ae8763ed17bb2b050"
+    },
+    {
+      "file": "assets/supabase-DqUkwEpt.js",
+      "bytes": 202939,
+      "sha256": "25b37f4b7d90f909748c047ee673bea6687f3988691fda655b9c2ae1627a66ad"
+    },
+    {
+      "file": "assets/trash-2-C4ttkjgc.js",
+      "bytes": 317,
+      "sha256": "16c1c87cdc7b27f70c5417ea43c9a9d7bf3afc68cee99daf99559cbc9abd427f"
+    },
+    {
+      "file": "assets/uploads-DgwKO70X.js",
+      "bytes": 2460,
+      "sha256": "3f4c4f7549068d824967bcb4675ef5d9d59168e467221b5c3faf36c5e19cdc3e"
+    },
+    {
+      "file": "assets/usePaginatedStudioRows-l1aqqRlM.js",
+      "bytes": 3454,
+      "sha256": "55e3ca632520e7b4ce6d4320ddffab466c18ea88fb54f7d4b7f5920f7d81eede"
+    },
+    {
+      "file": "assets/usePrivateIdentity-C6RUI_en.js",
+      "bytes": 2061,
+      "sha256": "91d377b48ab838a5ae877e8298d93ab04477d370048ea6ae3b8465f2eaf7a618"
+    },
+    {
+      "file": "assets/useStudio-DR-sgIrD.js",
+      "bytes": 36767,
+      "sha256": "3ad33379e9841f4306c2cd52ac2384d93bf3d0344ba9eff3b043a17288e6409c"
+    },
+    {
+      "file": "assets/useStudioMutation-CnaYVgqU.js",
+      "bytes": 684,
+      "sha256": "5cff302ac8c9e9e3039fd1d87d912e7dfbc63acffa06edc531829fa61053b622"
+    },
+    {
+      "file": "assets/user-round-DbXA-zOM.js",
+      "bytes": 171,
+      "sha256": "314614d4479d6901187eee9f2b45008b0e7b1d8e33c7f16059958d4dd58e30ce"
+    },
+    {
+      "file": "assets/users-Deh1FLrG.js",
+      "bytes": 295,
+      "sha256": "0dbd02522355b86c95e1ede2ac3ccb8f91764c3eb7369372edd326d51a4c7807"
+    },
+    {
+      "file": "assets/video-VMUkXqWl.js",
+      "bytes": 237,
+      "sha256": "3b21c4be2b29f2b1e23aa937b05585d1f956caa61cba082ce02dd55355d44c5d"
+    },
+    {
+      "file": "assets/waypoints-C3fSjeuV.js",
+      "bytes": 409,
+      "sha256": "d38a6003aeee71e0b86e8425a7201b50322eb8672a39f7cd0550075323744baf"
+    }
+  ],
+  "functions": [
+    {
+      "name": "booking-admin",
+      "runtime": "nodejs22.x",
+      "sha256": "0e00a9d525b7864d783be8705def41217e79205e73aaa83e5f85c73b65da3e0c",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/booking/:resource",
+          "expression": "^\\/api\\/v2\\/admin\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "booking-maintenance",
+      "runtime": "nodejs22.x",
+      "sha256": "586bb03aa00a63e0a6dd1d9bfbba52abed97ff0fe5354d0ced59df94bfd99585",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "booking-portal",
+      "runtime": "nodejs22.x",
+      "sha256": "bbb22f503383bfcccecfc6caa296e06428c65776b2380357511d5715b0a73576",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/bookings/:action",
+          "expression": "^\\/api\\/v2\\/portal\\/bookings(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "calendar-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "626775dac5a497cd3ced90e15775c7a870e23978fd2e9b388b3b4351f503eb0a",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "campaign-unsubscribe",
+      "runtime": "nodejs22.x",
+      "sha256": "f15f8c7186858b4d8d251dedab1d168297ce71d0a99adbd2b8c06b81c69916b4",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/unsubscribe/:token",
+          "expression": "^\\/unsubscribe(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "campaigns",
+      "runtime": "nodejs22.x",
+      "sha256": "a8a0c0555c2762f3e0f9d99930aa90a4d58a5f7153d0cb3869f010671d82ae63",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/campaigns",
+          "literal": "/api/v2/admin/campaigns",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "e2e-fixtures",
+      "runtime": "nodejs22.x",
+      "sha256": "fc30cbef53354112f10b0454797f2c31784898a9c324c8db4ad1d2d53cbddc89",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/e2e/fixtures",
+          "literal": "/api/e2e/fixtures",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "healthz",
+      "runtime": "nodejs22.x",
+      "sha256": "10eb5a9e84c8e60dc359767ca4b7edd9f5a65194c5ae65c11ede51bc86636970",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/healthz",
+          "literal": "/api/healthz",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoice-pdf",
+      "runtime": "nodejs22.x",
+      "sha256": "cd1ff89c4e61ac417684387ba6055cf50ea0c8b698345e82cb6859a6786c1af4",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoice-pdf",
+          "literal": "/api/invoice-pdf",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoices",
+      "runtime": "nodejs22.x",
+      "sha256": "58145016d62163392f4c3fb56c6880ecf8566f2251ce6cf5aef26fcd5be4ac97",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoices",
+          "literal": "/api/invoices",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "lesson-delivery-status",
+      "runtime": "nodejs22.x",
+      "sha256": "a2e94e07107396f4934249112506905090c92da7b6c394f0d81558a9367eec79",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/lessons/:lessonId/delivery",
+          "expression": "^\\/api\\/v2\\/portal\\/lessons(?:\\/([^\\/]+?))\\/delivery\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "outbox-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "b108448519078d19f3efc2079314be79b619b5a69bf9c4d16fd575487029b245",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "package-gifts",
+      "runtime": "nodejs22.x",
+      "sha256": "28e3c0e850ab31e845a0fa1b353994a74c1b3750449eaa9dbb7fc6ea0222692b",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/package-gifts/:action",
+          "expression": "^\\/api\\/v2\\/public\\/package-gifts(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "platform-health",
+      "runtime": "nodejs22.x",
+      "sha256": "f10f3d269a29d73f3bc4228987d9a6645cb162d0a9339f5edcc192aa20e16684",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/health",
+          "literal": "/api/v2/health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "portal-auth",
+      "runtime": "nodejs22.x",
+      "sha256": "36e140fab13d99b7a92b4d8e037cc2ec7028da896c82121ebbbc1891230ea128",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/auth/:action",
+          "expression": "^\\/api\\/v2\\/auth(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake-background",
+      "runtime": "nodejs22.x",
+      "sha256": "9086e676dafea2250db1f12bedd4f7645932b1d085bd00a4fc236fd773901a1f",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/provider-intake",
+          "literal": "/api/v2/admin/provider-intake",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake",
+      "runtime": "nodejs22.x",
+      "sha256": "058a6158251652e6c916e04e2e4dfba8520920ca5f1b556a8d661fd76332cb61",
+      "schedule": "*/10 * * * *",
+      "routes": []
+    },
+    {
+      "name": "public-actor",
+      "runtime": "nodejs22.x",
+      "sha256": "f4775910a8f8b9f239b38dca3d5ffa657b0d99f26424a29bccd579bc736e02d9",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/actors/:slug",
+          "expression": "^\\/api\\/v2\\/public\\/actors(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "public-booking",
+      "runtime": "nodejs22.x",
+      "sha256": "78ec52011b47a1b74c954f17d5cdc48eb3c800e65d645fdf4bf444f689f8aa07",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/booking/:action",
+          "expression": "^\\/api\\/v2\\/public\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "referrals",
+      "runtime": "nodejs22.x",
+      "sha256": "03b804ddcafcd8861511a3e82900dbbdfb22a153682c2d3264717b2bc8c89ace",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/referrals",
+          "literal": "/api/v2/referrals",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "storage-health",
+      "runtime": "nodejs22.x",
+      "sha256": "be25010b035fb7e6e992e1747ced46f51a6ed18d7b9f34301a72f9bff3b74f77",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/storage-health",
+          "literal": "/api/v2/storage-health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "stripe-webhook-v2",
+      "runtime": "nodejs22.x",
+      "sha256": "636f31f0569c09679fb785cf9787de101355c67d48388f8afc0241f8dd77066f",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/stripe-webhook",
+          "literal": "/api/v2/stripe-webhook",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "v2",
+      "runtime": "nodejs22.x",
+      "sha256": "4af64db395b31cee70f6a630a50415077fb5857c8451dca30c72ad1684a0766e",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/:domain",
+          "expression": "^\\/api\\/v2(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    }
+  ]
+}

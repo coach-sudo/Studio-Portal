@@ -1,0 +1,294 @@
+{
+  "candidate": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+  "platform": "linux",
+  "architecture": "x64",
+  "node": "v22.22.0",
+  "cli": "27.8.0",
+  "command": "netlify build --offline --context deploy-preview",
+  "uploadPerformed": false,
+  "networkCredentialsPresent": false,
+  "clientAssetIdentity": "see wave-one-linux-packaging-evidence.json",
+  "functionManifestSha256": "4484bdde3c4e4a8ca5a603fd5a34c8784acd1df61f7ef8847f9e663975b00270",
+  "buildLogSha256": "bc7864f9efcb59cf2c14ed40a23eca17b86e44f809e27c0e616d2ecde2918bae",
+  "sharpVersion": "0.35.5",
+  "libvipsVersion": "8.18.7",
+  "localImportAndGet": "405 with global fetch disabled",
+  "renderSha256": "387684da1448471d0b16aa2db5e5f80ce6c0a790311ab6ead4802ceae02b3f1c",
+  "functions": [
+    {
+      "name": "booking-admin",
+      "runtime": "nodejs22.x",
+      "sha256": "2760b60c3a40c879d4dfacae0ebba5a2e70541a976f2e55cde8030143533cb0d",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/booking/:resource",
+          "expression": "^\\/api\\/v2\\/admin\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "booking-maintenance",
+      "runtime": "nodejs22.x",
+      "sha256": "36f4cdaa2b3d536af5befe409f6708ef583c01eae7b9b2ee4ce6f7a6d22d60c5",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "booking-portal",
+      "runtime": "nodejs22.x",
+      "sha256": "ceda5da2827979904d5ab630e0a0c816bcf4d0b9519d86d023c7d574ecb153f0",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/bookings/:action",
+          "expression": "^\\/api\\/v2\\/portal\\/bookings(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "calendar-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "7e2ea48d06feea7df4b7b0b85488805f270dafd16157e61a01b6d768deff345f",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "campaign-unsubscribe",
+      "runtime": "nodejs22.x",
+      "sha256": "71c04d40bbde1bf8d7d2f27d83b19144241bb0516dde0aa71e980c620b01fd92",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/unsubscribe/:token",
+          "expression": "^\\/unsubscribe(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "campaigns",
+      "runtime": "nodejs22.x",
+      "sha256": "7a1fbe2c04d670b75fa7e27748e0141d8d3037d872d144c8b3453a6b38ba67ec",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/campaigns",
+          "literal": "/api/v2/admin/campaigns",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "e2e-fixtures",
+      "runtime": "nodejs22.x",
+      "sha256": "a1176f47a3bb5f6cc666500b97d92f33664deac089d1eb89fd7f311afe4a92f3",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/e2e/fixtures",
+          "literal": "/api/e2e/fixtures",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "healthz",
+      "runtime": "nodejs22.x",
+      "sha256": "8c9f387c2e195280978b013861890925dae998d482dbaa01f010e2340fd2ad62",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/healthz",
+          "literal": "/api/healthz",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoice-pdf",
+      "runtime": "nodejs22.x",
+      "sha256": "1e763fed07436e1e592192f075ef63094a573f796d976f1d5c9fbfacf52cbacb",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoice-pdf",
+          "literal": "/api/invoice-pdf",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "invoices",
+      "runtime": "nodejs22.x",
+      "sha256": "2f8233014c80d0ee58d3c1c4a3e7b705efcbeb3a38710a5714f05e2af190e691",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/invoices",
+          "literal": "/api/invoices",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "lesson-delivery-status",
+      "runtime": "nodejs22.x",
+      "sha256": "2d833fe3ef0d72a63dab90b29860efe77b2155168ecd98698d36955420cd347c",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/portal/lessons/:lessonId/delivery",
+          "expression": "^\\/api\\/v2\\/portal\\/lessons(?:\\/([^\\/]+?))\\/delivery\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "outbox-worker",
+      "runtime": "nodejs22.x",
+      "sha256": "83155d4873e58658f4c7fc6c10725320813b096c8c63ab35e546570249f01f37",
+      "schedule": "*/5 * * * *",
+      "routes": []
+    },
+    {
+      "name": "package-gifts",
+      "runtime": "nodejs22.x",
+      "sha256": "b27220e595f530943635451c7770dab21f7c986605722773a11ae72f8daf9ddf",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/package-gifts/:action",
+          "expression": "^\\/api\\/v2\\/public\\/package-gifts(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "platform-health",
+      "runtime": "nodejs22.x",
+      "sha256": "ef7d0de6e19df309407d517117175773882979e7e0b3a210da5a83b37f5447d7",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/health",
+          "literal": "/api/v2/health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "portal-auth",
+      "runtime": "nodejs22.x",
+      "sha256": "24aba0cf70962d26581f37fd4b71efd9f45298e35bc4bcdaa8dd4fb39aea7236",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/auth/:action",
+          "expression": "^\\/api\\/v2\\/auth(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake-background",
+      "runtime": "nodejs22.x",
+      "sha256": "f25c829528a28e37f418f7e5725dd68467d85e5e66b668cac2caf5b997aa2d70",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/admin/provider-intake",
+          "literal": "/api/v2/admin/provider-intake",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "provider-intake",
+      "runtime": "nodejs22.x",
+      "sha256": "a06b57dbb91471bea04b1a9bbdb515fe9094c9bd58306283e50a74a778df6beb",
+      "schedule": "*/10 * * * *",
+      "routes": []
+    },
+    {
+      "name": "public-actor",
+      "runtime": "nodejs22.x",
+      "sha256": "b4d05612b41a039631615b78acfc574711a06a459c371f884a24e70da95127d5",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/actors/:slug",
+          "expression": "^\\/api\\/v2\\/public\\/actors(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "public-booking",
+      "runtime": "nodejs22.x",
+      "sha256": "914e2665810f71e5946d2823f3d8a1e291418de95d960da35148f319ead20d2c",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/public/booking/:action",
+          "expression": "^\\/api\\/v2\\/public\\/booking(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "referrals",
+      "runtime": "nodejs22.x",
+      "sha256": "cd19b570a819eaa2e94d5f7a6179d0ec2d588a6abe8dfaac98fd66398e48099b",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/referrals",
+          "literal": "/api/v2/referrals",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "storage-health",
+      "runtime": "nodejs22.x",
+      "sha256": "1a67dc18950d6a2a4d91612d4c31f464b06cc2ed659e1ed19ac09cc2dce94cee",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/storage-health",
+          "literal": "/api/v2/storage-health",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "stripe-webhook-v2",
+      "runtime": "nodejs22.x",
+      "sha256": "38cff8039b54095cc314f0703ae75318da888d7615fbdc4ee5048dae6fa7d172",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/stripe-webhook",
+          "literal": "/api/v2/stripe-webhook",
+          "methods": []
+        }
+      ]
+    },
+    {
+      "name": "v2",
+      "runtime": "nodejs22.x",
+      "sha256": "44880fe9ba3801a39efb237c0bd9fbb70ae3ca68c5c8f9f1411c64836de53d33",
+      "schedule": null,
+      "routes": [
+        {
+          "pattern": "/api/v2/:domain",
+          "expression": "^\\/api\\/v2(?:\\/([^\\/]+?))\\/?$",
+          "methods": []
+        }
+      ]
+    }
+  ]
+}

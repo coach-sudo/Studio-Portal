@@ -1,0 +1,98 @@
+{
+  "project": "lrxrivfqjpkvygozphoz",
+  "verifiedAt": "2026-10-16T15:42:54.618Z",
+  "site_url": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+  "additional_redirect_urls": [
+    "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback",
+    "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback\\?**"
+  ],
+  "updatedProperties": ["auth.additional_redirect_urls", "auth.site_url"],
+  "desiredDiff": {
+    "update": 0,
+    "local_only": 0,
+    "remote_only": 9
+  },
+  "readbackMethod": "Live CLI config diff against desired config and old-value probe; remote fields inspected and asserted",
+  "unrelatedRemoteOnlyValuesUnchanged": true,
+  "unrelatedRemoteOnlyCount": 9,
+  "unrelatedBeforeAndAfterSha256": "7263b678d357e4a7ca66cdb09f6b257f76d9cf59769b2fe8222d5005fb5d81fb",
+  "unrelatedRemoteOnlyPaths": [
+    "auth.email.enable_confirmations",
+    "auth.email.max_frequency",
+    "auth.email.otp_length",
+    "auth.mfa.totp.enroll_enabled",
+    "auth.mfa.totp.verify_enabled",
+    "auth.sms.twilio.enabled",
+    "db.pooler.default_pool_size",
+    "db.pooler.max_client_conn",
+    "storage.vector.enabled"
+  ],
+  "unexpectedChanges": [],
+  "applicationSignInsPerformed": false,
+  "messagesSent": false,
+  "deployment": {
+    "id": "6ad23d4f8b10c10447224155",
+    "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+    "application": "0b18a5a2238daa49bec1290f5884d5792f4aefc9",
+    "state": "ready",
+    "context": "deploy-preview",
+    "published": false,
+    "teamLoginScope": "all",
+    "functionIdentitiesStillMatch": true
+  },
+  "cli": {
+    "version": "2.117.0",
+    "updatedServices": ["auth"],
+    "updatedPropertyCount": 2,
+    "unsupported": [],
+    "forced": [],
+    "unencodable": []
+  },
+  "accounts": [
+    {
+      "role": "coach",
+      "confirmed": true,
+      "emailConfirmed": true,
+      "notDeleted": true,
+      "notBanned": true,
+      "intendedStudioMembership": true
+    },
+    {
+      "role": "guardian",
+      "confirmed": true,
+      "emailConfirmed": true,
+      "notDeleted": true,
+      "notBanned": true,
+      "intendedStudioMembership": true
+    },
+    {
+      "role": "student",
+      "confirmed": true,
+      "emailConfirmed": true,
+      "notDeleted": true,
+      "notBanned": true,
+      "intendedStudioMembership": true
+    },
+    {
+      "role": "unrelated",
+      "confirmed": true,
+      "emailConfirmed": true,
+      "notDeleted": true,
+      "notBanned": true,
+      "intendedStudioMembership": false,
+      "unrelatedHasNoRecordLinks": true
+    }
+  ],
+  "handoff": {
+    "path": "C:/Users/dariu/.codex/private/studio-portal-staging/staging-test-logins.txt",
+    "accountCount": 4,
+    "source": "Existing restricted PR #45 credential file; no reset or replacement",
+    "aclProtected": true,
+    "allowedPrincipals": ["DJHOMEOFFICE/dariu", "NT AUTHORITY/SYSTEM"],
+    "passwordsIncludedInRepositoryOrOutput": false
+  },
+  "noNewDeployment": true,
+  "noProviderOrSmtpChange": true,
+  "noDatabaseOrMigrationChange": true,
+  "production": "NO-GO"
+}

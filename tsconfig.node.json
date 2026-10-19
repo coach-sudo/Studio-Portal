@@ -13,6 +13,9 @@
     "vite.config.ts",
     "vitest.config.ts",
     "playwright.config.ts",
+    "playwright.hosted-readonly.config.ts",
+    "playwright.focus.config.ts",
+    "playwright.candidate.config.ts",
     "e2e/**/*.ts",
     "scripts",
     "netlify/functions/**/*.ts",
@@ -34,9 +37,15 @@
     "src/domain/invoiceBilling.ts",
     "src/features/finance/invoicePdf.ts",
     "src/domain/credits.ts",
+    "src/domain/creditCoverage.ts",
+    "src/domain/lessonChanges.ts",
+    "src/domain/lessonBulk.ts",
+    "src/domain/lessonBulkPresentation.ts",
     "src/domain/automationRules.ts",
     "src/domain/automationCopy.ts",
     "src/domain/paymentReminder.ts",
-    "src/security/e2eSafety.ts"
+    "src/security/e2eSafety.ts",
+    "src/security/hostedAcceptance.ts",
+    "src/security/candidateAcceptance.ts"
   ]
 }

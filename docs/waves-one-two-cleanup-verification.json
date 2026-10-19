@@ -1,0 +1,500 @@
+{
+  "status": "CLEANUP_PASS",
+  "verifiedAt": "2026-10-19T03:53:15.893Z",
+  "runId": "e2e-wave1-ui-20261017-a",
+  "originalRows": 215,
+  "originalAuthRowsPreserved": 4,
+  "migrationsPreserved": 57,
+  "retainedByTable": {
+    "public.lessons": 13,
+    "public.packages": 1,
+    "public.students": 2,
+    "lesson_ops.receipts": 8,
+    "public.audit_events": 27,
+    "public.lesson_participants": 1,
+    "lesson_ops.lesson_bulk_jobs": 3,
+    "lesson_ops.lesson_bulk_items": 6,
+    "public.package_credit_entries": 5,
+    "lesson_ops.lesson_record_state": 2,
+    "public.student_credit_accounts": 2,
+    "lesson_ops.lesson_bulk_requests": 6,
+    "credit_internal.credit_command_receipts": 3
+  },
+  "independent": {
+    "tables": [
+      {
+        "table": "credit_internal.coverage_sweep",
+        "baseline": 1,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "credit_internal.credit_command_receipts",
+        "baseline": 4,
+        "retained": 3,
+        "unchanged": true
+      },
+      {
+        "table": "credit_internal.credit_coverage_jobs",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.effects",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_items",
+        "baseline": 21,
+        "retained": 6,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_jobs",
+        "baseline": 9,
+        "retained": 3,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_bulk_requests",
+        "baseline": 17,
+        "retained": 6,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_deletion_snapshots",
+        "baseline": 1,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.lesson_record_state",
+        "baseline": 0,
+        "retained": 2,
+        "unchanged": true
+      },
+      {
+        "table": "lesson_ops.receipts",
+        "baseline": 6,
+        "retained": 8,
+        "unchanged": true
+      },
+      {
+        "table": "public.actor_profile_revisions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.actor_profiles",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.assignments",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.audit_events",
+        "baseline": 115,
+        "retained": 27,
+        "unchanged": true
+      },
+      {
+        "table": "public.automation_rules",
+        "baseline": 20,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.automation_runs",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.availability_exceptions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.availability_rules",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_admin_overrides",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_holds",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.booking_services",
+        "baseline": 3,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.bookings",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.calendar_connections",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.calendar_projections",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.conversation_messages",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.conversation_states",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.conversations",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.delivery_attempts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.discount_codes",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.discount_redemptions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.email_campaigns",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.file_assets",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.idempotency_keys",
+        "baseline": 1,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.integration_imports",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.invoice_settlements",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.lesson_messages",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.lesson_participants",
+        "baseline": 0,
+        "retained": 1,
+        "unchanged": true
+      },
+      {
+        "table": "public.lessons",
+        "baseline": 0,
+        "retained": 13,
+        "unchanged": true
+      },
+      {
+        "table": "public.linked_contacts",
+        "baseline": 1,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.mailing_list_contacts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_assignment_private",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collection_assignments",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collection_members",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_collections",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_links",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_option_links",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.material_options",
+        "baseline": 5,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.materials",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.memberships",
+        "baseline": 3,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.notes",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.notification_receipts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.offering_messages",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.outbox_messages",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.package_billing_options",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.package_credit_entries",
+        "baseline": 0,
+        "retained": 5,
+        "unchanged": true
+      },
+      {
+        "table": "public.package_definitions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.package_gifts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.package_subscriptions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.packages",
+        "baseline": 0,
+        "retained": 1,
+        "unchanged": true
+      },
+      {
+        "table": "public.payment_entries",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.portal_accounts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.profile_submissions",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.recommendations",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.recurring_series",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.referral_rewards",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.referrals",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.service_offerings",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.student_credit_accounts",
+        "baseline": 2,
+        "retained": 2,
+        "unchanged": true
+      },
+      {
+        "table": "public.student_pricing_rules",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.student_relationships",
+        "baseline": 1,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.students",
+        "baseline": 3,
+        "retained": 2,
+        "unchanged": true
+      },
+      {
+        "table": "public.studio_invoices",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.studios",
+        "baseline": 2,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.sync_conflicts",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.terms_acceptances",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      },
+      {
+        "table": "public.webhook_events",
+        "baseline": 0,
+        "retained": 0,
+        "unchanged": true
+      }
+    ],
+    "originalRowsUnchanged": true,
+    "zeroMemberships": true,
+    "zeroActiveLessons": true,
+    "zeroAutomaticCoverage": true,
+    "zeroRunnableBulkItems": true
+  },
+  "originalJournalUnchanged": true,
+  "removedAuthUsers": 3,
+  "bannedCoach": true,
+  "budgets": {
+    "read": 156,
+    "sql": 18,
+    "cleanup": 10,
+    "auth-admin": 4
+  },
+  "providerCalls": 0,
+  "messages": 0,
+  "workers": 0
+}

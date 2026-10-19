@@ -326,12 +326,26 @@ let originalOverflow = "";
 /** Shared keyboard behavior for dialogs and side sheets, including nested overlays. */
 function useOverlayFocus(onClose: () => void) {
   const ref = useRef<HTMLElement>(null);
+  // Capture before React commits child autofocus; the passive effect is too late
+  // to identify the opener once a field inside the overlay already has focus.
+  const returnFocus = useRef<HTMLElement | null>(
+    typeof document === "undefined"
+      ? null
+      : (document.activeElement as HTMLElement | null),
+  );
+  const initialFocus = useRef<HTMLElement | null>(null);
   const closeRef = useRef(onClose);
   useEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
   useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
+    // A replacing overlay may restore focus during commit. Prefer that connected
+    // outside control; use the render-time opener when child autofocus owns focus.
+    const active = document.activeElement as HTMLElement | null;
+    const previous =
+      active && active !== document.body && !ref.current?.contains(active)
+        ? active
+        : returnFocus.current;
     const token = Symbol("overlay");
     if (!overlayStack.length) originalOverflow = document.body.style.overflow;
     overlayStack.push({ token, element: ref.current });
@@ -339,22 +353,44 @@ function useOverlayFocus(onClose: () => void) {
     const controls = () =>
       [
         ...(ref.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex]:not([tabindex="-1"]):not(:disabled)',
+          'button:not(:disabled),[href],input:not(:disabled),select:not(:disabled),textarea:not(:disabled),summary:not([tabindex="-1"]),[tabindex]:not([tabindex="-1"]):not(:disabled)',
         ) ?? []),
       ]
-        .filter(
-          (element) =>
+        .filter((element) => {
+          // Native summaries participate in Tab order; controls inside a closed
+          // disclosure do not, even though their computed display stays visible.
+          for (
+            let parent = element.parentElement;
+            parent;
+            parent = parent.parentElement
+          ) {
+            if (
+              parent.tagName === "DETAILS" &&
+              !parent.hasAttribute("open") &&
+              !parent.querySelector(":scope > summary")?.contains(element)
+            )
+              return false;
+          }
+          return (
             !element.closest('[hidden],[inert],[aria-hidden="true"]') &&
             getComputedStyle(element).display !== "none" &&
-            getComputedStyle(element).visibility !== "hidden",
-        )
+            getComputedStyle(element).visibility !== "hidden"
+          );
+        })
         .sort((a, b) =>
           a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
             ? -1
             : 1,
         );
-    if (!ref.current?.querySelector('[role="dialog"]'))
-      (controls()[0] ?? ref.current)?.focus();
+    if (!ref.current?.querySelector('[role="dialog"]')) {
+      if (ref.current?.contains(document.activeElement))
+        initialFocus.current = document.activeElement as HTMLElement;
+      else
+        (initialFocus.current && ref.current?.contains(initialFocus.current)
+          ? initialFocus.current
+          : (controls()[0] ?? ref.current)
+        )?.focus();
+    }
     const keydown = (event: KeyboardEvent) => {
       const top = overlayStack
         .filter(

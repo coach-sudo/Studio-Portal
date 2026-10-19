@@ -167,10 +167,6 @@ export default async (request: Request, context: Context) => {
             apply_automatically: false,
           });
           if (claimed.error) throw claimed.error;
-          const coverage = await db.rpc("reserve_student_upcoming_credits", {
-            p_student: recipient.id,
-          });
-          if (coverage.error) throw coverage.error;
         }
         const claimUrl = `${portalOrigin()}/gift/claim/${object.metadata?.claim_token}`;
         await db.from("outbox_messages").upsert(
@@ -342,10 +338,6 @@ export default async (request: Request, context: Context) => {
             })
             .eq("id", studentId);
       }
-      const coverage = await db.rpc("reserve_student_upcoming_credits", {
-        p_student: studentId,
-      });
-      if (coverage.error) throw coverage.error;
       return done(data as Record<string, unknown>);
     }
 
@@ -435,17 +427,18 @@ export default async (request: Request, context: Context) => {
             throw new Error(
               "Purchased package renewal credits are unavailable.",
             );
-          await db.from("package_credit_entries").upsert(
-            {
-              package_id: packageSubscription.package_id,
+          const fulfilled = await db.rpc("command_grant_student_credits", {
+            p_student: packageSubscription.student_id,
+            p_key: `package-subscription-invoice:${object.id}`,
+            p_value: {
+              packageId: packageSubscription.package_id,
               kind: "purchase",
               quantity: Number(purchased.credit_quantity),
               reason: `Package renewal · ${object.id}`,
-              idempotency_key: `package-subscription-invoice:${object.id}`,
             },
-            { onConflict: "idempotency_key", ignoreDuplicates: true },
-          );
-          await db
+          });
+          if (fulfilled.error) throw fulfilled.error;
+          const agreementUpdated = await db
             .from("package_subscriptions")
             .update({
               status: "active",
@@ -461,8 +454,9 @@ export default async (request: Request, context: Context) => {
               updated_at: new Date().toISOString(),
             })
             .eq("id", packageSubscription.id);
-          if (Number(object.amount_paid || 0) > 0)
-            await db.from("payment_entries").upsert(
+          if (agreementUpdated.error) throw agreementUpdated.error;
+          if (Number(object.amount_paid || 0) > 0) {
+            const paymentRecorded = await db.from("payment_entries").upsert(
               {
                 student_id: packageSubscription.student_id,
                 package_id: packageSubscription.package_id,
@@ -476,10 +470,8 @@ export default async (request: Request, context: Context) => {
               },
               { onConflict: "external_reference", ignoreDuplicates: true },
             );
-          const coverage = await db.rpc("reserve_student_upcoming_credits", {
-            p_student: packageSubscription.student_id,
-          });
-          if (coverage.error) throw coverage.error;
+            if (paymentRecorded.error) throw paymentRecorded.error;
+          }
         }
         return done({ packageSubscription: true });
       }

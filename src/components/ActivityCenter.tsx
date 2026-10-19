@@ -1,3 +1,4 @@
+import { useWorkspaceNavigation } from "../hooks/useWorkspaceLocation";
 import {
   Bell,
   CalendarCheck2,
@@ -37,7 +38,9 @@ export function ActivityCenter({
   audience: "coach" | "student" | "guardian";
   studentId?: string;
 }) {
-  const navigate = useNavigate();
+  const { open: navigate } = useWorkspaceNavigation(
+    audience === "coach" ? "/coach/today" : "/portal",
+  );
   const root = useRef<HTMLDivElement>(null);
   const activity = useStudioActivity(audience, studentId);
   const activityData =

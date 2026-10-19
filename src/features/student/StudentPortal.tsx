@@ -1,3 +1,8 @@
+import {
+  usePortalContexts,
+  type PortalContext,
+} from "../../data/portalContext";
+import { isDemoMode, isSupabaseConfigured } from "../../lib/supabase";
 import "../../styles/appearance.css";
 import {
   LogOut,
@@ -5,8 +10,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ShieldCheck,
+  Search,
 } from "lucide-react";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState, useRef } from "react";
 import {
   Navigate,
   NavLink,
@@ -14,8 +20,13 @@ import {
   Routes,
   useLocation,
   useNavigate,
+  useSearchParams,
 } from "react-router-dom";
 import { portalNavigation } from "../../app/portalNavigation";
+import { RecordRoute, RecordUnavailable } from "../../components/RecordRoute";
+import { WorkspaceSearch } from "../../components/WorkspaceSearch";
+import { WorkspaceScrollRestoration } from "../../hooks/useWorkspaceLocation";
+import { useStudioStore, scopeStudioSnapshot } from "../../state/StudioStore";
 import { Dialog } from "../../components/Primitives";
 import { ActivityCenter } from "../../components/ActivityCenter";
 import { DailyPopup } from "../../components/DailyPopup";
@@ -82,14 +93,150 @@ export function StudentPortal({
 }: {
   role?: Extract<Role, "student" | "guardian">;
 }) {
-  const studentId = role === "guardian" ? "student-sarah" : "student-maya";
-  const location = useLocation();
-  const { data, isLoading, isDemo } = useStudioRoute(
-    role,
-    studentId,
-    portalDomains(location.pathname),
+  const store = useStudioStore(),
+    [params, setParams] = useSearchParams(),
+    previous = useRef<string | undefined>(undefined),
+    validated = useRef<string | undefined>(undefined),
+    [contextPage, setContextPage] = useState(1);
+  const demo = !isSupabaseConfigured && isDemoMode;
+  const requested = params.get("student") || undefined;
+  const authorized = usePortalContexts(
+    requested || previous.current,
+    contextPage,
+    !demo,
   );
+  const demoIdentity = scopeStudioSnapshot(
+      store.snapshot,
+      role,
+      role === "guardian" ? "student-sarah" : "student-maya",
+    ),
+    first = demoIdentity.students[0];
+  const demoContexts =
+    role === "guardian" && first?.guardianEmail
+      ? store.snapshot.students.filter(
+          (s) => s.id === first.id || s.guardianEmail === first.guardianEmail,
+        )
+      : demoIdentity.students;
+  const available = demo ? demoContexts : authorized.data?.items || [];
+  const selected = requested || previous.current || available[0]?.id;
+  const access = demo ? undefined : authorized.data?.selected;
+  const contexts =
+    access && !available.some((s) => s.id === access.id)
+      ? [access, ...available]
+      : available;
+  const permitted =
+    !!selected &&
+    (demo
+      ? contexts.some((s) => s.id === selected)
+      : requested
+        ? access?.id === selected
+        : contexts.some((s) => s.id === selected));
+  useEffect(() => {
+    if (selected && permitted && !authorized.isFetching) {
+      validated.current = `${authorized.identity}:${selected}`;
+      previous.current = selected;
+      if (!requested)
+        setParams(
+          (p) => {
+            const next = new URLSearchParams(p);
+            next.set("student", selected);
+            return next;
+          },
+          { replace: true },
+        );
+    }
+  }, [
+    selected,
+    permitted,
+    requested,
+    setParams,
+    authorized.isFetching,
+    authorized.identity,
+  ]);
+  if (
+    !demo &&
+    (authorized.isFetching || authorized.isPending) &&
+    validated.current !== `${authorized.identity}:${selected}` &&
+    !authorized.isError
+  )
+    return (
+      <div className="loading" role="status">
+        Checking student access…
+      </div>
+    );
+  if (authorized.isError || !selected || !permitted)
+    return <RecordUnavailable fallback="/portal" />;
+  return (
+    <>
+      <PortalWorkspace
+        key={selected}
+        role={role}
+        studentId={selected}
+        contexts={contexts}
+        access={access || undefined}
+      />
+      {!demo && (contextPage > 1 || authorized.data?.hasMore) && (
+        <nav aria-label="Student selector pages">
+          <button
+            disabled={contextPage === 1}
+            onClick={() => setContextPage((p) => p - 1)}
+          >
+            Previous students
+          </button>
+          <button
+            disabled={!authorized.data?.hasMore}
+            onClick={() => setContextPage((p) => p + 1)}
+          >
+            More students
+          </button>
+        </nav>
+      )}
+    </>
+  );
+}
+function PortalWorkspace({
+  role,
+  studentId,
+  contexts,
+  access,
+}: {
+  role: Extract<Role, "student" | "guardian">;
+  studentId: string;
+  contexts: { id: string; fullName: string; preferredName?: string | null }[];
+  access?: PortalContext;
+}) {
+  const location = useLocation();
+  const {
+    data: routeData,
+    isLoading,
+    isDemo,
+    error,
+  } = useStudioRoute(role, studentId, portalDomains(location.pathname));
+  const data =
+    routeData && routeData.students.some((s) => s.id === studentId)
+      ? {
+          ...scopeStudioSnapshot(routeData, role, studentId),
+          displayName: routeData.displayName,
+          currentLinkedContactId: routeData.currentLinkedContactId,
+        }
+      : undefined;
   const base = "/portal";
+  const portalPath = (to: string) => {
+    const p = new URLSearchParams();
+    p.set("student", studentId);
+    return base + (to ? "/" + to : "") + "?" + p;
+  };
+  const [searchOpen, setSearchOpen] = useState(false);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
   const navigatePortal = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
@@ -115,6 +262,7 @@ export function StudentPortal({
       delete document.documentElement.dataset.portalTheme;
     };
   }, [portalAppearance]);
+  if (error) return <RecordUnavailable fallback="/portal" />;
   if (isLoading || !data)
     return <div className="loading">Preparing your workspace…</div>;
   const person = data.students[0];
@@ -125,12 +273,23 @@ export function StudentPortal({
         )
       : undefined;
   const guardianFinance =
-    linkedAccess?.canViewFinance ?? Boolean(person?.isMinor);
-  const guardianSchedule = linkedAccess?.canViewSchedule ?? true;
-  const guardianWork = linkedAccess?.canViewWork ?? true;
-  const guardianProfile = linkedAccess?.canManageProfile ?? true;
-  const guardianManageLessons = linkedAccess?.canManageLessons ?? true;
-  const tabs = portalNavigation(role, Boolean(person?.isMinor), linkedAccess);
+    access?.canViewFinance ??
+    linkedAccess?.canViewFinance ??
+    (isDemo && Boolean(person?.isMinor));
+  const guardianSchedule =
+    access?.canViewSchedule ?? linkedAccess?.canViewSchedule ?? isDemo;
+  const guardianWork =
+    access?.canViewWork ?? linkedAccess?.canViewWork ?? isDemo;
+  const guardianProfile =
+    access?.canManageProfile ?? linkedAccess?.canManageProfile ?? isDemo;
+  const guardianManageLessons =
+    access?.canManageLessons ?? linkedAccess?.canManageLessons ?? isDemo;
+  const tabs = portalNavigation(role, Boolean(person?.isMinor), {
+    canViewFinance: guardianFinance,
+    canViewSchedule: guardianSchedule,
+    canViewWork: guardianWork,
+    canManageProfile: guardianProfile,
+  });
   const studentDisplayName =
     person?.preferredName || person?.fullName || "Student";
   const initials =
@@ -170,13 +329,21 @@ export function StudentPortal({
             {sidebarCollapsed ? <PanelLeftOpen /> : <PanelLeftClose />}
           </button>
         </div>
-        <nav>
-          {tabs.map(({ to, label, icon: Icon }) => (
-            <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
-              <Icon />
-              <span>{label}</span>
-            </NavLink>
-          ))}
+        <nav aria-label="Portal navigation">
+          {tabs
+            .filter((t) =>
+              ["", "work", "bookings", "inbox", "payments"].includes(t.to),
+            )
+            .map(({ to, label, icon: Icon }) => (
+              <NavLink key={to} to={portalPath(to)} end={!to}>
+                <Icon />
+                <span>{label}</span>
+              </NavLink>
+            ))}
+          <button type="button" onClick={() => setMobileMenuOpen(true)}>
+            <Menu aria-hidden="true" />
+            <span>More</span>
+          </button>
         </nav>
         <div className="identity">
           <span className={identityPhoto ? "has-photo" : ""}>
@@ -216,6 +383,35 @@ export function StudentPortal({
         </div>
       </aside>
       <main id="portal-main-content" tabIndex={-1}>
+        <WorkspaceScrollRestoration />
+        <div className="workspace-student-context">
+          {role === "guardian" && contexts.length > 1 && (
+            <label>
+              Student
+              <select
+                value={studentId}
+                onChange={(e) => {
+                  navigatePortal(
+                    "/portal?student=" + encodeURIComponent(e.target.value),
+                  );
+                }}
+              >
+                {contexts.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.preferredName || s.fullName}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <button
+            onClick={() => setSearchOpen(true)}
+            aria-label="Search portal"
+          >
+            <Search aria-hidden="true" />
+            Search
+          </button>
+        </div>
         {isDemo && (
           <div className="demo-banner">
             <ShieldCheck />
@@ -247,6 +443,10 @@ export function StudentPortal({
           }
         >
           <Routes>
+            <Route
+              path="records/:kind/:recordId"
+              element={<RecordRoute audience={role} portalData={data} />}
+            />
             <Route
               index
               element={
@@ -285,7 +485,13 @@ export function StudentPortal({
             />
             <Route
               path="lessons"
-              element={<Navigate to={`${base}/bookings`} replace />}
+              element={
+                <Navigate
+                  to={`${base}/bookings${location.search}${location.hash}`}
+                  state={location.state}
+                  replace
+                />
+              }
             />
             <Route
               path="lessons/:lessonId"
@@ -325,7 +531,13 @@ export function StudentPortal({
             />
             <Route
               path="practice"
-              element={<Navigate to={`${base}/work`} replace />}
+              element={
+                <Navigate
+                  to={`${base}/work${location.search}${location.hash}`}
+                  state={location.state}
+                  replace
+                />
+              }
             />
             <Route
               path="materials"
@@ -373,7 +585,7 @@ export function StudentPortal({
       />
       <nav className="mobile-nav student-mobile">
         {tabs.slice(0, 4).map(({ to, label, icon: Icon }) => (
-          <NavLink key={to} to={`${base}${to ? `/${to}` : ""}`} end={!to}>
+          <NavLink key={to} to={portalPath(to)} end={!to}>
             <Icon />
             <span>{label}</span>
           </NavLink>
@@ -385,6 +597,15 @@ export function StudentPortal({
           </button>
         )}
       </nav>
+      {searchOpen && (
+        <WorkspaceSearch
+          audience={role}
+          studentId={studentId}
+          destinations={tabs.map((t) => ({ ...t, to: portalPath(t.to) }))}
+          demoData={isDemo ? data : undefined}
+          onClose={() => setSearchOpen(false)}
+        />
+      )}
       {mobileMenuOpen && (
         <Dialog
           title="Student portal menu"
@@ -392,12 +613,20 @@ export function StudentPortal({
         >
           <div className="command-search">
             <div>
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  setSearchOpen(true);
+                }}
+              >
+                Search
+              </button>
               {tabs.map(({ to, label, icon: Icon }) => (
                 <button
                   type="button"
                   key={to}
                   onClick={() => {
-                    navigatePortal(`${base}${to ? `/${to}` : ""}`);
+                    navigatePortal(portalPath(to));
                     setMobileMenuOpen(false);
                   }}
                 >

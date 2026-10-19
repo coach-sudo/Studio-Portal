@@ -111,7 +111,7 @@ describe("content disclosure and decision context", () => {
     expect(document.querySelector(".operational-counts")).toBeNull();
     expect(document.querySelector(".home-today-link")).toBeNull();
     expect(
-      within(rail).getByRole("button", { name: /Open Today/ }),
+      within(rail).getByRole("button", { name: /communications queued/ }),
     ).toBeVisible();
     expect(rail).not.toHaveTextContent("$0.00 at risk");
   });

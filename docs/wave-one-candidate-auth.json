@@ -1,0 +1,179 @@
+{
+  "status": "PASS_EXACT_HOST_AUTH_UPDATE",
+  "verifiedAt": "2026-10-17T16:02:47.344Z",
+  "project": "lrxrivfqjpkvygozphoz",
+  "site": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "deployment": "6ad39275e099502cb54a8f64",
+  "candidate": "830c762bdaf085f5e20a91f4e6a7afbef4afa627",
+  "before": {
+    "site_url": "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app",
+    "additional_redirect_urls": [
+      "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback",
+      "https://6ad23d4f8b10c10447224155--coachd-staging.netlify.app/auth/callback\\?**"
+    ]
+  },
+  "after": {
+    "site_url": "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app",
+    "additional_redirect_urls": [
+      "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback",
+      "https://6ad39275e099502cb54a8f64--coachd-staging.netlify.app/auth/callback\\?**"
+    ]
+  },
+  "managementChangedProperties": ["site_url", "uri_allow_list"],
+  "cliChangedProperties": ["auth.additional_redirect_urls", "auth.site_url"],
+  "beforeFullAuthSha256": "8242d25916e8c84f6c7d13af2cd5a303c4270b35c00380ca159d8d03c2eb1915",
+  "afterFullAuthSha256": "5f42ae2f40c945c42ded8081780add40d874eba1c5c927e1567c6f05a256af92",
+  "unrelatedAuthPropertiesUnchanged": true,
+  "unrelatedAuthPropertyCount": 241,
+  "unrelatedAuthSha256": "58c4ca70e8f9c25fb6eb9431b1bdd3a0d7af4b4b56a20070d8e15a1b1c5a7c49",
+  "desiredDiffUpdates": 0,
+  "oldConfigProbeUpdates": 2,
+  "unrelatedCliRemoteOnlyProperties": 9,
+  "cliUnmanagedUnchanged": true,
+  "tomlConfigSha256": "88846345310bab1109d817be47d9922b25be058908d3e964c10afb7413fe810f",
+  "literalQuestionMarkRoundTripVerified": true,
+  "manualAccounts": [
+    {
+      "role": "coach",
+      "intact": true,
+      "confirmed": true,
+      "fullUserRowUnchanged": true
+    },
+    {
+      "role": "student",
+      "intact": true,
+      "confirmed": true,
+      "fullUserRowUnchanged": true
+    },
+    {
+      "role": "guardian",
+      "intact": true,
+      "confirmed": true,
+      "fullUserRowUnchanged": true
+    },
+    {
+      "role": "unrelated",
+      "intact": true,
+      "confirmed": true,
+      "fullUserRowUnchanged": true
+    }
+  ],
+  "migrations": {
+    "count": 57,
+    "sha256": "ce98bf8958cfbf42981ebce73ec8d935329c06e43473fd2ad13c25824796c972",
+    "versionsAndNamesMatchRepository": true,
+    "unchanged": true
+  },
+  "deploymentReady": true,
+  "context": "deploy-preview",
+  "publishedAt": null,
+  "oldStagingPublication": "6ace53e7f850061d7c49b711",
+  "oldStagingPublicationUnchanged": true,
+  "newDeployments": 0,
+  "buildsStopped": true,
+  "tlsVerified": true,
+  "applicationRoleSignIns": 0,
+  "messagesSent": 0,
+  "workerInvocations": 0,
+  "providerCalls": 0,
+  "productionOperations": 0,
+  "dependency": {
+    "pr": 51,
+    "baseBranch": "codex/wave-one-candidate-deployment",
+    "baseHead": "91c47042f1c5a3da2e83c58f6321c708aa546baf"
+  },
+  "mechanism": {
+    "cli": "Supabase CLI 2.117.0",
+    "helper": "scripts/staging/prepare-auth-config.mjs",
+    "configDiffOutputFlag": "--output-format json",
+    "command": "supabase config push --project-ref lrxrivfqjpkvygozphoz --workdir PRIVATE_MINIMAL_CONFIG_DIRECTORY --yes --output-format json",
+    "pushAttempts": 1,
+    "explicitProjectRef": true,
+    "usesBranchAlias": false,
+    "repositoryDevelopmentConfigUsed": false,
+    "configProperties": ["auth.site_url", "auth.additional_redirect_urls"],
+    "pushReportedChangedServices": ["auth"],
+    "pushReportedChangedProperties": [
+      "auth.additional_redirect_urls",
+      "auth.site_url"
+    ],
+    "pushOtherServiceChanges": 0,
+    "helperTests": {
+      "passed": 3,
+      "failed": 0
+    }
+  },
+  "deploymentVerification": {
+    "status": "ok",
+    "release": {
+      "commit": "830c762bdaf0",
+      "context": "deploy-preview"
+    },
+    "checkedAt": "2026-10-17T15:58:54.937Z",
+    "teamLoginScope": "all",
+    "anonymousHealthStatus": 401,
+    "all23ImmutableFunctionDigestsMatched": true
+  },
+  "businessBaseline": {
+    "before": {
+      "verifiedAt": "2026-10-17T15:59:27.780Z",
+      "project": "lrxrivfqjpkvygozphoz",
+      "tlsVerified": true,
+      "readOnly": true,
+      "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+      "migrations": 57,
+      "tables": 76,
+      "originalRows": 37,
+      "currentRows": 215,
+      "originalAndRetainedRowsUnchanged": true,
+      "completedJournalUnchanged": true,
+      "executorInvocations": 0,
+      "hostedBusinessWrites": 0
+    },
+    "after": {
+      "verifiedAt": "2026-10-17T16:03:18.686Z",
+      "project": "lrxrivfqjpkvygozphoz",
+      "tlsVerified": true,
+      "readOnly": true,
+      "schemaSeal": "24828e13e95714c1c42a0734fc6a6dfcb63f33a2947734cdcdbeee751efca3f4",
+      "migrations": 57,
+      "tables": 76,
+      "originalRows": 37,
+      "currentRows": 215,
+      "originalAndRetainedRowsUnchanged": true,
+      "completedJournalUnchanged": true,
+      "executorInvocations": 0,
+      "hostedBusinessWrites": 0
+    }
+  },
+  "verification": {
+    "method": "Supported CLI diff plus independent complete Management API GET before/after and read-only verified-TLS PostgreSQL SELECTs",
+    "rawSnapshotsAndCredentialsCommitted": false,
+    "unrelatedAuthChangedProperties": [],
+    "manualAccountRowsUnchanged": 4,
+    "migrationHistoryRowsUnchanged": 57,
+    "businessRecordsUnchanged": true,
+    "completedH01H16EvidenceUnchanged": true
+  },
+  "exclusions": {
+    "newApplicationDeployment": false,
+    "applicationCodeChanged": false,
+    "applicationRoleLogins": false,
+    "browserAcceptanceStarted": false,
+    "hostedBusinessWrites": 0,
+    "H01H16Reruns": 0,
+    "providersCalled": false,
+    "scheduledWorkersInvoked": false,
+    "invitationsOtpResetsEmailsSent": false,
+    "merges": false,
+    "productionAccessOrChanges": false,
+    "waveTwo": false
+  },
+  "documentationChecked": [
+    "https://supabase.com/changelog.md",
+    "https://supabase.com/changelog/cbc-tls-ciphers-deprecated",
+    "https://supabase.com/docs/reference/cli/supabase-config-push",
+    "https://supabase.com/docs/guides/auth/redirect-urls"
+  ],
+  "remainingGate": "Separate authorization for application role logins and protected browser acceptance. Production remains NO-GO."
+}

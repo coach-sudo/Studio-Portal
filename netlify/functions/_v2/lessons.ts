@@ -3,11 +3,95 @@ import { googleAccessToken, googleFreeBusy } from "../_shared/google";
 import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
+import { handleLessonBulkCommands } from "./lesson-bulk";
 
 export async function handleLessonsCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   const { audit, db, domain, id, input, requireCoach } = ctx;
+  const bulk = await handleLessonBulkCommands(ctx);
+  if (bulk) return bulk;
+
+  if (
+    domain === "lessons" &&
+    ["preview_change", "execute_change"].includes(input.command) &&
+    input.entityId
+  ) {
+    const studioId = await requireCoach();
+    const user = await db.auth.getUser();
+    if (user.error || !user.data.user) throw new Error("FORBIDDEN");
+    const service = serviceClient();
+    const before = await service
+      .from("lessons")
+      .select("id,version")
+      .eq("id", input.entityId)
+      .eq("studio_id", studioId)
+      .maybeSingle();
+    if (before.error || !before.data) throw new Error("FORBIDDEN");
+    // Replayed execution validates its persisted receipt even after the lesson version changes.
+    if (
+      input.command === "preview_change" &&
+      before.data.version !== input.expectedVersion
+    )
+      throw new Error("VERSION_CONFLICT");
+    const value: Record<string, unknown> = {
+      ...input.payload,
+      lessonId: input.entityId,
+      reason: input.reason,
+    };
+    if (input.command === "preview_change") {
+      const preview = await service.rpc("preview_lesson_occurrence_change", {
+        p_actor: user.data.user.id,
+        p_value: value,
+      });
+      if (preview.error) throw preview.error;
+      return json({ resource: preview.data });
+    }
+    const replay = await service.rpc("lesson_change_replay", {
+      p_actor: user.data.user.id,
+      p_key: input.idempotencyKey,
+      p_value: value,
+    });
+    if (replay.error) throw replay.error;
+    if (replay.data)
+      return json({
+        resource: replay.data,
+        queuedSideEffects: [
+          "calendar_projection",
+          "lesson_change_notifications",
+        ],
+        correlationId: id,
+      });
+    // Evaluate every reviewed time against the existing provider conflict policy before execution.
+    if (value.action === "reschedule") {
+      const preview = await service.rpc("preview_lesson_occurrence_change", {
+        p_actor: user.data.user.id,
+        p_value: value,
+      });
+      if (preview.error) throw preview.error;
+      const token = await googleAccessToken();
+      for (const item of preview.data.items)
+        if (
+          (await googleFreeBusy(token, item.newStartsAt, item.newEndsAt))
+            .length &&
+          !input.payload.allowConflict
+        )
+          throw new Error("SLOT_UNAVAILABLE");
+    }
+    const changed = await service.rpc("execute_lesson_occurrence_change", {
+      p_actor: user.data.user.id,
+      p_key: input.idempotencyKey,
+      p_value: value,
+    });
+    if (changed.error?.code === "23P01") throw new Error("SLOT_UNAVAILABLE");
+    if (changed.error) throw changed.error;
+    // Durable intents recover queue failures; mutation success is separate from external delivery.
+    return json({
+      resource: changed.data,
+      queuedSideEffects: ["calendar_projection", "lesson_change_notifications"],
+      correlationId: id,
+    });
+  }
 
   if (domain === "lessons" && input.command === "create") {
     const studioId = await requireCoach(),
@@ -200,30 +284,43 @@ export async function handleLessonsCommands(
         .single();
     if (readError || !before) throw new Error("FORBIDDEN");
     const service = serviceClient();
-    const { data: changed, error } = await service.rpc(
-      "command_cancel_lesson_credit",
-      {
-        p_lesson: before.id,
-        p_version: input.expectedVersion,
-        p_use: input.payload.useCredit === true,
-      },
-    );
-    if (error) throw error;
-    const data = changed.lesson;
-    const emails = await queueLessonChangeEmails(
-      service,
-      before.id,
-      "cancelled",
-      id,
-    );
-    const auditEventId = await audit(
-      studioId,
-      "lesson",
-      before.id,
-      "lesson.cancelled",
-      before,
-      data,
-    );
+    if (before.version !== input.expectedVersion)
+      throw new Error("VERSION_CONFLICT");
+    const user = await db.auth.getUser();
+    if (!user.data.user) throw new Error("FORBIDDEN");
+    const value = {
+      lessonId: before.id,
+      action: "cancel",
+      scope: "occurrence",
+      useCredit: input.payload.useCredit === true,
+      wholeClass: false,
+      reason: input.reason,
+    };
+    const preview = await service.rpc("preview_lesson_occurrence_change", {
+      p_actor: user.data.user.id,
+      p_value: value,
+    });
+    if (preview.error) throw preview.error;
+    const changed = await service.rpc("execute_lesson_occurrence_change", {
+      p_actor: user.data.user.id,
+      p_key: input.idempotencyKey,
+      p_value: { ...value, reviewToken: preview.data.reviewToken },
+    });
+    if (changed.error) throw changed.error;
+    const result = changed.data.results.find((r: any) => r.lesson),
+      data = result.lesson,
+      auditEventId = result.auditEventId;
+    let emails: { id: string }[] = [];
+    try {
+      emails = await queueLessonChangeEmails(
+        service,
+        before.id,
+        "cancelled",
+        id,
+      );
+    } catch {
+      /* committed notification intent remains recoverable */
+    }
     return json({
       resource: data,
       recommendations: [],
@@ -387,34 +484,46 @@ export async function handleLessonsCommands(
       !input.payload.allowConflict
     )
       throw new Error("SLOT_UNAVAILABLE");
-    const { data: changed, error } = await service.rpc(
-      "command_change_lesson_state",
-      {
-        p_lesson_id: input.entityId,
-        p_expected_version: input.expectedVersion,
-        p_action: "reschedule",
-        p_starts_at: startsAt,
-        p_ends_at: endsAt,
-        p_queue_calendar: true,
-      },
-    );
-    if (error?.code === "23P01") throw new Error("SLOT_UNAVAILABLE");
-    if (error) throw error;
-    const data = changed.lesson;
-    const emails = await queueLessonChangeEmails(
-      service,
-      input.entityId,
-      "rescheduled",
-      id,
-    );
-    const auditEventId = await audit(
-      studioId,
-      "lesson",
-      data.id,
-      "lesson.rescheduled",
-      before,
-      { starts_at: startsAt, ends_at: endsAt, version: data.version },
-    );
+    if (before.version !== input.expectedVersion)
+      throw new Error("VERSION_CONFLICT");
+    const user = await db.auth.getUser();
+    if (!user.data.user) throw new Error("FORBIDDEN");
+    const value = {
+      lessonId: before.id,
+      action: "reschedule",
+      scope: "occurrence",
+      startsAt,
+      endsAt,
+      useCredit: false,
+      wholeClass: false,
+      reason: input.reason,
+    };
+    const preview = await service.rpc("preview_lesson_occurrence_change", {
+      p_actor: user.data.user.id,
+      p_value: value,
+    });
+    if (preview.error) throw preview.error;
+    const changed = await service.rpc("execute_lesson_occurrence_change", {
+      p_actor: user.data.user.id,
+      p_key: input.idempotencyKey,
+      p_value: { ...value, reviewToken: preview.data.reviewToken },
+    });
+    if (changed.error?.code === "23P01") throw new Error("SLOT_UNAVAILABLE");
+    if (changed.error) throw changed.error;
+    const result = changed.data.results.find((r: any) => r.lesson),
+      data = result.lesson,
+      auditEventId = result.auditEventId;
+    let emails: { id: string }[] = [];
+    try {
+      emails = await queueLessonChangeEmails(
+        service,
+        before.id,
+        "rescheduled",
+        id,
+      );
+    } catch {
+      /* committed notification intent remains recoverable */
+    }
     return json({
       resource: data,
       recommendations: [],

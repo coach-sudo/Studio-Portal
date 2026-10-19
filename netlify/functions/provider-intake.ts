@@ -4,7 +4,10 @@ import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { zonedDateTimeToUtc } from "./_shared/timezone";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
-import { pastOccurrence, staleReviewPayload } from "../../src/domain/intakeRecency";
+import {
+  pastOccurrence,
+  staleReviewPayload,
+} from "../../src/domain/intakeRecency";
 import {
   classifyProviderIntake,
   matchStudentIdentity,
@@ -73,7 +76,10 @@ const gmailListSchema = z
   .object({
     messages: z.array(z.object({ id: z.string().min(1) })).optional(),
     nextPageToken: z.string().optional(),
-    error: z.object({ message: z.string().optional() }).passthrough().optional(),
+    error: z
+      .object({ message: z.string().optional() })
+      .passthrough()
+      .optional(),
   })
   .passthrough();
 const gmailMessageSchema = z
@@ -162,7 +168,9 @@ export function gmailProviderMessageKind(
     !candidate ||
     !explicitBooking ||
     (nonBooking &&
-      !/\b(booked|booking (?:confirmed|confirmation)|confirmed|scheduled|new (?:lesson|session|booking|appointment))\b/i.test(text))
+      !/\b(booked|booking (?:confirmed|confirmation)|confirmed|scheduled|new (?:lesson|session|booking|appointment))\b/i.test(
+        text,
+      ))
   )
     return undefined;
   return "confirmation" as const;
@@ -395,9 +403,7 @@ async function managedCalendarRows(db: any, events: CalendarEvent[]) {
   for (const ids of slicesOf(externalIds)) {
     const { data, error } = await db
       .from("calendar_projections")
-      .select(
-        "lesson_id,external_event_id,external_version,projected_version",
-      )
+      .select("lesson_id,external_event_id,external_version,projected_version")
       .in("external_event_id", ids);
     if (error) throw error;
     projections.push(...(data || []));
@@ -415,7 +421,10 @@ async function managedCalendarRows(db: any, events: CalendarEvent[]) {
   }
   return {
     projections: new Map(
-      projections.map((projection) => [projection.external_event_id, projection]),
+      projections.map((projection) => [
+        projection.external_event_id,
+        projection,
+      ]),
     ),
     lessons: new Map(lessons.map((lesson) => [lesson.id, lesson])),
   };
@@ -631,7 +640,12 @@ async function importCalendar(
             },
           );
           if (changeError) throw changeError;
-          await queueLessonChangeEmails(db, lesson.id, "cancelled", correlation);
+          await queueLessonChangeEmails(
+            db,
+            lesson.id,
+            "cancelled",
+            correlation,
+          );
           await Promise.all([
             db
               .from("calendar_projections")
@@ -715,9 +729,19 @@ async function importCalendar(
       .eq("external_id", event.id)
       .maybeSingle();
     if (prior?.status === "ignored") continue;
-    if (!prior?.lesson_id && pastOccurrence(event.start?.dateTime, event.end?.dateTime)) {
+    if (
+      !prior?.lesson_id &&
+      pastOccurrence(event.start?.dateTime, event.end?.dateTime)
+    ) {
       if (prior?.status === "needs_review")
-        await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).eq("id", prior.id);
+        await db
+          .from("integration_imports")
+          .update({
+            status: "ignored",
+            matched_by: "past_appointment",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", prior.id);
       continue;
     }
     const intakeDecision = classifyProviderIntake({
@@ -888,6 +912,10 @@ async function importCalendar(
             { onConflict: "lesson_id" },
           ),
         ]);
+        const coverage = await db.rpc("reserve_student_upcoming_credits", {
+          p_student: student.id,
+        });
+        if (coverage.error) throw coverage.error;
         imported++;
       }
     } else {
@@ -985,7 +1013,11 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       ).filter(
         (value: string) => !coachEmailKeys(studio).includes(normalize(value)),
       ),
-      match = matchStudentIdentity(eligibleStudents(studio, students), text, emails),
+      match = matchStudentIdentity(
+        eligibleStudents(studio, students),
+        text,
+        emails,
+      ),
       candidate = gmailCandidate(
         body,
         headers,
@@ -1001,11 +1033,17 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       .maybeSingle();
     if (!prior?.lesson_id && staleReviewPayload({ candidate, headers })) {
       if (prior?.status === "needs_review")
-        await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).eq("id", prior.id);
+        await db
+          .from("integration_imports")
+          .update({
+            status: "ignored",
+            matched_by: "past_appointment",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", prior.id);
       continue;
     }
-    const changeType: IntakeChangeType =
-        messageKind || gmailChangeType(text),
+    const changeType: IntakeChangeType = messageKind || gmailChangeType(text),
       intakeDecision = classifyProviderIntake({
         source: "gmail",
         text,
@@ -1133,7 +1171,12 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             },
           );
           if (changeError) throw changeError;
-          await queueLessonChangeEmails(db, target.id, "cancelled", correlation);
+          await queueLessonChangeEmails(
+            db,
+            target.id,
+            "cancelled",
+            correlation,
+          );
         } else if (candidate) {
           const { error: changeError } = await db.rpc(
             "command_change_lesson_state",
@@ -1147,8 +1190,16 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             },
           );
           if (changeError) throw changeError;
-          await db.from("lessons").update({ topic: candidate.topic }).eq("id", target.id);
-          await queueLessonChangeEmails(db, target.id, "rescheduled", correlation);
+          await db
+            .from("lessons")
+            .update({ topic: candidate.topic })
+            .eq("id", target.id);
+          await queueLessonChangeEmails(
+            db,
+            target.id,
+            "rescheduled",
+            correlation,
+          );
         }
         await db.from("audit_events").insert({
           studio_id: studio.id,
@@ -1169,9 +1220,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
     if (candidate && !lessonId && !isCancellation && !isReschedule) {
       const { data: possible, error: possibleError } = await db
         .from("lessons")
-        .select(
-          "id,student_id,starts_at,ends_at,status,source_provider,topic",
-        )
+        .select("id,student_id,starts_at,ends_at,status,source_provider,topic")
         .eq("studio_id", studio.id)
         .gte(
           "starts_at",
@@ -1187,13 +1236,9 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
         )
         .limit(5);
       if (possibleError) throw possibleError;
-      const duplicates = (possible || []).filter((lesson: ExistingLessonCandidate) =>
-        isSameScheduledLesson(
-          candidate,
-          lesson,
-          detected,
-          match?.student.id,
-        ),
+      const duplicates = (possible || []).filter(
+        (lesson: ExistingLessonCandidate) =>
+          isSameScheduledLesson(candidate, lesson, detected, match?.student.id),
       );
       if (duplicates.length === 1) {
         const duplicateDecision = classifyProviderIntake({
@@ -1248,9 +1293,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
           starts_at: candidate.startsAt,
           ends_at: candidate.endsAt,
           status:
-            new Date(candidate.endsAt) < new Date()
-              ? "completed"
-              : "scheduled",
+            new Date(candidate.endsAt) < new Date() ? "completed" : "scheduled",
           location_type: candidate.joinUrl ? "virtual" : "in_person",
           location_label: candidate.locationLabel,
           join_url: candidate.joinUrl || null,
@@ -1326,6 +1369,12 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       },
       { onConflict: "studio_id,provider,external_id" },
     );
+    if (lessonId && match) {
+      const coverage = await db.rpc("reserve_student_upcoming_credits", {
+        p_student: match.student.id,
+      });
+      if (coverage.error) throw coverage.error;
+    }
     if (lessonId) imported++;
     else review++;
   }
@@ -1347,9 +1396,18 @@ export async function runProviderIntake() {
     .select("id,payload")
     .eq("status", "needs_review");
   if (pendingError) throw pendingError;
-  const staleIds = (pendingReviews || []).filter((item) => staleReviewPayload(item.payload)).map((item) => item.id);
+  const staleIds = (pendingReviews || [])
+    .filter((item) => staleReviewPayload(item.payload))
+    .map((item) => item.id);
   if (staleIds.length) {
-    const { error: cleanupError } = await db.from("integration_imports").update({ status: "ignored", matched_by: "past_appointment", updated_at: new Date().toISOString() }).in("id", staleIds);
+    const { error: cleanupError } = await db
+      .from("integration_imports")
+      .update({
+        status: "ignored",
+        matched_by: "past_appointment",
+        updated_at: new Date().toISOString(),
+      })
+      .in("id", staleIds);
     if (cleanupError) throw cleanupError;
   }
   const token = await googleAccessToken();

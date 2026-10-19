@@ -1,13 +1,14 @@
+import { useUrlValue, useUrlNumber } from "../../hooks/useWorkspaceLocation";
 import DOMPurify from "dompurify";
 import { CalendarDays, Plus, Search, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
   EmptyState,
   ListControls,
   Section,
   Status,
-  usePagedList,
 } from "../../components/Primitives";
 import type { Note, Student } from "../../domain/model";
 import {
@@ -30,9 +31,10 @@ export function Notes({
   onEdit: (note: Note) => void;
   onDelete: (note: Note) => void;
 }) {
-  const [query, setQuery] = useState(""),
-    [status, setStatus] = useState("all"),
-    [selectedLessonId, setSelectedLessonId] = useState("");
+  const [params, setParams] = useSearchParams();
+  const [query, setQuery] = useUrlValue("q"),
+    [status, setStatus] = useUrlValue("status", "all"),
+    [selectedLessonId, setSelectedLessonId] = useUrlValue("lesson");
   const notes = data.notes
     .filter((i) => i.studentId === student.id)
     .filter(
@@ -68,8 +70,27 @@ export function Notes({
       b.updatedAt;
     return bDate.localeCompare(aDate);
   });
-  const notePage = usePagedList(groups);
-  const selected = groups.find((group) => group.lessonId === selectedLessonId);
+  const [page, setPage] = useUrlNumber("page", 1),
+    [pageSize, setPageSize] = useUrlNumber("pageSize", 10, 100);
+  const notePage = {
+    page,
+    pageSize,
+    setPage,
+    setPageSize,
+    pageCount: Math.max(1, Math.ceil(groups.length / pageSize)),
+    total: groups.length,
+    visible: groups.slice((page - 1) * pageSize, page * pageSize),
+  };
+  const exactNote = data.notes.find(
+    (note) => note.studentId === student.id && note.id === params.get("note"),
+  );
+  const selected = exactNote
+    ? {
+        lessonId: exactNote.lessonId,
+        updatedAt: exactNote.updatedAt,
+        notes: [exactNote],
+      }
+    : groups.find((group) => group.lessonId === selectedLessonId);
   return (
     <Section
       title="Coach notes"
@@ -170,7 +191,17 @@ export function Notes({
                 )
               : "General coaching note"
           }
-          onClose={() => setSelectedLessonId("")}
+          onClose={() => {
+            setParams(
+              (current) => {
+                const next = new URLSearchParams(current);
+                next.delete("note");
+                next.delete("lesson");
+                return next;
+              },
+              { replace: true },
+            );
+          }}
         >
           <div className="lesson-note-stack">
             {selected.notes.map((note) => (

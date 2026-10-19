@@ -6,13 +6,19 @@ import { resolveNotificationRecipients } from "./_shared/notification-recipients
 import { portalActionUrl, portalOrigin } from "./_shared/portal-url";
 import { queuePackageWarning } from "./_shared/package-notifications";
 import { clearDeliveredPortalCredentials } from "./_shared/outbox-retention";
+import { processLessonChangeEffects } from "./_shared/lesson-notifications";
 import { applyAutomaticCredits } from "./_shared/auto-credits";
+import { processLessonBulkItems } from "./_shared/lesson-bulk";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
 
 export default async () => {
   const db = serviceClient();
+  const lessonBulk = await processLessonBulkItems(db).catch(() => [
+    { itemId: "", status: "claim_failed" },
+  ]);
+  const lessonChanges = await processLessonChangeEffects(db);
   const maintenanceTime = new Date();
   const runDailyStorageCleanup =
     maintenanceTime.getUTCHours() === 8 && maintenanceTime.getUTCMinutes() < 5;
@@ -143,7 +149,7 @@ export default async () => {
     noteReminders++;
   }
 
-  const autoCreditsApplied = await applyAutomaticCredits(db);
+  const creditCoverage = await applyAutomaticCredits(db);
 
   const { data: dueGifts, error: dueGiftError } = await db
     .from("package_gifts")
@@ -193,10 +199,6 @@ export default async () => {
       apply_automatically: false,
     });
     if (claimError) throw claimError;
-    const coverage = await db.rpc("reserve_student_upcoming_credits", {
-      p_student: recipient.id,
-    });
-    if (coverage.error) throw coverage.error;
     packageGiftsDelivered += 1;
   }
 
@@ -463,7 +465,22 @@ export default async () => {
     delinquentCancelled: 0,
     pastDueReviewCount: delinquent?.length || 0,
     noteReminders,
-    autoCreditsApplied,
+    autoCreditsApplied: creditCoverage.applied,
+    creditCoverage,
+    lessonChanges: {
+      bulk: {
+        processed: lessonBulk.filter(
+          (item) =>
+            !["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+        failed: lessonBulk.filter((item) => item.status === "failed").length,
+        recoveryPending: lessonBulk.filter((item) =>
+          ["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+      },
+      processed: lessonChanges.processed,
+      failed: lessonChanges.failed,
+    },
     packageGiftsDelivered,
     packageAutoRenewals,
     packageReminders,
