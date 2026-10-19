@@ -543,7 +543,11 @@ export function ResourceBrowser({
         showActions &&
         canManage && (
           <div className="page-actions">
-            <button type="button" onClick={() => setAdding(true)}>
+            <button
+              className="primary"
+              type="button"
+              onClick={() => setAdding(true)}
+            >
               {lessonId ? "Attach resource" : "Add material"}
             </button>
             {coach && catalog && (

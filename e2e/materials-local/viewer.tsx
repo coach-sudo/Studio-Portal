@@ -5,7 +5,11 @@ import { MemoryRouter } from "react-router-dom";
 import { WorkspaceLocationProvider } from "../../src/hooks/useWorkspaceLocation";
 import { ResourceWorkspace } from "../../src/features/library/ResourceWorkspace";
 import type { ResourceDetail } from "../../src/domain/library";
+import "../../src/styles.css";
+import "../../src/cohesion.css";
+import "../../src/app-system.css";
 import "../../src/styles/tokens.css";
+import "../../src/styles/product.css";
 import "../../src/features/library/Library.css";
 
 const kind = new URLSearchParams(location.search).get("kind") || "pdf";
