@@ -33,6 +33,8 @@ begin
  if studio is null then raise exception 'FORBIDDEN' using errcode='42501'; end if;
  if length(p_key)<8 or length(trim(coalesce(p_value->>'fullName','')))<2 or length(p_value::text)>20000 then raise exception 'VALIDATION_FAILED'; end if;
  perform pg_advisory_xact_lock(hashtextextended(studio::text||':student:'||lower(trim(p_value->>'fullName')),0));
+ if nullif(trim(p_value->>'email'),'') is not null then perform pg_advisory_xact_lock(hashtextextended(studio::text||':student-email:'||lower(trim(p_value->>'email')),0)); end if;
+ if length(regexp_replace(coalesce(p_value->>'phone',''),'\D','','g'))>=7 then perform pg_advisory_xact_lock(hashtextextended(studio::text||':student-phone:'||regexp_replace(p_value->>'phone','\D','','g'),0)); end if;
  select * into old from workspace_internal.operation_receipts where actor_id=actor and key=p_key;
  if found then if old.request<>jsonb_build_object('command','student.create','payload',p_value) then raise exception 'IDEMPOTENCY_CONFLICT'; end if; return old.result; end if;
  if coalesce(p_value->>'email','')<>'' and p_value->>'email' !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'VALIDATION_FAILED: Check the email.'; end if;
@@ -102,6 +104,7 @@ begin
   update public.students set portal_enabled=coalesce((p_value->>'portalEnabled')::boolean,false),version=version+1,updated_at=now() where id=student.id returning * into student;
   result:=jsonb_build_object('resource',to_jsonb(student));
  elsif p_kind='contact' then
+  if p_value->>'portalEnabled'='true' and student.is_minor and p_value->>'consentConfirmed' is distinct from 'true' then raise exception 'VALIDATION_FAILED: Guardian consent is required before granting access.'; end if;
   if nullif(p_value->>'sourceContactId','') is not null then
    select * into source_contact from public.linked_contacts where id=(p_value->>'sourceContactId')::uuid and studio_id=student.studio_id for share;
    if not found then raise exception 'FORBIDDEN' using errcode='42501'; end if;
@@ -126,7 +129,8 @@ begin
  else raise exception 'VALIDATION_FAILED'; end if;
  insert into public.audit_events(studio_id,actor_id,action,entity_type,entity_id,reason,correlation_id,source,after_state)
  values(student.studio_id,actor,'student.setup_'||p_kind,case when p_kind='contact' then 'linked_contact' else 'student' end,case when p_kind='contact' then contact.id else student.id end,'Reviewed student setup',p_key,'coach_portal',result);
- result:=result||jsonb_build_object('queuedCalendarUpdates',updates);
+ select * into student from public.students where id=p_student;
+ result:=result||jsonb_build_object('queuedCalendarUpdates',updates,'studentVersion',student.version);
  insert into workspace_internal.operation_receipts(actor_id,key,studio_id,request,result) values(actor,p_key,student.studio_id,request,result);
  return result;
 end $$;
@@ -135,7 +139,7 @@ grant execute on function public.command_apply_setup_record(uuid,text,jsonb,inte
 
 create function public.manage_student_setup(p_actor uuid,p_student uuid,p_command text,p_value jsonb,p_version integer,p_key text) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare student public.students; setup workspace_internal.student_setups; action jsonb; entry jsonb; review_id text; action_id text:=p_value->>'actionId';
+declare student public.students; setup workspace_internal.student_setups; action jsonb; entry jsonb; recovered jsonb; expected_student integer; review_id text; action_id text:=p_value->>'actionId';
 begin
  select * into student from public.students where id=p_student and deleted_at is null for update;
  if student.id is null or not exists(select 1 from public.memberships where studio_id=student.studio_id and user_id=p_actor and role='coach') then raise exception 'FORBIDDEN' using errcode='42501'; end if;
@@ -161,13 +165,24 @@ begin
   if action is null then raise exception 'FORBIDDEN' using errcode='42501'; end if;
   entry:=setup.results->action_id;
   if entry->>'status'='succeeded' then return jsonb_build_object('completed',true,'entry',entry); end if;
-  if entry->>'status' in ('running','needs_review') and action->>'kind' in ('access','invitation') then raise exception 'REVIEW_REQUIRED: The previous action has an unknown outcome. Inspect the existing account before retrying.'; end if;
+  if entry->>'status' in ('running','failed') then
+   select r.result into recovered from workspace_internal.operation_receipts r where r.actor_id=p_actor and r.key=entry->>'key' and r.studio_id=student.studio_id and
+    ((r.request->>'student'=p_student::text and r.request->>'kind'=action->>'kind' and r.request->'value'=action->'payload') or (action->>'kind'='lesson' and r.request->>'command'='lesson.create' and r.request->'payload'=(action->'payload'||jsonb_build_object('studentId',p_student))));
+   if recovered is null and action->>'kind'='package' then select r.response into recovered from credit_internal.credit_command_receipts r where r.key='coach-package:'||(entry->>'key') and r.actor_id=p_actor and r.student_id=p_student and r.request#>>'{package,definitionId}'=action#>>'{payload,definitionId}'; end if;
+   if recovered is not null then
+    update workspace_internal.student_setups set results=jsonb_set(results,array[action_id],jsonb_build_object('status','succeeded','key',entry->>'key','result',recovered,'message','Recovered the committed action receipt; no operation was repeated.')),review=null,updated_at=now() where student_id=p_student returning * into setup;
+    return jsonb_build_object('completed',true,'entry',setup.results->action_id,'reviewRequired',true);
+   end if;
+  end if;
+  if entry->>'status' in ('running','needs_review') and action->>'kind'='invitation' then raise exception 'REVIEW_REQUIRED: The previous action has an unknown outcome. Inspect the existing account before retrying.'; end if;
   if student.version<>(setup.review->>'studentVersion')::integer then raise exception 'VERSION_CONFLICT: Student changed after review.'; end if;
-  update workspace_internal.student_setups set results=jsonb_set(results,array[action_id],jsonb_build_object('status','running','key',coalesce(entry->>'key',p_key),'startedAt',now())) where student_id=p_student returning * into setup;
+  update workspace_internal.student_setups set results=jsonb_set(results,array[action_id],jsonb_build_object('status','running','key',coalesce(entry->>'key',p_key),'studentVersion',student.version,'startedAt',now())) where student_id=p_student returning * into setup;
   return jsonb_build_object('action',action,'key',setup.results->action_id->>'key','studentVersion',student.version);
  elsif p_command='finish' then
   if setup.review->>'id' is distinct from p_value->>'reviewId' or setup.results->action_id->>'key' is distinct from p_key then raise exception 'FORBIDDEN' using errcode='42501'; end if;
-  update workspace_internal.student_setups set results=jsonb_set(results,array[action_id],jsonb_build_object('status',case when coalesce((p_value->>'ok')::boolean,false) then 'succeeded' when p_value->>'uncertain'='true' then 'needs_review' else 'failed' end,'result',p_value->'result','message',p_value->>'message','key',p_key,'finishedAt',now())),review=jsonb_set(review,'{studentVersion}',to_jsonb(student.version)),updated_at=now() where student_id=p_student returning * into setup;
+  select a into action from jsonb_array_elements(setup.review->'actions')a where a->>'id'=action_id;
+  expected_student:=coalesce((p_value#>>'{result,studentVersion}')::integer,case when action->>'kind' in ('details','contact','access','invitation') then (p_value#>>'{result,resource,version}')::integer end,(setup.results->action_id->>'studentVersion')::integer);
+  update workspace_internal.student_setups set results=jsonb_set(results,array[action_id],jsonb_build_object('status',case when coalesce((p_value->>'ok')::boolean,false) then 'succeeded' when p_value->>'uncertain'='true' then 'needs_review' else 'failed' end,'result',p_value->'result','message',p_value->>'message','key',p_key,'finishedAt',now())),review=case when student.version=expected_student then jsonb_set(review,'{studentVersion}',to_jsonb(student.version)) else null end,updated_at=now() where student_id=p_student returning * into setup;
  else raise exception 'VALIDATION_FAILED'; end if;
  return to_jsonb(setup);
 end $$;

@@ -17,6 +17,7 @@ const contact = z.object({
   canManageProfile: z.boolean(),
   canReceiveNotifications: z.boolean(),
   portalEnabled: z.boolean(),
+  consentConfirmed: z.boolean().optional(),
 });
 export const setupActionSchema = z.discriminatedUnion("kind", [
   z.object({

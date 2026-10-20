@@ -1,0 +1,43 @@
+-- Disposable local/CI acceptance. Everything, including queued intents, rolls back.
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+insert into auth.users(id,email) values
+ ('e5500000-0000-4000-8000-000000000001','wave-five-coach@example.test'),
+ ('e5500000-0000-4000-8000-000000000002','wave-five-peer@example.test');
+insert into public.studios(id,name,slug) values('e5500000-0000-4000-8000-000000000003','Wave five test','wave-five-pgtap');
+insert into public.memberships(studio_id,user_id,role,display_name) values('e5500000-0000-4000-8000-000000000003','e5500000-0000-4000-8000-000000000001','coach','Synthetic coach');
+insert into public.students(id,studio_id,full_name,portal_enabled,actor_page_eligible) values('e5500000-0000-4000-8000-000000000004','e5500000-0000-4000-8000-000000000003','Existing synthetic student',false,true);
+insert into public.actor_profiles(id,student_id,display_name,slug,bio) values('e5500000-0000-4000-8000-000000000005','e5500000-0000-4000-8000-000000000004','Existing synthetic student','wave-five-pgtap-actor','Original biography');
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e5500000-0000-4000-8000-000000000001',true);
+select lives_ok($$select public.command_create_student_once('{"fullName":"Name only test"}','pgtap-wave-five-create')$$,'Name-only creation is supported');
+select lives_ok($$select public.command_create_student_once('{"fullName":"Name only test"}','pgtap-wave-five-create')$$,'Creation replay returns its receipt');
+select is((select count(*) from public.students where full_name='Name only test'),1::bigint,'Replay does not create another student');
+select is((select portal_enabled from public.students where full_name='Name only test'),false,'Quick Add grants no access');
+select throws_ok($$select public.command_create_student_once('{"fullName":"Name only test"}','pgtap-wave-five-duplicate')$$,'P0001','DUPLICATE_STUDENT: Review possible matches before creating a distinct record.','Duplicate review is authoritative');
+select lives_ok($$select public.student_setup_context('e5500000-0000-4000-8000-000000000004')$$,'Setup context uses actual package columns');
+select lives_ok($$select public.studio_financial_dashboard('2031-02-01','outstanding','USD',1)$$,'Financial metric and supporting rows resolve under RLS');
+select ok(jsonb_array_length(public.studio_financial_dashboard('2031-02-01')->'items')<=25,'Financial supporting list is bounded');
+select lives_ok($$select public.communication_activity(1,false,'')$$,'Communication history is bounded and permission aware');
+select lives_ok($$select public.household_access_states('e5500000-0000-4000-8000-000000000004')$$,'Household activation evidence resolves without messages');
+select lives_ok($$select public.command_patch_studio_settings('{"branding":{"primaryColor":"#183c36"}}',null,'pgtap-wave-five-settings')$$,'Settings patch is an authorized transaction');
+select is((select settings#>>'{branding,primaryColor}' from public.studios where id='e5500000-0000-4000-8000-000000000003'),'#183c36','Settings persist');
+select throws_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','review','{"status":"published"}',1,'pgtap-wave-five-unapproved')$$,'P0001','REVIEW_REQUIRED: Approve this draft before publication.','Unapproved publication is blocked');
+select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','review','{"status":"approved"}',1,'pgtap-wave-five-approved')$$,'Approval is explicit');
+select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','review','{"status":"published"}',2,'pgtap-wave-five-published')$$,'Reviewed publication is atomic');
+select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','save','{"bio":"Private draft changes","portfolio":{},"status":"draft"}',3,'pgtap-wave-five-private-edit')$$,'Published Actor may save private changes');
+select is((select status::text from public.actor_profiles where id='e5500000-0000-4000-8000-000000000005'),'published','Draft edits retain the live public state');
+select is((select r.content->>'bio' from public.actor_profile_revisions r join public.actor_profiles p on p.published_revision_id=r.id where p.id='e5500000-0000-4000-8000-000000000005'),'Original biography','Public revision is unchanged by draft edits');
+select ok(not has_table_privilege('authenticated','workspace_internal.student_setups','SELECT'),'Setup state has no direct authenticated listing');
+select ok(not has_table_privilege('authenticated','workspace_internal.campaign_drafts','SELECT'),'Campaign draft state has no direct authenticated listing');
+select ok(not has_table_privilege('authenticated','actor_profiles','UPDATE'),'Direct Actor publication bypass is unavailable');
+select ok(not has_function_privilege('authenticated','public.manage_campaign_draft(uuid,uuid,text,jsonb,integer,text,text)','EXECUTE'),'Campaign orchestration is service only with explicit actor validation');
+select set_config('request.jwt.claim.sub','e5500000-0000-4000-8000-000000000002',true);
+select throws_ok($$select public.studio_financial_dashboard()$$,'42501','FORBIDDEN','Unrelated actor cannot inspect finances');
+select throws_ok($$select public.household_access_states('e5500000-0000-4000-8000-000000000004')$$,'42501','FORBIDDEN','Unrelated actor cannot inspect activation');
+select is(public.student_setup_context('e5500000-0000-4000-8000-000000000004'),null::jsonb,'Unrelated student context is unavailable');
+reset role;
+select is((select count(*) from public.outbox_messages where studio_id='e5500000-0000-4000-8000-000000000003'),0::bigint,'Saving settings and drafts never queues notifications');
+select * from finish();
+rollback;
