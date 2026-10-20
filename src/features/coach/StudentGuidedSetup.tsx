@@ -482,14 +482,28 @@ export function StudentGuidedSetup({
                     </label>
                   ))}
                 </details>
+                {details.isMinor && contact.portalEnabled && (
+                  <label className="check-row full">
+                    <input
+                      type="checkbox"
+                      checked={consent}
+                      onChange={(e) => setConsent(e.target.checked)}
+                    />
+                    Guardian consent for this access grant has been reviewed
+                  </label>
+                )}
                 <button
                   className="button-link full"
-                  disabled={!contact.fullName || !contact.email.includes("@")}
+                  disabled={
+                    !contact.fullName ||
+                    !contact.email.includes("@") ||
+                    (details.isMinor && contact.portalEnabled && !consent)
+                  }
                   onClick={() => {
                     add({
                       id: crypto.randomUUID(),
                       kind: "contact",
-                      payload: contact,
+                      payload: { ...contact, consentConfirmed: consent },
                     });
                     setContact(emptyContact);
                   }}
@@ -630,7 +644,10 @@ export function StudentGuidedSetup({
                 </p>
                 {current?.packages.map((p) => (
                   <div className="setup-existing full" key={p.id}>
-                    {p.name} · {p.expires_at ? `Expires ${formatStudioDateTime(p.expires_at, data.settings.timezone)}` : "No expiry"}
+                    {p.name} ·{" "}
+                    {p.expires_at
+                      ? `Expires ${formatStudioDateTime(p.expires_at, data.settings.timezone)}`
+                      : "No expiry"}
                   </div>
                 ))}
                 <label className="full">

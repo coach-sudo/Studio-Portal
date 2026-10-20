@@ -1,6 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { CreditCard } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, useRef, type FormEvent } from "react";
+import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
 import "../../components/IdentityActions.css";
 import { Section, Toggle } from "../../components/Primitives";
 import { TimezoneSelect } from "../../components/TimezoneSelect";
@@ -61,7 +62,9 @@ export function StudentSettings({
         data.settings.portalDefaults.appearance ??
         "light",
       showProgress:
-        student?.portalPreferences?.showProgress ??
+        (role === "guardian"
+          ? linkedContact?.portalPreferences?.showProgress
+          : student?.portalPreferences?.showProgress) ??
         data.settings.portalDefaults.showProgress,
       emailReminders: student?.portalPreferences?.emailReminders ?? true,
       notificationPreferences: structuredClone(
@@ -89,9 +92,22 @@ export function StudentSettings({
   useEffect(() => {
     document.documentElement.dataset.portalTheme = form.appearance;
   }, [form.appearance]);
+  const savedForm = useRef(structuredClone(form));
+  const dirty =
+    JSON.stringify(savedForm.current) !== JSON.stringify(form) ||
+    !!profilePhoto ||
+    removePhoto;
+  useUnsavedWorkspaceChanges(dirty);
+  const canEditPreferences = role === "student" || !!linkedContact;
   if (!student) return <div className="loading">Opening settings…</div>;
-  const save = async (event: FormEvent) => {
+  const save = async (event: { preventDefault(): void }) => {
     event.preventDefault();
+    if (!canEditPreferences) {
+      setNotice(
+        "Your coach must link your Household contact before these preferences can be saved.",
+      );
+      return;
+    }
     if (settingsMutation.isPending()) return;
     setNotice("Saving your settings…");
     try {
@@ -145,7 +161,10 @@ export function StudentSettings({
                   timezone: form.timezone,
                   timezoneConfirmed: true,
                   notificationPreferences: form.notificationPreferences,
-                  portalPreferences: { appearance: form.appearance },
+                  portalPreferences: {
+                    appearance: form.appearance,
+                    showProgress: form.showProgress,
+                  },
                   version: contact.version + 1,
                   updatedAt: new Date().toISOString(),
                 });
@@ -166,7 +185,10 @@ export function StudentSettings({
                 email: form.email,
                 timezone: form.timezone,
                 notificationPreferences: form.notificationPreferences,
-                portalPreferences: { appearance: form.appearance },
+                portalPreferences: {
+                  appearance: form.appearance,
+                  showProgress: form.showProgress,
+                },
               },
               reason: "Linked contact updated portal settings",
             });
@@ -185,6 +207,9 @@ export function StudentSettings({
         }
       });
       setNotice("Your settings were saved.");
+      savedForm.current = structuredClone(form);
+      setProfilePhoto(undefined);
+      setRemovePhoto(false);
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -277,6 +302,17 @@ export function StudentSettings({
       <header className="student-header">
         <h1>Settings</h1>
       </header>
+      {dirty && (
+        <p className="portal-notice" role="status">
+          Unsaved changes
+        </p>
+      )}
+      {!canEditPreferences && (
+        <p role="status">
+          Your Household contact must be linked by the coach before profile and
+          notification preferences are available.
+        </p>
+      )}
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
@@ -293,125 +329,130 @@ export function StudentSettings({
       <div id="profile-timezone" className="settings-anchor">
         <Section title="Profile & timezone" marked>
           <form className="settings-form" onSubmit={save}>
-            <label>
-              {role === "guardian" ? "Your name" : "Preferred name"}
-              <input
-                value={form.preferredName}
-                onChange={(event) =>
-                  setForm({ ...form, preferredName: event.target.value })
-                }
-              />
-            </label>
-            {role === "student" && (
+            <fieldset
+              disabled={!canEditPreferences}
+              style={{ display: "contents" }}
+            >
               <label>
-                Pronouns
+                {role === "guardian" ? "Your name" : "Preferred name"}
                 <input
-                  value={form.pronouns}
+                  value={form.preferredName}
                   onChange={(event) =>
-                    setForm({ ...form, pronouns: event.target.value })
+                    setForm({ ...form, preferredName: event.target.value })
                   }
                 />
               </label>
-            )}
-            <label>
-              Email
-              <input
-                required
-                type="email"
-                value={form.email}
-                onChange={(event) =>
-                  setForm({ ...form, email: event.target.value })
-                }
-              />
-            </label>
-            {role === "student" && (
+              {role === "student" && (
+                <label>
+                  Pronouns
+                  <input
+                    value={form.pronouns}
+                    onChange={(event) =>
+                      setForm({ ...form, pronouns: event.target.value })
+                    }
+                  />
+                </label>
+              )}
               <label>
-                Phone
+                Email
                 <input
-                  value={form.phone}
+                  required
+                  type="email"
+                  value={form.email}
                   onChange={(event) =>
-                    setForm({ ...form, phone: event.target.value })
+                    setForm({ ...form, email: event.target.value })
                   }
                 />
               </label>
-            )}
-            {role === "student" && (
-              <label className="full profile-photo-field">
-                Profile photo
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  onChange={(event) => {
-                    setProfilePhoto(event.target.files?.[0]);
-                    setRemovePhoto(false);
-                  }}
+              {role === "student" && (
+                <label>
+                  Phone
+                  <input
+                    value={form.phone}
+                    onChange={(event) =>
+                      setForm({ ...form, phone: event.target.value })
+                    }
+                  />
+                </label>
+              )}
+              {role === "student" && (
+                <label className="full profile-photo-field">
+                  Profile photo
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    onChange={(event) => {
+                      setProfilePhoto(event.target.files?.[0]);
+                      setRemovePhoto(false);
+                    }}
+                  />
+                  <small>
+                    Optional. Shown only in portal identity areas; actor-page
+                    headshots remain separate.
+                  </small>
+                  {student.profilePhotoUrl && !removePhoto && (
+                    <span className="profile-photo-preview">
+                      <img
+                        src={student.profilePhotoUrl}
+                        alt="Current profile"
+                      />
+                      Current photo{" "}
+                      <button
+                        type="button"
+                        className="text-button"
+                        onClick={() => {
+                          setRemovePhoto(true);
+                          setProfilePhoto(undefined);
+                        }}
+                      >
+                        Remove
+                      </button>
+                    </span>
+                  )}
+                  {removePhoto && (
+                    <small>Photo will be removed when you save.</small>
+                  )}
+                </label>
+              )}
+              <label>
+                Timezone
+                <TimezoneSelect
+                  value={form.timezone}
+                  onChange={(timezone) => setForm({ ...form, timezone })}
                 />
-                <small>
-                  Optional. Shown only in portal identity areas; actor-page
-                  headshots remain separate.
-                </small>
-                {student.profilePhotoUrl && !removePhoto && (
-                  <span className="profile-photo-preview">
-                    <img src={student.profilePhotoUrl} alt="Current profile" />
-                    Current photo{" "}
-                    <button
-                      type="button"
-                      className="text-button"
-                      onClick={() => {
-                        setRemovePhoto(true);
-                        setProfilePhoto(undefined);
-                      }}
-                    >
-                      Remove
-                    </button>
-                  </span>
-                )}
-                {removePhoto && (
-                  <small>Photo will be removed when you save.</small>
-                )}
               </label>
-            )}
-            <label>
-              Timezone
-              <TimezoneSelect
-                value={form.timezone}
-                onChange={(timezone) => setForm({ ...form, timezone })}
-              />
-            </label>
-            <div className="settings-list full">
-              <Toggle
-                checked={form.appearance === "dark"}
-                label="Dark mode"
-                detail="Use a lower-glare dark workspace on this account."
-                onChange={(darkMode) =>
-                  setForm({ ...form, appearance: darkMode ? "dark" : "light" })
-                }
-              />
-              <Toggle
-                checked={form.showProgress}
-                label="Show progress"
-                detail="Include practice progress in your workspace."
-                onChange={(showProgress) => setForm({ ...form, showProgress })}
-              />
-              <Toggle
-                checked={form.emailReminders}
-                label="Email reminders"
-                detail="Receive the lesson reminders configured by the studio."
-                onChange={(emailReminders) =>
-                  setForm({ ...form, emailReminders })
-                }
-              />
-            </div>
-            <div className="form-actions full">
-              <button
-                className="primary"
-                disabled={settingsMutation.isPending("portal-settings")}
-              >
-                {settingsMutation.isPending("portal-settings")
-                  ? "Saving…"
-                  : "Save settings"}
-              </button>
-            </div>
+              <div className="settings-list full">
+                <Toggle
+                  checked={form.appearance === "dark"}
+                  label="Dark mode"
+                  detail="Use a lower-glare dark workspace on this account."
+                  onChange={(darkMode) =>
+                    setForm({
+                      ...form,
+                      appearance: darkMode ? "dark" : "light",
+                    })
+                  }
+                />
+                <Toggle
+                  checked={form.showProgress}
+                  label="Show progress"
+                  detail="Include practice progress in your workspace."
+                  onChange={(showProgress) =>
+                    setForm({ ...form, showProgress })
+                  }
+                />
+              </div>
+              <div className="form-actions full">
+                <button
+                  className="primary"
+                  disabled={settingsMutation.isPending("portal-settings")}
+                >
+                  {settingsMutation.isPending("portal-settings")
+                    ? "Saving…"
+                    : "Save settings"}
+                </button>
+              </div>
+            </fieldset>
           </form>
         </Section>
       </div>
@@ -425,6 +466,7 @@ export function StudentSettings({
             {Object.entries(portalNotificationLabels).map(([key, label]) => (
               <Toggle
                 key={key}
+                disabled={!canEditPreferences || key === "accountAccess"}
                 checked={Boolean(
                   form.notificationPreferences[
                     key as keyof typeof form.notificationPreferences
@@ -432,9 +474,11 @@ export function StudentSettings({
                 )}
                 label={label}
                 detail={
-                  key === "lessonReminders"
-                    ? "Students receive lesson reminders by default."
-                    : ""
+                  key === "accountAccess"
+                    ? "Required account and security messages remain enabled."
+                    : key === "lessonReminders"
+                      ? "Students receive lesson reminders by default."
+                      : ""
                 }
                 onChange={(checked) =>
                   setForm({
@@ -447,6 +491,26 @@ export function StudentSettings({
                 }
               />
             ))}
+          </div>
+          <div className="form-actions">
+            <button
+              className="primary"
+              disabled={!canEditPreferences || settingsMutation.isPending()}
+              onClick={(e) => void save(e)}
+            >
+              Save preferences
+            </button>
+            <button
+              disabled={!dirty || settingsMutation.isPending()}
+              onClick={() => {
+                setForm(structuredClone(savedForm.current));
+                setProfilePhoto(undefined);
+                setRemovePhoto(false);
+                setNotice("Unsaved preferences cancelled.");
+              }}
+            >
+              Cancel changes
+            </button>
           </div>
         </Section>
       </div>

@@ -19,6 +19,16 @@ export default async (request: Request) => {
       .maybeSingle();
     if (membershipError) throw membershipError;
     const coach = Boolean(membership);
+    const params = new URL(request.url).searchParams,
+      page = Number(params.get("page") || 1),
+      selectedStudent = params.get("student");
+    if (
+      !Number.isInteger(page) ||
+      page < 1 ||
+      page > 100000 ||
+      (selectedStudent && !/^[0-9a-f-]{36}$/i.test(selectedStudent))
+    )
+      throw new Error("VALIDATION_FAILED");
     const db = serviceClient();
     const visibleStudents = coach
       ? await db
@@ -35,8 +45,12 @@ export default async (request: Request) => {
     const studioId = membership?.studio_id || students[0]?.studio_id;
     if (!studioId) throw new Error("FORBIDDEN");
     const selectedStudents = students.filter(
-      (student) => student.studio_id === studioId,
+      (student) =>
+        student.studio_id === studioId &&
+        (!selectedStudent || student.id === selectedStudent),
     );
+    if (selectedStudent && !selectedStudents.length)
+      throw new Error("FORBIDDEN");
     const { data: studio, error: studioError } = await db
       .from("studios")
       .select("settings")
@@ -63,12 +77,19 @@ export default async (request: Request) => {
       .from("referrals")
       .select(
         "id,referrer_student_id,referred_student_id,referred_email,created_at,source_booking_id",
+        { count: "exact" },
       )
       .eq("studio_id", studioId)
-      .order("created_at", { ascending: false });
-    if (!coach)
+      .order("created_at", { ascending: false })
+      .order("id")
+      .range((page - 1) * 20, page * 20 - 1);
+    if (!coach || selectedStudent)
       referralQuery = referralQuery.in("referrer_student_id", studentIds);
-    const { data: referrals, error: referralError } = await referralQuery;
+    const {
+      data: referrals,
+      error: referralError,
+      count,
+    } = await referralQuery;
     if (referralError) throw referralError;
     const referralIds = (referrals || []).map((referral) => referral.id);
     const { data: rewards, error: rewardError } = referralIds.length
@@ -101,6 +122,8 @@ export default async (request: Request) => {
         code: student.referral_code,
       })),
       referrals: referrals || [],
+      count: count || 0,
+      page,
       rewards: (rewards || []).map((reward) => ({
         id: reward.id,
         referralId: reward.referral_id,

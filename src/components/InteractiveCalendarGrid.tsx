@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import type { Lesson } from "../domain/model";
 import {
   calendarSlot,
@@ -33,6 +33,10 @@ export function InteractiveCalendarGrid({
 }) {
   const [error, setError] = useState(""),
     resizing = useRef<{ lesson: Lesson; y: number } | undefined>(undefined);
+  const scroll = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (scroll.current) scroll.current.scrollTop = 6 * 4 * slotHeight;
+  }, []);
   const propose = (fn: () => CalendarProposal) => {
     try {
       setError("");
@@ -60,7 +64,7 @@ export function InteractiveCalendarGrid({
         {timezone} · Drag to propose a move; use an event’s resize handle to
         propose a new duration. Open an event for keyboard and mobile editing.
       </p>
-      <div className="time-calendar-scroll">
+      <div className="time-calendar-scroll" ref={scroll}>
         <div
           className="time-calendar"
           style={{
@@ -234,6 +238,9 @@ export function InteractiveCalendarGrid({
                                       15,
                                   ),
                                 );
+                            }}
+                            onPointerCancel={() => {
+                              resizing.current = undefined;
                             }}
                             onKeyDown={(e) => {
                               if (

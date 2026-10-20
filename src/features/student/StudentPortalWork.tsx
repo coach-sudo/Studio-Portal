@@ -55,12 +55,34 @@ export function Work({ data, isDemo }: { data: Snapshot; isDemo: boolean }) {
       )
     : (history.data?.items || []).map(mapMaterialLibraryRow);
   const total = isDemo ? localArchive.length : history.data?.total || 0;
+  const viewerPreferences =
+    data.role === "guardian"
+      ? data.linkedContacts.find((c) => c.id === data.currentLinkedContactId)
+          ?.portalPreferences
+      : data.students[0]?.portalPreferences;
+  const practice = data.assignments.filter(
+      (a) => a.studentId === data.students[0]?.id,
+    ),
+    completed = practice.filter((a) => a.status === "completed").length;
   return (
     <div className="student-page">
       <header className="student-header">
         <h1>My Work</h1>
       </header>
       <Section title="Active script" marked>
+        {(viewerPreferences?.showProgress ??
+          data.settings.portalDefaults.showProgress) && (
+          <div className="portal-practice-progress">
+            <label>
+              Practice progress{" "}
+              <progress value={completed} max={Math.max(1, practice.length)} />
+            </label>
+            <p>
+              {completed} of {practice.length} current practice assignments
+              completed
+            </p>
+          </div>
+        )}
         <div className="table-list">
           {work.map((item) => (
             <article key={item.id} className="current-script-card">

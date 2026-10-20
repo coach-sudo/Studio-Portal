@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useRef } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { supabase } from "../lib/supabase";
@@ -43,6 +44,8 @@ export function usePortalContexts(
   enabled: boolean,
 ) {
   const identity = useSearchIdentity();
+  const client = useQueryClient(),
+    previous = useRef<string | null>(null);
   const query = useQuery({
     queryKey: ["portal-contexts", identity, studentId || null, page],
     queryFn: ({ signal }) => loadPortalContexts(studentId, page, signal),
@@ -51,6 +54,28 @@ export function usePortalContexts(
     gcTime: 60_000,
     retry: false,
     refetchOnMount: "always",
+    refetchOnWindowFocus: "always",
+    refetchInterval: 15_000,
   });
+  const accessFingerprint = JSON.stringify(query.data?.selected || null);
+  useEffect(() => {
+    if (!query.isSuccess && !query.isError) return;
+    const next = `${identity}:${studentId}:${query.isError ? "denied" : accessFingerprint}`;
+    if (previous.current && previous.current !== next && studentId) {
+      const matches = (q: { queryKey: readonly unknown[] }) =>
+        q.queryKey[0] !== "portal-contexts" && q.queryKey.includes(studentId);
+      void client
+        .cancelQueries({ predicate: matches })
+        .then(() => client.removeQueries({ predicate: matches }));
+    }
+    previous.current = next;
+  }, [
+    identity,
+    studentId,
+    accessFingerprint,
+    query.isSuccess,
+    query.isError,
+    client,
+  ]);
   return { ...query, identity };
 }

@@ -29,6 +29,7 @@ import { useStudioStore } from "../../state/StudioStore";
 
 import { studentName } from "./StudioOperations.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { FinancialDashboard } from "./FinancialDashboard";
 
 type PackageBuilderPayload = {
   id?: string;
@@ -219,6 +220,7 @@ export function FinanceView({
           {notice}
         </p>
       )}
+      <FinancialDashboard data={data} isDemo={isDemo} />
       <InvoiceWorkspace data={data} isDemo={isDemo} />
       <div className="two-section-grid">
         <Section

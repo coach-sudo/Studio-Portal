@@ -234,7 +234,7 @@ export function BookingCenter() {
         await studioCommand("settings", {
           command: "update",
           expectedVersion: 1,
-          payload: { settings: updates },
+          payload: { settings: updates, baseSettings: data!.settings },
           reason: "Coach updated booking setup",
         });
         await invalidateStudioDomains(queryClient, ["identity", "booking"]);
@@ -804,6 +804,35 @@ function ServiceDialog({
               }
             />
           </label>
+          {!service && (
+            <label>
+              Use a studio default rate
+              <select
+                value=""
+                onChange={(e) => {
+                  const key = e.target.value;
+                  if (!key) return;
+                  const amount =
+                    settings.lessonRatesMinor[key as "intro" | 30 | 60 | 90];
+                  setValue((v) => ({
+                    ...v,
+                    priceMinor: amount,
+                    ...(key === "intro"
+                      ? {}
+                      : { durationMinutes: Number(key) }),
+                  }));
+                }}
+              >
+                <option value="">Choose a default</option>
+                <option value="30">30-minute lesson</option>
+                <option value="60">60-minute lesson</option>
+                <option value="90">90-minute lesson</option>
+                <option value="intro">
+                  Intro rate (keep selected duration)
+                </option>
+              </select>
+            </label>
+          )}
           <label>
             Extra charge for in-person lessons (USD)
             <input

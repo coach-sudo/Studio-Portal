@@ -77,6 +77,11 @@ export default async (request: Request, context: Context) => {
           showEmail?: boolean;
           showPhone?: boolean;
           primaryHeadshotMaterialId?: string;
+          presentation?: unknown;
+          credits?: string;
+          skills?: string;
+          materialIds?: string[];
+          materialSnapshot?: NonNullable<typeof materials>;
         }
       | undefined;
     const { data: studio } = await db
@@ -85,7 +90,15 @@ export default async (request: Request, context: Context) => {
         .eq("id", student!.studio_id)
         .single(),
       resolved = [];
-    for (const material of materials || []) {
+    for (const currentMaterial of materials || []) {
+      const material =
+        content?.materialSnapshot?.find((m) => m.id === currentMaterial.id) ||
+        currentMaterial;
+      if (
+        Array.isArray(content?.materialIds) &&
+        !content.materialIds.includes(material.id)
+      )
+        continue;
       let url = material.external_url;
       if (material.storage_path) {
         const { data: signed } = await db.storage
@@ -131,6 +144,9 @@ export default async (request: Request, context: Context) => {
       showEmail: Boolean(content?.showEmail),
       showPhone: Boolean(content?.showPhone),
       primaryHeadshotMaterialId: content?.primaryHeadshotMaterialId,
+      presentation: content?.presentation,
+      credits: content?.credits,
+      skills: content?.skills,
       focusArea: student?.focus_area,
       publishedAt: revision?.published_at,
       materials: resolved,

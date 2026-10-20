@@ -5,6 +5,10 @@ import { mapStudentChanges } from "../_shared/student-updates";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 import { requireAccessibleProfilePhoto } from "../_shared/profile-photo-access";
+const objectFields = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
 export async function handleStudentsCommands(
   ctx: V2CommandContext,
@@ -467,6 +471,22 @@ export async function handleStudentsCommands(
     }
     Object.assign(changes, mapStudentChanges(payload, allowed, columns));
     if (
+      payload.portalPreferences &&
+      typeof payload.portalPreferences === "object"
+    )
+      changes.portal_preferences = {
+        ...before.portal_preferences,
+        ...payload.portalPreferences,
+      };
+    if (
+      payload.notificationPreferences &&
+      typeof payload.notificationPreferences === "object"
+    )
+      changes.notification_preferences = {
+        ...before.notification_preferences,
+        ...payload.notificationPreferences,
+      };
+    if (
       payload.profilePhotoAssetId &&
       payload.profilePhotoAssetId !== before.profile_photo_asset_id
     )
@@ -802,6 +822,7 @@ export async function handleStudentsCommands(
       .select("*")
       .eq("id", input.entityId)
       .eq("user_id", authData.user.id)
+      .eq("portal_enabled", true)
       .single();
     if (readError || !before) throw new Error("FORBIDDEN");
     const email = String(input.payload.email || before.email)
@@ -827,11 +848,14 @@ export async function handleStudentsCommands(
         email,
         timezone: timezone || null,
         timezone_confirmed: Boolean(timezone),
-        notification_preferences:
-          input.payload.notificationPreferences ||
-          before.notification_preferences,
-        portal_preferences:
-          input.payload.portalPreferences || before.portal_preferences || {},
+        notification_preferences: {
+          ...objectFields(before.notification_preferences),
+          ...objectFields(input.payload.notificationPreferences),
+        },
+        portal_preferences: {
+          ...objectFields(before.portal_preferences),
+          ...objectFields(input.payload.portalPreferences),
+        },
         version: before.version + 1,
         updated_at: new Date().toISOString(),
       })

@@ -1,4 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { loadHouseholdAccess } from "../../data/studioOperations";
+import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 import { Mail, MessageSquare, UserRound } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
@@ -100,6 +102,12 @@ export function LinkedContacts({
   ) => Promise<void>;
 }) {
   const queryClient = useQueryClient();
+  const identity = usePrivateIdentity();
+  const accessStates = useQuery({
+    queryKey: ["household-access", identity, student.id],
+    queryFn: ({ signal }) => loadHouseholdAccess(student.id, signal),
+    enabled: !isDemo && !!identity,
+  });
   const store = useStudioStore();
   const [editing, setEditing] = useState<Data["linkedContacts"][number]>();
   const [adding, setAdding] = useState(false);
@@ -295,7 +303,22 @@ export function LinkedContacts({
                     ? "sent to delivery provider"
                     : delivery?.status || "not created"}
                 </small>
-                <small>Activation: not verified</small>
+                <small>
+                  Account:{" "}
+                  {accessStates.data?.items.find(
+                    (a) => a.linked_contact_id === contact.id,
+                  )?.activation === "signed_in"
+                    ? "has signed in"
+                    : accessStates.data?.items.some(
+                          (a) => a.linked_contact_id === contact.id,
+                        )
+                      ? "provisioned; sign-in not yet recorded"
+                      : accessStates.isError
+                        ? "verification unavailable"
+                        : isDemo
+                          ? "demo account"
+                          : "not provisioned"}
+                </small>
               </div>
               <div className="household-contact-actions">
                 <button

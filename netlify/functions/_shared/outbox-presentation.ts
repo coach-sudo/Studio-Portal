@@ -1,5 +1,7 @@
 import { renderStudioEmail } from "./email-presentation";
 import { portalActionUrl, type PortalAction } from "./portal-url";
+import { renderCampaignContent } from "../../../src/domain/campaignBlocks";
+import { z } from "zod";
 
 export interface EmailStudio {
   name: string;
@@ -19,6 +21,29 @@ export function presentOutboxMessage(
   origin: string,
   action?: { label: string; url: string },
 ) {
+  const campaign = z
+    .object({
+      campaignContent: z.unknown(),
+      campaignValues: z.object({
+        firstName: z.string(),
+        fullName: z.string(),
+        email: z.string(),
+        studioName: z.string(),
+        portalUrl: z.string().url(),
+        unsubscribeUrl: z.string().url(),
+      }),
+    })
+    .safeParse(input.entity_snapshot);
+  if (campaign.success && campaign.data.campaignContent) {
+    const values = campaign.data.campaignValues;
+    if (
+      new URL(values.portalUrl).origin !== origin ||
+      new URL(values.unsubscribeUrl).origin !== origin ||
+      !new URL(values.unsubscribeUrl).pathname.startsWith("/unsubscribe/")
+    )
+      throw new Error("Campaign origin mismatch");
+    return renderCampaignContent(campaign.data.campaignContent, values);
+  }
   // Old editable copy may contain the historic misspelled host. Current links are rebuilt
   // from the trusted origin, not from the old host or request headers; discard query data.
   const text = input.body.replace(

@@ -741,6 +741,9 @@ function StudentForm({
     [name, setName] = useState(""),
     [email, setEmail] = useState(""),
     [phone, setPhone] = useState(""),
+    [isMinor, setIsMinor] = useState(false),
+    [guardianName, setGuardianName] = useState(""),
+    [guardianEmail, setGuardianEmail] = useState(""),
     [saving, setSaving] = useState(false),
     [error, setError] = useState(""),
     [matches, setMatches] =
@@ -797,7 +800,9 @@ function StudentForm({
           email: email.trim() || undefined,
           phone: phone.trim() || undefined,
           status: "lead",
-          isMinor: false,
+          isMinor,
+          guardianName: guardianName.trim() || undefined,
+          guardianEmail: guardianEmail.trim() || undefined,
           portalEnabled: false,
           actorPageEligible: false,
           version: 1,
@@ -873,6 +878,46 @@ function StudentForm({
               }}
             />
           </label>
+          <label className="check-row full">
+            <input
+              type="checkbox"
+              checked={isMinor}
+              onChange={(e) => {
+                setIsMinor(e.target.checked);
+                edit();
+              }}
+            />
+            Student is under 18
+          </label>
+          {isMinor && (
+            <>
+              <label>
+                Guardian name
+                <input
+                  value={guardianName}
+                  onChange={(e) => {
+                    setGuardianName(e.target.value);
+                    edit();
+                  }}
+                />
+              </label>
+              <label>
+                Guardian email
+                <input
+                  type="email"
+                  value={guardianEmail}
+                  onChange={(e) => {
+                    setGuardianEmail(e.target.value);
+                    edit();
+                  }}
+                />
+              </label>
+              <p className="field-help full">
+                Guardian details may be added later. Access stays disabled until
+                contact and consent are reviewed.
+              </p>
+            </>
+          )}
           {!!matches?.length && (
             <div className="full">
               <h3>Possible existing records</h3>

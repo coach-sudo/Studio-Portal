@@ -3,6 +3,7 @@ import { FolderOpen, Plus, UserRound } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
+import { ActorBuilder } from "../../components/ActorBuilder";
 import {
   Dialog,
   EmptyState,
@@ -31,6 +32,44 @@ export function ActorPage({
   const queryClient = useQueryClient();
   const profile = data.actorProfiles.find((i) => i.studentId === student.id);
   const [previewing, setPreviewing] = useState(false);
+  const [editing, setEditing] = useState(false),
+    [notice, setNotice] = useState("");
+  const save = async (
+    displayName: string,
+    bio: string,
+    portfolio: NonNullable<NonNullable<typeof profile>["draftContent"]>,
+    submit: boolean,
+  ) => {
+    if (!profile) return;
+    if (isDemo)
+      store.transact((draft) => {
+        const p = draft.actorProfiles.find((x) => x.id === profile.id)!;
+        Object.assign(p, {
+          displayName,
+          bio,
+          draftContent: portfolio,
+          draftStatus: submit ? "review_requested" : "draft",
+          version: p.version + 1,
+        });
+      });
+    else {
+      await studioCommand("actor-pages", {
+        command: "save",
+        entityId: profile.id,
+        expectedVersion: profile.version,
+        payload: {
+          displayName,
+          bio,
+          portfolio,
+          status: submit ? "review_requested" : "draft",
+        },
+        reason: "Coach saved Actor Page draft",
+      });
+      await invalidateStudioDomains(queryClient, ["actorProfiles"]);
+    }
+    setEditing(false);
+    setNotice("Draft saved. Published revision unchanged.");
+  };
   const create = async () => {
     if (isDemo)
       store.transact((draft) => {
@@ -73,6 +112,11 @@ export function ActorPage({
   );
   return (
     <div className="student-page">
+      {notice && (
+        <p role="status" className="portal-notice">
+          {notice}
+        </p>
+      )}
       <Section title="Actor page" marked>
         {profile ? (
           <div className="profile-preview">
@@ -86,6 +130,7 @@ export function ActorPage({
               {profile.status.replaceAll("_", " ")}
             </Status>
             <Link to="/coach/actor-pages">Open publishing workflow</Link>
+            <button onClick={() => setEditing(true)}>Build page</button>
             <button className="text-button" onClick={() => setPreviewing(true)}>
               Preview draft
             </button>
@@ -161,6 +206,16 @@ export function ActorPage({
             logoUrl={data.settings.branding.logoUrl}
           />
         </Dialog>
+      )}
+      {editing && profile && (
+        <ActorBuilder
+          profile={profile}
+          materials={actorMaterials}
+          studioName={data.settings.studioName}
+          logoUrl={data.settings.branding.logoUrl}
+          onClose={() => setEditing(false)}
+          onSave={save}
+        />
       )}
     </div>
   );

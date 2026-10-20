@@ -1,0 +1,54 @@
+.finance-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 12rem), 1fr));
+  gap: 1rem;
+}
+.finance-metrics article {
+  padding: 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md, 12px);
+  background: var(--app-surface);
+  min-width: 0;
+}
+.finance-metrics h3 {
+  font-size: 0.85rem;
+  margin: 0 0 0.6rem;
+}
+.finance-metrics button {
+  display: grid;
+  gap: 0.3rem;
+  width: 100%;
+  text-align: left;
+  white-space: normal;
+  background: var(--app-surface);
+  color: var(--ink);
+}
+.finance-metrics strong {
+  font-size: 1.4rem;
+}
+.finance-metrics small {
+  color: var(--muted);
+}
+.finance-support {
+  margin-top: 1.5rem;
+}
+.finance-support header,
+.finance-support footer {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.finance-support .table-list article {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+.finance-support .table-list article > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.finance-support .table-list small {
+  display: block;
+}

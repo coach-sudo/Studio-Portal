@@ -30,6 +30,7 @@ import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
+import { CommunicationActivity } from "./CommunicationActivity";
 
 type Thread = Conversation & {
   subtitle: string;
@@ -209,7 +210,7 @@ function Inbox({
     initial?.id || "",
   );
   const selected = selectedKey
-    ? threads.find((item) => item.id === selectedKey) || initial
+    ? threads.find((item) => item.id === selectedKey)
     : undefined;
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
@@ -339,10 +340,22 @@ function Inbox({
           (item) => item.conversationId === selected.id,
         )
       : [];
+  const targetMessage = params.get("message");
+  useEffect(() => {
+    if (targetMessage)
+      document
+        .getElementById(`inbox-message-${targetMessage}`)
+        ?.scrollIntoView?.({ block: "center" });
+  }, [targetMessage, selected?.id, messages.length]);
 
   const choose = (thread: Thread) => {
     setSelectedKey(thread.id);
-    setParams({ conversation: thread.id });
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set("conversation", thread.id);
+      next.delete("message");
+      return next;
+    });
     setNotice("");
     setBody(thread.draftBody || "");
     setNewMessageOpen(false);
@@ -522,7 +535,11 @@ function Inbox({
         const messageId = response.resource.id as string;
         const conversationId = response.resource.conversation_id as string;
         setSelectedKey(conversationId);
-        setParams({ conversation: conversationId });
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.set("conversation", conversationId);
+          return next;
+        });
         setUndoMessage({ id: messageId, until: Date.now() + 10_000 });
         await invalidateStudioDomains(queryClient, ["messaging"]);
       }
@@ -749,6 +766,7 @@ function Inbox({
           </button>
         </div>
       )}
+      <CommunicationActivity isDemo={isDemo} />
       <div className={`inbox-layout ${selected ? "has-selection" : ""}`}>
         <aside className="inbox-threads" aria-label="Conversations">
           <header>
@@ -845,6 +863,18 @@ function Inbox({
                 <div>
                   <strong>{selected.title}</strong>
                   <small>{selected.subtitle}</small>
+                  {role === "coach" && selectedStudent && (
+                    <div className="form-actions">
+                      <a href={`/coach/students/${selectedStudent.id}`}>
+                        Student record
+                      </a>
+                      <a
+                        href={`/coach/students/${selectedStudent.id}/household`}
+                      >
+                        Household
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {role === "coach" && selectedStudent?.email && (
                   <button onClick={() => openEmail()}>
@@ -857,6 +887,12 @@ function Inbox({
                 {messages.map((message) => (
                   <article
                     key={message.id}
+                    id={`inbox-message-${message.id}`}
+                    style={
+                      targetMessage === message.id
+                        ? { outline: "2px solid var(--gold)", outlineOffset: 2 }
+                        : undefined
+                    }
                     className={
                       message.authorRole === role ||
                       (role === "coach" && message.authorRole === "coach")

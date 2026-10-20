@@ -245,6 +245,7 @@ export async function handleSetupCommands(
     }
     if (!response) throw new Error("UNKNOWN_COMMAND");
     const result = await response.json();
+    if (!response.ok) throw new Error(result.message || "Setup action failed.");
     await manage(
       "finish",
       { reviewId, actionId, ok: response.ok, result },
