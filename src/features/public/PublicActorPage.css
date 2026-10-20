@@ -1,5 +1,6 @@
 /* Feature-owned styles extracted from the global stylesheet. */
 .actor-public {
+  --muted: #53645c;
   min-height: 100vh;
   background: #fffdf8;
   color: #172e29;
@@ -633,4 +634,24 @@
   color: #fffdf8;
   border-color: #fffdf8;
   background: #183c36;
+}
+.actor-public.actor-layout-spotlight .actor-eyebrow {
+  color: #fffdf8;
+}
+/* Match the preview container, including when a desktop user selects mobile. */
+@container (max-width: 600px) {
+  .actor-public.actor-render-preview .actor-public-hero,
+  .actor-public.actor-render-preview
+    .actor-public-hero.actor-public-hero-sparse {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1.5rem !important;
+    min-width: 0;
+  }
+  .actor-public.actor-render-preview .actor-public-intro {
+    padding: 1rem;
+    min-width: 0;
+  }
+  .actor-public.actor-render-preview .actor-media-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }

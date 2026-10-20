@@ -31,7 +31,7 @@ test.describe("student product-review evidence", () => {
       if (name === "actor-editor") {
         await page.getByRole("button", { name: "Edit" }).click();
         await expect(
-          page.getByRole("dialog", { name: "Edit actor profile" }),
+          page.getByRole("dialog", { name: "Build actor page" }),
         ).toBeVisible();
       }
       if (name === "settings") {

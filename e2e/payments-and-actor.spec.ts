@@ -64,7 +64,9 @@ test("@journey @a11y Journey 09: student submits an actor edit, coach publishes 
   await student.page.getByRole("button", { name: "Edit" }).click();
   await student.page.getByLabel("Display name").fill(updatedName);
   await student.page.getByLabel("Submit for coach review").check();
-  await student.page.getByRole("button", { name: "Save" }).click();
+  await student.page
+    .getByRole("button", { name: "Save draft", exact: true })
+    .click();
   await expect(student.page.getByRole("status")).toContainText(
     "submitted for coach review",
   );
@@ -74,7 +76,20 @@ test("@journey @a11y Journey 09: student submits an actor edit, coach publishes 
   await coach.page.goto("/coach/actor-pages");
   const profileRow = coach.page.locator("article", { hasText: updatedName });
   await expect(profileRow).toContainText("review requested");
-  await profileRow.getByRole("button", { name: "Publish" }).click();
+  await profileRow
+    .getByRole("button", { name: "Review draft", exact: true })
+    .click();
+  await coach.page
+    .getByRole("dialog", { name: "Approve draft", exact: true })
+    .getByRole("button", { name: "Confirm approval", exact: true })
+    .click();
+  await profileRow
+    .getByRole("button", { name: "Review & publish", exact: true })
+    .click();
+  await coach.page
+    .getByRole("dialog", { name: "Publish reviewed revision", exact: true })
+    .getByRole("button", { name: "Confirm publication", exact: true })
+    .click();
   await expect(
     coach.page.getByText("Actor page marked published"),
   ).toBeVisible();

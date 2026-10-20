@@ -1,12 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-async function layout(page: Page) {
+async function layout(page: Page, scope?: string) {
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth + 1,
     ),
   ).toBe(true);
-  const a = await new AxeBuilder({ page }).analyze();
+  // The email preview deliberately has an opaque, script-disabled sandbox.
+  // Audit its containing UI here; shared email markup is checked separately.
+  let audit = new AxeBuilder({ page })
+    .setLegacyMode(true)
+    .options({ iframes: false });
+  if (scope) audit = audit.include(scope);
+  const a = await audit.analyze();
   expect(
     a.violations
       .filter((v) => ["serious", "critical"].includes(v.impact || ""))
@@ -14,6 +20,14 @@ async function layout(page: Page) {
   ).toEqual([]);
 }
 test.beforeEach(async ({ context }) => {
+  await context.addInitScript(() => {
+    document.addEventListener("DOMContentLoaded", () => {
+      const style = document.createElement("style");
+      style.textContent =
+        "*,*::before,*::after{transition-duration:0s!important;animation-duration:0s!important}";
+      document.head.append(style);
+    });
+  });
   await context.route("**/*", (r) =>
     new URL(r.request().url()).origin === "http://127.0.0.1:4178"
       ? r.continue()
@@ -78,7 +92,12 @@ for (const width of [320, 390, 768, 1440])
     await builder
       .getByRole("button", { name: "Mobile preview", exact: true })
       .click();
-    await layout(page);
+    expect(
+      await builder
+        .locator(".actor-builder-viewport")
+        .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+    ).toBe(true);
+    await layout(page, '[role="dialog"]');
     await page.screenshot({
       path: info.outputPath(`actor-light-${width}.png`),
       fullPage: true,
@@ -86,7 +105,7 @@ for (const width of [320, 390, 768, 1440])
     await page.evaluate(
       () => (document.documentElement.dataset.portalTheme = "dark"),
     );
-    await layout(page);
+    await layout(page, '[role="dialog"]');
     await page.screenshot({
       path: info.outputPath(`actor-dark-${width}.png`),
       fullPage: true,
