@@ -171,15 +171,14 @@ function DemoLessons({ data, student }: { data: Data; student: Student }) {
     </div>
   );
 }
-export function CoachLessonHub({
-  data,
-  student,
-  isDemo,
-  onAddNote,
-  onEditNote,
-  onAddAssignment,
-  onAddMaterial,
-}: {
+export function CoachLessonHub(props: CoachLessonHubProps) {
+  const { lessonId = "" } = useParams();
+  return (
+    <CoachLessonWorkspace key={`${props.student.id}:${lessonId}`} {...props} />
+  );
+}
+
+type CoachLessonHubProps = {
   data: Data;
   student: Student;
   isDemo: boolean;
@@ -187,7 +186,17 @@ export function CoachLessonHub({
   onEditNote: (note: Note) => void;
   onAddAssignment: (lessonId: string) => void;
   onAddMaterial: (lessonId: string) => void;
-}) {
+};
+
+function CoachLessonWorkspace({
+  data,
+  student,
+  isDemo,
+  onAddNote,
+  onEditNote,
+  onAddAssignment,
+  onAddMaterial,
+}: CoachLessonHubProps) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
   const navigate = useNavigate();

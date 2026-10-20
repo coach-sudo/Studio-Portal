@@ -279,3 +279,64 @@ test("phone, tablet and dark appearance retain visible controls and exact resour
   await page.waitForTimeout(250);
   await checkView(page);
 });
+
+test("next lesson resets payment fields and closes the previous lesson actions", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2",
+      data = JSON.parse(localStorage.getItem(key)!);
+    Object.assign(data.lessons[0], {
+      priceMinor: 10000,
+      paidMinor: 2500,
+      paymentStatus: "partially_paid",
+      packageId: undefined,
+    });
+    data.lessons.push({
+      ...data.lessons[0],
+      id: "wave4-next",
+      topic: "Next coaching lesson",
+      startsAt: new Date(Date.now() + 172800000).toISOString(),
+      endsAt: new Date(Date.now() + 176400000).toISOString(),
+      priceMinor: 20000,
+      paidMinor: 0,
+      paymentStatus: "due",
+    });
+    data.creditEntries = [];
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.goto(`/coach/students/student-maya/lessons/${lessonId}`);
+  await page
+    .getByText("Payment, credits & lesson administration", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Credits & payment", exact: true })
+    .click();
+  const payment = page.getByRole("dialog", {
+    name: "Lesson credits",
+    exact: true,
+  });
+  await expect(
+    payment.getByLabel("Lesson price (USD)", { exact: true }),
+  ).toHaveValue("100");
+  await payment.getByLabel("Lesson price (USD)", { exact: true }).fill("999");
+  await payment.getByRole("button", { name: "Close", exact: true }).click();
+  await page.getByRole("link", { name: "Next lesson", exact: true }).click();
+  await expect(payment).toBeHidden();
+  await page
+    .getByText("Payment, credits & lesson administration", { exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Credits & payment", exact: true })
+    .click();
+  await expect(
+    payment.getByLabel("Lesson price (USD)", { exact: true }),
+  ).toHaveValue("200");
+  await expect(
+    payment.getByLabel("Amount paid (USD)", { exact: true }),
+  ).toHaveValue("0");
+  await expect(payment.getByRole("combobox", { name: /^Status/ })).toHaveValue(
+    "due",
+  );
+});
