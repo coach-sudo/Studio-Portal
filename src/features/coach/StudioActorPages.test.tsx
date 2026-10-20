@@ -30,10 +30,10 @@ describe("Actor publishing list", () => {
       screen.getByText("Draft: review requested", { exact: true }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Review draft", exact: true }),
+      screen.getByRole("button", { name: "Review draft" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Review & publish", exact: true }),
+      screen.queryByRole("button", { name: "Review & publish" }),
     ).not.toBeInTheDocument();
   });
 });
