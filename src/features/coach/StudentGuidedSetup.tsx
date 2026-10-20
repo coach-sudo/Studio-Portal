@@ -81,7 +81,7 @@ function describe(a: SetupAction, context?: SetupContext) {
         ? "Enable existing student access"
         : "Disable student access";
     case "invitation":
-      return `Invite ${a.payload.accountType} account${a.payload.linkedContactId ? " · selected household contact" : ""}`;
+      return `Invite ${a.payload.accountType} · ${a.payload.expectedRecipient || "recipient will be verified at review"}`;
   }
 }
 
@@ -113,6 +113,8 @@ export function StudentGuidedSetup({
     focusArea: student.focusArea || "",
     goals: student.goals || "",
     isMinor: student.isMinor,
+    email: student.email || "",
+    phone: student.phone || "",
   });
   const [contact, setContact] =
       useState<Extract<SetupAction, { kind: "contact" }>["payload"]>(
@@ -148,7 +150,12 @@ export function StudentGuidedSetup({
       initialized.current = true;
       setState(loaded.data);
       const d = loaded.data.draft.actions?.find((a) => a.kind === "details");
-      if (d?.kind === "details") setDetails(d.payload);
+      if (d?.kind === "details")
+        setDetails({
+          ...d.payload,
+          email: d.payload.email || "",
+          phone: d.payload.phone || "",
+        });
     }
   }, [loaded.data]);
   const confirmDiscard = useUnsavedWorkspaceChanges(dirty),
@@ -311,6 +318,22 @@ export function StudentGuidedSetup({
                     }
                   />
                 </label>
+                <label>
+                  Email (optional)
+                  <input
+                    type="email"
+                    value={details.email}
+                    onChange={(e) => updateDetails({ email: e.target.value })}
+                  />
+                </label>
+                <label>
+                  Phone (optional)
+                  <input
+                    type="tel"
+                    value={details.phone}
+                    onChange={(e) => updateDetails({ phone: e.target.value })}
+                  />
+                </label>
                 <label className="full">
                   Goals
                   <WritingArea
@@ -353,6 +376,7 @@ export function StudentGuidedSetup({
                           setContact({
                             ...emptyContact,
                             sourceContactId: c.id,
+                            sourceVersion: c.version,
                             fullName: c.full_name,
                             email: c.email,
                           })
@@ -606,7 +630,7 @@ export function StudentGuidedSetup({
                 </p>
                 {current?.packages.map((p) => (
                   <div className="setup-existing full" key={p.id}>
-                    {p.name} · {p.status}
+                    {p.name} · {p.expires_at ? `Expires ${formatStudioDateTime(p.expires_at, data.settings.timezone)}` : "No expiry"}
                   </div>
                 ))}
                 <label className="full">

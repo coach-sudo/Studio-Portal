@@ -61,8 +61,70 @@ export async function handleSetupCommands(
       invitation: 5,
     };
     draft.actions.sort((a, b) => order[a.kind] - order[b.kind]);
+    const identity = await ctx.db
+      .from("students")
+      .select("email,guardian_email")
+      .eq("id", studentId)
+      .eq("studio_id", studioId)
+      .single();
+    if (identity.error || !identity.data) throw new Error("FORBIDDEN");
+    const proposedDetails = draft.actions.find(
+      (a) =>
+        a.kind === "details" && current.results[a.id]?.status !== "succeeded",
+    );
     for (const action of draft.actions) {
-      if (current.results[action.id]?.status === "succeeded") continue;
+      if (current.results[action.id]?.status === "succeeded") {
+        const previous = current.review?.actions.find(
+          (a) => a.id === action.id,
+        );
+        if (previous) Object.assign(action, previous);
+        continue;
+      }
+      if (action.kind === "contact" && action.payload.sourceContactId) {
+        const c = await ctx.db
+          .from("linked_contacts")
+          .select("full_name,email,version")
+          .eq("id", action.payload.sourceContactId)
+          .eq("studio_id", studioId)
+          .single();
+        if (c.error || !c.data) throw new Error("FORBIDDEN");
+        Object.assign(action.payload, {
+          fullName: c.data.full_name,
+          email: c.data.email,
+          sourceVersion: c.data.version,
+        });
+      }
+      if (action.kind === "invitation") {
+        let recipient =
+          action.payload.accountType === "student"
+            ? proposedDetails?.kind === "details"
+              ? (proposedDetails.payload.email ?? identity.data.email)
+              : identity.data.email
+            : identity.data.guardian_email;
+        if (action.payload.linkedContactId) {
+          const c = await ctx.db
+            .from("linked_contacts")
+            .select("email,version")
+            .eq("id", action.payload.linkedContactId)
+            .eq("student_id", studentId)
+            .eq("studio_id", studioId)
+            .single();
+          if (c.error || !c.data) throw new Error("FORBIDDEN");
+          recipient = c.data.email;
+          action.payload.contactVersion = c.data.version;
+        } else if (action.payload.accountType === "guardian" && !recipient) {
+          const guardian = draft.actions.find(
+            (a) =>
+              a.kind === "contact" && a.payload.relationshipType === "guardian",
+          );
+          if (guardian?.kind === "contact") recipient = guardian.payload.email;
+        }
+        if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))
+          throw new Error(
+            "VALIDATION_FAILED: Add the invitation recipient's email before review.",
+          );
+        action.payload.expectedRecipient = recipient.trim().toLowerCase();
+      }
       if (action.kind === "package") {
         const definition = await ctx.db
           .from("package_definitions")

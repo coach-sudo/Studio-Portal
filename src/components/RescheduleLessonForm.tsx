@@ -107,13 +107,18 @@ export function RescheduleLessonForm({
     ),
   );
   const [durationMinutes, setDurationMinutes] = useState(originalDuration);
+  const validDuration =
+    Number.isInteger(durationMinutes) &&
+    durationMinutes >= 15 &&
+    durationMinutes <= 720;
   const nextStart = useMemo(
     () => asUtc(date, time, timezone),
     [date, time, timezone],
   );
-  const nextEnd = nextStart
-    ? new Date(nextStart.getTime() + durationMinutes * 60_000)
-    : undefined;
+  const nextEnd =
+    nextStart && validDuration
+      ? new Date(nextStart.getTime() + durationMinutes * 60_000)
+      : undefined;
   const unchanged =
     nextStart?.getTime() === new Date(lesson.startsAt).getTime() &&
     durationMinutes === originalDuration;
@@ -124,7 +129,8 @@ export function RescheduleLessonForm({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!nextStart || !nextEnd || unchanged || inPast || busy) return;
+    if (!nextStart || !nextEnd || !validDuration || unchanged || inPast || busy)
+      return;
     const key = `${nextStart.toISOString()}|${nextEnd.toISOString()}`;
     if (onCheckConflicts && approvedTime !== key) {
       setChecking(true);
@@ -175,7 +181,7 @@ export function RescheduleLessonForm({
           <small>Currently scheduled</small>
           <strong>{display(lesson.startsAt, timezone)}</strong>
           <span>
-            {studentName} · {durationMinutes} minutes · {lesson.locationLabel}
+            {studentName} · {originalDuration} minutes · {lesson.locationLabel}
           </span>
         </div>
       </div>
@@ -308,8 +314,8 @@ export function RescheduleLessonForm({
           : "The " +
             cancellationWindowHours +
             "-hour change policy is currently satisfied."}{" "}
-        The duration stays the same. Google Calendar and the student invitation
-        update automatically after the new time is confirmed.
+        Calendar updates and permitted notifications are queued after
+        confirmation. Their synchronization status remains visible separately.
       </p>
 
       <div className="form-actions reschedule-actions">
@@ -323,7 +329,14 @@ export function RescheduleLessonForm({
         </button>
         <button
           type="submit"
-          disabled={busy || checking || !nextStart || unchanged || inPast}
+          disabled={
+            busy ||
+            checking ||
+            !nextStart ||
+            !validDuration ||
+            unchanged ||
+            inPast
+          }
         >
           {busy || checking
             ? "Checking calendar…"

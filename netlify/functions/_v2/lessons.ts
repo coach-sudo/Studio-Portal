@@ -4,6 +4,7 @@ import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 import { handleLessonBulkCommands } from "./lesson-bulk";
+import { seriesDates } from "../../../src/domain/booking";
 
 export async function handleLessonsCommands(
   ctx: V2CommandContext,
@@ -97,19 +98,21 @@ export async function handleLessonsCommands(
   }
 
   if (domain === "lessons" && input.command === "create") {
-    const studioId = await requireCoach(),
-      studentId = String(input.payload.studentId || ""),
+    await requireCoach();
+    const studentId = String(input.payload.studentId || ""),
       startsAt = String(input.payload.startsAt || ""),
       endsAt = String(input.payload.endsAt || "");
     if (
       !studentId ||
       !startsAt ||
       !endsAt ||
+      !Number.isFinite(Date.parse(startsAt)) || !Number.isFinite(Date.parse(endsAt)) ||
       new Date(endsAt) <= new Date(startsAt)
     )
       throw new Error("VALIDATION_FAILED");
     const cadence = String(input.payload.recurrence || "none");
     const occurrenceCount = Number(input.payload.occurrenceCount || 1);
+    if (!["none","weekly","biweekly"].includes(cadence) || !Number.isInteger(occurrenceCount) || occurrenceCount < 1 || occurrenceCount > 52) throw new Error("VALIDATION_FAILED");
     const value = {
       ...input.payload,
       studentId,
@@ -139,11 +142,11 @@ export async function handleLessonsCommands(
     }
     if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
       const token = await googleAccessToken();
-      if (
-        (await googleFreeBusy(token, startsAt, endsAt)).length &&
-        !input.payload.allowConflict
-      )
-        throw new Error("SLOT_UNAVAILABLE");
+      const tz = String(input.payload.timezone || "America/New_York");
+      const starts = cadence === "none" ? [startsAt] : seriesDates(startsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
+      const ends = cadence === "none" ? [endsAt] : seriesDates(endsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
+      for (let i=0;i<starts.length;i++)
+        if ((await googleFreeBusy(token,starts[i],ends[i])).length && !input.payload.allowConflict) throw new Error("SLOT_UNAVAILABLE");
     }
     const created = await db.rpc(
       "command_create_lesson_once" as never,

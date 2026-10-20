@@ -1,11 +1,308 @@
 // Focused disposable PG17 integration checks. Never connects to a linked or hosted database.
-import assert from 'node:assert/strict';import fs from 'node:fs';import {createRequire} from 'node:module';import {execFileSync} from 'node:child_process';import {join} from 'node:path';import {pathToFileURL} from 'node:url';
-const runtime=process.env.STUDIO_LOCAL_PG_RUNTIME;assert(runtime,'Set the existing local PG17 runtime directory');const {Client}=createRequire(join(runtime,'package.json'))('pg');const {initdb,pg_ctl}=await import(pathToFileURL(join(runtime,'node_modules/@embedded-postgres/windows-x64/dist/index.js')).href);const root=join(runtime,'wave-five-'+Date.now()),data=join(root,'data');fs.mkdirSync(root);const bin=(p,args)=>execFileSync(p,args,{stdio:'ignore',windowsHide:true});let db;
-try{bin(initdb,['-D',data,'-U','postgres','-A','trust','--encoding=UTF8','--locale=C']);bin(pg_ctl,['-D',data,'-l',join(root,'postgres.log'),'-o','-h 127.0.0.1 -p 56441 -c studio.wave_five_disposable=focused','-w','start']);db=new Client({host:'127.0.0.1',port:56441,user:'postgres',database:'postgres'});await db.connect();assert.equal((await db.query("select current_setting('studio.wave_five_disposable') v")).rows[0].v,'focused');
-const bootstrap=fs.readFileSync('scripts/staging/test-recurring-crlf-recovery.mjs','utf8').replace(/\r\n/g,'\n').match(/await client\.query\(`(create role anon;[\s\S]*?)`\);/)[1];await db.query(bootstrap);const migrations=fs.readdirSync('supabase/migrations').filter(f=>f.endsWith('.sql')).sort();for(const file of migrations){try{await db.query(fs.readFileSync(join('supabase/migrations',file),'utf8').replace(/\r\n/g,'\n'));}catch(e){throw new Error('Migration '+file+': '+e.message);}}
-const studio='f5500000-0000-4000-8000-000000000001',coach='f5500000-0000-4000-8000-000000000002',peer='f5500000-0000-4000-8000-000000000003';await db.query("insert into auth.users(id,email) values($1,'wave5-coach@example.test'),($2,'wave5-peer@example.test')",[coach,peer]);await db.query("insert into public.studios(id,name,slug) values($1,'Wave five isolated','wave-five-isolated')",[studio]);await db.query("insert into public.memberships(studio_id,user_id,role,display_name) values($1,$2,'coach','Synthetic coach')",[studio,coach]);
-const as=async(role,id,sql,args=[])=>{await db.query('begin');try{await db.query('set local role '+role);await db.query("select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",[id,JSON.stringify({sub:id,role})]);const result=await db.query(sql,args);await db.query('commit');return result.rows[0]?.v;}catch(e){await db.query('rollback');throw e;}};
-const value={fullName:'Name Only'},created=await as('authenticated',coach,'select public.command_create_student_once($1,$2) v',[value,'create-student-once']);assert.equal(created.resource.portal_enabled,false);assert.equal(created.resource.email,null);const student=created.resource.id;assert.deepEqual(await as('authenticated',coach,'select public.command_create_student_once($1,$2) v',[value,'create-student-once']),created);assert.equal((await db.query('select count(*)::int n from public.students')).rows[0].n,1);await assert.rejects(()=>as('authenticated',coach,'select public.command_create_student_once($1,$2) v',[value,'different-create-key']),/DUPLICATE_STUDENT/);await assert.rejects(()=>as('authenticated',peer,'select public.command_create_student_once($1,$2) v',[value,'forged-create-key']),/FORBIDDEN/);console.log('PASS: name-only creation, replay, duplicate review and coach authorization');
-const action={id:'f5500000-0000-4000-8000-000000000004',kind:'details',payload:{fullName:'Name Only',focusArea:'Character work',goals:'Clear choices',isMinor:true}},draft={step:5,actions:[action]};const manage=(command,value={},version=0,key='setup-request-key')=>as('service_role','', 'select public.manage_student_setup($1,$2,$3,$4,$5,$6) v',[coach,student,command,value,version,key]);let setup=await manage('save',draft);assert.equal(setup.version,1);assert.equal((await db.query('select count(*)::int n from public.lessons')).rows[0].n,0);await assert.rejects(()=>manage('save',draft,0),/VERSION_CONFLICT/);setup=await manage('review',{},1);const reviewId=setup.review.id,claim=await manage('claim',{reviewId,actionId:action.id},1,'approved-action-key');assert.equal(claim.action.kind,'details');const applied=await as('authenticated',coach,'select public.command_apply_setup_record($1,$2,$3,$4,$5) v',[student,'details',action.payload,claim.studentVersion,claim.key]);assert.equal(applied.resource.focus_area,'Character work');assert.deepEqual(await as('authenticated',coach,'select public.command_apply_setup_record($1,$2,$3,$4,$5) v',[student,'details',action.payload,claim.studentVersion,claim.key]),applied);await manage('finish',{reviewId,actionId:action.id,ok:true,result:applied},1,claim.key);assert.equal((await manage('claim',{reviewId,actionId:action.id},1,'should-not-reexecute')).completed,true);await assert.rejects(()=>as('authenticated',peer,'select * from workspace_internal.student_setups'),/permission denied/);console.log('PASS: durable draft, frozen review, stale version, interrupted action replay and private state');
-const lesson={studentId:student,topic:'Isolated coaching',startsAt:'2031-02-01T15:00:00Z',endsAt:'2031-02-01T16:00:00Z',recurrence:'none',occurrenceCount:1,locationType:'in_person',timezone:'America/New_York'};const first=await as('authenticated',coach,'select public.command_create_lesson_once($1,$2) v',[lesson,'lesson-create-key']);assert.deepEqual(await as('authenticated',coach,'select public.command_create_lesson_once($1,$2) v',[lesson,'lesson-create-key']),first);assert.equal((await db.query('select count(*)::int n from public.lessons')).rows[0].n,1);await assert.rejects(()=>as('authenticated',coach,'select public.command_create_lesson_once($1,$2) v',[{...lesson,topic:'Changed'},'lesson-create-key']),/IDEMPOTENCY_CONFLICT/);await assert.rejects(()=>as('authenticated',coach,'select public.command_create_lesson_once($1,$2) v',[lesson,'overlap-another-key']),/SLOT_UNAVAILABLE/);assert.equal((await db.query('select count(*)::int n from public.outbox_messages')).rows[0].n,0);console.log('PASS: lesson creation replay, changed requests, conflicts and no outbound delivery');console.log(JSON.stringify({status:'PASS',migrations:migrations.length,postgres:'17',providers:0,hostedOperations:0}));
-}finally{await db?.end().catch(()=>{});try{bin(pg_ctl,['-D',data,'-m','fast','-w','stop']);}catch{}}
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import { createRequire } from "node:module";
+import { execFileSync } from "node:child_process";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+const runtime = process.env.STUDIO_LOCAL_PG_RUNTIME;
+assert(runtime, "Set the existing local PG17 runtime directory");
+const { Client } = createRequire(join(runtime, "package.json"))("pg");
+const { initdb, pg_ctl } = await import(
+  pathToFileURL(
+    join(runtime, "node_modules/@embedded-postgres/windows-x64/dist/index.js"),
+  ).href
+);
+const root = join(runtime, "wave-five-" + Date.now()),
+  data = join(root, "data");
+fs.mkdirSync(root);
+const bin = (p, args) =>
+  execFileSync(p, args, { stdio: "ignore", windowsHide: true });
+let db;
+try {
+  bin(initdb, [
+    "-D",
+    data,
+    "-U",
+    "postgres",
+    "-A",
+    "trust",
+    "--encoding=UTF8",
+    "--locale=C",
+  ]);
+  bin(pg_ctl, [
+    "-D",
+    data,
+    "-l",
+    join(root, "postgres.log"),
+    "-o",
+    "-h 127.0.0.1 -p 56441 -c studio.wave_five_disposable=focused",
+    "-w",
+    "start",
+  ]);
+  db = new Client({
+    host: "127.0.0.1",
+    port: 56441,
+    user: "postgres",
+    database: "postgres",
+  });
+  await db.connect();
+  assert.equal(
+    (await db.query("select current_setting('studio.wave_five_disposable') v"))
+      .rows[0].v,
+    "focused",
+  );
+  const bootstrap = fs
+    .readFileSync("scripts/staging/test-recurring-crlf-recovery.mjs", "utf8")
+    .replace(/\r\n/g, "\n")
+    .match(/await client\.query\(`(create role anon;[\s\S]*?)`\);/)[1];
+  await db.query(bootstrap);
+  const migrations = fs
+    .readdirSync("supabase/migrations")
+    .filter((f) => f.endsWith(".sql"))
+    .sort();
+  for (const file of migrations) {
+    try {
+      await db.query(
+        fs
+          .readFileSync(join("supabase/migrations", file), "utf8")
+          .replace(/\r\n/g, "\n"),
+      );
+    } catch (e) {
+      throw new Error("Migration " + file + ": " + e.message);
+    }
+  }
+  const studio = "f5500000-0000-4000-8000-000000000001",
+    coach = "f5500000-0000-4000-8000-000000000002",
+    peer = "f5500000-0000-4000-8000-000000000003";
+  await db.query(
+    "insert into auth.users(id,email) values($1,'wave5-coach@example.test'),($2,'wave5-peer@example.test')",
+    [coach, peer],
+  );
+  await db.query(
+    "insert into public.studios(id,name,slug) values($1,'Wave five isolated','wave-five-isolated')",
+    [studio],
+  );
+  await db.query(
+    "insert into public.memberships(studio_id,user_id,role,display_name) values($1,$2,'coach','Synthetic coach')",
+    [studio, coach],
+  );
+  const as = async (role, id, sql, args = []) => {
+    await db.query("begin");
+    try {
+      await db.query("set local role " + role);
+      await db.query(
+        "select set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claims',$2,true)",
+        [id, JSON.stringify({ sub: id, role })],
+      );
+      const result = await db.query(sql, args);
+      await db.query("commit");
+      return result.rows[0]?.v;
+    } catch (e) {
+      await db.query("rollback");
+      throw e;
+    }
+  };
+  const value = { fullName: "Name Only" },
+    created = await as(
+      "authenticated",
+      coach,
+      "select public.command_create_student_once($1,$2) v",
+      [value, "create-student-once"],
+    );
+  assert.equal(created.resource.portal_enabled, false);
+  assert.equal(created.resource.email, null);
+  const student = created.resource.id;
+  assert.deepEqual(
+    await as(
+      "authenticated",
+      coach,
+      "select public.command_create_student_once($1,$2) v",
+      [value, "create-student-once"],
+    ),
+    created,
+  );
+  assert.equal(
+    (await db.query("select count(*)::int n from public.students")).rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    () =>
+      as(
+        "authenticated",
+        coach,
+        "select public.command_create_student_once($1,$2) v",
+        [value, "different-create-key"],
+      ),
+    /DUPLICATE_STUDENT/,
+  );
+  await assert.rejects(
+    () =>
+      as(
+        "authenticated",
+        peer,
+        "select public.command_create_student_once($1,$2) v",
+        [value, "forged-create-key"],
+      ),
+    /FORBIDDEN/,
+  );
+  console.log(
+    "PASS: name-only creation, replay, duplicate review and coach authorization",
+  );
+  const action = {
+      id: "f5500000-0000-4000-8000-000000000004",
+      kind: "details",
+      payload: {
+        fullName: "Name Only",
+        focusArea: "Character work",
+        goals: "Clear choices",
+        isMinor: true,
+      },
+    },
+    draft = { step: 5, actions: [action] };
+  const manage = (
+    command,
+    value = {},
+    version = 0,
+    key = "setup-request-key",
+  ) =>
+    as(
+      "service_role",
+      "",
+      "select public.manage_student_setup($1,$2,$3,$4,$5,$6) v",
+      [coach, student, command, value, version, key],
+    );
+  let setup = await manage("save", draft);
+  assert.equal(setup.version, 1);
+  assert.equal(
+    (await db.query("select count(*)::int n from public.lessons")).rows[0].n,
+    0,
+  );
+  await assert.rejects(() => manage("save", draft, 0), /VERSION_CONFLICT/);
+  setup = await manage("review", {}, 1);
+  const reviewId = setup.review.id,
+    claim = await manage(
+      "claim",
+      { reviewId, actionId: action.id },
+      1,
+      "approved-action-key",
+    );
+  assert.equal(claim.action.kind, "details");
+  const applied = await as(
+    "authenticated",
+    coach,
+    "select public.command_apply_setup_record($1,$2,$3,$4,$5) v",
+    [student, "details", action.payload, claim.studentVersion, claim.key],
+  );
+  assert.equal(applied.resource.focus_area, "Character work");
+  assert.deepEqual(
+    await as(
+      "authenticated",
+      coach,
+      "select public.command_apply_setup_record($1,$2,$3,$4,$5) v",
+      [student, "details", action.payload, claim.studentVersion, claim.key],
+    ),
+    applied,
+  );
+  await manage(
+    "finish",
+    { reviewId, actionId: action.id, ok: true, result: applied },
+    1,
+    claim.key,
+  );
+  assert.equal(
+    (
+      await manage(
+        "claim",
+        { reviewId, actionId: action.id },
+        1,
+        "should-not-reexecute",
+      )
+    ).completed,
+    true,
+  );
+  await assert.rejects(
+    () =>
+      as(
+        "authenticated",
+        peer,
+        "select * from workspace_internal.student_setups",
+      ),
+    /permission denied/,
+  );
+  console.log(
+    "PASS: durable draft, frozen review, stale version, interrupted action replay and private state",
+  );
+  const lesson = {
+    studentId: student,
+    topic: "Isolated coaching",
+    startsAt: "2031-02-01T15:00:00Z",
+    endsAt: "2031-02-01T16:00:00Z",
+    recurrence: "none",
+    occurrenceCount: 1,
+    locationType: "in_person",
+    timezone: "America/New_York",
+  };
+  const first = await as(
+    "authenticated",
+    coach,
+    "select public.command_create_lesson_once($1,$2) v",
+    [lesson, "lesson-create-key"],
+  );
+  assert.deepEqual(
+    await as(
+      "authenticated",
+      coach,
+      "select public.command_create_lesson_once($1,$2) v",
+      [lesson, "lesson-create-key"],
+    ),
+    first,
+  );
+  assert.equal(
+    (await db.query("select count(*)::int n from public.lessons")).rows[0].n,
+    1,
+  );
+  await assert.rejects(
+    () =>
+      as(
+        "authenticated",
+        coach,
+        "select public.command_create_lesson_once($1,$2) v",
+        [{ ...lesson, topic: "Changed" }, "lesson-create-key"],
+      ),
+    /IDEMPOTENCY_CONFLICT/,
+  );
+  await assert.rejects(
+    () =>
+      as(
+        "authenticated",
+        coach,
+        "select public.command_create_lesson_once($1,$2) v",
+        [lesson, "overlap-another-key"],
+      ),
+    /SLOT_UNAVAILABLE/,
+  );
+  assert.equal(
+    (await db.query("select count(*)::int n from public.outbox_messages"))
+      .rows[0].n,
+    0,
+  );
+  console.log(
+    "PASS: lesson creation replay, changed requests, conflicts and no outbound delivery",
+  );
+  await (await import('./test-studio-operations.assertions.mjs')).verifyWorkflows({db,as,Client,coach,peer,student,studio,lesson});
+  console.log(
+    JSON.stringify({
+      status: "PASS",
+      migrations: migrations.length,
+      postgres: "17",
+      providers: 0,
+      hostedOperations: 0,
+    }),
+  );
+} finally {
+  await db?.end().catch(() => {});
+  try {
+    bin(pg_ctl, ["-D", data, "-m", "fast", "-w", "stop"]);
+  } catch {}
+}

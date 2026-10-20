@@ -29,6 +29,13 @@ export async function handleStudentsCommands(
       accountType:
         input.payload.accountType === "guardian" ? "guardian" : "student",
       resetExisting: input.payload.resetExisting !== false,
+      expectedRecipient: input.payload.expectedRecipient
+        ? String(input.payload.expectedRecipient)
+        : undefined,
+      contactVersion:
+        typeof input.payload.contactVersion === "number"
+          ? input.payload.contactVersion
+          : undefined,
       expectedVersion: input.expectedVersion,
       linkedContactId: String(input.payload.linkedContactId || "") || undefined,
     });

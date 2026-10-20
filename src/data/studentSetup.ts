@@ -26,6 +26,7 @@ export interface SetupContext {
     email: string;
     relationship_type: string;
     portal_enabled: boolean;
+    version: number;
   }>;
   lessons: Array<{
     id: string;
@@ -33,7 +34,7 @@ export interface SetupContext {
     starts_at: string;
     status: string;
   }>;
-  packages: Array<{ id: string; name: string; status: string }>;
+  packages: Array<{ id: string; name: string; expires_at: string | null }>;
   definitions: Array<{
     id: string;
     name: string;

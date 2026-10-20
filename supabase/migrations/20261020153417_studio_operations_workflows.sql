@@ -50,7 +50,7 @@ grant execute on function public.command_create_student_once(jsonb,text) to auth
 
 create function public.command_create_lesson_once(p_value jsonb,p_key text) returns jsonb
 language plpgsql security definer set search_path='' as $$
-declare actor uuid:=(select auth.uid()); student public.students; old workspace_internal.operation_receipts; result jsonb; audit_id uuid; cadence text:=coalesce(p_value->>'recurrence','none'); total integer:=coalesce((p_value->>'occurrenceCount')::integer,1);
+declare actor uuid:=(select auth.uid()); student public.students; old workspace_internal.operation_receipts; result jsonb; audit_id uuid; cadence text:=coalesce(p_value->>'recurrence','none'); total integer:=coalesce((p_value->>'occurrenceCount')::integer,1); i integer; proposed_start timestamptz; proposed_end timestamptz; tz text:=coalesce(p_value->>'timezone','America/New_York');
 begin
  select * into student from public.students where id=(p_value->>'studentId')::uuid and deleted_at is null for update;
  if actor is null or student.id is null or not public.is_studio_coach(student.studio_id) then raise exception 'FORBIDDEN' using errcode='42501'; end if;
@@ -59,7 +59,12 @@ begin
  select * into old from workspace_internal.operation_receipts where actor_id=actor and key=p_key;
  if found then if old.request<>jsonb_build_object('command','lesson.create','payload',p_value) then raise exception 'IDEMPOTENCY_CONFLICT'; end if; return old.result; end if;
  if cadence not in ('none','weekly','biweekly') or total<1 or total>52 or (p_value->>'endsAt')::timestamptz<=(p_value->>'startsAt')::timestamptz then raise exception 'VALIDATION_FAILED'; end if;
- if exists(select 1 from public.lessons l where l.studio_id=student.studio_id and l.status='scheduled' and l.starts_at<(p_value->>'endsAt')::timestamptz and l.ends_at>(p_value->>'startsAt')::timestamptz) and not coalesce((p_value->>'allowConflict')::boolean,false) then raise exception 'SLOT_UNAVAILABLE'; end if;
+ for i in 0..(case when cadence='none' then 1 else total end)-1 loop
+  proposed_start:=(((p_value->>'startsAt')::timestamptz at time zone tz)+make_interval(days=>i*case when cadence='biweekly' then 14 else 7 end)) at time zone tz;
+  proposed_end:=(((p_value->>'endsAt')::timestamptz at time zone tz)+make_interval(days=>i*case when cadence='biweekly' then 14 else 7 end)) at time zone tz;
+  if proposed_end<=proposed_start or proposed_end-proposed_start>interval '12 hours' then raise exception 'VALIDATION_FAILED'; end if;
+  if exists(select 1 from public.lessons l where l.studio_id=student.studio_id and l.status='scheduled' and l.starts_at<proposed_end and l.ends_at>proposed_start) and not coalesce((p_value->>'allowConflict')::boolean,false) then raise exception 'SLOT_UNAVAILABLE'; end if;
+ end loop;
  result:=public.command_create_lesson(student.studio_id,student.id,coalesce(p_value->>'topic','Private coaching'),(p_value->>'startsAt')::timestamptz,(p_value->>'endsAt')::timestamptz,
  case when p_value->>'locationType'='in_person' then 'in_person' else 'virtual' end,coalesce(p_value->>'locationLabel','Google Meet'),student.full_name,coalesce(student.email,''),cadence,total,coalesce(p_value->>'timezone','America/New_York'));
  insert into public.audit_events(studio_id,actor_id,action,entity_type,entity_id,reason,correlation_id,source,after_state)
@@ -84,8 +89,10 @@ begin
  prior:=student;
  if p_kind='details' then
   if length(trim(coalesce(p_value->>'fullName',student.full_name)))<2 then raise exception 'VALIDATION_FAILED'; end if;
+  if coalesce(p_value->>'email','')<>'' and p_value->>'email' !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'VALIDATION_FAILED: Check the email.'; end if;
+  if student.portal_enabled and not student.is_minor and p_value->>'isMinor'='true' then raise exception 'REVIEW_REQUIRED: Disable access and review guardian consent before changing an active account to a minor.'; end if;
   update public.students set full_name=coalesce(nullif(trim(p_value->>'fullName'),''),full_name),focus_area=coalesce(p_value->>'focusArea',focus_area),
-    goals=coalesce(p_value->>'goals',goals),is_minor=coalesce((p_value->>'isMinor')::boolean,is_minor),version=version+1,updated_at=now()
+    goals=coalesce(p_value->>'goals',goals),email=case when p_value?'email' then nullif(lower(trim(p_value->>'email')),'') else email end,phone=case when p_value?'phone' then nullif(trim(p_value->>'phone'),'') else phone end,is_minor=coalesce((p_value->>'isMinor')::boolean,is_minor),version=version+1,updated_at=now()
    where id=p_student returning * into student;
   updates:=public.sync_future_contact_details(student.id,coalesce(prior.email,''),coalesce(student.email,''),prior.full_name,student.full_name,prior.phone,student.phone,'student');
   result:=jsonb_build_object('resource',to_jsonb(student));
@@ -96,8 +103,9 @@ begin
   result:=jsonb_build_object('resource',to_jsonb(student));
  elsif p_kind='contact' then
   if nullif(p_value->>'sourceContactId','') is not null then
-   select * into source_contact from public.linked_contacts where id=(p_value->>'sourceContactId')::uuid and studio_id=student.studio_id;
+   select * into source_contact from public.linked_contacts where id=(p_value->>'sourceContactId')::uuid and studio_id=student.studio_id for share;
    if not found then raise exception 'FORBIDDEN' using errcode='42501'; end if;
+   if source_contact.version is distinct from (p_value->>'sourceVersion')::integer or source_contact.email is distinct from p_value->>'email' or source_contact.full_name is distinct from p_value->>'fullName' then raise exception 'VERSION_CONFLICT: Contact changed after review.'; end if;
    p_value:=p_value||jsonb_build_object('fullName',source_contact.full_name,'email',source_contact.email);
   end if;
   if length(trim(coalesce(p_value->>'fullName','')))<2 or coalesce(p_value->>'email','') !~ '^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$' then raise exception 'VALIDATION_FAILED: Add contact name and email.'; end if;
@@ -168,9 +176,9 @@ grant execute on function public.manage_student_setup(uuid,uuid,text,jsonb,integ
 
 create function public.student_setup_context(p_student uuid,p_search text default '') returns jsonb
 language sql stable security invoker set search_path='' as $$
- select jsonb_build_object('contacts',(select coalesce(jsonb_agg(to_jsonb(c)),'[]') from(select id,student_id,full_name,email,relationship_type,portal_enabled from public.linked_contacts where studio_id=s.studio_id and (student_id=s.id or (length(trim(p_search))>=2 and (full_name ilike '%'||left(p_search,120)||'%' or email ilike '%'||left(p_search,120)||'%'))) order by (student_id=s.id) desc,full_name,id limit 25)c),
+ select jsonb_build_object('contacts',(select coalesce(jsonb_agg(to_jsonb(c)),'[]') from(select id,student_id,full_name,email,relationship_type,portal_enabled,version from public.linked_contacts where studio_id=s.studio_id and (student_id=s.id or (length(trim(p_search))>=2 and (full_name ilike '%'||left(p_search,120)||'%' or email ilike '%'||left(p_search,120)||'%'))) order by (student_id=s.id) desc,full_name,id limit 25)c),
  'lessons',(select coalesce(jsonb_agg(to_jsonb(l)),'[]') from(select id,topic,starts_at,status from public.lessons where student_id=s.id and status='scheduled' and starts_at>=now() order by starts_at,id limit 10)l),
- 'packages',(select coalesce(jsonb_agg(to_jsonb(p)),'[]') from(select id,name,status from public.packages where student_id=s.id order by created_at desc,id limit 10)p),
+ 'packages',(select coalesce(jsonb_agg(to_jsonb(p)),'[]') from(select id,name,expires_at from public.packages where student_id=s.id order by created_at desc,id limit 10)p),
  'definitions',(select coalesce(jsonb_agg(to_jsonb(d)),'[]') from(select id,name,price_minor,currency,session_count from public.package_definitions where studio_id=s.studio_id and active order by name,id limit 100)d),
  'hasStudentAccount',exists(select 1 from public.portal_accounts where student_id=s.id and account_type='student'))
  from public.students s where s.id=p_student and public.is_studio_coach(s.studio_id) and s.deleted_at is null;
