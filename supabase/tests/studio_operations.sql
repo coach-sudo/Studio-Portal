@@ -8,7 +8,7 @@ insert into auth.users(id,email) values
 insert into public.studios(id,name,slug) values('e5500000-0000-4000-8000-000000000003','Wave five test','wave-five-pgtap');
 insert into public.memberships(studio_id,user_id,role,display_name) values('e5500000-0000-4000-8000-000000000003','e5500000-0000-4000-8000-000000000001','coach','Synthetic coach');
 insert into public.students(id,studio_id,full_name,portal_enabled,actor_page_eligible) values('e5500000-0000-4000-8000-000000000004','e5500000-0000-4000-8000-000000000003','Existing synthetic student',false,true);
-insert into public.actor_profiles(id,student_id,display_name,slug,bio) values('e5500000-0000-4000-8000-000000000005','e5500000-0000-4000-8000-000000000004','Existing synthetic student','wave-five-pgtap-actor','Original biography');
+insert into public.actor_profiles(id,student_id,display_name,slug,bio,draft_content) values('e5500000-0000-4000-8000-000000000005','e5500000-0000-4000-8000-000000000004','Existing synthetic student','wave-five-pgtap-actor','Original biography','{"bio":"Legacy biography","sections":[]}');
 set local role authenticated;
 select set_config('request.jwt.claim.sub','e5500000-0000-4000-8000-000000000001',true);
 select lives_ok($$select public.command_create_student_once('{"fullName":"Name only test"}','pgtap-wave-five-create')$$,'Name-only creation is supported');
@@ -28,6 +28,8 @@ select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-0000
 select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','review','{"status":"published"}',2,'pgtap-wave-five-published')$$,'Reviewed publication is atomic');
 select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','save','{"bio":"Private draft changes","portfolio":{},"status":"draft"}',3,'pgtap-wave-five-private-edit')$$,'Published Actor may save private changes');
 select is((select status::text from public.actor_profiles where id='e5500000-0000-4000-8000-000000000005'),'published','Draft edits retain the live public state');
+select is((select draft_content->>'bio' from public.actor_profiles where id='e5500000-0000-4000-8000-000000000005'),'Legacy biography','Legacy metadata survives an authorized portfolio edit');
+select throws_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','save','{"portfolio":{"unapprovedField":"injected"}}',4,'pgtap-wave-five-unknown-field')$$,'P0001','VALIDATION_FAILED','New unknown portfolio keys are rejected');
 -- Inspect the private revision as the test oracle; do not grant browser access.
 reset role;
 select is((select r.content->>'bio' from public.actor_profile_revisions r join public.actor_profiles p on p.published_revision_id=r.id where p.id='e5500000-0000-4000-8000-000000000005'),'Original biography','Public revision is unchanged by draft edits');

@@ -10,7 +10,14 @@ import {
   Send,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
@@ -31,6 +38,7 @@ import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
 import { CommunicationActivity } from "./CommunicationActivity";
+import "./Inbox.css";
 
 type Thread = Conversation & {
   subtitle: string;
@@ -215,6 +223,37 @@ function Inbox({
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const layout = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = layout.current;
+    if (!element) return;
+    const fit = () => {
+      const viewport = window.visualViewport;
+      const bottom = Math.min(
+        viewport ? viewport.height + viewport.offsetTop : window.innerHeight,
+        document.querySelector(".mobile-nav")?.getBoundingClientRect().top ||
+          window.innerHeight,
+      );
+      element.style.setProperty(
+        "--inbox-available-height",
+        `${Math.max(280, bottom - element.getBoundingClientRect().top - 12)}px`,
+      );
+    };
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(fit);
+    const header = element.parentElement?.querySelector(".page-header");
+    if (header) observer?.observe(header);
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    fit();
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+    };
+  }, [selectedKey, notice]);
   const [undoMessage, setUndoMessage] = useState<{
     id: string;
     until: number;
@@ -766,8 +805,10 @@ function Inbox({
           </button>
         </div>
       )}
-      <CommunicationActivity isDemo={isDemo} />
-      <div className={`inbox-layout ${selected ? "has-selection" : ""}`}>
+      <div
+        ref={layout}
+        className={`inbox-layout ${selected ? "has-selection" : ""}`}
+      >
         <aside className="inbox-threads" aria-label="Conversations">
           <header>
             <strong>Conversations</strong>
@@ -944,6 +985,7 @@ function Inbox({
           )}
         </section>
       </div>
+      <CommunicationActivity isDemo={isDemo} />
       {role === "coach" && (
         <section className="inbox-email-history">
           <header>

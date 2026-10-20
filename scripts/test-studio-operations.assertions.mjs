@@ -254,7 +254,7 @@ export async function verifyWorkflows({
   );
   const actor = (
     await db.query(
-      "insert into public.actor_profiles(student_id,slug,display_name,bio) values($1,'wave-five-local','Name Only','Original biography') returning *",
+      "insert into public.actor_profiles(student_id,slug,display_name,bio,draft_content) values($1,'wave-five-local','Name Only','Original biography','{\"bio\":\"Legacy biography\",\"sections\":[]}'::jsonb) returning *",
       [student],
     )
   ).rows[0];
@@ -320,6 +320,37 @@ export async function verifyWorkflows({
   );
   assert.equal(changed.resource.status, "published");
   assert.equal(changed.resource.draft_status, "draft");
+  assert.equal(changed.resource.draft_content.bio, "Legacy biography");
+  assert.deepEqual(changed.resource.draft_content.sections, []);
+  await assert.rejects(
+    () =>
+      actorCommand(
+        "save",
+        { portfolio: { unapprovedField: "injected" } },
+        changed.resource.version,
+        "actor-unknown-field-key",
+      ),
+    /VALIDATION_FAILED/,
+  );
+  assert.deepEqual(
+    await actorCommand(
+      "save",
+      {
+        status: "draft",
+        bio: "Private changes",
+        portfolio: {
+          presentation: {
+            version: 1,
+            layout: "spotlight",
+            sections: ["biography", "headshots", "credits", "skills", "media"],
+          },
+        },
+      },
+      published.resource.version,
+      "actor-save-new-draft",
+    ),
+    changed,
+  );
   assert.equal(
     changed.resource.published_revision_id,
     published.resource.published_revision_id,

@@ -146,13 +146,15 @@ test.describe("coach product-review evidence", () => {
     await page.screenshot({ path: testInfo.outputPath("coach-student.png") });
 
     await page.goto(`/coach/students/${student}/lessons/${lesson}`);
-    await expect(page.getByRole("button", { name: "Add note" })).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /^(Write note|Continue draft)$/ }),
+    ).toBeVisible();
     await expect(page.locator(".lesson-facts")).toHaveCSS("display", "grid");
     await expectNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("coach-lesson.png") });
     for (const [action, dialog, filename] of [
-      ["Add note", "New note", "coach-note"],
-      ["Assign practice", "Assign practice", "coach-practice"],
+      [/^(Write note|Continue draft)$/, /^(New note|Edit note)$/, "coach-note"],
+      ["Assign follow-up", "Assign practice", "coach-practice"],
       ["Attach resource", "Add material", "coach-material"],
     ] as const) {
       await page.getByRole("button", { name: action }).click();

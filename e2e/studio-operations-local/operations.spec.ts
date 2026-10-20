@@ -140,3 +140,53 @@ test("Settings canonical categories persist a save, cancel and refresh", async (
     await layout(page);
   }
 });
+
+test("Mobile Inbox keeps composition above navigation and scrolls message history", async ({
+  page,
+}) => {
+  for (const width of [320, 390, 768]) {
+    await page.setViewportSize({ width, height: 800 });
+    await page.goto("/portal/inbox");
+    await page
+      .getByRole("complementary", { name: "Conversations" })
+      .getByRole("button")
+      .filter({ has: page.locator("strong") })
+      .first()
+      .click();
+    await expect(page.getByLabel("Message", { exact: true })).toBeVisible();
+    for (const theme of ["light", "dark"]) {
+      await page.evaluate(
+        (t) => (document.documentElement.dataset.portalTheme = t),
+        theme,
+      );
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const send = document
+              .querySelector(".inbox-composer button")!
+              .getBoundingClientRect();
+            const navigation = document
+              .querySelector(".mobile-nav")!
+              .getBoundingClientRect();
+            return send.bottom <= navigation.top && send.top >= 0;
+          }),
+        )
+        .toBe(true);
+      await layout(page);
+    }
+    await page
+      .getByLabel("Message", { exact: true })
+      .fill("A longer private message. ".repeat(100));
+    await expect
+      .poll(() =>
+        page.evaluate(
+          () =>
+            document
+              .querySelector(".inbox-composer button")!
+              .getBoundingClientRect().bottom <=
+            document.querySelector(".mobile-nav")!.getBoundingClientRect().top,
+        ),
+      )
+      .toBe(true);
+  }
+});

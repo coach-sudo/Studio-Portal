@@ -86,8 +86,8 @@ test("@journey PR6 coach lesson workspace opens linked work in context", async (
     `/coach/students/${runtime.ids?.student}/lessons/${lessonId}`,
   );
   for (const [button, dialog] of [
-    ["Add note", "New note"],
-    ["Assign practice", "Assign practice"],
+    [/^(Write note|Continue draft)$/, /^(New note|Edit note)$/],
+    ["Assign follow-up", "Assign practice"],
     ["Attach resource", "Add material"],
   ] as const) {
     await page.getByRole("button", { name: button }).click();

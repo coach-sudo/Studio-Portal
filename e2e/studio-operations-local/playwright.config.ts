@@ -4,6 +4,7 @@ export default defineConfig({
   testMatch: "operations.spec.ts",
   workers: 1,
   retries: 0,
+  outputDir: "../../test-results/wave-five-local-artifacts",
   timeout: 90000,
   reporter: [
     ["list"],

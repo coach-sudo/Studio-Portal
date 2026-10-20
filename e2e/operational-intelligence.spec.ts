@@ -596,7 +596,9 @@ test.describe("Stateful operational acceptance", () => {
         fullPage: true,
       });
       await page.goto("/coach/settings");
-      await page.getByRole("button", { name: /Email automations/ }).click();
+      await page
+        .getByRole("button", { name: /Communications and Notifications/ })
+        .click();
       await expect(
         page.getByRole("heading", { name: "Automation rules" }),
       ).toBeVisible();
@@ -645,7 +647,9 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       new RegExp(`${path.replaceAll("/", "\\/")}(?:\\?|$)`),
     );
     if (name === "settings")
-      await page.getByRole("button", { name: /Email automations/ }).click();
+      await page
+        .getByRole("button", { name: /Communications and Notifications/ })
+        .click();
     await expect(page.locator("main")).toBeVisible();
     if (name === "account") {
       const payerName = page.locator(".household-contact-row strong");
