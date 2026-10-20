@@ -98,7 +98,7 @@ export function RescheduleLessonForm({
   const [approvedTime, setApprovedTime] = useState("");
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState("");
-  const durationMinutes = Math.max(
+  const originalDuration = Math.max(
     1,
     Math.round(
       (new Date(lesson.endsAt).getTime() -
@@ -106,6 +106,7 @@ export function RescheduleLessonForm({
         60_000,
     ),
   );
+  const [durationMinutes, setDurationMinutes] = useState(originalDuration);
   const nextStart = useMemo(
     () => asUtc(date, time, timezone),
     [date, time, timezone],
@@ -114,7 +115,8 @@ export function RescheduleLessonForm({
     ? new Date(nextStart.getTime() + durationMinutes * 60_000)
     : undefined;
   const unchanged =
-    nextStart?.getTime() === new Date(lesson.startsAt).getTime();
+    nextStart?.getTime() === new Date(lesson.startsAt).getTime() &&
+    durationMinutes === originalDuration;
   const inPast = Boolean(nextStart && nextStart.getTime() <= Date.now());
   const insidePolicy =
     new Date(lesson.startsAt).getTime() - Date.now() <
@@ -233,6 +235,22 @@ export function RescheduleLessonForm({
         </label>
       </div>
 
+      <label>
+        Duration (minutes)
+        <input
+          type="number"
+          min={15}
+          max={720}
+          step={15}
+          value={durationMinutes}
+          disabled={busy}
+          onChange={(e) => {
+            setDurationMinutes(Number(e.target.value));
+            setConflicts([]);
+            setApprovedTime("");
+          }}
+        />
+      </label>
       {nextStart && nextEnd && !unchanged && !inPast && (
         <div className="reschedule-preview" role="status">
           <Clock3 />

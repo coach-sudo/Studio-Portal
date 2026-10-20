@@ -12,52 +12,13 @@ export async function handleStudentsCommands(
   const { audit, context, db, domain, id, input, requireCoach } = ctx;
 
   if (domain === "students" && input.command === "create") {
-    const studioId = await requireCoach(),
-      fullName = String(input.payload.fullName || "").trim(),
-      email = String(input.payload.email || "")
-        .trim()
-        .toLowerCase(),
-      isMinor = Boolean(input.payload.isMinor),
-      guardianEmail = String(input.payload.guardianEmail || "")
-        .trim()
-        .toLowerCase();
-    if (
-      fullName.length < 2 ||
-      (!isMinor && !email.includes("@")) ||
-      (isMinor && !guardianEmail.includes("@"))
-    )
-      throw new Error("VALIDATION_FAILED");
-    const { data, error } = await db
-      .from("students")
-      .insert({
-        studio_id: studioId,
-        full_name: fullName,
-        email: email || null,
-        phone: String(input.payload.phone || "").trim() || null,
-        focus_area: String(input.payload.focusArea || "") || null,
-        lead_source: String(input.payload.leadSource || "") || null,
-        is_minor: isMinor,
-        guardian_name: String(input.payload.guardianName || "") || null,
-        guardian_email: guardianEmail || null,
-        status: "lead",
-        portal_enabled: false,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "student",
-        data.id,
-        "student.created",
-        null,
-        data,
-      ),
-      queuedSideEffects: [],
-    });
+    await requireCoach();
+    const created = await db.rpc(
+      "command_create_student_once" as never,
+      { p_value: input.payload, p_key: input.idempotencyKey } as never,
+    );
+    if (created.error) throw created.error;
+    return json(created.data);
   }
 
   if (domain === "students" && input.command === "invite" && input.entityId) {
@@ -67,7 +28,7 @@ export async function handleStudentsCommands(
       studentId: input.entityId,
       accountType:
         input.payload.accountType === "guardian" ? "guardian" : "student",
-      resetExisting: true,
+      resetExisting: input.payload.resetExisting !== false,
       expectedVersion: input.expectedVersion,
       linkedContactId: String(input.payload.linkedContactId || "") || undefined,
     });

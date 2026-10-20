@@ -69,9 +69,12 @@ export async function handleLessonsCommands(
         p_value: value,
       });
       if (preview.error) throw preview.error;
-      const token = await googleAccessToken();
+      const token = Netlify.env.get("GOOGLE_REFRESH_TOKEN")
+        ? await googleAccessToken()
+        : null;
       for (const item of preview.data.items)
         if (
+          token &&
           (await googleFreeBusy(token, item.newStartsAt, item.newEndsAt))
             .length &&
           !input.payload.allowConflict
@@ -107,34 +110,58 @@ export async function handleLessonsCommands(
       throw new Error("VALIDATION_FAILED");
     const cadence = String(input.payload.recurrence || "none");
     const occurrenceCount = Number(input.payload.occurrenceCount || 1);
-    const { data, error } = await serviceClient().rpc("command_create_lesson", {
-      target_studio: studioId,
-      target_student: studentId,
-      topic: String(input.payload.topic || "Private coaching"),
-      starts_at: startsAt,
-      ends_at: endsAt,
-      location_type:
-        input.payload.locationType === "in_person" ? "in_person" : "virtual",
-      location_label: String(input.payload.locationLabel || "Google Meet"),
-      student_name: String(input.payload.studentName || "Student"),
-      student_email: String(input.payload.studentEmail || ""),
+    const value = {
+      ...input.payload,
+      studentId,
       recurrence: cadence,
-      occurrence_count: occurrenceCount,
-      timezone: String(input.payload.timezone || "America/New_York"),
-    });
-    if (error) throw error;
+      occurrenceCount,
+    };
+    const replay = await db.rpc(
+      "read_studio_operation" as never,
+      {
+        p_command: "lesson.create",
+        p_value: value,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (replay.error) throw replay.error;
+    if (replay.data) {
+      const previous = replay.data as unknown as {
+        lesson: unknown;
+        auditEventId: string;
+      };
+      return json({
+        resource: previous.lesson,
+        auditEventId: previous.auditEventId,
+        alreadyCreated: true,
+        queuedSideEffects: ["calendar_projection"],
+      });
+    }
+    if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
+      const token = await googleAccessToken();
+      if (
+        (await googleFreeBusy(token, startsAt, endsAt)).length &&
+        !input.payload.allowConflict
+      )
+        throw new Error("SLOT_UNAVAILABLE");
+    }
+    const created = await db.rpc(
+      "command_create_lesson_once" as never,
+      {
+        p_value: value,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (created.error) throw created.error;
+    const data = created.data as unknown as {
+      lesson: any;
+      auditEventId: string;
+    };
     const lesson = data.lesson;
     return json({
       resource: lesson,
       recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "lesson",
-        lesson.id,
-        "lesson.created",
-        null,
-        data,
-      ),
+      auditEventId: data.auditEventId,
       queuedSideEffects: ["calendar_projection"],
     });
   }

@@ -93,13 +93,15 @@ export default async (request: Request, context: Context) => {
           end: item.ends_at,
           source: "studio",
         }));
-      const google = (
-        await googleCalendarConflicts(
-          await googleAccessToken(),
-          startsAt.toISOString(),
-          endsAt.toISOString(),
-        )
-      ).map((item) => ({ ...item, source: "google" }));
+      const google = Netlify.env.get("GOOGLE_REFRESH_TOKEN")
+        ? (
+            await googleCalendarConflicts(
+              await googleAccessToken(),
+              startsAt.toISOString(),
+              endsAt.toISOString(),
+            )
+          ).map((item) => ({ ...item, source: "google" }))
+        : [];
       const seen = new Set<string>();
       const conflicts = [...local, ...google].filter((item) => {
         const key = `${item.summary}|${item.start}|${item.end}`;
@@ -107,7 +109,14 @@ export default async (request: Request, context: Context) => {
         seen.add(key);
         return true;
       });
-      return json({ resource: { conflicts } });
+      return json({
+        resource: {
+          conflicts,
+          externalCalendarChecked: Boolean(
+            Netlify.env.get("GOOGLE_REFRESH_TOKEN"),
+          ),
+        },
+      });
     }
 
     if (

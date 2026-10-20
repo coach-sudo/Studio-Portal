@@ -1,0 +1,62 @@
+.setup-steps {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 20px;
+}
+.setup-steps button {
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 8px 12px;
+  color: var(--ink);
+  background: var(--wash);
+}
+.setup-steps button[aria-current] {
+  background: var(--forest);
+  color: #fff;
+}
+.setup-content {
+  margin: 20px 0;
+}
+.setup-existing {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  background: var(--wash);
+  color: var(--ink);
+}
+.setup-existing small {
+  color: var(--muted);
+}
+.setup-review-row {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.setup-review-row p {
+  margin: 5px 0;
+  overflow-wrap: anywhere;
+}
+.setup-review-row small {
+  display: block;
+}
+.setup-contact-choice {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.setup-content fieldset {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.setup-content .check-row {
+  margin: 8px 0;
+}

@@ -25,6 +25,8 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { sourceLabel, studentName } from "./StudioOperations.shared";
+import { CalendarProposalDialog } from "./CalendarProposalDialog";
+import type { CalendarProposal } from "../../domain/calendarProposals";
 
 export function LessonsView({
   data,
@@ -333,8 +335,56 @@ export function LessonsView({
           60_000,
       )
     : 0;
+  const proposedStart = calendarParams.get("proposedStart"),
+    proposedEnd = calendarParams.get("proposedEnd"),
+    proposedId = calendarParams.get("proposedLesson");
+  const proposedLesson = proposedId
+    ? data.lessons.find((l) => l.id === proposedId)
+    : undefined;
+  const proposal: CalendarProposal | undefined =
+    proposedStart &&
+    proposedEnd &&
+    Number.isFinite(Date.parse(proposedStart)) &&
+    Date.parse(proposedEnd) > Date.parse(proposedStart) &&
+    (!proposedId || proposedLesson)
+      ? {
+          startsAt: proposedStart,
+          endsAt: proposedEnd,
+          lesson: proposedLesson,
+          kind:
+            calendarParams.get("proposalKind") === "resize"
+              ? "resize"
+              : proposedLesson
+                ? "move"
+                : "create",
+        }
+      : undefined;
+  const closeProposal = () =>
+    setCalendarParams(
+      (current) => {
+        const next = new URLSearchParams(current);
+        for (const key of [
+          "proposedStart",
+          "proposedEnd",
+          "proposedLesson",
+          "proposalKind",
+        ])
+          next.delete(key);
+        return next;
+      },
+      { replace: true },
+    );
   return (
     <Section title="Lesson calendar" marked>
+      {proposal && (
+        <CalendarProposalDialog
+          key={`${proposal.lesson?.id}:${proposal.startsAt}:${proposal.endsAt}`}
+          proposal={proposal}
+          data={data}
+          isDemo={isDemo}
+          onClose={closeProposal}
+        />
+      )}
       {notice && <p className="portal-notice">{notice}</p>}
       <LessonCalendar
         viewOverride={calendarView}
@@ -381,6 +431,17 @@ export function LessonsView({
         studentName={(id) => studentName(data, id)}
         sourceName={sourceLabel}
         onOpen={onOpenLesson || openLesson}
+        onPropose={(proposal) =>
+          setCalendarParams((current) => {
+            const next = new URLSearchParams(current);
+            next.set("proposedStart", proposal.startsAt);
+            next.set("proposedEnd", proposal.endsAt);
+            next.set("proposalKind", proposal.kind);
+            if (proposal.lesson) next.set("proposedLesson", proposal.lesson.id);
+            else next.delete("proposedLesson");
+            return next;
+          })
+        }
       />
       {selected && (
         <Dialog

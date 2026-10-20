@@ -14,8 +14,10 @@ import type { V2CommandContext, V2CommandHandler } from "./_v2/types";
 import platformHealth from "./platform-health";
 import referrals from "./referrals";
 import { handleAutomationCommands } from "./_v2/automations";
+import { handleSetupCommands } from "./_v2/setup";
 
 const domains = new Set([
+  "setup",
   "invoices",
   "automations",
   "students",
@@ -40,6 +42,7 @@ const domains = new Set([
 ]);
 
 const commandHandlers: V2CommandHandler[] = [
+  handleSetupCommands,
   handleInvoiceCommands,
   handleAutomationCommands,
   handleStudentsCommands,

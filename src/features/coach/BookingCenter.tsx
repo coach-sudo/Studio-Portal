@@ -294,16 +294,41 @@ export function BookingCenter() {
         </p>
       )}
       <nav className="subnav" aria-label="Booking sections">
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            className={tab === id ? "active" : ""}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
+        {tabs
+          .filter(([id]) =>
+            ["calendar", "overview", "classes", "series"].includes(id),
+          )
+          .map(([id, label]) => (
+            <button
+              key={id}
+              className={tab === id ? "active" : ""}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
       </nav>
+      <details
+        className="booking-configuration"
+        open={["setup", "services", "availability"].includes(tab)}
+      >
+        <summary>Scheduling configuration</summary>
+        <nav className="subnav" aria-label="Scheduling configuration">
+          {tabs
+            .filter(([id]) =>
+              ["setup", "services", "availability"].includes(id),
+            )
+            .map(([id, label]) => (
+              <button
+                key={id}
+                className={tab === id ? "active" : ""}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+        </nav>
+      </details>
       {tab === "overview" && (
         <Overview
           data={data}
