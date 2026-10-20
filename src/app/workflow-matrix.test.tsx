@@ -75,19 +75,22 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /Add student/i }),
       );
       const dialog = screen.getByRole("dialog");
+      await user.click(
+        within(dialog).getByRole("button", { name: /Quick Add/i }),
+      );
       await user.type(
         within(dialog).getByLabelText("Full name"),
         "Jordan Ellis",
       );
       await user.type(
-        within(dialog).getByLabelText("Student email"),
+        within(dialog).getByLabelText(/Student email/),
         "jordan@example.com",
       );
       await user.click(
         within(dialog).getByRole("button", { name: /Add student/i }),
       );
       expect(
-        await screen.findByRole("button", { name: /Jordan Ellis/i }),
+        await screen.findByRole("heading", { name: /Jordan Ellis/i }),
       ).toBeInTheDocument();
     });
     it("04 adds a minor with guardian details", async () => {
@@ -97,6 +100,9 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("button", { name: /Add student/i }),
       );
       const dialog = screen.getByRole("dialog");
+      await user.click(
+        within(dialog).getByRole("button", { name: /Quick Add/i }),
+      );
       await user.type(
         within(dialog).getByLabelText("Full name"),
         "Avery Stone",
@@ -114,7 +120,7 @@ describe("50 start-to-finish studio workflows", () => {
         within(dialog).getByRole("button", { name: /Add student/i }),
       );
       expect(
-        await screen.findByRole("button", { name: /Avery Stone/i }),
+        await screen.findByRole("heading", { name: /Avery Stone/i }),
       ).toBeInTheDocument();
     });
     it("05 edits student goals and status", async () => {
@@ -293,7 +299,7 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/settings");
       await user.click(
-        await screen.findByRole("button", { name: /Student workspace/i }),
+        await screen.findByRole("button", { name: /Access and Privacy/i }),
       );
       const toggle = screen.getByRole("switch", { name: /Drive folder/i });
       await user.click(toggle);
@@ -306,7 +312,7 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/settings");
       await user.click(
-        await screen.findByRole("button", { name: /Rates & reminders/i }),
+        await screen.findByRole("button", { name: /Pricing and Billing/i }),
       );
       const rate = screen.getByLabelText("60-minute lesson");
       await user.clear(rate);
@@ -449,7 +455,9 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(
         within(dialog).getByLabelText(/Submit for coach review/i),
       );
-      await user.click(within(dialog).getByRole("button", { name: "Save" }));
+      await user.click(
+        within(dialog).getByRole("button", { name: "Save draft" }),
+      );
       expect(
         await screen.findByText(/submitted for coach review/i),
       ).toBeInTheDocument();
@@ -587,7 +595,7 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(screen.getByRole("button", { name: /Continue/i }));
       await user.type(screen.getByLabelText("Student name"), "Taylor Reed");
       await user.type(
-        screen.getByLabelText("Student email"),
+        screen.getByLabelText(/Student email/),
         "taylor@example.com",
       );
       await user.click(

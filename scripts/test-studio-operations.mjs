@@ -290,7 +290,9 @@ try {
   console.log(
     "PASS: lesson creation replay, changed requests, conflicts and no outbound delivery",
   );
-  await (await import('./test-studio-operations.assertions.mjs')).verifyWorkflows({db,as,Client,coach,peer,student,studio,lesson});
+  await (
+    await import("./test-studio-operations.assertions.mjs")
+  ).verifyWorkflows({ db, as, Client, coach, peer, student, studio, lesson });
   console.log(
     JSON.stringify({
       status: "PASS",
