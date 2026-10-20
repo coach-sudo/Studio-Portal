@@ -267,6 +267,13 @@ export async function invalidateStudioDomains(
     queryClient.invalidateQueries({ queryKey: ["studio-legacy"] }),
     queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
     queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
+    ...(selected.has("work")
+      ? [
+          queryClient.invalidateQueries({ queryKey: ["material-resources"] }),
+          queryClient.invalidateQueries({ queryKey: ["resource-workspace"] }),
+          queryClient.invalidateQueries({ queryKey: ["workspace-record"] }),
+        ]
+      : []),
     ...(["finance", "lessons", "booking"].some((domain) =>
       selected.has(domain as StudioDomain),
     )

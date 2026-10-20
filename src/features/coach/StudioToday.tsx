@@ -1,6 +1,12 @@
 import { formatMoney } from "../../domain/finance";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { recordLink } from "../../app/recordLinks";
+import {
+  coachLessonLink,
+  coachingContext,
+  lessonDraft,
+  isSharedLesson,
+} from "../../domain/coachingContext";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { coachOperationalSummary } from "../../domain/coachOperationalSummary";
 import { useQueryClient } from "@tanstack/react-query";
@@ -67,6 +73,15 @@ export function TodayView({
     .sort((a, b) => a.startsAt.localeCompare(b.startsAt));
   const now = Date.now();
   const operational = coachOperationalSummary(data, now);
+  const upNext = data.lessons
+    .filter(
+      (lesson) =>
+        lesson.status === "scheduled" && Date.parse(lesson.endsAt) >= now,
+    )
+    .sort((a, b) => a.startsAt.localeCompare(b.startsAt))[0];
+  const nextContext = upNext?.studentId
+    ? coachingContext(data, upNext.studentId, now)
+    : undefined;
   const featuredLessonId =
     lessons.find(
       (lesson) =>
@@ -130,7 +145,7 @@ export function TodayView({
         await invalidateStudioDomains(queryClient, ["lessons"]);
       }
       setNotice(
-        "Lesson completed. Add the follow-up from the student record when you are ready.",
+        "Lesson completed. Notes and follow-up remain separate actions in the lesson workspace.",
       );
     } catch (reason) {
       setNotice(
@@ -234,6 +249,47 @@ export function TodayView({
   return (
     <>
       <JoinLessonBanner lessons={data.lessons} />
+      <Section title="Up next" marked>
+        {upNext ? (
+          <div className="coaching-next">
+            <div>
+              <h3>
+                {studentName(data, upNext.studentId)} · {upNext.topic}
+              </h3>
+              <p>
+                {formatStudioDateTime(upNext.startsAt, data.settings.timezone)}{" "}
+                · {upNext.locationLabel}
+              </p>
+              {nextContext?.student.focusArea && (
+                <small>{nextContext.student.focusArea}</small>
+              )}
+            </div>
+            <div className="form-actions">
+              <button
+                className="primary"
+                onClick={() => navigate(coachLessonLink(upNext))}
+              >
+                Open lesson workspace
+              </button>
+              {!upNext.offeringId && upNext.studentId && (
+                <button onClick={() => navigate(coachLessonLink(upNext, true))}>
+                  {lessonDraft(data, upNext.studentId, upNext.id)
+                    ? "Continue draft"
+                    : "Write note"}
+                </button>
+              )}
+            </div>
+            {nextContext?.feedback[0] && (
+              <small>Recent feedback · {nextContext.feedback[0].title}</small>
+            )}
+          </div>
+        ) : (
+          <EmptyState
+            title="No upcoming lessons"
+            detail="Your next scheduled lesson appears here."
+          />
+        )}
+      </Section>
       <aside className="workspace-summary" aria-label="Today at a glance">
         <strong>Today at a glance</strong>
         <span>
@@ -265,18 +321,7 @@ export function TodayView({
             )
             .sort((a, b) => a.startsAt.localeCompare(b.startsAt))
             .map((l) => (
-              <button
-                key={l.id}
-                onClick={() =>
-                  navigate(
-                    recordLink("coach", {
-                      kind: "lesson",
-                      id: l.id,
-                      studentId: l.studentId,
-                    }),
-                  )
-                }
-              >
+              <button key={l.id} onClick={() => navigate(coachLessonLink(l))}>
                 {studentName(data, l.studentId)} · {l.topic} ·{" "}
                 {formatStudioDateTime(l.startsAt, data.settings.timezone)}
               </button>
@@ -336,25 +381,17 @@ export function TodayView({
                   {isActive ? "in progress" : isFeatured ? "next" : "scheduled"}
                 </Status>
                 <div className="row-actions">
-                  <button
-                    onClick={() =>
-                      navigate(
-                        recordLink("coach", {
-                          kind: "lesson",
-                          id: lesson.id,
-                          studentId: lesson.studentId,
-                        }),
-                      )
-                    }
-                  >
+                  <button onClick={() => navigate(coachLessonLink(lesson))}>
                     Open lesson
                   </button>
                   <button onClick={() => setRescheduling(lesson)}>
                     Reschedule
                   </button>
-                  <button onClick={() => void complete(lesson)}>
-                    Complete
-                  </button>
+                  {!isSharedLesson(data, lesson) && (
+                    <button onClick={() => void complete(lesson)}>
+                      Complete
+                    </button>
+                  )}
                 </div>
               </article>
             );
@@ -398,14 +435,12 @@ export function TodayView({
                 >
                   {remaining <= 0 ? "overdue" : "due"}
                 </Status>
-                <button
-                  onClick={() =>
-                    navigate(
-                      `/coach/students/${lesson.studentId}/lessons/${lesson.id}?writeNote=${lesson.id}`,
-                    )
-                  }
-                >
-                  Write note
+                <button onClick={() => navigate(coachLessonLink(lesson, true))}>
+                  {lesson.offeringId
+                    ? "Open class"
+                    : lessonDraft(data, lesson.studentId, lesson.id)
+                      ? "Continue draft"
+                      : "Write note"}
                 </button>
               </article>
             );
@@ -532,7 +567,11 @@ export function TodayView({
                 <Status tone="warn">reply</Status>
                 <button
                   onClick={() =>
-                    navigate(`/coach/students/${item.studentId}/work`)
+                    navigate(
+                      item.lessonId
+                        ? `/coach/students/${item.studentId}/lessons/${item.lessonId}#practice-${item.id}`
+                        : `/coach/students/${item.studentId}/work#practice-${item.id}`,
+                    )
                   }
                 >
                   Open work

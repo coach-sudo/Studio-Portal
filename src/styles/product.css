@@ -1677,6 +1677,30 @@ input[type="radio"] {
 .status {
   font-weight: 600;
 }
+.coaching-next {
+  display: grid;
+  gap: 14px;
+}
+.coaching-next h3,
+.coaching-next p {
+  margin-block: 0 6px;
+}
+.coaching-next small {
+  color: var(--muted);
+  line-height: 1.6;
+}
+.coaching-history {
+  margin-block: 24px;
+}
+.coaching-history > summary {
+  padding: 16px;
+  cursor: pointer;
+  font-weight: 600;
+  border: 1px solid var(--app-border);
+  border-radius: var(--radius-control);
+  background: var(--app-surface);
+  color: var(--ink);
+}
 @media (max-width: 600px) {
   .table-list > article > .financial-amount {
     grid-column: 1 / -1;

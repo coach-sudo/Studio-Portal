@@ -4,6 +4,7 @@ import {
   useWorkspaceNavigation,
 } from "../../hooks/useWorkspaceLocation";
 import { ResourceBrowser } from "../library/ResourceBrowser";
+import { recordLink } from "../../app/recordLinks";
 import { useQueryClient } from "@tanstack/react-query";
 import DOMPurify from "dompurify";
 import {
@@ -44,6 +45,11 @@ import {
 import { useStudioStore } from "../../state/StudioStore";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import {
+  coachingContext,
+  portalContextLink,
+} from "../../domain/coachingContext";
+import { RecordUnavailable } from "../../components/RecordRoute";
 
 export function StudentNotes({
   data,
@@ -99,10 +105,19 @@ export function StudentNotes({
   );
   const exactNote = serverPaging
     ? (exactQuery.data?.items || []).map(mapNoteRow)[0]
-    : data.notes.find((n) => n.id === selectedNote && n.status === "published");
+    : data.notes.find(
+        (n) =>
+          n.id === selectedNote &&
+          n.status === "published" &&
+          n.studentId === data.students[0]?.id,
+      );
   const notes = serverPaging
     ? (remoteNotes.data?.items ?? []).map((row) => mapNoteRow(row))
-    : data.notes;
+    : data.notes.filter(
+        (note) =>
+          note.status === "published" &&
+          note.studentId === data.students[0]?.id,
+      );
   const filtered = notes
     .filter((note) =>
       [note.title, note.body, note.category, ...(note.tags ?? [])]
@@ -263,7 +278,10 @@ export function StudentNotes({
               {selected.lessonId && (
                 <Link
                   className="button-link"
-                  to={`/portal/lessons/${selected.lessonId}`}
+                  to={portalContextLink(
+                    `/portal/lessons/${selected.lessonId}`,
+                    data.students[0].id,
+                  )}
                 >
                   Open lesson workspace
                 </Link>
@@ -283,10 +301,14 @@ export function LessonHub({
   data,
   isDemo,
   showFinance,
+  showWork = true,
+  showSchedule = true,
 }: {
   data: Snapshot;
   isDemo: boolean;
   showFinance: boolean;
+  showWork?: boolean;
+  showSchedule?: boolean;
 }) {
   const { lessonId = "" } = useParams();
   const workspace = useWorkspaceNavigation(
@@ -294,6 +316,9 @@ export function LessonHub({
       encodeURIComponent(data.students[0]?.id || ""),
   );
   const lesson = data.lessons.find((item) => item.id === lessonId);
+  const selectedStudent = data.students[0];
+  const context = selectedStudent && coachingContext(data, selectedStudent.id);
+  const lessonVisible = !!context?.lessons.some((item) => item.id === lessonId);
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [assignmentBusy, setAssignmentBusy] = useState("");
@@ -304,7 +329,9 @@ export function LessonHub({
     correlationId?: string;
   }>();
   useEffect(() => {
+    if (isDemo || !showSchedule || !lesson || !lessonVisible) return;
     let active = true;
+    setDelivery(undefined);
     const load = async () => {
       const { supabase } = await import("../../lib/supabase");
       const token = (await supabase?.auth.getSession())?.data.session
@@ -322,30 +349,48 @@ export function LessonHub({
       active = false;
       window.clearInterval(timer);
     };
-  }, [lessonId]);
-  if (!lesson) return <Navigate to="/portal/bookings" replace />;
+  }, [lessonId, isDemo, showSchedule, lesson?.id, lessonVisible]);
+  if (!lesson || !context || !showSchedule || !lessonVisible)
+    return (
+      <RecordUnavailable
+        fallback={portalContextLink("/portal", selectedStudent?.id || "")}
+      />
+    );
   const deliveryPresentation = selectLessonDelivery(lesson, {
     calendarStatus: delivery?.calendar?.status,
   });
-  const notes = data.notes.filter((item) => item.lessonId === lesson.id);
+  const notes = data.notes.filter(
+    (item) =>
+      showWork &&
+      item.studentId === selectedStudent.id &&
+      item.status === "published" &&
+      item.lessonId === lesson.id,
+  );
   const assignments = data.assignments.filter(
-    (item) => item.lessonId === lesson.id,
+    (item) =>
+      showWork &&
+      item.studentId === selectedStudent.id &&
+      item.lessonId === lesson.id,
   );
   const materials = data.materials.filter(
-    (item) => item.lessonId === lesson.id,
+    (item) =>
+      showWork &&
+      item.studentId === selectedStudent.id &&
+      item.lessonId === lesson.id,
   );
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
   );
   const participant = data.lessonParticipants.find(
-    (item) => item.lessonId === lesson.id && item.bookingId,
+    (item) =>
+      item.lessonId === lesson.id &&
+      item.studentId === selectedStudent.id &&
+      item.bookingId,
   );
   const booking = data.bookings.find(
     (item) => item.id === participant?.bookingId,
   );
-  const student =
-    data.students.find((item) => item.id === lesson.studentId) ??
-    data.students[0];
+  const student = selectedStudent;
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
@@ -461,7 +506,10 @@ export function LessonHub({
               {deliveryPresentation.actionLabel}
             </a>
           )}
-          <Link className="button-link" to="/portal/bookings">
+          <Link
+            className="button-link"
+            to={portalContextLink("/portal/bookings", student.id)}
+          >
             <CalendarDays />
             Manage schedule
           </Link>
@@ -495,110 +543,140 @@ export function LessonHub({
                 Open Google Meet
               </a>
             )}
-            {offering.resourceLinks?.map((resource) => (
-              <a
-                className="button-link"
-                key={`${resource.label}-${resource.url}`}
-                href={resource.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                <FolderOpen />
-                {resource.label}
-              </a>
-            ))}
+            {showWork &&
+              offering.resourceLinks?.map((resource) => (
+                <a
+                  className="button-link"
+                  key={`${resource.label}-${resource.url}`}
+                  href={resource.url}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <FolderOpen />
+                  {resource.label}
+                </a>
+              ))}
           </div>
         </Section>
       )}
-      <section
-        className="lesson-work-surface"
-        aria-labelledby="lesson-work-title"
-      >
-        <h2 id="lesson-work-title">Lesson work</h2>
-        <div className="lesson-hub-grid">
-          <Section title="Coach notes" marked>
-            <div className="note-cards">
-              {notes.map((note) => (
-                <article key={note.id}>
-                  <details className="disclosure-section">
-                    <summary>Read {note.title}</summary>
-                    {note.bodyHtml ? (
-                      <div
-                        className="published-note-body"
-                        dangerouslySetInnerHTML={{
-                          __html: DOMPurify.sanitize(note.bodyHtml),
-                        }}
-                      />
-                    ) : (
-                      <p>{note.body}</p>
-                    )}
-                  </details>
-                </article>
-              ))}
-              {!notes.length && (
-                <EmptyState
-                  title="No published note yet"
-                  detail="Your coach’s lesson note will appear here."
-                />
-              )}
-            </div>
-          </Section>
-          <Section title="Practice & assignments">
-            <div className="table-list">
-              {assignments.map((item) => (
-                <article key={item.id} className="assignment-card">
-                  <header>
-                    <CheckSquare />
-                    <div>
-                      <strong>{item.title}</strong>
-                      <small>
-                        {item.dueAt
-                          ? `Due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
-                          : "Attached to this lesson"}
-                      </small>
-                    </div>
-                    <Status
-                      tone={item.status === "completed" ? "good" : "neutral"}
-                    >
-                      {item.status.replaceAll("_", " ")}
-                    </Status>
-                  </header>
-                  <AssignmentActivity
-                    assignment={item}
-                    busy={assignmentBusy === item.id}
-                    onSave={(responses) =>
-                      saveLessonAssignment(item, responses)
-                    }
-                    onComplete={() => void updateAssignment(item, "complete")}
-                    onHelp={() => void updateAssignment(item, "help")}
-                  />
-                </article>
-              ))}
-              {!assignments.length && (
-                <EmptyState
-                  title="No practice attached"
-                  detail="Assignments connected to this lesson appear here."
-                />
-              )}
-            </div>
-          </Section>
-          <ResourceBrowser
-            data={data}
-            isDemo={isDemo}
-            studentId={data.students[0]?.id}
-            lessonId={lesson.id}
-            catalog={false}
-            showActions={false}
-            title="Attachments & resources"
-          />
-          <Section title="Conversation" marked>
-            <Link className="button-link primary" to="/portal/inbox">
-              <MessageSquare />
-              Message coach
+      {showWork && (
+        <section
+          className="lesson-work-surface"
+          aria-labelledby="lesson-work-title"
+        >
+          <h2 id="lesson-work-title">Lesson work</h2>
+          {!notes.length && context.feedback[0] && (
+            <Link
+              className="button-link"
+              to={recordLink(data.role, {
+                kind: "note",
+                id: context.feedback[0].id,
+                studentId: student.id,
+              })}
+            >
+              Recent feedback · {context.feedback[0].title}
             </Link>
-          </Section>
-        </div>
-      </section>
+          )}
+          {student.focusArea && (
+            <p>
+              <strong>Coaching focus</strong> · {student.focusArea}
+            </p>
+          )}
+          <Link
+            className="button-link"
+            to={portalContextLink("/portal/work", student.id)}
+          >
+            All current work &amp; feedback
+          </Link>
+          <div className="lesson-hub-grid">
+            <Section title="Coach notes" marked>
+              <div className="note-cards">
+                {notes.map((note) => (
+                  <article key={note.id}>
+                    <details className="disclosure-section">
+                      <summary>Read {note.title}</summary>
+                      {note.bodyHtml ? (
+                        <div
+                          className="published-note-body"
+                          dangerouslySetInnerHTML={{
+                            __html: DOMPurify.sanitize(note.bodyHtml),
+                          }}
+                        />
+                      ) : (
+                        <p>{note.body}</p>
+                      )}
+                    </details>
+                  </article>
+                ))}
+                {!notes.length && (
+                  <EmptyState
+                    title="No published note yet"
+                    detail="Your coach’s lesson note will appear here."
+                  />
+                )}
+              </div>
+            </Section>
+            <Section title="Practice & assignments">
+              <div className="table-list">
+                {assignments.map((item) => (
+                  <article key={item.id} className="assignment-card">
+                    <header>
+                      <CheckSquare />
+                      <div>
+                        <strong>{item.title}</strong>
+                        <small>
+                          {item.dueAt
+                            ? `Due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
+                            : "Attached to this lesson"}
+                        </small>
+                      </div>
+                      <Status
+                        tone={item.status === "completed" ? "good" : "neutral"}
+                      >
+                        {item.status.replaceAll("_", " ")}
+                      </Status>
+                    </header>
+                    <AssignmentActivity
+                      readOnly={data.role === "guardian"}
+                      assignment={item}
+                      busy={assignmentBusy === item.id}
+                      onSave={(responses) =>
+                        saveLessonAssignment(item, responses)
+                      }
+                      onComplete={() => void updateAssignment(item, "complete")}
+                      onHelp={() => void updateAssignment(item, "help")}
+                    />
+                  </article>
+                ))}
+                {!assignments.length && (
+                  <EmptyState
+                    title="No practice attached"
+                    detail="Assignments connected to this lesson appear here."
+                  />
+                )}
+              </div>
+            </Section>
+            <ResourceBrowser
+              data={data}
+              isDemo={isDemo}
+              studentId={student.id}
+              lessonId={lesson.id}
+              catalog={false}
+              showActions={false}
+              title="Attachments & resources"
+            />
+            <Section title="Conversation" marked>
+              <Link
+                className="button-link primary"
+                to={portalContextLink("/portal/inbox", student.id)}
+              >
+                <MessageSquare />
+                Message coach
+              </Link>
+            </Section>
+          </div>
+        </section>
+      )}
       <details className="lesson-admin-details">
         <summary>Administrative details</summary>
         <dl>

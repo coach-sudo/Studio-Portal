@@ -36,6 +36,7 @@ import {
 } from "react-router-dom";
 import { Dialog, Drawer, Status, Toggle } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
+import { lessonDraft } from "../../domain/coachingContext";
 import { uploadStudioFile } from "../../data/uploads";
 import { AddResourceFlow } from "../library/ResourceBrowser";
 import type {
@@ -173,12 +174,7 @@ export function StudentWorkspace() {
         item.id === requested && belongsToStudent(data, item, student.id),
     );
     if (!lesson) return;
-    const draft = data.notes.find(
-      (item) =>
-        item.lessonId === requested &&
-        item.studentId === student.id &&
-        item.status === "draft",
-    );
+    const draft = lessonDraft(data, student.id, requested);
     setWorkflowLessonId(requested);
     setEditingNote(draft);
     setDialog("note");
@@ -735,6 +731,12 @@ export function StudentWorkspace() {
                 isDemo={isDemo}
                 onAddNote={(lessonId) => {
                   setWorkflowLessonId(lessonId);
+                  setEditingNote(lessonDraft(data, student.id, lessonId));
+                  setDialog("note");
+                }}
+                onEditNote={(note) => {
+                  setWorkflowLessonId(note.lessonId);
+                  setEditingNote(note);
                   setDialog("note");
                 }}
                 onAddAssignment={(lessonId) => {

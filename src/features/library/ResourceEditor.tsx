@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer } from "../../components/Primitives";
 import { WritingArea } from "../../components/WritingArea";
@@ -220,9 +221,7 @@ export function ResourceEditor({
           },
           resource?.version || 0,
         );
-        await queryClient.invalidateQueries({
-          queryKey: ["material-resources"],
-        });
+        await invalidateStudioDomains(queryClient, ["work"]);
         await queryClient.invalidateQueries({ queryKey: ["material-options"] });
         await queryClient.invalidateQueries({ queryKey: ["material-detail"] });
       }

@@ -451,9 +451,16 @@ function PortalWorkspace({
               index
               element={
                 role === "guardian" ? (
-                  <GuardianHome data={data} base={base} />
+                  <GuardianHome
+                    data={data}
+                    base={base}
+                    isDemo={isDemo}
+                    canViewWork={guardianWork}
+                    canViewSchedule={guardianSchedule}
+                    canViewFinance={guardianFinance}
+                  />
                 ) : (
-                  <StudentHome data={data} base={base} />
+                  <StudentHome data={data} base={base} isDemo={isDemo} />
                 )
               }
             />
@@ -502,12 +509,20 @@ function PortalWorkspace({
                   showFinance={
                     role === "guardian" ? guardianFinance : !person?.isMinor
                   }
+                  showWork={role !== "guardian" || guardianWork}
+                  showSchedule={role !== "guardian" || guardianSchedule}
                 />
               }
             />
             <Route
               path="notes"
-              element={<StudentNotes data={data} isDemo={isDemo} />}
+              element={
+                role === "guardian" && !guardianWork ? (
+                  <RecordUnavailable fallback={portalPath("")} />
+                ) : (
+                  <StudentNotes data={data} isDemo={isDemo} />
+                )
+              }
             />
             <Route
               path="classes/:offeringId"

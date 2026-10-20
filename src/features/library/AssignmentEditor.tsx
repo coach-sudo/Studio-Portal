@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer } from "../../components/Primitives";
 import { WritingArea } from "../../components/WritingArea";
@@ -62,7 +63,7 @@ export function AssignmentEditor({
           },
           loaded.version,
         );
-      await client.invalidateQueries({ queryKey: ["material-resources"] });
+      await invalidateStudioDomains(client, ["work"]);
       await client.invalidateQueries({ queryKey: ["material-assignment"] });
       onClose();
     } catch (reason) {
