@@ -147,7 +147,9 @@ test.describe("coach product-review evidence", () => {
 
     await page.goto(`/coach/students/${student}/lessons/${lesson}`);
     await expect(
-      page.getByRole("button", { name: /^(Write note|Continue draft)$/ }),
+      page
+        .locator(".lesson-primary-actions")
+        .getByRole("button", { name: /^(Write note|Continue draft)$/ }),
     ).toBeVisible();
     await expect(page.locator(".lesson-facts")).toHaveCSS("display", "grid");
     await expectNoHorizontalOverflow(page);
@@ -157,7 +159,11 @@ test.describe("coach product-review evidence", () => {
       ["Assign follow-up", "Assign practice", "coach-practice"],
       ["Attach resource", "Add material", "coach-material"],
     ] as const) {
-      await page.getByRole("button", { name: action }).click();
+      const actions =
+        action === "Attach resource"
+          ? page
+          : page.locator(".lesson-primary-actions");
+      await actions.getByRole("button", { name: action }).click();
       const workflow = page.getByRole("dialog", { name: dialog });
       if (action === "Attach resource") {
         await expect(

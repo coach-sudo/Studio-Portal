@@ -144,6 +144,7 @@ export function LessonCalendar({
           : String(anchor.getFullYear());
   const eventButton = (lesson: Lesson) => (
     <button
+      data-calendar-lesson={lesson.id}
       key={lesson.id}
       type="button"
       className={`calendar-event ${lesson.status}`}
@@ -249,6 +250,7 @@ export function LessonCalendar({
           </strong>
           {visible.slice(0, 8).map((lesson) => (
             <button
+              data-calendar-lesson={lesson.id}
               type="button"
               key={lesson.id}
               onClick={() => {

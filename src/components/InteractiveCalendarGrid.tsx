@@ -207,6 +207,7 @@ export function InteractiveCalendarGrid({
                       >
                         <button
                           className="time-calendar-open"
+                          data-calendar-lesson={lesson.id}
                           onClick={() => onOpen(lesson)}
                         >
                           <time>

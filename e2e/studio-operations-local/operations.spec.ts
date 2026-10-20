@@ -146,13 +146,7 @@ test("Mobile Inbox keeps composition above navigation and scrolls message histor
 }) => {
   for (const width of [320, 390, 768]) {
     await page.setViewportSize({ width, height: 800 });
-    await page.goto("/portal/inbox");
-    await page
-      .getByRole("complementary", { name: "Conversations" })
-      .getByRole("button")
-      .filter({ has: page.locator("strong") })
-      .first()
-      .click();
+    await page.goto("/portal/inbox?student=student-maya");
     await expect(page.getByLabel("Message", { exact: true })).toBeVisible();
     for (const theme of ["light", "dark"]) {
       await page.evaluate(
@@ -188,5 +182,25 @@ test("Mobile Inbox keeps composition above navigation and scrolls message histor
         ),
       )
       .toBe(true);
+  }
+});
+
+test("Calendar keyboard drawers restore their occurrence control", async ({
+  page,
+}) => {
+  await page.goto("/coach/bookings");
+  await page.getByLabel("Search lessons", { exact: true }).fill("Maya");
+  const appointment = page
+    .locator(".calendar-search-results [data-calendar-lesson]")
+    .first();
+  await expect(appointment).toBeVisible();
+  for (let i = 0; i < 3; i++) {
+    await appointment.focus();
+    await appointment.press("Enter");
+    const drawer = page.getByRole("dialog");
+    await expect(drawer).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(drawer).toBeHidden();
+    await expect(appointment).toBeFocused();
   }
 });

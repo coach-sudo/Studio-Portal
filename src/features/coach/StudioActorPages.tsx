@@ -87,6 +87,13 @@ export function ActorPagesView({
             <Status tone={profile.status === "published" ? "good" : "warn"}>
               {profile.status.replaceAll("_", " ")}
             </Status>
+            {profile.draftStatus && (
+              <Status
+                tone={profile.draftStatus === "approved" ? "good" : "warn"}
+              >
+                Draft: {profile.draftStatus.replaceAll("_", " ")}
+              </Status>
+            )}
             <button
               onClick={() =>
                 navigate(`/coach/students/${profile.studentId}/actor-page`)

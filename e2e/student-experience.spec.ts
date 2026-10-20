@@ -90,7 +90,11 @@ test("@journey PR6 coach lesson workspace opens linked work in context", async (
     ["Assign follow-up", "Assign practice"],
     ["Attach resource", "Add material"],
   ] as const) {
-    await page.getByRole("button", { name: button }).click();
+    const actions =
+      button === "Attach resource"
+        ? page
+        : page.locator(".lesson-primary-actions");
+    await actions.getByRole("button", { name: button }).click();
     const workflow = page.getByRole("dialog", { name: dialog });
     if (button === "Attach resource") {
       await expect(

@@ -84,6 +84,10 @@ function calendarBookings(lesson: Lesson, data: StudioSnapshot): Booking[] {
 export function BookingCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const openedAppointmentRequest = useRef("");
+  const appointmentOpener = useRef<{
+    lesson: string;
+    element: HTMLElement | null;
+  } | null>(null);
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useUrlChoice(
     "view",
@@ -158,10 +162,43 @@ export function BookingCenter() {
       setDialog({ type: "lesson", item: lesson });
     }
   }, [data, searchParams]);
+  useEffect(() => {
+    if (
+      dialog ||
+      isLoading ||
+      searchParams.has("lesson") ||
+      searchParams.has("booking") ||
+      !appointmentOpener.current
+    )
+      return;
+    // Closing or refreshing an appointment can replace its calendar button.
+    // Restore the exact occurrence after the route and refreshed DOM settle.
+    const frame = requestAnimationFrame(() => {
+      const opener = appointmentOpener.current;
+      if (!opener) return;
+      const target = opener.element?.isConnected
+        ? opener.element
+        : [
+            ...document.querySelectorAll<HTMLElement>("[data-calendar-lesson]"),
+          ].find((el) => el.dataset.calendarLesson === opener.lesson);
+      if (target) {
+        target.focus();
+        appointmentOpener.current = null;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [dialog, isLoading, searchParams, data]);
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
 
   function openCalendarLesson(lesson: Lesson) {
+    appointmentOpener.current = {
+      lesson: lesson.id,
+      element:
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null,
+    };
     const bookings = calendarBookings(lesson, data!);
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
