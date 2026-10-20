@@ -24,7 +24,10 @@ export const campaignBlockSchema = z.discriminatedUnion("type", [
   z.object({
     id: z.string().uuid(),
     type: z.literal("image"),
-    url,
+    url: url.refine(
+      (s) => !s.includes("{{"),
+      "Images require an HTTPS image URL, not an account or unsubscribe link",
+    ),
     alt: z.string().min(1).max(300),
   }),
   z.object({

@@ -48,6 +48,19 @@ describe("campaign rendering and delivery boundaries", () => {
         blocks: [
           {
             id: crypto.randomUUID(),
+            type: "image",
+            alt: "Preview",
+            url: "{{unsubscribeUrl}}",
+          },
+        ],
+      }).success,
+    ).toBe(false);
+    expect(
+      campaignContentSchema.safeParse({
+        version: 1,
+        blocks: [
+          {
+            id: crypto.randomUUID(),
             type: "button",
             label: "Unsafe",
             url: "javascript:alert(1)",

@@ -47,6 +47,7 @@ export type Database = {
           created_at: string
           display_name: string
           draft_content: Json
+          draft_status: string | null
           id: string
           published_revision_id: string | null
           slug: string
@@ -60,6 +61,7 @@ export type Database = {
           created_at?: string
           display_name: string
           draft_content?: Json
+          draft_status?: string | null
           id?: string
           published_revision_id?: string | null
           slug: string
@@ -73,6 +75,7 @@ export type Database = {
           created_at?: string
           display_name?: string
           draft_content?: Json
+          draft_status?: string | null
           id?: string
           published_revision_id?: string | null
           slug?: string
@@ -1338,32 +1341,41 @@ export type Database = {
       }
       email_campaigns: {
         Row: {
+          audience_snapshot: Json | null
           body_template: string
+          content: Json | null
           created_at: string
           id: string
           idempotency_key: string
           name: string
           recipient_count: number
+          scheduled_at: string | null
           studio_id: string
           subject_template: string
         }
         Insert: {
+          audience_snapshot?: Json | null
           body_template: string
+          content?: Json | null
           created_at?: string
           id?: string
           idempotency_key: string
           name: string
           recipient_count?: number
+          scheduled_at?: string | null
           studio_id: string
           subject_template: string
         }
         Update: {
+          audience_snapshot?: Json | null
           body_template?: string
+          content?: Json | null
           created_at?: string
           id?: string
           idempotency_key?: string
           name?: string
           recipient_count?: number
+          scheduled_at?: string | null
           studio_id?: string
           subject_template?: string
         }
@@ -4806,6 +4818,14 @@ export type Database = {
           subject_template: string
         }[]
       }
+      campaign_history: {
+        Args: { p_actor: string; p_page?: number; p_search?: string }
+        Returns: Json
+      }
+      campaign_recipient_eligible: {
+        Args: { p_email: string; p_studio: string }
+        Returns: boolean
+      }
       can_access_lesson: {
         Args: {
           target_lesson: string
@@ -5045,12 +5065,32 @@ export type Database = {
         Returns: undefined
       }
       cleanup_transient_studio_data: { Args: never; Returns: Json }
+      command_actor_page: {
+        Args: {
+          p_command: string
+          p_key: string
+          p_profile: string
+          p_value: Json
+          p_version: number
+        }
+        Returns: Json
+      }
       command_apply_lesson_credit: {
         Args: {
           entry_idempotency_key: string
           entry_reason: string
           requested_package: string
           target_lesson: string
+        }
+        Returns: Json
+      }
+      command_apply_setup_record: {
+        Args: {
+          p_key: string
+          p_kind: string
+          p_student: string
+          p_value: Json
+          p_version: number
         }
         Returns: Json
       }
@@ -5106,6 +5146,10 @@ export type Database = {
         }
         Returns: Json
       }
+      command_create_lesson_once: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
       command_create_service_offering: {
         Args: {
           enrollment_closes: string
@@ -5142,6 +5186,10 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      command_create_student_once: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
       command_grant_student_credits: {
         Args: {
           p_actor?: string
@@ -5159,6 +5207,10 @@ export type Database = {
           p_occurrence_count: number
           p_timezone: string
         }
+        Returns: Json
+      }
+      command_patch_studio_settings: {
+        Args: { p_base: Json; p_key: string; p_patch: Json }
         Returns: Json
       }
       command_remove_student: {
@@ -5238,6 +5290,15 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      communication_activity: {
+        Args: {
+          p_attention?: boolean
+          p_kind?: string
+          p_page?: number
+          p_search?: string
+        }
+        Returns: Json
       }
       confirm_booking: {
         Args: {
@@ -5325,6 +5386,10 @@ export type Database = {
         }
         Returns: Json
       }
+      find_student_duplicates: {
+        Args: { p_email?: string; p_name: string; p_phone?: string }
+        Returns: Json
+      }
       finish_calendar_projection: {
         Args: {
           p_failed?: boolean
@@ -5346,6 +5411,7 @@ export type Database = {
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
+      household_access_states: { Args: { p_student: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
         Args: {
@@ -5392,11 +5458,34 @@ export type Database = {
         }
         Returns: Json
       }
+      manage_campaign_draft: {
+        Args: {
+          p_actor: string
+          p_command: string
+          p_draft: string
+          p_key: string
+          p_origin: string
+          p_value: Json
+          p_version: number
+        }
+        Returns: Json
+      }
       manage_material_resources: {
         Args: {
           p_command: string
           p_expected_version?: number
           p_payload: Json
+        }
+        Returns: Json
+      }
+      manage_student_setup: {
+        Args: {
+          p_actor: string
+          p_command: string
+          p_key: string
+          p_student: string
+          p_value: Json
+          p_version: number
         }
         Returns: Json
       }
@@ -5459,6 +5548,10 @@ export type Database = {
           p_studio_id: string
           p_subject_template: string
         }
+        Returns: Json
+      }
+      read_studio_operation: {
+        Args: { p_command: string; p_key: string; p_value: Json }
         Returns: Json
       }
       reconcile_student_credit_reservations: {
@@ -5689,11 +5782,24 @@ export type Database = {
         Args: { target_student: string }
         Returns: number
       }
+      student_setup_context: {
+        Args: { p_search?: string; p_student: string }
+        Returns: Json
+      }
       student_workspace_resource: {
         Args: { p_assignment: string; p_resource: string; p_student: string }
         Returns: Json
       }
       student_workspace_summary: { Args: { p_student: string }; Returns: Json }
+      studio_financial_dashboard: {
+        Args: {
+          p_currency?: string
+          p_metric?: string
+          p_month?: string
+          p_page?: number
+        }
+        Returns: Json
+      }
       studio_global_search: {
         Args: {
           p_group?: string

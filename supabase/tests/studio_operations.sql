@@ -28,7 +28,10 @@ select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-0000
 select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','review','{"status":"published"}',2,'pgtap-wave-five-published')$$,'Reviewed publication is atomic');
 select lives_ok($$select public.command_actor_page('e5500000-0000-4000-8000-000000000005','save','{"bio":"Private draft changes","portfolio":{},"status":"draft"}',3,'pgtap-wave-five-private-edit')$$,'Published Actor may save private changes');
 select is((select status::text from public.actor_profiles where id='e5500000-0000-4000-8000-000000000005'),'published','Draft edits retain the live public state');
+-- Inspect the private revision as the test oracle; do not grant browser access.
+reset role;
 select is((select r.content->>'bio' from public.actor_profile_revisions r join public.actor_profiles p on p.published_revision_id=r.id where p.id='e5500000-0000-4000-8000-000000000005'),'Original biography','Public revision is unchanged by draft edits');
+set local role authenticated;
 select ok(not has_table_privilege('authenticated','workspace_internal.student_setups','SELECT'),'Setup state has no direct authenticated listing');
 select ok(not has_table_privilege('authenticated','workspace_internal.campaign_drafts','SELECT'),'Campaign draft state has no direct authenticated listing');
 select ok(not has_table_privilege('authenticated','actor_profiles','UPDATE'),'Direct Actor publication bypass is unavailable');
