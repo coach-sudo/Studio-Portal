@@ -1,9 +1,16 @@
-import type { Lesson, Material, Note, Student } from "../domain/model";
+import type {
+  Assignment,
+  Lesson,
+  Material,
+  Note,
+  Student,
+} from "../domain/model";
 import type { Database } from "../types/database.generated";
 
 type StudentRow = Database["public"]["Tables"]["students"]["Row"];
 type LessonRow = Database["public"]["Tables"]["lessons"]["Row"];
 type NoteRow = Database["public"]["Tables"]["notes"]["Row"];
+type AssignmentRow = Database["public"]["Tables"]["assignments"]["Row"];
 type MaterialRow = Database["public"]["Tables"]["materials"]["Row"];
 type MaterialLinkRow = Database["public"]["Tables"]["material_links"]["Row"];
 type MaterialLibraryRow =
@@ -105,6 +112,24 @@ export const mapNoteRow = (row: NoteRow): Note => ({
   category: row.category ?? undefined,
   pinned: row.pinned ?? undefined,
   status: row.status,
+  version: row.version,
+  updatedAt: row.updated_at,
+});
+
+export const mapAssignmentRow = (row: AssignmentRow): Assignment => ({
+  id: row.id,
+  studentId: row.student_id,
+  lessonId: row.lesson_id ?? undefined,
+  title: row.title,
+  details: row.details,
+  dueAt: row.due_at ?? undefined,
+  status: row.status,
+  helpRequested: row.help_requested,
+  activityType: row.activity_type as Assignment["activityType"],
+  activityConfig: row.activity_config as Assignment["activityConfig"],
+  responses: row.responses as Assignment["responses"],
+  progress: row.progress ?? undefined,
+  studentResponse: row.student_response ?? undefined,
   version: row.version,
   updatedAt: row.updated_at,
 });

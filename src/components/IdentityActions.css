@@ -1,5 +1,5 @@
 .identity > span {
-  color: var(--ink, #17211d);
+  color: #17211d;
 }
 
 .identity-signout {

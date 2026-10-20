@@ -1,4 +1,5 @@
 import { useSearchIdentity } from "../../data/globalSearch";
+import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { recordLink } from "../../app/recordLinks";
 import {
   useUrlValue,
@@ -261,7 +262,7 @@ export function ResourceAssignmentForm({
           },
           collection ? resource.version : 0,
         );
-      await queryClient.invalidateQueries({ queryKey: ["material-resources"] });
+      await invalidateStudioDomains(queryClient, ["work"]);
       onSaved();
     } catch (reason) {
       setNotice(
@@ -528,7 +529,7 @@ export function ResourceBrowser({
             ? resource.version
             : resource.assignmentVersion || 1,
         );
-      await queryClient.invalidateQueries({ queryKey: ["material-resources"] });
+      await invalidateStudioDomains(queryClient, ["work"]);
       setNotice("Materials updated.");
     } catch (reason) {
       setNotice(reason instanceof Error ? reason.message : "Update failed.");

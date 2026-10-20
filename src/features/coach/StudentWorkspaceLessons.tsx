@@ -38,7 +38,12 @@ import {
   studioCommand,
 } from "../../data/bookingCommands";
 import { formatMoney, packageSummary } from "../../domain/finance";
-import type { Lesson, Student } from "../../domain/model";
+import type { Lesson, Student, Note } from "../../domain/model";
+import {
+  coachingContext,
+  lessonDraft,
+  isSharedLesson,
+} from "../../domain/coachingContext";
 import { formatStudioDateTime } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -166,21 +171,32 @@ function DemoLessons({ data, student }: { data: Data; student: Student }) {
     </div>
   );
 }
-export function CoachLessonHub({
-  data,
-  student,
-  isDemo,
-  onAddNote,
-  onAddAssignment,
-  onAddMaterial,
-}: {
+export function CoachLessonHub(props: CoachLessonHubProps) {
+  const { lessonId = "" } = useParams();
+  return (
+    <CoachLessonWorkspace key={`${props.student.id}:${lessonId}`} {...props} />
+  );
+}
+
+type CoachLessonHubProps = {
   data: Data;
   student: Student;
   isDemo: boolean;
   onAddNote: (lessonId: string) => void;
+  onEditNote: (note: Note) => void;
   onAddAssignment: (lessonId: string) => void;
   onAddMaterial: (lessonId: string) => void;
-}) {
+};
+
+function CoachLessonWorkspace({
+  data,
+  student,
+  isDemo,
+  onAddNote,
+  onEditNote,
+  onAddAssignment,
+  onAddMaterial,
+}: CoachLessonHubProps) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
   const navigate = useNavigate();
@@ -222,13 +238,21 @@ export function CoachLessonHub({
   const [lessonPaid, setLessonPaid] = useState(
     String((lesson?.paidMinor || 0) / 100),
   );
-  if (!lesson)
+  if (!lesson || !belongsToStudent(data, lesson, student.id))
     return (
       <RecordUnavailable fallback={`/coach/students/${student.id}/lessons`} />
     );
-  const notes = data.notes.filter((item) => item.lessonId === lesson.id);
+  const context = coachingContext(data, student.id)!;
+  const notes = data.notes.filter(
+    (item) => item.lessonId === lesson.id && item.studentId === student.id,
+  );
+  const draft = lessonDraft(data, student.id, lesson.id);
+  const sharedLesson = isSharedLesson(data, lesson);
+  const nextLesson = context.upcoming.find(
+    (item) => item.id !== lesson.id && item.startsAt > lesson.startsAt,
+  );
   const assignments = data.assignments.filter(
-    (item) => item.lessonId === lesson.id,
+    (item) => item.lessonId === lesson.id && item.studentId === student.id,
   );
   const availableCredits = data.packages
     .filter((item) => item.studentId === student.id)
@@ -244,6 +268,41 @@ export function CoachLessonHub({
     (new Date(lesson.endsAt).getTime() - new Date(lesson.startsAt).getTime()) /
       60_000,
   );
+  const completeLesson = async () => {
+    if (actionBusy || lesson.status !== "scheduled" || sharedLesson) return;
+    setActionBusy("complete");
+    try {
+      if (isDemo)
+        store.transact((snapshot) => {
+          const current = snapshot.lessons.find(
+            (item) => item.id === lesson.id,
+          )!;
+          current.status = "completed";
+          current.version += 1;
+          current.updatedAt = new Date().toISOString();
+        });
+      else {
+        await studioCommand("lessons", {
+          command: "complete",
+          entityId: lesson.id,
+          expectedVersion: lesson.version,
+          reason: "Coach completed lesson from workspace",
+        });
+        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
+      }
+      setNotice(
+        "Lesson completed. Your notes remain unchanged; share feedback when ready.",
+      );
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Lesson could not be completed.",
+      );
+    } finally {
+      setActionBusy("");
+    }
+  };
   const cancelLesson = async () => {
     if (cancelling) return;
     setCancelling(true);
@@ -445,6 +504,44 @@ export function CoachLessonHub({
           {lesson.status}
         </Status>
         <div className="form-actions lesson-primary-actions">
+          <button className="primary" onClick={() => onAddNote(lesson.id)}>
+            {draft ? "Continue draft" : "Write note"}
+          </button>
+          <button onClick={() => onAddAssignment(lesson.id)}>
+            Assign follow-up
+          </button>
+          {lesson.status === "scheduled" && !sharedLesson && (
+            <button
+              disabled={!!actionBusy}
+              onClick={() => void completeLesson()}
+            >
+              {actionBusy === "complete" ? "Completing…" : "Complete lesson"}
+            </button>
+          )}
+          {nextLesson && (
+            <Link
+              className="button-link"
+              to={`/coach/students/${student.id}/lessons/${nextLesson.id}`}
+            >
+              Next lesson
+            </Link>
+          )}
+          {lesson.offeringId && (
+            <Link
+              className="button-link"
+              to={`/coach/classes/${lesson.offeringId}`}
+            >
+              Whole-class workspace
+            </Link>
+          )}
+          {sharedLesson && !lesson.offeringId && (
+            <Link
+              className="button-link"
+              to={`/coach/bookings?lesson=${lesson.id}`}
+            >
+              Shared lesson controls
+            </Link>
+          )}
           {lesson.joinUrl && (
             <a
               className="button-link"
@@ -488,6 +585,22 @@ export function CoachLessonHub({
           </div>
         </section>
         <LessonReadinessPanel lesson={lesson} data={data} />
+        {student.focusArea && (
+          <p>
+            <strong>Coaching focus</strong> · {student.focusArea}
+          </p>
+        )}
+        {context.feedback.find((note) => note.lessonId !== lesson.id) && (
+          <details className="disclosure-section">
+            <summary>Recent shared feedback</summary>
+            <p>
+              {
+                context.feedback.find((note) => note.lessonId !== lesson.id)!
+                  .body
+              }
+            </p>
+          </details>
+        )}
         <details className="lesson-admin-disclosure">
           <summary>Payment, credits &amp; lesson administration</summary>
           <div className="lesson-admin-summary">
@@ -775,7 +888,7 @@ export function CoachLessonHub({
           title="Notes"
           aside={
             <button onClick={() => onAddNote(lesson.id)}>
-              <Plus /> Add note
+              <Plus /> {draft ? "Continue draft" : "Write note"}
             </button>
           }
         >
@@ -790,6 +903,14 @@ export function CoachLessonHub({
                     {note.status}
                   </Status>
                 </header>
+                <button
+                  className="button-link"
+                  onClick={() => onEditNote(note)}
+                >
+                  {note.status === "published"
+                    ? "Edit shared feedback"
+                    : "Continue draft"}
+                </button>
                 <div
                   className="published-note-body"
                   dangerouslySetInnerHTML={{
@@ -816,7 +937,7 @@ export function CoachLessonHub({
         >
           <div className="table-list">
             {assignments.map((item) => (
-              <article key={item.id}>
+              <article key={item.id} id={`practice-${item.id}`}>
                 <CheckSquare />
                 <div>
                   <strong>{item.title}</strong>
@@ -826,6 +947,9 @@ export function CoachLessonHub({
                   {item.helpRequested
                     ? "help requested"
                     : item.status.replaceAll("_", " ")}
+                  {item.progress != null
+                    ? ` · ${item.status === "completed" ? 100 : item.progress}%`
+                    : ""}
                 </Status>
               </article>
             ))}

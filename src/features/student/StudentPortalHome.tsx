@@ -13,17 +13,21 @@ import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import { creditTotals } from "../../domain/credits";
-import {
-  isJoinableLesson,
-  sortAssignments,
-  splitLessons,
-} from "../../domain/lessonExperience";
+import { isJoinableLesson } from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
 } from "../../domain/presentation";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import {
+  AssignedWorkSummary,
+  PublishedFeedback,
+} from "../../components/CoachingContinuity";
+import {
+  coachingContext,
+  portalContextLink,
+} from "../../domain/coachingContext";
 
 export function Header({ data }: { data: Snapshot }) {
   return (
@@ -74,7 +78,15 @@ function PortalRow({
     </div>
   );
 }
-export function StudentHome({ data, base }: { data: Snapshot; base: string }) {
+export function StudentHome({
+  data,
+  base,
+  isDemo = false,
+}: {
+  data: Snapshot;
+  base: string;
+  isDemo?: boolean;
+}) {
   return (
     <div className="student-page">
       <Header data={data} />
@@ -82,6 +94,7 @@ export function StudentHome({ data, base }: { data: Snapshot; base: string }) {
       <HomePriorities
         data={data}
         base={base}
+        isDemo={isDemo}
         showAccount={!data.students[0]?.isMinor}
       />
       <div className="student-quick-actions">
@@ -120,12 +133,33 @@ export function StudentHome({ data, base }: { data: Snapshot; base: string }) {
     </div>
   );
 }
-export function GuardianHome({ data, base }: { data: Snapshot; base: string }) {
+export function GuardianHome({
+  data,
+  base,
+  isDemo,
+  canViewWork,
+  canViewSchedule,
+  canViewFinance,
+}: {
+  data: Snapshot;
+  base: string;
+  isDemo: boolean;
+  canViewWork: boolean;
+  canViewSchedule: boolean;
+  canViewFinance: boolean;
+}) {
   return (
     <div className="student-page">
       <Header data={data} />
-      <JoinLessonBanner lessons={data.lessons} />
-      <HomePriorities data={data} base={base} showAccount />
+      {canViewSchedule && <JoinLessonBanner lessons={data.lessons} />}
+      <HomePriorities
+        data={data}
+        base={base}
+        isDemo={isDemo}
+        showAccount={canViewFinance}
+        showWork={canViewWork}
+        showSchedule={canViewSchedule}
+      />
     </div>
   );
 }
@@ -134,20 +168,24 @@ function HomePriorities({
   data,
   base,
   showAccount,
+  isDemo,
+  showWork = true,
+  showSchedule = true,
 }: {
   data: Snapshot;
   base: string;
   showAccount: boolean;
+  isDemo: boolean;
+  showWork?: boolean;
+  showSchedule?: boolean;
 }) {
-  const navigate = useNavigate();
-  const lesson = splitLessons(data.lessons).active[0];
-  const work = data.materials
-    .filter(
-      (item) => item.role === "current_script" && item.status === "active",
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))[0];
-  const practice = sortAssignments(data.assignments).active[0];
   const student = data.students[0];
+  const open = useNavigate();
+  const navigate = (path: string) => open(portalContextLink(path, student.id));
+  const context = coachingContext(data, student.id)!;
+  const lesson = showSchedule ? context.nextLesson : undefined;
+  const work = showWork ? context.scripts[0] : undefined;
+  const practice = showWork ? context.practice.active[0] : undefined;
   const credits = student
     ? creditTotals(
         data.packages,
@@ -180,7 +218,7 @@ function HomePriorities({
           title: practice.title,
           detail: practice.details,
           action: "Open practice",
-          route: `${base}/work`,
+          route: `${base}/work#practice-${practice.id}`,
         }
       : undefined,
     work
@@ -216,8 +254,12 @@ function HomePriorities({
             />
           ) : (
             <EmptyState
-              title="You’re caught up"
-              detail="There is no lesson or practice that needs your attention right now."
+              title="No upcoming lesson or practice"
+              detail={
+                showWork
+                  ? "Your resources and shared feedback are below."
+                  : "Your next scheduled lesson appears here."
+              }
             />
           )}
         </Section>
@@ -256,6 +298,20 @@ function HomePriorities({
           </section>
         )}
       </div>
+      {showWork && (
+        <>
+          <AssignedWorkSummary
+            data={data}
+            isDemo={isDemo}
+            studentId={student.id}
+          />
+          <PublishedFeedback
+            data={data}
+            isDemo={isDemo}
+            studentId={student.id}
+          />
+        </>
+      )}
     </div>
   );
 }

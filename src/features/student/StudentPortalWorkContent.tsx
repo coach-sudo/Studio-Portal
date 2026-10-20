@@ -14,10 +14,7 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import { ResourceBrowser } from "../library/ResourceBrowser";
-import {
-  lessonDateLabel,
-  sortAssignments,
-} from "../../domain/lessonExperience";
+import { lessonDateLabel } from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -26,6 +23,10 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import { coachingContext } from "../../domain/coachingContext";
+import { useUrlNumber } from "../../hooks/useWorkspaceLocation";
+import { usePaginatedStudioRows } from "../../hooks/usePaginatedStudioRows";
+import { mapAssignmentRow } from "../../data/studioMappers";
 
 export function Practice({
   data,
@@ -41,8 +42,28 @@ export function Practice({
   const [notice, setNotice] = useState("");
   const [busyId, setBusyId] = useState("");
   const [showCompleted, setShowCompleted] = useState(false);
-  const assignments = sortAssignments(data.assignments);
+  const assignments = coachingContext(data, data.students[0].id)!.practice;
   const assignmentPage = usePagedList(assignments.active);
+  const [historyPage, setHistoryPage] = useUrlNumber("completedPage", 1);
+  const [historySize, setHistorySize] = useUrlNumber("completedSize", 10, 100);
+  const completedPage = usePagedList(assignments.completed, historySize);
+  const history = usePaginatedStudioRows(
+    {
+      domain: "work",
+      table: "assignments",
+      page: historyPage,
+      pageSize: historySize,
+      filters: { student_id: data.students[0].id, status: "completed" },
+      sort: { column: "updated_at", ascending: false },
+    },
+    !isDemo && showCompleted,
+  );
+  const completed = isDemo
+    ? completedPage.visible
+    : (history.data?.items || []).map(mapAssignmentRow);
+  const completedTotal = isDemo
+    ? completedPage.total
+    : history.data?.total || 0;
   const change = async (id: string, command: "complete" | "help") => {
     if (busyId) return;
     const assignment = data.assignments.find((item) => item.id === id);
@@ -150,7 +171,11 @@ export function Practice({
         />
         <div className="table-list">
           {assignmentPage.visible.map((item) => (
-            <article key={item.id} className="assignment-card">
+            <article
+              key={item.id}
+              id={`practice-${item.id}`}
+              className="assignment-card"
+            >
               <header>
                 <CheckSquare />
                 <div>
@@ -168,6 +193,7 @@ export function Practice({
                 </Status>
               </header>
               <AssignmentActivity
+                readOnly={data.role === "guardian"}
                 assignment={item}
                 busy={busyId === item.id}
                 onSave={(responses) => saveResponse(item, responses)}
@@ -183,18 +209,17 @@ export function Practice({
             />
           )}
         </div>
-        {assignments.completed.length > 0 && (
+        {
           <div className="completed-work-archive">
             <button
               type="button"
               onClick={() => setShowCompleted((value) => !value)}
             >
-              {showCompleted ? "Hide" : "Show"} completed work (
-              {assignments.completed.length})
+              {showCompleted ? "Hide" : "Show"} completed work
             </button>
             {showCompleted && (
               <div className="table-list">
-                {assignments.completed.map((item) => (
+                {completed.map((item) => (
                   <article key={item.id}>
                     <CheckSquare />
                     <div>
@@ -210,10 +235,41 @@ export function Practice({
                     <Status tone="good">completed</Status>
                   </article>
                 ))}
+                {!isDemo && history.isError && (
+                  <p role="alert">
+                    Completed work unavailable.{" "}
+                    <button onClick={() => void history.refetch()}>
+                      Retry completed work
+                    </button>
+                  </p>
+                )}
+                {!completed.length && !history.isError && (
+                  <p role="status">
+                    {!isDemo && history.isPending
+                      ? "Loading completed work…"
+                      : "No completed practice yet."}
+                  </p>
+                )}
+                <ListControls
+                  page={isDemo ? completedPage.page : historyPage}
+                  pageCount={Math.max(
+                    1,
+                    Math.ceil(completedTotal / historySize),
+                  )}
+                  pageSize={historySize}
+                  total={completedTotal}
+                  onPage={isDemo ? completedPage.setPage : setHistoryPage}
+                  onPageSize={(size) => {
+                    setHistorySize(size);
+                    setHistoryPage(1);
+                    completedPage.setPageSize(size);
+                  }}
+                  label="completed practice"
+                />
               </div>
             )}
           </div>
-        )}
+        }
       </Section>
     </div>
   );

@@ -72,7 +72,9 @@ describe("content disclosure and decision context", () => {
     }));
     render(
       <MemoryRouter>
-        <StudentHome data={data} base="/portal" />
+        <QueryClientProvider client={new QueryClient()}>
+          <StudentHome data={data} base="/portal" isDemo />
+        </QueryClientProvider>
       </MemoryRouter>,
     );
     const account = screen.getByRole("region", { name: "Account" });
