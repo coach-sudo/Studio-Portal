@@ -38,7 +38,15 @@ export async function handleSetupCommands(
       } as never,
     );
     if (result.error) throw result.error;
-    return result.data as unknown as StudentSetupState;
+    const state = result.data as unknown as StudentSetupState;
+    // PostgreSQL can serialize an absent composite row as an object of nulls.
+    // Keep a first read usable without creating a draft or changing the student.
+    return {
+      ...state,
+      version: state.version ?? 0,
+      draft: state.draft ?? { step: 0, actions: [] },
+      results: state.results ?? {},
+    };
   };
   if (ctx.input.command === "read")
     return json({ resource: await manage("read") });
