@@ -648,8 +648,8 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
     );
     if (name === "settings")
       await page
-        .getByRole("button", { name: /Communications and Notifications/ })
-        .click();
+        .getByRole("combobox", { name: "Settings section" })
+        .selectOption("communications");
     await expect(page.locator("main")).toBeVisible();
     if (name === "account") {
       const payerName = page.locator(".household-contact-row strong");
