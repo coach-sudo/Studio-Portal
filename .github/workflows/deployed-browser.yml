@@ -175,8 +175,16 @@ jobs:
           npm run build
           # CLI 27.8.0 retries custom Function 403s as .html paths, hiding API denials.
           # Patch only the disposable CLI proxy, never the application or production.
-          nohup npx --yes --package netlify-cli@27.8.0 -c \
-            "tsx scripts/patch-netlify-dev-api-errors.ts && netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions" \
+          # otel 7.0.6 metadata exists but its npm tarball is unavailable (404).
+          # Keep the established CLI and its previously verified otel 7.0.4,
+          # scoped to this disposable CI runtime; application dependencies stay unchanged.
+          cli_dir="$RUNNER_TEMP/netlify-cli"
+          mkdir -p "$cli_dir"
+          printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4"}}' > "$cli_dir/package.json"
+          npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
+          export PATH="$cli_dir/node_modules/.bin:$PATH"
+          npx tsx scripts/patch-netlify-dev-api-errors.ts
+          nohup netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions \
             > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/netlify-serve.pid"
           for attempt in {1..120}; do
