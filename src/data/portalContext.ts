@@ -60,13 +60,16 @@ export function usePortalContexts(
   const accessFingerprint = JSON.stringify(query.data?.selected || null);
   useEffect(() => {
     if (!query.isSuccess && !query.isError) return;
-    const next = `${identity}:${studentId}:${query.isError ? "denied" : accessFingerprint}`;
+    // Writing the already-authorized default student into the URL is not an
+    // access change. Evicting its newly mounted queries strands their observers.
+    const selectedId = query.data?.selected?.id || studentId;
+    const next = `${identity}:${selectedId}:${query.isError ? "denied" : accessFingerprint}`;
     if (previous.current && previous.current !== next && studentId) {
       const matches = (q: { queryKey: readonly unknown[] }) =>
         q.queryKey[0] !== "portal-contexts" && q.queryKey.includes(studentId);
       void client
         .cancelQueries({ predicate: matches })
-        .then(() => client.removeQueries({ predicate: matches }));
+        .then(() => client.resetQueries({ predicate: matches }));
     }
     previous.current = next;
   }, [
@@ -75,6 +78,7 @@ export function usePortalContexts(
     accessFingerprint,
     query.isSuccess,
     query.isError,
+    query.data?.selected?.id,
     client,
   ]);
   return { ...query, identity };

@@ -5221,6 +5221,10 @@ export type Database = {
         }
         Returns: Json
       }
+      command_review_provider_import: {
+        Args: { p_import: string; p_key: string; p_payload: Json }
+        Returns: Json
+      }
       command_student_credit_settings: {
         Args: {
           p_actor: string

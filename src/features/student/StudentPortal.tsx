@@ -339,7 +339,13 @@ function PortalWorkspace({
                 <span>{label}</span>
               </NavLink>
             ))}
-          <button type="button" onClick={() => setMobileMenuOpen(true)}>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.currentTarget.focus();
+              setMobileMenuOpen(true);
+            }}
+          >
             <Menu aria-hidden="true" />
             <span>More</span>
           </button>
@@ -394,7 +400,10 @@ function PortalWorkspace({
             </label>
           )}
           <button
-            onClick={() => setSearchOpen(true)}
+            onClick={(event) => {
+              event.currentTarget.focus();
+              setSearchOpen(true);
+            }}
             aria-label="Search portal"
           >
             <Search aria-hidden="true" />
@@ -595,7 +604,13 @@ function PortalWorkspace({
           </NavLink>
         ))}
         {tabs.length > 4 && (
-          <button type="button" onClick={() => setMobileMenuOpen(true)}>
+          <button
+            type="button"
+            onClick={(event) => {
+              event.currentTarget.focus();
+              setMobileMenuOpen(true);
+            }}
+          >
             <Menu />
             <span>More</span>
           </button>

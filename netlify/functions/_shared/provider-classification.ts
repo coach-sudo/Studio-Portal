@@ -4,14 +4,12 @@ export type IntakeProvider =
   | "lessonface"
   | "wyzant"
   | "lessons_com"
+  | "superprof"
   | "acuity"
   | "google_calendar"
   | "gmail";
 
-export type IntakeChangeType =
-  | "confirmation"
-  | "reschedule"
-  | "cancellation";
+export type IntakeChangeType = "confirmation" | "reschedule" | "cancellation";
 
 export interface IntakeParsedOccurrence {
   startsAt: string;
@@ -50,25 +48,34 @@ export function matchStudentIdentity<T extends IntakeStudentIdentity>(
   emails: string[],
 ) {
   const normalizedEmails = emails.map(normalizeIdentity);
-  const byEmail = students.find((student) =>
+  const emailMatches = students.filter((student) =>
     [student.email, student.guardian_email].some(
       (value) => value && normalizedEmails.includes(normalizeIdentity(value)),
     ),
   );
-  if (byEmail)
-    return { student: byEmail, matchedBy: "email", confidence: 0.99 };
+  if (emailMatches.length === 1)
+    return { student: emailMatches[0], matchedBy: "email", confidence: 0.99 };
   const haystack = ` ${normalizeIdentity(text)} `;
-  const byName = students.find((student) =>
-    [student.full_name, student.preferred_name, student.guardian_name]
-      .filter(Boolean)
-      .some((value) => {
-        const name = normalizeIdentity(value);
-        return name.length >= 4 && haystack.includes(` ${name} `);
-      }),
+  const contains = (value?: string | null) => {
+    const name = normalizeIdentity(value);
+    return name.length >= 4 && haystack.includes(` ${name} `);
+  };
+  const candidates = emailMatches.length ? emailMatches : students;
+  // A shared guardian address/name or preferred name never chooses a sibling
+  // by array order. A unique full student name can resolve shared contact data.
+  const fullMatches = candidates.filter((student) =>
+    contains(student.full_name),
   );
-  return byName
+  const nameMatches = fullMatches.length
+    ? fullMatches
+    : candidates.filter(
+        (student) =>
+          contains(student.preferred_name) || contains(student.guardian_name),
+      );
+  return nameMatches.length === 1 &&
+    (!emailMatches.length || fullMatches.length === 1)
     ? {
-        student: byName,
+        student: nameMatches[0],
         matchedBy: "student or guardian name",
         confidence: 0.91,
       }
@@ -105,9 +112,11 @@ export function providerFromText(text: string): IntakeProvider | undefined {
       ? "wyzant"
       : /lessons\.com/i.test(text)
         ? "lessons_com"
-        : /(acuity|squarespace scheduling)/i.test(text)
-          ? "acuity"
-          : undefined;
+        : /\bsuperprof\b/i.test(text)
+          ? "superprof"
+          : /(acuity|squarespace scheduling)/i.test(text)
+            ? "acuity"
+            : undefined;
 }
 
 const explicitLessonContext = (text: string) =>
@@ -161,7 +170,9 @@ export function classifyProviderIntake(
 ): IntakeDecision {
   const text = input.text.replace(/\s+/g, " ").trim();
   const detected =
-    input.provider || providerFromText(text) || (input.source as IntakeProvider);
+    input.provider ||
+    providerFromText(text) ||
+    (input.source as IntakeProvider);
   const changeType = input.changeType || changeFromText(text);
   const matchConfidence = input.matchContext?.confidence || 0;
   const hasStudent = Boolean(input.matchContext?.studentId);
@@ -286,7 +297,8 @@ export function classifyProviderIntake(
     if (
       supportedProvider &&
       hasTargetLesson &&
-      (hasLesson || /\b(lessons?|sessions?|bookings?|classes?)\b/i.test(text)) &&
+      (hasLesson ||
+        /\b(lessons?|sessions?|bookings?|classes?)\b/i.test(text)) &&
       (changeType === "cancellation" || hasOccurrence)
     ) {
       return decision(

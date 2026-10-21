@@ -1,0 +1,29 @@
+import { defineConfig } from "@playwright/test";
+import { fileURLToPath } from "node:url";
+export default defineConfig({
+  testDir: ".",
+  testMatch: "quality.spec.ts",
+  outputDir: "../../test-results/wave-six",
+  workers: 1,
+  retries: 0,
+  timeout: 45000,
+  reporter: "list",
+  use: { baseURL: "http://127.0.0.1:4187", serviceWorkers: "block" },
+  projects: [
+    { name: "chromium", use: { browserName: "chromium" } },
+    { name: "webkit", use: { browserName: "webkit" } },
+  ],
+  webServer: {
+    cwd: fileURLToPath(new URL("../../", import.meta.url)),
+    command:
+      "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort",
+    url: "http://127.0.0.1:4187",
+    reuseExistingServer: false,
+    env: {
+      VITE_SUPABASE_URL: "http://127.0.0.1:54399",
+      VITE_SUPABASE_ANON_KEY: "local-browser-contract-key",
+      VITE_ENABLE_DEMO_MODE: "false",
+      VITE_QUERY_LAYER_V2: "true",
+    },
+  },
+});

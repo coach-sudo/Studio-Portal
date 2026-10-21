@@ -214,3 +214,28 @@ describe("Gmail provider lesson parsing", () => {
     ).toBeUndefined();
   });
 });
+
+it("does not deduplicate two students merely because provider and time match", () => {
+  expect(
+    isSameScheduledLesson(
+      {
+        startsAt: "2030-01-01T18:00:00Z",
+        endsAt: "2030-01-01T19:00:00Z",
+        topic: "Lessonface",
+        locationLabel: "Online",
+        joinUrl: undefined,
+        timeZone: "UTC",
+      },
+      {
+        id: "other",
+        student_id: "sibling",
+        starts_at: "2030-01-01T18:00:00Z",
+        ends_at: "2030-01-01T19:00:00Z",
+        status: "scheduled",
+        source_provider: "lessonface",
+      },
+      "lessonface",
+      "intended",
+    ),
+  ).toBe(false);
+});

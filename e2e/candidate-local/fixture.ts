@@ -119,6 +119,7 @@ export async function installFixture(
     version: 1,
   };
   const state = {
+    imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
     commands: [] as string[],
@@ -364,6 +365,7 @@ export async function installFixture(
           membership: rows("memberships")[0] || null,
           studio: rows("studios")[0] || null,
           students: rows("students"),
+          integrationImports: state.imports,
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],

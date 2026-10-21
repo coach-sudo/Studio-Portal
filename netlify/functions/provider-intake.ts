@@ -129,6 +129,7 @@ const displayProvider = (value: string) =>
       wyzant: "Wyzant",
       lessons_com: "Lessons.com",
       acuity: "Acuity",
+      superprof: "Superprof",
       google_calendar: "Google Calendar",
       gmail: "Gmail",
     }) as Record<string, string>
@@ -200,7 +201,9 @@ export function isSameScheduledLesson(
   return (
     startDelta <= 5 * 60000 &&
     endDelta <= 5 * 60000 &&
-    (identityMatches || providerMatches || topicMatches)
+    (matchedStudentId
+      ? identityMatches
+      : Boolean(lesson.student_id == null && (providerMatches || topicMatches)))
   );
 }
 export function managedCalendarChange(
@@ -253,7 +256,7 @@ function titleIdentity(summary: string) {
         )[0],
     fullName = prefix
       .replace(
-        /\b\d+\s*min\b|\bprepaid\b|lessonface|wyzant|lessons\.com|acuity|confirmed|booking/gi,
+        /\b\d+\s*min\b|\bprepaid\b|lessonface|wyzant|lessons\.com|superprof|acuity|confirmed|booking/gi,
         " ",
       )
       .replace(/[^a-zA-Z' -]/g, " ")
@@ -597,6 +600,7 @@ async function importCalendar(
         ? managed.lessons.get(projection.lesson_id)
         : undefined;
     if (projection && managedLesson) {
+      if (managedLesson.studio_id !== studio.id) continue;
       if (
         await reconcileManagedCalendarEvent(
           db,
@@ -775,7 +779,7 @@ async function importCalendar(
           .eq("id", prior.id);
       continue;
     }
-    if (intakeDecision.disposition === "needs_review") {
+    if (intakeDecision.disposition === "needs_review" || !match) {
       await db.from("integration_imports").upsert(
         {
           studio_id: studio.id,
@@ -795,67 +799,51 @@ async function importCalendar(
       review++;
       continue;
     }
-    let student = match?.student;
-    if (!student && identity) {
-      student = candidates.find(
-        (item) => normalize(item.full_name) === normalize(identity.fullName),
-      );
-      if (!student && emails[0]) {
-        const { data: created, error } = await db
-          .from("students")
-          .insert({
-            studio_id: studio.id,
-            full_name: identity.fullName,
-            preferred_name: identity.preferred || null,
-            email: emails[0].toLowerCase(),
-            status: "lead",
-            lead_source: displayProvider(source),
-            portal_enabled: false,
-          })
-          .select(
-            "id,full_name,preferred_name,email,guardian_name,guardian_email",
-          )
-          .single();
-        if (!error && created) {
-          student = created;
-          students.push(created);
-        }
-      }
-    }
-    if (!student && detected && emails[0]) {
-      const fallback =
-        (event.summary || displayProvider(detected))
-          .replace(
-            /lessonface|wyzant|lessons\.com|acuity|confirmed|booking|lesson|session/gi,
-            " ",
-          )
-          .replace(/\s+/g, " ")
-          .trim() || `${displayProvider(detected)} student`;
-      const { data: created, error } = await db
-        .from("students")
-        .insert({
-          studio_id: studio.id,
-          full_name: fallback,
-          email: emails[0].toLowerCase(),
-          status: "lead",
-          lead_source: displayProvider(detected),
-          portal_enabled: false,
-        })
-        .select(
-          "id,full_name,preferred_name,email,guardian_name,guardian_email",
-        )
-        .single();
-      if (!error && created) {
-        student = created;
-        students.push(created);
-      }
-    }
+    const student = match!.student;
     const confidence = Math.max(
       intakeDecision.confidence,
       match?.confidence ||
         (student && identity?.fullName ? 0.88 : detected?.length ? 0.7 : 0.5),
     );
     let lessonId: string | undefined;
+    // A Gmail confirmation may already have created this exact occurrence.
+    // Review its external identity without replacing participants or payment data.
+    if (student && !prior?.lesson_id) {
+      const { data: existing, error: existingError } = await db
+        .from("lessons")
+        .select("id,version")
+        .eq("studio_id", studio.id)
+        .eq("student_id", student.id)
+        .eq("starts_at", event.start.dateTime)
+        .eq("ends_at", event.end.dateTime)
+        .not("status", "in", "(cancelled,late_cancelled)")
+        .limit(2);
+      if (existingError) throw existingError;
+      if (existing?.length) {
+        const { error: importError } = await db
+          .from("integration_imports")
+          .upsert(
+            {
+              studio_id: studio.id,
+              provider: "google_calendar",
+              external_id: event.id,
+              detected_source: source,
+              student_id: student.id,
+              lesson_id: existing.length === 1 ? existing[0].id : null,
+              status: "needs_review",
+              confidence,
+              matched_by: "cross_signal_occurrence_review",
+              payload: event,
+              updated_at: new Date().toISOString(),
+            },
+            { onConflict: "studio_id,provider,external_id" },
+          );
+        if (importError) throw importError;
+        review++;
+        continue;
+      }
+    }
+
     if (student) {
       const { data: lesson, error } = await db
         .from("lessons")
@@ -918,14 +906,6 @@ async function importCalendar(
         if (coverage.error) throw coverage.error;
         imported++;
       }
-    } else {
-      if (prior?.lesson_id)
-        await db
-          .from("lessons")
-          .delete()
-          .eq("id", prior.lesson_id)
-          .eq("source_provider", source);
-      review++;
     }
     await db.from("integration_imports").upsert(
       {
@@ -951,10 +931,14 @@ async function importCalendar(
   return { imported, review };
 }
 
-async function scanGmail(token: string, studio: any, students: StudentRow[]) {
+export async function scanGmail(
+  token: string,
+  studio: any,
+  students: StudentRow[],
+) {
   const db = serviceClient(),
     query = encodeURIComponent(
-      'newer_than:90d {lessonface wyzant "lessons.com" acuity "squarespace scheduling"}',
+      'newer_than:90d {lessonface wyzant "lessons.com" superprof acuity "squarespace scheduling"}',
     ),
     messageIds: Array<{ id: string }> = [];
   let pageToken: string | undefined;
@@ -1031,6 +1015,13 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       .eq("provider", "gmail")
       .eq("external_id", item.id)
       .maybeSingle();
+    // A Gmail message is immutable. Completed/ignored review is final for this
+    // message ID; later provider updates arrive under a different message ID.
+    if (
+      prior?.status === "ignored" ||
+      (prior?.status === "imported" && prior.lesson_id)
+    )
+      continue;
     if (!prior?.lesson_id && staleReviewPayload({ candidate, headers })) {
       if (prior?.status === "needs_review")
         await db
@@ -1073,7 +1064,10 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
           .eq("id", prior.id);
       continue;
     }
-    if (intakeDecision.disposition === "needs_review") {
+    if (
+      intakeDecision.disposition === "needs_review" ||
+      changeType !== "confirmation"
+    ) {
       await db.from("integration_imports").upsert(
         {
           studio_id: studio.id,
@@ -1099,125 +1093,11 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
       review++;
       continue;
     }
-    const isCancellation = changeType === "cancellation";
-    const isReschedule = changeType === "reschedule";
     if (prior?.status === "ignored") continue;
-    if (
-      prior?.status === "imported" &&
-      prior.lesson_id &&
-      !isCancellation &&
-      !isReschedule
-    )
-      continue;
+    if (prior?.status === "imported" && prior.lesson_id) continue;
     let lessonId = prior?.lesson_id as string | undefined;
-    if (match && (isCancellation || isReschedule) && !lessonId) {
-      let candidatesQuery = db
-        .from("lessons")
-        .select("id,starts_at,ends_at,status,version")
-        .eq("studio_id", studio.id)
-        .eq("student_id", match.student.id)
-        .eq("source_provider", detected)
-        .neq("status", "cancelled")
-        .order("starts_at");
-      if (candidate)
-        candidatesQuery = candidatesQuery
-          .gte(
-            "starts_at",
-            new Date(
-              new Date(candidate.startsAt).getTime() - 14 * 86400000,
-            ).toISOString(),
-          )
-          .lte(
-            "starts_at",
-            new Date(
-              new Date(candidate.startsAt).getTime() + 14 * 86400000,
-            ).toISOString(),
-          );
-      else
-        candidatesQuery = candidatesQuery.gte(
-          "starts_at",
-          new Date(Date.now() - 7 * 86400000).toISOString(),
-        );
-      const { data: possible } = await candidatesQuery.limit(3);
-      const target =
-        possible?.length === 1
-          ? possible[0]
-          : candidate
-            ? possible?.sort(
-                (left, right) =>
-                  Math.abs(
-                    new Date(left.starts_at).getTime() -
-                      new Date(candidate.startsAt).getTime(),
-                  ) -
-                  Math.abs(
-                    new Date(right.starts_at).getTime() -
-                      new Date(candidate.startsAt).getTime(),
-                  ),
-              )[0]
-            : undefined;
-      if (target) {
-        lessonId = target.id;
-        const correlation = `gmail-change:${item.id}`;
-        if (isCancellation) {
-          const { error: changeError } = await db.rpc(
-            "command_change_lesson_state",
-            {
-              p_lesson_id: target.id,
-              p_expected_version: target.version,
-              p_action: "cancel",
-              p_starts_at: null,
-              p_ends_at: null,
-              p_queue_calendar: true,
-            },
-          );
-          if (changeError) throw changeError;
-          await queueLessonChangeEmails(
-            db,
-            target.id,
-            "cancelled",
-            correlation,
-          );
-        } else if (candidate) {
-          const { error: changeError } = await db.rpc(
-            "command_change_lesson_state",
-            {
-              p_lesson_id: target.id,
-              p_expected_version: target.version,
-              p_action: "reschedule",
-              p_starts_at: candidate.startsAt,
-              p_ends_at: candidate.endsAt,
-              p_queue_calendar: true,
-            },
-          );
-          if (changeError) throw changeError;
-          await db
-            .from("lessons")
-            .update({ topic: candidate.topic })
-            .eq("id", target.id);
-          await queueLessonChangeEmails(
-            db,
-            target.id,
-            "rescheduled",
-            correlation,
-          );
-        }
-        await db.from("audit_events").insert({
-          studio_id: studio.id,
-          entity_type: "lesson",
-          entity_id: target.id,
-          action: isCancellation
-            ? "lesson.cancelled_from_email"
-            : "lesson.rescheduled_from_email",
-          reason: `${displayProvider(detected)} email update`,
-          correlation_id: correlation,
-          source: "provider_intake",
-          before_state: target,
-          after_state: isCancellation ? { status: "cancelled" } : candidate,
-        });
-      }
-    }
     let createdFromGmail = false;
-    if (candidate && !lessonId && !isCancellation && !isReschedule) {
+    if (candidate && !lessonId) {
       const { data: possible, error: possibleError } = await db
         .from("lessons")
         .select("id,student_id,starts_at,ends_at,status,source_provider,topic")
@@ -1321,7 +1201,7 @@ async function scanGmail(token: string, studio: any, students: StudentRow[]) {
             student_id: match.student.id,
             display_name:
               match.student.preferred_name || match.student.full_name,
-            email: match.student.email || emails[0] || "",
+            email: match.student.email || "",
             status: "confirmed",
           });
         if (participantError) throw participantError;

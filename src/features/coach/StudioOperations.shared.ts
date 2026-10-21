@@ -13,6 +13,7 @@ export const sourceLabel = (source?: string) =>
       wyzant: "Wyzant",
       lessons_com: "Lessons.com",
       acuity: "Acuity",
+      superprof: "Superprof",
     }) as Record<string, string>
   )[source || "studio"] ||
   source ||
