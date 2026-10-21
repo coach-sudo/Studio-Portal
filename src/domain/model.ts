@@ -145,6 +145,7 @@ export interface Lesson extends Versioned {
     | "lessonface"
     | "wyzant"
     | "lessons_com"
+    | "superprof"
     | "acuity";
   sourceExternalId?: string;
   sourceConfidence?: number;
@@ -174,6 +175,7 @@ export interface IntegrationImport {
     | "lessonface"
     | "wyzant"
     | "lessons_com"
+    | "superprof"
     | "acuity";
   externalId: string;
   detectedSource: string;

@@ -39,8 +39,14 @@ describe("provider intake trust classifier", () => {
     });
   });
   it.each([
-    ["Lessonface weekly newsletter and special offers", "non_booking_newsletter"],
-    ["Your Wyzant payment receipt and invoice", "non_booking_financial_message"],
+    [
+      "Lessonface weekly newsletter and special offers",
+      "non_booking_newsletter",
+    ],
+    [
+      "Your Wyzant payment receipt and invoice",
+      "non_booking_financial_message",
+    ],
     ["TimelyCare medical appointment", "medical_or_health_appointment"],
     ["Family birthday dinner", "personal_calendar_event"],
     ["Butterflies rehearsal", "unmatched_rehearsal"],
@@ -185,4 +191,72 @@ describe("provider intake trust classifier", () => {
       reasonCode: "provider_policy_message",
     });
   });
+});
+
+describe("conservative provider identity and attribution", () => {
+  const siblings = [
+    {
+      id: "child-a",
+      full_name: "Avery Stone",
+      preferred_name: "Avery",
+      guardian_name: "Morgan Stone",
+      guardian_email: "morgan@example.test",
+    },
+    {
+      id: "child-b",
+      full_name: "Avery Jones",
+      preferred_name: "Avery",
+      guardian_name: "Morgan Stone",
+      guardian_email: "morgan@example.test",
+    },
+  ];
+  it("leaves shared guardian email/name and preferred names for review", () => {
+    expect(
+      matchStudentIdentity(siblings, "Lesson booked for Morgan Stone", [
+        "morgan@example.test",
+      ]),
+    ).toBeUndefined();
+    expect(
+      matchStudentIdentity(siblings, "Avery acting lesson", []),
+    ).toBeUndefined();
+    expect(
+      matchStudentIdentity(siblings, "Morgan Stone lesson", []),
+    ).toBeUndefined();
+  });
+  it("resolves a shared guardian only with one full student identity", () => {
+    expect(
+      matchStudentIdentity(siblings, "Lesson for Avery Jones", [
+        "morgan@example.test",
+      ])?.student.id,
+    ).toBe("child-b");
+    expect(
+      matchStudentIdentity(siblings, "Avery Stone and Avery Jones lesson", []),
+    ).toBeUndefined();
+  });
+  it("supports an existing name-only Lessonface student", () => {
+    expect(
+      matchStudentIdentity(
+        [{ id: "no-email", full_name: "Jules River" }],
+        "Lessonface lesson confirmed for Jules River",
+        [],
+      )?.student.id,
+    ).toBe("no-email");
+  });
+  it.each(["Lessonface", "Wyzant", "Lessons.com", "Superprof", "Acuity"])(
+    "attributes %s confirmations",
+    (source) => {
+      expect(
+        classifyProviderIntake({
+          source: "gmail",
+          text: source + " acting lesson booking confirmed",
+          parsedOccurrence: occurrence,
+          matchContext: { studentId: "child-a", confidence: 0.99 },
+        }),
+      ).toMatchObject({
+        disposition: "auto_import",
+        provider:
+          source === "Lessons.com" ? "lessons_com" : source.toLowerCase(),
+      });
+    },
+  );
 });

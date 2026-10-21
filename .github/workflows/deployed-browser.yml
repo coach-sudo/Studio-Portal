@@ -31,7 +31,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  smoke:
+  preview-smoke:
     # Explicit no-deploy PRs still run the full isolated suite below. They have
     # no Netlify preview to smoke-test; do not wait on an intentionally absent URL.
     if: >-
@@ -76,8 +76,8 @@ jobs:
             test-results/
 
   deployed-suite:
-    if: always() && (needs.smoke.result == 'success' || needs.smoke.result == 'skipped') && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production'))
-    needs: smoke
+    if: always() && (needs['preview-smoke'].result == 'success' || needs['preview-smoke'].result == 'skipped') && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production'))
+    needs: preview-smoke
     strategy:
       fail-fast: false
       matrix:
@@ -175,8 +175,16 @@ jobs:
           npm run build
           # CLI 27.8.0 retries custom Function 403s as .html paths, hiding API denials.
           # Patch only the disposable CLI proxy, never the application or production.
-          nohup npx --yes --package netlify-cli@27.8.0 -c \
-            "tsx scripts/patch-netlify-dev-api-errors.ts && netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions" \
+          # otel 7.0.6 metadata exists but its npm tarball is unavailable (404).
+          # Keep the established CLI and its previously verified otel 7.0.4,
+          # scoped to this disposable CI runtime; application dependencies stay unchanged.
+          cli_dir="$RUNNER_TEMP/netlify-cli"
+          mkdir -p "$cli_dir"
+          printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4"}}' > "$cli_dir/package.json"
+          npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
+          export PATH="$cli_dir/node_modules/.bin:$PATH"
+          npx tsx scripts/patch-netlify-dev-api-errors.ts
+          nohup netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions \
             > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/netlify-serve.pid"
           for attempt in {1..120}; do
@@ -285,3 +293,23 @@ jobs:
       - name: Stop ephemeral services
         if: always() && env.USE_EPHEMERAL_STACK == 'true'
         run: npx supabase stop --no-backup
+
+  smoke:
+    name: smoke
+    if: >-
+      always() && (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment != 'Production'))
+    needs: [preview-smoke, deployed-suite]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require successful browser matrix and any required preview
+        env:
+          SUITE_RESULT: ${{ needs.deployed-suite.result }}
+          PREVIEW_RESULT: ${{ needs['preview-smoke'].result }}
+          PREVIEW_OPTIONAL: ${{ github.event_name == 'pull_request' && (github.base_ref == 'main' || github.base_ref == 'codex/credit-coverage-diagnostics' || github.base_ref == 'codex/credit-lifecycle-reliability' || github.base_ref == 'codex/occurrence-safe-lesson-changes' || github.base_ref == 'codex/bulk-lesson-management' || github.base_ref == 'codex/bulk-lesson-interface' || github.base_ref == 'codex/student-workspace-experience') && contains(github.event.pull_request.title, '[skip netlify]') }}
+        run: |
+          test "$SUITE_RESULT" = success
+          if [ "$PREVIEW_OPTIONAL" = true ]; then
+            test "$PREVIEW_RESULT" = skipped || test "$PREVIEW_RESULT" = success
+          else
+            test "$PREVIEW_RESULT" = success
+          fi

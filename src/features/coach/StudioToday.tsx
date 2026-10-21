@@ -17,7 +17,7 @@ import {
   FolderOpen,
   UserRound,
 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import {
   Dialog,
   EmptyState,
@@ -714,44 +714,82 @@ function ImportReviewDialog({
   onClose: () => void;
   onReviewed: () => Promise<void>;
 }) {
-  const candidate = (item.payload?.candidate || {}) as {
+  const candidate = (item.payload?.candidate || {
+      startsAt: (item.payload?.start as { dateTime?: string })?.dateTime,
+      endsAt: (item.payload?.end as { dateTime?: string })?.dateTime,
+      locationLabel: item.payload?.location,
+    }) as {
       startsAt?: string;
       endsAt?: string;
       locationLabel?: string;
     },
     [mode, setMode] = useState<"existing" | "create">(
-      item.studentId ? "existing" : "create",
+      item.studentId ||
+        ["cancellation", "reschedule"].includes(
+          String(item.payload?.changeType),
+        )
+        ? "existing"
+        : "create",
     ),
     [studentId, setStudentId] = useState(item.studentId || ""),
     [name, setName] = useState(""),
     [email, setEmail] = useState(importEmail(item, data)),
     [merge, setMerge] = useState(false),
+    [lessonId, setLessonId] = useState(item.lessonId || ""),
     [note, setNote] = useState(""),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
+  const isChange = ["cancellation", "reschedule"].includes(
+    String(item.payload?.changeType),
+  );
+  const reviewedRows = data.integrationImports
+    .filter(
+      (row) =>
+        row.status === "needs_review" &&
+        row.detectedSource === item.detectedSource &&
+        importSummary(row) === importSummary(item) &&
+        !staleReviewPayload(row.payload),
+    )
+    .map((row) => ({ id: row.id, updatedAt: row.updatedAt }));
+  const selectedLesson = data.lessons.find(
+    (lesson) => lesson.id === lessonId && lesson.studentId === studentId,
+  );
+  const retryKeys = useRef(new Map<string, string>());
+  const reviewCommand = (payload: Record<string, unknown>) => {
+    const signature = JSON.stringify(payload);
+    const key = retryKeys.current.get(signature) || crypto.randomUUID();
+    retryKeys.current.set(signature, key);
+    return studioCommand("integrations", {
+      command: "review_import",
+      entityId: item.id,
+      expectedVersion: 0,
+      idempotencyKey: key,
+      payload,
+      reason: "Coach reviewed provider lesson",
+    });
+  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (saving) return;
     setSaving(true);
     setError("");
     try {
-      await studioCommand("integrations", {
-        command: "review_import",
-        entityId: item.id,
-        expectedVersion: 0,
-        payload: {
-          action: mode,
-          applySimilar: similarCount > 1,
-          studentId: mode === "existing" ? studentId : undefined,
-          fullName: mode === "create" ? name : undefined,
-          email: mode === "create" ? email : undefined,
-          mergeStudentId:
-            merge && item.studentId && item.studentId !== studentId
-              ? item.studentId
-              : undefined,
-          note,
-        },
-        reason: "Coach reviewed provider lesson",
+      await reviewCommand({
+        action: mode,
+        applySimilar: !isChange && similarCount > 1,
+        reviewRows: isChange
+          ? [{ id: item.id, updatedAt: item.updatedAt }]
+          : reviewedRows,
+        lessonId: isChange ? selectedLesson?.id : undefined,
+        lessonVersion: isChange ? selectedLesson?.version : undefined,
+        studentId: mode === "existing" ? studentId : undefined,
+        fullName: mode === "create" ? name : undefined,
+        email: mode === "create" ? email : undefined,
+        mergeStudentId:
+          merge && item.studentId && item.studentId !== studentId
+            ? item.studentId
+            : undefined,
+        note,
       });
       await onReviewed();
     } catch (reason) {
@@ -769,12 +807,13 @@ function ImportReviewDialog({
     setSaving(true);
     setError("");
     try {
-      await studioCommand("integrations", {
-        command: "review_import",
-        entityId: item.id,
-        expectedVersion: 0,
-        payload: { action: "ignore", applySimilar: similarCount > 1, note },
-        reason: "Coach ignored provider lesson",
+      await reviewCommand({
+        action: "ignore",
+        applySimilar: !isChange && similarCount > 1,
+        reviewRows: isChange
+          ? [{ id: item.id, updatedAt: item.updatedAt }]
+          : reviewedRows,
+        note,
       });
       await onReviewed();
     } catch (reason) {
@@ -816,6 +855,40 @@ function ImportReviewDialog({
           Confirming creates or links this lesson in the selected student
           profile.
         </p>
+        {isChange && (
+          <label className="full">
+            Existing lesson to{" "}
+            {item.payload?.changeType === "cancellation"
+              ? "cancel"
+              : "reschedule"}
+            <select
+              required
+              value={lessonId}
+              onChange={(event) => setLessonId(event.target.value)}
+            >
+              <option value="">Choose the exact occurrence</option>
+              {data.lessons
+                .filter(
+                  (lesson) =>
+                    lesson.studentId === studentId &&
+                    lesson.status === "scheduled",
+                )
+                .map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {lesson.topic} �{" "}
+                    {formatStudioDateTime(
+                      lesson.startsAt,
+                      data.settings.timezone,
+                    )}
+                  </option>
+                ))}
+            </select>
+            <small>
+              Only this occurrence changes. Shared booking and payment
+              safeguards still apply.
+            </small>
+          </label>
+        )}
         <div className="settings-list full">
           <button
             type="button"
@@ -835,6 +908,7 @@ function ImportReviewDialog({
           <button
             type="button"
             role="switch"
+            disabled={isChange}
             aria-checked={mode === "create"}
             className={`setting-toggle toggle-button ${mode === "create" ? "on" : ""}`}
             onClick={() => setMode("create")}
@@ -857,6 +931,7 @@ function ImportReviewDialog({
                 value={studentId}
                 onChange={(event) => {
                   setStudentId(event.target.value);
+                  setLessonId("");
                   setMerge(false);
                 }}
               >
