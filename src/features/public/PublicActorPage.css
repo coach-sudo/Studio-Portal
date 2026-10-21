@@ -431,7 +431,7 @@
   margin-bottom: 40px;
 }
 .actor-section-heading > span {
-  color: var(--actor-accent, var(--gold));
+  color: var(--muted);
   font-size: 10px;
   font-weight: 900;
 }
