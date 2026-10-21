@@ -1,6 +1,6 @@
 # Wave 5 — Studio Operations release record
 
-Status: implementation and isolated validation in progress in draft PR #63. Five additive staging migrations and one protected, unpublished staging draft have been verified. No hosted acceptance fixtures, production migration, merge or publication has occurred. This is not yet a release recommendation. Wave 6 is excluded.
+Preacceptance checkpoint, October 20: six additive staging migrations and two protected, unpublished staging drafts have been verified. At this checkpoint no hosted acceptance fixtures, production migration, merge or publication has occurred. This is not yet a release recommendation. The final acceptance and publication outcome, immutable SHA and deployment receipt are recorded on [PR #63](https://github.com/coach-sudo/Studio-Portal/pull/63). Wave 6 is excluded.
 
 Branch: `codex/studio-operations-wave-five`, based on merged Wave 4 `d9643d208c406b5f5c8f18c372dac6e45dcf04a1`. The approved Wave 5 request and modernization master plan remain the scope. The October 20 usage pause has ended; `wave-five-pause-checkpoint.md` is historical.
 
@@ -45,7 +45,9 @@ The 67-migration stack passes 262 pgTAP assertions and the native workflow regre
 
 The correction migration is installed only in staging (67 total), preserving every row across 117 baseline tables and the 66 prior history records. Protected draft `6ad7fda4db93d3638760c562` verifies the first two repairs at `9cc2d4cc181dacee382b594a219471f4a351acd2`; its successor must include the final status/focus corrections. No hosted synthetic acceptance run has started.
 
-Fresh read-only production backup and independent PostgreSQL 17 restore verification passed on October 20: 125 tables, 2,360 rows, 61 migration records, and 15 separately checksummed Storage files. Restricted backup location and integrity/restore evidence are retained outside Git. Logical database and Storage snapshots are not an atomic point-in-time backup; managed Auth/provider settings and external services remain separate recovery dependencies. This does not authorize using the backup-only database credential for writes.
+Subsequent CI verified the complete Actor save → review → approval → publication flow and Calendar focus restoration. Its remaining serious accessibility finding was a small public Actor section number inheriting an arbitrary accent color. Section numbers now use the readable muted foreground; local public Classic/Spotlight checks pass at 390 and 1440 px. The slow finance-only guardian fixture now allows 15 seconds for authenticated workspace initialization, retaining all amount, permission, private-logistics exclusion and revocation assertions. The new local tests also pass the project's TypeScript checks. Final required CI must be green before the acceptance run.
+
+Fresh read-only production backup and independent PostgreSQL 17 restore verification passed on October 20 at 7:55 p.m. Eastern: 125 tables, 2,515 rows, 61 migration records, and 15 separately checksummed Storage files. Archive SHA-256: `0e37c831ba73e720776acca9d5586d41870ee42d705d7cdc7f9819e27d97b6e7`. Restricted backup location and integrity/restore evidence are retained outside Git. Logical database and Storage snapshots are not an atomic point-in-time backup; managed Auth/provider settings and external services remain separate recovery dependencies. This does not authorize using the backup-only database credential for writes.
 
 ## Release gates
 

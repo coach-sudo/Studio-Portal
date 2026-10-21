@@ -1,6 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { demoSnapshot } from "../../src/data/demo";
 async function layout(page: Page, scope?: string) {
   expect(
     await page.evaluate(
@@ -209,31 +208,42 @@ test("Calendar keyboard drawers restore their occurrence control", async ({
 test("Public Classic and Spotlight Actor sections retain readable contrast", async ({
   page,
 }) => {
-  await page.addInitScript((data) => {
-    const profile = data.actorProfiles[0];
-    profile.status = "published";
-    profile.displayName = "Contrast Actor";
-    profile.bio = "A published biography with accessible section numbering.";
-    profile.slug = "local-contrast-actor";
-    profile.draftContent = {
-      ...profile.draftContent,
-      accentColor: "#c46b56",
-      presentation: {
-        version: 1,
-        layout:
-          new URL(location.href).searchParams.get("layout") === "spotlight"
-            ? "spotlight"
-            : "classic",
-        sections: ["biography", "headshots", "credits", "skills", "media"],
-      },
-    };
-    data.actorProfiles = [profile];
-    data.materials = [];
-    localStorage.setItem("stage-story-studio-core-v2", JSON.stringify(data));
-  }, structuredClone(demoSnapshot));
+  // Persist the existing demo through its UI; no application-module import or
+  // hosted fixture is needed in the Node test project.
+  await page.goto("/coach/settings?panel=profile");
+  await page
+    .getByRole("textbox", { name: "Studio name", exact: true })
+    .fill("Contrast Studio");
+  await page.getByRole("button", { name: "Save studio", exact: true }).click();
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const style of ["classic", "spotlight"]) {
+      await page.evaluate((layout) => {
+        const data = JSON.parse(
+          localStorage.getItem("stage-story-studio-core-v2")!,
+        );
+        const profile = data.actorProfiles[0];
+        profile.status = "published";
+        profile.displayName = "Contrast Actor";
+        profile.bio =
+          "A published biography with accessible section numbering.";
+        profile.slug = "local-contrast-actor";
+        profile.draftContent = {
+          ...profile.draftContent,
+          accentColor: "#c46b56",
+          presentation: {
+            version: 1,
+            layout,
+            sections: ["biography", "headshots", "credits", "skills", "media"],
+          },
+        };
+        data.actorProfiles = [profile];
+        data.materials = [];
+        localStorage.setItem(
+          "stage-story-studio-core-v2",
+          JSON.stringify(data),
+        );
+      }, style);
       await page.goto("/actors/local-contrast-actor?layout=" + style);
       await expect(
         page.getByRole("heading", { name: "Contrast Actor", exact: true }),
