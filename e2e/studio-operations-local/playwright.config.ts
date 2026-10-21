@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 export default defineConfig({
   testDir: ".",
-  testMatch: "operations.spec.ts",
+  testMatch: /(?:operations|corrections)\.spec\.ts/,
   workers: 1,
   retries: 0,
   outputDir: "../../test-results/wave-five-local-artifacts",

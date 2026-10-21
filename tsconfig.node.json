@@ -25,6 +25,7 @@
     "src/domain/booking.ts",
     "src/domain/studentSetup.ts",
     "src/domain/settingsPatch.ts",
+    "src/domain/settingsAssets.ts",
     "src/domain/library.ts",
     "src/domain/packagePricing.ts",
     "src/domain/availabilityVisibility.ts",

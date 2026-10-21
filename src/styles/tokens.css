@@ -42,7 +42,7 @@
   --surface-warning: #faf2e2;
   --surface-danger: #faeef0;
   --surface-info: #edf3f3;
-  --app-canvas: #f3f5f2;
+  --app-canvas: var(--surface, #f3f5f2);
   --app-surface: #ffffff;
   --app-surface-soft: #f3f6f1;
   --app-border: color-mix(in srgb, var(--forest), transparent 85%);

@@ -293,6 +293,9 @@ try {
   await (
     await import("./test-studio-operations.assertions.mjs")
   ).verifyWorkflows({ db, as, Client, coach, peer, student, studio, lesson });
+  await (
+    await import("./test-studio-branding-access.mjs")
+  ).verifyBrandingAccess({ db, as, coach, peer, student, studio });
   console.log(
     JSON.stringify({
       status: "PASS",

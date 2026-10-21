@@ -905,7 +905,7 @@ function Inbox({
                   <strong>{selected.title}</strong>
                   <small>{selected.subtitle}</small>
                   {role === "coach" && selectedStudent && (
-                    <div className="form-actions">
+                    <div className="inbox-context-links">
                       <a href={`/coach/students/${selectedStudent.id}`}>
                         Student record
                       </a>
@@ -971,7 +971,11 @@ function Inbox({
                   onChange={(event) => setBody(event.target.value)}
                   placeholder="Write a clear, helpful message…"
                 />
-                <button className="primary" disabled={busy || !body.trim()}>
+                <button
+                  className="primary"
+                  aria-label={busy ? "Sending…" : "Send"}
+                  disabled={busy || !body.trim()}
+                >
                   <Send />
                   {busy ? "Sending…" : "Send"}
                 </button>
@@ -987,7 +991,8 @@ function Inbox({
       </div>
       <CommunicationActivity isDemo={isDemo} />
       {role === "coach" && (
-        <section className="inbox-email-history">
+        <details className="inbox-email-history">
+          <summary>Recent email</summary>
           <header>
             <div>
               <strong>Recent email</strong>
@@ -1034,7 +1039,7 @@ function Inbox({
               />
             )}
           </div>
-        </section>
+        </details>
       )}
       {newMessageOpen && (
         <Dialog

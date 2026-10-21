@@ -467,10 +467,10 @@ export async function loadStudioSnapshot(
   const dailyPopupBackgroundUrl = settings.dailyPopup.backgroundImageStoragePath
     ? brandingUrls.get(settings.dailyPopup.backgroundImageStoragePath)
     : undefined;
-  if (dailyPopupBackgroundUrl)
+  if (settings.dailyPopup.backgroundImageStoragePath)
     settings.dailyPopup = {
       ...settings.dailyPopup,
-      backgroundImageUrl: dailyPopupBackgroundUrl,
+      backgroundImageUrl: dailyPopupBackgroundUrl || "",
     };
   return {
     studioId:

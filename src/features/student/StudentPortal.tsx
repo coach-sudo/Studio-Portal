@@ -624,33 +624,32 @@ function PortalWorkspace({
       {mobileMenuOpen && (
         <Dialog
           title="Student portal menu"
+          className="navigation-sheet"
           onClose={() => setMobileMenuOpen(false)}
         >
-          <div className="command-search">
-            <div>
+          <nav className="workspace-more-group" aria-label="More destinations">
+            <button
+              onClick={() => {
+                setMobileMenuOpen(false);
+                setSearchOpen(true);
+              }}
+            >
+              Search
+            </button>
+            {tabs.map(({ to, label, icon: Icon }) => (
               <button
+                type="button"
+                key={to}
                 onClick={() => {
+                  navigatePortal(portalPath(to));
                   setMobileMenuOpen(false);
-                  setSearchOpen(true);
                 }}
               >
-                Search
+                <Icon aria-hidden="true" />
+                <span>{label}</span>
               </button>
-              {tabs.map(({ to, label, icon: Icon }) => (
-                <button
-                  type="button"
-                  key={to}
-                  onClick={() => {
-                    navigatePortal(portalPath(to));
-                    setMobileMenuOpen(false);
-                  }}
-                >
-                  <Icon aria-hidden="true" />
-                  <span>{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+            ))}
+          </nav>
         </Dialog>
       )}
     </div>

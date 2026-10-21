@@ -68,7 +68,149 @@
 }
 .workspace-more-group {
   display: grid;
-  gap: 0.5rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
+  padding: 12px;
+}
+.navigation-sheet {
+  width: min(100%, 440px);
+}
+.navigation-sheet > header h2 {
+  font-size: 21px;
+}
+.navigation-sheet > header {
+  padding: 16px 20px;
+}
+.workspace-more-group :is(a, button) {
+  min-width: 0;
+  min-height: 46px;
+  padding: 10px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+}
+.workspace-more-group svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  color: var(--muted);
+}
+.workspace-more-group :is(a:hover, a:focus-visible, button:hover) {
+  background: var(--app-surface-soft);
+}
+.workspace-more-group > button {
+  grid-column: 1 / -1;
+  background: var(--app-surface-soft);
+  margin-top: 6px;
+}
+.settings-mobile-selector {
+  display: none;
+}
+@media (max-width: 900px) {
+  .settings-layout > .settings-nav {
+    display: none;
+  }
+  .settings-mobile-selector {
+    display: grid;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .settings-mobile-selector select {
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 12px;
+    border: 1px solid var(--app-border);
+    border-radius: 12px;
+    background: var(--app-surface);
+    color: var(--ink);
+    font: inherit;
+    font-size: 14px;
+  }
+  .settings-layout {
+    margin-top: 8px;
+    gap: 20px;
+  }
+}
+@media (max-width: 600px) {
+  .workflow-list > article:not(.today-lesson-row),
+  .table-list > article {
+    display: grid;
+    grid-template-columns: 20px minmax(0, 1fr) auto;
+    gap: 8px 10px;
+    align-items: start;
+  }
+  :is(.workflow-list, .table-list) > article > svg {
+    width: 18px;
+    height: 20px;
+  }
+  :is(.workflow-list, .table-list) > article > div:first-of-type {
+    grid-column: 2;
+    min-width: 0;
+  }
+  :is(.workflow-list, .table-list)
+    > article:not(:has(> svg))
+    > div:first-of-type {
+    grid-column: 1 / 3;
+  }
+  :is(.workflow-list, .table-list) > article :is(strong, small) {
+    white-space: normal;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  :is(.workflow-list, .table-list) > article > :is(button, .row-actions) {
+    grid-column: 2 / -1;
+    justify-self: start;
+    width: auto;
+  }
+  :is(.workflow-list, .table-list) > article > .status {
+    grid-column: 3;
+    grid-row: 1;
+    max-width: 90px;
+  }
+  .workflow-list > .note-followup-row > div:first-of-type {
+    grid-column: 2 / -1;
+  }
+  .workflow-list > .note-followup-row > .status {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+  }
+  .workflow-list > .note-followup-row > button {
+    grid-column: 3;
+    grid-row: 2;
+    justify-self: end;
+  }
+}
+/* A phone requesting desktop mode can expose a 980px layout viewport. */
+@media (hover: none) and (pointer: coarse) and (max-width: 1100px) {
+  .app-shell > .sidebar,
+  .student-shell > aside {
+    display: none;
+  }
+  .app-shell > .main,
+  .app-shell.sidebar-collapsed > .main,
+  .student-shell > main,
+  .student-shell.sidebar-collapsed > main {
+    width: 100%;
+    margin-left: 0;
+  }
+  .app-shell > .mobile-nav,
+  .student-shell > .mobile-nav {
+    display: flex;
+  }
+  .page,
+  .student-page {
+    padding-bottom: calc(100px + env(safe-area-inset-bottom));
+  }
 }
 .workspace-unavailable {
   padding: 2rem;
