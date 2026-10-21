@@ -12,7 +12,7 @@ test("@journey Journey 01: sign-in persists across a protected nested refresh an
   await page.reload();
   await expect(page).toHaveURL(/\/portal\/settings/);
   await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
-  await page.getByRole("button", { name: "Sign out" }).click();
+  await page.getByRole("button", { name: "Log out" }).click();
   await expect(page).toHaveURL(/\/login/);
   await context.close();
 });

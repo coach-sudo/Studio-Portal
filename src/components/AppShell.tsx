@@ -1,11 +1,5 @@
-import {
-  LogOut,
-  Menu,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Search,
-} from "lucide-react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
+import { NavLink, Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useStudioRoute } from "../hooks/useStudio";
 import { applyStudioBranding } from "../lib/branding";
@@ -15,7 +9,7 @@ import { WorkspaceSearch } from "./WorkspaceSearch";
 import { WorkspaceScrollRestoration } from "../hooks/useWorkspaceLocation";
 import { coachNavigation, studioNavigation } from "../app/coachNavigation";
 import { useSidebarCollapse } from "../hooks/useSidebarCollapse";
-import { supabase } from "../lib/supabase";
+import { SessionAction } from "./SessionAction";
 import "./IdentityActions.css";
 
 export function AppShell() {
@@ -23,7 +17,6 @@ export function AppShell() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useSidebarCollapse();
-  const navigate = useNavigate();
   useEffect(() => {
     const open = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
@@ -119,18 +112,8 @@ export function AppShell() {
             <strong>{data?.settings.coachName ?? "Darius A. Journigan"}</strong>
             <small>{data?.settings.coachTitle ?? "Acting Coach"}</small>
           </div>
-          <button
-            type="button"
-            className="identity-signout"
-            aria-label="Sign out"
-            onClick={async () => {
-              await supabase?.auth.signOut();
-              navigate("/login", { replace: true });
-            }}
-          >
-            <LogOut aria-hidden="true" />
-          </button>
         </div>
+        <SessionAction isDemo={isDemo} sidebar />
       </aside>
       <main className="main" id="main-content" tabIndex={-1}>
         <WorkspaceScrollRestoration />
@@ -177,6 +160,7 @@ export function AppShell() {
             >
               <Search aria-hidden="true" /> Search records and destinations
             </button>
+            <SessionAction isDemo={isDemo} />
           </nav>
         </Dialog>
       )}
