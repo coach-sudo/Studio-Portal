@@ -75,6 +75,7 @@ export const setupActionSchema = z.discriminatedUnion("kind", [
     payload: z.object({
       accountType: z.enum(["student", "guardian"]),
       linkedContactId: id.optional(),
+      contactActionId: id.optional(),
       consentConfirmed: z.boolean(),
       expectedRecipient: z.string().email().optional(),
       contactVersion: z.number().int().optional(),

@@ -416,6 +416,87 @@ export async function verifyWorkflows({
     recipientEmails: ["learner@example.test"],
     sendAt: "2031-02-01T12:00:00Z",
   });
+  const foreignCoach = "f5500000-0000-4000-8000-000000000071",
+    foreignStudio = "f5500000-0000-4000-8000-000000000072";
+  await db.query(
+    "insert into auth.users(id,email) values($1,'foreign-coach@example.test')",
+    [foreignCoach],
+  );
+  await db.query(
+    "insert into public.studios(id,name,slug) values($1,'Other isolated studio','other-wave-five')",
+    [foreignStudio],
+  );
+  await db.query(
+    "insert into public.memberships(studio_id,user_id,role,display_name) values($1,$2,'coach','Foreign coach')",
+    [foreignStudio, foreignCoach],
+  );
+  const originalDraft = (
+    await db.query(
+      "select to_jsonb(d) v from workspace_internal.campaign_drafts d where id=$1",
+      [draftId],
+    )
+  ).rows[0].v;
+  await assert.rejects(
+    () =>
+      as(
+        "service_role",
+        "",
+        "select public.manage_campaign_draft($1,$2,'save',$3,0,'forged-draft','https://staging.example.test') v",
+        [foreignCoach, draftId, { ...draft.value, name: "Forged overwrite" }],
+      ),
+    /FORBIDDEN/,
+  );
+  assert.deepEqual(
+    (
+      await db.query(
+        "select to_jsonb(d) v from workspace_internal.campaign_drafts d where id=$1",
+        [draftId],
+      )
+    ).rows[0].v,
+    originalDraft,
+  );
+  const collisionId = crypto.randomUUID();
+  const concurrentDraft = async (actor) => {
+    const client = new Client({
+      host: "127.0.0.1",
+      port: 56441,
+      user: "postgres",
+      database: "postgres",
+    });
+    try {
+      await client.connect();
+      await client.query("set role service_role");
+      return await client.query(
+        "select public.manage_campaign_draft($1,$2,'save',$3,0,'concurrent-draft','https://staging.example.test') v",
+        [actor, collisionId, draft.value],
+      );
+    } finally {
+      await client.end();
+    }
+  };
+  const collision = await Promise.allSettled([
+    concurrentDraft(coach),
+    concurrentDraft(foreignCoach),
+  ]);
+  assert.equal(collision.filter((r) => r.status === "fulfilled").length, 1);
+  assert.equal(
+    collision.filter(
+      (r) => r.status === "rejected" && r.reason.code === "42501",
+    ).length,
+    1,
+  );
+  assert.equal(
+    (
+      await db.query(
+        "select count(*)::int n from workspace_internal.campaign_drafts where id=$1",
+        [collisionId],
+      )
+    ).rows[0].n,
+    1,
+  );
+  console.log(
+    "PASS: forged cross-studio draft collision preserves the original; real concurrent inserts admit exactly one studio",
+  );
   assert.equal(
     (await db.query("select count(*)::int n from public.outbox_messages"))
       .rows[0].n,
@@ -707,5 +788,54 @@ export async function verifyWorkflows({
   );
   console.log(
     "PASS: interrupted setup receipt recovery without replay and guardian context/direct-read/command denial after revocation",
+  );
+  const invitations = [crypto.randomUUID(), crypto.randomUUID()].map((id) => ({
+    id,
+    kind: "invitation",
+    payload: { accountType: "student", consentConfirmed: true },
+  }));
+  let invitationSetup = await setup("read");
+  invitationSetup = await setup(
+    "save",
+    { step: 5, actions: invitations },
+    invitationSetup.version,
+  );
+  invitationSetup = await setup(
+    "review",
+    { actions: invitations },
+    invitationSetup.version,
+  );
+  const frozenReview = invitationSetup.review.id;
+  for (const action of invitations) {
+    const key = frozenReview + ":" + action.id;
+    await setup(
+      "claim",
+      { reviewId: frozenReview, actionId: action.id },
+      invitationSetup.version,
+      key,
+    );
+    const version = (
+      await db.query(
+        "update public.students set version=version+1 where id=$1 returning version",
+        [student],
+      )
+    ).rows[0].version;
+    invitationSetup = await setup(
+      "finish",
+      {
+        reviewId: frozenReview,
+        actionId: action.id,
+        ok: true,
+        result: { studentVersion: version },
+      },
+      invitationSetup.version,
+      key,
+    );
+    assert.equal(invitationSetup.review.id, frozenReview);
+    assert.equal(invitationSetup.review.studentVersion, version);
+    assert.equal(invitationSetup.results[action.id].status, "succeeded");
+  }
+  console.log(
+    "PASS: two invitation outcomes advance the frozen review version without expiring the next action; provider delivery simulated only",
   );
 }

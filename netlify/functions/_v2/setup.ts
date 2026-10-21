@@ -103,6 +103,37 @@ export async function handleSetupCommands(
         });
       }
       if (action.kind === "invitation") {
+        if (action.payload.accountType === "guardian") {
+          if (!action.payload.consentConfirmed)
+            throw new Error(
+              "VALIDATION_FAILED: Review guardian consent first.",
+            );
+          if (action.payload.linkedContactId && action.payload.contactActionId)
+            throw new Error(
+              "VALIDATION_FAILED: Choose one household recipient.",
+            );
+          if (!action.payload.linkedContactId) {
+            const candidates = draft.actions.filter(
+              (a) =>
+                a.kind === "contact" &&
+                (action.payload.contactActionId
+                  ? a.id === action.payload.contactActionId
+                  : a.payload.relationshipType === "guardian"),
+            );
+            const contact = candidates.length === 1 ? candidates[0] : undefined;
+            if (contact?.kind !== "contact" || !contact.payload.portalEnabled)
+              throw new Error(
+                "REVIEW_REQUIRED: Select one household contact with reviewed portal access before inviting.",
+              );
+            action.payload.contactActionId = contact.id;
+          }
+        } else if (
+          action.payload.linkedContactId ||
+          action.payload.contactActionId
+        )
+          throw new Error(
+            "VALIDATION_FAILED: Student invitations cannot select a household contact.",
+          );
         let recipient =
           action.payload.accountType === "student"
             ? proposedDetails?.kind === "details"
@@ -120,12 +151,13 @@ export async function handleSetupCommands(
           if (c.error || !c.data) throw new Error("FORBIDDEN");
           recipient = c.data.email;
           action.payload.contactVersion = c.data.version;
-        } else if (action.payload.accountType === "guardian" && !recipient) {
-          const guardian = draft.actions.find(
+        } else if (action.payload.contactActionId) {
+          const contact = draft.actions.find(
             (a) =>
-              a.kind === "contact" && a.payload.relationshipType === "guardian",
+              a.id === action.payload.contactActionId && a.kind === "contact",
           );
-          if (guardian?.kind === "contact") recipient = guardian.payload.email;
+          if (contact?.kind !== "contact") throw new Error("REVIEW_REQUIRED");
+          recipient = contact.payload.email;
         }
         if (!recipient || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))
           throw new Error(
@@ -230,6 +262,26 @@ export async function handleSetupCommands(
         nested("packages", "assign", { ...action.payload, studentId }),
       );
     } else {
+      let invitation = { ...action.payload };
+      if (action.payload.contactActionId) {
+        const current = await manage("read");
+        const entry = current.results[action.payload.contactActionId];
+        const contact = entry?.result as
+          { resource?: { id?: string; version?: number } } | undefined;
+        if (
+          entry?.status !== "succeeded" ||
+          !contact?.resource?.id ||
+          typeof contact.resource.version !== "number"
+        )
+          throw new Error(
+            "REVIEW_REQUIRED: Complete the reviewed contact action before its invitation.",
+          );
+        invitation = {
+          ...invitation,
+          linkedContactId: contact.resource.id,
+          contactVersion: contact.resource.version,
+        };
+      }
       const student = await ctx.db
         .from("students")
         .select("is_minor,guardian_email")
@@ -246,7 +298,7 @@ export async function handleSetupCommands(
         );
       response = await handleStudentsCommands(
         nested("students", "invite", {
-          ...action.payload,
+          ...invitation,
           resetExisting: false,
         }),
       );
@@ -254,6 +306,14 @@ export async function handleSetupCommands(
     if (!response) throw new Error("UNKNOWN_COMMAND");
     const result = await response.json();
     if (!response.ok) throw new Error(result.message || "Setup action failed.");
+    if (action.kind === "invitation") {
+      const version = result.resource?.version ?? result.student?.version;
+      if (typeof version !== "number")
+        throw new Error(
+          "REVIEW_REQUIRED: Verify the provisioned student version before continuing.",
+        );
+      result.studentVersion = version;
+    }
     await manage(
       "finish",
       { reviewId, actionId, ok: response.ok, result },

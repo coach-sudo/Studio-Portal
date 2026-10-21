@@ -264,7 +264,7 @@ export function StudentGuidedSetup({
           <button
             key={name}
             aria-current={step === i ? "step" : undefined}
-            disabled={busy}
+            disabled={busy || !ready}
             onClick={() => {
               setState((s) => ({ ...s, draft: { ...s.draft, step: i } }));
               setDirty(true);
@@ -723,6 +723,14 @@ export function StudentGuidedSetup({
                             {c.full_name} · {c.email}
                           </option>
                         ))}
+                      {actions
+                        .filter((a) => a.kind === "contact")
+                        .map((a) => (
+                          <option key={a.id} value={`action:${a.id}`}>
+                            {a.kind === "contact" && a.payload.fullName} ·
+                            proposed contact
+                          </option>
+                        ))}
                     </select>
                   </label>
                 )}
@@ -737,14 +745,20 @@ export function StudentGuidedSetup({
                 </label>
                 <button
                   className="full"
-                  disabled={details.isMinor && !consent}
+                  disabled={
+                    (details.isMinor || accountType === "guardian") && !consent
+                  }
                   onClick={() =>
                     add({
                       id: crypto.randomUUID(),
                       kind: "invitation",
                       payload: {
                         accountType,
-                        ...(linkedContactId ? { linkedContactId } : {}),
+                        ...(accountType === "guardian" && linkedContactId
+                          ? linkedContactId.startsWith("action:")
+                            ? { contactActionId: linkedContactId.slice(7) }
+                            : { linkedContactId }
+                          : {}),
                         consentConfirmed: consent,
                       },
                     })

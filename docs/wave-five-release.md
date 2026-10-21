@@ -22,6 +22,7 @@ Branch: `codex/studio-operations-wave-five`, based on merged Wave 4 `d9643d208c4
 4. `20261020185011_studio_campaign_drafts.sql`
 5. `20261020185650_studio_settings_patches.sql`
 6. `20261020201048_studio_actor_legacy_draft_compatibility.sql`
+7. `20261021010314_studio_operations_review_guards.sql`
 
 No existing financial balances or issued prices are rewritten. The previous application remains compatible during the schema transition. Schema recovery is forward-only; application rollback must retain additive schema and immutable receipts.
 
@@ -50,6 +51,10 @@ Subsequent CI verified the complete Actor save → review → approval → publi
 Fresh read-only production backup and independent PostgreSQL 17 restore verification passed on October 20 at 7:55 p.m. Eastern: 125 tables, 2,515 rows, 61 migration records, and 15 separately checksummed Storage files. Archive SHA-256: `0e37c831ba73e720776acca9d5586d41870ee42d705d7cdc7f9819e27d97b6e7`. Restricted backup location and integrity/restore evidence are retained outside Git. Logical database and Storage snapshots are not an atomic point-in-time backup; managed Auth/provider settings and external services remain separate recovery dependencies. This does not authorize using the backup-only database credential for writes.
 
 ## Release gates
+
+The first complete hosted run passed all nine Wave 5 cases at `8f02b7e975365faa7d09d605bb4e8ca58aab9594`; its four synthetic users, three students and two lessons were removed. Across 117 baseline tables all pre-existing business rows were preserved. Eight audit events and six immutable operation receipts remain, together with two expected public-services rate-limit effects (one existing window reset and one new counter); security counters were not restored or deleted. One same-record synthetic Actor draft save was repeated by a recovery-shell sequencing mistake, within the original budget, and both receipts are retained. No ledger, cash, provider or delivery operation occurred.
+
+GitHub review then identified a cross-studio campaign draft ID collision and a pending guardian invitation that could lose its reviewed contact association. The seventh additive migration rejects unauthorized conflict updates, including concurrent inserts. Guided Setup freezes the selected contact action, resolves only its succeeded receipt, and provisions using that exact contact ID/version so reviewed permissions remain authoritative. Both supported invitation response shapes normalize the updated student version; the existing `resource.version` path was already valid. Separate-session collision tests, restricted guardian provisioning with networking forbidden, and two-invitation review continuity cover these paths. Step navigation also waits for saved setup initialization. The next candidate must pass CI/package/protected health and the seventh staging migration before release; unaffected nine-case hosted evidence is reused rather than recreating fixtures or sending invitations.
 
 Use only staging Supabase `lrxrivfqjpkvygozphoz`, staging Netlify `d83ff6cb-f57b-4741-8c3c-3eaae7adab19` and run-owned synthetic records during hosted acceptance. Preserve existing team-login protection, stopped automatic builds, manual accounts and unrelated baseline records. Hosted finance verification is read-only; charges, invoice issuance, reconciliation and ledger adjustment are excluded. Test immediate delivery/provider behavior locally with intercepted networking; hosted acceptance must not contact recipients or providers.
 

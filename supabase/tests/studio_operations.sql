@@ -44,5 +44,12 @@ select throws_ok($$select public.household_access_states('e5500000-0000-4000-800
 select is(public.student_setup_context('e5500000-0000-4000-8000-000000000004'),null::jsonb,'Unrelated student context is unavailable');
 reset role;
 select is((select count(*) from public.outbox_messages where studio_id='e5500000-0000-4000-8000-000000000003'),0::bigint,'Saving settings and drafts never queues notifications');
+insert into public.studios(id,name,slug) values('e5500000-0000-4000-8000-000000000030','Foreign test','foreign-wave-five-pgtap');
+insert into public.memberships(studio_id,user_id,role,display_name) values('e5500000-0000-4000-8000-000000000030','e5500000-0000-4000-8000-000000000002','coach','Foreign coach');
+set local role service_role;
+select lives_ok($$select public.manage_campaign_draft('e5500000-0000-4000-8000-000000000001','e5500000-0000-4000-8000-000000000031','save','{"name":"Owned draft","subject":"Hello","content":{},"recipientEmails":[]}',0,'owned-draft','https://staging.example.test')$$,'Authorized coach creates a private studio draft');
+select throws_ok($$select public.manage_campaign_draft('e5500000-0000-4000-8000-000000000002','e5500000-0000-4000-8000-000000000031','save','{"name":"Foreign overwrite","subject":"Hello","content":{},"recipientEmails":[]}',0,'forged-draft','https://staging.example.test')$$,'42501','FORBIDDEN','Cross-studio draft ID collision is rejected');
+reset role;
+select is((select value->>'name' from workspace_internal.campaign_drafts where id='e5500000-0000-4000-8000-000000000031'),'Owned draft','A rejected collision leaves the original draft untouched');
 select * from finish();
 rollback;
