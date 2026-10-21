@@ -5,7 +5,6 @@ import {
 import { isDemoMode, isSupabaseConfigured } from "../../lib/supabase";
 import "../../styles/appearance.css";
 import {
-  LogOut,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -35,7 +34,7 @@ import type { Role } from "../../domain/model";
 import { useSidebarCollapse } from "../../hooks/useSidebarCollapse";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
-import { supabase } from "../../lib/supabase";
+import { SessionAction } from "../../components/SessionAction";
 import { portalDomains } from "./StudentPortal.shared";
 import { GuardianHome, StudentHome } from "./StudentPortalHome";
 
@@ -369,18 +368,8 @@ function PortalWorkspace({
                 : "Student"}
             </small>
           </div>
-          <button
-            type="button"
-            className="identity-signout"
-            aria-label="Sign out"
-            onClick={async () => {
-              await supabase?.auth.signOut();
-              navigatePortal("/login", { replace: true });
-            }}
-          >
-            <LogOut aria-hidden="true" />
-          </button>
         </div>
+        <SessionAction isDemo={isDemo} sidebar />
       </aside>
       <main id="portal-main-content" tabIndex={-1}>
         <WorkspaceScrollRestoration />
@@ -649,6 +638,7 @@ function PortalWorkspace({
                 <span>{label}</span>
               </button>
             ))}
+            <SessionAction isDemo={isDemo} />
           </nav>
         </Dialog>
       )}
