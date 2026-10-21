@@ -578,7 +578,7 @@ async function reconcileManagedCalendarEvent(
   return true;
 }
 
-async function importCalendar(
+export async function importCalendar(
   token: string,
   studio: any,
   students: StudentRow[],
@@ -725,14 +725,44 @@ async function importCalendar(
       match = matchStudentIdentity(candidates, matchText, emails),
       identity = titleIdentity(event.summary || "");
     const source = detected || "google_calendar";
-    const { data: prior } = await db
+    const { data: prior, error: priorError } = await db
       .from("integration_imports")
       .select("id,lesson_id,status")
       .eq("studio_id", studio.id)
       .eq("provider", "google_calendar")
       .eq("external_id", event.id)
       .maybeSingle();
+    if (priorError) throw priorError;
     if (prior?.status === "ignored") continue;
+    // A reviewed cross-signal link is authoritative. Its external event ID
+    // need not be the lesson's original provider ID or calendar projection.
+    if (prior?.lesson_id) {
+      const { data: linked, error: linkedError } = await db
+        .from("lessons")
+        .select("id,student_id,starts_at,ends_at,status")
+        .eq("studio_id", studio.id)
+        .eq("id", prior.lesson_id)
+        .maybeSingle();
+      if (linkedError) throw linkedError;
+      if (!linked)
+        throw new Error(
+          "REVIEW_REQUIRED: Linked Calendar lesson is unavailable.",
+        );
+      if (managedCalendarChange(event, linked) === "reschedule") {
+        const { error } = await db
+          .from("integration_imports")
+          .update({
+            status: "needs_review",
+            payload: { ...event, changeType: "reschedule" },
+            updated_at: new Date().toISOString(),
+          })
+          .eq("studio_id", studio.id)
+          .eq("id", prior.id);
+        if (error) throw error;
+        review++;
+      }
+      continue;
+    }
     if (
       !prior?.lesson_id &&
       pastOccurrence(event.start?.dateTime, event.end?.dateTime)
