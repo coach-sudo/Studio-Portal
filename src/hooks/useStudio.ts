@@ -187,12 +187,12 @@ const domainQueryOptions = (
   queryFn: ({ signal }: { signal: AbortSignal }) =>
     loadStudioSnapshot(role, studentId, [domain], signal),
   enabled: enabled && isSupabaseConfigured && queryLayerV2Enabled,
-  staleTime: domain === "identity" ? 5 * 60_000 : 30_000,
+  staleTime: domain === "identity" ? 3 * 60_000 : 30_000,
   gcTime: 30 * 60_000,
   placeholderData: studentId ? undefined : keepPreviousData,
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
-  refetchInterval: false as const,
+  refetchInterval: domain === "identity" ? 4 * 60_000 : (false as const),
 });
 
 // Readiness consumes finance and communication together. One RLS-backed RPC keeps

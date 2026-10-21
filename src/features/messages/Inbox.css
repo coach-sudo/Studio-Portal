@@ -1,5 +1,71 @@
 .communication-activity {
   margin-top: var(--app-page-gap);
+  display: grid;
+  gap: 8px;
+}
+.communication-activity details,
+.inbox-email-history {
+  border: 1px solid var(--app-border);
+  border-radius: 12px;
+  background: var(--app-surface);
+}
+.communication-activity summary,
+.inbox-email-history > summary {
+  padding: 12px 16px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+}
+.communication-activity details > :not(summary),
+.inbox-email-history > :not(summary) {
+  margin: 12px 16px;
+}
+.inbox-page .inbox-context-links {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 6px;
+}
+.inbox-context-links a {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: var(--app-surface-soft);
+  color: var(--forest);
+  font-size: 11px;
+  text-decoration: none;
+}
+.inbox-conversation > header small {
+  overflow-wrap: anywhere;
+  font-size: 12px;
+}
+.inbox-conversation > header > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+}
+.inbox-conversation > header > button svg {
+  width: 18px;
+  height: 18px;
+}
+.inbox-messages article {
+  max-width: min(85%, 560px);
+  padding: 12px 14px;
+  border-radius: 14px;
+}
+.inbox-messages article p {
+  margin: 4px 0 6px;
+  font-size: 14px;
+}
+.inbox-messages article :is(time, small) {
+  font-size: 11px;
+  color: var(--muted);
+}
+.inbox-email-history > header strong {
+  display: none;
+}
+.inbox-page .inbox-email-history {
+  padding: 0;
 }
 
 @media (max-width: 768px) {
@@ -9,7 +75,7 @@
   }
 
   .inbox-page .inbox-conversation {
-    height: var(--inbox-available-height, calc(100dvh - 310px));
+    height: min(560px, var(--inbox-available-height, calc(100dvh - 310px)));
     min-height: 280px;
   }
 
@@ -20,8 +86,37 @@
   }
 
   .inbox-page .inbox-composer textarea {
-    min-height: 80px;
+    min-height: 60px;
     max-height: min(180px, 25dvh);
     overflow-y: auto;
+  }
+  .inbox-page .inbox-composer {
+    grid-template-columns: minmax(0, 1fr) 44px;
+    padding: 10px;
+    align-items: end;
+  }
+  .inbox-page .inbox-composer button {
+    min-width: 0;
+    min-height: 44px;
+    padding: 8px;
+    font-size: 0;
+    align-self: end;
+  }
+  .inbox-page .inbox-composer button svg {
+    width: 20px;
+    height: 20px;
+  }
+  .inbox-page .inbox-conversation > header {
+    padding: 12px;
+    gap: 8px;
+  }
+  .inbox-page .page-header p {
+    display: none;
+  }
+  .inbox-page .page-header .header-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
   }
 }

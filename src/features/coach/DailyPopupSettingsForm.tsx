@@ -14,7 +14,7 @@ export function DailyPopupForm({
   value: Settings["dailyPopup"];
   studioId: string;
   isDemo: boolean;
-  onSave: (value: Settings["dailyPopup"]) => void;
+  onSave: (value: Settings["dailyPopup"]) => Promise<void>;
 }) {
   const [form, setForm] = useState(value);
   const [backgroundFile, setBackgroundFile] = useState<File>();
@@ -46,12 +46,12 @@ export function DailyPopupForm({
         next = {
           ...form,
           backgroundImageStoragePath: uploaded.storagePath,
-          backgroundImageUrl: uploaded.signedUrl || "",
+          backgroundImageUrl: "",
         };
-        setForm(next);
-        setBackgroundFile(undefined);
       }
-      onSave(next);
+      await onSave(next);
+      setForm(next);
+      setBackgroundFile(undefined);
     } catch (reason) {
       setError(
         reason instanceof Error

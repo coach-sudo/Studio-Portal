@@ -33,6 +33,7 @@ export interface ReferralOverview {
 export async function loadReferralOverview(
   page = 1,
   studentId?: string,
+  signal?: AbortSignal,
 ): Promise<ReferralOverview> {
   if (isDemoMode || !supabase)
     throw new Error("Live referrals are unavailable in the demo.");
@@ -42,6 +43,7 @@ export async function loadReferralOverview(
     `/api/v2/referrals?page=${page}${studentId ? "&student=" + encodeURIComponent(studentId) : ""}`,
     {
       headers: { Authorization: `Bearer ${data.session.access_token}` },
+      signal,
     },
   );
   if (!response.ok)

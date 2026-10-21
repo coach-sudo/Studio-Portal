@@ -296,6 +296,17 @@ summary:focus-visible {
   position: static;
   inset: auto;
 }
+/* Legacy header/section rules must not hide primary action labels. */
+:is(.app-shell, .student-shell, .workflow-dialog) button.primary-button {
+  background: var(--forest);
+  color: white;
+  font-size: 14px;
+}
+:is(.app-shell, .student-shell, .workflow-dialog) button.primary-button svg {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+}
 .section h2,
 .coach-panel h2 {
   font-family: inherit;

@@ -83,7 +83,7 @@
 }
 .campaigns-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.4fr) minmax(270px, 1fr);
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px);
   gap: 16px;
   align-items: start;
 }
@@ -91,6 +91,25 @@
   display: grid;
   gap: 16px;
   min-width: 0;
+  position: sticky;
+  top: 20px;
+}
+.campaigns-page .workflow-form > .full {
+  grid-column: 1 / -1;
+}
+.campaigns-page .campaign-block-list .form-actions {
+  padding: 0;
+  border: 0;
+  margin: 0 0 10px;
+}
+.campaigns-page .campaign-heading-input textarea {
+  min-height: 70px;
+}
+.campaign-steps button {
+  min-height: 40px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 12px;
 }
 .campaigns-page .section,
 .campaigns-page .section-body,
@@ -226,6 +245,9 @@
 @media (max-width: 900px) {
   .campaigns-grid {
     grid-template-columns: 1fr;
+  }
+  .campaigns-side {
+    position: static;
   }
 }
 @media (max-width: 600px) {

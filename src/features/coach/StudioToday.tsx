@@ -412,7 +412,7 @@ export function TodayView({
               ),
               remaining = due.getTime() - Date.now();
             return (
-              <article key={`note-${lesson.id}`}>
+              <article className="note-followup-row" key={`note-${lesson.id}`}>
                 <FileText />
                 <div>
                   <strong>

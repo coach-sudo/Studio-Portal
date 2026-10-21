@@ -50,6 +50,10 @@ import {
   type SettingsPanel as Panel,
 } from "../../domain/settingsPanels";
 import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
+import {
+  settingsWriteValues,
+  validateStudioImage,
+} from "../../domain/settingsAssets";
 import { mergeStudioSettings } from "../../data/settings";
 
 export const studioRecoverySummary = (data: StudioSnapshot) =>
@@ -115,7 +119,14 @@ export function StudioSettings({
       );
   }, [searchParams, panel, data.settings, setSearchParams, confirmDiscard]);
   useEffect(() => {
-    if (!isDemo) void loadPlatformHealth().then(setHealth);
+    if (!isDemo)
+      void loadPlatformHealth()
+        .then(setHealth)
+        .catch(() =>
+          setNotice(
+            "Integration status could not be loaded. Refresh connection status to retry.",
+          ),
+        );
   }, []);
   const refreshHealth = async () => {
     const next = await loadPlatformHealth();
@@ -123,7 +134,8 @@ export function StudioSettings({
     return next;
   };
   const save = async (updates: Partial<Settings>, message: string) => {
-    if (settingsMutation.isPending()) return;
+    if (settingsMutation.isPending())
+      throw new Error("Another Settings save is still running. Please wait.");
     try {
       await settingsMutation.run(`settings-${panel}`, async () => {
         if (isDemo)
@@ -136,7 +148,10 @@ export function StudioSettings({
           await studioCommand("settings", {
             command: "update",
             expectedVersion: 1,
-            payload: { settings: updates, baseSettings: editorBase },
+            payload: {
+              settings: settingsWriteValues(updates),
+              baseSettings: settingsWriteValues(editorBase, true),
+            },
             reason: "Coach updated studio settings",
           });
           queryClient.setQueryData<StudioSnapshot>(
@@ -164,6 +179,7 @@ export function StudioSettings({
           ? reason.message
           : "Settings could not be saved.",
       );
+      throw reason;
     }
   };
   const panels: Array<[Panel, string, typeof Palette, string]> = [
@@ -210,8 +226,31 @@ export function StudioSettings({
       "Storage, history and delivery recovery",
     ],
   ];
+  const choosePanel = (key: string) =>
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set("panel", key);
+      next.delete("section");
+      return next;
+    });
+  useEffect(() => {
+    if (!dirty && !settingsMutation.isPending()) {
+      setEditorBase(data.settings);
+      setEpoch((n) => n + 1);
+    }
+  }, [data.settings, dirty]);
   return (
     <div className="settings-layout">
+      <label className="settings-mobile-selector">
+        Settings section
+        <select value={panel} onChange={(e) => choosePanel(e.target.value)}>
+          {panels.map(([key, label]) => (
+            <option key={key} value={key}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
       <aside className="settings-nav" aria-label="Settings categories">
         {panels.map(([key, label, Icon, detail]) => (
           <button
@@ -237,7 +276,6 @@ export function StudioSettings({
       <div
         className="settings-content"
         aria-busy={settingsMutation.isPending()}
-        key={`${panel}:${epoch}`}
         onChangeCapture={(e) => {
           if ((e.target as HTMLElement).closest(".settings-form"))
             setDirty(true);
@@ -273,24 +311,29 @@ export function StudioSettings({
         )}
         {panel === "profile" && (
           <StudioForm
+            key={epoch}
             value={editorBase}
             studioId={data.studioId}
             onSave={(value) =>
-              void save(value, "Studio identity and contact details saved.")
+              save(value, "Studio identity and contact details saved.")
             }
           />
         )}{" "}
         {panel === "access" && (
           <PortalForm
+            key={epoch}
             value={editorBase}
             onSave={(value) =>
-              void save(value, "Student workspace preferences saved.")
+              void save(value, "Student workspace preferences saved.").catch(
+                () => {},
+              )
             }
           />
         )}{" "}
         {panel === "booking" && (
           <>
             <BookingSetup
+              key={epoch}
               value={editorBase}
               onSave={(v) =>
                 save(
@@ -309,19 +352,23 @@ export function StudioSettings({
         )}
         {panel === "pricing" && (
           <PricingForm
+            key={epoch}
             value={editorBase}
             onSave={(value) =>
-              void save(value, "Lesson rates and reminder timing saved.")
+              void save(value, "Lesson rates and reminder timing saved.").catch(
+                () => {},
+              )
             }
           />
         )}{" "}
         {panel === "communications" && (
           <DailyPopupForm
+            key={epoch}
             value={editorBase.dailyPopup}
             studioId={data.studioId}
             isDemo={isDemo}
             onSave={(dailyPopup) =>
-              void save({ dailyPopup }, "Daily popup settings saved.")
+              save({ dailyPopup }, "Daily popup settings saved.")
             }
           />
         )}{" "}
@@ -331,9 +378,12 @@ export function StudioSettings({
             <details>
               <summary>Legacy email defaults and templates</summary>
               <EmailAutomationForm
+                key={epoch}
                 value={editorBase}
                 onSave={(value) =>
-                  void save(value, "Email automation settings saved.")
+                  void save(value, "Email automation settings saved.").catch(
+                    () => {},
+                  )
                 }
               />
             </details>
@@ -362,35 +412,38 @@ export function StudioSettings({
   );
 }
 
-function StudioForm({
+export function StudioForm({
   value,
   studioId,
   onSave,
 }: {
   value: Settings;
   studioId: string;
-  onSave: (v: Partial<Settings>) => void;
+  onSave: (v: Partial<Settings>) => Promise<void>;
 }) {
   const [form, setForm] = useState(value),
     [logo, setLogo] = useState<File>(),
     [coachPhoto, setCoachPhoto] = useState<File>(),
+    [removeLogo, setRemoveLogo] = useState(false),
     [removeCoachPhoto, setRemoveCoachPhoto] = useState(false),
     [uploading, setUploading] = useState(false),
     [error, setError] = useState("");
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (uploading) return;
     setError("");
     try {
+      if (logo) validateStudioImage(logo);
+      if (coachPhoto) validateStudioImage(coachPhoto);
       setUploading(true);
       let branding = form.branding;
+      if (removeLogo)
+        branding = {
+          ...branding,
+          logoStoragePath: undefined,
+          logoUrl: undefined,
+        };
       if (logo) {
-        if (
-          !["image/png", "image/jpeg", "image/webp"].includes(logo.type) ||
-          logo.size > 5 * 1024 * 1024
-        )
-          throw new Error(
-            "Choose a PNG, JPEG or WebP studio logo smaller than 5 MB.",
-          );
         const uploaded = await uploadStudioFile({
           studioId,
           entityType: "studio",
@@ -400,7 +453,7 @@ function StudioForm({
         branding = {
           ...branding,
           logoStoragePath: uploaded.storagePath,
-          logoUrl: uploaded.signedUrl,
+          logoUrl: undefined,
         };
       }
       if (removeCoachPhoto)
@@ -410,13 +463,6 @@ function StudioForm({
           coachProfilePhotoUrl: undefined,
         };
       if (coachPhoto) {
-        if (
-          !coachPhoto.type.startsWith("image/") ||
-          coachPhoto.size > 5 * 1024 * 1024
-        )
-          throw new Error(
-            "Choose a JPG, PNG, or WebP image smaller than 5 MB.",
-          );
         const uploaded = await uploadStudioFile({
           studioId,
           entityType: "studio",
@@ -426,11 +472,11 @@ function StudioForm({
         branding = {
           ...branding,
           coachProfilePhotoStoragePath: uploaded.storagePath,
-          coachProfilePhotoUrl: uploaded.signedUrl,
+          coachProfilePhotoUrl: undefined,
           coachProfilePhotoPosition: { x: 50, y: 50 },
         };
       }
-      onSave({
+      await onSave({
         studioName: form.studioName,
         studioTagline: form.studioTagline,
         coachName: form.coachName,
@@ -556,18 +602,40 @@ function StudioForm({
         <label className="full material-upload">
           Studio logo
           <input
+            aria-label="Studio logo"
             type="file"
             accept="image/png,image/jpeg,image/webp"
-            onChange={(e) => setLogo(e.target.files?.[0])}
+            onChange={(e) => {
+              setLogo(e.target.files?.[0]);
+              setRemoveLogo(false);
+            }}
           />
           <small>
             The uploaded logo is used in the booking header, footer, and public
             actor pages and invoices. PNG, JPEG or WebP, up to 5 MB.
           </small>
         </label>
+        {(form.branding.logoStoragePath || form.branding.logoUrl) &&
+          !removeLogo && (
+            <div className="profile-photo-preview full">
+              {form.branding.logoUrl && (
+                <img src={form.branding.logoUrl} alt="Current studio logo" />
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setRemoveLogo(true);
+                  setLogo(undefined);
+                }}
+              >
+                Remove studio logo
+              </button>
+            </div>
+          )}
         <label className="full material-upload">
           Coach profile photo
           <input
+            aria-label="Coach profile photo"
             type="file"
             accept="image/png,image/jpeg,image/webp"
             onChange={(event) => {
@@ -579,29 +647,31 @@ function StudioForm({
             Optional. Used only in your signed-in identity areas. Coach’D never
             inserts stock or generated people.
           </small>
-          {form.branding.coachProfilePhotoUrl && !removeCoachPhoto && (
-            <span className="profile-photo-preview">
-              <img
-                src={form.branding.coachProfilePhotoUrl}
-                alt="Current coach profile"
-              />
-              Current photo{" "}
-              <button
-                type="button"
-                className="text-button"
-                onClick={() => {
-                  setRemoveCoachPhoto(true);
-                  setCoachPhoto(undefined);
-                }}
-              >
-                Remove
-              </button>
-            </span>
-          )}
+          {(form.branding.coachProfilePhotoStoragePath ||
+            form.branding.coachProfilePhotoUrl) &&
+            !removeCoachPhoto && (
+              <span className="profile-photo-preview">
+                <img
+                  src={form.branding.coachProfilePhotoUrl}
+                  alt="Current coach profile"
+                />
+                Current photo{" "}
+                <button
+                  type="button"
+                  className="text-button"
+                  onClick={() => {
+                    setRemoveCoachPhoto(true);
+                    setCoachPhoto(undefined);
+                  }}
+                >
+                  Remove
+                </button>
+              </span>
+            )}
         </label>
         <div className="form-actions full">
           <button className="primary" disabled={uploading}>
-            {uploading ? "Uploading…" : "Save studio"}
+            {uploading ? "Saving studio…" : "Save studio"}
           </button>
         </div>
       </form>
@@ -1074,6 +1144,12 @@ function Integrations({
     try {
       await onRefresh();
       onNotice("Connection status refreshed.");
+    } catch (error) {
+      onNotice(
+        error instanceof Error
+          ? error.message
+          : "Connection status could not be refreshed.",
+      );
     } finally {
       setRefreshing(false);
     }
@@ -1117,15 +1193,16 @@ function Integrations({
               "stripe",
               "scheduledWorkers",
             ][index],
-            evidence = health.integrations?.[key];
+            evidence = health.integrations?.[key],
+            working = evidence?.state === "working";
           return (
             <article key={name}>
-              {ready ? <CheckCircle2 /> : <RefreshCw />}
+              {working ? <CheckCircle2 /> : <RefreshCw />}
               <strong>{name}</strong>
               <small>{detail}</small>
-              <Status tone={ready ? "good" : "warn"}>
+              <Status tone={working ? "good" : "warn"}>
                 {evidence?.state.replaceAll("_", " ") ||
-                  (ready ? "working" : "unconfigured")}
+                  (ready ? "configured — unverified" : "unconfigured")}
               </Status>
               {evidence?.lastSuccessAt && (
                 <small>
@@ -1214,26 +1291,34 @@ function DataPanel({
     void refreshStorage();
   }, [isDemo]);
   const retry = async () => {
-    if (isDemo)
-      store.transact((draft) =>
-        draft.outbox
-          .filter((i) => i.status === "failed")
-          .forEach((i) => {
-            i.status = "queued";
-            i.lastError = undefined;
-            i.attempts += 1;
-          }),
+    try {
+      if (isDemo)
+        store.transact((draft) =>
+          draft.outbox
+            .filter((i) => i.status === "failed")
+            .forEach((i) => {
+              i.status = "queued";
+              i.lastError = undefined;
+              i.attempts += 1;
+            }),
+        );
+      else
+        await studioCommand("outbox", {
+          command: "retry_failed",
+          expectedVersion: 0,
+          reason: "Coach retried failed email delivery",
+        });
+      await invalidateStudioDomains(queryClient, ["messaging"]);
+      onNotice(
+        `${failed.length} failed message${failed.length === 1 ? "" : "s"} queued again.`,
       );
-    else
-      await studioCommand("outbox", {
-        command: "retry_failed",
-        expectedVersion: 0,
-        reason: "Coach retried failed email delivery",
-      });
-    await invalidateStudioDomains(queryClient, ["messaging"]);
-    onNotice(
-      `${failed.length} failed message${failed.length === 1 ? "" : "s"} queued again.`,
-    );
+    } catch (error) {
+      onNotice(
+        error instanceof Error
+          ? error.message
+          : "Failed messages could not be queued for retry.",
+      );
+    }
   };
   const reset = () => {
     if (

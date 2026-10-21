@@ -155,7 +155,11 @@ export function AppShell() {
         </button>
       </nav>
       {moreOpen && (
-        <Dialog title="More" onClose={() => setMoreOpen(false)}>
+        <Dialog
+          title="More"
+          className="navigation-sheet"
+          onClose={() => setMoreOpen(false)}
+        >
           <nav className="workspace-more-group" aria-label="More destinations">
             {[...coachNavigation.slice(4), ...studioNavigation].map(
               ({ to, label, icon: Icon }) => (
@@ -171,7 +175,7 @@ export function AppShell() {
                 setSearchOpen(true);
               }}
             >
-              Search
+              <Search aria-hidden="true" /> Search records and destinations
             </button>
           </nav>
         </Dialog>

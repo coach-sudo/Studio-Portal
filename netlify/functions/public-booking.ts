@@ -121,7 +121,11 @@ async function publicServices(request: Request) {
       personalized: Boolean(rate),
     }); }),
     branding = { ...(studio.settings?.branding || {}) };
+  delete branding.coachProfilePhotoUrl;
+  delete branding.coachProfilePhotoStoragePath;
+  delete branding.coachProfilePhotoPosition;
   if (branding.logoStoragePath) {
+    delete branding.logoUrl;
     const { data: signed } = await db.storage
       .from("studio-materials")
       .createSignedUrl(branding.logoStoragePath, 3600);

@@ -56,6 +56,7 @@ export function ActorBuilder({
       profile.draftContent?.primaryHeadshotMaterialId || "",
   });
   const [submit, setSubmit] = useState(false);
+  const [editorView, setEditorView] = useState<"edit" | "preview">("edit");
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -87,8 +88,31 @@ export function ActorBuilder({
     }
   };
   return (
-    <Drawer title="Build actor page" onClose={close}>
-      <div className="actor-builder-layout">
+    <Drawer
+      title="Build actor page"
+      className="actor-builder-dialog"
+      onClose={close}
+    >
+      <div className="actor-builder-layout" data-editor-view={editorView}>
+        <nav
+          className="actor-builder-mobile-tabs"
+          aria-label="Actor builder view"
+        >
+          <button
+            type="button"
+            aria-pressed={editorView === "edit"}
+            onClick={() => setEditorView("edit")}
+          >
+            Edit content
+          </button>
+          <button
+            type="button"
+            aria-pressed={editorView === "preview"}
+            onClick={() => setEditorView("preview")}
+          >
+            Preview page
+          </button>
+        </nav>
         <form className="workflow-form" onSubmit={(e) => void save(e)}>
           {error && (
             <p role="alert" className="full form-error">

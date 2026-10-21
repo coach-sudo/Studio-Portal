@@ -1,4 +1,5 @@
 import { settingsPatch } from "../../../src/domain/settingsPatch";
+import { settingsWriteValues } from "../../../src/domain/settingsAssets";
 import { campaignContentSchema } from "../../../src/domain/campaignBlocks";
 import { unknownCampaignTokens } from "../../../src/domain/campaignTemplates";
 import { json } from "../_shared/http";
@@ -324,8 +325,41 @@ export async function handleAdministrationCommands(
         .eq("id", studioId)
         .single();
     if (readError || !before) throw new Error("FORBIDDEN");
-    const incomingSettings =
-      (input.payload.settings as Record<string, any>) || {};
+    const incomingSettings = settingsWriteValues(
+      (input.payload.settings as Record<string, any>) || {},
+    );
+    if (incomingSettings.branding) {
+      for (const [key, visibility] of [
+        ["logoStoragePath", "public_actor"],
+        ["coachProfilePhotoStoragePath", "private"],
+      ]) {
+        const path = incomingSettings.branding[key];
+        if (!path) continue;
+        if (typeof path !== "string" || !path.startsWith(`${studioId}/`))
+          throw new Error(
+            "VALIDATION_FAILED: This image does not belong to the studio.",
+          );
+        const { data: asset, error } = await db
+          .from("file_assets")
+          .select("id,mime_type,visibility,owner_student_id,file_size_bytes")
+          .eq("studio_id", studioId)
+          .eq("storage_path", path)
+          .maybeSingle();
+        if (
+          error ||
+          !asset ||
+          asset.visibility !== visibility ||
+          asset.owner_student_id ||
+          !["image/png", "image/jpeg", "image/webp"].includes(
+            asset.mime_type,
+          ) ||
+          Number(asset.file_size_bytes) > 5 * 1024 * 1024
+        )
+          throw new Error(
+            "VALIDATION_FAILED: Choose an authorized studio image, up to 5 MB.",
+          );
+      }
+    }
     if (incomingSettings.dailyPopup) {
       const popup = incomingSettings.dailyPopup;
       if (
@@ -434,8 +468,12 @@ export async function handleAdministrationCommands(
       )
         throw new Error("VALIDATION_FAILED: Check the referral offer.");
     }
-    const base = input.payload.baseSettings as
-      Record<string, unknown> | undefined;
+    const base = input.payload.baseSettings
+      ? settingsWriteValues(
+          input.payload.baseSettings as Record<string, unknown>,
+          true,
+        )
+      : undefined;
     const patch = base
       ? settingsPatch(base, incomingSettings)
       : incomingSettings;

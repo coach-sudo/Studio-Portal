@@ -443,6 +443,7 @@ function useOverlayFocus(onClose: () => void) {
 
 type OverlayProps = {
   title: string;
+  className?: string;
   description?: string;
   children: ReactNode;
   onClose: () => void;
@@ -450,6 +451,7 @@ type OverlayProps = {
 
 export function Dialog({
   title,
+  className = "",
   description,
   children,
   onClose,
@@ -464,7 +466,7 @@ export function Dialog({
     >
       <section
         ref={ref}
-        className={`workflow-dialog ${presentation === "drawer" ? "workflow-drawer" : ""}`}
+        className={`workflow-dialog ${presentation === "drawer" ? "workflow-drawer" : ""} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${id}-title`}

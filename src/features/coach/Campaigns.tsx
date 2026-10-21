@@ -222,7 +222,7 @@ export function Campaigns() {
       .includes(recipientSearch.toLowerCase()),
   );
   return (
-    <div className="campaigns-page">
+    <div className="page campaigns-page">
       <PageHeader
         title="Campaigns"
         action={<button onClick={() => open()}>New campaign</button>}
@@ -371,7 +371,13 @@ export function Campaigns() {
                           </button>
                         </div>
                         {(b.type === "heading" || b.type === "text") && (
-                          <label>
+                          <label
+                            className={
+                              b.type === "heading"
+                                ? "campaign-heading-input"
+                                : ""
+                            }
+                          >
                             Text
                             <WritingArea
                               value={b.text}
@@ -740,6 +746,20 @@ export function Campaigns() {
           )}
         </Section>
         <aside className="campaigns-side">
+          {step === 0 && (
+            <Section title="Live email preview">
+              {preview ? (
+                <iframe
+                  title="Live campaign email preview"
+                  className="campaign-html-preview"
+                  sandbox=""
+                  srcDoc={preview.html}
+                />
+              ) : (
+                <p>Complete valid blocks and HTTPS links to preview.</p>
+              )}
+            </Section>
+          )}
           <Section title="Saved drafts">
             <p>Saving and previewing never queue messages.</p>
             {query.isError && (
