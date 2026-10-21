@@ -1,3 +1,5 @@
+import { settingsPatch } from "../../../src/domain/settingsPatch";
+import { campaignContentSchema } from "../../../src/domain/campaignBlocks";
 import { unknownCampaignTokens } from "../../../src/domain/campaignTemplates";
 import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
@@ -301,24 +303,17 @@ export async function handleAdministrationCommands(
   }
 
   if (domain === "settings" && input.command === "cleanup_storage") {
-    const studioId = await requireCoach();
-    const { data, error } = await serviceClient().rpc(
-      "cleanup_transient_studio_data",
+    await requireCoach();
+    return json(
+      {
+        code: "CONFIGURATION_REQUIRED",
+        message:
+          "Project-wide retention is operator-managed. No records were changed.",
+        retryable: false,
+        correlationId: ctx.id,
+      },
+      409,
     );
-    if (error) throw error;
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "studio",
-        studioId,
-        "studio.transient_storage_cleaned",
-        null,
-        data,
-      ),
-      queuedSideEffects: [],
-    });
   }
 
   if (domain === "settings" && input.command === "update") {
@@ -391,6 +386,8 @@ export async function handleAdministrationCommands(
             typeof template.body !== "string" ||
             template.body.trim().length < 2 ||
             template.body.length > 10000 ||
+            (template.content &&
+              !campaignContentSchema.safeParse(template.content).success) ||
             unknownCampaignTokens(`${template.subject}\n${template.body}`)
               .length > 0,
         )
@@ -437,81 +434,21 @@ export async function handleAdministrationCommands(
       )
         throw new Error("VALIDATION_FAILED: Check the referral offer.");
     }
-    const nextSettings = {
-      ...(before.settings || {}),
-      ...incomingSettings,
-    };
-    for (const key of [
-      "branding",
-      "bookingCopy",
-      "bookingPage",
-      "bookingDefaults",
-      "meetingFormats",
-      "emailAutomations",
-      "portalDefaults",
-      "actorPageCta",
-      "referralProgram",
-    ]) {
-      if (incomingSettings[key])
-        (nextSettings as any)[key] = {
-          ...((before.settings || {})[key] || {}),
-          ...incomingSettings[key],
-        };
-    }
-    const name = String(
-      (nextSettings as Record<string, unknown>).studioName || before.name,
-    ).trim();
-    if (!name) throw new Error("VALIDATION_FAILED");
-    const { data, error } = await serviceClient()
-      .from("studios")
-      .update({
-        name,
-        timezone: String(
-          (nextSettings as Record<string, unknown>).timezone || before.timezone,
-        ),
-        settings: nextSettings,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", studioId)
-      .select()
-      .single();
-    if (error) throw error;
-    const bookingDefaults = (input.payload.settings as any)?.bookingDefaults;
-    if (bookingDefaults?.inPersonUpchargeMinor != null) {
-      const service = serviceClient();
-      const { data: bookingServices, error: servicesError } = await service
-        .from("booking_services")
-        .select("id,location_price_adjustments")
-        .eq("studio_id", studioId);
-      if (servicesError) throw servicesError;
-      for (const item of bookingServices || []) {
-        const adjustments = {
-          ...(item.location_price_adjustments || {}),
-          in_person: Number(bookingDefaults.inPersonUpchargeMinor),
-        };
-        const { error: updateError } = await service
-          .from("booking_services")
-          .update({
-            location_price_adjustments: adjustments,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", item.id);
-        if (updateError) throw updateError;
-      }
-    }
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "studio",
-        studioId,
-        "studio.settings_updated",
-        before,
-        data,
-      ),
-      queuedSideEffects: [],
-    });
+    const base = input.payload.baseSettings as
+      Record<string, unknown> | undefined;
+    const patch = base
+      ? settingsPatch(base, incomingSettings)
+      : incomingSettings;
+    const applied = await db.rpc(
+      "command_patch_studio_settings" as never,
+      {
+        p_patch: patch,
+        p_base: base || null,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (applied.error) throw applied.error;
+    return json(applied.data);
   }
 
   return null;

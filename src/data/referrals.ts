@@ -2,6 +2,8 @@ import { isDemoMode, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
 
 export interface ReferralOverview {
+  count?: number;
+  page?: number;
   config: {
     enabled: boolean;
     paidLessonRewardMinor: number;
@@ -28,14 +30,20 @@ export interface ReferralOverview {
   }[];
 }
 
-export async function loadReferralOverview(): Promise<ReferralOverview> {
+export async function loadReferralOverview(
+  page = 1,
+  studentId?: string,
+): Promise<ReferralOverview> {
   if (isDemoMode || !supabase)
     throw new Error("Live referrals are unavailable in the demo.");
   const { data } = await supabase.auth.getSession();
   if (!data.session) throw new Error("Please sign in again.");
-  const response = await fetch("/api/v2/referrals", {
-    headers: { Authorization: `Bearer ${data.session.access_token}` },
-  });
+  const response = await fetch(
+    `/api/v2/referrals?page=${page}${studentId ? "&student=" + encodeURIComponent(studentId) : ""}`,
+    {
+      headers: { Authorization: `Bearer ${data.session.access_token}` },
+    },
+  );
   if (!response.ok)
     throw await readApiClientError(response, "Could not load referrals.");
   const result = await response.json();

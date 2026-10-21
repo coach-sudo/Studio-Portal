@@ -1,7 +1,6 @@
-import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { UserRound } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { ActorProfilePreview } from "../../components/ActorProfilePreview";
 import "../../components/IdentityActions.css";
 import { Drawer, Section, Status } from "../../components/Primitives";
@@ -16,6 +15,7 @@ import {
 
 import { PortalList } from "./StudentPortalList";
 import { Materials } from "./StudentPortalWorkContent";
+import { ActorBuilder } from "../../components/ActorBuilder";
 
 export function ActorPage({
   data,
@@ -53,7 +53,8 @@ export function ActorPage({
           item.displayName = displayName;
           item.bio = bio;
           item.draftContent = portfolio;
-          item.status = submit ? "review_requested" : "draft";
+          item.draftStatus = submit ? "review_requested" : "draft";
+          if (item.status !== "published") item.status = item.draftStatus;
           item.version += 1;
           item.updatedAt = new Date().toISOString();
         });
@@ -84,6 +85,7 @@ export function ActorPage({
       setNotice(
         reason instanceof Error ? reason.message : "Actor page save failed.",
       );
+      throw reason;
     }
   };
   return (
@@ -144,279 +146,19 @@ export function ActorPage({
         </Drawer>
       )}
       {editing && (
-        <ActorDialog
+        <ActorBuilder
           profile={profile}
           onClose={() => setEditing(false)}
           onSave={(displayName, bio, portfolio, submit) =>
-            void save(displayName, bio, portfolio, submit)
+            save(displayName, bio, portfolio, submit)
           }
           materials={data.materials.filter(
-            (item) =>
-              item.role === "actor_material" && item.mediaKind === "image",
+            (item) => item.role === "actor_material",
           )}
+          studioName={data.settings.studioName}
+          logoUrl={data.settings.branding.logoUrl}
         />
       )}
     </div>
-  );
-}
-function ActorDialog({
-  profile,
-  onClose,
-  onSave,
-  materials,
-}: {
-  profile: Snapshot["actorProfiles"][number];
-  onClose: () => void;
-  onSave: (
-    name: string,
-    bio: string,
-    portfolio: ActorPortfolioDraft,
-    submit: boolean,
-  ) => void;
-  materials: Snapshot["materials"];
-}) {
-  const [name, setName] = useState(profile.displayName);
-  const [bio, setBio] = useState(profile.bio);
-  const [portfolio, setPortfolio] = useState({
-    profileLabel: profile.draftContent?.profileLabel || "",
-    headline: profile.draftContent?.headline || "",
-    unionStatus: profile.draftContent?.unionStatus || "Non-union",
-    location: profile.draftContent?.location || "",
-    playingAge: profile.draftContent?.playingAge || "",
-    height: profile.draftContent?.height || "",
-    eyeColor: profile.draftContent?.eyeColor || "",
-    hairColor: profile.draftContent?.hairColor || "",
-    website: profile.draftContent?.website || "",
-    representation: profile.draftContent?.representation || "",
-    accentColor: profile.draftContent?.accentColor || "#c46b56",
-    contactEmail: profile.draftContent?.contactEmail || "",
-    contactPhone: profile.draftContent?.contactPhone || "",
-    showEmail: Boolean(profile.draftContent?.showEmail),
-    showPhone: Boolean(profile.draftContent?.showPhone),
-    primaryHeadshotMaterialId:
-      profile.draftContent?.primaryHeadshotMaterialId || "",
-  });
-  const [submit, setSubmit] = useState(false);
-  const save = (event: FormEvent) => {
-    event.preventDefault();
-    onSave(name, bio, portfolio, submit);
-  };
-  return (
-    <Drawer title="Edit actor profile" onClose={onClose}>
-      <form className="workflow-form" onSubmit={save}>
-        <h3 className="full actor-form-section">Identity</h3>
-        <label className="full">
-          Display name
-          <input
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        <label className="full">
-          Short header label
-          <input
-            value={portfolio.profileLabel}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, profileLabel: event.target.value })
-            }
-            maxLength={80}
-            placeholder="Optional — e.g. Actor · Voice artist"
-          />
-          <small>Leave blank to show no label above your name.</small>
-        </label>
-        <label className="full">
-          Professional headline
-          <input
-            value={portfolio.headline}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, headline: event.target.value })
-            }
-            placeholder="Actor · Singer · Teaching artist"
-          />
-        </label>
-        <label>
-          Union status
-          <select
-            value={portfolio.unionStatus}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, unionStatus: event.target.value })
-            }
-          >
-            <option>Non-union</option>
-            <option>SAG-AFTRA Eligible</option>
-            <option>SAG-AFTRA</option>
-            <option>AEA Candidate</option>
-            <option>AEA</option>
-            <option>Other</option>
-          </select>
-        </label>
-        <h3 className="full actor-form-section">Professional details</h3>
-        <label>
-          Base location
-          <input
-            value={portfolio.location}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, location: event.target.value })
-            }
-            placeholder="New York, NY"
-          />
-        </label>
-        <label>
-          Playing age
-          <input
-            value={portfolio.playingAge}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, playingAge: event.target.value })
-            }
-            placeholder="18–25"
-          />
-        </label>
-        <label>
-          Height
-          <input
-            value={portfolio.height}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, height: event.target.value })
-            }
-            placeholder={`5' 8\"`}
-          />
-        </label>
-        <label>
-          Eye color
-          <input
-            value={portfolio.eyeColor}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, eyeColor: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Hair color
-          <input
-            value={portfolio.hairColor}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, hairColor: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Representation
-          <input
-            value={portfolio.representation}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, representation: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Personal accent color
-          <input
-            type="color"
-            value={portfolio.accentColor}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, accentColor: event.target.value })
-            }
-          />
-        </label>
-        <label className="full">
-          Professional website
-          <input
-            type="url"
-            value={portfolio.website}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, website: event.target.value })
-            }
-            placeholder="https://…"
-          />
-        </label>
-        <h3 className="full actor-form-section">Public contact</h3>
-        <label>
-          Public email
-          <input
-            type="email"
-            value={portfolio.contactEmail}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, contactEmail: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          Public phone
-          <input
-            type="tel"
-            value={portfolio.contactPhone}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, contactPhone: event.target.value })
-            }
-          />
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={portfolio.showEmail}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, showEmail: event.target.checked })
-            }
-          />
-          Show Email button
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={portfolio.showPhone}
-            onChange={(event) =>
-              setPortfolio({ ...portfolio, showPhone: event.target.checked })
-            }
-          />
-          Show Call button
-        </label>
-        <label className="full">
-          Main headshot
-          <select
-            value={portfolio.primaryHeadshotMaterialId}
-            onChange={(event) =>
-              setPortfolio({
-                ...portfolio,
-                primaryHeadshotMaterialId: event.target.value,
-              })
-            }
-          >
-            <option value="">Use first approved headshot</option>
-            {materials.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.title}
-              </option>
-            ))}
-          </select>
-          <small>All other approved photos appear in the gallery.</small>
-        </label>
-        <h3 className="full actor-form-section">Biography & review</h3>
-        <label className="full">
-          Bio
-          <WritingArea
-            writingSize="long"
-            required
-            value={bio}
-            onChange={(event) => setBio(event.target.value)}
-          />
-        </label>
-        <label className="check-row full">
-          <input
-            type="checkbox"
-            checked={submit}
-            onChange={(event) => setSubmit(event.target.checked)}
-          />
-          Submit for coach review
-          <small>Your coach must approve changes before publication.</small>
-        </label>
-        <div className="form-actions">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="primary">Save</button>
-        </div>
-      </form>
-    </Drawer>
   );
 }

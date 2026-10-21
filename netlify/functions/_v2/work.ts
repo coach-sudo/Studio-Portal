@@ -1,3 +1,4 @@
+import { actorPortfolioSchema } from "../../../src/domain/actorLayout";
 import { AppError, json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
@@ -644,85 +645,21 @@ export async function handleWorkCommands(
     ["save", "review"].includes(input.command) &&
     input.entityId
   ) {
-    const { data: before, error: readError } = await db
-      .from("actor_profiles")
-      .select("*,students!inner(studio_id)")
-      .eq("id", input.entityId)
-      .single();
-    if (readError || !before) throw readError || new Error("FORBIDDEN");
-    let nextStatus = String(input.payload.status || "draft");
-    if (input.command === "review") {
-      const studioId = await requireCoach();
-      if (
-        studioId !== before.students.studio_id ||
-        !["changes_requested", "approved", "published"].includes(nextStatus)
-      )
-        throw new Error("FORBIDDEN");
-    } else if (!["draft", "review_requested"].includes(nextStatus))
-      throw new Error("INVALID_TRANSITION");
-    const changes: Record<string, unknown> = {
-      status: nextStatus,
-      version: input.expectedVersion + 1,
-      updated_at: new Date().toISOString(),
-    };
-    if (input.command === "save") {
-      changes.display_name = String(
-        input.payload.displayName || before.display_name,
-      ).trim();
-      changes.bio = String(input.payload.bio || before.bio).trim();
-      changes.draft_content = {
-        ...(before.draft_content || {}),
-        ...(typeof input.payload.portfolio === "object" &&
-        input.payload.portfolio
-          ? input.payload.portfolio
-          : {}),
-      };
-    }
-    if (nextStatus === "published") {
-      const service = serviceClient(),
-        { count } = await service
-          .from("actor_profile_revisions")
-          .select("id", { count: "exact", head: true })
-          .eq("actor_profile_id", before.id),
-        { data: revision, error: revisionError } = await service
-          .from("actor_profile_revisions")
-          .insert({
-            actor_profile_id: before.id,
-            revision_number: (count || 0) + 1,
-            content: {
-              displayName: before.display_name,
-              bio: before.bio,
-              slug: before.slug,
-              ...(before.draft_content || {}),
-            },
-          })
-          .select("id")
-          .single();
-      if (revisionError) throw revisionError;
-      changes.published_revision_id = revision.id;
-    }
-    const { data, error } = await serviceClient()
-      .from("actor_profiles")
-      .update(changes)
-      .eq("id", input.entityId)
-      .eq("version", input.expectedVersion)
-      .select()
-      .maybeSingle();
-    if (error) throw error;
-    if (!data) throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        before.students.studio_id,
-        "actor_profile",
-        data.id,
-        `actor_profile.${nextStatus}`,
-        before,
-        data,
-      ),
-      queuedSideEffects: [],
-    });
+    const payload = { ...input.payload };
+    if (input.command === "save")
+      payload.portfolio = actorPortfolioSchema.parse(payload.portfolio || {});
+    const result = await db.rpc(
+      "command_actor_page" as never,
+      {
+        p_profile: input.entityId,
+        p_command: input.command,
+        p_value: payload,
+        p_version: input.expectedVersion,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (result.error) throw result.error;
+    return json(result.data);
   }
 
   return null;

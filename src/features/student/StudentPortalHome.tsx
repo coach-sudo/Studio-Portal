@@ -38,6 +38,7 @@ export function Header({ data }: { data: Snapshot }) {
             weekday: "long",
           })}
         </small>
+        <span className="eyebrow">{data.settings.portalLabel}</span>
         <h1>Welcome back, {data.displayName}</h1>
         {data.settings.welcomeMessage && (
           <details className="disclosure-section">

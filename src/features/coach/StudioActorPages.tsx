@@ -2,7 +2,14 @@ import { useQueryClient } from "@tanstack/react-query";
 import { UserRound } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { EmptyState, Section, Status } from "../../components/Primitives";
+import {
+  EmptyState,
+  Section,
+  Status,
+  Dialog,
+} from "../../components/Primitives";
+import { ActorProfilePreview } from "../../components/ActorProfilePreview";
+import type { ActorProfile } from "../../domain/model";
 import { studioCommand } from "../../data/bookingCommands";
 import type { ActorProfileStatus, StudioSnapshot } from "../../domain/model";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
@@ -20,8 +27,19 @@ export function ActorPagesView({
   const store = useStudioStore(),
     navigate = useNavigate(),
     queryClient = useQueryClient(),
-    [notice, setNotice] = useState("");
-  const change = async (id: string, status: ActorProfileStatus) => {
+    [notice, setNotice] = useState(""),
+    [review, setReview] = useState<{
+      profile: ActorProfile;
+      status: ActorProfileStatus;
+    }>(),
+    [busy, setBusy] = useState(false);
+  const change = async (
+    id: string,
+    status: ActorProfileStatus,
+    version: number,
+  ) => {
+    if (busy) return;
+    setBusy(true);
     const profile = data.actorProfiles.find((item) => item.id === id)!;
     try {
       if (isDemo)
@@ -35,19 +53,22 @@ export function ActorPagesView({
         await studioCommand("actor-pages", {
           command: "review",
           entityId: id,
-          expectedVersion: profile.version,
+          expectedVersion: version,
           payload: { status },
           reason: "Coach reviewed actor page",
         });
         await invalidateStudioDomains(queryClient, ["actorProfiles"]);
       }
       setNotice(`Actor page marked ${status.replaceAll("_", " ")}.`);
+      setReview(undefined);
     } catch (reason) {
       setNotice(
         reason instanceof Error
           ? reason.message
           : "Actor page could not be updated.",
       );
+    } finally {
+      setBusy(false);
     }
   };
   return (
@@ -66,6 +87,13 @@ export function ActorPagesView({
             <Status tone={profile.status === "published" ? "good" : "warn"}>
               {profile.status.replaceAll("_", " ")}
             </Status>
+            {profile.draftStatus && (
+              <Status
+                tone={profile.draftStatus === "approved" ? "good" : "warn"}
+              >
+                Draft: {profile.draftStatus.replaceAll("_", " ")}
+              </Status>
+            )}
             <button
               onClick={() =>
                 navigate(`/coach/students/${profile.studentId}/actor-page`)
@@ -73,14 +101,18 @@ export function ActorPagesView({
             >
               Open
             </button>
-            {profile.status === "review_requested" && (
-              <button onClick={() => void change(profile.id, "approved")}>
-                Approve
+            {(profile.draftStatus || profile.status) !== "approved" && (
+              <button
+                onClick={() => setReview({ profile, status: "approved" })}
+              >
+                Review draft
               </button>
             )}
-            {profile.status !== "published" && (
-              <button onClick={() => void change(profile.id, "published")}>
-                Publish
+            {(profile.draftStatus || profile.status) === "approved" && (
+              <button
+                onClick={() => setReview({ profile, status: "published" })}
+              >
+                Review & publish
               </button>
             )}
             {profile.status === "published" && (
@@ -94,7 +126,9 @@ export function ActorPagesView({
                   View live page
                 </a>
                 <button
-                  onClick={() => void change(profile.id, "changes_requested")}
+                  onClick={() =>
+                    setReview({ profile, status: "changes_requested" })
+                  }
                 >
                   Unpublish
                 </button>
@@ -109,6 +143,64 @@ export function ActorPagesView({
           />
         )}
       </div>
+      {review && (
+        <Dialog
+          title={
+            review.status === "published"
+              ? "Publish reviewed revision"
+              : review.status === "approved"
+                ? "Approve draft"
+                : "Unpublish Actor Page"
+          }
+          onClose={() => !busy && setReview(undefined)}
+        >
+          <p>
+            {review.status === "published"
+              ? "The approved content and approved media below will replace the public revision."
+              : review.status === "approved"
+                ? "Approval records this draft version. Publication remains a separate action."
+                : "The public URL becomes unavailable. Revisions and authored content remain in history."}
+          </p>
+          <ActorProfilePreview
+            profile={review.profile}
+            materials={data.materials.filter(
+              (m) =>
+                m.studentId === review.profile.studentId &&
+                m.role === "actor_material",
+            )}
+            studioName={data.settings.studioName}
+            logoUrl={data.settings.branding.logoUrl}
+          />
+          <div className="form-actions">
+            <button disabled={busy} onClick={() => setReview(undefined)}>
+              Cancel
+            </button>
+            <button
+              className="primary"
+              disabled={
+                busy ||
+                data.actorProfiles.find((p) => p.id === review.profile.id)
+                  ?.version !== review.profile.version
+              }
+              onClick={() =>
+                void change(
+                  review.profile.id,
+                  review.status,
+                  review.profile.version,
+                )
+              }
+            >
+              {busy
+                ? "Saving…"
+                : review.status === "published"
+                  ? "Confirm publication"
+                  : review.status === "approved"
+                    ? "Confirm approval"
+                    : "Confirm unpublish"}
+            </button>
+          </div>
+        </Dialog>
+      )}
     </Section>
   );
 }

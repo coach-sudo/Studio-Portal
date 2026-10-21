@@ -5,6 +5,10 @@ import { mapStudentChanges } from "../_shared/student-updates";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 import { requireAccessibleProfilePhoto } from "../_shared/profile-photo-access";
+const objectFields = (value: unknown): Record<string, unknown> =>
+  value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 
 export async function handleStudentsCommands(
   ctx: V2CommandContext,
@@ -12,52 +16,13 @@ export async function handleStudentsCommands(
   const { audit, context, db, domain, id, input, requireCoach } = ctx;
 
   if (domain === "students" && input.command === "create") {
-    const studioId = await requireCoach(),
-      fullName = String(input.payload.fullName || "").trim(),
-      email = String(input.payload.email || "")
-        .trim()
-        .toLowerCase(),
-      isMinor = Boolean(input.payload.isMinor),
-      guardianEmail = String(input.payload.guardianEmail || "")
-        .trim()
-        .toLowerCase();
-    if (
-      fullName.length < 2 ||
-      (!isMinor && !email.includes("@")) ||
-      (isMinor && !guardianEmail.includes("@"))
-    )
-      throw new Error("VALIDATION_FAILED");
-    const { data, error } = await db
-      .from("students")
-      .insert({
-        studio_id: studioId,
-        full_name: fullName,
-        email: email || null,
-        phone: String(input.payload.phone || "").trim() || null,
-        focus_area: String(input.payload.focusArea || "") || null,
-        lead_source: String(input.payload.leadSource || "") || null,
-        is_minor: isMinor,
-        guardian_name: String(input.payload.guardianName || "") || null,
-        guardian_email: guardianEmail || null,
-        status: "lead",
-        portal_enabled: false,
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "student",
-        data.id,
-        "student.created",
-        null,
-        data,
-      ),
-      queuedSideEffects: [],
-    });
+    await requireCoach();
+    const created = await db.rpc(
+      "command_create_student_once" as never,
+      { p_value: input.payload, p_key: input.idempotencyKey } as never,
+    );
+    if (created.error) throw created.error;
+    return json(created.data);
   }
 
   if (domain === "students" && input.command === "invite" && input.entityId) {
@@ -67,7 +32,14 @@ export async function handleStudentsCommands(
       studentId: input.entityId,
       accountType:
         input.payload.accountType === "guardian" ? "guardian" : "student",
-      resetExisting: true,
+      resetExisting: input.payload.resetExisting !== false,
+      expectedRecipient: input.payload.expectedRecipient
+        ? String(input.payload.expectedRecipient)
+        : undefined,
+      contactVersion:
+        typeof input.payload.contactVersion === "number"
+          ? input.payload.contactVersion
+          : undefined,
       expectedVersion: input.expectedVersion,
       linkedContactId: String(input.payload.linkedContactId || "") || undefined,
     });
@@ -499,6 +471,22 @@ export async function handleStudentsCommands(
     }
     Object.assign(changes, mapStudentChanges(payload, allowed, columns));
     if (
+      payload.portalPreferences &&
+      typeof payload.portalPreferences === "object"
+    )
+      changes.portal_preferences = {
+        ...before.portal_preferences,
+        ...payload.portalPreferences,
+      };
+    if (
+      payload.notificationPreferences &&
+      typeof payload.notificationPreferences === "object"
+    )
+      changes.notification_preferences = {
+        ...before.notification_preferences,
+        ...payload.notificationPreferences,
+      };
+    if (
       payload.profilePhotoAssetId &&
       payload.profilePhotoAssetId !== before.profile_photo_asset_id
     )
@@ -834,6 +822,7 @@ export async function handleStudentsCommands(
       .select("*")
       .eq("id", input.entityId)
       .eq("user_id", authData.user.id)
+      .eq("portal_enabled", true)
       .single();
     if (readError || !before) throw new Error("FORBIDDEN");
     const email = String(input.payload.email || before.email)
@@ -859,11 +848,14 @@ export async function handleStudentsCommands(
         email,
         timezone: timezone || null,
         timezone_confirmed: Boolean(timezone),
-        notification_preferences:
-          input.payload.notificationPreferences ||
-          before.notification_preferences,
-        portal_preferences:
-          input.payload.portalPreferences || before.portal_preferences || {},
+        notification_preferences: {
+          ...objectFields(before.notification_preferences),
+          ...objectFields(input.payload.notificationPreferences),
+        },
+        portal_preferences: {
+          ...objectFields(before.portal_preferences),
+          ...objectFields(input.payload.portalPreferences),
+        },
         version: before.version + 1,
         updated_at: new Date().toISOString(),
       })

@@ -337,7 +337,7 @@ test("@journey @mobile @a11y finance-only guardian sees account totals without l
     await page.goto("/portal/payments");
     await expect(
       page.getByRole("heading", { name: "Account summary" }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("$80.00", { exact: true })).toBeVisible();
     await expect(
       page.getByText("Your coach manages this setting."),

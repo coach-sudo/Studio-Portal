@@ -97,6 +97,12 @@ export async function checkOutboxEligibility(
     if (result.error) throw result.error;
     if (!result.data || result.data.unsubscribed_at)
       return { allowed: false, reason: "preference_disabled" };
+    const current = await db.rpc(
+      "campaign_recipient_eligible" as never,
+      { p_studio: message.studio_id, p_email: message.recipient } as never,
+    );
+    if (current.error) throw current.error;
+    if (!current.data) return { allowed: false, reason: "preference_disabled" };
   }
   if (message.automation_rule_id) {
     const result = await db

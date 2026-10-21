@@ -529,7 +529,7 @@ export interface LinkedContact extends Versioned {
   canViewFinance: boolean;
   canReceiveNotifications: boolean;
   notificationPreferences: NotificationPreferences;
-  portalPreferences?: { appearance?: "light" | "dark" };
+  portalPreferences?: { appearance?: "light" | "dark"; showProgress?: boolean };
   portalEnabled: boolean;
 }
 export interface DiscountCode extends Versioned {
@@ -580,6 +580,7 @@ export interface PaymentEntry {
   createdAt: string;
 }
 export interface ActorProfile extends Versioned {
+  draftStatus?: ActorProfileStatus;
   studentId: UUID;
   slug: string;
   displayName: string;
@@ -603,6 +604,9 @@ export interface ActorProfile extends Versioned {
     showEmail?: boolean;
     showPhone?: boolean;
     primaryHeadshotMaterialId?: string;
+    presentation?: import("./actorLayout").ActorLayout;
+    credits?: string;
+    skills?: string;
   };
 }
 export interface OutboxMessage extends Versioned {
@@ -681,6 +685,7 @@ export interface StudioSettings {
     name: string;
     subject: string;
     body: string;
+    content?: import("./campaignBlocks").CampaignContent;
   }>;
   showContactButtons: boolean;
   showBookingButton: boolean;

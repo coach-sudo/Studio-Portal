@@ -77,6 +77,18 @@ export async function portalBookingCommand(
 }
 
 export interface PlatformHealth {
+  integrations?: Record<
+    string,
+    {
+      state:
+        | "working"
+        | "configured_unverified"
+        | "attention_required"
+        | "unconfigured";
+      configured: boolean;
+      lastSuccessAt: string | null;
+    }
+  >;
   mode: "live" | "demo";
   supabase: boolean;
   stripe: boolean;

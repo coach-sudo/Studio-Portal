@@ -18,6 +18,7 @@ type StudentIdentity = {
 };
 type LinkedIdentity = {
   id: string;
+  version: number;
   user_id?: string | null;
   full_name: string;
   email: string;
@@ -76,6 +77,8 @@ export async function provisionPortalAccount(
     resetExisting: boolean;
     expectedVersion?: number;
     linkedContactId?: string;
+    expectedRecipient?: string;
+    contactVersion?: number;
   },
 ) {
   const [{ data: student, error: studentError }, { data: studio }] =
@@ -121,16 +124,26 @@ export async function provisionPortalAccount(
     throw new Error(
       `VALIDATION_FAILED: Add the ${options.accountType} email first.`,
     );
+  if (
+    (options.expectedRecipient && email !== options.expectedRecipient) ||
+    (options.contactVersion !== undefined &&
+      linkedContact?.version !== options.contactVersion)
+  )
+    throw new Error(
+      "VERSION_CONFLICT: Invitation recipient changed after review.",
+    );
 
   let accountQuery = db
     .from("portal_accounts")
     .select("id,user_id,username,email,linked_contact_id")
     .eq("student_id", identity.id)
     .eq("account_type", options.accountType);
-  accountQuery = options.accountType === "guardian" && linkedContact
-    ? accountQuery.eq("linked_contact_id", linkedContact.id)
-    : accountQuery.is("linked_contact_id", null);
-  const { data: currentAccount, error: accountReadError } = await accountQuery.maybeSingle();
+  accountQuery =
+    options.accountType === "guardian" && linkedContact
+      ? accountQuery.eq("linked_contact_id", linkedContact.id)
+      : accountQuery.is("linked_contact_id", null);
+  const { data: currentAccount, error: accountReadError } =
+    await accountQuery.maybeSingle();
   if (accountReadError) throw accountReadError;
   if (currentAccount && !options.resetExisting)
     return {
@@ -234,29 +247,35 @@ export async function provisionPortalAccount(
     );
     if (error) throw error;
     if (linkedContact) {
-      const { error: linkError } = await db.from("linked_contacts").update({
-        user_id: authUser.id,
-        updated_at: new Date().toISOString(),
-      }).eq("id", linkedContact.id);
+      const { error: linkError } = await db
+        .from("linked_contacts")
+        .update({
+          user_id: authUser.id,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", linkedContact.id);
       if (linkError) throw linkError;
     }
   }
 
   const queuedAt = new Date().toISOString();
   const accountValues = {
-        studio_id: options.studioId,
-        student_id: identity.id,
-        user_id: authUser.id,
-        account_type: options.accountType,
-        linked_contact_id: linkedContact?.id || null,
-        username,
-        email,
-        must_change_password: true,
-        instructions_sent_at: queuedAt,
-        updated_at: queuedAt,
+    studio_id: options.studioId,
+    student_id: identity.id,
+    user_id: authUser.id,
+    account_type: options.accountType,
+    linked_contact_id: linkedContact?.id || null,
+    username,
+    email,
+    must_change_password: true,
+    instructions_sent_at: queuedAt,
+    updated_at: queuedAt,
   };
   const accountWrite = currentAccount
-    ? db.from("portal_accounts").update(accountValues).eq("id", currentAccount.id)
+    ? db
+        .from("portal_accounts")
+        .update(accountValues)
+        .eq("id", currentAccount.id)
     : db.from("portal_accounts").insert(accountValues);
   const { data: account, error: accountWriteError } = await accountWrite
     .select("id")
@@ -270,9 +289,7 @@ export async function provisionPortalAccount(
       user_id:
         options.accountType === "student" ? authUser.id : identity.user_id,
       portal_username:
-        options.accountType === "student"
-          ? username
-          : identity.portal_username,
+        options.accountType === "student" ? username : identity.portal_username,
       portal_enabled: true,
       version: identity.version + 1,
       updated_at: queuedAt,
@@ -286,33 +303,40 @@ export async function provisionPortalAccount(
   const loginUrl = portalActionUrl(portalOrigin(), "login");
   const studioName = studio?.name || "Coach'D";
   const relationshipLabel = linkedContact
-    ? linkedContact.relationship_label || (linkedContact.relationship_type === "support_person" ? "support person" : linkedContact.relationship_type)
+    ? linkedContact.relationship_label ||
+      (linkedContact.relationship_type === "support_person"
+        ? "support person"
+        : linkedContact.relationship_type)
     : options.accountType;
-  const { data: outbox, error: queueError } = await db.from("outbox_messages").insert({
-    studio_id: options.studioId,
-    student_id: identity.id,
-    channel: "email",
-    recipient: email,
-    subject: `Your ${studioName} portal login`,
-    body: [
-      "Hello,",
-      "",
-      `Your ${relationshipLabel} portal for ${identity.preferred_name || identity.full_name} is ready.`,
-      "",
-      `Sign in: ${loginUrl}`,
-      `Username: ${username}`,
-      `Temporary password: ${temporaryPassword}`,
-      "",
-      "This temporary password is only for your first sign-in. You will immediately be asked to create a private password.",
-      "Your coach cannot see the private password you create.",
-      "If you need help, contact the studio instead of forwarding this email.",
-    ].join("\n"),
-    status: "queued",
-    send_at: queuedAt,
-    event_key: "portal.credentials",
-    dedupe_key: `portal-credentials:${account.id}:${Date.now()}`,
-    priority: 100,
-  }).select("id,status,created_at").single();
+  const { data: outbox, error: queueError } = await db
+    .from("outbox_messages")
+    .insert({
+      studio_id: options.studioId,
+      student_id: identity.id,
+      channel: "email",
+      recipient: email,
+      subject: `Your ${studioName} portal login`,
+      body: [
+        "Hello,",
+        "",
+        `Your ${relationshipLabel} portal for ${identity.preferred_name || identity.full_name} is ready.`,
+        "",
+        `Sign in: ${loginUrl}`,
+        `Username: ${username}`,
+        `Temporary password: ${temporaryPassword}`,
+        "",
+        "This temporary password is only for your first sign-in. You will immediately be asked to create a private password.",
+        "Your coach cannot see the private password you create.",
+        "If you need help, contact the studio instead of forwarding this email.",
+      ].join("\n"),
+      status: "queued",
+      send_at: queuedAt,
+      event_key: "portal.credentials",
+      dedupe_key: `portal-credentials:${account.id}:${Date.now()}`,
+      priority: 100,
+    })
+    .select("id,status,created_at")
+    .single();
   if (queueError) throw queueError;
 
   return {

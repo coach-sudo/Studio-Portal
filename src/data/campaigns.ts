@@ -1,5 +1,24 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
+import type { CampaignContent } from "../domain/campaignBlocks";
+export interface CampaignDraftValue {
+  name: string;
+  subject: string;
+  content: CampaignContent;
+  recipientEmails: string[];
+  sendAt: string | null;
+}
+export interface CampaignDraftRecord {
+  id: string;
+  version: number;
+  value: CampaignDraftValue;
+  review?: {
+    id: string;
+    expiresAt: string;
+    audience: Array<{ email: string; name: string }>;
+  } | null;
+  result?: { id: string; recipientCount: number; sendAt: string } | null;
+}
 
 export interface CampaignContact {
   email: string;
@@ -20,18 +39,21 @@ export interface CampaignHistory {
 export interface CampaignOverview {
   contacts: CampaignContact[];
   campaigns: CampaignHistory[];
+  drafts?: CampaignDraftRecord[];
+  historyCount?: number;
 }
 
 async function campaignRequest(
   method: "GET" | "POST",
   body?: Record<string, unknown>,
+  query = "",
 ) {
   if (!isSupabaseConfigured || !supabase)
     throw new Error("Production database is not configured.");
   const { data } = await supabase.auth.getSession();
   if (!data.session)
     throw new Error("Sign in as the coach to manage campaigns.");
-  const response = await fetch("/api/v2/admin/campaigns", {
+  const response = await fetch("/api/v2/admin/campaigns" + query, {
     method,
     headers: {
       Accept: "application/json",
@@ -46,8 +68,33 @@ async function campaignRequest(
   return result;
 }
 
-export async function loadCampaignOverview(): Promise<CampaignOverview> {
-  return campaignRequest("GET");
+export async function loadCampaignOverview(
+  page = 1,
+  search = "",
+): Promise<CampaignOverview> {
+  return campaignRequest(
+    "GET",
+    undefined,
+    `?page=${page}&search=${encodeURIComponent(search)}`,
+  );
+}
+export async function campaignDraftCommand(
+  command: "read" | "save" | "review" | "queue",
+  draftId: string,
+  version: number,
+  value: Record<string, unknown> = {},
+) {
+  const result = await campaignRequest("POST", {
+    command,
+    draftId,
+    version,
+    value,
+    idempotencyKey: draftId,
+  });
+  return result.resource as CampaignDraftRecord & {
+    recipientCount?: number;
+    sendAt?: string;
+  };
 }
 
 export async function queueCampaign(input: {

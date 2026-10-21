@@ -10,6 +10,8 @@ import {
   studioDateKey,
 } from "../domain/presentation";
 import "./LessonCalendar.css";
+import { InteractiveCalendarGrid } from "./InteractiveCalendarGrid";
+import type { CalendarProposal } from "../domain/calendarProposals";
 
 export type CalendarView = "day" | "week" | "month" | "year" | "list";
 
@@ -36,6 +38,7 @@ export function LessonCalendar({
   onViewChange,
   calendarState,
   onCalendarStateChange,
+  onPropose,
 }: {
   lessons: Lesson[];
   timezone: string;
@@ -49,6 +52,7 @@ export function LessonCalendar({
   onCalendarStateChange?: (
     change: Partial<{ date: string; query: string; includeCancelled: boolean }>,
   ) => void;
+  onPropose?: (proposal: CalendarProposal) => void;
 }) {
   const [localView, setLocalView] = useState<CalendarView>("month");
   const view = viewOverride || localView;
@@ -140,6 +144,7 @@ export function LessonCalendar({
           : String(anchor.getFullYear());
   const eventButton = (lesson: Lesson) => (
     <button
+      data-calendar-lesson={lesson.id}
       key={lesson.id}
       type="button"
       className={`calendar-event ${lesson.status}`}
@@ -245,6 +250,7 @@ export function LessonCalendar({
           </strong>
           {visible.slice(0, 8).map((lesson) => (
             <button
+              data-calendar-lesson={lesson.id}
               type="button"
               key={lesson.id}
               onClick={() => {
@@ -311,7 +317,23 @@ export function LessonCalendar({
           </div>
         </>
       )}
-      {view === "week" && (
+      {onPropose && (view === "week" || view === "day") && (
+        <InteractiveCalendarGrid
+          days={
+            view === "day"
+              ? [anchor]
+              : Array.from({ length: 7 }, (_, i) =>
+                  addDays(startOfWeek(anchor), i),
+                )
+          }
+          lessons={visible}
+          timezone={timezone}
+          studentName={studentName}
+          onOpen={onOpen}
+          onPropose={onPropose}
+        />
+      )}
+      {view === "week" && !onPropose && (
         <>
           <div className="calendar-weekdays">
             {Array.from({ length: 7 }, (_, index) =>
@@ -333,7 +355,7 @@ export function LessonCalendar({
           </div>
         </>
       )}
-      {view === "day" && (
+      {view === "day" && !onPropose && (
         <div className="calendar-agenda">
           {(byDay.get(calendarDateKey(anchor)) || []).map(eventButton)}
           {!(byDay.get(calendarDateKey(anchor)) || []).length && (

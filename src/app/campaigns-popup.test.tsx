@@ -27,7 +27,7 @@ describe("campaign and popup controls", () => {
       await screen.findByRole("heading", { name: "Campaigns" }),
     ).toBeInTheDocument();
     await user.type(
-      screen.getByRole("textbox", { name: "Campaign / template name" }),
+      screen.getByRole("textbox", { name: "Name" }),
       "Fall update",
     );
     await user.type(
@@ -35,10 +35,10 @@ describe("campaign and popup controls", () => {
       "Hello {{{{firstName}}}}",
     );
     await user.type(
-      screen.getByRole("textbox", { name: "Email body" }),
+      screen.getAllByRole("textbox", { name: "Text" })[1],
       "A note from {{{{studioName}}}}.",
     );
-    await user.click(screen.getByRole("button", { name: "Save template" }));
+    await user.click(screen.getByRole("button", { name: "Save as template" }));
     expect(await screen.findByText(/Template saved/)).toBeInTheDocument();
   });
 
@@ -46,7 +46,9 @@ describe("campaign and popup controls", () => {
     const user = userEvent.setup();
     renderApp("/coach/settings");
     await user.click(
-      await screen.findByRole("button", { name: /Daily popup/i }),
+      await screen.findByRole("button", {
+        name: /Communications and Notifications/i,
+      }),
     );
     await user.type(
       screen.getByRole("textbox", { name: "Heading" }),

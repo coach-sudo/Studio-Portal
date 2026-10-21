@@ -1,0 +1,56 @@
+.workflow-drawer:has(.actor-builder-layout) {
+  width: min(1440px, 98vw);
+  max-width: 98vw;
+}
+.actor-builder-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
+  gap: 1.5rem;
+}
+.actor-builder-layout > * {
+  min-width: 0;
+}
+.actor-builder-preview {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  max-height: 80vh;
+  overflow: auto;
+  background: var(--app-surface);
+  color: var(--ink);
+  padding: 0.5rem;
+}
+.actor-builder-viewport.mobile {
+  max-width: 390px;
+  margin: auto;
+}
+.actor-section-order > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+  padding: 0.5rem;
+  border: 1px solid var(--line);
+}
+.actor-section-order strong {
+  margin-right: auto;
+  text-transform: capitalize;
+}
+.actor-section-order p {
+  font-size: 0.85rem;
+}
+.actor-builder-layout input,
+.actor-builder-layout textarea,
+.actor-builder-layout select {
+  background: var(--app-surface);
+  color: var(--ink);
+}
+@media (max-width: 850px) {
+  .actor-builder-layout {
+    grid-template-columns: 1fr;
+  }
+  .actor-builder-preview {
+    position: static;
+    max-height: none;
+  }
+}

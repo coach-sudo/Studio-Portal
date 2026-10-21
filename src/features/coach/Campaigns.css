@@ -4,6 +4,59 @@
   gap: 12px;
   margin-bottom: 18px;
 }
+.campaign-steps {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.campaign-steps button[aria-current="step"] {
+  background: var(--forest);
+  color: #fff;
+}
+.campaign-block-list {
+  display: grid;
+  gap: 1rem;
+}
+.campaign-block-list fieldset {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1rem;
+}
+.campaign-block-list fieldset > label {
+  display: grid;
+  gap: 0.4rem;
+}
+.campaign-html-preview {
+  width: 100%;
+  min-height: 560px;
+  border: 1px solid var(--line);
+  background: white;
+}
+.campaign-text-preview {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  max-width: 100%;
+}
+.campaign-draft-choice {
+  display: grid;
+  text-align: left;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  background: var(--app-surface);
+  color: var(--ink);
+  white-space: normal;
+}
+.campaigns-page .check-row input {
+  width: auto;
+}
+.campaigns-page .table-list article {
+  flex-wrap: wrap;
+}
+.campaigns-page footer {
+  margin-top: 1rem;
+}
 .campaigns-summary article {
   display: grid;
   grid-template-columns: 28px 1fr;

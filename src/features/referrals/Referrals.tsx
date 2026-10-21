@@ -57,6 +57,8 @@ function useReferrals(
   students: Student[] | undefined,
   demo: boolean,
   config: StudioSettings["referralProgram"],
+  page = 1,
+  studentId?: string,
 ) {
   const [overview, setOverview] = useState<ReferralOverview>();
   const [error, setError] = useState("");
@@ -69,7 +71,7 @@ function useReferrals(
     }
     setLoading(true);
     try {
-      setOverview(await loadReferralOverview());
+      setOverview(await loadReferralOverview(page, studentId));
       setError("");
     } catch (cause) {
       setError(
@@ -81,7 +83,7 @@ function useReferrals(
   };
   useEffect(() => {
     if (students) void refresh();
-  }, [students, demo, config]);
+  }, [students, demo, config, page, studentId]);
   return { overview, error, loading, refresh };
 }
 
@@ -172,6 +174,7 @@ function RewardList({
 }
 
 export function CoachReferrals() {
+  const [page, setPage] = useState(1);
   const { data, isDemo } = useStudioRoute("coach", undefined, [
     "identity",
     "students",
@@ -181,6 +184,7 @@ export function CoachReferrals() {
     data?.students,
     isDemo,
     data?.settings.referralProgram || defaultReferralConfig,
+    page,
   );
   const [studentSearch, setStudentSearch] = useState("");
   const names = useMemo(
@@ -250,7 +254,7 @@ export function CoachReferrals() {
         </div>
       </Section>
       <Section
-        title={`Referred people${overview ? ` (${overview.referrals.length})` : ""}`}
+        title={`Referral history${overview ? ` (${overview.count ?? overview.referrals.length})` : ""}`}
       >
         {!overview?.referrals.length ? (
           <p>No referrals have booked yet.</p>
@@ -272,6 +276,11 @@ export function CoachReferrals() {
           </div>
         )}
       </Section>
+      <HistoryPages
+        page={page}
+        count={overview?.count ?? overview?.referrals.length ?? 0}
+        onPage={setPage}
+      />
     </div>
   );
 }
@@ -285,10 +294,13 @@ export function StudentReferrals({
   settings: StudioSettings;
   isDemo: boolean;
 }) {
+  const [page, setPage] = useState(1);
   const { overview, error, loading, refresh } = useReferrals(
     students,
     isDemo,
     settings.referralProgram,
+    page,
+    students[0]?.id,
   );
   const student = overview?.students.find(
     (item) => item.id === students[0]?.id,
@@ -331,7 +343,7 @@ export function StudentReferrals({
         )}
       </Section>
       <Section
-        title={`Your referrals${overview ? ` (${overview.referrals.length})` : ""}`}
+        title={`Your referral history${overview ? ` (${overview.count ?? overview.referrals.length})` : ""}`}
       >
         <button
           type="button"
@@ -382,6 +394,34 @@ export function StudentReferrals({
           </div>
         )}
       </Section>
+      <HistoryPages
+        page={page}
+        count={overview?.count ?? overview?.referrals.length ?? 0}
+        onPage={setPage}
+      />
     </div>
+  );
+}
+function HistoryPages({
+  page,
+  count,
+  onPage,
+}: {
+  page: number;
+  count: number;
+  onPage: (page: number) => void;
+}) {
+  return (
+    <nav className="form-actions" aria-label="Referral history pages">
+      <button disabled={page === 1} onClick={() => onPage(page - 1)}>
+        Previous
+      </button>
+      <span>
+        Page {page} · {count} referrals
+      </span>
+      <button disabled={page * 20 >= count} onClick={() => onPage(page + 1)}>
+        Next
+      </button>
+    </nav>
   );
 }

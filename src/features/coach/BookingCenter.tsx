@@ -84,6 +84,10 @@ function calendarBookings(lesson: Lesson, data: StudioSnapshot): Booking[] {
 export function BookingCenter() {
   const [searchParams, setSearchParams] = useSearchParams();
   const openedAppointmentRequest = useRef("");
+  const appointmentOpener = useRef<{
+    lesson: string;
+    element: HTMLElement | null;
+  } | null>(null);
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useUrlChoice(
     "view",
@@ -158,10 +162,43 @@ export function BookingCenter() {
       setDialog({ type: "lesson", item: lesson });
     }
   }, [data, searchParams]);
+  useEffect(() => {
+    if (
+      dialog ||
+      isLoading ||
+      searchParams.has("lesson") ||
+      searchParams.has("booking") ||
+      !appointmentOpener.current
+    )
+      return;
+    // Closing or refreshing an appointment can replace its calendar button.
+    // Restore the exact occurrence after the route and refreshed DOM settle.
+    const frame = requestAnimationFrame(() => {
+      const opener = appointmentOpener.current;
+      if (!opener) return;
+      const target = opener.element?.isConnected
+        ? opener.element
+        : [
+            ...document.querySelectorAll<HTMLElement>("[data-calendar-lesson]"),
+          ].find((el) => el.dataset.calendarLesson === opener.lesson);
+      if (target) {
+        target.focus();
+        appointmentOpener.current = null;
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [dialog, isLoading, searchParams, data]);
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
 
   function openCalendarLesson(lesson: Lesson) {
+    appointmentOpener.current = {
+      lesson: lesson.id,
+      element:
+        document.activeElement instanceof HTMLElement
+          ? document.activeElement
+          : null,
+    };
     const bookings = calendarBookings(lesson, data!);
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
@@ -234,7 +271,7 @@ export function BookingCenter() {
         await studioCommand("settings", {
           command: "update",
           expectedVersion: 1,
-          payload: { settings: updates },
+          payload: { settings: updates, baseSettings: data!.settings },
           reason: "Coach updated booking setup",
         });
         await invalidateStudioDomains(queryClient, ["identity", "booking"]);
@@ -294,16 +331,41 @@ export function BookingCenter() {
         </p>
       )}
       <nav className="subnav" aria-label="Booking sections">
-        {tabs.map(([id, label]) => (
-          <button
-            key={id}
-            className={tab === id ? "active" : ""}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
+        {tabs
+          .filter(([id]) =>
+            ["calendar", "overview", "classes", "series"].includes(id),
+          )
+          .map(([id, label]) => (
+            <button
+              key={id}
+              className={tab === id ? "active" : ""}
+              onClick={() => setTab(id)}
+            >
+              {label}
+            </button>
+          ))}
       </nav>
+      <details
+        className="booking-configuration"
+        open={["setup", "services", "availability"].includes(tab)}
+      >
+        <summary>Scheduling configuration</summary>
+        <nav className="subnav" aria-label="Scheduling configuration">
+          {tabs
+            .filter(([id]) =>
+              ["setup", "services", "availability"].includes(id),
+            )
+            .map(([id, label]) => (
+              <button
+                key={id}
+                className={tab === id ? "active" : ""}
+                onClick={() => setTab(id)}
+              >
+                {label}
+              </button>
+            ))}
+        </nav>
+      </details>
       {tab === "overview" && (
         <Overview
           data={data}
@@ -779,6 +841,35 @@ function ServiceDialog({
               }
             />
           </label>
+          {!service && (
+            <label>
+              Use a studio default rate
+              <select
+                value=""
+                onChange={(e) => {
+                  const key = e.target.value;
+                  if (!key) return;
+                  const amount =
+                    settings.lessonRatesMinor[key as "intro" | 30 | 60 | 90];
+                  setValue((v) => ({
+                    ...v,
+                    priceMinor: amount,
+                    ...(key === "intro"
+                      ? {}
+                      : { durationMinutes: Number(key) }),
+                  }));
+                }}
+              >
+                <option value="">Choose a default</option>
+                <option value="30">30-minute lesson</option>
+                <option value="60">60-minute lesson</option>
+                <option value="90">90-minute lesson</option>
+                <option value="intro">
+                  Intro rate (keep selected duration)
+                </option>
+              </select>
+            </label>
+          )}
           <label>
             Extra charge for in-person lessons (USD)
             <input

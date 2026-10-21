@@ -209,13 +209,21 @@ export function StudentsIndex({
       ? (remote.data?.total ?? 0)
       : data.students.filter((item) => item.status === value).length;
 
-  const save = async (student: Student) => {
+  const save = async (
+    student: Student,
+    guided = false,
+    allowDuplicate = false,
+    key: string = crypto.randomUUID(),
+  ) => {
+    let createdId = student.id;
     if (isDemo) store.transact((draft) => draft.students.unshift(student));
     else {
-      await studioCommand("students", {
+      const result = await studioCommand("students", {
         command: "create",
+        idempotencyKey: key,
         expectedVersion: 0,
         payload: {
+          allowDuplicate,
           fullName: student.fullName,
           email: student.email,
           phone: student.phone,
@@ -227,9 +235,11 @@ export function StudentsIndex({
         },
         reason: "Coach added student",
       });
+      createdId = result.resource.id;
       await invalidateStudioDomains(queryClient, ["students"]);
     }
     setAdding(false);
+    navigate(`/coach/students/${createdId}${guided ? "?setup=1" : ""}`);
     setNotice(
       `${student.fullName} was added. Open their record to add lessons, work, or portal access.`,
     );
@@ -459,7 +469,15 @@ export function StudentsIndex({
           <button onClick={() => setMerging(true)}>Merge duplicates</button>
         )}
       </section>
-      {adding && <StudentForm onClose={() => setAdding(false)} onSave={save} />}
+      {adding && (
+        <StudentForm
+          data={data}
+          isDemo={isDemo}
+          onClose={() => setAdding(false)}
+          onSave={save}
+          onOpen={(id) => navigate(`/coach/students/${id}`)}
+        />
+      )}
       {importing && (
         <Dialog
           title="Review CSV import"
@@ -702,49 +720,101 @@ function parseStudentCsv(text: string): ImportedStudent[] {
 }
 
 function StudentForm({
+  data,
+  isDemo,
   onClose,
   onSave,
+  onOpen,
 }: {
+  data: StudioSnapshot;
+  isDemo: boolean;
   onClose: () => void;
-  onSave: (student: Student) => Promise<void>;
+  onSave: (
+    student: Student,
+    guided?: boolean,
+    allowDuplicate?: boolean,
+    key?: string,
+  ) => Promise<void>;
+  onOpen: (id: string) => void;
 }) {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [focus, setFocus] = useState("");
-  const [source, setSource] = useState("");
-  const [minor, setMinor] = useState(false);
-  const [guardianName, setGuardianName] = useState("");
-  const [guardianEmail, setGuardianEmail] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
+  const [mode, setMode] = useState<"quick" | "guided">(),
+    [name, setName] = useState(""),
+    [email, setEmail] = useState(""),
+    [phone, setPhone] = useState(""),
+    [isMinor, setIsMinor] = useState(false),
+    [guardianName, setGuardianName] = useState(""),
+    [guardianEmail, setGuardianEmail] = useState(""),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState(""),
+    [matches, setMatches] =
+      useState<Array<{ id: string; full_name: string; email?: string }>>(),
+    [allowDuplicate, setAllowDuplicate] = useState(false),
+    [key, setKey] = useState(() => crypto.randomUUID());
+  const edit = () => {
+    setMatches(undefined);
+    setAllowDuplicate(false);
+    setKey(crypto.randomUUID());
+  };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
+    if (saving) return;
     setSaving(true);
     setError("");
     try {
-      await onSave({
-        id: uid(),
-        studioId: "demo-studio",
-        fullName: name,
-        email: email || undefined,
-        phone: phone || undefined,
-        guardianName: minor ? guardianName : undefined,
-        guardianEmail: minor ? guardianEmail : undefined,
-        focusArea: focus,
-        leadSource: source,
-        status: "lead",
-        isMinor: minor,
-        portalEnabled: false,
-        actorPageEligible: false,
-        version: 1,
-        updatedAt: new Date().toISOString(),
-      });
-    } catch (reason) {
+      if (!matches) {
+        let found;
+        if (isDemo)
+          found = data.students
+            .filter(
+              (s) =>
+                normalize(s.fullName) === normalize(name) ||
+                (email && normalize(s.email) === normalize(email)),
+            )
+            .map((s) => ({ id: s.id, full_name: s.fullName, email: s.email }));
+        else {
+          const r = await import("../../lib/supabase").then(
+            async ({ supabase }) => {
+              if (!supabase) throw Error("Database unavailable");
+              return supabase.rpc(
+                "find_student_duplicates" as never,
+                { p_name: name, p_email: email, p_phone: phone } as never,
+              );
+            },
+          );
+          if (r.error) throw r.error;
+          found = r.data as unknown as Array<{
+            id: string;
+            full_name: string;
+            email?: string;
+          }>;
+        }
+        setMatches(found);
+        if (found.length) return;
+      }
+      if (matches?.length && !allowDuplicate) return;
+      await onSave(
+        {
+          id: uid(),
+          studioId: data.studioId,
+          fullName: name.trim(),
+          email: email.trim() || undefined,
+          phone: phone.trim() || undefined,
+          status: "lead",
+          isMinor,
+          guardianName: guardianName.trim() || undefined,
+          guardianEmail: guardianEmail.trim() || undefined,
+          portalEnabled: false,
+          actorPageEligible: false,
+          version: 1,
+          updatedAt: new Date().toISOString(),
+        },
+        mode === "guided",
+        allowDuplicate,
+        key,
+      );
+    } catch (e) {
       setError(
-        reason instanceof Error
-          ? reason.message
-          : "Student could not be added.",
+        e instanceof Error ? e.message : "Student could not be created.",
       );
     } finally {
       setSaving(false);
@@ -752,92 +822,153 @@ function StudentForm({
   };
   return (
     <Drawer title="Add student" onClose={onClose}>
-      <form className="workflow-form" onSubmit={submit}>
-        {error && (
-          <p className="portal-notice" role="alert">
-            {error}
-          </p>
-        )}
-        <label>
-          Full name
-          <input
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-          />
-        </label>
-        <label>
-          Student email
-          <input
-            required={!minor}
-            type="email"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-          />
-        </label>
-        <label>
-          Phone
-          <input
-            value={phone}
-            onChange={(event) => setPhone(event.target.value)}
-          />
-        </label>
-        <label>
-          Focus area
-          <input
-            value={focus}
-            onChange={(event) => setFocus(event.target.value)}
-          />
-        </label>
-        <label>
-          How they found you
-          <input
-            value={source}
-            onChange={(event) => setSource(event.target.value)}
-          />
-        </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={minor}
-            onChange={(event) => setMinor(event.target.checked)}
-          />
-          <span>
-            <strong>Student is under 18</strong>
-            <small>Add a guardian for communication and access.</small>
-          </span>
-        </label>
-        {minor && (
-          <>
-            <label>
-              Guardian name
-              <input
-                required
-                value={guardianName}
-                onChange={(event) => setGuardianName(event.target.value)}
-              />
-            </label>
-            <label>
-              Guardian email
-              <input
-                required
-                type="email"
-                value={guardianEmail}
-                onChange={(event) => setGuardianEmail(event.target.value)}
-              />
-            </label>
-          </>
-        )}
-        <div className="form-actions full">
-          <button type="button" onClick={onClose}>
-            Cancel
+      {!mode ? (
+        <div className="setup-entry-choices">
+          <button onClick={() => setMode("quick")}>
+            <Plus />
+            <strong>Quick Add</strong>
+            <span>Name and optional contact details</span>
           </button>
-          <button className="primary" disabled={saving}>
+          <button onClick={() => setMode("guided")}>
             <Users />
-            {saving ? "Adding…" : "Add student"}
+            <strong>Guided Setup</strong>
+            <span>
+              Create one record, then prepare and review the remaining setup
+            </span>
           </button>
         </div>
-      </form>
+      ) : (
+        <form className="workflow-form" onSubmit={submit}>
+          <p className="full">
+            {mode === "quick"
+              ? "Add the student now. Continue setup whenever needed."
+              : "Create the record first. All remaining setup is optional and reviewed before execution."}
+          </p>
+          <label className="full">
+            Full name
+            <input
+              required
+              minLength={2}
+              maxLength={120}
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                edit();
+              }}
+            />
+          </label>
+          <label>
+            Student email (optional)
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                edit();
+              }}
+            />
+          </label>
+          <label>
+            Phone (optional)
+            <input
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                edit();
+              }}
+            />
+          </label>
+          <label className="check-row full">
+            <input
+              type="checkbox"
+              checked={isMinor}
+              onChange={(e) => {
+                setIsMinor(e.target.checked);
+                edit();
+              }}
+            />
+            Student is under 18
+          </label>
+          {isMinor && (
+            <>
+              <label>
+                Guardian name
+                <input
+                  value={guardianName}
+                  onChange={(e) => {
+                    setGuardianName(e.target.value);
+                    edit();
+                  }}
+                />
+              </label>
+              <label>
+                Guardian email
+                <input
+                  type="email"
+                  value={guardianEmail}
+                  onChange={(e) => {
+                    setGuardianEmail(e.target.value);
+                    edit();
+                  }}
+                />
+              </label>
+              <p className="field-help full">
+                Guardian details may be added later. Access stays disabled until
+                contact and consent are reviewed.
+              </p>
+            </>
+          )}
+          {!!matches?.length && (
+            <div className="full">
+              <h3>Possible existing records</h3>
+              {matches.map((s) => (
+                <button
+                  className="duplicate-choice"
+                  type="button"
+                  key={s.id}
+                  onClick={() => onOpen(s.id)}
+                >
+                  {s.full_name}
+                  <small>{s.email || "No email"}</small>
+                  <span>Open existing student</span>
+                </button>
+              ))}
+              <label className="check-row">
+                <input
+                  type="checkbox"
+                  checked={allowDuplicate}
+                  onChange={(e) => setAllowDuplicate(e.target.checked)}
+                />
+                This is a different person; create a separate student.
+              </label>
+            </div>
+          )}
+          {error && (
+            <p className="full" role="alert">
+              {error}
+            </p>
+          )}
+          <div className="form-actions full">
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => setMode(undefined)}
+            >
+              Back
+            </button>
+            <button
+              className="primary"
+              disabled={saving || (!!matches?.length && !allowDuplicate)}
+            >
+              {saving
+                ? "Adding…"
+                : mode === "guided"
+                  ? "Create & continue setup"
+                  : "Add student"}
+            </button>
+          </div>
+        </form>
+      )}
     </Drawer>
   );
 }

@@ -104,6 +104,11 @@ const Work = lazy(() =>
     default: module.Work,
   })),
 );
+const GuidedSetup = lazy(() =>
+  import("./StudentGuidedSetup").then((module) => ({
+    default: module.StudentGuidedSetup,
+  })),
+);
 
 const narrowQuery = "(max-width: 600px)";
 const narrowSnapshot = () => window.matchMedia?.(narrowQuery).matches ?? false;
@@ -592,6 +597,24 @@ export function StudentWorkspace() {
 
   return (
     <div className="page student-record-page">
+      {new URLSearchParams(location.search).get("setup") === "1" && (
+        <Suspense fallback={<p role="status">Opening setup…</p>}>
+          <GuidedSetup
+            key={student.id}
+            student={student}
+            data={data}
+            isDemo={isDemo}
+            onClose={() => {
+              const params = new URLSearchParams(location.search);
+              params.delete("setup");
+              navigate({
+                pathname: location.pathname,
+                search: params.toString(),
+              });
+            }}
+          />
+        </Suspense>
+      )}
       <header className="student-record-header">
         <button
           className="back-button"
@@ -891,6 +914,15 @@ export function StudentWorkspace() {
           onClose={() => setRecordMenuOpen(false)}
         >
           <div className="stack-actions student-overflow-actions">
+            <button
+              className="button-link"
+              onClick={() => {
+                setRecordMenuOpen(false);
+                navigate("/coach/students/" + student.id + "?setup=1");
+              }}
+            >
+              Continue Guided Setup
+            </button>
             <Link
               className="button-link"
               to={`${base}/account`}

@@ -58,12 +58,13 @@
 .daily-popup-card.daily-popup-framed {
   position: relative;
 }
-.daily-popup-kicker {
+.daily-popup-card .daily-popup-kicker {
+  color: inherit;
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.8;
+  opacity: 1;
 }
 .daily-popup-close {
   position: absolute;

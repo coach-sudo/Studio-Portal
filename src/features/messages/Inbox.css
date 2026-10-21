@@ -1,0 +1,27 @@
+.communication-activity {
+  margin-top: var(--app-page-gap);
+}
+
+@media (max-width: 768px) {
+  .inbox-page .inbox-layout.has-selection {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .inbox-page .inbox-conversation {
+    height: var(--inbox-available-height, calc(100dvh - 310px));
+    min-height: 280px;
+  }
+
+  .inbox-page .inbox-messages {
+    min-height: 0;
+    max-height: none;
+    overflow-y: auto;
+  }
+
+  .inbox-page .inbox-composer textarea {
+    min-height: 80px;
+    max-height: min(180px, 25dvh);
+    overflow-y: auto;
+  }
+}

@@ -248,36 +248,29 @@ describe("content disclosure and decision context", () => {
     expect(help.closest("details")).not.toHaveAttribute("open");
     await user.click(help);
     expect(help.closest("details")).toHaveTextContent("{{unsubscribeUrl}}");
-    await user.click(screen.getByText("Recipient details"));
-    expect(
-      screen.getByText(/Student, guardian, and linked-contact addresses/),
-    ).toBeInTheDocument();
-    await user.type(
-      screen.getByLabelText("Campaign / template name"),
-      "Studio news",
-    );
+    await user.type(screen.getByLabelText("Name"), "Studio news");
     await user.type(screen.getByLabelText("Subject"), "Hello");
-    await user.type(
-      screen.getByLabelText("Email body"),
+    const body = screen.getAllByRole("textbox", { name: "Text" })[1];
+    await user.clear(body);
+    await user.type(body, "Complete campaign message.");
+    await user.click(screen.getByRole("button", { name: "3. Preview" }));
+    const preview = screen.getByTitle("Campaign email preview");
+    expect(preview.getAttribute("srcdoc")).toContain(
       "Complete campaign message.",
     );
-    const preview = screen
-      .getByText("Personalized message")
-      .closest("details")!;
-    expect(preview).not.toHaveAttribute("open");
-    await user.click(screen.getByRole("button", { name: "Review send" }));
-    expect(preview).toHaveAttribute("open");
+    expect(preview.getAttribute("srcdoc")).toContain(
+      "Unsubscribe from studio campaigns",
+    );
+    await user.click(screen.getByRole("button", { name: "4. Review" }));
     expect(
-      within(preview).getByText("Complete campaign message."),
-    ).toBeInTheDocument();
-    const review = screen.getByRole("region", { name: "Review campaign send" });
-    expect(review).toHaveTextContent("unsubscribed addresses are excluded");
-    expect(review).toHaveTextContent("includes an unsubscribe link");
-    expect(
-      within(review).getByRole("button", {
-        name: "Sending unavailable in demo",
-      }),
-    ).toBeDisabled();
+      screen.queryByRole("button", { name: "Confirm send" }),
+    ).not.toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Prepare authoritative review" }),
+    );
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "Connect a studio to save or queue campaigns",
+    );
   });
 
   it("keeps coach booking override and notification consequences in the dialog", async () => {

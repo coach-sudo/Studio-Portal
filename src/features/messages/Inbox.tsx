@@ -10,7 +10,14 @@ import {
   Send,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
@@ -30,6 +37,8 @@ import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../../lib/supabase";
+import { CommunicationActivity } from "./CommunicationActivity";
+import "./Inbox.css";
 
 type Thread = Conversation & {
   subtitle: string;
@@ -209,11 +218,42 @@ function Inbox({
     initial?.id || "",
   );
   const selected = selectedKey
-    ? threads.find((item) => item.id === selectedKey) || initial
+    ? threads.find((item) => item.id === selectedKey)
     : undefined;
   const [body, setBody] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const layout = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const element = layout.current;
+    if (!element) return;
+    const fit = () => {
+      const viewport = window.visualViewport;
+      const bottom = Math.min(
+        viewport ? viewport.height + viewport.offsetTop : window.innerHeight,
+        document.querySelector(".mobile-nav")?.getBoundingClientRect().top ||
+          window.innerHeight,
+      );
+      element.style.setProperty(
+        "--inbox-available-height",
+        `${Math.max(280, bottom - element.getBoundingClientRect().top - 12)}px`,
+      );
+    };
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? undefined
+        : new ResizeObserver(fit);
+    const header = element.parentElement?.querySelector(".page-header");
+    if (header) observer?.observe(header);
+    window.addEventListener("resize", fit);
+    window.visualViewport?.addEventListener("resize", fit);
+    fit();
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener("resize", fit);
+      window.visualViewport?.removeEventListener("resize", fit);
+    };
+  }, [selectedKey, notice]);
   const [undoMessage, setUndoMessage] = useState<{
     id: string;
     until: number;
@@ -339,10 +379,22 @@ function Inbox({
           (item) => item.conversationId === selected.id,
         )
       : [];
+  const targetMessage = params.get("message");
+  useEffect(() => {
+    if (targetMessage)
+      document
+        .getElementById(`inbox-message-${targetMessage}`)
+        ?.scrollIntoView?.({ block: "center" });
+  }, [targetMessage, selected?.id, messages.length]);
 
   const choose = (thread: Thread) => {
     setSelectedKey(thread.id);
-    setParams({ conversation: thread.id });
+    setParams((p) => {
+      const next = new URLSearchParams(p);
+      next.set("conversation", thread.id);
+      next.delete("message");
+      return next;
+    });
     setNotice("");
     setBody(thread.draftBody || "");
     setNewMessageOpen(false);
@@ -522,7 +574,11 @@ function Inbox({
         const messageId = response.resource.id as string;
         const conversationId = response.resource.conversation_id as string;
         setSelectedKey(conversationId);
-        setParams({ conversation: conversationId });
+        setParams((p) => {
+          const next = new URLSearchParams(p);
+          next.set("conversation", conversationId);
+          return next;
+        });
         setUndoMessage({ id: messageId, until: Date.now() + 10_000 });
         await invalidateStudioDomains(queryClient, ["messaging"]);
       }
@@ -749,7 +805,10 @@ function Inbox({
           </button>
         </div>
       )}
-      <div className={`inbox-layout ${selected ? "has-selection" : ""}`}>
+      <div
+        ref={layout}
+        className={`inbox-layout ${selected ? "has-selection" : ""}`}
+      >
         <aside className="inbox-threads" aria-label="Conversations">
           <header>
             <strong>Conversations</strong>
@@ -845,6 +904,18 @@ function Inbox({
                 <div>
                   <strong>{selected.title}</strong>
                   <small>{selected.subtitle}</small>
+                  {role === "coach" && selectedStudent && (
+                    <div className="form-actions">
+                      <a href={`/coach/students/${selectedStudent.id}`}>
+                        Student record
+                      </a>
+                      <a
+                        href={`/coach/students/${selectedStudent.id}/household`}
+                      >
+                        Household
+                      </a>
+                    </div>
+                  )}
                 </div>
                 {role === "coach" && selectedStudent?.email && (
                   <button onClick={() => openEmail()}>
@@ -857,6 +928,12 @@ function Inbox({
                 {messages.map((message) => (
                   <article
                     key={message.id}
+                    id={`inbox-message-${message.id}`}
+                    style={
+                      targetMessage === message.id
+                        ? { outline: "2px solid var(--gold)", outlineOffset: 2 }
+                        : undefined
+                    }
                     className={
                       message.authorRole === role ||
                       (role === "coach" && message.authorRole === "coach")
@@ -908,6 +985,7 @@ function Inbox({
           )}
         </section>
       </div>
+      <CommunicationActivity isDemo={isDemo} />
       {role === "coach" && (
         <section className="inbox-email-history">
           <header>

@@ -267,6 +267,11 @@ export async function invalidateStudioDomains(
     queryClient.invalidateQueries({ queryKey: ["studio-legacy"] }),
     queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
     queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
+    queryClient.invalidateQueries({ queryKey: ["studio-financial-dashboard"] }),
+    queryClient.invalidateQueries({ queryKey: ["communication-activity"] }),
+    queryClient.invalidateQueries({ queryKey: ["communication-attention"] }),
+    queryClient.invalidateQueries({ queryKey: ["household-access"] }),
+    queryClient.invalidateQueries({ queryKey: ["portal-contexts"] }),
     ...(selected.has("work")
       ? [
           queryClient.invalidateQueries({ queryKey: ["material-resources"] }),

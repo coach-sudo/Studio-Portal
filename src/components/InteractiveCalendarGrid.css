@@ -1,0 +1,108 @@
+.calendar-grid-help {
+  padding: 0 14px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.time-calendar-scroll {
+  max-height: 720px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.time-calendar {
+  display: grid;
+  min-width: 100%;
+  background: var(--app-surface);
+  color: var(--ink);
+  padding-top: 42px;
+}
+.time-calendar-axis {
+  position: relative;
+}
+.time-calendar-axis span {
+  position: absolute;
+  right: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+.time-calendar-day {
+  min-width: 0;
+  border-left: 1px solid var(--line);
+}
+.time-calendar-day > header {
+  height: 34px;
+  margin-top: -34px;
+  position: sticky;
+  top: 0;
+  padding: 8px;
+  background: var(--wash);
+  color: var(--ink);
+  font-weight: 700;
+  z-index: 5;
+}
+.time-calendar-track {
+  position: relative;
+}
+.time-calendar-slot {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-bottom: 1px solid var(--line);
+  opacity: 0.4;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  min-height: 0 !important;
+}
+.time-calendar-slot:hover,
+.time-calendar-slot:focus-visible {
+  opacity: 1;
+  background: var(--wash);
+}
+.time-calendar-event {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  z-index: 2;
+  background: var(--wash);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--sage);
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.time-calendar-open {
+  display: grid;
+  gap: 3px;
+  padding: 7px !important;
+  text-align: left;
+  min-height: 32px !important;
+  overflow: hidden;
+  align-content: start;
+  flex: 1;
+}
+.time-calendar-open time {
+  font-size: 11px;
+}
+.time-calendar-open strong,
+.time-calendar-open span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+.time-calendar-resize {
+  height: 18px;
+  min-height: 18px !important;
+  touch-action: none;
+  cursor: ns-resize;
+  padding: 0 !important;
+  line-height: 12px;
+  background: var(--line) !important;
+  color: var(--ink) !important;
+}
+.time-calendar-slot:focus-visible,
+.time-calendar-resize:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: -2px;
+}

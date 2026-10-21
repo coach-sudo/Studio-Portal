@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   EmptyState,
   ListControls,
@@ -44,9 +44,13 @@ import {
 } from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
 import { AutomationSettings } from "./AutomationSettings";
-
-type Panel =
-  "studio" | "portal" | "popup" | "pricing" | "email" | "integrations" | "data";
+import { BookingSetup } from "./BookingSetup";
+import {
+  canonicalSettingsPanel,
+  type SettingsPanel as Panel,
+} from "../../domain/settingsPanels";
+import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
+import { mergeStudioSettings } from "../../data/settings";
 
 export const studioRecoverySummary = (data: StudioSnapshot) =>
   `${data.students.length} people · ${data.lessons.length} lessons · ${data.materials.length} materials.`;
@@ -58,12 +62,12 @@ export function StudioSettings({
   data: StudioSnapshot;
   isDemo: boolean;
 }) {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const store = useStudioStore(),
     queryClient = useQueryClient(),
     settingsMutation = useStudioMutation(),
     [panel, setPanel] = useState<Panel>(() =>
-      searchParams.get("panel") === "email" ? "email" : "studio",
+      canonicalSettingsPanel(searchParams.get("panel")),
     ),
     [notice, setNotice] = useState(""),
     [health, setHealth] = useState<PlatformHealth>({
@@ -74,8 +78,44 @@ export function StudioSettings({
       gmail: false,
       scheduledWorkers: false,
     });
+  const [dirty, setDirty] = useState(false),
+    [editorBase, setEditorBase] = useState(data.settings),
+    [epoch, setEpoch] = useState(0);
+  const confirmDiscard = useUnsavedWorkspaceChanges(dirty);
   useEffect(() => {
-    void loadPlatformHealth().then(setHealth);
+    const raw = searchParams.get("panel"),
+      next = canonicalSettingsPanel(raw);
+    if (next !== panel) {
+      if (!confirmDiscard()) {
+        setSearchParams(
+          (p) => {
+            const next = new URLSearchParams(p);
+            next.set("panel", panel);
+            return next;
+          },
+          { replace: true },
+        );
+        return;
+      }
+      setPanel(next);
+      setEditorBase(data.settings);
+      setDirty(false);
+      setEpoch((n) => n + 1);
+      setNotice("");
+    }
+    if (raw !== next)
+      setSearchParams(
+        (p) => {
+          const copy = new URLSearchParams(p);
+          copy.set("panel", next);
+          if (raw === "popup") copy.set("section", "popup");
+          return copy;
+        },
+        { replace: true },
+      );
+  }, [searchParams, panel, data.settings, setSearchParams, confirmDiscard]);
+  useEffect(() => {
+    if (!isDemo) void loadPlatformHealth().then(setHealth);
   }, []);
   const refreshHealth = async () => {
     const next = await loadPlatformHealth();
@@ -96,7 +136,7 @@ export function StudioSettings({
           await studioCommand("settings", {
             command: "update",
             expectedVersion: 1,
-            payload: { settings: updates },
+            payload: { settings: updates, baseSettings: editorBase },
             reason: "Coach updated studio settings",
           });
           queryClient.setQueryData<StudioSnapshot>(
@@ -107,13 +147,16 @@ export function StudioSettings({
                     ...current,
                     displayName:
                       updates.coachName?.split(" ")[0] || current.displayName,
-                    settings: { ...current.settings, ...updates },
+                    settings: mergeStudioSettings(current.settings, updates),
                   }
                 : current,
           );
           await invalidateStudioDomains(queryClient, ["identity"]);
         }
       });
+      setDirty(false);
+      setEditorBase(mergeStudioSettings(editorBase, updates));
+      setEpoch((n) => n + 1);
       setNotice(message);
     } catch (reason) {
       setNotice(
@@ -123,22 +166,49 @@ export function StudioSettings({
       );
     }
   };
-  const panels: [
-    [Panel, string, typeof Palette, string],
-    ...Array<[Panel, string, typeof Palette, string]>,
-  ] = [
-    ["studio", "Studio", Palette, "Name, contact, timezone"],
-    ["portal", "Student workspace", Users, "Visibility and welcome"],
-    ["popup", "Daily popup", Megaphone, "One message per day"],
+  const panels: Array<[Panel, string, typeof Palette, string]> = [
+    [
+      "profile",
+      "Studio Profile and Branding",
+      Palette,
+      "Identity, appearance and contact",
+    ],
     [
       "pricing",
-      "Rates & reminders",
+      "Pricing and Billing",
       CircleDollarSign,
-      "Lesson rates and timing",
+      "Default rates, invoices and packages",
     ],
-    ["email", "Email automations", Send, "Confirmations and reminders"],
-    ["integrations", "Connections", Settings2, "Calendar, email, payments"],
-    ["data", "Data & recovery", Database, "Saved data and delivery queue"],
+    [
+      "booking",
+      "Booking Rules and Availability",
+      CalendarClock,
+      "Booking policy and scheduling setup",
+    ],
+    [
+      "communications",
+      "Communications and Notifications",
+      Send,
+      "Automations, templates and daily popup",
+    ],
+    [
+      "integrations",
+      "Integrations",
+      Settings2,
+      "Configured status and recent evidence",
+    ],
+    [
+      "access",
+      "Access and Privacy",
+      ShieldCheck,
+      "Portal experience and Household access",
+    ],
+    [
+      "data",
+      "Data and Recovery",
+      Database,
+      "Storage, history and delivery recovery",
+    ],
   ];
   return (
     <div className="settings-layout">
@@ -148,8 +218,12 @@ export function StudioSettings({
             key={key}
             className={panel === key ? "active" : ""}
             onClick={() => {
-              setPanel(key);
-              setNotice("");
+              setSearchParams((p) => {
+                const next = new URLSearchParams(p);
+                next.set("panel", key);
+                next.delete("section");
+                return next;
+              });
             }}
           >
             <Icon />
@@ -160,41 +234,90 @@ export function StudioSettings({
           </button>
         ))}
       </aside>
-      <div className="settings-content">
+      <div
+        className="settings-content"
+        aria-busy={settingsMutation.isPending()}
+        key={`${panel}:${epoch}`}
+        onChangeCapture={(e) => {
+          if ((e.target as HTMLElement).closest(".settings-form"))
+            setDirty(true);
+        }}
+        onClickCapture={(e) => {
+          if (
+            (e.target as HTMLElement).closest(".settings-form .toggle-button")
+          )
+            setDirty(true);
+        }}
+      >
+        <h2>{panels.find((p) => p[0] === panel)?.[1]}</h2>
+        {settingsMutation.isPending() && <p role="status">Saving settings…</p>}
+        {dirty && (
+          <div className="portal-notice" role="status">
+            Unsaved changes{" "}
+            <button
+              onClick={() => {
+                setDirty(false);
+                setEditorBase(data.settings);
+                setEpoch((n) => n + 1);
+                setNotice("Changes cancelled.");
+              }}
+            >
+              Cancel changes
+            </button>
+          </div>
+        )}
         {notice && (
           <p className="portal-notice" role="status">
-            <CheckCircle2 />
             {notice}
           </p>
         )}
-        {panel === "studio" && (
+        {panel === "profile" && (
           <StudioForm
-            value={data.settings}
+            value={editorBase}
             studioId={data.studioId}
             onSave={(value) =>
               void save(value, "Studio identity and contact details saved.")
             }
           />
         )}{" "}
-        {panel === "portal" && (
+        {panel === "access" && (
           <PortalForm
-            value={data.settings}
+            value={editorBase}
             onSave={(value) =>
               void save(value, "Student workspace preferences saved.")
             }
           />
         )}{" "}
+        {panel === "booking" && (
+          <>
+            <BookingSetup
+              value={editorBase}
+              onSave={(v) =>
+                save(
+                  v,
+                  "Booking defaults saved. Existing agreements are unchanged.",
+                )
+              }
+            />
+            <div className="form-actions">
+              <Link to="/coach/bookings?view=availability">
+                Manage availability
+              </Link>
+              <Link to="/coach/bookings?view=services">Manage services</Link>
+            </div>
+          </>
+        )}
         {panel === "pricing" && (
           <PricingForm
-            value={data.settings}
+            value={editorBase}
             onSave={(value) =>
               void save(value, "Lesson rates and reminder timing saved.")
             }
           />
         )}{" "}
-        {panel === "popup" && (
+        {panel === "communications" && (
           <DailyPopupForm
-            value={data.settings.dailyPopup}
+            value={editorBase.dailyPopup}
             studioId={data.studioId}
             isDemo={isDemo}
             onSave={(dailyPopup) =>
@@ -202,13 +325,13 @@ export function StudioSettings({
             }
           />
         )}{" "}
-        {panel === "email" && (
+        {panel === "communications" && (
           <>
             <AutomationSettings data={data} isDemo={isDemo} />
             <details>
               <summary>Legacy email defaults and templates</summary>
               <EmailAutomationForm
-                value={data.settings}
+                value={editorBase}
                 onSave={(value) =>
                   void save(value, "Email automation settings saved.")
                 }
@@ -252,9 +375,11 @@ function StudioForm({
     [logo, setLogo] = useState<File>(),
     [coachPhoto, setCoachPhoto] = useState<File>(),
     [removeCoachPhoto, setRemoveCoachPhoto] = useState(false),
-    [uploading, setUploading] = useState(false);
+    [uploading, setUploading] = useState(false),
+    [error, setError] = useState("");
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    setError("");
     try {
       setUploading(true);
       let branding = form.branding;
@@ -316,6 +441,12 @@ function StudioForm({
         currency: form.currency,
         branding,
       });
+    } catch (error) {
+      setError(
+        error instanceof Error
+          ? error.message
+          : "Studio files could not be uploaded.",
+      );
     } finally {
       setUploading(false);
     }
@@ -323,6 +454,11 @@ function StudioForm({
   return (
     <Section title="Studio identity" marked>
       <form className="settings-form" onSubmit={submit}>
+        {error && (
+          <p className="form-error full" role="alert">
+            {error}
+          </p>
+        )}
         <label>
           Studio name
           <input
@@ -482,6 +618,11 @@ function PortalForm({
   const [form, setForm] = useState(value);
   return (
     <Section title="Student workspace" marked>
+      <p>
+        Manage each person's permissions and revocation in the student's
+        Household. Payer and scheduling responsibilities stay separate.
+      </p>
+      <Link to="/coach/students">Open student Households</Link>
       <form
         className="settings-form"
         onSubmit={(e) => {
@@ -968,21 +1109,44 @@ function Integrations({
         </p>
       ))}
       <div className="settings-grid">
-        {cards.map(([name, ready, detail]) => (
-          <article key={name}>
-            {ready ? <CheckCircle2 /> : <RefreshCw />}
-            <strong>{name}</strong>
-            <small>{detail}</small>
-            <Status tone={ready ? "good" : "warn"}>
-              {ready ? "connected" : "configuration required"}
-            </Status>
-          </article>
-        ))}
+        {cards.map(([name, ready, detail], index) => {
+          const key = [
+              "googleCalendar",
+              "gmail",
+              "supabase",
+              "stripe",
+              "scheduledWorkers",
+            ][index],
+            evidence = health.integrations?.[key];
+          return (
+            <article key={name}>
+              {ready ? <CheckCircle2 /> : <RefreshCw />}
+              <strong>{name}</strong>
+              <small>{detail}</small>
+              <Status tone={ready ? "good" : "warn"}>
+                {evidence?.state.replaceAll("_", " ") ||
+                  (ready ? "working" : "unconfigured")}
+              </Status>
+              {evidence?.lastSuccessAt && (
+                <small>
+                  Last success{" "}
+                  {new Date(evidence.lastSuccessAt).toLocaleString()}
+                </small>
+              )}
+            </article>
+          );
+        })}
       </div>
       <div className="form-actions">
         <button
           className="primary"
-          disabled={syncing || !health.googleCalendar}
+          disabled={
+            syncing ||
+            !(
+              health.integrations?.googleCalendar?.configured ??
+              health.googleCalendar
+            )
+          }
           onClick={() => void sync()}
         >
           <RefreshCw />
@@ -1022,7 +1186,6 @@ function DataPanel({
   const store = useStudioStore();
   const [storage, setStorage] = useState<StorageHealth>();
   const [storageError, setStorageError] = useState("");
-  const [cleaning, setCleaning] = useState(false);
   const failed = data.outbox.filter((item) => item.status === "failed");
   const cleanupCount = storage
     ? Object.values(storage.cleanupCandidates).reduce(
@@ -1082,29 +1245,6 @@ function DataPanel({
       onNotice("Local studio data reset.");
     }
   };
-  const cleanup = async () => {
-    if (isDemo || cleaning || !cleanupCount) return;
-    setCleaning(true);
-    try {
-      await studioCommand("settings", {
-        command: "cleanup_storage",
-        expectedVersion: 0,
-        reason: "Coach ran safe transient-data cleanup",
-      });
-      await refreshStorage();
-      onNotice(
-        "Safe cleanup finished. Student, lesson, note, payment, credit, and file records were preserved.",
-      );
-    } catch (reason) {
-      onNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Safe cleanup could not be completed.",
-      );
-    } finally {
-      setCleaning(false);
-    }
-  };
   return (
     <>
       <Section title="Saved studio data" marked>
@@ -1130,7 +1270,11 @@ function DataPanel({
             <article>
               <small>Database</small>
               <strong>
-                {storage ? formatBytes(storage.databaseBytes) : "Measuring…"}
+                {storage
+                  ? formatBytes(storage.databaseBytes)
+                  : storageError
+                    ? "Unavailable"
+                    : "Measuring…"}
               </strong>
               <span>
                 Includes Supabase’s system tables and indexes, not just studio
@@ -1140,17 +1284,27 @@ function DataPanel({
             <article>
               <small>Uploaded files</small>
               <strong>
-                {storage ? formatBytes(storage.storageBytes) : "Measuring…"}
+                {storage
+                  ? formatBytes(storage.storageBytes)
+                  : storageError
+                    ? "Unavailable"
+                    : "Measuring…"}
               </strong>
               <span>
-                {storage?.storageObjects ?? 0} stored objects. Active files are
-                never auto-deleted.
+                {storage
+                  ? storage.storageObjects + " stored objects."
+                  : "Object count unavailable."}{" "}
+                Active files are never auto-deleted.
               </span>
             </article>
             <article>
-              <small>Safe cleanup</small>
+              <small>Operator-managed retention</small>
               <strong>
-                {storage ? `${cleanupCount} eligible records` : "Measuring…"}
+                {storage
+                  ? `${cleanupCount} candidate records`
+                  : storageError
+                    ? "Unavailable"
+                    : "Measuring…"}
               </strong>
               <span>
                 Only expired or reconstructable operational records qualify.
@@ -1183,13 +1337,15 @@ function DataPanel({
               const url = URL.createObjectURL(blob);
               const a = document.createElement("a");
               a.href = url;
-              a.download = "stage-story-backup.json";
+              a.download = "studio-workspace-export.json";
               a.click();
               URL.revokeObjectURL(url);
-              onNotice("Studio backup downloaded.");
+              onNotice(
+                "Loaded workspace JSON exported. Database, Auth and Storage backups are managed separately.",
+              );
             }}
           >
-            Download backup
+            Export loaded workspace JSON
           </button>
           {isDemo && (
             <button className="danger-button" onClick={reset}>
@@ -1197,17 +1353,11 @@ function DataPanel({
             </button>
           )}
           {!isDemo && (
-            <button
-              disabled={cleaning || !cleanupCount}
-              onClick={() => void cleanup()}
-            >
-              <RefreshCw />
-              {cleaning
-                ? "Cleaning safely…"
-                : cleanupCount
-                  ? `Clean ${cleanupCount} transient records`
-                  : "Nothing safe to clean"}
-            </button>
+            <p>
+              Retention and backup schedules are managed by the project
+              operator. This portal does not remove historical receipts or alter
+              backups.
+            </p>
           )}
         </div>
       </Section>

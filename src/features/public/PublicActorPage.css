@@ -1,7 +1,66 @@
 /* Feature-owned styles extracted from the global stylesheet. */
 .actor-public {
+  --muted: #53645c;
   min-height: 100vh;
   background: #fffdf8;
+  color: #172e29;
+}
+.actor-public.actor-layout-spotlight .actor-public-hero {
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  text-align: center;
+  padding: 3rem 1rem;
+  background: #183c36;
+  color: #fffdf8;
+  border-radius: 24px;
+}
+.actor-public.actor-layout-spotlight .actor-headshot {
+  width: min(100%, 420px);
+  margin: auto;
+  max-height: 520px;
+  object-fit: cover;
+}
+.actor-public.actor-layout-spotlight .actor-public-intro {
+  max-width: 800px;
+  margin: auto;
+}
+.actor-public.actor-layout-spotlight .actor-stats {
+  justify-content: center;
+}
+.actor-section-prose {
+  white-space: pre-wrap;
+  grid-column: 1/-1;
+  overflow-wrap: anywhere;
+}
+.actor-public h1,
+.actor-public h2,
+.actor-public h3,
+.actor-public p,
+.actor-public strong {
+  color: inherit;
+}
+.actor-public a {
+  color: #205844;
+}
+.actor-render-preview {
+  min-height: 0 !important;
+  container-type: inline-size;
+  pointer-events: none;
+}
+@container (max-width:600px) {
+  .actor-render-preview .actor-public-hero {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem !important;
+  }
+  .actor-render-preview .actor-public-intro {
+    padding: 1rem;
+  }
+  .actor-render-preview .actor-media-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .actor-render-preview h1 {
+    font-size: 2.5rem !important;
+  }
 }
 .actor-public > header {
   padding: 22px 5vw;
@@ -372,7 +431,7 @@
   margin-bottom: 40px;
 }
 .actor-section-heading > span {
-  color: var(--actor-accent, var(--gold));
+  color: var(--muted);
   font-size: 10px;
   font-weight: 900;
 }
@@ -563,4 +622,36 @@
 .actor-public-hero,
 .actor-footer {
   border-radius: var(--app-radius-card);
+}
+.actor-public.actor-layout-spotlight .actor-public-intro,
+.actor-public.actor-layout-spotlight .actor-public-intro h1,
+.actor-public.actor-layout-spotlight .actor-public-intro h2,
+.actor-public.actor-layout-spotlight .actor-stats dd,
+.actor-public.actor-layout-spotlight .actor-stats dt {
+  color: #fffdf8;
+}
+.actor-public.actor-layout-spotlight .actor-contact-actions a {
+  color: #fffdf8;
+  border-color: #fffdf8;
+  background: #183c36;
+}
+.actor-public.actor-layout-spotlight .actor-eyebrow {
+  color: #fffdf8;
+}
+/* Match the preview container, including when a desktop user selects mobile. */
+@container (max-width: 600px) {
+  .actor-public.actor-render-preview .actor-public-hero,
+  .actor-public.actor-render-preview
+    .actor-public-hero.actor-public-hero-sparse {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 1.5rem !important;
+    min-width: 0;
+  }
+  .actor-public.actor-render-preview .actor-public-intro {
+    padding: 1rem;
+    min-width: 0;
+  }
+  .actor-public.actor-render-preview .actor-media-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
 }

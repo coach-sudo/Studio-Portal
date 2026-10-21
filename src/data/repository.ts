@@ -774,6 +774,7 @@ export async function loadStudioSnapshot(
       displayName: r.display_name,
       bio: r.bio,
       status: r.status,
+      draftStatus: r.draft_status || undefined,
       publishedRevisionId: r.published_revision_id,
       draftContent: r.draft_content ?? {},
       version: r.version,

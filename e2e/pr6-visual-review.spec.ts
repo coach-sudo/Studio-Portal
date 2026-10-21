@@ -31,7 +31,7 @@ test.describe("student product-review evidence", () => {
       if (name === "actor-editor") {
         await page.getByRole("button", { name: "Edit" }).click();
         await expect(
-          page.getByRole("dialog", { name: "Edit actor profile" }),
+          page.getByRole("dialog", { name: "Build actor page" }),
         ).toBeVisible();
       }
       if (name === "settings") {
@@ -146,16 +146,24 @@ test.describe("coach product-review evidence", () => {
     await page.screenshot({ path: testInfo.outputPath("coach-student.png") });
 
     await page.goto(`/coach/students/${student}/lessons/${lesson}`);
-    await expect(page.getByRole("button", { name: "Add note" })).toBeVisible();
+    await expect(
+      page
+        .locator(".lesson-primary-actions")
+        .getByRole("button", { name: /^(Write note|Continue draft)$/ }),
+    ).toBeVisible();
     await expect(page.locator(".lesson-facts")).toHaveCSS("display", "grid");
     await expectNoHorizontalOverflow(page);
     await page.screenshot({ path: testInfo.outputPath("coach-lesson.png") });
     for (const [action, dialog, filename] of [
-      ["Add note", "New note", "coach-note"],
-      ["Assign practice", "Assign practice", "coach-practice"],
+      [/^(Write note|Continue draft)$/, /^(New note|Edit note)$/, "coach-note"],
+      ["Assign follow-up", "Assign practice", "coach-practice"],
       ["Attach resource", "Add material", "coach-material"],
     ] as const) {
-      await page.getByRole("button", { name: action }).click();
+      const actions =
+        action === "Attach resource"
+          ? page
+          : page.locator(".lesson-primary-actions");
+      await actions.getByRole("button", { name: action }).click();
       const workflow = page.getByRole("dialog", { name: dialog });
       if (action === "Attach resource") {
         await expect(

@@ -4,6 +4,7 @@ import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 import { handleLessonBulkCommands } from "./lesson-bulk";
+import { seriesDates } from "../../../src/domain/booking";
 
 export async function handleLessonsCommands(
   ctx: V2CommandContext,
@@ -69,9 +70,12 @@ export async function handleLessonsCommands(
         p_value: value,
       });
       if (preview.error) throw preview.error;
-      const token = await googleAccessToken();
+      const token = Netlify.env.get("GOOGLE_REFRESH_TOKEN")
+        ? await googleAccessToken()
+        : null;
       for (const item of preview.data.items)
         if (
+          token &&
           (await googleFreeBusy(token, item.newStartsAt, item.newEndsAt))
             .length &&
           !input.payload.allowConflict
@@ -94,47 +98,73 @@ export async function handleLessonsCommands(
   }
 
   if (domain === "lessons" && input.command === "create") {
-    const studioId = await requireCoach(),
-      studentId = String(input.payload.studentId || ""),
+    await requireCoach();
+    const studentId = String(input.payload.studentId || ""),
       startsAt = String(input.payload.startsAt || ""),
       endsAt = String(input.payload.endsAt || "");
     if (
       !studentId ||
       !startsAt ||
       !endsAt ||
+      !Number.isFinite(Date.parse(startsAt)) || !Number.isFinite(Date.parse(endsAt)) ||
       new Date(endsAt) <= new Date(startsAt)
     )
       throw new Error("VALIDATION_FAILED");
     const cadence = String(input.payload.recurrence || "none");
     const occurrenceCount = Number(input.payload.occurrenceCount || 1);
-    const { data, error } = await serviceClient().rpc("command_create_lesson", {
-      target_studio: studioId,
-      target_student: studentId,
-      topic: String(input.payload.topic || "Private coaching"),
-      starts_at: startsAt,
-      ends_at: endsAt,
-      location_type:
-        input.payload.locationType === "in_person" ? "in_person" : "virtual",
-      location_label: String(input.payload.locationLabel || "Google Meet"),
-      student_name: String(input.payload.studentName || "Student"),
-      student_email: String(input.payload.studentEmail || ""),
+    if (!["none","weekly","biweekly"].includes(cadence) || !Number.isInteger(occurrenceCount) || occurrenceCount < 1 || occurrenceCount > 52) throw new Error("VALIDATION_FAILED");
+    const value = {
+      ...input.payload,
+      studentId,
       recurrence: cadence,
-      occurrence_count: occurrenceCount,
-      timezone: String(input.payload.timezone || "America/New_York"),
-    });
-    if (error) throw error;
+      occurrenceCount,
+    };
+    const replay = await db.rpc(
+      "read_studio_operation" as never,
+      {
+        p_command: "lesson.create",
+        p_value: value,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (replay.error) throw replay.error;
+    if (replay.data) {
+      const previous = replay.data as unknown as {
+        lesson: unknown;
+        auditEventId: string;
+      };
+      return json({
+        resource: previous.lesson,
+        auditEventId: previous.auditEventId,
+        alreadyCreated: true,
+        queuedSideEffects: ["calendar_projection"],
+      });
+    }
+    if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
+      const token = await googleAccessToken();
+      const tz = String(input.payload.timezone || "America/New_York");
+      const starts = cadence === "none" ? [startsAt] : seriesDates(startsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
+      const ends = cadence === "none" ? [endsAt] : seriesDates(endsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
+      for (let i=0;i<starts.length;i++)
+        if ((await googleFreeBusy(token,starts[i],ends[i])).length && !input.payload.allowConflict) throw new Error("SLOT_UNAVAILABLE");
+    }
+    const created = await db.rpc(
+      "command_create_lesson_once" as never,
+      {
+        p_value: value,
+        p_key: input.idempotencyKey,
+      } as never,
+    );
+    if (created.error) throw created.error;
+    const data = created.data as unknown as {
+      lesson: any;
+      auditEventId: string;
+    };
     const lesson = data.lesson;
     return json({
       resource: lesson,
       recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "lesson",
-        lesson.id,
-        "lesson.created",
-        null,
-        data,
-      ),
+      auditEventId: data.auditEventId,
       queuedSideEffects: ["calendar_projection"],
     });
   }
