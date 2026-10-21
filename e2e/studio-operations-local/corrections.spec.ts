@@ -1,6 +1,40 @@
 import { test, expect } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 
+test("Touch desktop-mode viewport keeps one fixed navigation", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({
+    viewport: { width: 980, height: 900 },
+    screen: { width: 390, height: 900 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  try {
+    await context.route("**/*", (r) =>
+      new URL(r.request().url()).origin === "http://127.0.0.1:4178"
+        ? r.continue()
+        : r.abort(),
+    );
+    const page = await context.newPage();
+    await page.goto("http://127.0.0.1:4178/coach/today");
+    await expect(page.locator(".sidebar")).toBeHidden();
+    await expect(page.locator(".mobile-nav")).toBeVisible();
+    expect(
+      await page
+        .locator(".mobile-nav")
+        .evaluate((el) => getComputedStyle(el).position),
+    ).toBe("fixed");
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth + 1,
+      ),
+    ).toBe(true);
+  } finally {
+    await context.close();
+  }
+});
+
 for (const width of [320, 390, 768, 1440])
   test(`Corrective rendered pages at ${width}px`, async ({ page }, info) => {
     await page.setViewportSize({ width, height: 900 });

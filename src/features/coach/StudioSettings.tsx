@@ -276,7 +276,6 @@ export function StudioSettings({
       <div
         className="settings-content"
         aria-busy={settingsMutation.isPending()}
-        key={`${panel}:${epoch}`}
         onChangeCapture={(e) => {
           if ((e.target as HTMLElement).closest(".settings-form"))
             setDirty(true);
@@ -312,6 +311,7 @@ export function StudioSettings({
         )}
         {panel === "profile" && (
           <StudioForm
+            key={epoch}
             value={editorBase}
             studioId={data.studioId}
             onSave={(value) =>
@@ -321,6 +321,7 @@ export function StudioSettings({
         )}{" "}
         {panel === "access" && (
           <PortalForm
+            key={epoch}
             value={editorBase}
             onSave={(value) =>
               void save(value, "Student workspace preferences saved.").catch(
@@ -332,6 +333,7 @@ export function StudioSettings({
         {panel === "booking" && (
           <>
             <BookingSetup
+              key={epoch}
               value={editorBase}
               onSave={(v) =>
                 save(
@@ -350,6 +352,7 @@ export function StudioSettings({
         )}
         {panel === "pricing" && (
           <PricingForm
+            key={epoch}
             value={editorBase}
             onSave={(value) =>
               void save(value, "Lesson rates and reminder timing saved.").catch(
@@ -360,6 +363,7 @@ export function StudioSettings({
         )}{" "}
         {panel === "communications" && (
           <DailyPopupForm
+            key={epoch}
             value={editorBase.dailyPopup}
             studioId={data.studioId}
             isDemo={isDemo}
@@ -374,6 +378,7 @@ export function StudioSettings({
             <details>
               <summary>Legacy email defaults and templates</summary>
               <EmailAutomationForm
+                key={epoch}
                 value={editorBase}
                 onSave={(value) =>
                   void save(value, "Email automation settings saved.").catch(

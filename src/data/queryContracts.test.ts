@@ -60,10 +60,12 @@ describe("route-specific query contracts", () => {
     );
   });
 
-  it("keeps polling only in the explicitly disabled rollback branch", () => {
+  it("renews identity capabilities without polling V2 record collections", () => {
     const hook = read("src/hooks/useStudio.ts");
     expect(hook).toContain("queryLayerV2Enabled");
-    expect(hook).toContain("refetchInterval: false as const");
+    expect(hook).toContain(
+      'refetchInterval: domain === "identity" ? 4 * 60_000 : (false as const)',
+    );
     expect(hook).toContain("studio-legacy");
     expect(hook).toContain("placeholderData");
   });

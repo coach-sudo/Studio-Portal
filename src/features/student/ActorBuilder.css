@@ -2,6 +2,29 @@
   width: min(1440px, 98vw);
   max-width: 98vw;
 }
+.workflow-dialog.workflow-drawer.actor-builder-dialog {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.actor-builder-dialog > header {
+  flex: 0 0 auto;
+}
+.actor-builder-dialog > .actor-builder-layout {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+  padding: 20px;
+  scroll-padding-block: 16px;
+}
+.actor-builder-mobile-tabs {
+  display: none;
+}
+.actor-builder-dialog .actor-builder-layout > form {
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+}
 .actor-builder-layout {
   display: grid;
   grid-template-columns: minmax(280px, 420px) minmax(0, 1fr);
@@ -46,8 +69,35 @@
   color: var(--ink);
 }
 @media (max-width: 850px) {
+  .workflow-dialog.workflow-drawer.actor-builder-dialog {
+    width: 100%;
+    max-width: 100%;
+  }
   .actor-builder-layout {
     grid-template-columns: 1fr;
+  }
+  .actor-builder-mobile-tabs {
+    display: flex;
+    gap: 8px;
+    position: sticky;
+    top: -20px;
+    padding: 10px 0;
+    background: var(--app-surface);
+    z-index: 4;
+  }
+  .actor-builder-mobile-tabs button {
+    flex: 1;
+    min-height: 44px;
+    border-radius: 10px;
+    border: 1px solid var(--app-border);
+  }
+  .actor-builder-mobile-tabs button[aria-pressed="true"] {
+    background: var(--forest);
+    color: white;
+  }
+  .actor-builder-layout[data-editor-view="edit"] > .actor-builder-preview,
+  .actor-builder-layout[data-editor-view="preview"] > form {
+    display: none;
   }
   .actor-builder-preview {
     position: static;

@@ -205,7 +205,29 @@
   }
   .app-shell > .mobile-nav,
   .student-shell > .mobile-nav {
+    position: fixed;
+    z-index: 70;
+    inset: auto 0 0;
+    height: calc(66px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    background: var(--app-surface);
+    border-top: 1px solid var(--app-border);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .mobile-nav :is(a, button) {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    text-decoration: none;
+    font-size: 12px;
+    min-width: 0;
+  }
+  .mobile-nav svg {
+    width: 20px;
+    height: 20px;
   }
   .page,
   .student-page {

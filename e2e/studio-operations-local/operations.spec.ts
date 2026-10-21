@@ -89,6 +89,10 @@ for (const width of [320, 390, 768, 1440])
     await builder
       .getByRole("button", { name: "Move media up", exact: true })
       .click();
+    if (width <= 850)
+      await builder
+        .getByRole("button", { name: "Preview page", exact: true })
+        .click();
     await builder
       .getByRole("button", { name: "Mobile preview", exact: true })
       .click();
@@ -98,9 +102,15 @@ for (const width of [320, 390, 768, 1440])
         .evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
     await layout(page, '[role="dialog"]');
+    expect(
+      await builder
+        .locator("header")
+        .first()
+        .evaluate((el) => el.getBoundingClientRect().top),
+    ).toBeGreaterThanOrEqual(0);
     await page.screenshot({
       path: info.outputPath(`actor-light-${width}.png`),
-      fullPage: true,
+      fullPage: false,
     });
     await page.evaluate(
       () => (document.documentElement.dataset.portalTheme = "dark"),
