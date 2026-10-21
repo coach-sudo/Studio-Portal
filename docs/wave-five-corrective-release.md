@@ -4,6 +4,8 @@ Based on current main `8578f8b4a50dc532a85bccac618a281f839cc9ce`. This corrects 
 
 Visual changes: readable mobile note rows with secondary badges/actions; compact two-column More sheets for coach and portal; URL-backed mobile Settings selector; conversation context chips, compact composer and secondary email history; restored primary-action labels and calendar contrast. Touch devices requesting a desktop viewport use appropriate navigation without duplicate sidebars. Existing builders, calendar, resources and record workflows remain.
 
+The campaign editor now uses its intended full-width block layout and live preview. Mobile Actor editing has persistent Edit/Preview controls. Hosted inspection also exposed a Referrals request loop: rebuilt route arrays retriggered its effect on every loading-state render. The read now depends on relevant values and cancels obsolete student-context requests; focused tests verify bounded loads, explicit refresh, failure handling and stale-response isolation.
+
 Verified functional causes and corrections:
 
 - Profile and popup forms did not await persistence. They now retain busy/error/draft state until the actual command completes; failed replacement preserves the previous image.

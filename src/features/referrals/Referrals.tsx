@@ -7,7 +7,7 @@ import {
   Share2,
   Users,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { PageHeader, Section } from "../../components/Primitives";
 import {
@@ -31,7 +31,7 @@ const defaultReferralConfig: StudioSettings["referralProgram"] = {
   recurringSlotRewardSessionMinutes: 60,
 };
 const demoOverview = (
-  students: Student[],
+  students: Pick<Student, "id" | "fullName">[],
   config: StudioSettings["referralProgram"],
 ): ReferralOverview => ({
   config,
@@ -63,27 +63,46 @@ function useReferrals(
   const [overview, setOverview] = useState<ReferralOverview>();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
-  const refresh = async () => {
-    if (demo) {
-      setOverview(demoOverview(students || [], config));
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    try {
-      setOverview(await loadReferralOverview(page, studentId));
-      setError("");
-    } catch (cause) {
-      setError(
-        cause instanceof Error ? cause.message : "Could not load referrals.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Route snapshots rebuild collection arrays on render. Depend on the values
+  // used here so loading state cannot recursively start another request.
+  const input = JSON.stringify({
+    students: students?.map(({ id, fullName }) => ({ id, fullName })),
+    config,
+  });
+  const refresh = useCallback(
+    async (signal?: AbortSignal) => {
+      const { students, config } = JSON.parse(input) as {
+        students?: Pick<Student, "id" | "fullName">[];
+        config: StudioSettings["referralProgram"];
+      };
+      if (!students) return;
+      if (demo) {
+        setOverview(demoOverview(students || [], config));
+        setLoading(false);
+        return;
+      }
+      setLoading(true);
+      try {
+        const next = await loadReferralOverview(page, studentId, signal);
+        if (signal?.aborted) return;
+        setOverview(next);
+        setError("");
+      } catch (cause) {
+        if (signal?.aborted) return;
+        setError(
+          cause instanceof Error ? cause.message : "Could not load referrals.",
+        );
+      } finally {
+        if (!signal?.aborted) setLoading(false);
+      }
+    },
+    [input, demo, page, studentId],
+  );
   useEffect(() => {
-    if (students) void refresh();
-  }, [students, demo, config, page, studentId]);
+    const controller = new AbortController();
+    void refresh(controller.signal);
+    return () => controller.abort();
+  }, [refresh]);
   return { overview, error, loading, refresh };
 }
 
