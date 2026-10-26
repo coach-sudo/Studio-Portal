@@ -548,3 +548,4 @@ export function StudentBookings({
     </div>
   );
 }
+import "../../styles/booking.css";

@@ -1,3 +1,4 @@
+import "../../styles/booking.css";
 import "../../styles/public.css";
 import { UserRound } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";

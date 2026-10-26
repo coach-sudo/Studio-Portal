@@ -2107,3 +2107,4 @@ function changeDemoBooking(draft: StudioSnapshot, id: string, command: string) {
   if (command === "cancel")
     cancelDemoBooking(draft, booking, { settle: false, late: false });
 }
+import "../../styles/booking.css";

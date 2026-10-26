@@ -1165,23 +1165,6 @@ input[type="radio"] {
   border-color: var(--forest);
   font-size: 14px;
 }
-.booking-summary,
-.booking-summary h1,
-.booking-summary > p,
-.booking-summary dl,
-.booking-summary .policy-note {
-  color: var(--ink);
-}
-.booking-summary p,
-.booking-summary dt {
-  color: var(--muted);
-  opacity: 1;
-}
-.booking-summary dd,
-.booking-summary span {
-  color: var(--ink);
-  opacity: 1;
-}
 .login-page > .wordmark {
   color: var(--forest);
 }
@@ -1202,9 +1185,6 @@ input[type="radio"] {
 }
 .coach-panel > header > .small-primary {
   color: white;
-}
-.booking-summary p strong {
-  color: var(--ink);
 }
 .stepper li {
   color: var(--muted);
@@ -1344,15 +1324,6 @@ input[type="radio"] {
   .service-admin-grid,
   .service-grid {
     grid-template-columns: minmax(0, 1fr);
-  }
-  .booking-step {
-    padding: 22px;
-  }
-  .booking-hero {
-    padding-block: 32px;
-  }
-  .booking-hero h1 {
-    font-size: 36px;
   }
   .dialog-backdrop {
     padding: 16px;

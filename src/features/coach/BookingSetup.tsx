@@ -319,3 +319,4 @@ export function BookingSetup({
     </Section>
   );
 }
+import "../../styles/booking.css";
