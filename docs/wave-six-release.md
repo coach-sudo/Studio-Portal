@@ -1,5 +1,7 @@
 # Wave 6 final quality checkpoint
 
+> Historical implementation checkpoint. Current production was confirmed on October 26 at `078f3f83a456d049b28c287b69d4e4a46c3f6056`, deploy `6ad8e4ee73c3bc97c37dd94f`, publication locked. See [the weekly remediation report](weekly-audit-2026-10-26.md) for current operational evidence and pending gates. The baseline and remaining-gate wording below records the earlier checkpoint and is retained as history.
+
 Baseline: published main `1080950f9c9b8252979c90ac44e0b4a6960932c0`, deployment `6ad86c4f9894f6a2e8111e33`. Reverified on October 21, 2026: production health matches, publication locked, builds stopped, Git-only production enabled; 69 production migrations. This document records implementation evidence, not authorization to bypass pending release gates.
 
 ## Targeted corrections

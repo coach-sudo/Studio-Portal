@@ -1,0 +1,178 @@
+{
+  "recordedAt": "2026-10-26T20:14:37.784Z",
+  "branch": "codex/weekly-audit-remediation-2026-10-26",
+  "production": {
+    "commit": "078f3f83a456d049b28c287b69d4e4a46c3f6056",
+    "deployId": "6ad8e4ee73c3bc97c37dd94f",
+    "locked": true,
+    "health": 200,
+    "fixtureGet": 403,
+    "providerHealthWithoutAuth": 401,
+    "mutationsPerformed": false
+  },
+  "vitest": {
+    "files": 143,
+    "passed": 958,
+    "failed": 0,
+    "total": 958
+  },
+  "bundle": {
+    "generatedAt": "2026-10-26T20:08:22.513Z",
+    "javascript": {
+      "file": "invoice-font-metrics-D7dKORWb.js",
+      "bytes": 175211,
+      "gzipBytes": 111672
+    },
+    "stylesheet": {
+      "file": "index-B3-8m4uW.css",
+      "bytes": 121760,
+      "gzipBytes": 21923
+    },
+    "pdfAssets": [
+      {
+        "file": "pdf-renderer-Cbn0c0Em.js",
+        "gzipBytes": 127938,
+        "failureGzipBytes": 250000
+      },
+      {
+        "file": "pdf.worker.min-CjEcRF4W.mjs",
+        "gzipBytes": 376488,
+        "failureGzipBytes": 500000
+      }
+    ],
+    "budgets": {
+      "javascriptWarningGzipBytes": 120000,
+      "javascriptFailureGzipBytes": 130000,
+      "stylesheetWarningGzipBytes": 22000,
+      "stylesheetFailureGzipBytes": 25000
+    }
+  },
+  "axe": [
+    {
+      "state": "320/book",
+      "elements": 96,
+      "violations": []
+    },
+    {
+      "state": "320/coach/bookings",
+      "elements": 187,
+      "violations": []
+    },
+    {
+      "state": "320/portal/bookings",
+      "elements": 91,
+      "violations": []
+    },
+    {
+      "state": "320/login",
+      "elements": 36,
+      "violations": []
+    },
+    {
+      "state": "768/book",
+      "elements": 97,
+      "violations": []
+    },
+    {
+      "state": "768/coach/bookings",
+      "elements": 193,
+      "violations": []
+    },
+    {
+      "state": "768/portal/bookings",
+      "elements": 91,
+      "violations": []
+    },
+    {
+      "state": "768/login",
+      "elements": 36,
+      "violations": []
+    },
+    {
+      "state": "1440/book",
+      "elements": 97,
+      "violations": []
+    },
+    {
+      "state": "1440/coach/bookings",
+      "elements": 225,
+      "violations": []
+    },
+    {
+      "state": "1440/portal/bookings",
+      "elements": 115,
+      "violations": []
+    },
+    {
+      "state": "1440/login",
+      "elements": 36,
+      "violations": []
+    }
+  ],
+  "cssComparison": {
+    "supportedLightStates": 9,
+    "darkSettingsStates": 3,
+    "computedDifferences": 0
+  },
+  "browser": {
+    "focusedChromium": 2,
+    "focusedWebKit": 2,
+    "passed": 4,
+    "failed": 0,
+    "connectedAuthenticatedMatrix": "BLOCKED"
+  },
+  "nativePostgres": {
+    "providerReviewConcurrency": "PASS",
+    "scheduledWorkerConcurrency": "PASS",
+    "fixtureCleanup": "PASS",
+    "migrationApplied": "PASS",
+    "reset": "BLOCKED_DOCKER_IO_READ_ONLY_WSL_START_FAILED",
+    "schemaLint": "BLOCKED",
+    "fullPgTap": "BLOCKED"
+  },
+  "productionAudit": {
+    "status": "FAIL",
+    "vulnerabilities": {
+      "zod": {
+        "name": "zod",
+        "severity": "high",
+        "isDirect": true,
+        "via": [
+          {
+            "source": 1243066,
+            "name": "zod",
+            "dependency": "zod",
+            "title": "Zod can exhaust memory while validating oversized constrained collections",
+            "url": "https://github.com/advisories/GHSA-mrhx-c7xc-m3w5",
+            "severity": "high",
+            "cwe": ["CWE-770"],
+            "cvss": {
+              "score": 7.5,
+              "vectorString": "CVSS:3.1/AV:N/AC:L/PR:N/UI:N/S:U/C:N/I:N/A:H"
+            },
+            "range": "<4.6.6"
+          }
+        ],
+        "effects": [],
+        "range": "<4.6.6",
+        "nodes": ["node_modules/zod"],
+        "fixAvailable": true
+      }
+    },
+    "metadata": {
+      "info": 0,
+      "low": 0,
+      "moderate": 0,
+      "high": 1,
+      "critical": 0,
+      "total": 1
+    }
+  },
+  "lint": {
+    "errors": 0,
+    "warnings": 904,
+    "inventory": "lint-warning-baseline.json"
+  },
+  "release": "NO-GO",
+  "liveSchedulerVerification": "NOT_YET_VERIFIED"
+}
