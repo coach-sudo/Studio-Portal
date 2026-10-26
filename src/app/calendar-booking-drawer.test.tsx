@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { useEffect } from "react";
@@ -11,7 +11,26 @@ type FixtureMutation = Parameters<
   ReturnType<typeof useStudioStore>["transact"]
 >[0];
 
-const liveSnapshots = vi.hoisted(() => ({ fresh: false }));
+const liveSnapshots = vi.hoisted(() => ({ fresh: false, deferOpen: false }));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return {
+    ...actual,
+    useSearchParams: (...args: Parameters<typeof actual.useSearchParams>) => {
+      const result = actual.useSearchParams(...args);
+      if (!liveSnapshots.deferOpen) return result;
+      const [params, setParams] = result;
+      const update: typeof setParams = (next, options) => {
+        const value = typeof next === "function" ? next(params) : next;
+        const opening =
+          new URLSearchParams(value).has("lesson") && !params.has("lesson");
+        if (opening) setTimeout(() => setParams(value, options), 40);
+        else setParams(value, options);
+      };
+      return [params, update] as ReturnType<typeof actual.useSearchParams>;
+    },
+  };
+});
 vi.mock("../hooks/useStudio", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../hooks/useStudio")>();
   return {
@@ -28,6 +47,7 @@ vi.mock("../hooks/useStudio", async (importOriginal) => {
 });
 afterEach(() => {
   liveSnapshots.fresh = false;
+  liveSnapshots.deferOpen = false;
 });
 
 function LocationProbe() {
@@ -69,6 +89,25 @@ function renderBookings(path = "/coach/bookings", seed?: FixtureMutation) {
 }
 
 describe("calendar appointment details", () => {
+  it("retains the opener while a fresh snapshot arrives before the appointment URL commits", async () => {
+    liveSnapshots.fresh = true;
+    liveSnapshots.deferOpen = true;
+    const user = userEvent.setup();
+    renderBookings();
+    fireEvent.change(await screen.findByLabelText("Search lessons"), {
+      target: { value: "Scene Study" },
+    });
+    const opener = document.querySelector<HTMLButtonElement>(
+      '.calendar-search-results [data-calendar-lesson="lesson-maya-next"]',
+    )!;
+    opener.focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "SS-1048" });
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement === opener).toBe(true);
+  });
+
   it.each([false, true])(
     "restores the unfocused search-result opener with fresh snapshots=%s",
     async (fresh) => {
@@ -86,12 +125,6 @@ describe("calendar appointment details", () => {
       fireEvent.click(appointment);
       await screen.findByRole("dialog");
       await user.keyboard("{Escape}");
-      await act(
-        () =>
-          new Promise<void>((resolve) =>
-            requestAnimationFrame(() => resolve()),
-          ),
-      );
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(document.activeElement === appointment).toBe(true);
     },

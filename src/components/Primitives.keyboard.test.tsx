@@ -2,9 +2,33 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { Drawer, Dialog } from "./Primitives";
-import { StrictMode } from "react";
+import { StrictMode, useLayoutEffect } from "react";
 
 describe("overlay keyboard navigation", () => {
+  it("owns keyboard input as soon as the overlay DOM commits, before passive effects", () => {
+    let trapped = false;
+    function CommitKeypress() {
+      useLayoutEffect(() => {
+        screen.getByRole("button", { name: "Last action" }).focus();
+        const event = new KeyboardEvent("keydown", {
+          key: "Tab",
+          bubbles: true,
+          cancelable: true,
+        });
+        document.dispatchEvent(event);
+        trapped = event.defaultPrevented;
+      }, []);
+      return (
+        <Drawer title="Immediate keyboard ownership" onClose={vi.fn()}>
+          <button>Last action</button>
+        </Drawer>
+      );
+    }
+    render(<CommitKeypress />);
+    expect(trapped).toBe(true);
+    expect(screen.getByRole("button", { name: "Close" })).toHaveFocus();
+  });
+
   it("preserves an autofocus field and returns focus to the opener on repeated visits", async () => {
     const opener = document.createElement("button");
     document.body.append(opener);
