@@ -28,7 +28,7 @@ export function InteractiveCalendarGrid({
   lessons: Lesson[];
   timezone: string;
   studentName: (id: string) => string;
-  onOpen: (lesson: Lesson) => void;
+  onOpen: (...args: [Lesson, HTMLButtonElement]) => void;
   onPropose: (proposal: CalendarProposal) => void;
 }) {
   const [error, setError] = useState(""),
@@ -208,7 +208,10 @@ export function InteractiveCalendarGrid({
                         <button
                           className="time-calendar-open"
                           data-calendar-lesson={lesson.id}
-                          onClick={() => onOpen(lesson)}
+                          data-calendar-lesson={lesson.id}
+                          onClick={(event) =>
+                            onOpen(lesson, event.currentTarget)
+                          }
                         >
                           <time>
                             {formatStudioTime(lesson.startsAt, timezone)}

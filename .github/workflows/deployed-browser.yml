@@ -232,10 +232,16 @@ jobs:
           cat "$RUNNER_TEMP/baseline-ui.log"
           exit 1
       - name: Run deployed desktop, mobile, and axe suites
-        run: npm run playwright:deployed
+        run: npm run playwright:deployed -- --retries=0 --fail-on-flaky-tests
       - name: Report passed, failed, blocked, and not-run tests
         if: always()
         run: npm run playwright:report
+      - name: Repeat calendar focus restoration without retries
+        if: env.USE_EPHEMERAL_STACK == 'true'
+        env:
+          E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}-focus
+          PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/calendar-repeat.json
+        run: npx playwright test e2e/calendar-booking-drawer.spec.ts --retries=0 --fail-on-flaky-tests --repeat-each=10 --workers=2 --reporter=line,json --output=test-results/calendar-repeat-artifacts
       - name: Verify fixture cleanup and non-E2E isolation
         if: always() && env.USE_EPHEMERAL_STACK == 'true'
         shell: bash

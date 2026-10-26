@@ -35,7 +35,7 @@ export function LessonsView({
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
-  onOpenLesson?: (lesson: Lesson) => void;
+  onOpenLesson?: (...args: [Lesson, HTMLButtonElement]) => void;
 }) {
   const [calendarParams, setCalendarParams] = useSearchParams();
   const requestedCalendarView = calendarParams.get("lessonBatch")

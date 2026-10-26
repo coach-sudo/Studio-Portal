@@ -1,5 +1,57 @@
 import { test, expect } from "@playwright/test";
 
+for (const width of [320, 768, 1440]) {
+  test(`calendar restores its exact search opener at ${width}px`, async ({
+    page,
+    context,
+  }) => {
+    await context.route("**/*", (route) =>
+      new URL(route.request().url()).origin === "http://127.0.0.1:4186"
+        ? route.continue()
+        : route.abort(),
+    );
+    await context.routeWebSocket("**/*", (socket) => socket.close());
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto("/coach/bookings");
+    await page.getByLabel("Search lessons").fill("Scene Study");
+    const opener = page.locator(
+      '.calendar-search-results [data-calendar-lesson="lesson-maya-next"]',
+    );
+    for (let visit = 0; visit < 4; visit++) {
+      if (visit % 2 === 0) {
+        await opener.focus();
+        await page.keyboard.press("Enter");
+      } else {
+        // Native touch activation need not focus a button. Dispatch activation
+        // without changing focus to verify the event target remains the opener.
+        await opener.evaluate((element: HTMLButtonElement) => {
+          element.blur();
+          element.click();
+        });
+      }
+      const drawer = page.getByRole("dialog", { name: "SS-1048" });
+      await expect(drawer).toBeVisible();
+      for (const key of ["Tab", "Shift+Tab"]) {
+        for (let tab = 0; tab < 20; tab++) {
+          await page.keyboard.press(key);
+          expect(
+            await drawer.evaluate((element) =>
+              element.contains(document.activeElement),
+            ),
+          ).toBe(true);
+        }
+      }
+      await page.keyboard.press("Escape");
+      await expect(drawer).toBeHidden();
+      await expect(opener).toBeFocused();
+      await expect(page).toHaveURL(
+        (url) =>
+          !url.searchParams.has("lesson") && !url.searchParams.has("booking"),
+      );
+    }
+  });
+}
+
 test("search autofocus, trap and opener restoration survive repeated visits", async ({
   page,
   context,

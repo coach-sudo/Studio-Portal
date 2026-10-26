@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { useEffect } from "react";
@@ -69,6 +69,34 @@ function renderBookings(path = "/coach/bookings", seed?: FixtureMutation) {
 }
 
 describe("calendar appointment details", () => {
+  it.each([false, true])(
+    "restores the unfocused search-result opener with fresh snapshots=%s",
+    async (fresh) => {
+      liveSnapshots.fresh = fresh;
+      const user = userEvent.setup();
+      renderBookings();
+      const search = await screen.findByLabelText("Search lessons");
+      fireEvent.change(search, { target: { value: "Maya Kim" } });
+      const appointment = document.querySelector<HTMLButtonElement>(
+        ".calendar-search-results button",
+      )!;
+      // Touch activation and a replaced focused node need not leave the button as
+      // document.activeElement. The click's currentTarget remains authoritative.
+      search.blur();
+      fireEvent.click(appointment);
+      await screen.findByRole("dialog");
+      await user.keyboard("{Escape}");
+      await act(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => resolve()),
+          ),
+      );
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement === appointment).toBe(true);
+    },
+  );
+
   it.each(["booking=booking-maya", "lesson=lesson-maya-next"])(
     "dismisses %s when live query snapshots change identity on every render",
     async (query) => {

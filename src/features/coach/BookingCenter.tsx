@@ -183,7 +183,7 @@ export function BookingCenter() {
           ].find((el) => el.dataset.calendarLesson === opener.lesson);
       if (target) {
         target.focus();
-        appointmentOpener.current = null;
+        if (document.activeElement === target) appointmentOpener.current = null;
       }
     });
     return () => cancelAnimationFrame(frame);
@@ -191,13 +191,12 @@ export function BookingCenter() {
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
 
-  function openCalendarLesson(lesson: Lesson) {
+  function openCalendarLesson(lesson: Lesson, opener: HTMLButtonElement) {
     appointmentOpener.current = {
       lesson: lesson.id,
-      element:
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null,
+      // Activation does not always focus a button (notably touch), and a route
+      // update may already have replaced it. Keep the actual activating control.
+      element: opener,
     };
     const bookings = calendarBookings(lesson, data!);
     setSearchParams((previous) => {
@@ -215,12 +214,17 @@ export function BookingCenter() {
 
   function closeAppointment() {
     setDialog(undefined);
-    if (searchParams.has("booking") || searchParams.has("lesson")) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("booking");
-      next.delete("lesson");
-      setSearchParams(next, { replace: true });
-    }
+    // The drawer can open before the router commits the appointment URL. Clear
+    // from the latest params even when this close handler predates that commit.
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete("booking");
+        next.delete("lesson");
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   async function run(
