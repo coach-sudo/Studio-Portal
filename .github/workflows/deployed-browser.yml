@@ -167,6 +167,7 @@ jobs:
             echo "COMMIT_REF=$(git rev-parse HEAD)"
           } >> "$GITHUB_ENV"
       - name: Start ephemeral deployed preview
+        id: ephemeral-preview
         if: env.USE_EPHEMERAL_STACK == 'true'
         shell: bash
         env:
@@ -239,7 +240,7 @@ jobs:
         if: always()
         run: npm run playwright:report
       - name: Repeat calendar focus restoration without retries
-        if: env.USE_EPHEMERAL_STACK == 'true'
+        if: always() && env.USE_EPHEMERAL_STACK == 'true' && steps.ephemeral-preview.outcome == 'success'
         env:
           E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}-focus
           PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/calendar-repeat.json
