@@ -23,7 +23,8 @@ vi.mock("react-router-dom", async (importOriginal) => {
       const update: typeof setParams = (next, options) => {
         const value = typeof next === "function" ? next(params) : next;
         const opening =
-          new URLSearchParams(value).has("lesson") && !params.has("lesson");
+          actual.createSearchParams(value).has("lesson") &&
+          !params.has("lesson");
         if (opening) setTimeout(() => setParams(value, options), 40);
         else setParams(value, options);
       };
