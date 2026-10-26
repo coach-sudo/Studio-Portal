@@ -1,6 +1,14 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import maintenance from "../booking-maintenance";
+import { runBookingMaintenance } from "./booking-maintenance";
+const maintenance = () =>
+  runBookingMaintenance({
+    stage() {},
+    failure() {
+      return { category: "internal", message: "Test error", retryable: true };
+    },
+    success() {},
+  });
 import webhook from "../stripe-webhook-v2";
 
 const mocks = vi.hoisted(() => ({

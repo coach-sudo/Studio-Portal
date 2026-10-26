@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { scanGmail } from "../../netlify/functions/provider-intake";
+import { scanGmail } from "../../netlify/functions/_shared/provider-intake";
 
 const fixture = vi.hoisted(() => ({
   imports: [] as Record<string, unknown>[],
@@ -121,4 +121,35 @@ it("reports missing Gmail read permission instead of a false successful scan", a
     scope: false,
   });
   expect(fixture.writes).toEqual(["recommendations"]);
+});
+
+it("continues the batch after one message fetch fails and surfaces unfinished work for retry", async () => {
+  const text = "Your Lessonface lesson with Jules River was cancelled";
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (url: string) => {
+      if (!url.includes("?format=full"))
+        return Response.json({
+          messages: [{ id: "mail-failed" }, { id: "mail-safe" }],
+        });
+      if (url.includes("mail-failed"))
+        return Response.json({ error: "temporary" }, { status: 503 });
+      return Response.json({
+        id: "mail-safe",
+        payload: {
+          headers: [{ name: "Subject", value: text }],
+          body: { data: Buffer.from(text).toString("base64url") },
+        },
+      });
+    }),
+  );
+  await expect(scanGmail("synthetic-token", studio, [student])).rejects.toThrow(
+    "Gmail message unavailable",
+  );
+  expect(fixture.imports).toHaveLength(1);
+  expect(fixture.imports[0]).toMatchObject({
+    external_id: "mail-safe",
+    status: "needs_review",
+  });
+  expect(fixture.writes).toEqual(["integration_imports"]);
 });

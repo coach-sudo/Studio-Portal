@@ -1,0 +1,515 @@
+import { checkedAll, checkedQuery } from "./checked-query";
+import type { WorkerTelemetry } from "./worker-telemetry";
+import { packageLedgers, publishedLessonIds } from "./maintenance-reads";
+import Stripe from "stripe";
+import { serviceClient } from "./supabase";
+import { portalActionUrl, portalOrigin } from "./portal-url";
+import { queuePackageWarning } from "./package-notifications";
+import { clearDeliveredPortalCredentials } from "./outbox-retention";
+import { processLessonChangeEffects } from "./lesson-notifications";
+import { applyAutomaticCredits } from "./auto-credits";
+import { processLessonBulkItems } from "./lesson-bulk";
+
+const render = (template: string, values: Record<string, string>) =>
+  template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
+
+export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
+  telemetry.stage("lesson_bulk");
+  const db = serviceClient();
+  const lessonBulk = await processLessonBulkItems(db).catch((error) => {
+    telemetry.failure(error);
+    return [{ itemId: "", status: "claim_failed" }];
+  });
+  telemetry.stage("lesson_change_effects");
+  const lessonChanges = await processLessonChangeEffects(db);
+  telemetry.stage("booking_holds_and_series");
+  const maintenanceTime = new Date();
+  const runDailyStorageCleanup =
+    maintenanceTime.getUTCHours() === 8 && maintenanceTime.getUTCMinutes() < 5;
+  const [
+    { data: expired, error },
+    { data: extended, error: extendError },
+    { data: cleaned, error: cleanupError },
+  ] = await checkedAll([
+    checkedQuery(db.rpc("expire_booking_holds")),
+    checkedQuery(db.rpc("extend_ongoing_series")),
+    runDailyStorageCleanup
+      ? db.rpc("cleanup_transient_studio_data")
+      : Promise.resolve({ data: null, error: null }),
+  ]);
+  if (error || extendError || cleanupError)
+    throw error || extendError || cleanupError;
+  if (runDailyStorageCleanup) {
+    const credentialRetention = new Date(
+      Date.now() - 7 * 86400000,
+    ).toISOString();
+    await clearDeliveredPortalCredentials(db, credentialRetention);
+  }
+  telemetry.stage("past_due_bookings");
+  const grace = new Date(Date.now() - 7 * 86400000).toISOString(),
+    now = new Date().toISOString();
+  const { data: delinquent, error: delinquentError } = await db
+    .from("bookings")
+    .select("id,studio_id,student_id")
+    .eq("payment_status", "past_due")
+    .lte("updated_at", grace);
+  if (delinquentError) throw delinquentError;
+  if (delinquent?.length) {
+    for (const booking of delinquent) {
+      // Payment delinquency is an exception for the coach, not implicit permission to cancel teaching.
+      const recommendation = await checkedQuery(
+        db.from("recommendations").upsert(
+          {
+            studio_id: booking.studio_id,
+            student_id: booking.student_id,
+            entity_type: "booking",
+            entity_id: booking.id,
+            reason_code: "PAYMENT_PAST_DUE",
+            title: "Review past-due booking",
+            explanation:
+              "Payment remains unresolved. The lesson is not automatically cancelled; record an arrangement or review the booking.",
+            evidence: ["Recorded booking payment status: past_due"],
+            urgency: 5,
+            suggested_action: "review_booking",
+            requires_confirmation: true,
+            status: "open",
+            dedupe_key: `booking:${booking.id}:past-due`,
+            updated_at: now,
+          },
+          { onConflict: "dedupe_key" },
+        ),
+      );
+      if (recommendation.error) throw recommendation.error;
+    }
+  }
+
+  telemetry.stage("note_recommendations");
+  const notePriorityStart = new Date(Date.now() - 8 * 86400000).toISOString();
+  const [
+    { data: staleLessons, error: staleError },
+    { data: studios, error: studiosError },
+  ] = await checkedAll([
+    checkedQuery(
+      db.from("lessons").select("id").lt("ends_at", notePriorityStart),
+    ),
+    checkedQuery(db.from("studios").select("id,name,timezone,settings")),
+  ]);
+  if (staleError || studiosError) throw staleError || studiosError;
+  const staleLessonIds = (staleLessons || []).map((lesson) => lesson.id);
+  if (staleLessonIds.length)
+    await db
+      .from("recommendations")
+      .update({ status: "resolved", updated_at: now })
+      .eq("reason_code", "lesson_note_due_48h")
+      .eq("status", "open")
+      .in("entity_id", staleLessonIds);
+  const studioSettings = new Map(
+    (studios || []).map((studio) => [studio.id, studio]),
+  );
+  const { data: recentLessons, error: recentError } = await db
+    .from("lessons")
+    .select("id,studio_id,student_id,topic,ends_at,status")
+    .lte("ends_at", now)
+    .not("status", "in", "(cancelled,late_cancelled)")
+    .gte("ends_at", notePriorityStart);
+  if (recentError) throw recentError;
+  const published = await publishedLessonIds(
+    db,
+    (recentLessons || []).map((lesson) => lesson.id),
+  );
+  let noteReminders = 0;
+  for (const lesson of recentLessons || []) {
+    if (published.has(lesson.id)) {
+      await db
+        .from("recommendations")
+        .update({ status: "resolved", updated_at: now })
+        .eq("dedupe_key", `lesson:${lesson.id}:note-48h`);
+      continue;
+    }
+    const dueAt = new Date(
+      new Date(lesson.ends_at).getTime() + 48 * 3_600_000,
+    ).toISOString();
+    const timeZone =
+      studioSettings.get(lesson.studio_id)?.timezone || "America/New_York";
+    await checkedQuery(
+      db.from("recommendations").upsert(
+        {
+          studio_id: lesson.studio_id,
+          student_id: lesson.student_id,
+          entity_type: "lesson",
+          entity_id: lesson.id,
+          reason_code: "lesson_note_due_48h",
+          title: `Write follow-up for ${lesson.topic}`,
+          explanation:
+            "Lesson notes are due within 48 hours of the lesson ending.",
+          evidence: [
+            `Lesson ended ${new Date(lesson.ends_at).toLocaleString("en-US", { timeZone })}`,
+            `Due ${new Date(dueAt).toLocaleString("en-US", { timeZone })}`,
+          ],
+          urgency: new Date(dueAt) <= new Date() ? 5 : 4,
+          due_at: dueAt,
+          suggested_action: "write_note",
+          requires_confirmation: false,
+          status: "open",
+          dedupe_key: `lesson:${lesson.id}:note-48h`,
+          updated_at: now,
+        },
+        { onConflict: "dedupe_key" },
+      ),
+    );
+    noteReminders++;
+  }
+
+  telemetry.stage("automatic_credits");
+  const creditCoverage = await applyAutomaticCredits(db);
+
+  telemetry.stage("package_gifts");
+  const { data: dueGifts, error: dueGiftError } = await db
+    .from("package_gifts")
+    .select("id,studio_id,recipient_email")
+    .eq("status", "purchased")
+    .is("package_id", null)
+    .not("deliver_at", "is", null)
+    .lte("deliver_at", now)
+    .limit(25);
+  if (dueGiftError) throw dueGiftError;
+  let packageGiftsDelivered = 0;
+  for (const gift of dueGifts || []) {
+    let { data: recipient } = await db
+      .from("students")
+      .select("id")
+      .eq("studio_id", gift.studio_id)
+      .ilike("email", gift.recipient_email)
+      .is("deleted_at", null)
+      .limit(1)
+      .maybeSingle();
+    if (!recipient) {
+      const legacy = await db
+        .from("students")
+        .select("id")
+        .eq("studio_id", gift.studio_id)
+        .ilike("guardian_email", gift.recipient_email)
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      recipient = legacy.data;
+    }
+    if (!recipient) {
+      const { data: contact } = await db
+        .from("linked_contacts")
+        .select("student_id")
+        .eq("studio_id", gift.studio_id)
+        .ilike("email", gift.recipient_email)
+        .eq("portal_enabled", true)
+        .limit(1)
+        .maybeSingle();
+      if (contact) recipient = { id: contact.student_id };
+    }
+    if (!recipient) continue;
+    const { error: claimError } = await checkedQuery(
+      db.rpc("claim_package_gift", {
+        target_gift: gift.id,
+        target_student: recipient.id,
+        apply_automatically: false,
+      }),
+    );
+    if (claimError) throw claimError;
+    packageGiftsDelivered += 1;
+  }
+
+  telemetry.stage("package_auto_renewals");
+  let packageAutoRenewals = 0;
+  const { data: dueRenewals, error: renewalClaimError } = await checkedQuery(
+    db.rpc("claim_package_auto_renewals", { batch_size: 10 }),
+  );
+  if (renewalClaimError) throw renewalClaimError;
+  if (dueRenewals?.length) {
+    const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
+    if (!stripeKey)
+      throw new Error("Stripe is not configured for package renewal.");
+    const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
+    for (const renewal of dueRenewals) {
+      try {
+        const { data: purchased, error: purchasedError } = await db
+          .from("packages")
+          .select("name,price_minor,currency")
+          .eq("id", renewal.package_id)
+          .eq("student_id", renewal.student_id)
+          .single();
+        if (purchasedError || !purchased)
+          throw new Error("Package renewal pricing is unavailable.");
+        const attemptKey = String(renewal.renewal_attempt_key || renewal.id);
+        await stripe.invoiceItems.create(
+          {
+            customer: renewal.stripe_customer_id,
+            amount: Number(purchased.price_minor),
+            currency: String(purchased.currency).toLowerCase(),
+            description: `${purchased.name} automatic renewal`,
+            metadata: {
+              billing_kind: "package_subscription",
+              package_subscription_id: renewal.id,
+              renewal_attempt_key: attemptKey,
+            },
+          },
+          {
+            idempotencyKey: `package-renewal:${renewal.id}:${attemptKey}:item`,
+          },
+        );
+        const invoice = await stripe.invoices.create(
+          {
+            customer: renewal.stripe_customer_id,
+            collection_method: "charge_automatically",
+            auto_advance: true,
+            metadata: {
+              billing_kind: "package_subscription",
+              package_subscription_id: renewal.id,
+              renewal_attempt_key: attemptKey,
+            },
+          },
+          {
+            idempotencyKey: `package-renewal:${renewal.id}:${attemptKey}:invoice`,
+          },
+        );
+        await db
+          .from("package_subscriptions")
+          .update({ last_invoice_id: invoice.id, updated_at: now })
+          .eq("id", renewal.id);
+        packageAutoRenewals += 1;
+      } catch (renewalError) {
+        await db
+          .from("package_subscriptions")
+          .update({
+            status: "past_due",
+            renewal_in_flight: false,
+            next_billing_at: new Date(Date.now() + 86400000).toISOString(),
+            updated_at: now,
+          })
+          .eq("id", renewal.id);
+        await checkedQuery(
+          db.from("recommendations").upsert(
+            {
+              studio_id: renewal.studio_id,
+              student_id: renewal.student_id,
+              entity_type: "package_subscription",
+              entity_id: renewal.id,
+              reason_code: "package_auto_renewal_failed",
+              title: "Package auto-renewal needs attention",
+              explanation:
+                "Stripe could not start the balance-based package renewal.",
+              evidence: [String(renewalError)],
+              urgency: 5,
+              suggested_action: "review_package",
+              requires_confirmation: false,
+              status: "open",
+              dedupe_key: `package-subscription:${renewal.id}:auto-renewal`,
+              updated_at: now,
+            },
+            { onConflict: "dedupe_key" },
+          ),
+        );
+      }
+    }
+  }
+
+  telemetry.stage("package_expiration");
+  const expiryLimit = new Date(Date.now() + 365 * 86400000).toISOString();
+  const { data: expiringPackages, error: expiringError } = await db
+    .from("packages")
+    .select(
+      "id,student_id,name,expires_at,students!inner(studio_id,email,guardian_email,full_name,preferred_name,is_minor)",
+    )
+    .gt("expires_at", now)
+    .lte("expires_at", expiryLimit)
+    .order("expires_at");
+  if (expiringError) throw expiringError;
+  const expirationLedgers = await packageLedgers(
+    db,
+    (expiringPackages || []).map((pkg) => pkg.id),
+  );
+  let packageReminders = 0;
+  for (const pkg of expiringPackages || []) {
+    const entries = expirationLedgers.get(pkg.id) || [];
+    const balance = (entries || []).reduce(
+      (total, entry) => total + Number(entry.quantity),
+      0,
+    );
+    if (balance <= 0) continue;
+    const days = Math.max(
+      1,
+      Math.ceil((new Date(pkg.expires_at).getTime() - Date.now()) / 86400000),
+    );
+    const threshold = days <= 7 ? 7 : days <= 14 ? 14 : 30;
+    const student = Array.isArray(pkg.students)
+      ? pkg.students[0]
+      : pkg.students;
+    if (!student) continue;
+    const studentName = student.preferred_name || student.full_name;
+    const studio = studioSettings.get(student.studio_id);
+    const timeZone = studio?.timezone || "America/New_York";
+    const dedupe = `package:${pkg.id}:expiry:${threshold}`;
+    if (days <= 30)
+      await checkedQuery(
+        db.from("recommendations").upsert(
+          {
+            studio_id: student.studio_id,
+            student_id: pkg.student_id,
+            entity_type: "package",
+            entity_id: pkg.id,
+            reason_code: "package_expiring",
+            title: `${studentName}'s ${pkg.name} expires soon`,
+            explanation: `${balance} lesson credit${balance === 1 ? "" : "s"} expire${balance === 1 ? "s" : ""} in ${days} day${days === 1 ? "" : "s"}.`,
+            evidence: [
+              `Expires ${new Date(pkg.expires_at).toLocaleDateString("en-US", { timeZone })}`,
+              `${balance} credits remaining`,
+            ],
+            urgency: days <= 7 ? 5 : days <= 14 ? 4 : 3,
+            due_at: pkg.expires_at,
+            suggested_action: "review_package",
+            requires_confirmation: false,
+            status: "open",
+            dedupe_key: `${dedupe}:coach`,
+            updated_at: now,
+          },
+          { onConflict: "dedupe_key" },
+        ),
+      );
+    {
+      const automation = studio?.settings?.emailAutomations || {};
+      if (automation.enabled === false) continue;
+      const expiresAt = new Date(pkg.expires_at).toLocaleDateString("en-US", {
+        timeZone,
+      });
+      const templateValues = {
+        studioName: String(studio?.name || "Studio"),
+        studentName,
+        packageName: pkg.name,
+        days: String(days),
+        credits: String(balance),
+        expiresAt,
+      };
+      await queuePackageWarning(db, {
+        studioId: student.studio_id,
+        studentId: pkg.student_id,
+        packageId: pkg.id,
+        key: "package_expiration",
+        subject: render(
+          automation.packageExpirySubject ||
+            "{{packageName}} expires in {{days}} days",
+          templateValues,
+        ),
+        body: render(
+          automation.packageExpiryBody ||
+            "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can review your package from the portal.",
+          templateValues,
+        ),
+        dedupe: `${dedupe}:student`,
+        studio: {
+          name: String(studio?.name || "Coach'D"),
+          settings: studio?.settings ?? {},
+        },
+        legacyEnabled: automation.enabled !== false,
+      });
+      packageReminders += 1;
+    }
+  }
+  telemetry.stage("package_low_balance");
+  const { data: activePackages, error: activeError } = await db
+    .from("packages")
+    .select(
+      "id,student_id,name,definition_id,students!inner(studio_id,full_name,preferred_name)",
+    )
+    .or(`expires_at.is.null,expires_at.gt.${now}`);
+  if (activeError) throw activeError;
+  // Read after renewal/gift processing. Financial mutations remain sequential.
+  const activeLedgers = await packageLedgers(
+    db,
+    (activePackages || []).map((pkg) => pkg.id),
+  );
+  for (const pkg of activePackages || []) {
+    const entries = activeLedgers.get(pkg.id) || [];
+    const balance = (entries || []).reduce(
+      (total, entry) => total + Number(entry.quantity),
+      0,
+    );
+    if (balance < 0) continue;
+    const latestPurchase =
+      (entries || []).find(
+        (entry) => entry.kind === "purchase" || entry.quantity > 0,
+      )?.id || "initial";
+    const student = Array.isArray(pkg.students)
+      ? pkg.students[0]
+      : pkg.students;
+    if (!student) continue;
+    const studio = studioSettings.get(student.studio_id);
+    const automation = studio?.settings?.emailAutomations || {};
+    if (automation.enabled === false) continue;
+    const studentName = student.preferred_name || student.full_name;
+    const renewalUrl = portalActionUrl(portalOrigin(), "packages");
+    const values = {
+      studioName: String(studio?.name || "Coach'D"),
+      studentName,
+      packageName: pkg.name,
+      credits: String(balance),
+      renewUrl: renewalUrl,
+    };
+    const subject = render(
+      automation.packageLowBalanceSubject ||
+        "{{packageName}} has {{credits}} lesson left",
+      values,
+    );
+    const body = render(
+      automation.packageLowBalanceBody ||
+        "Hi {{studentName}},\n\nYou have {{credits}} lesson left in {{packageName}}. Renew here before you run out: {{renewUrl}}",
+      values,
+    );
+    await queuePackageWarning(db, {
+      studioId: student.studio_id,
+      studentId: pkg.student_id,
+      packageId: pkg.id,
+      key: "package_low",
+      subject,
+      body,
+      dedupe: `package:${pkg.id}:purchase:${latestPurchase}:low:${balance}`,
+      studio: {
+        name: String(studio?.name || "Coach'D"),
+        settings: studio?.settings ?? {},
+      },
+      legacyEnabled: automation.enabled !== false,
+    });
+  }
+  telemetry.stage("notification_retention");
+  const { count: prunedNotificationReceipts } = await db
+    .from("notification_receipts")
+    .delete({ count: "exact" })
+    .lt("read_at", new Date(Date.now() - 45 * 86_400_000).toISOString());
+  return Response.json({
+    ok: true,
+    expiredHolds: expired || 0,
+    extendedOccurrences: extended || 0,
+    transientCleanup: cleaned || {},
+    storageCleanupRan: runDailyStorageCleanup,
+    delinquentCancelled: 0,
+    pastDueReviewCount: delinquent?.length || 0,
+    noteReminders,
+    autoCreditsApplied: creditCoverage.applied,
+    creditCoverage,
+    lessonChanges: {
+      bulk: {
+        processed: lessonBulk.filter(
+          (item) =>
+            !["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+        failed: lessonBulk.filter((item) => item.status === "failed").length,
+        recoveryPending: lessonBulk.filter((item) =>
+          ["transport_pending", "claim_failed"].includes(item.status),
+        ).length,
+      },
+      processed: lessonChanges.processed,
+      failed: lessonChanges.failed,
+    },
+    packageGiftsDelivered,
+    packageAutoRenewals,
+    packageReminders,
+    prunedNotificationReceipts: prunedNotificationReceipts || 0,
+  });
+};

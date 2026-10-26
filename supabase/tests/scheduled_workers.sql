@@ -1,0 +1,13 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+select ok(not has_schema_privilege('anon','worker_internal','usage'),'Worker schema hidden from anonymous users');
+select ok(not has_schema_privilege('authenticated','worker_internal','usage'),'Worker schema hidden from portal roles');
+select ok(not has_function_privilege('authenticated','public.enqueue_scheduled_worker(text)','execute'),'Portal cannot enqueue privileged workers');
+select ok(not has_function_privilege('anon','public.claim_scheduled_worker(text,uuid)','execute'),'Anonymous cannot claim workers');
+select ok(not has_function_privilege('authenticated','public.finish_scheduled_worker(text,uuid,uuid,text)','execute'),'Portal cannot forge completion');
+select ok(has_function_privilege('service_role','public.enqueue_scheduled_worker(text)','execute'),'Service may enqueue');
+select ok((select relrowsecurity from pg_class where oid='worker_internal.scheduled_jobs'::regclass),'Private receipts also enable RLS');
+select throws_ok($$select public.enqueue_scheduled_worker('unexpected')$$,'P0001','Invalid worker','Unknown worker rejected');
+select * from finish();
+rollback;

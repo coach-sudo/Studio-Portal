@@ -6,7 +6,7 @@ import {
   gmailProviderMessageKind,
   isSameScheduledLesson,
   managedCalendarChange,
-} from "../../netlify/functions/provider-intake";
+} from "../../netlify/functions/_shared/provider-intake";
 
 describe("Gmail provider lesson parsing", () => {
   it("keeps a Lessonface wall time in the studio timezone", () => {
@@ -169,7 +169,7 @@ describe("Gmail provider lesson parsing", () => {
 
   it("requests deleted Calendar events so cancellations can remove app lessons", () => {
     expect(
-      fs.readFileSync("netlify/functions/provider-intake.ts", "utf8"),
+      fs.readFileSync("netlify/functions/_shared/provider-intake.ts", "utf8"),
     ).toContain('showDeleted: "true"');
   });
 

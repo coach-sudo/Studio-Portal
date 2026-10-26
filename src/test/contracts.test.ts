@@ -67,7 +67,7 @@ const procedureLintRepair = fs.readFileSync(
   "utf8",
 );
 const bookingMaintenance = fs.readFileSync(
-  "netlify/functions/booking-maintenance.ts",
+  "netlify/functions/_shared/booking-maintenance.ts",
   "utf8",
 );
 const commandFunction = readSources(
