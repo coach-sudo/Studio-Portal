@@ -1,5 +1,7 @@
 # October 26 remediation verification matrix
 
+> Historical checkpoint at `6c4b4c7`. For the PR #67 continuation, see [candidate gates](pr-67-candidate-gates.md) and the PR description's exact-head CI/artifact evidence. Later evidence supersedes individual pending rows here; this checkpoint is retained as audit history.
+
 Evidence is local unless the environment column explicitly says production. PASS is limited to the stated evidence. A passed isolated test does not establish a working provider integration or authenticated production journey. Release decision: **NO-GO**.
 
 ## Operational acceptance
