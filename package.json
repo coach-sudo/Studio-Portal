@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "format:check": "tsx scripts/check-format.ts",
     "lint": "eslint .",
+    "lint:baseline": "node scripts/check-lint-baseline.mjs",
     "pretest": "tsx scripts/generate-release-metadata.ts",
     "playwright:smoke": "playwright test e2e/deployed-health.spec.ts",
     "playwright:e2e": "playwright test --grep @journey",

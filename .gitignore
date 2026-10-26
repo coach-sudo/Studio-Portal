@@ -18,4 +18,5 @@ supabase/.temp/
 npm-debug.log*
 playwright-report/
 test-results/
+.tmp/
 playwright/.auth/

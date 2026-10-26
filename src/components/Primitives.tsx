@@ -357,6 +357,10 @@ function useOverlayFocus(onClose: () => void) {
         ) ?? []),
       ]
         .filter((element) => {
+          // Roving listbox options are programmatically focusable buttons, but
+          // do not participate in Tab order and cannot define the trap's end.
+          const tabIndex = element.getAttribute("tabindex");
+          if (tabIndex !== null && Number(tabIndex) < 0) return false;
           // Native summaries participate in Tab order; controls inside a closed
           // disclosure do not, even though their computed display stays visible.
           for (

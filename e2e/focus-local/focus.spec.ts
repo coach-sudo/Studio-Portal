@@ -12,14 +12,17 @@ test("search autofocus, trap and opener restoration survive repeated visits", as
   await context.routeWebSocket("**/*", (socket) => socket.close());
   await page.goto("/coach");
   const trigger = page.getByRole("button", {
-    name: "Search studio workflows",
+    name: "Search records and destinations",
     exact: true,
   });
   for (let visit = 0; visit < 2; visit++) {
     await trigger.click();
-    const dialog = page.getByRole("dialog", { name: "Go to", exact: true });
+    const dialog = page.getByRole("dialog", { name: "Search", exact: true });
     await expect(
-      dialog.getByLabel("Find a workflow", { exact: true }),
+      dialog.getByRole("combobox", {
+        name: "Search records and destinations",
+        exact: true,
+      }),
     ).toBeFocused();
     for (let tab = 0; tab < 16; tab++) {
       await page.keyboard.press("Tab");

@@ -125,6 +125,14 @@ describe("calendar appointment details", () => {
       const booking = draft.bookings.find(
         (item) => item.id === "booking-maya",
       )!;
+      // The demo group is two weeks ahead and may fall outside the initially
+      // visible month. Keep this interaction fixture in the visible lesson range.
+      lesson.startsAt = draft.lessons.find(
+        (item) => item.id === "lesson-maya-next",
+      )!.startsAt;
+      lesson.endsAt = new Date(
+        Date.parse(lesson.startsAt) + 2 * 3_600_000,
+      ).toISOString();
       draft.lessonParticipants.push({
         id: "group-maya",
         lessonId: lesson.id,

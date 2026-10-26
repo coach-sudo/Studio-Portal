@@ -42,7 +42,7 @@ async function dispatchedRequest() {
   await dispatchScheduledWorker("provider-intake", context);
   const [url, options] = fetch.mock.calls[0] as unknown as [
     string,
-    RequestInit,
+    ConstructorParameters<typeof Request>[1],
   ];
   return new Request(url, options);
 }
