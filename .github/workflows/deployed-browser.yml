@@ -243,7 +243,20 @@ jobs:
         env:
           E2E_RUN_ID: e2e-${{ github.run_id }}-${{ github.run_attempt }}-focus
           PLAYWRIGHT_JSON_OUTPUT_NAME: test-results/calendar-repeat.json
-        run: npx playwright test e2e/calendar-booking-drawer.spec.ts --retries=0 --fail-on-flaky-tests --repeat-each=10 --workers=2 --reporter=line,json --output=test-results/calendar-repeat-artifacts
+        run: |
+          set -euo pipefail
+          # The full suite legitimately consumes this disposable IP's ten-login
+          # window. Start the second fixture lifecycle at its original baseline;
+          # never alter application limits or touch a hosted database.
+          test "$STAGING_BASE_URL" = http://127.0.0.1:8888
+          test "$E2E_EPHEMERAL" = true
+          case "$DB_CONTAINER" in supabase_db_studio-portal*) ;; *) exit 1 ;; esac
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -Atc \
+            "select coalesce(max(request_count),0) as consumed_local_login_quota from public.public_endpoint_rate_limits where key like 'portal-login:%';"
+          docker exec "$DB_CONTAINER" psql -U postgres -d postgres -v ON_ERROR_STOP=1 -c \
+            "delete from public.public_endpoint_rate_limits;" > /dev/null
+          npx playwright test e2e/calendar-booking-drawer.spec.ts --retries=0 --fail-on-flaky-tests --repeat-each=10 --workers=2 --reporter=line,json --output=test-results/calendar-repeat-artifacts
+          node scripts/check-calendar-repeat.mjs
       - name: Verify fixture cleanup and non-E2E isolation
         if: always() && env.USE_EPHEMERAL_STACK == 'true'
         shell: bash
