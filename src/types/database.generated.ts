@@ -5043,6 +5043,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      claim_scheduled_worker: {
+        Args: { p_job: string; p_worker: string }
+        Returns: string
+      }
       claim_studio_invoice_checkout: {
         Args: {
           p_amount: number
@@ -5357,6 +5361,7 @@ export type Database = {
         Args: { p_student: string }
         Returns: undefined
       }
+      enqueue_scheduled_worker: { Args: { p_worker: string }; Returns: string }
       execute_lesson_bulk: {
         Args: { p_actor: string; p_job: string; p_key: string; p_token: string }
         Returns: Json
@@ -5409,6 +5414,15 @@ export type Database = {
           p_id: string
           p_outbox: string[]
           p_token: string
+        }
+        Returns: boolean
+      }
+      finish_scheduled_worker: {
+        Args: {
+          p_error?: string
+          p_job: string
+          p_token: string
+          p_worker: string
         }
         Returns: boolean
       }

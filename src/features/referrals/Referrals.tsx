@@ -444,3 +444,4 @@ function HistoryPages({
     </nav>
   );
 }
+import "../../styles/booking.css";

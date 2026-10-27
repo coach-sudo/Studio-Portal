@@ -4,6 +4,8 @@ import { readActorLayout, type ActorLayout } from "../domain/actorLayout";
 import { Link } from "react-router-dom";
 import { applyStudioBranding } from "../lib/branding";
 import "../features/public/PublicActorPage.css";
+import "../styles/booking.css";
+import { actorEmbedUrl } from "../security/actorEmbed";
 type ActorMaterial = {
   id: string;
   title: string;
@@ -50,23 +52,8 @@ export interface PublicActor {
   skills?: string;
   materials: ActorMaterial[];
 }
-const embedUrl = (url: string) => {
-  try {
-    const parsed = new URL(url);
-    if (["youtube.com", "www.youtube.com"].includes(parsed.hostname)) {
-      const id = parsed.searchParams.get("v");
-      return id ? `https://www.youtube-nocookie.com/embed/${id}` : url;
-    }
-    if (parsed.hostname === "youtu.be")
-      return `https://www.youtube-nocookie.com/embed/${parsed.pathname.slice(1)}`;
-    if (["vimeo.com", "www.vimeo.com"].includes(parsed.hostname))
-      return `https://player.vimeo.com/video/${parsed.pathname.split("/").filter(Boolean).at(-1)}`;
-  } catch {
-    return url;
-  }
-  return url;
-};
 function ActorMedia({ item }: { item: ActorMaterial }) {
+  const embed = actorEmbedUrl(item.url);
   const kind =
     item.media_kind ||
     (item.mime_type?.startsWith("image/")
@@ -94,9 +81,9 @@ function ActorMedia({ item }: { item: ActorMaterial }) {
         />
       ) : kind === "audio" ? (
         <audio src={item.url} controls aria-label={item.title} />
-      ) : /(youtube\.com|youtu\.be|vimeo\.com)/.test(item.url) ? (
+      ) : embed ? (
         <iframe
-          src={embedUrl(item.url)}
+          src={embed}
           title={item.title}
           loading="lazy"
           allow="fullscreen; picture-in-picture"

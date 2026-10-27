@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { Buffer } from "node:buffer";
 import { createRequire } from "node:module";
-import { mkdir, readFile, readdir, writeFile } from "node:fs/promises";
+import { cp, mkdir, readFile, readdir, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import process from "node:process";
@@ -13,6 +13,10 @@ import console from "node:console";
 // the historical default. This helper has no upload or publication capability.
 const candidate = process.argv[6] || "0b18a5a2238daa49bec1290f5884d5792f4aefc9";
 assert.match(candidate, /^[a-f0-9]{40}$/);
+const expectedLockfile =
+  process.argv[7] ||
+  "c1de2bdb184e932b9647d5d0648e6243ed185b58f755f377e31031c7cabaa3e9";
+assert.match(expectedLockfile, /^[a-f0-9]{64}$/);
 const project = "lrxrivfqjpkvygozphoz";
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const run = (command, args, cwd) =>
@@ -65,10 +69,7 @@ async function main() {
   await mkdir(evidence, { recursive: true, mode: 0o700 });
   const lockfile = await readFile(join(root, "package-lock.json"));
   const lockfileHash = sha256(lockfile);
-  assert.equal(
-    lockfileHash,
-    "c1de2bdb184e932b9647d5d0648e6243ed185b58f755f377e31031c7cabaa3e9",
-  );
+  assert.equal(lockfileHash, expectedLockfile);
   const build = execFileSync(
     "npm",
     ["run", "build", "--", "--logLevel", "error"],
@@ -128,6 +129,53 @@ async function main() {
       manifest: join(evidence, "functions-manifest.json"),
     },
   );
+  const schedules = {
+    "provider-intake": "*/10 * * * *",
+    "booking-maintenance": "*/5 * * * *",
+    "calendar-worker": "*/5 * * * *",
+    "outbox-worker": "*/5 * * * *",
+  };
+  assert.equal(functions.filter((f) => f.schedule).length, 4);
+  for (const [name, schedule] of Object.entries(schedules)) {
+    const fn = functions.find((f) => f.name === name);
+    assert.ok(fn, `Missing scheduled bundle ${name}`);
+    assert.equal(fn.schedule, schedule);
+    assert.notEqual(fn.invocationMode, "background");
+  }
+  for (const name of [
+    "provider-intake-background",
+    "booking-maintenance-background",
+  ]) {
+    const fn = functions.find((f) => f.name === name);
+    assert.ok(fn, `Missing background bundle ${name}`);
+    assert.equal(fn.invocationMode, "background");
+    assert.ok(!fn.schedule && !fn.routes?.length);
+  }
+  const admin = functions.find((f) => f.name === "provider-intake-admin");
+  assert.ok(
+    admin?.routes?.some(
+      (route) => route.pattern === "/api/v2/admin/provider-intake",
+    ),
+  );
+  assert.ok(!admin.schedule && admin.invocationMode !== "background");
+  const health = functions.find((f) => f.name === "healthz");
+  assert.ok(health);
+  const healthDir = join(evidence, "health-unpacked");
+  await mkdir(healthDir);
+  run("unzip", ["-q", health.path, "-d", healthDir], root);
+  const healthEntry = run("unzip", ["-Z1", health.path], root)
+    .trim()
+    .split("\n")
+    .find((name) => /netlify\/functions\/healthz\.m?js$/.test(name));
+  assert.ok(healthEntry);
+  const healthHandler = (
+    await import(pathToFileURL(join(healthDir, healthEntry)).href)
+  ).default;
+  const packagedHealth = await (await healthHandler()).json();
+  assert.deepEqual(packagedHealth.release, {
+    commit: candidate.slice(0, 12),
+    context: "deploy-preview",
+  });
   const invoice = functions.find((f) => f.name === "invoice-pdf");
   assert.ok(invoice);
   assert.equal(invoice.runtimeVersion, "nodejs22.x");
@@ -233,6 +281,7 @@ async function main() {
     libvipsVersion: sharp.versions.vips,
     sharpRenderSha256: sha256(png),
     invoiceLocalImportAndGet: "405 without network access",
+    packagedHealth,
     client,
     functions: await Promise.all(
       functions.map(async (f) => ({
@@ -240,10 +289,40 @@ async function main() {
         runtime: f.runtimeVersion,
         sha256: sha256(await readFile(f.path)),
         schedule: f.schedule || null,
+        invocationMode: f.invocationMode,
         routes: f.routes || [],
       })),
     ),
   };
+  await cp(join(root, "dist"), join(evidence, "dist"), { recursive: true });
+  await cp(join(root, "netlify.toml"), join(evidence, "netlify.toml"));
+  async function hashTree(path, prefix = "") {
+    const files = [];
+    for (const entry of (await readdir(path, { withFileTypes: true })).sort(
+      (a, b) => a.name.localeCompare(b.name),
+    )) {
+      const file = join(path, entry.name);
+      const name = prefix + entry.name;
+      if (entry.isDirectory())
+        files.push(...(await hashTree(file, name + "/")));
+      else {
+        assert.ok(entry.isFile(), "Artifact must not contain symbolic links");
+        const bytes = await readFile(file);
+        files.push({ file: name, bytes: bytes.length, sha256: sha256(bytes) });
+      }
+    }
+    return files;
+  }
+  manifest.deploymentFiles = [
+    ...(await hashTree(join(evidence, "dist"), "dist/")),
+    ...(await hashTree(join(evidence, "functions"), "functions/")),
+    ...(await Promise.all(
+      ["functions-manifest.json", "netlify.toml"].map(async (file) => {
+        const bytes = await readFile(join(evidence, file));
+        return { file, bytes: bytes.length, sha256: sha256(bytes) };
+      }),
+    )),
+  ];
   await writeFile(
     join(evidence, "artifact-identity.json"),
     JSON.stringify(manifest, null, 2),

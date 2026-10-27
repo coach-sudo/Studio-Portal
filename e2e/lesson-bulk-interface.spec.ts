@@ -592,6 +592,7 @@ test("@journey recurring scope and shared prepaid/class cancellation protections
     ).toBe("active");
     await page.getByRole("button", { name: "Close", exact: true }).click();
     await page.getByLabel("Search lesson titles").fill("Lesson 0003");
+    await expect(page.getByRole("dialog")).toHaveCount(0);
     await page.getByLabel("Select all visible", { exact: true }).check();
     await chooseBulkOperation(page, "cancel");
     await expect(

@@ -147,7 +147,13 @@ function AuthenticatedLessonBulkList({
         const next = new URLSearchParams(current);
         for (const [key, value] of Object.entries(values))
           value ? next.set(key, value) : next.delete(key);
-        if (filterChanged) next.delete("lessonPage");
+        if (filterChanged) {
+          next.delete("lessonPage");
+          // Dismissal and typing can precede the router's next commit. A filter
+          // update must not copy a just-dismissed batch out of stale params.
+          next.delete("lessonBatch");
+          next.delete("lessonExpected");
+        }
         return next;
       },
       { replace: true, preventScrollReset: true },

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { useEffect } from "react";
@@ -11,7 +11,27 @@ type FixtureMutation = Parameters<
   ReturnType<typeof useStudioStore>["transact"]
 >[0];
 
-const liveSnapshots = vi.hoisted(() => ({ fresh: false }));
+const liveSnapshots = vi.hoisted(() => ({ fresh: false, deferOpen: false }));
+vi.mock("react-router-dom", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("react-router-dom")>();
+  return {
+    ...actual,
+    useSearchParams: (...args: Parameters<typeof actual.useSearchParams>) => {
+      const result = actual.useSearchParams(...args);
+      if (!liveSnapshots.deferOpen) return result;
+      const [params, setParams] = result;
+      const update: typeof setParams = (next, options) => {
+        const value = typeof next === "function" ? next(params) : next;
+        const opening =
+          actual.createSearchParams(value).has("lesson") &&
+          !params.has("lesson");
+        if (opening) setTimeout(() => setParams(value, options), 40);
+        else setParams(value, options);
+      };
+      return [params, update] as ReturnType<typeof actual.useSearchParams>;
+    },
+  };
+});
 vi.mock("../hooks/useStudio", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../hooks/useStudio")>();
   return {
@@ -28,6 +48,7 @@ vi.mock("../hooks/useStudio", async (importOriginal) => {
 });
 afterEach(() => {
   liveSnapshots.fresh = false;
+  liveSnapshots.deferOpen = false;
 });
 
 function LocationProbe() {
@@ -69,6 +90,47 @@ function renderBookings(path = "/coach/bookings", seed?: FixtureMutation) {
 }
 
 describe("calendar appointment details", () => {
+  it("retains the opener while a fresh snapshot arrives before the appointment URL commits", async () => {
+    liveSnapshots.fresh = true;
+    liveSnapshots.deferOpen = true;
+    const user = userEvent.setup();
+    renderBookings();
+    fireEvent.change(await screen.findByLabelText("Search lessons"), {
+      target: { value: "Scene Study" },
+    });
+    const opener = document.querySelector<HTMLButtonElement>(
+      '.calendar-search-results [data-calendar-lesson="lesson-maya-next"]',
+    )!;
+    opener.focus();
+    await user.keyboard("{Enter}");
+    await screen.findByRole("dialog", { name: "SS-1048" });
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(document.activeElement === opener).toBe(true);
+  });
+
+  it.each([false, true])(
+    "restores the unfocused search-result opener with fresh snapshots=%s",
+    async (fresh) => {
+      liveSnapshots.fresh = fresh;
+      const user = userEvent.setup();
+      renderBookings();
+      const search = await screen.findByLabelText("Search lessons");
+      fireEvent.change(search, { target: { value: "Maya Kim" } });
+      const appointment = document.querySelector<HTMLButtonElement>(
+        ".calendar-search-results button",
+      )!;
+      // Touch activation and a replaced focused node need not leave the button as
+      // document.activeElement. The click's currentTarget remains authoritative.
+      search.blur();
+      fireEvent.click(appointment);
+      await screen.findByRole("dialog");
+      await user.keyboard("{Escape}");
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement === appointment).toBe(true);
+    },
+  );
+
   it.each(["booking=booking-maya", "lesson=lesson-maya-next"])(
     "dismisses %s when live query snapshots change identity on every render",
     async (query) => {
@@ -125,6 +187,14 @@ describe("calendar appointment details", () => {
       const booking = draft.bookings.find(
         (item) => item.id === "booking-maya",
       )!;
+      // The demo group is two weeks ahead and may fall outside the initially
+      // visible month. Keep this interaction fixture in the visible lesson range.
+      lesson.startsAt = draft.lessons.find(
+        (item) => item.id === "lesson-maya-next",
+      )!.startsAt;
+      lesson.endsAt = new Date(
+        Date.parse(lesson.startsAt) + 2 * 3_600_000,
+      ).toISOString();
       draft.lessonParticipants.push({
         id: "group-maya",
         lessonId: lesson.id,

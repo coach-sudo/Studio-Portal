@@ -1,3 +1,7 @@
+import {
+  workerEnabled,
+  disabledWorkerResponse,
+} from "../_shared/worker-controls";
 import { settingsPatch } from "../../../src/domain/settingsPatch";
 import { settingsWriteValues } from "../../../src/domain/settingsAssets";
 import { campaignContentSchema } from "../../../src/domain/campaignBlocks";
@@ -17,6 +21,8 @@ export async function handleAdministrationCommands(
     input.entityId
   ) {
     await requireCoach();
+    if (!workerEnabled("provider-intake"))
+      return disabledWorkerResponse("provider-intake");
     const { data, error } = await db.rpc("command_review_provider_import", {
       p_import: input.entityId,
       p_payload: input.payload,
@@ -27,8 +33,11 @@ export async function handleAdministrationCommands(
   }
 
   if (domain === "integrations" && input.command === "retry_failed") {
-    const studioId = await requireCoach(),
-      service = serviceClient(),
+    const studioId = await requireCoach();
+    if (!workerEnabled("calendar")) return disabledWorkerResponse("calendar");
+    if (!workerEnabled("automations"))
+      return disabledWorkerResponse("automations");
+    const service = serviceClient(),
       now = new Date().toISOString();
     const { data: lessonRows, error: lessonsError } = await service
       .from("lessons")

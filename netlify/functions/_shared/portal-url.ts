@@ -2,6 +2,7 @@ import { releaseMetadata } from "./release";
 
 export interface PortalDeployment {
   context: string;
+  siteId?: string;
   deployPrimeUrl?: string;
   deployUrl?: string;
   siteUrl?: string;
@@ -9,6 +10,8 @@ export interface PortalDeployment {
   testUrl?: string;
 }
 const productionOrigin = "https://portal.d-a-j.com";
+const stagingSiteId = "d83ff6cb-f57b-4741-8c3c-3eaae7adab19";
+const stagingOrigin = "https://coachd-staging.netlify.app";
 const productionHosts = [
   "portal.d-a-j.com",
   "portal.daj.com",
@@ -18,21 +21,24 @@ const productionHosts = [
 /** Only trusted deployment metadata is accepted. Never read a request Origin/header. */
 export function resolvePortalOrigin(deployment: PortalDeployment): string {
   if (deployment.context === "production") {
-    // Context alone cannot distinguish the production site from a staging site's
-    // published deploy. Require the trusted site URL to identify production too.
+    // Both sites publish in production context. The staging exception requires
+    // Netlify's read-only site ID and its exact canonical URL together.
     const site = deployment.siteUrl ? new URL(deployment.siteUrl) : undefined;
+    const staging = deployment.siteId === stagingSiteId;
     if (
       !site ||
       site.protocol !== "https:" ||
       site.username ||
       site.password ||
       site.port ||
-      !productionHosts.includes(site.hostname)
+      !(staging
+        ? site.href === `${stagingOrigin}/`
+        : productionHosts.includes(site.hostname))
     )
       throw new Error(
         "PROVIDER_UNAVAILABLE: Production context requires a trusted production site URL.",
       );
-    return productionOrigin;
+    return staging ? stagingOrigin : productionOrigin;
   }
   const configured = deployment.ephemeral
     ? deployment.testUrl
@@ -64,6 +70,7 @@ export function resolvePortalOrigin(deployment: PortalDeployment): string {
 export function portalOrigin() {
   return resolvePortalOrigin({
     context: releaseMetadata().context,
+    siteId: Netlify.env.get("SITE_ID"),
     deployPrimeUrl: Netlify.env.get("DEPLOY_PRIME_URL"),
     deployUrl: Netlify.env.get("DEPLOY_URL"),
     siteUrl: Netlify.env.get("URL"),

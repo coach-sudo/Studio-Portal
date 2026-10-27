@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useLayoutEffect,
   useMemo,
   useId,
   useRef,
@@ -335,10 +336,12 @@ function useOverlayFocus(onClose: () => void) {
   );
   const initialFocus = useRef<HTMLElement | null>(null);
   const closeRef = useRef(onClose);
-  useEffect(() => {
+  useLayoutEffect(() => {
     closeRef.current = onClose;
   }, [onClose]);
-  useEffect(() => {
+  // Install the trap with the DOM commit: a visible overlay must already own
+  // keyboard input. Cleanup also runs before the route restores its opener.
+  useLayoutEffect(() => {
     // A replacing overlay may restore focus during commit. Prefer that connected
     // outside control; use the render-time opener when child autofocus owns focus.
     const active = document.activeElement as HTMLElement | null;
@@ -357,6 +360,10 @@ function useOverlayFocus(onClose: () => void) {
         ) ?? []),
       ]
         .filter((element) => {
+          // Roving listbox options are programmatically focusable buttons, but
+          // do not participate in Tab order and cannot define the trap's end.
+          const tabIndex = element.getAttribute("tabindex");
+          if (tabIndex !== null && Number(tabIndex) < 0) return false;
           // Native summaries participate in Tab order; controls inside a closed
           // disclosure do not, even though their computed display stays visible.
           for (

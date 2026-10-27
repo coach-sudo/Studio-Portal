@@ -87,6 +87,7 @@ export function BookingCenter() {
   const appointmentOpener = useRef<{
     lesson: string;
     element: HTMLElement | null;
+    opened: boolean;
   } | null>(null);
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useUrlChoice(
@@ -163,64 +164,66 @@ export function BookingCenter() {
     }
   }, [data, searchParams]);
   useEffect(() => {
+    const opener = appointmentOpener.current;
+    if (!opener) return;
+    if (dialog) {
+      opener.opened = true;
+      return;
+    }
     if (
-      dialog ||
       isLoading ||
       searchParams.has("lesson") ||
       searchParams.has("booking") ||
-      !appointmentOpener.current
+      !opener.opened
     )
       return;
-    // Closing or refreshing an appointment can replace its calendar button.
-    // Restore the exact occurrence after the route and refreshed DOM settle.
-    const frame = requestAnimationFrame(() => {
-      const opener = appointmentOpener.current;
-      if (!opener) return;
-      const target = opener.element?.isConnected
-        ? opener.element
-        : [
-            ...document.querySelectorAll<HTMLElement>("[data-calendar-lesson]"),
-          ].find((el) => el.dataset.calendarLesson === opener.lesson);
-      if (target) {
-        target.focus();
-        appointmentOpener.current = null;
-      }
-    });
-    return () => cancelAnimationFrame(frame);
+    // Passive unmount cleanup has released the drawer's focus trap. Restore in
+    // this commit, rather than a cancellable animation frame tied to changing
+    // live snapshots. If loading replaced the button, find its occurrence again.
+    const target = opener.element?.isConnected
+      ? opener.element
+      : [
+          ...document.querySelectorAll<HTMLElement>("[data-calendar-lesson]"),
+        ].find((el) => el.dataset.calendarLesson === opener.lesson);
+    if (target) {
+      target.focus();
+      if (document.activeElement === target) appointmentOpener.current = null;
+    }
   }, [dialog, isLoading, searchParams, data]);
   if (isLoading || !data)
     return <PageSkeleton label="Opening booking center…" />;
 
-  function openCalendarLesson(lesson: Lesson) {
+  function openCalendarLesson(lesson: Lesson, opener: HTMLButtonElement) {
     appointmentOpener.current = {
       lesson: lesson.id,
-      element:
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null,
+      // Activation does not always focus a button (notably touch), and a route
+      // update may already have replaced it. Keep the actual activating control.
+      element: opener,
+      opened: false,
     };
-    const bookings = calendarBookings(lesson, data!);
     setSearchParams((previous) => {
       const next = new URLSearchParams(previous);
       next.set("lesson", lesson.id);
       next.delete("booking");
       return next;
     });
-    setDialog(
-      bookings.length === 1
-        ? { type: "booking", item: bookings[0], lessonId: lesson.id }
-        : { type: "lesson", item: lesson },
-    );
+    // The URL effect opens the drawer after navigation commits. Opening local
+    // state first lets a fresh snapshot with the old URL immediately close it
+    // and consume its focus-return intent before the real drawer opens.
   }
 
   function closeAppointment() {
-    setDialog(undefined);
-    if (searchParams.has("booking") || searchParams.has("lesson")) {
-      const next = new URLSearchParams(searchParams);
-      next.delete("booking");
-      next.delete("lesson");
-      setSearchParams(next, { replace: true });
-    }
+    // Let the URL effect close the drawer after navigation commits as well.
+    // Clearing local state first races the still-open URL and fresh snapshots.
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete("booking");
+        next.delete("lesson");
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   async function run(
@@ -2107,3 +2110,4 @@ function changeDemoBooking(draft: StudioSnapshot, id: string, command: string) {
   if (command === "cancel")
     cancelDemoBooking(draft, booking, { settle: false, late: false });
 }
+import "../../styles/booking.css";

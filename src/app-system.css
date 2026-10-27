@@ -335,18 +335,4 @@ input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { bord
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
 
-/* Account-level portal appearance. Public and coach pages keep the studio's
-   configured canvas; this preference follows the signed-in student/support
-   account and is stored in Supabase. */
-:root[data-portal-theme="dark"] {
-  color-scheme: dark;
-  --ink: #f3f5f1;
-  --muted: #aebbb4;
-  --line: #34463f;
-  --wash: #22312b;
-}
-:root[data-portal-theme="dark"] .status.neutral { color: var(--muted); }
-:root[data-portal-theme="dark"] body { background: radial-gradient(circle at 96% 2%, color-mix(in srgb, var(--gold), transparent 90%), transparent 24rem), var(--app-canvas); color: var(--ink); }
-:root[data-portal-theme="dark"] .student-shell main, :root[data-portal-theme="dark"] .student-page, :root[data-portal-theme="dark"] .section, :root[data-portal-theme="dark"] .record-card, :root[data-portal-theme="dark"] .table-list > article, :root[data-portal-theme="dark"] .portal-row, :root[data-portal-theme="dark"] .assignment-card, :root[data-portal-theme="dark"] .current-script-card, :root[data-portal-theme="dark"] .settings-form input, :root[data-portal-theme="dark"] .settings-form select, :root[data-portal-theme="dark"] .settings-form textarea, :root[data-portal-theme="dark"] .workflow-form input, :root[data-portal-theme="dark"] .workflow-form select, :root[data-portal-theme="dark"] .workflow-form textarea, :root[data-portal-theme="dark"] .setting-toggle, :root[data-portal-theme="dark"] .workflow-dialog, :root[data-portal-theme="dark"] .inbox-conversation, :root[data-portal-theme="dark"] .inbox-composer textarea { background-color: var(--app-surface); color: var(--ink); border-color: var(--app-border); }
-:root[data-portal-theme="dark"] .page-header, :root[data-portal-theme="dark"] .student-header { background: radial-gradient(circle at 92% 10%, color-mix(in srgb, var(--gold), transparent 76%) 0 54px, transparent 55px), linear-gradient(128deg, var(--app-surface), var(--app-surface-soft)); }
 .disabled-row { opacity: .72; }

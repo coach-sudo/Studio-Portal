@@ -1,4 +1,4 @@
-import { chromium, type FullConfig } from "@playwright/test";
+import { chromium, type Browser, type FullConfig } from "@playwright/test";
 import { mkdir, writeFile } from "node:fs/promises";
 import { assertE2ERunId } from "../src/security/e2eSafety";
 import { assertFixtureMutationTarget } from "../src/security/hostedAcceptance";
@@ -31,9 +31,12 @@ export default async function globalSetup(config: FullConfig) {
     runtime.blockedReason =
       "STAGING_E2E_FIXTURE_TOKEN is not configured for this CI context";
     await writeFile(runtimePath, JSON.stringify(runtime, null, 2));
+    if (process.env.E2E_EPHEMERAL === "true")
+      throw new Error(runtime.blockedReason);
     return;
   }
 
+  let browser: Browser | undefined;
   try {
     const response = await fetch(`${baseURL}/api/e2e/fixtures`, {
       method: "POST",
@@ -53,7 +56,7 @@ export default async function globalSetup(config: FullConfig) {
     Object.assign(runtime, payload, { fixtureReady: true, baseURL });
     await writeFile(runtimePath, JSON.stringify(runtime, null, 2));
 
-    const browser = await chromium.launch();
+    browser = await chromium.launch();
     for (const role of [
       "coach",
       "student",
@@ -95,7 +98,6 @@ export default async function globalSetup(config: FullConfig) {
         await context.close();
       }
     }
-    await browser.close();
   } catch (error) {
     try {
       await fetch(`${baseURL}/api/e2e/fixtures`, {
@@ -117,5 +119,9 @@ export default async function globalSetup(config: FullConfig) {
     runtime.blockedReason = `fixture setup failed: ${error instanceof Error ? error.message : String(error)}`;
     delete runtime.accounts;
     await writeFile(runtimePath, JSON.stringify(runtime, null, 2));
+    if (process.env.E2E_EPHEMERAL === "true")
+      throw new Error(runtime.blockedReason);
+  } finally {
+    await browser?.close();
   }
 }

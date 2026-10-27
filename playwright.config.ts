@@ -35,7 +35,7 @@ export default defineConfig({
   use: {
     baseURL,
     bypassCSP: process.env.E2E_EPHEMERAL === "true",
-    trace: "on-first-retry",
+    trace: process.env.CI ? "retain-on-failure" : "on-first-retry",
     screenshot: "only-on-failure",
     video: "retain-on-failure",
   },

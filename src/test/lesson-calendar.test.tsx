@@ -56,20 +56,19 @@ describe("LessonCalendar", () => {
     await userEvent.click(screen.getByRole("button", { name: "year" }));
     expect(
       screen.getByText(
-        new RegExp(
-          now.toLocaleDateString(undefined, { month: "long" }),
-          "i",
-        ),
+        new RegExp(now.toLocaleDateString(undefined, { month: "long" }), "i"),
       ),
     ).toBeInTheDocument();
     await userEvent.click(screen.getByLabelText("Show cancelled"));
     await userEvent.type(screen.getByLabelText("Search lessons"), "cancelled");
     expect(screen.getByText("1 matching lesson")).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByText("Maya Kim · cancelled acting lesson"),
-    );
+    const opener = screen
+      .getByText("Maya Kim · cancelled acting lesson")
+      .closest("button")!;
+    await userEvent.click(opener);
     expect(open).toHaveBeenCalledWith(
       expect.objectContaining({ id: "cancelled" }),
+      opener,
     );
   });
 });

@@ -1,3 +1,9 @@
+import {
+  workerEnabled,
+  assertWorkerEnabled,
+  disabledWorkerResult,
+  WorkerDisabledError,
+} from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "../../../src/types/database.generated";
 import { googleAccessToken, sendGmail } from "./google";
@@ -10,6 +16,13 @@ import { portalOrigin } from "./portal-url";
 export async function dispatchOutbox(
   input: { ids?: string[]; batchSize?: number } = {},
 ) {
+  if (!workerEnabled("automations"))
+    return {
+      ...disabledWorkerResult("automations"),
+      processed: 0,
+      sent: 0,
+      suppressed: 0,
+    };
   const client = serviceClient(),
     db = client as SupabaseClient<Database>;
   const claimed = input.ids?.length
@@ -28,7 +41,30 @@ export async function dispatchOutbox(
   let sent = 0,
     suppressed = 0,
     token: string | undefined;
-  for (const message of messages)
+  // Restore only unstarted claims still owned by this batch. Never touch a newer
+  // coach edit/cancellation or another claimant; delivery already started settles normally.
+  const releaseUnstarted = async (remaining: Tables<"outbox_messages">[]) => {
+    for (const message of remaining) {
+      const released = await db
+        .from("outbox_messages")
+        .update({ status: "queued" })
+        .eq("id", message.id)
+        .eq("status", "sending")
+        .eq("version", message.version)
+        .eq("updated_at", message.updated_at);
+      if (released.error) throw released.error;
+    }
+  };
+  for (const [index, message] of messages.entries()) {
+    if (!workerEnabled("automations")) {
+      await releaseUnstarted(messages.slice(index));
+      return {
+        ...disabledWorkerResult("automations"),
+        processed: index,
+        sent,
+        suppressed,
+      };
+    }
     try {
       const eligibility = await checkOutboxEligibility(
         client,
@@ -36,6 +72,7 @@ export async function dispatchOutbox(
         Date.now(),
         { requireApproval: true },
       );
+      assertWorkerEnabled("automations");
       if (!eligibility.allowed) {
         if (eligibility.reason === "approval_required") {
           const restored = await db
@@ -70,6 +107,7 @@ export async function dispatchOutbox(
         if (restored.error) throw restored.error;
         continue;
       }
+      assertWorkerEnabled("automations");
       token ??= await googleAccessToken();
       // An authoritative trigger may have cancelled this item while provider auth was in flight.
       const current = await db
@@ -85,6 +123,7 @@ export async function dispatchOutbox(
         Date.now(),
         { requireApproval: true },
       );
+      assertWorkerEnabled("automations");
       if (!final.allowed) {
         await suppressOutbox(client, current.data, final.reason);
         suppressed++;
@@ -136,6 +175,7 @@ export async function dispatchOutbox(
         origin,
         action,
       );
+      assertWorkerEnabled("automations");
       const result = await sendGmail(token, {
         ...current.data,
         body: presented.text,
@@ -160,7 +200,16 @@ export async function dispatchOutbox(
         .eq("status", "sending");
       if (updated.error) throw updated.error;
       sent++;
-    } catch {
+    } catch (error) {
+      if (error instanceof WorkerDisabledError) {
+        await releaseUnstarted(messages.slice(index));
+        return {
+          ...disabledWorkerResult("automations"),
+          processed: index,
+          sent,
+          suppressed,
+        };
+      }
       console.error(
         JSON.stringify({
           event: "outbox.delivery_failed",
@@ -186,5 +235,6 @@ export async function dispatchOutbox(
         .eq("status", "sending");
       if (attempt.error || updated.error) throw attempt.error ?? updated.error;
     }
+  }
   return { processed: messages.length, sent, suppressed };
 }

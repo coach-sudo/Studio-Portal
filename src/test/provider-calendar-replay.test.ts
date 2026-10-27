@@ -1,5 +1,5 @@
 import { beforeEach, expect, it, vi } from "vitest";
-import { importCalendar } from "../../netlify/functions/provider-intake";
+import { importCalendar } from "../../netlify/functions/_shared/provider-intake";
 
 const f = vi.hoisted(() => ({
   tables: {} as Record<string, Record<string, any>[]>,

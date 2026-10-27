@@ -314,10 +314,6 @@
 /* Coach material library: role-first organization with compact, resilient actions */
 
 /* Mobile layout closeout: keep actions in flow, preserve touch targets, and avoid collisions. */
-.booking-footer > a {
-  overflow-wrap: anywhere;
-  text-underline-offset: 3px;
-}
 .profile-actions {
   display: flex;
   align-items: center;
@@ -565,51 +561,11 @@
   .list-controls button {
     min-height: 40px;
   }
-  .booking-footer {
-    display: grid;
-    grid-template-columns: 1fr;
-    align-items: start;
-    gap: 14px;
-    padding: 30px 20px;
-  }
-  .booking-footer > div {
-    min-width: 0;
-  }
-  .booking-footer p {
-    margin: 8px 0 0;
-    overflow-wrap: anywhere;
-  }
-  .booking-footer > a {
-    display: block;
-    width: fit-content;
-    max-width: 100%;
-    margin: 0;
-    line-height: 1.35;
-  }
   .booking-hero h1,
   .catalog-heading h2,
   .step-panel h2,
   .manage-page h1 {
     overflow-wrap: anywhere;
-  }
-  .booking-summary {
-    padding: 28px 20px;
-  }
-  .booking-summary h1 {
-    margin: 12px 0 8px;
-    font-size: clamp(32px, 10vw, 42px);
-  }
-  .booking-summary > p {
-    margin-block: 8px;
-    font-size: 13px;
-    line-height: 1.45;
-  }
-  .booking-summary dl {
-    margin-top: 18px;
-    grid-template-columns: 1fr;
-  }
-  .booking-summary dl div {
-    padding: 9px 0;
   }
   .policy-note {
     margin-top: 18px;
@@ -702,24 +658,6 @@
     justify-content: center;
     white-space: normal;
     line-height: 1.2;
-  }
-  .booking-topbar {
-    gap: 10px;
-  }
-  .booking-topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-  .booking-topbar > a:last-child {
-    text-align: right;
-    line-height: 1.25;
-  }
-  .booking-hero {
-    padding-inline: 17px;
-  }
-  .booking-hero h1 {
-    font-size: clamp(38px, 13vw, 44px);
-    overflow-wrap: normal;
-    word-break: normal;
   }
   .service-catalog {
     width: calc(100% - 26px);
@@ -913,36 +851,6 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 7px;
   }
-  .booking-table-head {
-    display: none !important;
-  }
-  .booking-table-row {
-    position: relative;
-    grid-template-columns: minmax(0, 1fr) auto !important;
-    gap: 6px 12px !important;
-    padding: 13px 52px 13px 12px !important;
-  }
-  .booking-table-row > div:first-child {
-    grid-column: 1;
-  }
-  .booking-table-row > span {
-    grid-column: 1;
-    font-size: 11px;
-  }
-  .booking-table-row > .status {
-    grid-column: 2;
-    grid-row: 1;
-  }
-  .booking-table-row > button {
-    position: absolute;
-    right: 4px;
-    top: 50%;
-    width: 44px;
-    height: 44px;
-    transform: translateY(-50%);
-    display: grid;
-    place-items: center;
-  }
   .join-lesson-banner {
     grid-template-columns: 24px minmax(0, 1fr);
   }
@@ -1031,15 +939,6 @@
     padding: 12px;
   }
 }
-@media (max-width: 600px) {
-  .booking-table-row > span:nth-of-type(1),
-  .booking-table-row > span:nth-of-type(2) {
-    display: block !important;
-  }
-  .booking-table-row > button {
-    display: grid !important;
-  }
-}
 
 /* Coach workspace hierarchy: compact orientation, lesson-first action queue, and calendar-first booking administration */
 .home-today-link {
@@ -1112,14 +1011,8 @@
   font-size: 11px;
   font-weight: 750;
 }
-.booking-center .metric-grid {
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-}
 .coach-two-column.single {
   grid-template-columns: 1fr;
-}
-.booking-center .subnav button {
-  touch-action: manipulation;
 }
 @media (max-width: 700px) {
   .home-today-link {
@@ -1159,9 +1052,6 @@
     flex: 1 1 82px;
     justify-content: center;
   }
-  .booking-center .metric-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
 }
 @media (max-width: 390px) {
   .today-lesson-row.featured {
@@ -1170,16 +1060,6 @@
   }
   .today-lesson-row .row-actions {
     grid-column: 1/-1;
-  }
-  .booking-center .metric-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .booking-center .booking-metric {
-    min-width: 0;
-    padding: 12px;
-  }
-  .booking-center .booking-metric strong {
-    overflow-wrap: anywhere;
   }
 }
 

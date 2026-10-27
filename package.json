@@ -14,6 +14,7 @@
     "format": "prettier --write .",
     "format:check": "tsx scripts/check-format.ts",
     "lint": "eslint .",
+    "lint:baseline": "node scripts/check-lint-baseline.mjs",
     "pretest": "tsx scripts/generate-release-metadata.ts",
     "playwright:smoke": "playwright test e2e/deployed-health.spec.ts",
     "playwright:e2e": "playwright test --grep @journey",
@@ -36,7 +37,7 @@
     "@pdf-lib/fontkit": "1.1.1",
     "@supabase/supabase-js": "^2.110.0",
     "@tanstack/react-query": "^5.101.2",
-    "dompurify": "3.4.15",
+    "dompurify": "3.4.17",
     "lucide-react": "^1.23.0",
     "pdf-lib": "1.17.1",
     "pdfjs-dist": "6.4.299",
@@ -45,7 +46,7 @@
     "react-router-dom": "^7.18.2",
     "sharp": "0.35.5",
     "stripe": "^22.5.0",
-    "zod": "^4.4.3"
+    "zod": "4.6.6"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.13.0",

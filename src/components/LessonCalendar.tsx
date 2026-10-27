@@ -44,7 +44,7 @@ export function LessonCalendar({
   timezone: string;
   studentName: (studentId: string) => string;
   sourceName: (source?: string) => string;
-  onOpen: (lesson: Lesson) => void;
+  onOpen: (...args: [Lesson, HTMLButtonElement]) => void;
   listContent?: ReactNode;
   viewOverride?: CalendarView;
   onViewChange?: (view: CalendarView) => void;
@@ -148,7 +148,7 @@ export function LessonCalendar({
       key={lesson.id}
       type="button"
       className={`calendar-event ${lesson.status}`}
-      onClick={() => onOpen(lesson)}
+      onClick={(event) => onOpen(lesson, event.currentTarget)}
     >
       <time>{formatStudioTime(lesson.startsAt, timezone)}</time>
       <strong>{studentName(lesson.studentId)}</strong>
@@ -253,9 +253,9 @@ export function LessonCalendar({
               data-calendar-lesson={lesson.id}
               type="button"
               key={lesson.id}
-              onClick={() => {
+              onClick={(event) => {
                 setAnchor(studioCalendarDate(lesson.startsAt, timezone));
-                onOpen(lesson);
+                onOpen(lesson, event.currentTarget);
               }}
             >
               <CalendarDays />

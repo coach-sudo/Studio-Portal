@@ -1,3 +1,4 @@
+import "../../styles/booking.css";
 import "../../styles/public.css";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";

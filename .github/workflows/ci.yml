@@ -38,6 +38,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -46,6 +47,7 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
       - run: npm run check:secrets
       - run: npm run lint
+      - run: npm run lint:baseline
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
@@ -74,6 +76,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -85,7 +88,7 @@ jobs:
           WAVE_ONE_ACCEPTANCE_LOCAL: "true"
         run: node scripts/test-wave-one-upgrade.mjs
       - run: npx supabase db reset --local --no-seed
-      - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops,workspace_internal --fail-on error
+      - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops,workspace_internal,worker_internal --fail-on error
       - run: npm run supabase:types
       - run: npx supabase test db
       - run: node scripts/test-credit-concurrency.mjs
@@ -93,6 +96,7 @@ jobs:
       - run: node scripts/test-lesson-bulk-concurrency.mjs
       - run: node scripts/test-material-study-concurrency.mjs
       - run: node scripts/test-provider-intake-concurrency.mjs
+      - run: node scripts/test-scheduled-worker-concurrency.mjs
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()
@@ -103,3 +107,52 @@ jobs:
           path: src/types/database.generated.ts
       - if: always()
         run: npx supabase stop --no-backup
+
+  staging-candidate:
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    needs: [verify, migrations]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+      STAGING_SUPABASE_URL: ${{ vars.STAGING_SUPABASE_URL }}
+      STAGING_SUPABASE_ANON_KEY: ${{ vars.STAGING_SUPABASE_ANON_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Prepare pinned packaging tools and public staging configuration
+        run: |
+          set -euo pipefail
+          npm install --prefix "$RUNNER_TEMP/packaging-tools" --ignore-scripts --no-audit --no-fund @netlify/zip-it-and-ship-it@16.0.0 smol-toml@1.5.2
+          node --input-type=module -e '
+            import {writeFileSync} from "node:fs";
+            writeFileSync(process.env.RUNNER_TEMP + "/staging-public.json", JSON.stringify({
+              VITE_SUPABASE_URL: process.env.STAGING_SUPABASE_URL,
+              VITE_SUPABASE_ANON_KEY: process.env.STAGING_SUPABASE_ANON_KEY,
+              VITE_QUERY_LAYER_V2: "true"
+            }));'
+      - name: Build and inspect the exact staging artifact without deploying
+        run: |
+          set -euo pipefail
+          lock_hash="$(git show "$CANDIDATE_SHA:package-lock.json" | sha256sum | cut -d ' ' -f 1)"
+          node scripts/staging/verify-linux-package.mjs "$GITHUB_WORKSPACE" "$RUNNER_TEMP/packaging-tools" "$RUNNER_TEMP/staging-public.json" "$GITHUB_WORKSPACE/.tmp/staging-candidate" "$CANDIDATE_SHA" "$lock_hash"
+          tar -C .tmp/staging-candidate -czf "$RUNNER_TEMP/staging-candidate.tar.gz" dist functions functions-manifest.json netlify.toml artifact-identity.json
+          sha256sum "$RUNNER_TEMP/staging-candidate.tar.gz" > .tmp/staging-candidate/archive.sha256
+      - uses: actions/upload-artifact@v4
+        with:
+          name: staging-candidate-${{ github.event.pull_request.head.sha }}
+          retention-days: 14
+          if-no-files-found: error
+          path: |
+            ${{ runner.temp }}/staging-candidate.tar.gz
+            .tmp/staging-candidate/artifact-identity.json
+            .tmp/staging-candidate/archive.sha256
+            .tmp/staging-candidate/build.log
+            .tmp/staging-candidate/budget.log
