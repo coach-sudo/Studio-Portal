@@ -1,13 +1,21 @@
+import {
+  workerEnabled,
+  disabledWorkerResponse,
+} from "./_shared/worker-controls";
 import type { Config } from "@netlify/functions";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { evaluateStudioAutomations } from "./_shared/automation-engine";
 import { serviceClient } from "./_shared/supabase";
 export default async () => {
+  if (!workerEnabled("automations"))
+    return disabledWorkerResponse("automations");
   const db = serviceClient(),
     studios = await db.from("studios").select("id");
   if (studios.error) throw studios.error;
   const deadline = Date.now() + 10_000;
   for (const studio of studios.data ?? []) {
+    if (!workerEnabled("automations"))
+      return disabledWorkerResponse("automations");
     if (Date.now() >= deadline) break;
     try {
       await evaluateStudioAutomations(

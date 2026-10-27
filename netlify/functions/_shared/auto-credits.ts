@@ -3,7 +3,10 @@ import { z } from "zod";
 import { creditApplicationResultSchema } from "../../../src/domain/creditCoverage";
 
 /** Each RPC commits one account. The database retains pending jobs and sweep progress. */
-export async function applyAutomaticCredits(db: SupabaseClient) {
+export async function applyAutomaticCredits(
+  db: SupabaseClient,
+  checkpoint: () => void = () => {},
+) {
   const totals = {
     applied: 0,
     alreadyCovered: 0,
@@ -13,6 +16,7 @@ export async function applyAutomaticCredits(db: SupabaseClient) {
     pending: 0,
     failures: [] as { studentId: string | null; code: string }[],
   };
+  checkpoint();
   const work = await (async () => {
     try {
       return await db.rpc("credit_coverage_work", { p_limit: 25 });
@@ -27,6 +31,7 @@ export async function applyAutomaticCredits(db: SupabaseClient) {
     return totals;
   }
   for (const studentId of ids.data) {
+    checkpoint();
     try {
       const response = await db.rpc("process_credit_coverage_job", {
         p_student: studentId,

@@ -162,6 +162,11 @@ jobs:
             echo "STUDIO_SLUG=stage-story"
             echo "E2E_FIXTURE_TOKEN=$fixture_token"
             echo "STAGING_E2E_FIXTURE_TOKEN=$fixture_token"
+            # Explicit opt-in only inside this local, disposable fixture stack.
+            echo "WORKER_PROVIDER_INTAKE_ENABLED=true"
+            echo "WORKER_CALENDAR_ENABLED=true"
+            echo "WORKER_BOOKING_MAINTENANCE_ENABLED=true"
+            echo "WORKER_AUTOMATIONS_ENABLED=true"
             echo "E2E_EPHEMERAL=true"
             echo "CONTEXT=deploy-preview"
             echo "COMMIT_REF=$(git rev-parse HEAD)"

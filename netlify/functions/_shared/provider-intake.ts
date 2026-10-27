@@ -1,3 +1,9 @@
+import {
+  assertWorkerEnabled,
+  workerEnabled,
+  disabledWorkerResult,
+  WorkerDisabledError,
+} from "./worker-controls";
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
@@ -599,6 +605,7 @@ export async function importCalendar(
   studio: any,
   students: StudentRow[],
 ) {
+  assertWorkerEnabled("provider-intake");
   const db = serviceClient(),
     calendar = encodeURIComponent(
       Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
@@ -611,6 +618,7 @@ export async function importCalendar(
     review = 0;
   const failures: unknown[] = [];
   for (const event of events) {
+    assertWorkerEnabled("provider-intake");
     try {
       if (!event.id) continue;
       const projection = managed.projections.get(event.id),
@@ -987,6 +995,7 @@ export async function importCalendar(
         ),
       );
     } catch (error) {
+      if (error instanceof WorkerDisabledError) throw error;
       failures.push(error);
     }
   }
@@ -999,6 +1008,7 @@ export async function scanGmail(
   studio: any,
   students: StudentRow[],
 ) {
+  assertWorkerEnabled("provider-intake");
   const db = serviceClient(),
     query = encodeURIComponent(
       'newer_than:90d {lessonface wyzant "lessons.com" superprof acuity "squarespace scheduling"}',
@@ -1006,6 +1016,7 @@ export async function scanGmail(
     messageIds: Array<{ id: string }> = [];
   let pageToken: string | undefined;
   do {
+    assertWorkerEnabled("provider-intake");
     const list = await fetch(
         `https://gmail.googleapis.com/gmail/v1/users/me/messages?q=${query}&maxResults=200${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ""}`,
         {
@@ -1043,6 +1054,7 @@ export async function scanGmail(
     imported = 0;
   const failures: unknown[] = [];
   for (const item of messageIds) {
+    assertWorkerEnabled("provider-intake");
     try {
       const response = await fetch(
           `https://gmail.googleapis.com/gmail/v1/users/me/messages/${item.id}?format=full`,
@@ -1351,6 +1363,7 @@ export async function scanGmail(
       if (lessonId) imported++;
       else review++;
     } catch (error) {
+      if (error instanceof WorkerDisabledError) throw error;
       failures.push(error);
     }
   }
@@ -1363,6 +1376,8 @@ export async function scanGmail(
 }
 
 export async function runProviderIntake(telemetry?: WorkerTelemetry) {
+  if (!workerEnabled("provider-intake"))
+    return disabledWorkerResult("provider-intake");
   telemetry?.stage("studios_and_stale_reviews");
   const db = serviceClient(),
     { data: studios, error } = await db
@@ -1377,6 +1392,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
   const staleIds = (pendingReviews || [])
     .filter((item) => staleReviewPayload(item.payload))
     .map((item) => item.id);
+  assertWorkerEnabled("provider-intake");
   if (staleIds.length) {
     const { error: cleanupError } = await db
       .from("integration_imports")
@@ -1388,6 +1404,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       .in("id", staleIds);
     if (cleanupError) throw cleanupError;
   }
+  assertWorkerEnabled("provider-intake");
   telemetry?.stage("google_token");
   const token = await googleAccessToken();
   let calendarImported = 0,
@@ -1397,6 +1414,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     gmailScope = true,
     failures = 0;
   for (const studio of studios || []) {
+    assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
     const { data: students, error: studentError } = await db
       .from("students")
@@ -1417,6 +1435,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       telemetry?.failure(error);
       failures++;
     }
+    assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
     try {
       const gmail = await scanGmail(token, studio, students || []);

@@ -314,7 +314,9 @@ async function queueLessonChangeMessages(
 export async function processLessonChangeEffects(
   client: SupabaseClient,
   lessonId?: string,
+  checkpoint: () => void = () => {},
 ) {
+  checkpoint();
   const claim = await client.rpc("claim_lesson_change_effects", {
     p_limit: 25,
     p_lesson: lessonId || null,
@@ -323,6 +325,7 @@ export async function processLessonChangeEffects(
   const messages: { id: string }[] = [];
   let failed = 0;
   for (const effect of claim.data.effects) {
+    checkpoint();
     try {
       const current = await client.rpc("lesson_change_effect_current", {
         p_id: effect.id,

@@ -1,3 +1,8 @@
+import {
+  workerEnabled,
+  assertWorkerEnabled,
+  WorkerDisabledError,
+} from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 type CalendarEvent = {
   id?: string;
@@ -23,6 +28,7 @@ export async function projectCalendarItem(
   accessToken: () => Promise<string>,
   calendarId: string,
 ) {
+  if (!workerEnabled("calendar")) return false;
   const p = item.projection as Projection,
     l = item.lesson as Tables<"lessons">;
   let result: CalendarEvent = {};
@@ -53,6 +59,7 @@ export async function projectCalendarItem(
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
     };
+    assertWorkerEnabled("calendar");
     const lookup = await fetch(url, { headers });
     const existing = lookup.ok
       ? ((await lookup.json()) as CalendarEvent)
@@ -69,6 +76,7 @@ export async function projectCalendarItem(
     });
     if (current.error) throw current.error;
     if (!current.data) return await finish();
+    assertWorkerEnabled("calendar");
     if (["cancelled", "late_cancelled"].includes(l.status)) {
       if (existing) {
         const response = await fetch(`${url}?sendUpdates=all`, {
@@ -125,6 +133,7 @@ export async function projectCalendarItem(
     });
     if (check.error) throw check.error;
     if (!check.data) return await finish();
+    assertWorkerEnabled("calendar");
     const response = await fetch(
       `${existing ? url : root}?conferenceDataVersion=1&sendUpdates=all`,
       {
@@ -139,9 +148,11 @@ export async function projectCalendarItem(
   } catch (error) {
     await finish(
       true,
-      error instanceof Error && /^calendar_/.test(error.message)
-        ? error.message
-        : "calendar_sync_failed",
+      error instanceof WorkerDisabledError
+        ? "worker_disabled"
+        : error instanceof Error && /^calendar_/.test(error.message)
+          ? error.message
+          : "calendar_sync_failed",
     );
     return false;
   }

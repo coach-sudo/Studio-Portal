@@ -17,7 +17,12 @@ const context = {
 } as Context;
 beforeEach(() => {
   vi.restoreAllMocks();
-  vi.stubGlobal("Netlify", { env: { get: () => "isolated-test-key" } });
+  vi.stubGlobal("Netlify", {
+    env: {
+      get: (key: string) =>
+        key.startsWith("WORKER_") ? "true" : "isolated-test-key",
+    },
+  });
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
   f.rpc

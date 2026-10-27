@@ -1,3 +1,9 @@
+import {
+  workerEnabled,
+  assertWorkerEnabled,
+  disabledWorkerResult,
+  WorkerDisabledError,
+} from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
 import {
@@ -39,6 +45,8 @@ export async function evaluateAndQueueRule(
   now = Date.now(),
   options: { data?: ReadinessData; workerWindow?: number } = {},
 ) {
+  if (!workerEnabled("automations"))
+    return { ...disabledWorkerResult("automations"), outboxIds: [] };
   const db = client as SupabaseClient<Database>,
     rule = mapAutomationRule(row);
   const data =
@@ -132,12 +140,14 @@ export async function evaluateAndQueueRule(
   const queuedStatuses: string[] = [];
   if (!preview && decision.eligible)
     for (const stage of decision.stages) {
+      assertWorkerEnabled("automations");
       const recipients = stage.coachEscalation
         ? coachUser?.data.user?.email
           ? [{ email: coachUser.data.user.email, name: "Coach", kind: "coach" }]
           : []
         : resolution.recipients;
       for (const recipient of recipients) {
+        assertWorkerEnabled("automations");
         const contact =
           "linkedContactId" in recipient
             ? data.linkedContacts.find(
@@ -179,6 +189,7 @@ export async function evaluateAndQueueRule(
                 : coverageKey
                   ? `${coverageKey}:${email}`
                   : `automation:${rule.key}:${entityId}:${entity.lesson?.startsAt ?? entity.package?.expiresAt ?? entity.message?.updatedAt ?? "initial"}:${stage.key}${paymentReminderNeedsApproval(rule.key) && !stage.coachEscalation ? `:balance-${financial?.amountDueMinor}` : ""}:${email}`;
+        assertWorkerEnabled("automations");
         const queued = await queuePresentedMessages(
           client,
           [
@@ -294,6 +305,7 @@ export async function evaluateAndQueueRule(
       `${rule.id}:${rule.version}:${entityId}:${preview ? correlationId : JSON.stringify({ window: options.workerWindow, result, reason: decision.suppressedReason, financial: decision.financialState, state: entity.lesson?.updatedAt ?? entity.package?.updatedAt ?? entity.message?.updatedAt, studentUpdatedAt: data.students[0]?.updatedAt, contacts: data.linkedContacts.map((c) => [c.id, c.updatedAt]), stages: decision.stages.map((s) => s.key) })}`,
     )
     .digest("hex");
+  assertWorkerEnabled("automations");
   const recorded = await db.from("automation_runs").upsert(
     {
       studio_id: row.studio_id,
@@ -326,6 +338,8 @@ export async function evaluateStudioAutomations(
   correlationId: string,
   deadline = Date.now() + 10_000,
 ) {
+  if (!workerEnabled("automations"))
+    return { ...disabledWorkerResult("automations"), evaluated: 0 };
   const db = client as SupabaseClient<Database>;
   const rulesResult = await db
     .from("automation_rules")
@@ -345,7 +359,12 @@ export async function evaluateStudioAutomations(
     ...rulesResult.data.slice(0, offset),
   ];
   for (const rule of rotatingRules) {
-    if (Date.now() >= deadline || evaluated >= 8) break;
+    if (
+      !workerEnabled("automations") ||
+      Date.now() >= deadline ||
+      evaluated >= 8
+    )
+      break;
     // Existing event producers own confirmation/reminder/failure idempotency during compatibility.
     if (
       [
@@ -406,7 +425,12 @@ export async function evaluateStudioAutomations(
     if (entities.error) throw entities.error;
     for (const entity of entities.data)
       if (entity.student_id || rule.rule_key === "delivery_failure") {
-        if (Date.now() >= deadline || evaluated >= 8) break;
+        if (
+          !workerEnabled("automations") ||
+          Date.now() >= deadline ||
+          evaluated >= 8
+        )
+          break;
         try {
           let data = entity.student_id
             ? dataCache.get(entity.student_id)
@@ -431,7 +455,9 @@ export async function evaluateStudioAutomations(
             now,
             { data, workerWindow: Math.floor(now / (20 * 60_000)) },
           );
-        } catch {
+        } catch (error) {
+          if (error instanceof WorkerDisabledError) throw error;
+          assertWorkerEnabled("automations");
           const recorded = await db.from("automation_runs").upsert(
             {
               studio_id: studioId,

@@ -1,3 +1,7 @@
+import {
+  workerEnabled,
+  disabledWorkerResponse,
+} from "../_shared/worker-controls";
 import { json } from "../_shared/http";
 import { dispatchOutbox } from "../_shared/outbox-dispatch";
 import { serviceClient } from "../_shared/supabase";
@@ -309,8 +313,10 @@ export async function handleMessagingCommands(
   }
 
   if (domain === "outbox" && input.command === "retry_failed") {
-    const authorizedStudio = await requireCoach(),
-      service = serviceClient();
+    const authorizedStudio = await requireCoach();
+    if (!workerEnabled("automations"))
+      return disabledWorkerResponse("automations");
+    const service = serviceClient();
     const failed = await service
       .from("outbox_messages")
       .select("*")
@@ -329,18 +335,18 @@ export async function handleMessagingCommands(
           eligible.reason,
         );
     }
-    const studioId = await requireCoach(),
-      { data, error } = await serviceClient()
-        .from("outbox_messages")
-        .update({
-          status: "queued",
-          next_attempt_at: new Date().toISOString(),
-          last_error: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("studio_id", studioId)
-        .eq("status", "failed")
-        .select("id");
+    const studioId = authorizedStudio;
+    const { data, error } = await serviceClient()
+      .from("outbox_messages")
+      .update({
+        status: "queued",
+        next_attempt_at: new Date().toISOString(),
+        last_error: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("studio_id", studioId)
+      .eq("status", "failed")
+      .select("id");
     if (error) throw error;
     return json({
       resource: { retried: data?.length || 0 },
@@ -362,6 +368,8 @@ export async function handleMessagingCommands(
     ["manual_send", "resend", "cancel_manual"].includes(input.command)
   ) {
     const studioId = await requireCoach();
+    if (input.command !== "cancel_manual" && !workerEnabled("automations"))
+      return disabledWorkerResponse("automations");
     const service = serviceClient();
     if (input.command === "cancel_manual") {
       const { data: before, error: beforeError } = await service
@@ -508,6 +516,9 @@ export async function handleMessagingCommands(
   }
 
   if (domain === "outbox" && input.command === "approve") {
+    await requireCoach();
+    if (!workerEnabled("automations"))
+      return disabledWorkerResponse("automations");
     const { data, error } = await db.rpc("command_approve_outbox", {
       message_id: input.entityId,
       expected_version: input.expectedVersion,

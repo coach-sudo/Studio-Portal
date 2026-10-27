@@ -6,7 +6,9 @@ export async function processLessonBulkItems(
   db: ReturnType<typeof serviceClient>,
   jobId?: string,
   limit = 10,
+  checkpoint: () => void = () => {},
 ) {
+  checkpoint();
   const claimed = await db.rpc("claim_lesson_bulk_items", {
     p_limit: limit,
     p_job: jobId,
@@ -18,6 +20,7 @@ export async function processLessonBulkItems(
   }[];
   const outcomes: { itemId: string; status: string }[] = [];
   for (const item of items) {
+    checkpoint();
     try {
       const result = await db.rpc("process_lesson_bulk_item", {
         p_item: item.id,

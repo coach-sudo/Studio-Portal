@@ -1,9 +1,14 @@
+import {
+  workerEnabled,
+  disabledWorkerResponse,
+} from "./_shared/worker-controls";
 import type { Config } from "@netlify/functions";
 import { googleAccessToken } from "./_shared/google";
 import { serviceClient } from "./_shared/supabase";
 import { projectCalendarItem } from "./_shared/calendar-projection";
 
 export default async () => {
+  if (!workerEnabled("calendar")) return disabledWorkerResponse("calendar");
   const db = serviceClient();
   const { data: items, error } = await db.rpc("claim_calendar_projections", {
     batch_size: 10,
@@ -12,6 +17,7 @@ export default async () => {
   if (!items?.length) return Response.json({ ok: true, processed: 0 });
   let projected = 0;
   for (const item of items) {
+    if (!workerEnabled("calendar")) break;
     if (
       await projectCalendarItem(
         db,

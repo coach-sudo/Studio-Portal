@@ -27,6 +27,7 @@ vi.mock("stripe", () => ({
 }));
 
 function database(paymentError = false) {
+  const filters: unknown[][] = [];
   const writes: Array<{
     table: string;
     action: string;
@@ -40,6 +41,7 @@ function database(paymentError = false) {
     billing_option_id: "option",
     stripe_customer_id: "customer",
     renewal_attempt_key: "attempt",
+    renewal_claimed_at: "2026-10-26T12:00:00Z",
     packages: { credit_quantity: 4, currency: "USD" },
     package_definitions: {
       session_count: 8,
@@ -99,6 +101,7 @@ function database(paymentError = false) {
             if (method === "maybeSingle")
               return async () => ({ data: null, error: null });
             return (...args: unknown[]) => {
+              if (method === "eq") filters.push(args);
               if (["insert", "upsert", "update"].includes(String(method)))
                 writes.push({
                   table,
@@ -114,7 +117,7 @@ function database(paymentError = false) {
     },
   };
   mocks.service.mockReturnValue(db);
-  return { writes, rpc: db.rpc };
+  return { writes, filters, rpc: db.rpc };
 }
 
 beforeEach(() => {
@@ -122,9 +125,11 @@ beforeEach(() => {
   vi.stubGlobal("Netlify", {
     env: {
       get: (key: string) =>
-        key === "DEPLOY_PRIME_URL"
-          ? "https://portal.example.test"
-          : "test-only",
+        key.startsWith("WORKER_")
+          ? "true"
+          : key === "DEPLOY_PRIME_URL"
+            ? "https://portal.example.test"
+            : "test-only",
     },
   });
   mocks.item.mockResolvedValue({ id: "item" });
@@ -236,4 +241,41 @@ describe("existing package renewal agreements", () => {
       ),
     ).toBe(false);
   });
+});
+
+it("containment after renewal claim releases only unstarted matching claims and preserves retry keys", async () => {
+  let enabled = true;
+  vi.stubGlobal("Netlify", {
+    env: {
+      get: (key: string) =>
+        key.startsWith("WORKER_") ? (enabled ? "true" : "false") : "test-only",
+    },
+  });
+  const { rpc, writes, filters } = database();
+  const original = rpc.getMockImplementation()!;
+  rpc.mockImplementation(async (name: string) => {
+    const response = await original(name);
+    if (name === "claim_package_auto_renewals") enabled = false;
+    return response;
+  });
+  await expect(maintenance()).rejects.toThrow("Worker execution is disabled.");
+  expect(filters).toContainEqual(["renewal_attempt_key", "attempt"]);
+  expect(filters).toContainEqual([
+    "renewal_claimed_at",
+    "2026-10-26T12:00:00Z",
+  ]);
+  expect(mocks.item).not.toHaveBeenCalled();
+  expect(mocks.invoice).not.toHaveBeenCalled();
+  expect(writes).toContainEqual({
+    table: "package_subscriptions",
+    action: "update",
+    values: { renewal_in_flight: false },
+  });
+  expect(
+    writes.some(
+      (w) =>
+        w.table === "package_subscriptions" &&
+        "renewal_attempt_key" in w.values,
+    ),
+  ).toBe(false);
 });

@@ -1,3 +1,9 @@
+import {
+  workerEnabled,
+  assertWorkerEnabled,
+  disabledWorkerResponse,
+  WorkerDisabledError,
+} from "./worker-controls";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { Context } from "@netlify/functions";
 import { serviceClient } from "./supabase";
@@ -17,6 +23,7 @@ export async function dispatchScheduledWorker(
   worker: ScheduledWorker,
   context: Context,
 ) {
+  if (!workerEnabled(worker)) return disabledWorkerResponse(worker);
   const telemetry = workerTelemetry(worker, context.requestId);
   try {
     telemetry.stage("dispatch");
@@ -34,6 +41,7 @@ export async function dispatchScheduledWorker(
       telemetry.success();
       return Response.json({ ok: true, status: "already_running" });
     }
+    assertWorkerEnabled(worker);
     const body = JSON.stringify({
       worker,
       jobId: job.data,
@@ -63,6 +71,8 @@ export async function dispatchScheduledWorker(
       { status: 202 },
     );
   } catch (error) {
+    if (error instanceof WorkerDisabledError)
+      return disabledWorkerResponse(worker);
     const safe = telemetry.failure(error);
     // Pending receipt survives failed/ambiguous delivery; the next schedule retries it.
     throw new Error(safe.message);
@@ -95,6 +105,7 @@ export async function runScheduledWorker(
       !/^[a-f0-9-]{36}$/.test(input.jobId)
     )
       throw new Error("Worker authorization failed.");
+    if (!workerEnabled(worker)) return disabledWorkerResponse(worker);
     jobId = input.jobId;
     telemetry.stage("claim");
     const db = serviceClient();
@@ -108,7 +119,9 @@ export async function runScheduledWorker(
       return;
     }
     token = claim.data;
+    assertWorkerEnabled(worker);
     await process(telemetry);
+    assertWorkerEnabled(worker);
     telemetry.stage("completion");
     const finish = await db.rpc("finish_scheduled_worker", {
       p_worker: worker,
@@ -119,7 +132,10 @@ export async function runScheduledWorker(
     if (!finish.data) throw new Error("Worker completion claim expired.");
     telemetry.success();
   } catch (error) {
-    const safe = telemetry.failure(error);
+    const disabled = error instanceof WorkerDisabledError;
+    const safe = disabled
+      ? { category: "configuration", message: "Worker execution is disabled." }
+      : telemetry.failure(error);
     if (token) {
       try {
         const db = serviceClient();
@@ -135,6 +151,7 @@ export async function runScheduledWorker(
         telemetry.failure(new Error("Worker receipt unavailable."));
       }
     }
+    if (disabled) return disabledWorkerResponse(worker);
     // Reject, rather than returning an error Response: Netlify background retries
     // only see handler errors. Lost completion replies remain fenced/recoverable.
     throw new Error(safe.message);

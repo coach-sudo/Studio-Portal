@@ -1,3 +1,7 @@
+import {
+  workerEnabled,
+  disabledWorkerResponse,
+} from "../_shared/worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Json } from "../../../src/types/database.generated";
 import { z } from "zod";
@@ -19,8 +23,19 @@ export async function handleAutomationCommands(
   if (ctx.domain !== "automations") return null;
   if (!ctx.input.entityId)
     throw AppError.validation({ entityId: "An entity ID is required." });
-  const studioId = await ctx.requireCoach(),
-    client = serviceClient(),
+  const studioId = await ctx.requireCoach();
+  if (
+    [
+      "test_rule",
+      "run_rule",
+      "approve_message",
+      "send_now",
+      "retry_message",
+    ].includes(ctx.input.command) &&
+    !workerEnabled("automations")
+  )
+    return disabledWorkerResponse("automations");
+  const client = serviceClient(),
     db = client as SupabaseClient<Database>;
   if (ctx.input.command === "save_rule") {
     const value = automationConfigSchema.parse(ctx.input.payload);

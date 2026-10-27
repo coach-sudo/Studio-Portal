@@ -1,3 +1,8 @@
+import {
+  assertWorkerEnabled,
+  workerEnabled,
+  disabledWorkerResponse,
+} from "./worker-controls";
 import { checkedAll, checkedQuery } from "./checked-query";
 import type { WorkerTelemetry } from "./worker-telemetry";
 import { packageLedgers, publishedLessonIds } from "./maintenance-reads";
@@ -14,14 +19,26 @@ const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
 
 export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
+  if (!workerEnabled("booking-maintenance"))
+    return disabledWorkerResponse("booking-maintenance");
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("lesson_bulk");
   const db = serviceClient();
-  const lessonBulk = await processLessonBulkItems(db).catch((error) => {
+  const lessonBulk = await processLessonBulkItems(db, undefined, 10, () =>
+    assertWorkerEnabled("booking-maintenance"),
+  ).catch((error) => {
     telemetry.failure(error);
     return [{ itemId: "", status: "claim_failed" }];
   });
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("lesson_change_effects");
-  const lessonChanges = await processLessonChangeEffects(db);
+  const lessonChanges = workerEnabled("automations")
+    ? await processLessonChangeEffects(db, undefined, () => {
+        assertWorkerEnabled("booking-maintenance");
+        assertWorkerEnabled("automations");
+      })
+    : { processed: 0, failed: 0 };
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("booking_holds_and_series");
   const maintenanceTime = new Date();
   const runDailyStorageCleanup =
@@ -45,6 +62,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     ).toISOString();
     await clearDeliveredPortalCredentials(db, credentialRetention);
   }
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("past_due_bookings");
   const grace = new Date(Date.now() - 7 * 86400000).toISOString(),
     now = new Date().toISOString();
@@ -56,6 +74,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   if (delinquentError) throw delinquentError;
   if (delinquent?.length) {
     for (const booking of delinquent) {
+      assertWorkerEnabled("booking-maintenance");
       // Payment delinquency is an exception for the coach, not implicit permission to cancel teaching.
       const recommendation = await checkedQuery(
         db.from("recommendations").upsert(
@@ -83,6 +102,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     }
   }
 
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("note_recommendations");
   const notePriorityStart = new Date(Date.now() - 8 * 86400000).toISOString();
   const [
@@ -119,6 +139,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   );
   let noteReminders = 0;
   for (const lesson of recentLessons || []) {
+    assertWorkerEnabled("booking-maintenance");
     if (published.has(lesson.id)) {
       await db
         .from("recommendations")
@@ -160,9 +181,13 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     noteReminders++;
   }
 
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("automatic_credits");
-  const creditCoverage = await applyAutomaticCredits(db);
+  const creditCoverage = await applyAutomaticCredits(db, () =>
+    assertWorkerEnabled("booking-maintenance"),
+  );
 
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("package_gifts");
   const { data: dueGifts, error: dueGiftError } = await db
     .from("package_gifts")
@@ -175,6 +200,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   if (dueGiftError) throw dueGiftError;
   let packageGiftsDelivered = 0;
   for (const gift of dueGifts || []) {
+    assertWorkerEnabled("booking-maintenance");
     let { data: recipient } = await db
       .from("students")
       .select("id")
@@ -217,6 +243,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     packageGiftsDelivered += 1;
   }
 
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("package_auto_renewals");
   let packageAutoRenewals = 0;
   const { data: dueRenewals, error: renewalClaimError } = await checkedQuery(
@@ -224,11 +251,31 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   );
   if (renewalClaimError) throw renewalClaimError;
   if (dueRenewals?.length) {
+    const releaseUnstartedRenewals = async (start: number) => {
+      for (const renewal of dueRenewals.slice(start)) {
+        const released = await db
+          .from("package_subscriptions")
+          .update({ renewal_in_flight: false })
+          .eq("id", renewal.id)
+          .eq("renewal_in_flight", true)
+          .eq("renewal_claimed_at", renewal.renewal_claimed_at)
+          .eq("renewal_attempt_key", renewal.renewal_attempt_key);
+        if (released.error) throw released.error;
+      }
+    };
+    if (!workerEnabled("booking-maintenance")) {
+      await releaseUnstartedRenewals(0);
+      assertWorkerEnabled("booking-maintenance");
+    }
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey)
       throw new Error("Stripe is not configured for package renewal.");
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" });
-    for (const renewal of dueRenewals) {
+    for (const [renewalIndex, renewal] of dueRenewals.entries()) {
+      if (!workerEnabled("booking-maintenance")) {
+        await releaseUnstartedRenewals(renewalIndex);
+        assertWorkerEnabled("booking-maintenance");
+      }
       try {
         const { data: purchased, error: purchasedError } = await db
           .from("packages")
@@ -311,6 +358,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     }
   }
 
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("package_expiration");
   const expiryLimit = new Date(Date.now() + 365 * 86400000).toISOString();
   const { data: expiringPackages, error: expiringError } = await db
@@ -328,6 +376,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   );
   let packageReminders = 0;
   for (const pkg of expiringPackages || []) {
+    assertWorkerEnabled("booking-maintenance");
     const entries = expirationLedgers.get(pkg.id) || [];
     const balance = (entries || []).reduce(
       (total, entry) => total + Number(entry.quantity),
@@ -387,31 +436,34 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
         credits: String(balance),
         expiresAt,
       };
-      await queuePackageWarning(db, {
-        studioId: student.studio_id,
-        studentId: pkg.student_id,
-        packageId: pkg.id,
-        key: "package_expiration",
-        subject: render(
-          automation.packageExpirySubject ||
-            "{{packageName}} expires in {{days}} days",
-          templateValues,
-        ),
-        body: render(
-          automation.packageExpiryBody ||
-            "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can review your package from the portal.",
-          templateValues,
-        ),
-        dedupe: `${dedupe}:student`,
-        studio: {
-          name: String(studio?.name || "Coach'D"),
-          settings: studio?.settings ?? {},
-        },
-        legacyEnabled: automation.enabled !== false,
-      });
-      packageReminders += 1;
+      if (workerEnabled("automations")) {
+        await queuePackageWarning(db, {
+          studioId: student.studio_id,
+          studentId: pkg.student_id,
+          packageId: pkg.id,
+          key: "package_expiration",
+          subject: render(
+            automation.packageExpirySubject ||
+              "{{packageName}} expires in {{days}} days",
+            templateValues,
+          ),
+          body: render(
+            automation.packageExpiryBody ||
+              "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can review your package from the portal.",
+            templateValues,
+          ),
+          dedupe: `${dedupe}:student`,
+          studio: {
+            name: String(studio?.name || "Coach'D"),
+            settings: studio?.settings ?? {},
+          },
+          legacyEnabled: automation.enabled !== false,
+        });
+        packageReminders += 1;
+      }
     }
   }
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("package_low_balance");
   const { data: activePackages, error: activeError } = await db
     .from("packages")
@@ -426,6 +478,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
     (activePackages || []).map((pkg) => pkg.id),
   );
   for (const pkg of activePackages || []) {
+    assertWorkerEnabled("booking-maintenance");
     const entries = activeLedgers.get(pkg.id) || [];
     const balance = (entries || []).reduce(
       (total, entry) => total + Number(entry.quantity),
@@ -462,21 +515,23 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
         "Hi {{studentName}},\n\nYou have {{credits}} lesson left in {{packageName}}. Renew here before you run out: {{renewUrl}}",
       values,
     );
-    await queuePackageWarning(db, {
-      studioId: student.studio_id,
-      studentId: pkg.student_id,
-      packageId: pkg.id,
-      key: "package_low",
-      subject,
-      body,
-      dedupe: `package:${pkg.id}:purchase:${latestPurchase}:low:${balance}`,
-      studio: {
-        name: String(studio?.name || "Coach'D"),
-        settings: studio?.settings ?? {},
-      },
-      legacyEnabled: automation.enabled !== false,
-    });
+    if (workerEnabled("automations"))
+      await queuePackageWarning(db, {
+        studioId: student.studio_id,
+        studentId: pkg.student_id,
+        packageId: pkg.id,
+        key: "package_low",
+        subject,
+        body,
+        dedupe: `package:${pkg.id}:purchase:${latestPurchase}:low:${balance}`,
+        studio: {
+          name: String(studio?.name || "Coach'D"),
+          settings: studio?.settings ?? {},
+        },
+        legacyEnabled: automation.enabled !== false,
+      });
   }
+  assertWorkerEnabled("booking-maintenance");
   telemetry.stage("notification_retention");
   const { count: prunedNotificationReceipts } = await db
     .from("notification_receipts")
