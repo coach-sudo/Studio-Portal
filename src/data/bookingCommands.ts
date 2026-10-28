@@ -13,6 +13,7 @@ export type BookingAdminResource =
 export async function bookingAdminCommand(
   resource: BookingAdminResource,
   body: Record<string, unknown>,
+  idempotencyKey?: string,
 ) {
   if (!isSupabaseConfigured || !supabase)
     throw new Error("Production database is not configured.");
@@ -24,7 +25,7 @@ export async function bookingAdminCommand(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${session.session.access_token}`,
-      "Idempotency-Key": crypto.randomUUID(),
+      "Idempotency-Key": idempotencyKey ?? crypto.randomUUID(),
     },
     body: JSON.stringify(body),
   });
@@ -46,11 +47,25 @@ export async function checkSchedulingConflicts(
   endsAt: string,
   lessonId?: string,
 ) {
+  return (await inspectSchedulingConflicts(startsAt, endsAt, lessonId))
+    .conflicts;
+}
+export async function inspectSchedulingConflicts(
+  startsAt: string,
+  endsAt: string,
+  lessonId?: string,
+): Promise<{
+  conflicts: SchedulingConflict[];
+  externalCalendarChecked: boolean;
+}> {
   const result = await bookingAdminCommand("bookings", {
     command: "check_conflicts",
     payload: { starts_at: startsAt, ends_at: endsAt, lesson_id: lessonId },
   });
-  return (result?.conflicts || []) as SchedulingConflict[];
+  return {
+    conflicts: result?.conflicts || [],
+    externalCalendarChecked: result?.externalCalendarChecked === true,
+  };
 }
 
 export async function portalBookingCommand(

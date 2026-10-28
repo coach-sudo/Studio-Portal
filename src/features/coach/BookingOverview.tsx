@@ -1,8 +1,9 @@
 import { CheckCircle2, MoreHorizontal, RefreshCw } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, EmptyState, Status } from "../../components/Primitives";
 import {
-  checkSchedulingConflicts,
+  inspectSchedulingConflicts,
+  type SchedulingConflict,
   type PlatformHealth,
 } from "../../data/bookingCommands";
 import { remainingCapacity } from "../../domain/booking";
@@ -237,7 +238,10 @@ export function ManualBookingDialog({
   data: StudioSnapshot;
   isDemo: boolean;
   onClose: () => void;
-  onSave: (payload: Record<string, unknown>) => Promise<void> | void;
+  onSave: (
+    payload: Record<string, unknown>,
+    key?: string,
+  ) => Promise<void> | void;
 }) {
   const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
     [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
@@ -254,11 +258,21 @@ export function ManualBookingDialog({
     [markPaid, setMarkPaid] = useState(false),
     [reason, setReason] = useState("Coach-created booking"),
     [dateError, setDateError] = useState(""),
-    [conflicts, setConflicts] = useState<
-      Array<{ id: string; summary: string; start: string; end: string }>
-    >([]),
+    [externalNote, setExternalNote] = useState(""),
+    [conflicts, setConflicts] = useState<SchedulingConflict[]>([]),
     [approvedTime, setApprovedTime] = useState(""),
-    [checking, setChecking] = useState(false);
+    [checking, setChecking] = useState(false),
+    [saving, setSaving] = useState(false);
+  const attempt = useRef<{
+    request: string;
+    key: string;
+    form: string;
+    payload: Record<string, unknown>;
+  } | null>(null);
+  useEffect(() => {
+    setConflicts([]);
+    setApprovedTime("");
+  }, [serviceId, location, studentId]);
   const service = data.bookingServices.find((item) => item.id === serviceId);
   useEffect(() => {
     if (service && !service.locationOptions.includes(location))
@@ -282,32 +296,69 @@ export function ManualBookingDialog({
             return;
           }
           setDateError("");
+          const form = JSON.stringify([
+            studentId,
+            serviceId,
+            startsAt,
+            location,
+            locationLabel,
+            customPrice,
+            markPaid,
+            reason,
+          ]);
+          if (attempt.current?.form === form) {
+            setSaving(true);
+            try {
+              await onSave(attempt.current.payload, attempt.current.key);
+            } catch (error) {
+              setDateError(
+                error instanceof Error
+                  ? error.message
+                  : "The booking response is unknown. Retry this unchanged request to recover its receipt.",
+              );
+            } finally {
+              setSaving(false);
+            }
+            return;
+          }
           const endsAt = new Date(
             parsedStart.getTime() +
               Number(service?.durationMinutes || 60) * 60_000,
           );
-          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}`;
+          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}|${serviceId}|${location}|${studentId}`;
           if (approvedTime !== timeKey) {
             setChecking(true);
             try {
-              const found = isDemo
-                ? data.lessons
-                    .filter(
-                      (lesson) =>
-                        lesson.status === "scheduled" &&
-                        new Date(lesson.startsAt) < endsAt &&
-                        new Date(lesson.endsAt) > parsedStart,
-                    )
-                    .map((lesson) => ({
-                      id: lesson.id,
-                      summary: lesson.topic,
-                      start: lesson.startsAt,
-                      end: lesson.endsAt,
-                    }))
-                : await checkSchedulingConflicts(
+              const preview = isDemo
+                ? {
+                    conflicts: data.lessons
+                      .filter(
+                        (lesson) =>
+                          lesson.status === "scheduled" &&
+                          new Date(lesson.startsAt) < endsAt &&
+                          new Date(lesson.endsAt) > parsedStart,
+                      )
+                      .map((lesson) => ({
+                        id: lesson.id,
+                        summary: lesson.topic,
+                        start: lesson.startsAt,
+                        end: lesson.endsAt,
+                        source: "studio" as const,
+                      })),
+                    externalCalendarChecked: false,
+                  }
+                : await inspectSchedulingConflicts(
                     parsedStart.toISOString(),
                     endsAt.toISOString(),
                   );
+              const found = preview.conflicts;
+              setExternalNote(
+                isDemo
+                  ? "Demo conflict preview uses local fixture lessons only."
+                  : preview.externalCalendarChecked
+                    ? "Google and local studio conflict checks completed."
+                    : "Google is not configured. Only local studio conflicts were checked.",
+              );
               setConflicts(found);
               if (found.length) {
                 setApprovedTime(timeKey);
@@ -324,7 +375,14 @@ export function ManualBookingDialog({
               setChecking(false);
             }
           }
-          await onSave({
+          if (
+            conflicts.some((item) => item.source === "studio") &&
+            approvedTime === timeKey
+          ) {
+            setDateError("Studio lessons cannot overlap. Choose another time.");
+            return;
+          }
+          const payload = {
             student_id: studentId,
             service_id: serviceId,
             starts_at: parsedStart.toISOString(),
@@ -335,12 +393,37 @@ export function ManualBookingDialog({
             mark_paid: markPaid,
             reason,
             allow_conflict: approvedTime === timeKey,
-          });
+          };
+          const fingerprint = JSON.stringify(payload);
+          if (attempt.current?.request !== fingerprint)
+            attempt.current = {
+              request: fingerprint,
+              key: crypto.randomUUID(),
+              form,
+              payload,
+            };
+          setSaving(true);
+          try {
+            await onSave(payload, attempt.current.key);
+          } catch (error) {
+            setDateError(
+              error instanceof Error
+                ? error.message
+                : "The booking response is unknown. Retry this unchanged request to recover its receipt.",
+            );
+          } finally {
+            setSaving(false);
+          }
         }}
       >
         {!data.students.length && (
           <p className="inline-error full">
             Add a student to the roster before creating a coach booking.
+          </p>
+        )}
+        {externalNote && (
+          <p className="full" role="status">
+            {externalNote}
           </p>
         )}
         <label>
@@ -472,11 +555,15 @@ export function ManualBookingDialog({
                 You have “{item.summary}” from{" "}
                 {formatStudioTime(item.start, data.settings.timezone)}–
                 {formatStudioTime(item.end, data.settings.timezone)} that day.
-                Do you still want to schedule for this time?
+                {item.source === "studio"
+                  ? "Choose another time; studio lesson overlaps cannot be overridden."
+                  : "A coach may override this Google-only conflict with the recorded reason."}
               </p>
             ))}
             <small>
-              Submit again to schedule anyway, or choose another time.
+              {conflicts.some((item) => item.source === "studio")
+                ? "Local double-booking protection remains active."
+                : "Submit again to override this Google-only conflict, or choose another time."}
             </small>
           </div>
         )}
@@ -486,13 +573,21 @@ export function ManualBookingDialog({
           </button>
           <button
             className="primary"
-            disabled={!studentId || !serviceId || checking}
+            disabled={
+              !studentId ||
+              !serviceId ||
+              checking ||
+              saving ||
+              conflicts.some((item) => item.source === "studio")
+            }
           >
-            {checking
-              ? "Checking calendar…"
-              : conflicts.length
-                ? "Schedule anyway"
-                : "Create booking"}
+            {saving
+              ? "Saving booking…"
+              : checking
+                ? "Checking calendar…"
+                : conflicts.length
+                  ? "Override Google conflict"
+                  : "Create booking"}
           </button>
         </div>
       </form>

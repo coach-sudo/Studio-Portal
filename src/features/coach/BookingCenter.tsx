@@ -232,17 +232,22 @@ export function BookingCenter() {
     payload: Record<string, unknown>,
     item: { id: string; version: number } | undefined,
     mutate: (draft: StudioSnapshot) => void,
+    idempotencyKey?: string,
   ) {
     setNotice("");
     try {
       if (isDemo) store.transact((draft) => mutate(draft));
       else {
-        await bookingAdminCommand(resource, {
-          command,
-          id: item?.id,
-          expectedVersion: item?.version,
-          payload,
-        });
+        await bookingAdminCommand(
+          resource,
+          {
+            command,
+            id: item?.id,
+            expectedVersion: item?.version,
+            payload,
+          },
+          idempotencyKey,
+        );
         await invalidateStudioDomains(queryClient, [
           "booking",
           "finance",
@@ -260,6 +265,7 @@ export function BookingCenter() {
           ? reason.message
           : "The change could not be saved.",
       );
+      if (command === "create_manual") throw reason;
     }
   }
 
@@ -443,9 +449,14 @@ export function BookingCenter() {
           data={data}
           isDemo={isDemo}
           onClose={() => setDialog(undefined)}
-          onSave={(payload) =>
-            run("bookings", "create_manual", payload, undefined, (draft) =>
-              createDemoManualBooking(draft, payload),
+          onSave={(payload, key) =>
+            run(
+              "bookings",
+              "create_manual",
+              payload,
+              undefined,
+              (draft) => createDemoManualBooking(draft, payload),
+              key,
             )
           }
         />
