@@ -1,0 +1,69 @@
+{
+  "checkedAt": "2026-10-28T23:49:21Z",
+  "repository": "coach-sudo/Studio-Portal",
+  "pullRequest": 88,
+  "runtimeSource": "5e20cbcc7e18b3e5494b00bea80c06d246fa2801",
+  "reportHead": "41a6ec66cae76910aaf5a2bade53e5958f3998cb",
+  "production": {
+    "run": 40787760137,
+    "result": "success",
+    "vitest": {
+      "passed": 1061,
+      "files": 153
+    },
+    "warnings": 899,
+    "unchangedWarningBudget": 904,
+    "format": "passed",
+    "typecheck": "passed",
+    "build": "passed",
+    "database": {
+      "newIdentityAssertions": 47,
+      "totalAssertions": 378,
+      "files": 15,
+      "productionPrefixUpgrade": "passed",
+      "grants": "passed",
+      "generatedTypeParity": "passed",
+      "observedGroupingConcurrency": "passed"
+    }
+  },
+  "browser": {
+    "run": 40787759998,
+    "result": "success",
+    "passed": 61,
+    "blocked": 1,
+    "blocker": "staging STRIPE_SECRET_KEY is absent or is not a Stripe test-mode key",
+    "calendarFocusRepeats": {
+      "passed": 20,
+      "retries": 0
+    },
+    "fixtureCleanup": "all public/lesson-ops/storage/auth datasets restored to pre-fixture baseline",
+    "remainingSyntheticAuthUsers": 0
+  },
+  "localUi": {
+    "targetedCases": 51,
+    "files": 4,
+    "windowsBrowserCases": 8,
+    "parentComparisons": 8,
+    "screenshots": 48,
+    "minimumTextContrast": 6.47,
+    "minimumControlBorderContrast": 16.51,
+    "minimumFocusContrast": 3.3,
+    "focusPixels": 3
+  },
+  "superseded": {
+    "verificationRun": 40787161620,
+    "result": "failure",
+    "reason": "eight unformatted generated color JSON evidence files",
+    "browserRun": 40787161674,
+    "browserResult": "cancelled"
+  },
+  "productionMutation": false,
+  "providerInvocation": false,
+  "releaseAuthorized": false,
+  "remaining": [
+    "Provider-review mergeStudentId interaction requires alignment with approved identity policy.",
+    "Canonical Calendar coach review interface is incomplete.",
+    "Combined branches/migrations/fixtures and hosted provider/role/manual acceptance remain open.",
+    "Stripe test key/provider validation, password controls and performance measurements remain release gates."
+  ]
+}
