@@ -3,6 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import webhook from "../stripe-webhook-v2";
 const h = vi.hoisted(() => ({
   eventId: "evt_synthetic",
+  setupMode: false,
   failCancel: true,
   failLedger: false,
   loseCommitResponse: false,
@@ -28,24 +29,37 @@ const h = vi.hoisted(() => ({
 vi.mock("stripe", () => ({
   default: class {
     webhooks = {
-      constructEvent: () => ({
-        id: h.eventId,
-        type: "invoice.paid",
-        data: {
-          object: {
-            id: "in_synthetic",
-            amount_paid: 6000,
-            currency: "usd",
-            customer: "cus_synthetic",
-            parent: {
-              subscription_details: {
-                subscription: "sub_synthetic",
-                metadata: { booking_id: "synthetic-booking" },
+      constructEvent: () =>
+        h.setupMode
+          ? {
+              id: h.eventId,
+              type: "checkout.session.completed",
+              data: {
+                object: {
+                  id: "cs_synthetic_setup",
+                  mode: "setup",
+                  metadata: {},
+                },
+              },
+            }
+          : {
+              id: h.eventId,
+              type: "invoice.paid",
+              data: {
+                object: {
+                  id: "in_synthetic",
+                  amount_paid: 6000,
+                  currency: "usd",
+                  customer: "cus_synthetic",
+                  parent: {
+                    subscription_details: {
+                      subscription: "sub_synthetic",
+                      metadata: { booking_id: "synthetic-booking" },
+                    },
+                  },
+                },
               },
             },
-          },
-        },
-      }),
     };
     subscriptions = {
       retrieve: async () => ({ status: h.subscriptionStatus }),
@@ -168,6 +182,7 @@ beforeEach(() => {
   h.payments.clear();
   h.calls = [];
   h.eventId = "evt_synthetic";
+  h.setupMode = false;
   h.failCancel = true;
   h.failLedger = false;
   h.loseCommitResponse = false;
@@ -285,4 +300,12 @@ it("an unknown cancellation response is reconciled through subscription state", 
   expect((await call()).status).toBe(200);
   expect(h.cancel).not.toHaveBeenCalled();
   expect(h.effect.cancel_done).toBe(true);
+});
+it("setup-mode checkout acknowledges without purchasing or settling an installment", async () => {
+  h.setupMode = true;
+  expect((await call()).status).toBe(200);
+  expect(h.calls).toEqual([]);
+  expect(h.payments.size).toBe(0);
+  expect(h.cancel).not.toHaveBeenCalled();
+  expect(h.notify).not.toHaveBeenCalled();
 });

@@ -5775,10 +5775,7 @@ export type Database = {
         Args: { p_lesson: string; p_student?: string; p_use: boolean }
         Returns: undefined
       }
-      settle_stripe_booking_invoice: {
-        Args: { p_value: Json }
-        Returns: Json
-      }
+      settle_stripe_booking_invoice: { Args: { p_value: Json }; Returns: Json }
       settle_studio_invoice: {
         Args: {
           p_amount: number
