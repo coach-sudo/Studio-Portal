@@ -75,7 +75,6 @@ it("keeps a revoked calendar selection visible for explicit removal and blocks a
   fireEvent.click(
     screen.getByRole("button", {
       name: "Load accessible calendars",
-      exact: true,
     }),
   );
   await screen.findByText(/event read access unavailable/);
@@ -119,13 +118,11 @@ async function prepare() {
   fireEvent.click(
     screen.getByRole("button", {
       name: "Calendar discovery previews",
-      exact: true,
     }),
   );
   fireEvent.click(
     screen.getByRole("button", {
       name: "Load accessible calendars",
-      exact: true,
     }),
   );
   await screen.findByRole("checkbox", { name: /Studio Calendar/ });
@@ -218,7 +215,6 @@ it("keeps a later-page calendar selected while the first page is refreshed", asy
   fireEvent.click(
     screen.getByRole("button", {
       name: "Load accessible calendars",
-      exact: true,
     }),
   );
   await waitFor(() => expect(f.list).toHaveBeenCalledTimes(3));
@@ -249,7 +245,6 @@ it("rejects a DST gap without a provider write and identifies missing timezone p
   fireEvent.click(
     screen.getByRole("button", {
       name: "Calendar discovery previews",
-      exact: true,
     }),
   );
   expect(screen.getByRole("alert")).toHaveTextContent("valid studio timezone");
