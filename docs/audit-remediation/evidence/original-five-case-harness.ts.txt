@@ -1,0 +1,33 @@
+// @vitest-environment node
+// Read-only audit harness: all database and external effects are mocked.
+import { beforeEach, afterEach, expect, it, vi } from 'vitest';
+const h=vi.hoisted(()=>({writes:[] as any[],paymentFailure:false,googleFailure:false,failQueue:false}));
+vi.mock('./_shared/supabase',()=>{
+ const db={from:(table:string)=>{
+  let op='read',value:any;
+  const response=()=>{
+   if(op==='insert') { h.writes.push({table,value}); if(table==='payment_entries'&&h.paymentFailure)return {data:null,error:new Error('simulated database rejection')}; return {data:{...value,id:"'`${table}-${h.writes.length}`},error:null}; }
+   if(op==='"'delete'){h.writes.push({table,deleted:true});return {data:null,error:null};}
+   if(table==='memberships')return {data:{studio_id:'studio'},error:null};
+   if(table==='students')return {data:{id:'student',full_name:'Synthetic Student',email:'synthetic@example.test',is_minor:false},error:null};
+   if(table==='booking_services')return {data:{id:'service',name:'Synthetic Lesson',duration_minutes:60,location_options:['google_meet'],default_location:'google_meet',price_minor:6000,currency:'USD',policy:{}},error:null};
+   return {data:[],count:0,error:null};
+  };
+  const q:any={then:(f:any)=>Promise.resolve(response()).then(f)};
+  for(const name of ['select','eq','limit','single','maybeSingle','in','lt','gt','order','lte','or'])q[name]=()=>q;
+  q.insert=(v:any)=>{op='insert';value=v;return q;};q.delete=()=>{op='delete';return q;};q.upsert=q.insert;
+  return q;
+ }};return {userClient:()=>db,serviceClient:()=>db};
+});
+vi.mock('./_shared/google',()=>({googleAccessToken:async()=>{if(h.googleFailure)throw Error('Google OAuth requires reconnecting in Settings.');return 'synthetic-token';},googleCalendarConflicts:async()=>[]}));
+vi.mock('./_shared/booking-email',()=>({queueBookingEmails:async()=>{if(h.failQueue)throw Error('simulated queue failure');}}));
+vi.mock('./_shared/portal-access',()=>({ensureBookingPortalAccess:async()=>{}}));
+import handler from './booking-admin';
+const call=async(payload:any={})=>handler(new Request('https://example.test/api/v2/admin/booking/bookings',{method:'POST',headers:{'Content-Type':'application/json','Idempotency-Key':'same-audit-intent'},body:JSON.stringify({command:'create_manual',payload:{student_id:'student',service_id:'service',starts_at:'2030-01-01T15:00:00Z',allow_conflict:true,...payload}})}),{requestId:'audit',params:{resource:'bookings'}} as any);
+beforeEach(()=>{h.writes=[];h.paymentFailure=false;h.googleFailure=false;h.failQueue=false;vi.stubGlobal('Netlify',{env:{get:()=>undefined}});vi.spyOn(console,'error').mockImplementation(()=>{});});
+afterEach(()=>{vi.unstubAllGlobals();vi.restoreAllMocks();});
+it('reproduces server refusal of a historical coach booking',async()=>{expect((await call({starts_at:'2020-01-01T15:00:00Z'})).status).toBe(422);expect(h.writes).toHaveLength(0);});
+it('reproduces duplicate creation when the same Idempotency-Key is replayed',async()=>{expect((await call()).status).toBe(201);expect((await call()).status).toBe(201);expect(h.writes.filter(w=>w.table==='bookings')).toHaveLength(2);});
+it('reproduces success and paid booking despite payment ledger insert error',async()=>{h.paymentFailure=true;const r=await call({mark_paid:true});expect(r.status).toBe(201);expect((await r.json()).resource.payment_status).toBe('paid');expect(h.writes.some(w=>w.table==='payment_entries')).toBe(true);});
+it('reproduces mandatory Google auth at save when conflict preview can be local',async()=>{h.googleFailure=true;expect((await call({allow_conflict:false})).status).toBe(500);expect(h.writes).toHaveLength(0);});
+it('reproduces compensating deletes after notification queue fails',async()=>{h.failQueue=true;expect((await call({mark_paid:true})).status).toBe(500);expect(h.writes.filter(w=>w.deleted).map(w=>w.table)).toEqual(['lessons','bookings']);expect(h.writes.some(w=>w.table==='payment_entries'&&"'!w.deleted)).toBe(true);});
