@@ -75,6 +75,10 @@ select is((select count(*) from public.outbox_messages where studio_id='e7600000
 update lesson_ops.datetime_corrections set operation_txid=0;
 select set_config('app.lesson_actor','',true);
 select set_config('request.jwt.claim.sub','',true);
+-- This disposable schema has no default service table grants. Grant only the
+-- worker's required columns inside the outer rollback so the trigger, rather
+-- than the fixture's missing grant, is actually exercised.
+grant select,update(starts_at,ends_at) on public.lessons to service_role;
 set local role service_role;
 select throws_ok($$update public.lessons set starts_at='2020-01-01T10:00Z',ends_at='2020-01-01T11:00Z' where id='e7600000-0000-4000-8000-000000000013'$$,'P0001','REVIEW_REQUIRED: Corrected records require explicit coach review before source changes.','Automatic source cannot overwrite corrected history');
 reset role;
