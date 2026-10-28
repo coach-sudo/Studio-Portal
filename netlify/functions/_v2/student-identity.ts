@@ -1,24 +1,7 @@
 import { z } from "zod";
+import { identityProposalSchema as proposal } from "../../../src/domain/studentIdentity";
 import { json } from "../_shared/http";
 import type { V2CommandContext } from "./types";
-
-const proposal = z.discriminatedUnion("action", [
-  z
-    .object({
-      action: z.literal("group"),
-      currentStudentId: z.string().uuid(),
-      duplicateStudentId: z.string().uuid(),
-      reason: z.string().trim().min(3).max(500),
-    })
-    .strict(),
-  z
-    .object({
-      action: z.literal("dissolve"),
-      currentStudentId: z.string().uuid(),
-      reason: z.string().trim().min(3).max(500),
-    })
-    .strict(),
-]);
 
 export async function handleStudentIdentity(
   ctx: V2CommandContext,
