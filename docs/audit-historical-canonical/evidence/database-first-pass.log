@@ -1,0 +1,6 @@
+2026-10-28T22:47:02.6068984Z /home/runner/work/Studio-Portal/Studio-Portal/supabase/tests/historical_calendar_canonical_reconciliation.sql .. ok
+2026-10-28T22:47:12.6695082Z All tests successful.
+2026-10-28T22:47:12.6696587Z Files=18, Tests=555, 12 wallclock secs ( 0.10 usr  0.04 sys +  0.17 cusr  0.12 csys =  0.43 CPU)
+2026-10-28T22:48:11.0077001Z PASS: observed concurrent identical commands share one receipt/revision/audit; changed payload conflicts; concurrent different keys reject a stale preview; no lesson or notification effect.
+2026-10-28T22:48:23.8086000Z PASS: observed canonical same-key replay commits one lesson/participant; changed payload conflicts; different keys reject stale creation; both legacy-import race orderings are safe; no attendance, payment, notification or Calendar effect.
+2026-10-28T22:48:25.4094238Z ##[group]Run git diff --exit-code -- src/types/database.generated.ts

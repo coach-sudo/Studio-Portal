@@ -157,6 +157,29 @@ select is((public.historical_calendar_decision_history(pg_temp.canonical_candida
 select is(public.historical_calendar_decision_history(pg_temp.canonical_candidate(10))->>'hasMore','true','Older history is discoverable');
 select is(jsonb_array_length(public.historical_calendar_decision_history(pg_temp.canonical_candidate(10),(public.historical_calendar_decision_history(pg_temp.canonical_candidate(10))->>'nextBeforeVersion')::integer)->'items'),2,'Cursor exposes the remaining history without duplicates');
 reset role;
+-- Equal provider event IDs on distinct selected calendars retain their own
+-- source identities. Neither an account-relative alias nor a raw ID can choose
+-- the other calendar's existing lesson for the coach.
+insert into discovery_internal.sources(scan_id,calendar_id,label) values('e8600000-0000-4000-8000-000000000007','canonical-b','E2E second calendar');
+insert into discovery_internal.candidates(id,scan_id,calendar_id,event_id,source_key,summary,status,starts_at,ends_at,reason_code)
+ values(pg_temp.canonical_candidate(20),'e8600000-0000-4000-8000-000000000007','canonical-b','e2e-review-18',jsonb_build_array('canonical-b','e2e-review-18')::text,'E2E distinct-calendar event','active','2020-01-09T15:00Z','2020-01-09T16:00Z','event_detected');
+set local role authenticated;
+select is((public.preview_historical_calendar_reconciliation(pg_temp.canonical_candidate(20),pg_temp.create_value('2020-01-09'))->>'sourceMatchCount')::integer,0,'Same raw event ID on another canonical calendar is not the existing source');
+select lives_ok($$select pg_temp.canonical_commit(20,pg_temp.create_value('2020-01-09'),'e2e-canonical-other-calendar')$$,'Explicit distinct-calendar historical source records its own lesson');
+reset role;
+select is((select count(*) from public.lessons where studio_id='e8600000-0000-4000-8000-000000000001' and source_external_id in(jsonb_build_array('canonical-a','e2e-review-18')::text,jsonb_build_array('canonical-b','e2e-review-18')::text)),2::bigint,'The two qualified sources retain independent canonical lesson identities');
+set local role service_role;
+select is((public.observe_protected_calendar_sources('e8600000-0000-4000-8000-000000000001','canonical-a','[{"id":"e2e-review-18","status":"cancelled"}]')->0->>'lessonId')::uuid,(current_setting('e2e.canonical.create.result')::jsonb#>>'{resource,lessonId}')::uuid,'Later Calendar A observations resolve only the Calendar A lesson');
+reset role;
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label) values('e8600000-0000-4000-8000-000000000033','e8600000-0000-4000-8000-000000000001','e8600000-0000-4000-8000-000000000006','E2E coach-corrected future record','2020-01-10T15:00Z','2020-01-10T16:00Z','scheduled','in_person','E2E');
+insert into discovery_internal.source_decisions(studio_id,calendar_id,event_id,disposition,lesson_id,lesson_ends_at,reviewed_hash,actor_id,reason) values('e8600000-0000-4000-8000-000000000001','canonical-a','e2e-review-future-linked','linked','e8600000-0000-4000-8000-000000000033','2020-01-10T16:00Z',repeat('a',64),'e8600000-0000-4000-8000-000000000002','Synthetic prior historical link');
+update public.lessons set starts_at='2099-01-10T15:00Z',ends_at='2099-01-10T16:00Z',version=version+1 where id='e8600000-0000-4000-8000-000000000033';
+insert into discovery_internal.candidates(id,scan_id,calendar_id,event_id,source_key,summary,status,starts_at,ends_at,reason_code)
+ values(pg_temp.canonical_candidate(21),'e8600000-0000-4000-8000-000000000007','canonical-a','e2e-review-future-linked',jsonb_build_array('canonical-a','e2e-review-future-linked')::text,'E2E corrected future linked source','active',null,null,'invalid_time_requires_review');
+set local role authenticated;
+select throws_ok($$select pg_temp.canonical_reopen(21)$$,'P0001','REVIEW_REQUIRED: Preserve the exact historical canonical lesson link.','Uncertain-source reopening cannot mutate a linked future lesson');
+reset role;
+select is((select version from discovery_internal.source_decisions where studio_id='e8600000-0000-4000-8000-000000000001' and event_id='e2e-review-future-linked'),1,'Rejected future-linked reopening leaves source history unchanged');
 select is((select to_jsonb(l) from public.lessons l where id='e8600000-0000-4000-8000-000000000030'),(select lesson from review_finance_before),'Repeated linking preserves the complete paid/completed canonical row');
 select is((select jsonb_agg(to_jsonb(p) order by p.id) from public.payment_entries p where p.student_id='e8600000-0000-4000-8000-000000000006'),(select payments from review_finance_before),'No reconciliation changes or duplicates append-only payment history');
 select is((select jsonb_agg(to_jsonb(p) order by p.id) from public.lesson_participants p where p.lesson_id='e8600000-0000-4000-8000-000000000030'),(select participants from review_finance_before),'Existing attended participation remains byte-equivalent');
