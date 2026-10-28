@@ -298,7 +298,11 @@ export function ManualBookingDialog({
   return (
     <Dialog
       title="Create a booking"
-      description="Coach scheduling and historical recording use separate outcome and notification rules. Every committed record is audited."
+      description={
+        mode === "historical"
+          ? "Historical records are audited. Attendance and financial treatment are explicit; Calendar and notifications are suppressed."
+          : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
+      }
       onClose={onClose}
     >
       <form
