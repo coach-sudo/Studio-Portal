@@ -621,7 +621,7 @@ export function TodayView({
       )}
       {rescheduling && (
         <Dialog
-          title="Reschedule lesson"
+          title="Reschedule upcoming lesson"
           description={`${studentName(data, rescheduling.studentId)} · ${rescheduling.topic}`}
           onClose={() => !rescheduleBusy && setRescheduling(undefined)}
         >

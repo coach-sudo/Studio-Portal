@@ -14,6 +14,7 @@ import {
 } from "../../components/LessonCalendar";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { LessonDatetimeCorrections } from "../../components/LessonDatetimeCorrections";
 import {
   checkSchedulingConflicts,
   studioCommand,
@@ -447,7 +448,7 @@ export function LessonsView({
         <Dialog
           title={
             panel === "reschedule"
-              ? "Reschedule lesson"
+              ? "Reschedule upcoming lesson"
               : panel === "credits"
                 ? "Lesson credits"
                 : selected.topic
@@ -455,6 +456,23 @@ export function LessonsView({
           description={`${studentName(data, selected.studentId)} · ${formatStudioDateTime(selected.startsAt, data.settings.timezone)} · ${sourceLabel(selected.sourceProvider)}`}
           onClose={() => setSelected(undefined)}
         >
+          {!isDemo && (
+            <div className="workflow-content">
+              <LessonDatetimeCorrections
+                lesson={selected}
+                timezone={data.settings.timezone}
+                onApplied={async () => {
+                  await invalidateStudioDomains(queryClient, [
+                    "lessons",
+                    "booking",
+                    "finance",
+                  ]);
+                  setSelected(undefined);
+                }}
+                onFinancialReview={() => setPanel("credits")}
+              />
+            </div>
+          )}
           {panel === "reschedule" ? (
             <RescheduleLessonForm
               lesson={selected}
