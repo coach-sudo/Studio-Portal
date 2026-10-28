@@ -9,7 +9,14 @@ export default defineConfig({
   timeout: 45000,
   reporter: [
     ["list"],
-    ["json", { outputFile: "test-results/audit-discovery.json" }],
+    [
+      "json",
+      {
+        outputFile: fileURLToPath(
+          new URL("../../test-results/audit-discovery.json", import.meta.url),
+        ),
+      },
+    ],
   ],
   use: { baseURL: "http://127.0.0.1:4187", serviceWorkers: "block" },
   projects: [
