@@ -118,10 +118,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "B05",
@@ -205,10 +206,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "B11",
@@ -248,10 +250,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "C03",
@@ -264,10 +267,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "C04",
@@ -294,10 +298,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "C06",
@@ -313,10 +318,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "C07",
@@ -329,10 +335,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "D01",
@@ -545,10 +552,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "F06",
@@ -626,9 +634,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/82",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X03",
@@ -642,9 +651,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X04",
@@ -673,9 +683,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X06",
@@ -717,9 +728,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X09",
@@ -842,9 +854,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X19",
@@ -879,9 +892,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/76",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     }
   ]
 }

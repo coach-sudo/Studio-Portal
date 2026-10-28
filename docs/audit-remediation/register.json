@@ -244,23 +244,26 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: integrations. C01/C02/C03/X03. importCalendar scans only GOOGLE_CALENDAR_ID or primary, from now minus 14 days to now plus 90 days. Events elsewhere are outside discovery. Pagination exists; the 250-item page size is not a total-event cap. No current Google API calendar-list enumeration or historical preview command was identified in this intake path.",
       "proposedFix": "Reproduction: with isolated provider fixtures, compare identical valid lesson signals inside/outside the range and in selected/unselected calendars. The bound is proven in source; event-specific absence was not measured against the user's Google account. Recommendation: explicit selected calendars, visible source/window, bounded checkpointing and a separate preview-first historical reconciliation flow. Respect scope and duplicate protections. Blocks a claim that the importer covers all Calendar lessons.",
-      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 41 actual PostgreSQL assertions and three observed-lock scenarios are prepared but full execution is pending.",
-      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 exact PostgreSQL/upgrade/grant/type/concurrency/full CI, controlled metadata read permissions and subsequent audited historical writer/UI remain required.",
-      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 4540357 awaits full exact-head CI.",
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 51 actual SQL assertions and observed command-concurrency gates are prepared, not yet passed.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 exact browser completion, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 remains pending. #84 source 9b63691 awaits exact full CI, SQL/upgrade/types and separate-session concurrency.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "commits": [
         "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
         "9925be4c1953bd272a437261a8cafdc322de8ed8",
         "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
-        "454035769726f1aaa22a4d1fe6e022feb249fbc3"
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5"
       ],
       "classification": "confirmed"
     },
@@ -268,7 +271,7 @@
       "id": "SP-11",
       "severity": "P1",
       "title": "SP-11 · P1 · Past and ignored import states suppress historical recovery",
-      "disposition": "historical/ignored previews available; source protection prerequisite drafted, canonical coach actions not yet implemented",
+      "disposition": "historical previews and source protection validated in isolated layers; explicit review commands drafted, canonical reconciliation/interface/provider acceptance remain",
       "rootCause": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L763",
@@ -277,23 +280,26 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: integrations/records. B04/C03/C06/X18. Unlinked past Calendar events are skipped. A needs_review event may become ignored with matched_by past_appointment; existing ignored entries are skipped on rescan. runProviderIntake also ages stale pending reviews into ignored before scanning. Production contains one Calendar and seven Gmail imports tagged past_appointment, without claiming they were all misclassified or all created by the current release.",
       "proposedFix": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
-      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 41 actual PostgreSQL assertions and three observed-lock scenarios are prepared but full execution is pending.",
-      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 exact PostgreSQL/upgrade/grant/type/concurrency/full CI, controlled metadata read permissions and subsequent audited historical writer/UI remain required.",
-      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 4540357 awaits full exact-head CI.",
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 51 actual SQL assertions and observed command-concurrency gates are prepared, not yet passed.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 exact browser completion, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 remains pending. #84 source 9b63691 awaits exact full CI, SQL/upgrade/types and separate-session concurrency.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "commits": [
         "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
         "9925be4c1953bd272a437261a8cafdc322de8ed8",
         "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
-        "454035769726f1aaa22a4d1fe6e022feb249fbc3"
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5"
       ],
       "classification": "confirmed"
     },
@@ -312,19 +318,21 @@
       "proposedFix": "Recommendation: show these exclusions, centralize documented bounds and allow reviewed date/time correction of genuine all-day candidates. Maintain conservative classification. Do not turn every calendar block or arbitrary email into a lesson. Incident attribution needs specific missing event/message identities and source evidence.",
       "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
       "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
-      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #84 drafts explicit historical date-only exclusions; it invents no instant/attendance and does not expand Gmail discovery.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. #84 exact PostgreSQL and full CI pending.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "commits": [
         "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
         "9925be4c1953bd272a437261a8cafdc322de8ed8",
-        "69d6eaa87468ea2db59332a3d00dd52562cf4cec"
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
+        "9b63691944e40719a4298964428cbe156e4e0ec5"
       ],
       "classification": "confirmed"
     },
@@ -339,19 +347,22 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: lesson lifecycle/finance. B10/C06/X08/X12. When provider review creates a previously unlinked occurrence, the SQL sets completed if its end is before now, otherwise scheduled. The review action confirms a source/student link; the payload has no separately required attendance outcome at this insertion point. This differs from the audit invariant that source detection/verification is not proof teaching occurred. Routine past-event skipping limits reachability, but stale or legacy review candidates make the branch meaningful.",
       "proposedFix": "Reproduction to run in staging: keep a valid needs_review signal, advance its occurrence into the past, approve its student link, inspect lesson status and any dependent effects. No production review was executed. Recommendation: explicit Scheduled historical / Completed / Cancelled / No-show outcome with independent attendance confirmation and financial review. Test actor eligibility and completion correction. Do not mass rewrite existing completed records.",
-      "regressionCoverage": "39 provider-attendance/worker entrypoint tests; actual PostgreSQL past review/replay/no-finance/no-projection/history assertions; full CI and isolated browser. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 41 actual PostgreSQL assertions and three observed-lock scenarios are prepared but full execution is pending.",
-      "remainingAcceptance": "Controlled provider and coach explicit-attendance journeys; inspect historical candidates individually. #83 exact PostgreSQL/upgrade/grant/type/concurrency/full CI, controlled metadata read permissions and subsequent audited historical writer/UI remain required.",
-      "implementation": "Additive reviewed command and Calendar/Gmail creation use scheduled/confirmed, never elapsed-time completed/attended. Calendar inserts cannot upsert existing outcomes or delete participants. Existing completion history retained. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists.",
-      "ci": "Exact implementation 5e9cfc4 passed production checks 40682483135 and isolated browser 40682483169. Source-protection head 4540357 awaits full exact-head CI.",
+      "regressionCoverage": "39 provider-attendance/worker entrypoint tests; actual PostgreSQL past review/replay/no-finance/no-projection/history assertions; full CI and isolated browser. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 51 actual SQL assertions and observed command-concurrency gates are prepared, not yet passed.",
+      "remainingAcceptance": "Controlled provider and coach explicit-attendance journeys; inspect historical candidates individually. #83 exact browser completion, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Additive reviewed command and Calendar/Gmail creation use scheduled/confirmed, never elapsed-time completed/attended. Calendar inserts cannot upsert existing outcomes or delete participants. Existing completion history retained. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Exact implementation 5e9cfc4 passed production checks 40682483135 and isolated browser 40682483169. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 remains pending. #84 source 9b63691 awaits exact full CI, SQL/upgrade/types and separate-session concurrency.",
       "review": "draft; no merge/release approval",
       "residualRisk": "Read-only aggregate: 13 completed provider-linked lessons, 11 without completion-named audit. These are candidates, not proven incorrect outcomes.",
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "commits": [
         "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
-        "454035769726f1aaa22a4d1fe6e022feb249fbc3"
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5"
       ],
       "classification": "confirmed"
     },
@@ -494,7 +505,7 @@
       "classification": "reproduced"
     }
   ],
-  "updatedAt": "2026-10-28T18:04:22.657Z",
+  "updatedAt": "2026-10-28T18:27:47.123Z",
   "additionalRisks": [
     {
       "id": "FIN-R01",
