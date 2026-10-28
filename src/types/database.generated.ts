@@ -5560,7 +5560,10 @@ export type Database = {
         }
         Returns: Json
       }
-      preview_lesson_datetime_correction: { Args: { p_value: Json }; Returns: Json }
+      preview_lesson_datetime_correction: {
+        Args: { p_value: Json }
+        Returns: Json
+      }
       preview_lesson_occurrence_change: {
         Args: { p_actor: string; p_value: Json }
         Returns: Json
