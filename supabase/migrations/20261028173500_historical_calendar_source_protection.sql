@@ -128,6 +128,15 @@ begin
  end if;
  if tg_op='DELETE' then item:=old;else item:=new;end if;
  if item.provider<>'google_calendar' then if tg_op='DELETE' then return old;else return new;end if;end if;
+ -- Existing authenticated coach profile merges move lesson/participant identity
+ -- before import identity. Preserve only that association change, never a
+ -- source decision, payload, outcome, or lesson-link edit. Workers cannot use it.
+ if tg_op='UPDATE' and new.student_id is distinct from old.student_id
+ and (to_jsonb(new)-'student_id'-'updated_at')=(to_jsonb(old)-'student_id'-'updated_at')
+ and public.is_studio_coach(old.studio_id)
+ and exists(select 1 from public.students s where s.id=new.student_id and s.studio_id=old.studio_id)
+ and (old.lesson_id is null or exists(select 1 from public.lessons l where l.id=old.lesson_id and l.studio_id=old.studio_id
+  and (l.student_id=new.student_id or exists(select 1 from public.lesson_participants p where p.lesson_id=l.id and p.student_id=new.student_id)))) then return new;end if;
  for decision in select * from discovery_internal.source_decisions d where d.studio_id=item.studio_id and (d.event_id=item.external_id or jsonb_build_array(d.calendar_id,d.event_id)::text=item.external_id) loop
   if not exists(select 1 from discovery_internal.source_write_authorizations a where a.transaction_id=txid_current() and a.decision_id=decision.id and a.import_id=item.id and a.actor_id=auth.uid() and exists(select 1 from public.memberships m where m.user_id=a.actor_id and m.studio_id=decision.studio_id and m.role='coach')) then
    raise exception 'REVIEW_REQUIRED: Use the historical reconciliation command for this Calendar decision.';

@@ -102,5 +102,26 @@ reset role;
 select is((select status from public.bookings where id='e8300000-0000-4000-8000-000000000041'),'cancelled','Authorized booking cancellation commits');
 select is((select status::text from public.lessons where id='e8300000-0000-4000-8000-000000000042'),'cancelled','Authorized downstream lesson cancellation commits');
 select is((select jsonb_agg(to_jsonb(p) order by p.id) from public.payment_entries p where student_id='e8300000-0000-4000-8000-000000000004'),(select payments from source_history_before),'Booking cancellation does not mutate unrelated historical payment');
+-- Exercise the existing authenticated profile merge, not a fabricated service
+-- bypass. Its deliberate student reassociation retains canonical/source IDs and
+-- every accounting value; observations themselves above remain byte-equivalent.
+insert into public.students(id,studio_id,full_name,status) values('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000001','E2E retained profile','active');
+create temporary table source_merge_before as select
+ (select jsonb_agg(to_jsonb(p)-'student_id' order by p.id) from public.payment_entries p where p.student_id='e8300000-0000-4000-8000-000000000004') payments,
+ (select jsonb_agg(to_jsonb(d) order by d.id) from discovery_internal.source_decisions d where d.studio_id='e8300000-0000-4000-8000-000000000001') decisions,
+ (select jsonb_agg(to_jsonb(i)-'student_id'-'updated_at' order by i.id) from public.integration_imports i where i.studio_id='e8300000-0000-4000-8000-000000000001') imports;
+select set_config('request.jwt.claim.sub','e8300000-0000-4000-8000-000000000003',true);
+select throws_ok($$update public.integration_imports set student_id='e8300000-0000-4000-8000-000000000050' where id='e8300000-0000-4000-8000-000000000007'$$,'P0001','REVIEW_REQUIRED: Use the historical reconciliation command for this Calendar decision.','Non-coach association edits cannot bypass source protection');
+select set_config('request.jwt.claim.sub','e8300000-0000-4000-8000-000000000002',true);
+select throws_ok($$update public.integration_imports set student_id='e8300000-0000-4000-8000-000000000050' where id='e8300000-0000-4000-8000-000000000007'$$,'P0001','REVIEW_REQUIRED: Use the historical reconciliation command for this Calendar decision.','Coach association must agree with the canonical lesson or participant');
+set local role authenticated;
+select lives_ok($$select public.merge_studio_students('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000004')$$,'Existing authenticated coach profile merge remains operational');
+reset role;
+select is((select count(*) from public.students where id='e8300000-0000-4000-8000-000000000004'),0::bigint,'Merged-away profile is removed by the existing command');
+select is((select student_id from public.lessons where id='e8300000-0000-4000-8000-000000000005'),'e8300000-0000-4000-8000-000000000050'::uuid,'Protected canonical lesson retains its identity under the keeper profile');
+select is((select student_id from public.integration_imports where id='e8300000-0000-4000-8000-000000000007'),'e8300000-0000-4000-8000-000000000050'::uuid,'Protected source follows the same canonical keeper');
+select is((select jsonb_agg(to_jsonb(p)-'student_id' order by p.id) from public.payment_entries p where p.student_id='e8300000-0000-4000-8000-000000000050'),(select payments from source_merge_before),'Existing merge preserves ledger IDs, amounts, reasons, references and creation time');
+select is((select jsonb_agg(to_jsonb(d) order by d.id) from discovery_internal.source_decisions d where d.studio_id='e8300000-0000-4000-8000-000000000001'),(select decisions from source_merge_before),'Profile merge does not change historical source decisions');
+select is((select jsonb_agg(to_jsonb(i)-'student_id'-'updated_at' order by i.id) from public.integration_imports i where i.studio_id='e8300000-0000-4000-8000-000000000001'),(select imports from source_merge_before),'Profile merge preserves import source, link, payload and review outcome');
 select * from finish();
 rollback;
