@@ -1,0 +1,13 @@
+# Provider source verification and attendance (SP-13)
+
+Scope recorded before implementation: A07/A08, B04 and X03/X08/X13/X20. Depend on the existing coach-authorized, locked provider-review command and immutable request receipts. Preserve its financial/class guards, replay, source attribution, and historical records. Revert application changes if required; retain the additive migration and all recorded history. No worker enablement or provider run is authorized.
+
+Root cause: provider review inferred `completed` from an elapsed end time. Calendar and Gmail creation contained the same inference, including when a scan crossed the occurrence end. An external signal establishes a schedule, not attendance. All three new-record paths now create `scheduled` lessons with `confirmed` participants. The coach confirms the actual outcome through the existing lesson workspace. Source, identity, linked schedule, attendance and financial coverage are described as separate decisions in review.
+
+Calendar creation now uses insert rather than upsert: an unexpected collision with an existing source cannot overwrite its attendance outcome or replace its participants. Checked Calendar/Gmail insertion failures propagate as failures. Linking existing lessons still preserves their existing outcomes. The current source identity schema, single calendar, stale/ignored discovery restrictions and nontransactional automatic intake remain separate open risks (SP-10/11/12); this change does not certify intake.
+
+Read-only production observation at 2026-10-28 05:14 UTC: 13 completed lessons have linked provider imports; one was reviewed after its end, and 11 have no explicit completion-named audit event. These are review candidates, not proof of incorrect attendance. No records were changed. A coach must inspect actual attendance evidence before any correction.
+
+Validation: clock-crossing Calendar/Gmail unit fixtures exercise actual classification, parsing and creation with mocked provider/DB boundaries; a source-collision fixture verifies no outcome/participant overwrite. PostgreSQL assertions exercise past review, replay, one lesson, unchanged completed history, confirmed rather than attended participants, and no payment/Calendar/notification creation. Exact-head CI, authenticated browser review and controlled provider acceptance remain release gates. Local tests cannot establish external delivery or historical attendance.
+
+Local results: 39 tests passed across the provider-attendance and worker-controls entrypoint files; TypeScript build passed. Lint has no errors; no warning budget was increased. All schema/role/replay/concurrency evidence must come from isolated CI, because the local Windows container runtime is unavailable.
