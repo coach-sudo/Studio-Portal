@@ -21,6 +21,7 @@ export default defineConfig({
     "**/studio-operations-local/**",
     "**/quality-local/**",
     "**/audit-historical-local/**",
+    "**/audit-corrections-local/**",
   ],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",

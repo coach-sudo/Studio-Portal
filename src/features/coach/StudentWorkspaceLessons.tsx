@@ -32,6 +32,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { LessonDatetimeCorrections } from "../../components/LessonDatetimeCorrections";
 import { LessonReadinessPanel } from "./LessonReadinessPanel";
 import {
   checkSchedulingConflicts,
@@ -551,6 +552,23 @@ function CoachLessonWorkspace({
             >
               Open Google Meet
             </a>
+          )}
+          {!isDemo && (
+            <LessonDatetimeCorrections
+              lesson={lesson}
+              timezone={data.settings.timezone}
+              onApplied={async () => {
+                await invalidateStudioDomains(queryClient, [
+                  "lessons",
+                  "booking",
+                  "finance",
+                ]);
+                setNotice(
+                  "Date/time correction recorded. Accounting and attendance are unchanged. Review linked financial and Calendar records in correction history.",
+                );
+              }}
+              onFinancialReview={() => setLessonAction("credits")}
+            />
           )}
           {lesson.status === "scheduled" && (
             <button

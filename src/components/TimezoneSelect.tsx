@@ -104,13 +104,21 @@ export function TimezoneSelect({
   onChange,
   id,
   required = true,
+  ariaLabel,
+  defaultToDevice = true,
 }: {
   value: string;
   onChange: (timezone: string) => void;
   id?: string;
   required?: boolean;
+  ariaLabel?: string;
+  defaultToDevice?: boolean;
 }) {
   const detected = useMemo(observedTimezone, []);
+  const selectedTimezone = value || (defaultToDevice ? detected : "");
+  const selectedLabel = selectedTimezone
+    ? timezoneLabel(selectedTimezone, detected)
+    : "";
   const timezones = useMemo(
     () => [
       ...new Set(
@@ -121,9 +129,7 @@ export function TimezoneSelect({
     ],
     [detected, value],
   );
-  const [query, setQuery] = useState(
-    timezoneLabel(value || detected, detected),
-  );
+  const [query, setQuery] = useState(selectedLabel);
   const [open, setOpen] = useState(false);
   const [openUp, setOpenUp] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -131,11 +137,7 @@ export function TimezoneSelect({
   const listId = useId();
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
-    const selectedLabel = timezoneLabel(
-      value || detected,
-      detected,
-    ).toLowerCase();
-    if (!needle || needle === selectedLabel) return timezones;
+    if (!needle || needle === selectedLabel.toLowerCase()) return timezones;
     const normalizedNeedle = needle.replaceAll(/[/_-]+/g, " ");
     return timezones.filter((timezone) => {
       const searchable = [
@@ -149,13 +151,13 @@ export function TimezoneSelect({
         searchable.includes(needle) || searchable.includes(normalizedNeedle)
       );
     });
-  }, [detected, query, timezones, value]);
+  }, [query, timezones, selectedLabel]);
   useEffect(() => {
-    if (!value) onChange(detected);
-  }, [detected, onChange, value]);
+    if (!value && defaultToDevice) onChange(detected);
+  }, [detected, onChange, value, defaultToDevice]);
   useEffect(() => {
-    if (value) setQuery(timezoneLabel(value, detected));
-  }, [detected, value]);
+    setQuery(selectedLabel);
+  }, [selectedLabel]);
 
   const choose = (timezone: string) => {
     onChange(timezone);
@@ -199,7 +201,7 @@ export function TimezoneSelect({
       choose(filtered[activeIndex]);
     } else if (event.key === "Escape") {
       setOpen(false);
-      setQuery(timezoneLabel(value || detected, detected));
+      setQuery(selectedLabel);
     }
   };
 
@@ -211,8 +213,9 @@ export function TimezoneSelect({
         role="combobox"
         type="text"
         required={required}
+        placeholder="Choose timezone"
         value={query}
-        aria-label={id ? undefined : "Timezone"}
+        aria-label={ariaLabel || (id ? undefined : "Timezone")}
         aria-autocomplete="list"
         aria-expanded={open}
         aria-controls={listId}
@@ -246,7 +249,7 @@ export function TimezoneSelect({
               type="button"
               role="option"
               id={`${listId}-option-${index}`}
-              aria-selected={timezone === (value || detected)}
+              aria-selected={timezone === selectedTimezone}
               className={index === activeIndex ? "active" : ""}
               key={timezone}
               onMouseDown={(event) => event.preventDefault()}
