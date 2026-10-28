@@ -99,9 +99,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
-        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "B04",
@@ -126,9 +128,12 @@
       "trace": "Identified implementation trace: Calendar interaction → proposal drawer/conflict query → lesson create or reviewed occurrence change → query invalidation.",
       "code": "Current source: src/components/InteractiveCalendarGrid.tsx:1 · src/features/coach/CalendarProposalDialog.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects."
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "B06",
@@ -139,9 +144,11 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "B07",
@@ -166,10 +173,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "B09",
@@ -545,10 +553,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/76",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "F07",
@@ -603,8 +612,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "X03",
@@ -662,9 +673,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "X07",
@@ -751,8 +763,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
     },
     {
       "id": "X14",

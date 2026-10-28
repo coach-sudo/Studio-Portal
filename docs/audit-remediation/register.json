@@ -72,12 +72,14 @@
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
       ],
       "commits": [
         "56c9fa9871e5f729f5732a51ac410b7ea589d742",
         "7c181d2f24f228973cfa53d6b9115e863701fd62",
-        "3a9dc1214b8317732588b60ce4104c73490fed6d"
+        "3a9dc1214b8317732588b60ce4104c73490fed6d",
+        "0bfefda9608e87d7ec04878cf79d774969a4709a"
       ],
       "classification": "reproduced"
     },
@@ -205,7 +207,7 @@
       "id": "SP-09",
       "severity": "P2",
       "title": "SP-09 · P2 · Coach overlap approval conflicts with the production exclusion constraint",
-      "disposition": "manual-creation override mismatch repaired; other entrypoints need review",
+      "disposition": "manual creation repaired; shared reschedule/proposal classification implemented, full CI pending",
       "rootCause": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261020153417_studio_operations_workflows.sql#L68",
@@ -213,15 +215,21 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: scheduling/data model. B03/B05/B08/X13. Production has lessons_private_overlap, excluding overlapping time ranges within the same studio for scheduled private lessons (offering_id null). Application allowConflict bypasses prechecks, but does not bypass this constraint. “Schedule anyway” cannot consistently authorize local private-lesson overlap. Google-only conflicts are different.",
       "proposedFix": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
-      "regressionCoverage": "Real PostgreSQL conflicting-request and explicit Google-override/local-rejection assertions.",
-      "remainingAcceptance": "Authenticated conflict UI; any structural private-overlap exception requires separate proposal/approval and concurrency/finance/provider review.",
-      "implementation": "Manual creation UI/server distinguish local overlap from Google conflict and preserve the exclusion constraint. Existing shared reschedule still presents a generic conflict override and requires focused investigation; no structural overlap exception was implemented.",
-      "ci": "Exact implementation CI passed.",
+      "regressionCoverage": "One retained parent reproduction demonstrates the local private override defect. 42 targeted cases (31 new, 11 retained) pass in NY and UTC; project-reference typecheck and secret scan pass. Eight Windows Chromium/WebKit/four-width fixtures, eight before captures, 32 after screenshots, axe/keyboard/overflow/provider-error/advisory/Google review proof. Twelve new actual PostgreSQL assertions are prepared; full execution/concurrency pending CI.",
+      "remainingAcceptance": "Full exact-head CI/actual PostgreSQL for #82; recurring future occurrence checks, authenticated roles, real Google/outage/Calendar/notification recovery, manual assistive/touch and combined-candidate acceptance.",
+      "implementation": "Manual creation retains its studio-overlap policy. Shared reschedule and Calendar proposals now distinguish scheduled/private database exclusions, group/draft advisories and Google busy-time review. Authorize the target in the server; unclassified responses cannot override; only explicit Google acknowledgement sets allowConflict. Shared local helper replaces three repeated filters. The database constraint and financial/occurrence reviews are unchanged.",
+      "ci": "Manual source de39cd9 passed production 40635032632/browser 40635032775. Shared-policy source 0bfefda9608e87d7ec04878cf79d774969a4709a awaits full exact-head production/PostgreSQL/concurrency and isolated browser CI.",
       "review": "draft; no merge/release approval",
-      "residualRisk": "Private overlaps remain intentionally blocked. Shared reschedule wording/source-time display is still source-confirmed risk; runtime reproduction and repair must preserve group/offering semantics. No database constraint was dropped.",
-      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
-      "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
-      "classification": "confirmed"
+      "residualRisk": "No structural overlap exception was introduced; scheduled private exclusion remains concurrent-safe in the database. Advisory is not permission to bypass financial/class policy or a reservation. Routine source reconciliation and whole-system time policy remain separate.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "commits": [
+        "de39cd9f6948c47f5db661fa5df0e4fce53a0c8e",
+        "0bfefda9608e87d7ec04878cf79d774969a4709a"
+      ],
+      "classification": "reproduced"
     },
     {
       "id": "SP-10",
@@ -238,7 +246,7 @@
       "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
       "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
       "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
@@ -269,7 +277,7 @@
       "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
       "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
       "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
@@ -300,7 +308,7 @@
       "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
       "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
       "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
-      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified.",
       "review": "draft; no merge/migration/publication approval",
       "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
       "prs": [
@@ -475,7 +483,7 @@
       "classification": "reproduced"
     }
   ],
-  "updatedAt": "2026-10-28T17:11:53.092Z",
+  "updatedAt": "2026-10-28T17:28:05.724Z",
   "additionalRisks": [
     {
       "id": "FIN-R01",
@@ -492,8 +500,8 @@
       "description": "Frontend in-flight command coalescing can return a previous session's delayed result and ignores changed version/reason/status/key metadata.",
       "implementation": "https://github.com/coach-sudo/Studio-Portal/pull/81",
       "commit": "9dc30cde4a1920f88cdda11175226cea3071eaad",
-      "evidence": "Two synthetic baseline reproductions retained; 21 new request-boundary tests plus four existing identity/error tests pass. Captured auth and complete serialized envelope isolate requests; delayed input edits, session switch/sign-out/refresh, HTTP/network failure and receipt retry are covered. Project-reference typecheck and secret check pass; no new lint warnings.",
-      "remaining": "Exact-head CI and combined browser/session/hosted role acceptance. No real-user disclosure is inferred; server/database authorization and durable receipts remain authoritative. This does not enable compromised-password protection."
+      "evidence": "Two synthetic baseline reproductions retained; 21 new request-boundary tests plus four existing identity/error tests pass. Captured auth and complete serialized envelope isolate requests; delayed input edits, session switch/sign-out/refresh, HTTP/network failure and receipt retry are covered. Project-reference typecheck and secret check pass; no new lint warnings. Exact source 9dc30cde4a1920f88cdda11175226cea3071eaad passed production 40733081494 and isolated browser 40733081301.",
+      "remaining": "combined browser/session/hosted role acceptance. No real-user disclosure is inferred; server/database authorization and durable receipts remain authoritative. This does not enable compromised-password protection."
     }
   ]
 }
