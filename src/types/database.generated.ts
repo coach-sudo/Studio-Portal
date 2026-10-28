@@ -5325,6 +5325,10 @@ export type Database = {
         }
         Returns: Json
       }
+      correct_lesson_datetime: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
       create_booking_hold: {
         Args: {
           target_end: string
@@ -5474,6 +5478,10 @@ export type Database = {
         Args: { p_lesson: string }
         Returns: boolean
       }
+      lesson_datetime_correction_history: {
+        Args: { p_cursor?: Json; p_lesson: string }
+        Returns: Json
+      }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
@@ -5552,6 +5560,7 @@ export type Database = {
         }
         Returns: Json
       }
+      preview_lesson_datetime_correction: { Args: { p_value: Json }; Returns: Json }
       preview_lesson_occurrence_change: {
         Args: { p_actor: string; p_value: Json }
         Returns: Json
@@ -5594,6 +5603,10 @@ export type Database = {
       }
       reconcile_student_credit_reservations: {
         Args: { p_student: string; p_version: number }
+        Returns: Json
+      }
+      record_datetime_correction_review: {
+        Args: { p_key: string; p_value: Json }
         Returns: Json
       }
       refund_package_gift: { Args: { target_gift: string }; Returns: Json }

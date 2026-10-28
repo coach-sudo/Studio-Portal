@@ -5,11 +5,14 @@ import { serviceClient } from "../_shared/supabase";
 import type { V2CommandContext } from "./types";
 import { handleLessonBulkCommands } from "./lesson-bulk";
 import { seriesDates } from "../../../src/domain/booking";
+import { handleLessonDatetimeCorrections } from "./lesson-datetime-corrections";
 
 export async function handleLessonsCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   const { audit, db, domain, id, input, requireCoach } = ctx;
+  const correction = await handleLessonDatetimeCorrections(ctx);
+  if (correction) return correction;
   const bulk = await handleLessonBulkCommands(ctx);
   if (bulk) return bulk;
 

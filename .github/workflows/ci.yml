@@ -8,6 +8,8 @@ on:
       [
         main,
         codex/audit-manual-booking-transaction,
+        codex/audit-coach-historical-datetime,
+        codex/audit-historical-corrections,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
@@ -99,6 +101,7 @@ jobs:
       - run: node scripts/test-provider-intake-concurrency.mjs
       - run: node scripts/test-scheduled-worker-concurrency.mjs
       - run: node scripts/test-manual-booking-concurrency.mjs
+      - run: node scripts/test-datetime-correction-concurrency.mjs
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()
