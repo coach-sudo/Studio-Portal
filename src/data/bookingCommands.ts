@@ -1,5 +1,7 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
+import type { SchedulingConflict } from "../domain/schedulingConflicts";
+export type { SchedulingConflict } from "../domain/schedulingConflicts";
 
 export type BookingAdminResource =
   | "services"
@@ -35,13 +37,6 @@ export async function bookingAdminCommand(
   return payload.resource;
 }
 
-export interface SchedulingConflict {
-  id: string;
-  summary: string;
-  start: string;
-  end: string;
-  source: "google" | "studio";
-}
 export async function checkSchedulingConflicts(
   startsAt: string,
   endsAt: string,

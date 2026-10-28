@@ -4,6 +4,7 @@ import { AppError, apiError, correlationId, json } from "./_shared/http";
 import { bookingAdminCommandSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { googleAccessToken, googleCalendarConflicts } from "./_shared/google";
+import { studioOverlapPolicy } from "../../src/domain/schedulingConflicts";
 
 const resources: Record<string, string> = {
   services: "booking_services",
@@ -30,7 +31,7 @@ async function googleObservation(startsAt: string, endsAt: string) {
     throw new AppError("CALENDAR_UNAVAILABLE", {
       status: 503,
       message:
-        "Google conflict checks are unavailable. Reconnect Google and retry. No booking was created.",
+        "Google conflict checks are unavailable. Reconnect Google and retry. Nothing was changed.",
       retryable: true,
     });
   }
@@ -94,9 +95,21 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "VALIDATION_FAILED: Choose a valid start and end time.",
         );
+      let target: { status: string; offeringId?: string | null } | undefined;
+      if (body.payload.lesson_id) {
+        const { data: lesson, error } = await db
+          .from("lessons")
+          .select("id,status,offering_id")
+          .eq("studio_id", membership.studio_id)
+          .eq("id", String(body.payload.lesson_id))
+          .maybeSingle();
+        if (error) throw error;
+        if (!lesson) throw new Error("FORBIDDEN");
+        target = { status: lesson.status, offeringId: lesson.offering_id };
+      }
       const { data: localRows, error: localError } = await db
         .from("lessons")
-        .select("id,topic,starts_at,ends_at")
+        .select("id,topic,starts_at,ends_at,status,offering_id")
         .eq("studio_id", membership.studio_id)
         .in("status", ["draft", "scheduled"])
         .lt("starts_at", endsAt.toISOString())
@@ -104,13 +117,21 @@ export default async (request: Request, context: Context) => {
       if (localError) throw localError;
       const local = (localRows || [])
         .filter((item) => item.id !== body.payload?.lesson_id)
-        .map((item) => ({
-          id: item.id,
-          summary: item.topic || "Studio lesson",
-          start: item.starts_at,
-          end: item.ends_at,
-          source: "studio",
-        }));
+        .map((item) => {
+          const policy = studioOverlapPolicy(target, {
+            status: item.status,
+            offeringId: item.offering_id,
+          });
+          return {
+            id: item.id,
+            summary: item.topic || "Studio lesson",
+            start: item.starts_at,
+            end: item.ends_at,
+            source: "studio",
+            policy,
+            blocksChange: policy === "private_overlap",
+          };
+        });
       const observation =
         body.payload.historical === true
           ? { conflicts: [], checked: false }
@@ -121,10 +142,12 @@ export default async (request: Request, context: Context) => {
       const google = observation.conflicts.map((item) => ({
         ...item,
         source: "google",
+        policy: "google_busy",
+        blocksChange: false,
       }));
       const seen = new Set<string>();
       const conflicts = [...local, ...google].filter((item) => {
-        const key = `${item.summary}|${item.start}|${item.end}`;
+        const key = `${item.source}|${item.id}|${item.start}|${item.end}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;

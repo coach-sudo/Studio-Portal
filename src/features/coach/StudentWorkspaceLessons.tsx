@@ -1,3 +1,4 @@
+import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { RecordUnavailable } from "../../components/RecordRoute";
 import { LessonChangeReview } from "../../components/LessonChangeReview";
@@ -748,20 +749,12 @@ function CoachLessonWorkspace({
             onCheckConflicts={(startsAt, endsAt) =>
               isDemo
                 ? Promise.resolve(
-                    data.lessons
-                      .filter(
-                        (item) =>
-                          item.id !== lesson.id &&
-                          item.status === "scheduled" &&
-                          item.startsAt < endsAt &&
-                          item.endsAt > startsAt,
-                      )
-                      .map((item) => ({
-                        id: item.id,
-                        summary: item.topic,
-                        start: item.startsAt,
-                        end: item.endsAt,
-                      })),
+                    localSchedulingConflicts(
+                      data.lessons,
+                      lesson,
+                      startsAt,
+                      endsAt,
+                    ),
                   )
                 : checkSchedulingConflicts(startsAt, endsAt, lesson.id)
             }

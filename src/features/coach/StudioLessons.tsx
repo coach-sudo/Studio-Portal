@@ -1,3 +1,4 @@
+import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { LessonChangeReview } from "../../components/LessonChangeReview";
 import { LessonBulkList } from "../../components/LessonBulkList";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -485,20 +486,12 @@ export function LessonsView({
               onCheckConflicts={(startsAt, endsAt) =>
                 isDemo
                   ? Promise.resolve(
-                      data.lessons
-                        .filter(
-                          (lesson) =>
-                            lesson.id !== selected.id &&
-                            lesson.status === "scheduled" &&
-                            lesson.startsAt < endsAt &&
-                            lesson.endsAt > startsAt,
-                        )
-                        .map((lesson) => ({
-                          id: lesson.id,
-                          summary: lesson.topic,
-                          start: lesson.startsAt,
-                          end: lesson.endsAt,
-                        })),
+                      localSchedulingConflicts(
+                        data.lessons,
+                        selected,
+                        startsAt,
+                        endsAt,
+                      ),
                     )
                   : checkSchedulingConflicts(startsAt, endsAt, selected.id)
               }

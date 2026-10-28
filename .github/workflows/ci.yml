@@ -10,6 +10,7 @@ on:
         codex/audit-manual-booking-transaction,
         codex/audit-coach-historical-datetime,
         codex/audit-historical-corrections,
+        codex/audit-correction-interface,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,

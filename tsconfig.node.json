@@ -21,6 +21,7 @@
     "netlify/functions/**/*.ts",
     "src/types/database.generated.ts",
     "src/domain/model.ts",
+    "src/domain/schedulingConflicts.ts",
     "src/domain/actorLayout.ts",
     "src/domain/booking.ts",
     "src/domain/zonedInput.ts",
