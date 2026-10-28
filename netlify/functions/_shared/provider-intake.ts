@@ -906,38 +906,31 @@ export async function importCalendar(
       if (student) {
         const { data: lesson, error } = await db
           .from("lessons")
-          .upsert(
-            {
-              studio_id: studio.id,
-              student_id: student.id,
-              topic: event.summary || `${displayProvider(source)} lesson`,
-              starts_at: event.start.dateTime,
-              ends_at: event.end.dateTime,
-              status:
-                new Date(event.end.dateTime) < new Date()
-                  ? "completed"
-                  : "scheduled",
-              location_type: event.hangoutLink ? "virtual" : "in_person",
-              location_label: event.hangoutLink
-                ? "Google Meet"
-                : event.location || displayProvider(source),
-              join_url: event.hangoutLink || null,
-              meeting_provider: event.hangoutLink ? "google_meet" : "in_person",
-              source_provider: source,
-              source_external_id: event.id,
-              source_confidence: confidence,
-              imported_at: new Date().toISOString(),
-            },
-            { onConflict: "studio_id,source_provider,source_external_id" },
-          )
+          .insert({
+            studio_id: studio.id,
+            student_id: student.id,
+            topic: event.summary || `${displayProvider(source)} lesson`,
+            starts_at: event.start.dateTime,
+            ends_at: event.end.dateTime,
+            status: "scheduled",
+            location_type: event.hangoutLink ? "virtual" : "in_person",
+            location_label: event.hangoutLink
+              ? "Google Meet"
+              : event.location || displayProvider(source),
+            join_url: event.hangoutLink || null,
+            meeting_provider: event.hangoutLink ? "google_meet" : "in_person",
+            source_provider: source,
+            source_external_id: event.id,
+            source_confidence: confidence,
+            imported_at: new Date().toISOString(),
+          })
           .select("id,version")
           .single();
+        // A source may establish a schedule, never overwrite an existing outcome.
+        // A unique source collision remains a retry/review failure, not an upsert.
+        if (error) throw error;
         if (!error && lesson) {
           lessonId = lesson.id;
-          await db
-            .from("lesson_participants")
-            .delete()
-            .eq("lesson_id", lesson.id);
           await checkedAll([
             checkedQuery(
               db.from("lesson_participants").insert({
@@ -1270,10 +1263,7 @@ export async function scanGmail(
             topic: candidate.topic,
             starts_at: candidate.startsAt,
             ends_at: candidate.endsAt,
-            status:
-              new Date(candidate.endsAt) < new Date()
-                ? "completed"
-                : "scheduled",
+            status: "scheduled",
             location_type: candidate.joinUrl ? "virtual" : "in_person",
             location_label: candidate.locationLabel,
             join_url: candidate.joinUrl || null,
@@ -1291,6 +1281,7 @@ export async function scanGmail(
           })
           .select("id")
           .single();
+        if (created.error) throw created.error;
         if (!created.error && created.data) {
           lessonId = created.data.id;
           createdFromGmail = true;

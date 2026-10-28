@@ -853,7 +853,9 @@ function ImportReviewDialog({
         )}
         <p className="full">
           Confirming creates or links this lesson in the selected student
-          profile.
+          profile. It verifies the source, identity and schedule. Attendance and
+          financial coverage remain separate; confirm the actual outcome in the
+          lesson workspace.
         </p>
         {isChange && (
           <label className="full">
