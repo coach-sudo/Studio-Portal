@@ -1,4 +1,8 @@
 import { z } from "zod";
+import {
+  calendarInstant as instant,
+  calendarDay as day,
+} from "./calendar-observation";
 
 const datePart = z.object({
   dateTime: z.string().optional(),
@@ -85,20 +89,6 @@ async function providerJson<T extends z.ZodType>(
     throw new DiscoveryProviderError("invalid_payload");
   }
 }
-const instant = (value?: string) =>
-  value &&
-  /(Z|[+-]\d{2}:\d{2})$/.test(value) &&
-  Number.isFinite(Date.parse(value))
-    ? new Date(value).toISOString()
-    : null;
-const day = (value?: string) =>
-  value &&
-  /^\d{4}-\d{2}-\d{2}$/.test(value) &&
-  Number.isFinite(Date.parse(value + "T00:00:00Z")) &&
-  new Date(value + "T00:00:00Z").toISOString().slice(0, 10) === value
-    ? value
-    : null;
-
 export async function accessibleCalendarPage(token: string, cursor?: string) {
   const url = new URL(
     "https://www.googleapis.com/calendar/v3/users/me/calendarList",

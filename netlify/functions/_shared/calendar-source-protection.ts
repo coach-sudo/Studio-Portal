@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { calendarDay, calendarInstant } from "./calendar-observation";
 import type { Json } from "../../../src/types/database.generated";
 import type { serviceClient } from "./supabase";
 
@@ -39,7 +40,16 @@ export function calendarSourceObservation(event: ProtectedCalendarEvent) {
     throw new Error(
       "PROVIDER_UNAVAILABLE: Calendar source identity or version is malformed. No source changes were applied.",
     );
-  return parsed.data;
+  const startsAt = calendarInstant(parsed.data.startsAt),
+    endsAt = calendarInstant(parsed.data.endsAt),
+    valid = startsAt && endsAt && Date.parse(endsAt) > Date.parse(startsAt);
+  return {
+    ...parsed.data,
+    startsAt: valid ? startsAt : null,
+    endsAt: valid ? endsAt : null,
+    startDate: calendarDay(parsed.data.startDate),
+    endDate: calendarDay(parsed.data.endDate),
+  };
 }
 
 const metadataSchema = z.object({ id: z.string().min(1).max(1024) });

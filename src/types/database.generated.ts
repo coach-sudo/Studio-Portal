@@ -5217,6 +5217,10 @@ export type Database = {
         }
         Returns: Json
       }
+      command_historical_calendar_review: {
+        Args: { p_candidate: string; p_key: string; p_payload: Json }
+        Returns: Json
+      }
       command_make_lesson_recurring: {
         Args: {
           p_cadence: string
@@ -5562,6 +5566,10 @@ export type Database = {
       }
       portal_student_contexts: {
         Args: { p_page?: number; p_student?: string }
+        Returns: Json
+      }
+      preview_historical_calendar_review: {
+        Args: { p_candidate: string }
         Returns: Json
       }
       preview_lesson_bulk: {
