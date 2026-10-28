@@ -1,0 +1,9 @@
+
+ RUN  v4.1.12 C:/Users/dariu/Desktop/studio-portal
+
+
+ Test Files  1 passed (1)
+      Tests  2 passed (2)
+   Start at  13:05:15
+   Duration  19.91s (transform 92ms, setup 3.41s, import 47ms, tests 118ms, environment 15.63s)
+
