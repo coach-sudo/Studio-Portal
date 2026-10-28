@@ -7,6 +7,10 @@ import {
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
+import {
+  observeCalendarProtection,
+  resolveCalendarIdentity,
+} from "./calendar-source-protection";
 import { serviceClient } from "./supabase";
 import type { WorkerTelemetry } from "./worker-telemetry";
 import { zonedDateTimeToUtc } from "./timezone";
@@ -607,13 +611,24 @@ export async function importCalendar(
 ) {
   assertWorkerEnabled("provider-intake");
   const db = serviceClient(),
-    calendar = encodeURIComponent(
+    calendarId = await resolveCalendarIdentity(
+      token,
       Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
     ),
+    calendar = encodeURIComponent(calendarId),
     from = new Date(Date.now() - 14 * 86400000).toISOString(),
     to = new Date(Date.now() + 90 * 86400000).toISOString();
   const events = await listCalendarEvents(token, calendar, from, to),
-    managed = await managedCalendarRows(db, events);
+    protectedEvents = await observeCalendarProtection(
+      db,
+      studio.id,
+      calendarId,
+      events,
+    ),
+    managed = await managedCalendarRows(
+      db,
+      events.filter((event) => !event.id || !protectedEvents.has(event.id)),
+    );
   let imported = 0,
     review = 0;
   const failures: unknown[] = [];
@@ -621,6 +636,19 @@ export async function importCalendar(
     assertWorkerEnabled("provider-intake");
     try {
       if (!event.id) continue;
+      const protectedSource = protectedEvents.get(event.id);
+      if (protectedSource) {
+        if (
+          protectedSource.some(
+            (item) =>
+              item.changed ||
+              item.state === "ambiguous" ||
+              item.disposition === "review",
+          )
+        )
+          review++;
+        continue;
+      }
       const projection = managed.projections.get(event.id),
         managedLesson = projection
           ? managed.lessons.get(projection.lesson_id)

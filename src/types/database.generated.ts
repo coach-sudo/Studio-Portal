@@ -5552,6 +5552,10 @@ export type Database = {
         Args: { keep_student_id: string; remove_student_id: string }
         Returns: Json
       }
+      observe_protected_calendar_sources: {
+        Args: { p_calendar: string; p_events: Json; p_studio: string }
+        Returns: Json
+      }
       package_credit_balance: {
         Args: { target_package: string }
         Returns: number

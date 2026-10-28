@@ -33,7 +33,17 @@ beforeEach(() => {
   f.writes = [];
   f.collision = false;
   f.service.mockReturnValue({
-    rpc: () => Promise.resolve({ data: true, error: null }),
+    rpc: (name: string, args: Record<string, unknown>) =>
+      Promise.resolve({
+        data:
+          name === "observe_protected_calendar_sources"
+            ? (args.p_events as Array<{ id: string }>).map((event) => ({
+                eventId: event.id,
+                state: "unprotected",
+              }))
+            : true,
+        error: null,
+      }),
     from: (table: string) => {
       let method = "select";
       const q = {
@@ -81,18 +91,20 @@ afterEach(() => {
 function calendarFetch() {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () =>
-      Response.json({
-        items: [
-          {
-            id: "synthetic-event",
-            summary: "Lessonface lesson: Synthetic Learner",
-            attendees: [{ email: student.email }],
-            start: { dateTime: starts },
-            end: { dateTime: ends },
-          },
-        ],
-      }),
+    vi.fn(async (url: string) =>
+      url.endsWith("?fields=id")
+        ? Response.json({ id: "synthetic-calendar" })
+        : Response.json({
+            items: [
+              {
+                id: "synthetic-event",
+                summary: "Lessonface lesson: Synthetic Learner",
+                attendees: [{ email: student.email }],
+                start: { dateTime: starts },
+                end: { dateTime: ends },
+              },
+            ],
+          }),
     ),
   );
 }
