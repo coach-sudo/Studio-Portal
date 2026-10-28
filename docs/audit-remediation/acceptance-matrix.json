@@ -34,9 +34,11 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "A04",
@@ -45,9 +47,12 @@
       "trace": "Identified implementation trace: Student account → linked contact permissions → synchronized relationship → scoped portal navigation and record policies.",
       "code": "Current source: src/features/coach/StudentWorkspaceAccount.tsx:1 · netlify/functions/_v2/students.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients."
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "A05",
@@ -160,9 +165,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "B09",
@@ -186,9 +193,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "B11",
@@ -210,9 +219,12 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/69"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "C02",
@@ -235,9 +247,13 @@
       "trace": "Identified implementation trace: Historical reconciliation is not a completed separate workflow: routine past guards and review controls exist, but source/date-window preview is absent in this path.",
       "code": "Current source: netlify/functions/_shared/provider-intake.ts:1 · src/features/coach/StudioToday.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows."
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "C04",
@@ -278,9 +294,12 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "C07",
@@ -289,9 +308,13 @@
       "trace": "Identified implementation trace: Managed provider delta → occurrence command or conflict/recommendation → explicit review choice → canonical reconciliation.",
       "code": "Current source: src/features/coach/StudioToday.tsx:1 · netlify/functions/_shared/provider-intake.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery."
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "D01",
@@ -353,9 +376,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "D06",
@@ -369,9 +394,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "E01",
@@ -481,9 +508,12 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/69"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "F05",
@@ -513,9 +543,12 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/76"
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "F07",
@@ -533,9 +566,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/76"
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     }
   ],
   "connections": [
@@ -580,8 +615,11 @@
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     },
     {
       "id": "X04",
@@ -623,8 +661,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "X07",
@@ -660,18 +700,23 @@
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "X10",
       "name": "Account ↔ coach records",
       "auditEvidence": "Auth gates, relationship sync, RLS/views/grants inspected.",
       "requiredDownstream": "Per-role direct API tests, dependent revocation, wrong studio, revoked student, stale invite and cache identity change.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "X11",
@@ -758,10 +803,15 @@
       "name": "Ignored/reviewed → rescan",
       "auditEvidence": "Past/ignored skip verified; current review receipt protects replay.",
       "requiredDownstream": "Explicit reopen with new evidence; repeat scan respects decision, source identity and no financial duplication.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
     },
     {
       "id": "X19",
@@ -793,8 +843,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/76"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
     }
   ]
 }

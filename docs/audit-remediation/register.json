@@ -95,9 +95,9 @@
       "affectedWorkflowsAndConnections": "Owner: scheduling/records. Coach B08/B04. The shared form computes inPast, returns early on submit, supplies today's minimum date and disables the action. There is no coach exemption prop. Use a past target in a safe coach lesson workspace to reproduce; this run verified the source guards, not a signed-in browser journey.",
       "proposedFix": "Recommendation: distinguish a scheduling move from a historical correction. A correction needs audit, financial review, provider linkage and intentional notification treatment; do not casually remove safeguards from a shared component. Test role-specific policy and recurrence scope.",
       "regressionCoverage": "40 actual PostgreSQL assertions and eight concurrency scripts passed at 0cd3419; generated-type alignment then exact production CI 40691999170 passed. 23 targeted handler/form/timezone/reschedule cases; Windows Chromium/WebKit x four widths: 8/8 correction fixtures, 8/8 parent comparison, 2/2 existing reschedule recovery smoke; 32 screenshots, axe/keyboard/overflow/replay/cursor/error evidence.",
-      "remainingAcceptance": "Exact interface full CI; hosted coach/student/guardian/unrelated/anonymous acceptance; real Calendar review/recovery and financial review handling; manual screen reader/touch and final combined-candidate checks.",
+      "remainingAcceptance": "hosted coach/student/guardian/unrelated/anonymous acceptance; real Calendar review/recovery and financial review handling; manual screen reader/touch and final combined-candidate checks.",
       "implementation": "Coach-only sealed dependency preview and atomic correction receipt/audit; preserve creation/attendance/accounting/notes/participants, align sole booking, retain shared series anchor, block checkout/private overlap, fence Calendar leases and automatic credit use. Cursor history and explicit review notes; historical corrections remain separate from upcoming reschedule.",
-      "ci": "Contract source 7c181d2 production checks 40691999170 passed; isolated browser queued. Interface latest-head CI pending. Earlier database runs exposed fixture status/grant errors and generated-type formatting drift; corrected without weakening production constraints.",
+      "ci": "Exact contract 7c181d2 passed production 40691999170 and isolated browser 40691999242. Interface evidence head 3d07af6 passed production 40696505235 and isolated browser 40696505173. Earlier fixture/type/format failures are retained and corrected.",
       "review": "draft implementation authorized; merge/migration/deployment not authorized",
       "residualRisk": "Corrected records retain explicit financial and provider review holds. Recording a review is not delivery proof or automatic accounting/coverage repair. Additive migration is unapplied in hosted environments; no historical record was mutated.",
       "prs": [
@@ -106,7 +106,8 @@
       ],
       "commits": [
         "7c181d2f24f228973cfa53d6b9115e863701fd62",
-        "3a9dc1214b8317732588b60ce4104c73490fed6d"
+        "3a9dc1214b8317732588b60ce4104c73490fed6d",
+        "3d07af6547fdb7e80903319c43288bf5628e0573"
       ],
       "classification": "confirmed"
     },
@@ -226,7 +227,7 @@
       "id": "SP-10",
       "severity": "P1",
       "title": "SP-10 · P1 · Calendar discovery is single-source and a fixed rolling window",
-      "disposition": "unresolved; discovery/reconciliation design and implementation pending",
+      "disposition": "bounded multi-calendar preview contract validated; interface draft and provider acceptance pending",
       "rootCause": "Reproduction: with isolated provider fixtures, compare identical valid lesson signals inside/outside the range and in selected/unselected calendars. The bound is proven in source; event-specific absence was not measured against the user's Google account. Recommendation: explicit selected calendars, visible source/window, bounded checkpointing and a separate preview-first historical reconciliation flow. Respect scope and duplicate protections. Blocks a claim that the importer covers all Calendar lessons.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L610",
@@ -234,21 +235,29 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: integrations. C01/C02/C03/X03. importCalendar scans only GOOGLE_CALENDAR_ID or primary, from now minus 14 days to now plus 90 days. Events elsewhere are outside discovery. Pagination exists; the 250-item page size is not a total-event cap. No current Google API calendar-list enumeration or historical preview command was identified in this intake path.",
       "proposedFix": "Reproduction: with isolated provider fixtures, compare identical valid lesson signals inside/outside the range and in selected/unselected calendars. The bound is proven in source; event-specific absence was not measured against the user's Google account. Recommendation: explicit selected calendars, visible source/window, bounded checkpointing and a separate preview-first historical reconciliation flow. Respect scope and duplicate protections. Blocks a claim that the importer covers all Calendar lessons.",
-      "regressionCoverage": "Original source/fixture evidence retained; no new multi-calendar or historical-reconciliation acceptance.",
-      "remainingAcceptance": "Selected accessible calendars, source identity, bounded checkpointed preview, recurrence/exceptions/deletions, partial faults, explicit reopen/link/create/not-lesson/skip, no automatic historical finance/notice.",
-      "implementation": "Audited single-calendar rolling window, stale/ignored suppression, date-only exclusion and Gmail query coverage verified in source. Existing event pagination is preserved and is not a 250-item total cap.",
-      "ci": "No implementation CI.",
-      "review": "investigation/proposal",
-      "residualRisk": "Normal intake still cannot safely recover historical/ignored/date-only signals. Do not enable workers or mass reopen records.",
-      "prs": [],
-      "commits": [],
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec"
+      ],
       "classification": "confirmed"
     },
     {
       "id": "SP-11",
       "severity": "P1",
       "title": "SP-11 · P1 · Past and ignored import states suppress historical recovery",
-      "disposition": "unresolved; discovery/reconciliation design and implementation pending",
+      "disposition": "historical/ignored observations previewable; canonical reconciliation actions remain open",
       "rootCause": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L763",
@@ -257,21 +266,29 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: integrations/records. B04/C03/C06/X18. Unlinked past Calendar events are skipped. A needs_review event may become ignored with matched_by past_appointment; existing ignored entries are skipped on rescan. runProviderIntake also ages stale pending reviews into ignored before scanning. Production contains one Calendar and seven Gmail imports tagged past_appointment, without claiming they were all misclassified or all created by the current release.",
       "proposedFix": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
-      "regressionCoverage": "Original source/fixture evidence retained; no new multi-calendar or historical-reconciliation acceptance.",
-      "remainingAcceptance": "Selected accessible calendars, source identity, bounded checkpointed preview, recurrence/exceptions/deletions, partial faults, explicit reopen/link/create/not-lesson/skip, no automatic historical finance/notice.",
-      "implementation": "Audited single-calendar rolling window, stale/ignored suppression, date-only exclusion and Gmail query coverage verified in source. Existing event pagination is preserved and is not a 250-item total cap.",
-      "ci": "No implementation CI.",
-      "review": "investigation/proposal",
-      "residualRisk": "Normal intake still cannot safely recover historical/ignored/date-only signals. Do not enable workers or mass reopen records.",
-      "prs": [],
-      "commits": [],
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec"
+      ],
       "classification": "confirmed"
     },
     {
       "id": "SP-12",
       "severity": "P2",
       "title": "SP-12 · P2 · All-day Calendar entries and older/provider-unrecognized Gmail messages are outside intake coverage",
-      "disposition": "unresolved; discovery/reconciliation design and implementation pending",
+      "disposition": "date-only/recurrence/cancelled Calendar observations retained; Gmail coverage unchanged",
       "rootCause": "Recommendation: show these exclusions, centralize documented bounds and allow reviewed date/time correction of genuine all-day candidates. Maintain conservative classification. Do not turn every calendar block or arbitrary email into a lesson. Incident attribution needs specific missing event/message identities and source evidence.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L715",
@@ -280,14 +297,22 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: integrations. C02–C04/X04/X18. Calendar entries without start/end dateTime are skipped; a date-only all-day lesson cannot enter this path. Gmail discovery searches 90 days and a fixed set of provider keywords, while undated review items can age out based on a 30-day email threshold. Pagination exists for Gmail too.",
       "proposedFix": "Recommendation: show these exclusions, centralize documented bounds and allow reviewed date/time correction of genuine all-day candidates. Maintain conservative classification. Do not turn every calendar block or arbitrary email into a lesson. Incident attribution needs specific missing event/message identities and source evidence.",
-      "regressionCoverage": "Original source/fixture evidence retained; no new multi-calendar or historical-reconciliation acceptance.",
-      "remainingAcceptance": "Selected accessible calendars, source identity, bounded checkpointed preview, recurrence/exceptions/deletions, partial faults, explicit reopen/link/create/not-lesson/skip, no automatic historical finance/notice.",
-      "implementation": "Audited single-calendar rolling window, stale/ignored suppression, date-only exclusion and Gmail query coverage verified in source. Existing event pagination is preserved and is not a 250-item total cap.",
-      "ci": "No implementation CI.",
-      "review": "investigation/proposal",
-      "residualRisk": "Normal intake still cannot safely recover historical/ignored/date-only signals. Do not enable workers or mass reopen records.",
-      "prs": [],
-      "commits": [],
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Interface 908a547 first verify failed invalid role-query options; corrected at 69d6eaa, project-reference typecheck and 26 cases passed; full exact-head rerun pending.",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec"
+      ],
       "classification": "confirmed"
     },
     {
@@ -374,7 +399,7 @@
       "regressionCoverage": "Patched lock and actual clean Windows install: zero npm advisories. Vite 8.1.6 / Vitest 4.1.12; Node 22 CI and Node 24 Windows. Full Windows NY 1005/1005 across 147 files, typecheck, build, zero lint errors/unchanged 904 warnings, 8/8 Chromium/WebKit fixture browser cases.",
       "remainingAcceptance": "Reconcile overlapping Dependabot #59 manifest changes; final combined-candidate verification and separate release approval.",
       "implementation": "Pin Vite 8.1.6 and Vitest/mocker 4.1.12 on existing major/minor lines, with documented overlap to broad Dependabot #59.",
-      "ci": "Exact source 3270fc5 passed production 40684655183 and isolated browser 40684655163. Windows evidence added at da2605b; documentation-head rerun pending.",
+      "ci": "Source 3270fc5 passed production 40684655183 and isolated browser 40684655163; Windows evidence head da2605b passed production 40691990777 and isolated browser 40691990880.",
       "review": "draft; no merge/release approval",
       "residualRisk": "The user freed disk space; clean patched install closes the ENOSPC blocker. Development-tooling exposure is distinct from unproven production runtime exposure; existing broader major upgrades remain separate.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/76"],
@@ -450,7 +475,7 @@
       "classification": "reproduced"
     }
   ],
-  "updatedAt": "2026-10-28T13:01:56.209Z",
+  "updatedAt": "2026-10-28T17:11:53.092Z",
   "additionalRisks": [
     {
       "id": "FIN-R01",
@@ -460,6 +485,15 @@
       "commit": "e4ffa489ef54454b44b219926fe49b0874b00cac",
       "evidence": "Original synthetic partial-settlement fault retained in #75. Exact source e4ffa48 passed production 40684758098 and isolated browser 40684758440, including full PostgreSQL fault/role/first-payment/replay/concurrent-invoice checks. Stripe sandbox and legacy exception handling remain unverified.",
       "remaining": "Stripe sandbox, historical partial reconciliation, zero-value/exception policy review, invitation and other financial branches; no live balance discrepancy or correction claimed."
+    },
+    {
+      "id": "SEC-R01",
+      "classification": "reproduced",
+      "description": "Frontend in-flight command coalescing can return a previous session's delayed result and ignores changed version/reason/status/key metadata.",
+      "implementation": "https://github.com/coach-sudo/Studio-Portal/pull/81",
+      "commit": "9dc30cde4a1920f88cdda11175226cea3071eaad",
+      "evidence": "Two synthetic baseline reproductions retained; 21 new request-boundary tests plus four existing identity/error tests pass. Captured auth and complete serialized envelope isolate requests; delayed input edits, session switch/sign-out/refresh, HTTP/network failure and receipt retry are covered. Project-reference typecheck and secret check pass; no new lint warnings.",
+      "remaining": "Exact-head CI and combined browser/session/hosted role acceptance. No real-user disclosure is inferred; server/database authorization and durable receipts remain authoritative. This does not enable compromised-password protection."
     }
   ]
 }
