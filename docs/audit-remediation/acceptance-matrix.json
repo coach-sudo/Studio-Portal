@@ -12,7 +12,8 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/70",
         "https://github.com/coach-sudo/Studio-Portal/pull/75"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted.",
+      "verificationNotes": ""
     },
     {
       "id": "A02",
@@ -23,7 +24,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
+      "verificationNotes": ""
     },
     {
       "id": "A03",
@@ -63,7 +65,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation.",
+      "verificationNotes": ""
     },
     {
       "id": "B01",
@@ -76,7 +79,8 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/70"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope.",
+      "verificationNotes": ""
     },
     {
       "id": "B02",
@@ -87,7 +91,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states.",
+      "verificationNotes": ""
     },
     {
       "id": "B03",
@@ -122,7 +127,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "B05",
@@ -162,7 +167,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility.",
+      "verificationNotes": ""
     },
     {
       "id": "B08",
@@ -191,7 +197,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths.",
+      "verificationNotes": ""
     },
     {
       "id": "B10",
@@ -210,7 +217,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "B11",
@@ -221,7 +228,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial.",
+      "verificationNotes": ""
     },
     {
       "id": "C01",
@@ -234,10 +242,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "C02",
@@ -251,10 +260,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "C03",
@@ -268,10 +278,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "C04",
@@ -283,9 +294,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled.",
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "C05",
@@ -302,7 +315,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "C06",
@@ -319,10 +332,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "C07",
@@ -339,7 +353,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "D01",
@@ -352,7 +366,8 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06.",
+      "verificationNotes": ""
     },
     {
       "id": "D02",
@@ -363,7 +378,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed.",
+      "verificationNotes": ""
     },
     {
       "id": "D03",
@@ -377,7 +393,8 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance.",
+      "verificationNotes": ""
     },
     {
       "id": "D04",
@@ -388,7 +405,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made.",
+      "verificationNotes": ""
     },
     {
       "id": "D05",
@@ -434,7 +452,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage.",
+      "verificationNotes": ""
     },
     {
       "id": "E02",
@@ -445,7 +464,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery.",
+      "verificationNotes": ""
     },
     {
       "id": "E03",
@@ -456,7 +476,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request.",
+      "verificationNotes": ""
     },
     {
       "id": "E04",
@@ -467,7 +488,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications.",
+      "verificationNotes": ""
     },
     {
       "id": "E05",
@@ -478,7 +500,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope.",
+      "verificationNotes": ""
     },
     {
       "id": "E06",
@@ -489,7 +512,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect.",
+      "verificationNotes": ""
     },
     {
       "id": "F01",
@@ -500,7 +524,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state.",
+      "verificationNotes": ""
     },
     {
       "id": "F02",
@@ -511,7 +536,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt.",
+      "verificationNotes": ""
     },
     {
       "id": "F03",
@@ -522,7 +548,8 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
+      "verificationNotes": ""
     },
     {
       "id": "F04",
@@ -535,10 +562,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "F05",
@@ -553,10 +581,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "F06",
@@ -617,7 +646,8 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+      ],
+      "verificationNotes": ""
     },
     {
       "id": "X02",
@@ -637,7 +667,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X03",
@@ -652,9 +682,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "X04",
@@ -666,8 +697,10 @@
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "X05",
@@ -686,7 +719,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X06",
@@ -713,7 +746,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X08",
@@ -731,7 +765,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     },
     {
       "id": "X09",
@@ -768,7 +802,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X12",
@@ -778,7 +813,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X13",
@@ -810,7 +846,8 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/75"
-      ]
+      ],
+      "verificationNotes": ""
     },
     {
       "id": "X15",
@@ -820,7 +857,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X16",
@@ -830,7 +868,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X17",
@@ -840,7 +879,8 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [],
+      "verificationNotes": ""
     },
     {
       "id": "X18",
@@ -855,9 +895,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
-        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "X19",
@@ -870,8 +911,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
     },
     {
       "id": "X20",
@@ -895,7 +938,7 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion remains pending. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 have local handler/normalization evidence only; their DB/CI gates and future interface/canonical writer remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred."
     }
   ]
 }
