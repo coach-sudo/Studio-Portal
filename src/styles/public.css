@@ -32,7 +32,6 @@
   line-height: 1.7;
 }
 .booking-step,
-.booking-summary,
 .booking-confirmation,
 .login-card,
 .gift-card,
@@ -45,8 +44,21 @@
 .booking-step {
   padding: 32px;
 }
-.booking-summary {
-  background: var(--app-surface-soft);
+.booking-public :is(button, a, input, select, textarea):focus-visible {
+  outline: 2px solid #000;
+  outline-offset: 3px;
+  box-shadow: 0 0 0 3px #fff;
+}
+.booking-public .stepper li.active > span {
+  color: var(--on-gold);
+}
+.booking-public .booking-primary:hover {
+  background: var(--gold);
+  color: var(--on-gold);
+  text-decoration: underline;
+}
+.booking-public :is(.booking-topbar > a, .booking-footer > a) {
+  min-height: 44px;
 }
 .booking-progress {
   font-size: 13px;
