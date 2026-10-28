@@ -53,11 +53,13 @@ export function workerTelemetry(worker: string, executionId: string) {
   let stage = "initialization",
     stageStarted = started,
     stageFailed = false;
-  let observer: ((value: WorkerObservation) => Promise<void>) | undefined;
+  const noObservation = (value: WorkerObservation) =>
+    Promise.resolve(void value);
+  let observer = noObservation;
   let pending = Promise.resolve();
   let observationError: unknown;
   const observe = (event: WorkerObservation["event"], category?: string) => {
-    if (observer) {
+    if (observer !== noObservation) {
       const persist = observer,
         observation = { event, stage, category };
       pending = pending
@@ -80,7 +82,7 @@ export function workerTelemetry(worker: string, executionId: string) {
       }),
     );
   return {
-    persistWith(next: (value: WorkerObservation) => Promise<void>) {
+    persistWith(next: typeof observer) {
       observer = next;
     },
     async flush() {
