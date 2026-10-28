@@ -33,6 +33,11 @@ select ok(not has_table_privilege('service_role','discovery_internal.source_writ
 select ok(not has_function_privilege('authenticated','public.observe_protected_calendar_sources(uuid,text,jsonb)','EXECUTE'),'Coach/student/guardian JWT cannot call worker observation RPC');
 select ok(not has_function_privilege('anon','public.observe_protected_calendar_sources(uuid,text,jsonb)','EXECUTE'),'Anonymous cannot call observation RPC');
 select ok(has_function_privilege('service_role','public.observe_protected_calendar_sources(uuid,text,jsonb)','EXECUTE'),'Service-only worker may observe minimal source state');
+-- The disposable migration replay lacks production's legacy table grants.
+-- Simulate only the columns these old-worker statements need, within rollback.
+grant select(id,version,studio_id,student_id,starts_at,ends_at,status,source_provider,source_external_id,offering_id) on public.lessons to service_role;
+grant update(status,version,starts_at) on public.lessons to service_role;
+grant insert(studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider,source_external_id) on public.lessons to service_role;
 select throws_ok($$insert into discovery_internal.source_decisions(studio_id,calendar_id,event_id,disposition,lesson_id,lesson_ends_at,reviewed_hash,actor_id,reason) values('e8300000-0000-4000-8000-000000000001','canonical-a','future','linked','e8300000-0000-4000-8000-000000000006','2099-01-01T16:00Z',repeat('a',64),'e8300000-0000-4000-8000-000000000002','Future lesson')$$,'P0001','REVIEW_REQUIRED: Select the exact historical lesson.','Historical protection does not silently redefine future/student cancellation authority');
 select throws_ok($$update discovery_internal.source_decisions set calendar_id='different' where id='e8300000-0000-4000-8000-000000000008'$$,'P0001','REVIEW_REQUIRED: Source identity is immutable.','Source identity cannot drift');
 set local role service_role;
@@ -77,5 +82,25 @@ select lives_ok($$select public.cleanup_transient_studio_data()$$,'Protected his
 select is((select count(*) from public.integration_imports where id='e8300000-0000-4000-8000-000000000007'),1::bigint,'Cleanup retains explicitly protected ignored history');
 select is((select count(*) from public.integration_imports where id='e8300000-0000-4000-8000-000000000030'),0::bigint,'Existing cleanup policy still prunes unprotected transient history');
 select is((select payload->>'summary' from public.integration_imports where id='e8300000-0000-4000-8000-000000000031'),'E2E retained source','Cleanup preserves protected reviewed payload evidence');
+-- A historical source link must not silently revoke a later, legitimately
+-- corrected future booking's student cancellation policy.
+insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes) values('e8300000-0000-4000-8000-000000000040','e8300000-0000-4000-8000-000000000001','e2e-source-cancel','E2E source cancel','private',60);
+insert into public.bookings(id,studio_id,service_id,student_id,reference,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,currency,policy_snapshot,manage_token_hash) values
+ ('e8300000-0000-4000-8000-000000000041','e8300000-0000-4000-8000-000000000001','e8300000-0000-4000-8000-000000000040','e8300000-0000-4000-8000-000000000004','E2E-SOURCE-CANCEL','E2E learner','e2e-source-student@example.test','2020-01-03T15:00Z','2020-01-03T16:00Z','UTC','in_person','confirmed','pay_later','not_required',0,'USD','{"cancellationWindowHours":24}','e2e-source-cancel-token');
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label) values('e8300000-0000-4000-8000-000000000042','e8300000-0000-4000-8000-000000000001','e8300000-0000-4000-8000-000000000004','E2E later corrected record','2020-01-03T15:00Z','2020-01-03T16:00Z','scheduled','in_person','E2E');
+insert into public.lesson_participants(lesson_id,booking_id,student_id,display_name,email,status) values('e8300000-0000-4000-8000-000000000042','e8300000-0000-4000-8000-000000000041','e8300000-0000-4000-8000-000000000004','E2E learner','e2e-source-student@example.test','confirmed');
+insert into discovery_internal.source_decisions(studio_id,calendar_id,event_id,disposition,lesson_id,lesson_ends_at,reviewed_hash,actor_id,reason) values('e8300000-0000-4000-8000-000000000001','canonical-a','later-corrected','linked','e8300000-0000-4000-8000-000000000042','2020-01-03T16:00Z',repeat('a',64),'e8300000-0000-4000-8000-000000000002','Explicit historical review');
+select set_config('request.jwt.claim.sub','e8300000-0000-4000-8000-000000000002',true);
+update public.lessons set starts_at='2099-01-03T15:00Z',ends_at='2099-01-03T16:00Z',version=version+1 where id='e8300000-0000-4000-8000-000000000042';
+update public.bookings set starts_at='2099-01-03T15:00Z',ends_at='2099-01-03T16:00Z' where id='e8300000-0000-4000-8000-000000000041';
+select set_config('request.jwt.claim.sub','',true);
+set local role service_role;
+select throws_ok($$update public.lessons set status='cancelled',version=version+1 where id='e8300000-0000-4000-8000-000000000042'$$,'P0001','REVIEW_REQUIRED: Review the protected historical lesson before changing its schedule or outcome.','Provider still cannot cancel a coach-corrected future occurrence');
+select lives_ok($$select public.cancel_booking_credit('e8300000-0000-4000-8000-000000000041',1,false,true)$$,'Existing service-only student cancellation retains its canonical permission and financial checks');
+select lives_ok($$select public.cancel_booking_credit('e8300000-0000-4000-8000-000000000041',1,false,true)$$,'Identical authorized cancellation replay remains harmless');
+reset role;
+select is((select status from public.bookings where id='e8300000-0000-4000-8000-000000000041'),'cancelled','Authorized booking cancellation commits');
+select is((select status::text from public.lessons where id='e8300000-0000-4000-8000-000000000042'),'cancelled','Authorized downstream lesson cancellation commits');
+select is((select jsonb_agg(to_jsonb(p) order by p.id) from public.payment_entries p where student_id='e8300000-0000-4000-8000-000000000004'),(select payments from source_history_before),'Booking cancellation does not mutate unrelated historical payment');
 select * from finish();
 rollback;

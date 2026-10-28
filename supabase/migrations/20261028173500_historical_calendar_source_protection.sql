@@ -100,6 +100,16 @@ begin
   -- this context. An ordinary provider worker has no coach authority.
   actor:=coalesce(actor,nullif(current_setting('app.lesson_actor',true),'')::uuid);
   if actor is null or not exists(select 1 from public.memberships where user_id=actor and studio_id=old.studio_id and role='coach') then
+   -- Preserve the existing service-only, authorized booking cancellation path
+   -- if a coach later corrects historical scheduling into the future. Its
+   -- finalizer owns the financial/checkout and participant checks; this marker
+   -- never permits provider rescheduling, completion or identity changes.
+   if current_setting('role',true)='service_role' and current_setting('app.student_cancel',true)='true'
+   and old.status='scheduled' and new.status in ('cancelled','late_cancelled')
+   and (new.student_id,new.starts_at,new.ends_at,new.offering_id,new.source_provider,new.source_external_id)
+    is not distinct from (old.student_id,old.starts_at,old.ends_at,old.offering_id,old.source_provider,old.source_external_id)
+   and exists(select 1 from public.lesson_participants lp join public.bookings b on b.id=lp.booking_id
+    where lp.lesson_id=old.id and lp.status in ('reserved','confirmed') and b.status='confirmed' and b.studio_id=old.studio_id and b.student_id=lp.student_id) then return new;end if;
    raise exception 'REVIEW_REQUIRED: Review the protected historical lesson before changing its schedule or outcome.';
   end if;
  end if;

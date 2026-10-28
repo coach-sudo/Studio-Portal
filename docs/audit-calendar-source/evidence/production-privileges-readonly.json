@@ -1,0 +1,15 @@
+{
+  "observedAt": "2026-10-28 18:09:34 UTC",
+  "project": "htwthzshhilrjtqwprlo",
+  "mode": "begin read only / commit; no mutation",
+  "scope": "service_role effective table privileges only; no student/provider payloads",
+  "privileges": {
+    "lessons_select": true,
+    "lessons_insert": true,
+    "lessons_update": true,
+    "imports_insert": true,
+    "imports_update": true,
+    "participants_insert": true
+  },
+  "interpretation": "Production has these legacy grants; disposable migration replay did not. This does not establish the cause of the historical Gmail failure. Only outer-rollback fixture grants were added; production permissions remain unchanged."
+}
