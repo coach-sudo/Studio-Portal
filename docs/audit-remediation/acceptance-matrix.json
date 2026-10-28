@@ -108,7 +108,9 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required."
     },
@@ -156,7 +158,9 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh."
     },
@@ -180,7 +184,9 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains."
     },
@@ -254,8 +260,11 @@
       "trace": "Identified implementation trace: Claim projection → stable event ID lookup/etag → canonical update/delete/create → Meet result → finish receipt.",
       "code": "Current source: netlify/functions/calendar-worker.ts:1 · netlify/functions/_shared/calendar-projection.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here."
     },
     {
@@ -267,7 +276,9 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains."
     },
@@ -313,8 +324,11 @@
       "trace": "Identified implementation trace: Eligible occurrence → coverage job and locked lot selection → reservation ledger → completed/cancelled finalization → balance.",
       "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · supabase/migrations/20261014151934_credit_lifecycle_reliability.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance.",
-      "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance."
     },
     {
@@ -337,7 +351,9 @@
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end.",
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end."
     },
@@ -351,7 +367,9 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation."
     },
@@ -492,7 +510,10 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/70",
-        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified."
     },
@@ -509,7 +530,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback."
     }
@@ -526,7 +550,9 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -540,7 +566,9 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -579,7 +607,9 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -591,7 +621,9 @@
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -614,7 +646,9 @@
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -670,7 +704,9 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/70",
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
-        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -736,7 +772,9 @@
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "https://github.com/coach-sudo/Studio-Portal/pull/69"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
       ]
     },
     {
@@ -752,7 +790,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76"
       ]
     }
   ]

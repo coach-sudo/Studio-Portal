@@ -16,7 +16,7 @@
       "regressionCoverage": "28 targeted unit/component/PGlite cases; typecheck; actual isolated PostgreSQL migration and concurrency; full suite/build/isolated browser CI.",
       "remainingAcceptance": "Controlled Calendar/Gmail errors/recovery and three real scheduler-origin completions; authenticated production-equivalent Settings; separate worker enablement approval.",
       "implementation": "Private append-only run/stage observations, service-only claim fencing, disabled-aware health, preserved stage failure, receipt-following Settings; no fixed 15-second completion assumption.",
-      "ci": "Corrected implementation passed production checks 40633111054 and isolated browser 40633111028; full PostgreSQL upgrade/replay/grants/fencing/concurrency passed. Documentation-head rerun pending.",
+      "ci": "Source implementation passed 40633111054 / 40633111028; documentation checkpoint 963c05b passed 40685577256 / 40685576886. Full isolated PostgreSQL, upgrade, grants, fencing and concurrency passed; real provider acceptance remains open.",
       "review": "draft; no merge/release approval",
       "residualRisk": "Production intake remains disabled. Exact historical Gmail cause is unknown. Source-stage success is not lesson-import or external-delivery proof.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/69"],
@@ -36,11 +36,11 @@
       "affectedWorkflowsAndConnections": "Owner: scheduling. Coach; B03/B04/X13. The form's native datetime minimum blocks historical entries, and create_manual separately requires startsAt > now. The targeted mocked-handler test sends a 2020 timestamp and gets 422 before any write. A real authenticated browser submission was not attempted.",
       "proposedFix": "Reproduction: in a safe test environment open Calendar → create booking, choose yesterday; then test the same request directly as coach to demonstrate the server boundary. Required repair: define a coach historical-record command with explicit occurred-at/status/financial/notification treatment. Preserve public/student lead-time policy. Changing only the input cannot resolve this. Blocks coach historical recording through this entry point.",
       "regressionCoverage": "Historical SQL outcome/role/replay/no-effect assertions and concurrency passed isolated CI 40682452141; 20 targeted tests plus 15 disclosure/dialog tests; eight Windows Chromium/WebKit fixtures.",
-      "remainingAcceptance": "Corrected-head full CI; authenticated coach/student creation; downstream finance/provider/role acceptance.",
+      "remainingAcceptance": "authenticated coach/student creation; downstream finance/provider/role acceptance.",
       "implementation": "Explicit coach-only Record Past Lesson using the atomic command, explicit outcome/financial treatment and recorded-at audit; no inferred attendance/payment/notifications.",
-      "ci": "PostgreSQL gates passed; initial full suite caught disclosure mismatch, corrected at 56c9fa9; exact-head rerun pending.",
+      "ci": "Exact source 56c9fa9 passed production 40684262033 and isolated browser 40684261997.",
       "review": "draft; no merge/release approval",
-      "residualRisk": "Existing-record historical correction is still SP-04; no provider or hosted acceptance.",
+      "residualRisk": "Existing-record corrections are separately implemented in #77/#78; hosted financial/provider/role acceptance remains open.",
       "prs": [
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
         "https://github.com/coach-sudo/Studio-Portal/pull/73"
@@ -66,18 +66,26 @@
       "regressionCoverage": "UTC/NY/Tokyo/Kolkata/date-boundary/gap/fold tests; historical browser fixtures; typed server input and PostgreSQL tests.",
       "remainingAcceptance": "Recurring occurrences, payment/cancellation cutoffs, all viewer-zone policies and authenticated device acceptance.",
       "implementation": "Shared explicit IANA wall-time formatter/parser; display studio/device/control zone; reject gaps and require repeated-hour choice. Shared reschedule converter reused.",
-      "ci": "Isolated SQL passed; corrected-head full regression/browser pending.",
+      "ci": "Exact source 56c9fa9 passed production 40684262033 and isolated browser 40684261997.",
       "review": "draft; no merge/release approval",
-      "residualRisk": "Other provider timezone fallbacks and existing-record correction remain. No whole-system timezone claim.",
-      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/73"],
-      "commits": ["56c9fa9871e5f729f5732a51ac410b7ea589d742"],
+      "residualRisk": "Other provider timezone fallbacks, recurring occurrences, cutoff and viewer-zone policies remain. No whole-system timezone claim.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
+      "commits": [
+        "56c9fa9871e5f729f5732a51ac410b7ea589d742",
+        "7c181d2f24f228973cfa53d6b9115e863701fd62",
+        "3a9dc1214b8317732588b60ce4104c73490fed6d"
+      ],
       "classification": "reproduced"
     },
     {
       "id": "SP-04",
       "severity": "P2",
       "title": "SP-04 · P2 · Coach rescheduling also excludes historical correction",
-      "disposition": "unresolved; correction policy approved for draft implementation",
+      "disposition": "approved correction policy implemented in separate draft contract and interface; hosted acceptance incomplete",
       "rootCause": "Recommendation: distinguish a scheduling move from a historical correction. A correction needs audit, financial review, provider linkage and intentional notification treatment; do not casually remove safeguards from a shared component. Test role-specific policy and recurrence scope.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/components/RescheduleLessonForm.tsx#L125",
@@ -86,14 +94,20 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: scheduling/records. Coach B08/B04. The shared form computes inPast, returns early on submit, supplies today's minimum date and disables the action. There is no coach exemption prop. Use a past target in a safe coach lesson workspace to reproduce; this run verified the source guards, not a signed-in browser journey.",
       "proposedFix": "Recommendation: distinguish a scheduling move from a historical correction. A correction needs audit, financial review, provider linkage and intentional notification treatment; do not casually remove safeguards from a shared component. Test role-specific policy and recurrence scope.",
-      "regressionCoverage": "Shared gap/fold conversion tests pass; no historical correction implementation or acceptance is claimed.",
-      "remainingAcceptance": "Implement approved decisions.md policy with authoritative command/preview, financial dependencies, role/SQL/concurrency/provider/browser verification.",
-      "implementation": "Verified both UI and lesson_ops.assess_change reject historical targets. Proposal separates audited correction from upcoming reschedule and preserves attendance/accounting/creation time.",
-      "ci": "No implementation CI for historical correction.",
-      "review": "draft; no merge/release approval",
-      "residualRisk": "Paid/invoiced/credit-linked corrections need explicit financial-review policy. Do not remove only the browser guard.",
-      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/73"],
-      "commits": ["56c9fa9871e5f729f5732a51ac410b7ea589d742"],
+      "regressionCoverage": "40 actual PostgreSQL assertions and eight concurrency scripts passed at 0cd3419; generated-type alignment then exact production CI 40691999170 passed. 23 targeted handler/form/timezone/reschedule cases; Windows Chromium/WebKit x four widths: 8/8 correction fixtures, 8/8 parent comparison, 2/2 existing reschedule recovery smoke; 32 screenshots, axe/keyboard/overflow/replay/cursor/error evidence.",
+      "remainingAcceptance": "Exact interface full CI; hosted coach/student/guardian/unrelated/anonymous acceptance; real Calendar review/recovery and financial review handling; manual screen reader/touch and final combined-candidate checks.",
+      "implementation": "Coach-only sealed dependency preview and atomic correction receipt/audit; preserve creation/attendance/accounting/notes/participants, align sole booking, retain shared series anchor, block checkout/private overlap, fence Calendar leases and automatic credit use. Cursor history and explicit review notes; historical corrections remain separate from upcoming reschedule.",
+      "ci": "Contract source 7c181d2 production checks 40691999170 passed; isolated browser queued. Interface latest-head CI pending. Earlier database runs exposed fixture status/grant errors and generated-type formatting drift; corrected without weakening production constraints.",
+      "review": "draft implementation authorized; merge/migration/deployment not authorized",
+      "residualRisk": "Corrected records retain explicit financial and provider review holds. Recording a review is not delivery proof or automatic accounting/coverage repair. Additive migration is unapplied in hosted environments; no historical record was mutated.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
+      "commits": [
+        "7c181d2f24f228973cfa53d6b9115e863701fd62",
+        "3a9dc1214b8317732588b60ce4104c73490fed6d"
+      ],
       "classification": "confirmed"
     },
     {
@@ -190,7 +204,7 @@
       "id": "SP-09",
       "severity": "P2",
       "title": "SP-09 · P2 · Coach overlap approval conflicts with the production exclusion constraint",
-      "disposition": "misleading override repaired; private-overlap policy preserved",
+      "disposition": "manual-creation override mismatch repaired; other entrypoints need review",
       "rootCause": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261020153417_studio_operations_workflows.sql#L68",
@@ -200,10 +214,10 @@
       "proposedFix": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
       "regressionCoverage": "Real PostgreSQL conflicting-request and explicit Google-override/local-rejection assertions.",
       "remainingAcceptance": "Authenticated conflict UI; any structural private-overlap exception requires separate proposal/approval and concurrency/finance/provider review.",
-      "implementation": "UI and server distinguish local overlap from Google conflict. No Schedule anyway promise for local conflicts; exclusion constraint retained.",
+      "implementation": "Manual creation UI/server distinguish local overlap from Google conflict and preserve the exclusion constraint. Existing shared reschedule still presents a generic conflict override and requires focused investigation; no structural overlap exception was implemented.",
       "ci": "Exact implementation CI passed.",
       "review": "draft; no merge/release approval",
-      "residualRisk": "Simultaneous private lessons remain intentionally blocked. No constraint was dropped.",
+      "residualRisk": "Private overlaps remain intentionally blocked. Shared reschedule wording/source-time display is still source-confirmed risk; runtime reproduction and repair must preserve group/offering semantics. No database constraint was dropped.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
       "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
       "classification": "confirmed"
@@ -313,7 +327,7 @@
       "regressionCoverage": "28 targeted unit/component/PGlite cases; typecheck; actual isolated PostgreSQL migration and concurrency; full suite/build/isolated browser CI.",
       "remainingAcceptance": "Controlled Calendar/Gmail errors/recovery and three real scheduler-origin completions; authenticated production-equivalent Settings; separate worker enablement approval.",
       "implementation": "Private append-only run/stage observations, service-only claim fencing, disabled-aware health, preserved stage failure, receipt-following Settings; no fixed 15-second completion assumption.",
-      "ci": "Corrected implementation passed production checks 40633111054 and isolated browser 40633111028; full PostgreSQL upgrade/replay/grants/fencing/concurrency passed. Documentation-head rerun pending.",
+      "ci": "Source implementation passed 40633111054 / 40633111028; documentation checkpoint 963c05b passed 40685577256 / 40685576886. Full isolated PostgreSQL, upgrade, grants, fencing and concurrency passed; real provider acceptance remains open.",
       "review": "draft; no merge/release approval",
       "residualRisk": "Production intake remains disabled. Exact historical Gmail cause is unknown. Source-stage success is not lesson-import or external-delivery proof.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/69"],
@@ -348,7 +362,7 @@
       "id": "SP-16",
       "severity": "P2",
       "title": "SP-16 · P2 · Current development toolchain has published dependency advisories",
-      "disposition": "patched lock prepared; compatibility acceptance in progress",
+      "disposition": "patched compatible toolchain validated on CI and Windows; draft review pending",
       "rootCause": "Vendor advisories confirm Vite 8.1.x affected through 8.1.5 and patched at 8.1.6 for the Windows launch-editor bypass; mocker is patched at 4.1.12. Sources: https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm and https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8 . Recommendation: a reviewed lockfile update to compatible patched versions, then local/CI/build/Windows acceptance. Production-only npm audit in CI does not cover these dev dependencies. No upgrades were made.",
       "affectedCode": [
         "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/package-lock.json#L7588",
@@ -357,14 +371,17 @@
       ],
       "affectedWorkflowsAndConnections": "Owner: build/security. F07. Fresh npm audit reports three affected package entries: vite high, @vitest/mocker moderate, vitest moderate (the latter includes a transitive effect, not a separate count of independent exploits). Advisory details and ranges are retained in npm-audit.json. These are development tooling findings; the audit does not claim the static production site exposes a Vite dev server.",
       "proposedFix": "Vendor advisories confirm Vite 8.1.x affected through 8.1.5 and patched at 8.1.6 for the Windows launch-editor bypass; mocker is patched at 4.1.12. Sources: https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm and https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8 . Recommendation: a reviewed lockfile update to compatible patched versions, then local/CI/build/Windows acceptance. Production-only npm audit in CI does not cover these dev dependencies. No upgrades were made.",
-      "regressionCoverage": "Current lock audit: one high/two moderate; patched lock-only audit zero. Engine/peer ranges support Node 22/24. No successful patched Windows install claimed.",
-      "remainingAcceptance": "Independent exact-head full CI/build/browser/security; repair local disk/install and run Windows acceptance; reconcile overlapping #59 lines.",
+      "regressionCoverage": "Patched lock and actual clean Windows install: zero npm advisories. Vite 8.1.6 / Vitest 4.1.12; Node 22 CI and Node 24 Windows. Full Windows NY 1005/1005 across 147 files, typecheck, build, zero lint errors/unchanged 904 warnings, 8/8 Chromium/WebKit fixture browser cases.",
+      "remainingAcceptance": "Reconcile overlapping Dependabot #59 manifest changes; final combined-candidate verification and separate release approval.",
       "implementation": "Pin Vite 8.1.6 and Vitest/mocker 4.1.12 on existing major/minor lines, with documented overlap to broad Dependabot #59.",
-      "ci": "Exact-head CI pending.",
+      "ci": "Exact source 3270fc5 passed production 40684655183 and isolated browser 40684655163. Windows evidence added at da2605b; documentation-head rerun pending.",
       "review": "draft; no merge/release approval",
-      "residualRisk": "ENOSPC interrupted local install; Vite/Vitest currently incomplete. Development-tool exposure is distinct from unproven production-runtime exposure.",
+      "residualRisk": "The user freed disk space; clean patched install closes the ENOSPC blocker. Development-tooling exposure is distinct from unproven production runtime exposure; existing broader major upgrades remain separate.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/76"],
-      "commits": ["3270fc5059171a8a343b3951780f7e9fc8af4e51"],
+      "commits": [
+        "3270fc5059171a8a343b3951780f7e9fc8af4e51",
+        "da2605b9efcdf33b16bc3631013aec76105db75b"
+      ],
       "classification": "confirmed"
     },
     {
@@ -433,7 +450,7 @@
       "classification": "reproduced"
     }
   ],
-  "updatedAt": "2026-10-28T12:05:00Z",
+  "updatedAt": "2026-10-28T13:01:56.209Z",
   "additionalRisks": [
     {
       "id": "FIN-R01",
@@ -441,7 +458,7 @@
       "description": "Legacy installment counters commit before provider/ledger completion, allowing same-invoice overcount on retry.",
       "implementation": "https://github.com/coach-sudo/Studio-Portal/pull/75",
       "commit": "e4ffa489ef54454b44b219926fe49b0874b00cac",
-      "evidence": "Original synthetic fault retained in draft #75; new actual PostgreSQL fault/role/first-payment/concurrency assertions passed first CI 40684034260. Generated-type formatting and moved-source contracts corrected; exact-head rerun pending.",
+      "evidence": "Original synthetic partial-settlement fault retained in #75. Exact source e4ffa48 passed production 40684758098 and isolated browser 40684758440, including full PostgreSQL fault/role/first-payment/replay/concurrent-invoice checks. Stripe sandbox and legacy exception handling remain unverified.",
       "remaining": "Stripe sandbox, historical partial reconciliation, zero-value/exception policy review, invitation and other financial branches; no live balance discrepancy or correction claimed."
     }
   ]

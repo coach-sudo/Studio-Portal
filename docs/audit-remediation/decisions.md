@@ -4,7 +4,7 @@ These proposals are reviewable draft implementation policies. Approval does not 
 
 ## SP-04: correct an existing lesson's date/time
 
-The server's `lesson_ops.assess_change` and shared reschedule UI both reject past targets and non-scheduled outcomes. Removing either guard alone would bypass occurrence, credit-expiry, checkout and provider policy. Draft #73 fixes historical creation and timezone input; existing-record correction is still blocked.
+The original server's `lesson_ops.assess_change` and shared reschedule UI both reject past targets and non-scheduled outcomes. Removing either guard alone would bypass occurrence, credit-expiry, checkout and provider policy. Draft #73 fixes historical creation and timezone input; drafts #77/#78 implement the separately approved correction path. The ordinary upcoming-reschedule policy remains distinct.
 
 Proposed separate **Correct Lesson Date/Time** command: coach authorization in PostgreSQL, exact lesson/version, explicit timezone/instant, reason, stable command key/hash, before/after audit and replay receipt. Preserve original `created_at`, attendance outcome and all append-only ledger entries. Never reprice, charge, refund, consume/reverse credits, settle an invoice or send a notification implicitly.
 
@@ -13,6 +13,8 @@ Preview linked bookings/participants, invoice lines and checkout claims, consume
 Approved for draft implementation by the user on October 28: allow a correction with no financial/checkout dependencies immediately after its preview. Hold financially linked corrections until the coach explicitly acknowledges a financial review that preserves the original accounting; expose a durable **financial review required** state rather than inventing balancing entries. Historical corrections suppress provider/notification work by default and expose any Calendar discrepancy for separate review. Upcoming scheduling moves continue through **Reschedule Upcoming Lesson** and its existing provider/financial policy. Correcting a date never proves attendance. Moving a completed record to a future date must explicitly confirm that its recorded outcome is being preserved.
 
 The alternative was to keep all financially linked historical corrections blocked until a separate accounting-correction workflow exists. The approved policy permits no automatic historical balance repair. Production/release approval remains separate.
+
+Implementation evidence: #77's 40 real PostgreSQL assertions, full schema upgrade/replay/grants/fault suite and concurrent sessions passed. #78 adds the coach interface, missing/invalid timezone errors, explicit repeated-hour choices, financial acknowledgements, cursor history and review notes; 23 targeted cases and eight Windows Chromium/WebKit correction fixtures pass. No correction or review has been submitted to a hosted environment. Financial/provider holds are retained, and a review note does not resume automatic coverage or verify external delivery.
 
 ## SP-09: simultaneous private lessons
 

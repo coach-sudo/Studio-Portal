@@ -1,5 +1,15 @@
 # Regression evidence
 
+## October 28 correction and Windows checkpoints
+
+- #73 source `56c9fa9871e5f729f5732a51ac410b7ea589d742`: production 40684262033 and isolated browser 40684261997 passed.
+- #75 source `e4ffa489ef54454b44b219926fe49b0874b00cac`: production 40684758098 and isolated browser 40684758440 passed, including PostgreSQL financial fault/replay/first-payment/concurrency checks. This is not Stripe sandbox proof.
+- #76 source `3270fc5059171a8a343b3951780f7e9fc8af4e51`: production 40684655183 and isolated browser 40684655163 passed. After user disk recovery, clean Windows install, npm audit zero, typecheck/build/lint baseline and 8 Chromium/WebKit fixture browser cases passed. The full New York suite passed **1005/1005 across 147 files**, 287.43 seconds, explicitly excluding ignored `.tmp` diagnostics. Exact commands/results/logs are in #76's `docs/audit-toolchain/evidence`, added at `da2605b9efcdf33b16bc3631013aec76105db75b`.
+- #77's real PostgreSQL run at `0cd3419fae1c7e8f2dcfd7edfcead1459d8892e6` passed all **40 correction assertions**, full schema upgrade/lint/tests and eight concurrent-session scripts. It failed only generated-type formatting drift; alignment followed at `7c181d2f24f228973cfa53d6b9115e863701fd62`, whose exact production CI **40691999170 passed**. Isolated browser CI remains queued at this checkpoint. Initial fixture-status/missing-grant failures are retained in the run history.
+- #78 source `3a9dc1214b8317732588b60ce4104c73490fed6d`: **23** targeted handler/form/timezone/upcoming-reschedule cases, TypeScript, **8/8** Windows correction browser fixtures, **8/8** parent comparison fixtures and **2/2** existing reschedule-error recovery smoke cases passed. Chromium and WebKit × four widths include lost-response identical replay, missing/invalid timezone, DST gap/fold, financial acknowledgement, history failure/cursor/review, axe A/AA, overflow and keyboard/Escape focus. Thirty-two screenshots and raw browser results are in that draft. Full exact-head CI remains pending; hosted roles, manual assistive/touch and provider recovery are unverified.
+
+No local/component/browser fixture pass is promoted to a full workflow or connection PASS. Historical, ledger, provider and role boundaries remain explicit in the 42/20 matrix.
+
 ## Worker truth and observations — draft #69
 
 Implementation checkpoint `bb6aa54f91b9d9002bb59d9a62d58cc2650514c3`.
