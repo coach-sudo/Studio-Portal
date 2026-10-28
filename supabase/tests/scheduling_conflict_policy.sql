@@ -20,7 +20,7 @@ select lives_ok($$select pg_temp.overlap_lesson(14,'cancelled')$$,'Cancelled his
 select lives_ok($$select pg_temp.overlap_lesson(15,'scheduled',null,'2031-11-10T19:00Z','2031-11-10T20:00Z')$$,'Adjacent half-open interval does not overlap');
 select throws_ok($$update public.lessons set starts_at='2031-11-10T18:30Z' where id='e8200000-0000-4000-8000-000000000015'$$,'23P01',null,'Concurrent-safe exclusion remains active on rescheduling');
 select is((select starts_at from public.lessons where id='e8200000-0000-4000-8000-000000000015'),'2031-11-10T19:00Z'::timestamptz,'Rejected reschedule preserves original time');
-select is((select count(*) from public.payment_entries where studio_id='e8200000-0000-4000-8000-000000000001'),0::bigint,'Overlap fixtures create no payment effect');
+select is((select count(*) from public.payment_entries where student_id='e8200000-0000-4000-8000-000000000002'),0::bigint,'Overlap fixtures create no payment effect');
 select is((select count(*) from public.package_credit_entries e join public.packages p on p.id=e.package_id join public.students s on s.id=p.student_id where s.studio_id='e8200000-0000-4000-8000-000000000001'),0::bigint,'Overlap fixtures create no credit effect');
 select * from finish();
 rollback;
