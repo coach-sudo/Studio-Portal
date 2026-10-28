@@ -111,10 +111,13 @@ export default async (request: Request, context: Context) => {
           end: item.ends_at,
           source: "studio",
         }));
-      const observation = await googleObservation(
-        startsAt.toISOString(),
-        endsAt.toISOString(),
-      );
+      const observation =
+        body.payload.historical === true
+          ? { conflicts: [], checked: false }
+          : await googleObservation(
+              startsAt.toISOString(),
+              endsAt.toISOString(),
+            );
       const google = observation.conflicts.map((item) => ({
         ...item,
         source: "google",
@@ -170,11 +173,14 @@ export default async (request: Request, context: Context) => {
       if (
         !Number.isFinite(startsAt.getTime()) ||
         !Number.isFinite(endsAt.getTime()) ||
-        startsAt <= new Date()
+        (startsAt <= new Date() && body.payload.historical !== true)
       )
-        throw new Error("VALIDATION_FAILED: Choose a future time.");
+        throw new Error(
+          "VALIDATION_FAILED: Choose a valid time and use Record Past Lesson for history.",
+        );
       let external = "not_configured";
-      if (
+      if (startsAt <= new Date()) external = "not_checked";
+      else if (
         body.payload.allow_conflict &&
         Netlify.env.get("GOOGLE_REFRESH_TOKEN")
       )

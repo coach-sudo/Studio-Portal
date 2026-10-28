@@ -75,3 +75,88 @@ it("does not offer a local overlap override", async () => {
   ).toBeDisabled();
   expect(save).not.toHaveBeenCalled();
 });
+it("records past wall time in the studio zone with explicit outcome and financial choices", async () => {
+  mock.preview.mockResolvedValue({
+    conflicts: [],
+    externalCalendarChecked: false,
+  });
+  const save = vi.fn().mockResolvedValue(undefined);
+  render(
+    <ManualBookingDialog
+      data={{
+        ...demoSnapshot,
+        settings: { ...demoSnapshot.settings, timezone: "America/New_York" },
+      }}
+      isDemo={false}
+      onClose={vi.fn()}
+      onSave={save}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Entry type"), {
+    target: { value: "historical" },
+  });
+  fireEvent.change(screen.getByLabelText("Starts"), {
+    target: { value: "2020-01-01T10:00" },
+  });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Create booking" }).closest("form")!,
+  );
+  await waitFor(() => expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0]).toMatchObject({
+    starts_at: "2020-01-01T15:00:00.000Z",
+    timezone: "America/New_York",
+    historical: true,
+    historical_outcome: "scheduled",
+    historical_financial: "record_only",
+    attendance_confirmed: false,
+  });
+  fireEvent.change(screen.getByLabelText("Historical outcome"), {
+    target: { value: "completed" },
+  });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Create booking" }).closest("form")!,
+  );
+  expect(
+    await screen.findByText("Confirm the actual lesson outcome explicitly."),
+  ).toBeInTheDocument();
+  expect(save).toHaveBeenCalledOnce();
+});
+it("rejects a DST gap and requires a repeated-hour occurrence", async () => {
+  mock.preview.mockResolvedValue({
+    conflicts: [],
+    externalCalendarChecked: false,
+  });
+  const save = vi.fn().mockResolvedValue(undefined);
+  render(
+    <ManualBookingDialog
+      data={{
+        ...demoSnapshot,
+        settings: { ...demoSnapshot.settings, timezone: "America/New_York" },
+      }}
+      isDemo={false}
+      onClose={vi.fn()}
+      onSave={save}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Starts"), {
+    target: { value: "2031-03-09T02:30" },
+  });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Create booking" }).closest("form")!,
+  );
+  expect(save).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByLabelText("Starts"), {
+    target: { value: "2031-11-02T01:30" },
+  });
+  const repeated = screen.getByLabelText("Repeated hour occurrence");
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Create booking" }).closest("form")!,
+  );
+  expect(save).not.toHaveBeenCalled();
+  fireEvent.change(repeated, { target: { value: "2031-11-02T06:30:00.000Z" } });
+  fireEvent.submit(
+    screen.getByRole("button", { name: "Create booking" }).closest("form")!,
+  );
+  await waitFor(() => expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0].starts_at).toBe("2031-11-02T06:30:00.000Z");
+});

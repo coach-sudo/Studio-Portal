@@ -1,25 +1,18 @@
 import { AlertTriangle, CalendarClock, Clock3 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { zonedDateTimeToUtc } from "../domain/booking";
+import {
+  useId,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { formatZonedInput, zonedInputInstants } from "../domain/zonedInput";
 import type { Lesson } from "../domain/model";
 import "./RescheduleLessonForm.css";
 
 function wallParts(value: string, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value || "";
-  return {
-    date: [part("year"), part("month"), part("day")].join("-"),
-    time: [part("hour"), part("minute")].join(":"),
-  };
+  const [date, time] = formatZonedInput(value, timeZone).split("T");
+  return { date, time };
 }
 
 function shiftedDate(value: string, timeZone: string, days: number) {
@@ -31,13 +24,6 @@ function shiftedDate(value: string, timeZone: string, days: number) {
     String(shifted.getUTCMonth() + 1).padStart(2, "0"),
     String(shifted.getUTCDate()).padStart(2, "0"),
   ].join("-");
-}
-
-function asUtc(date: string, time: string, timeZone: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  if (![year, month, day, hour, minute].every(Number.isFinite)) return;
-  return zonedDateTimeToUtc({ year, month, day, hour, minute }, timeZone);
 }
 
 function display(value: Date | string, timeZone: string) {
@@ -111,10 +97,17 @@ export function RescheduleLessonForm({
     Number.isInteger(durationMinutes) &&
     durationMinutes >= 15 &&
     durationMinutes <= 720;
-  const nextStart = useMemo(
-    () => asUtc(date, time, timezone),
+  const foldId = useId();
+  const [fold, setFold] = useState(lesson.startsAt);
+  const candidates = useMemo(
+    () => zonedInputInstants(date + "T" + time, timezone),
     [date, time, timezone],
   );
+  const nextInstant =
+    candidates.length === 1
+      ? candidates[0]
+      : candidates.find((value) => value === fold);
+  const nextStart = nextInstant ? new Date(nextInstant) : undefined;
   const nextEnd =
     nextStart && validDuration
       ? new Date(nextStart.getTime() + durationMinutes * 60_000)
@@ -201,6 +194,7 @@ export function RescheduleLessonForm({
               onClick={() => {
                 setDate(shiftedDate(lesson.startsAt, timezone, Number(days)));
                 setConflicts([]);
+                setFold("");
                 setApprovedTime("");
               }}
             >
@@ -221,6 +215,7 @@ export function RescheduleLessonForm({
             onChange={(event) => {
               setDate(event.target.value);
               setConflicts([]);
+              setFold("");
               setApprovedTime("");
             }}
           />
@@ -235,12 +230,37 @@ export function RescheduleLessonForm({
             onChange={(event) => {
               setTime(event.target.value);
               setConflicts([]);
+              setFold("");
               setApprovedTime("");
             }}
           />
         </label>
       </div>
 
+      {candidates.length > 1 && (
+        <label htmlFor={foldId}>
+          Repeated hour occurrence
+          <select
+            id={foldId}
+            required
+            value={fold}
+            onChange={(event) => setFold(event.target.value)}
+          >
+            <option value="">Choose the intended occurrence</option>
+            {candidates.map((value, index) => (
+              <option key={value} value={value}>
+                {index === 0 ? "First" : "Second"} occurrence — {value} UTC
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!nextStart && date && time && (
+        <p role="alert">
+          Choose a valid time in {timezone}; skipped DST times are invalid and
+          repeated hours require an occurrence choice.
+        </p>
+      )}
       <label>
         Duration (minutes)
         <input
@@ -253,6 +273,7 @@ export function RescheduleLessonForm({
           onChange={(e) => {
             setDurationMinutes(Number(e.target.value));
             setConflicts([]);
+            setFold("");
             setApprovedTime("");
           }}
         />

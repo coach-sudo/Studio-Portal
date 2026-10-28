@@ -2037,13 +2037,21 @@ function createDemoManualBooking(
     ).toISOString(),
     location = payload.location as MeetingProvider,
     total =
-      payload.price_minor == null
-        ? service.priceMinor +
-          Number(service.locationPriceAdjustments[location] || 0)
-        : Number(payload.price_minor),
+      payload.historical && payload.historical_financial === "record_only"
+        ? 0
+        : payload.price_minor == null
+          ? service.priceMinor +
+            Number(service.locationPriceAdjustments[location] || 0)
+          : Number(payload.price_minor),
     bookingId = uid("booking"),
     lessonId = uid("lesson"),
     now = new Date().toISOString();
+  const outcome = (
+    payload.historical ? payload.historical_outcome : "scheduled"
+  ) as Lesson["status"];
+  const paid = payload.historical
+    ? payload.historical_financial === "payment_received"
+    : payload.mark_paid;
   draft.bookings.push({
     id: bookingId,
     studioId: draft.studioId,
@@ -2057,13 +2065,18 @@ function createDemoManualBooking(
     forMinor: student.isMinor,
     startsAt,
     endsAt,
-    timezone: student.timezone || draft.settings.timezone,
+    timezone: String(payload.timezone || draft.settings.timezone),
     location,
-    status: "confirmed",
+    status:
+      outcome === "cancelled"
+        ? "cancelled"
+        : ["completed", "no_show"].includes(outcome)
+          ? "completed"
+          : "confirmed",
     paymentPolicy: "pay_later",
-    paymentStatus: payload.mark_paid ? "paid" : "due",
+    paymentStatus: total === 0 ? "not_required" : paid ? "paid" : "due",
     totalMinor: total,
-    paidMinor: payload.mark_paid ? total : 0,
+    paidMinor: paid ? total : 0,
     currency: service.currency,
     policySnapshot: structuredClone(service.policy),
     adminOverride: { schedule: true },
@@ -2078,7 +2091,7 @@ function createDemoManualBooking(
     topic: service.name,
     startsAt,
     endsAt,
-    status: "scheduled",
+    status: outcome,
     locationType: location === "in_person" ? "in_person" : "virtual",
     locationLabel:
       location === "in_person"
@@ -2097,8 +2110,26 @@ function createDemoManualBooking(
     studentId: student.id,
     displayName: student.fullName,
     email: student.email || student.guardianEmail || "",
-    status: "confirmed",
+    status:
+      outcome === "completed"
+        ? "attended"
+        : outcome === "no_show"
+          ? "no_show"
+          : outcome === "cancelled"
+            ? "cancelled"
+            : "confirmed",
   });
+  if (paid && total > 0)
+    draft.payments.push({
+      id: uid("payment"),
+      studentId: student.id,
+      kind: "payment",
+      amountMinor: total,
+      currency: service.currency,
+      externalReference: `manual:${bookingId}`,
+      reason: String(payload.reason || "Coach recorded a manual payment"),
+      createdAt: now,
+    });
 }
 function changeDemoBooking(draft: StudioSnapshot, id: string, command: string) {
   const booking = draft.bookings.find((item) => item.id === id)!;
