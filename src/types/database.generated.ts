@@ -4804,6 +4804,10 @@ export type Database = {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
+      calendar_discovery_progress: {
+        Args: { p_cursor?: string; p_scan: string }
+        Returns: Json
+      }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -4937,6 +4941,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_calendar_discovery_page: {
+        Args: {
+          p_actor: string
+          p_calendar: string
+          p_key: string
+          p_scan: string
+          p_sequence: number
+        }
+        Returns: Json
       }
       claim_calendar_projections: {
         Args: { batch_size?: number }
@@ -5376,6 +5390,15 @@ export type Database = {
         Returns: Json
       }
       extend_ongoing_series: { Args: never; Returns: number }
+      fail_calendar_discovery_page: {
+        Args: {
+          p_calendar: string
+          p_claim: string
+          p_code: string
+          p_scan: string
+        }
+        Returns: boolean
+      }
       finalize_booking_cancellation: {
         Args: {
           correlation_id: string
@@ -5397,6 +5420,16 @@ export type Database = {
       }
       find_student_duplicates: {
         Args: { p_email?: string; p_name: string; p_phone?: string }
+        Returns: Json
+      }
+      finish_calendar_discovery_page: {
+        Args: {
+          p_calendar: string
+          p_claim: string
+          p_scan: string
+          p_sequence: number
+          p_value: Json
+        }
         Returns: Json
       }
       finish_calendar_projection: {
@@ -5474,6 +5507,10 @@ export type Database = {
           p_offset?: number
           p_studio: string
         }
+        Returns: Json
+      }
+      list_calendar_discoveries: {
+        Args: { p_cursor?: Json; p_studio: string }
         Returns: Json
       }
       manage_campaign_draft: {
@@ -5778,6 +5815,15 @@ export type Database = {
           p_invoice: string
           p_key: string
           p_session: string
+        }
+        Returns: Json
+      }
+      start_calendar_discovery: {
+        Args: {
+          p_actor: string
+          p_key: string
+          p_studio: string
+          p_value: Json
         }
         Returns: Json
       }
