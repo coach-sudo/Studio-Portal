@@ -5,6 +5,27 @@ import {
   calendarDiscoveryPage,
 } from "./calendar-discovery";
 afterEach(() => vi.unstubAllGlobals());
+it("keeps bounded preview text valid for PostgreSQL JSON and rejects duplicate identities within one page", async () => {
+  const fetcher = vi
+    .fn()
+    .mockResolvedValueOnce(
+      Response.json({
+        items: [{ id: "unicode-title", summary: "A" + "😀".repeat(600) }],
+      }),
+    )
+    .mockResolvedValueOnce(
+      Response.json({ items: [{ id: "duplicate" }, { id: "duplicate" }] }),
+    );
+  vi.stubGlobal("fetch", fetcher);
+  const page = await calendarDiscoveryPage("token", claim);
+  expect(page.items[0].summary.length).toBeLessThanOrEqual(1000);
+  expect(JSON.stringify(page.items[0].summary)).not.toMatch(
+    /\\ud[89ab][0-9a-f]{2}/i,
+  );
+  await expect(calendarDiscoveryPage("token", claim)).rejects.toMatchObject({
+    code: "invalid_payload",
+  });
+});
 const claim = {
   calendarId: "lesson/calendar@example.test",
   from: "2000-01-01T00:00:00Z",

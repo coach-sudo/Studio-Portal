@@ -52,6 +52,8 @@ export class DiscoveryProviderError extends Error {
     super(code);
   }
 }
+const previewText = (value: string) =>
+  value.slice(0, 1000).replace(/[\uD800-\uDBFF]$/u, "");
 
 async function providerJson<T extends z.ZodType>(
   url: URL,
@@ -115,7 +117,7 @@ export async function accessibleCalendarPage(token: string, cursor?: string) {
       .filter((row) => !row.deleted)
       .map((row) => ({
         id: row.id,
-        label: (row.summary || row.id).slice(0, 1000),
+        label: previewText(row.summary || row.id),
         timezone: row.timeZone || null,
         accessRole: row.accessRole,
         primary: row.primary === true,
@@ -173,10 +175,10 @@ export async function calendarDiscoveryPage(
       return {
         id: event.id,
         etag: event.etag || null,
-        summary: (
+        summary: previewText(
           event.summary ||
-          (cancelled ? "Cancelled source event" : "Untitled Calendar event")
-        ).slice(0, 1000),
+            (cancelled ? "Cancelled source event" : "Untitled Calendar event"),
+        ),
         status: cancelled ? "cancelled" : "active",
         startsAt: valid ? startsAt : null,
         endsAt: valid ? endsAt : null,
