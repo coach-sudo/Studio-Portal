@@ -772,43 +772,6 @@ export async function handleStudentsCommands(
     });
   }
 
-  if (domain === "students" && input.command === "merge" && input.entityId) {
-    const studioId = await requireCoach(),
-      removeStudentId = String(input.payload.removeStudentId || "");
-    const { data: keep, error: keepError } = await db
-      .from("students")
-      .select("id,studio_id")
-      .eq("id", input.entityId)
-      .eq("studio_id", studioId)
-      .single();
-    const { data: remove, error: removeError } = await db
-      .from("students")
-      .select("id,studio_id")
-      .eq("id", removeStudentId)
-      .eq("studio_id", studioId)
-      .single();
-    if (keepError || removeError || !keep || !remove)
-      throw new Error("FORBIDDEN");
-    const { data, error } = await db.rpc("merge_studio_students", {
-      keep_student_id: keep.id,
-      remove_student_id: remove.id,
-    });
-    if (error) throw error;
-    return json({
-      resource: data,
-      recommendations: [],
-      auditEventId: await audit(
-        studioId,
-        "student",
-        keep.id,
-        "student.merged",
-        { keep, remove },
-        data,
-      ),
-      queuedSideEffects: [],
-    });
-  }
-
   if (
     domain === "students" &&
     input.command === "update_linked_contact_self" &&
