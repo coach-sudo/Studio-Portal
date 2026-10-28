@@ -575,7 +575,7 @@ function CoachLessonWorkspace({
               className="primary-button"
               onClick={() => setLessonAction("reschedule")}
             >
-              <CalendarDays /> Reschedule
+              <CalendarDays /> Reschedule upcoming lesson
             </button>
           )}
         </div>
@@ -733,7 +733,7 @@ function CoachLessonWorkspace({
       )}
       {lessonAction === "reschedule" && (
         <Dialog
-          title="Reschedule lesson"
+          title="Reschedule upcoming lesson"
           description={`${student.preferredName || student.fullName} · ${lesson.topic}`}
           onClose={() => !actionBusy && setLessonAction(null)}
         >

@@ -115,19 +115,23 @@ export function TimezoneSelect({
   defaultToDevice?: boolean;
 }) {
   const detected = useMemo(observedTimezone, []);
-  const selectedTimezone = value || (defaultToDevice ? detected : "");
+  const validValue = value && isValidTimezone(value) ? value : "";
+  const selectedTimezone = validValue || (defaultToDevice ? detected : "");
   const selectedLabel = selectedTimezone
     ? timezoneLabel(selectedTimezone, detected)
     : "";
   const timezones = useMemo(
     () => [
       ...new Set(
-        [detected, value, ...commonUsTimezones, ...worldTimezones()].filter(
-          Boolean,
-        ),
+        [
+          detected,
+          validValue,
+          ...commonUsTimezones,
+          ...worldTimezones(),
+        ].filter(Boolean),
       ),
     ],
-    [detected, value],
+    [detected, validValue],
   );
   const [query, setQuery] = useState(selectedLabel);
   const [open, setOpen] = useState(false);

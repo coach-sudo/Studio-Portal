@@ -292,7 +292,10 @@ export function RescheduleLessonForm({
         <p className="field-help">Choose a different date or time.</p>
       )}
       {inPast && (
-        <p className="form-error">The new lesson time must be in the future.</p>
+        <p className="form-error">
+          Upcoming reschedules need a future time. For a historical correction,
+          use Correct lesson date/time from the lesson workspace.
+        </p>
       )}
       {checkError && (
         <p className="form-error" role="alert">

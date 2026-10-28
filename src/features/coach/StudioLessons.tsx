@@ -448,7 +448,7 @@ export function LessonsView({
         <Dialog
           title={
             panel === "reschedule"
-              ? "Reschedule lesson"
+              ? "Reschedule upcoming lesson"
               : panel === "credits"
                 ? "Lesson credits"
                 : selected.topic

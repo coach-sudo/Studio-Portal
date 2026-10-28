@@ -83,21 +83,24 @@ it("previews a zoned historical correction, requires financial acknowledgement a
   await waitFor(() => expect(applied).toHaveBeenCalledOnce());
   expect(f.command.mock.calls[1]).toEqual(f.command.mock.calls[2]);
 });
-it("requires an explicit timezone rather than guessing a missing studio policy", () => {
-  render(
-    <LessonDatetimeCorrectionForm
-      lesson={lesson}
-      timezone=""
-      onCancel={() => {}}
-      onApplied={() => {}}
-    />,
-  );
-  expect(screen.getByRole("alert")).toHaveTextContent(
-    "explicit valid correction timezone",
-  );
-  expect(screen.getByLabelText("Starts")).toHaveValue("");
-  expect(f.command).not.toHaveBeenCalled();
-});
+it.each(["", "Not/A_Real_Zone"])(
+  "requires an explicit timezone rather than guessing invalid studio policy %s",
+  (timezone) => {
+    render(
+      <LessonDatetimeCorrectionForm
+        lesson={lesson}
+        timezone={timezone}
+        onCancel={() => {}}
+        onApplied={() => {}}
+      />,
+    );
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "explicit valid correction timezone",
+    );
+    expect(screen.getByLabelText("Starts")).toHaveValue("");
+    expect(f.command).not.toHaveBeenCalled();
+  },
+);
 it("rejects a DST gap locally without calling the command", async () => {
   render(
     <LessonDatetimeCorrectionForm
