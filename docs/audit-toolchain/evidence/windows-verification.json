@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-28",
+  "sourceCommit": "3270fc5059171a8a343b3951780f7e9fc8af4e51",
+  "platform": "Windows",
+  "node": "v24.14.1",
+  "timezone": "America/New_York",
+  "versions": {
+    "vite": "8.1.6",
+    "vitest": "4.1.12"
+  },
+  "unitCommand": "npm test -- --maxWorkers=1 --exclude **/.tmp/** --reporter=json --outputFile=.tmp/audit-patched-windows-1005.json",
+  "unit": {
+    "passed": 1005,
+    "failed": 0,
+    "files": 147,
+    "seconds": 287.4328186035156
+  },
+  "typecheck": "passed",
+  "build": "passed",
+  "lint": {
+    "errors": 0,
+    "warnings": 904,
+    "baseline": "unchanged"
+  },
+  "audit": {
+    "info": 0,
+    "low": 0,
+    "moderate": 0,
+    "high": 0,
+    "critical": 0,
+    "total": 0
+  },
+  "browser": {
+    "command": "playwright test --config e2e/quality-local/playwright.config.ts",
+    "passed": 8,
+    "failed": 0,
+    "engines": ["chromium", "webkit"],
+    "layer": "synthetic HTTP fixtures; hosted role/provider acceptance not inferred"
+  },
+  "ci": {
+    "production": 40684655183,
+    "browser": 40684655163
+  }
+}

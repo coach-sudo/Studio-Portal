@@ -1,0 +1,5 @@
+
+> studio-portal@1.0.0 lint:baseline
+> node scripts/check-lint-baseline.mjs
+
+{"errors":0,"warnings":904,"inventoryEntries":241,"mode":"checked"}
