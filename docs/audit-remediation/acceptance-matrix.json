@@ -117,9 +117,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "B05",
@@ -202,10 +204,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "B11",
@@ -244,9 +247,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
-        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "C03",
@@ -258,10 +263,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "C04",
@@ -287,9 +293,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "C06",
@@ -304,10 +312,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "C07",
@@ -319,10 +328,11 @@
       "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "D01",
@@ -534,9 +544,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/71",
-        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain."
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "F06",
@@ -613,9 +625,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/75",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
-        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+        "https://github.com/coach-sudo/Studio-Portal/pull/82",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "X03",
@@ -628,9 +641,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "X04",
@@ -658,8 +672,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+      ],
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "X06",
@@ -700,8 +716,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/73",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
         "https://github.com/coach-sudo/Studio-Portal/pull/77",
-        "https://github.com/coach-sudo/Studio-Portal/pull/78"
-      ]
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
+      ],
+      "verificationNotes": " Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "X09",
@@ -823,9 +841,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
-        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     },
     {
       "id": "X19",
@@ -859,9 +878,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/76",
         "https://github.com/coach-sudo/Studio-Portal/pull/79",
-        "https://github.com/coach-sudo/Studio-Portal/pull/80"
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source-protection prerequisite has local targeted evidence; its actual PostgreSQL/old-worker race/retention gates are pending. No canonical reconciliation writer or production effect."
     }
   ]
 }
