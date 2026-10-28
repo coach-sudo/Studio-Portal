@@ -184,51 +184,61 @@ export async function startProviderIntake() {
 
 const inFlightStudioCommands = new Map<string, Promise<any>>();
 
-export function studioCommand(
+interface StudioCommandInput {
+  command: string;
+  idempotencyKey?: string;
+  entityType?: string;
+  entityId?: string;
+  expectedVersion: number;
+  nextStatus?: string;
+  payload?: Record<string, unknown>;
+  reason: string;
+}
+
+export async function studioCommand(
   domain: string,
-  input: {
-    command: string;
-    idempotencyKey?: string;
-    entityType?: string;
-    entityId?: string;
-    expectedVersion: number;
-    nextStatus?: string;
-    payload?: Record<string, unknown>;
-    reason: string;
-  },
+  input: StudioCommandInput,
 ): Promise<any> {
-  const key = `${domain}:${input.command}:${input.entityId || "new"}:${JSON.stringify(input.payload || {})}`;
+  if (!isSupabaseConfigured || !supabase)
+    throw new Error("Production database is not configured.");
+  // Snapshot the wire envelope before awaiting auth: callers may edit the form
+  // while a session lookup is pending. The key and sent body must describe the
+  // same command, including its version, reason and explicit replay identity.
+  const serializedInput = JSON.stringify(input);
+  const { data, error } = await supabase.auth.getSession();
+  const session = data.session;
+  if (error || !session?.access_token)
+    throw new Error("Sign in to make this change.");
+  // This private, short-lived key is never logged or exposed. A new session
+  // must not subscribe to a previous session's in-flight response.
+  const key = JSON.stringify([
+    session.user?.id ?? null,
+    session.access_token,
+    domain,
+    serializedInput,
+  ]);
   const existing = inFlightStudioCommands.get(key);
   if (existing) return existing;
-  const request = executeStudioCommand(domain, input).finally(() =>
-    inFlightStudioCommands.delete(key),
-  );
+  const request = executeStudioCommand(
+    domain,
+    serializedInput,
+    session.access_token,
+  ).finally(() => inFlightStudioCommands.delete(key));
   inFlightStudioCommands.set(key, request);
   return request;
 }
 
 async function executeStudioCommand(
   domain: string,
-  input: {
-    command: string;
-    idempotencyKey?: string;
-    entityType?: string;
-    entityId?: string;
-    expectedVersion: number;
-    nextStatus?: string;
-    payload?: Record<string, unknown>;
-    reason: string;
-  },
+  serializedInput: string,
+  accessToken: string,
 ) {
-  if (!isSupabaseConfigured || !supabase)
-    throw new Error("Production database is not configured.");
-  const { data: session } = await supabase.auth.getSession();
-  if (!session.session) throw new Error("Sign in to make this change.");
+  const input: StudioCommandInput = JSON.parse(serializedInput);
   const response = await fetch(`/api/v2/${domain}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${session.session.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
       ...input,

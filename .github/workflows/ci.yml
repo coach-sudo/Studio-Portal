@@ -8,6 +8,7 @@ on:
       [
         main,
         codex/audit-worker-observability,
+        codex/audit-student-identity-groups,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,

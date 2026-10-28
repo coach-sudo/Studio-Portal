@@ -1,0 +1,62 @@
+{
+  "parentContract": {
+    "pr": 87,
+    "commit": "1005903cabdf86a97cb53cedc3ce8284abd46141",
+    "productionRun": 40784146109,
+    "browserRun": 40784145991,
+    "result": "passed",
+    "newSqlAssertions": 47,
+    "totalSqlAssertions": 378
+  },
+  "sessionTransport": {
+    "pr": 81,
+    "originalCommit": "9dc30cde4a1920f88cdda11175226cea3071eaad",
+    "reusedCommit": "9691f75"
+  },
+  "unit": {
+    "passed": 51,
+    "files": 4,
+    "command": "node node_modules/vitest/vitest.mjs run src/features/coach/StudentIdentity.test.tsx src/data/studentIdentity.test.ts src/data/bookingCommands.test.ts netlify/functions/_v2/student-identity.test.ts --exclude '**/.tmp/**' --maxWorkers=1"
+  },
+  "browser": {
+    "command": "node node_modules/playwright/cli.js test --config e2e/audit-identity-local/playwright.config.ts",
+    "windows": true,
+    "engines": ["Chromium", "WebKit"],
+    "widths": [320, 390, 768, 1440],
+    "passed": 8,
+    "beforePassed": 8,
+    "screenshots": 48,
+    "network": "loopback fixture only; no hosted provider or financial mutation",
+    "pagination": "Synthetic UI pages are independent of the real PostgreSQL creation/authorization assertions; no combined end-to-end PASS inferred."
+  },
+  "contrast": {
+    "sampleFiles": [
+      "chromium-colors-1440.json",
+      "chromium-colors-320.json",
+      "chromium-colors-390.json",
+      "chromium-colors-768.json",
+      "webkit-colors-1440.json",
+      "webkit-colors-320.json",
+      "webkit-colors-390.json",
+      "webkit-colors-768.json"
+    ],
+    "minimumTextRatio": 6.467992963799774,
+    "minimumControlBorderRatio": 16.513121508197194,
+    "minimumFocusRatio": 3.303068817416212,
+    "focusWidth": 3
+  },
+  "failuresRetained": [
+    "Initial exact nested-select label locator timed out; switched to native combobox accessible names.",
+    "Duplicate Close labels made a test locator ambiguous; footer now says Close review or Done.",
+    "Read fault recovery originally raced the initial request; test now observes the failure before restoring the fixture.",
+    "Expanded pointer-then-Escape checks passed Chromium but failed all four WebKit widths; opener now explicitly focuses before opening, preserving the logical return target. Full initial WebKit failure results retained.",
+    "A programmatic-focus contrast assertion did not enter keyboard modality; verification now uses Tab and asserts the focused control before measuring its visible ring.",
+    "Shared schema import first failed TS6307; the exact shared domain file was added to node project references.",
+    "An unfiltered targeted run found the archived parent test too (65 cases). The recorded 51-case run explicitly excludes ignored .tmp diagnostics."
+  ],
+  "remaining": [
+    "Exact interface-head full CI, database upgrade/type/roles and isolated deployed browser gates.",
+    "Hosted coach/student/guardian/unrelated sessions, manual screen reader/touch, dark/configured portal appearance and full combined candidate.",
+    "Calendar/financial/recovery gates in central matrix remain unverified."
+  ]
+}

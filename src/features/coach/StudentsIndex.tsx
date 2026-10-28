@@ -4,9 +4,9 @@ import {
   useUrlChoice,
   useWorkspaceNavigation,
 } from "../../hooks/useWorkspaceLocation";
+import { StudentIdentityDialog } from "./StudentIdentity";
 import { Plus, Search, Upload, Users } from "lucide-react";
 import {
-  useEffect,
   useMemo,
   useRef,
   useState,
@@ -466,7 +466,14 @@ export function StudentsIndex({
         />
         <button onClick={() => fileInput.current?.click()}>Import CSV</button>
         {!isDemo && (
-          <button onClick={() => setMerging(true)}>Merge duplicates</button>
+          <button
+            onClick={(event) => {
+              event.currentTarget.focus();
+              setMerging(true);
+            }}
+          >
+            Link duplicate profiles
+          </button>
         )}
       </section>
       {adding && (
@@ -527,137 +534,20 @@ export function StudentsIndex({
           </div>
         </Dialog>
       )}
-      {merging && (
-        <MergeStudentsDialog
-          data={{ ...data, students: reviewStudents }}
-          loading={studentCatalogLoading}
-          onClose={() => setMerging(false)}
-          onMerged={async (name) => {
-            setMerging(false);
-            await invalidateStudioDomains(queryClient, ["students"]);
-            setNotice(`${name} is now one complete student record.`);
-          }}
-        />
-      )}
+      <StudentIdentityDialog
+        students={reviewStudents}
+        loading={studentCatalogLoading}
+        open={merging}
+        onClose={() => setMerging(false)}
+        onSaved={async (name) => {
+          setNotice(
+            name +
+              "'s related-profile links were saved. Original records and balances remain separate.",
+          );
+          await invalidateStudioDomains(queryClient, ["students"]);
+        }}
+      />
     </>
-  );
-}
-
-function MergeStudentsDialog({
-  data,
-  loading,
-  onClose,
-  onMerged,
-}: {
-  data: StudioSnapshot;
-  loading: boolean;
-  onClose: () => void;
-  onMerged: (name: string) => Promise<void>;
-}) {
-  const [keepId, setKeepId] = useState(""),
-    [removeId, setRemoveId] = useState(""),
-    [saving, setSaving] = useState(false),
-    [error, setError] = useState("");
-  const keep = data.students.find((student) => student.id === keepId),
-    remove = data.students.find((student) => student.id === removeId);
-  const submit = async (event: FormEvent) => {
-    event.preventDefault();
-    if (!keep || !remove || saving) return;
-    setSaving(true);
-    setError("");
-    try {
-      await studioCommand("students", {
-        command: "merge",
-        entityId: keep.id,
-        expectedVersion: keep.version,
-        payload: { removeStudentId: remove.id },
-        reason: `Coach merged duplicate student ${remove.fullName} into ${keep.fullName}`,
-      });
-      await onMerged(keep.fullName);
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "The student records could not be merged.",
-      );
-    } finally {
-      setSaving(false);
-    }
-  };
-  return (
-    <Dialog
-      title="Merge duplicate students"
-      description="Choose the record to keep. Lessons, notes, materials, payments, guardian access, and provider matches move into it."
-      onClose={onClose}
-    >
-      <form className="workflow-form" onSubmit={submit}>
-        {loading && (
-          <p className="portal-notice" role="status">
-            Loading the complete student list…
-          </p>
-        )}
-        {error && (
-          <p className="inline-error" role="alert">
-            {error}
-          </p>
-        )}
-        <label className="full">
-          Record to keep
-          <select
-            required
-            disabled={loading}
-            value={keepId}
-            onChange={(event) => setKeepId(event.target.value)}
-          >
-            <option value="">Choose the complete record</option>
-            {data.students.map((student) => (
-              <option key={student.id} value={student.id}>
-                {student.fullName} ·{" "}
-                {student.email || student.guardianEmail || "no email"}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="full">
-          Duplicate to merge
-          <select
-            required
-            disabled={loading}
-            value={removeId}
-            onChange={(event) => setRemoveId(event.target.value)}
-          >
-            <option value="">Choose the duplicate</option>
-            {data.students
-              .filter((student) => student.id !== keepId)
-              .map((student) => (
-                <option key={student.id} value={student.id}>
-                  {student.fullName} ·{" "}
-                  {student.email || student.guardianEmail || "no email"}
-                </option>
-              ))}
-          </select>
-        </label>
-        {keep && remove && (
-          <p className="portal-notice">
-            <Users />
-            {remove.fullName} will be removed after all linked history is
-            transferred to {keep.fullName}. This action is recorded in the audit
-            log.
-          </p>
-        )}
-        <div className="form-actions full">
-          <button type="button" disabled={saving} onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="primary"
-            disabled={loading || saving || !keep || !remove}
-          >
-            {saving ? "Merging…" : "Merge records"}
-          </button>
-        </div>
-      </form>
-    </Dialog>
   );
 }
 

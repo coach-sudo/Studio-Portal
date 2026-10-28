@@ -46,6 +46,7 @@
     "src/domain/credits.ts",
     "src/domain/creditCoverage.ts",
     "src/domain/lessonChanges.ts",
+    "src/domain/studentIdentity.ts",
     "src/domain/lessonBulk.ts",
     "src/domain/lessonBulkPresentation.ts",
     "src/domain/automationRules.ts",

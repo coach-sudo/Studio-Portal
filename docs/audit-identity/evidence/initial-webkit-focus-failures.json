@@ -1,0 +1,499 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\Desktop\\studio-portal\\node_modules\\playwright\\cli.js",
+      "test",
+      "--config",
+      "e2e/audit-identity-local/playwright.config.ts"
+    ],
+    "configFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\playwright.config.ts",
+    "rootDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-identity-local",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-identity",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-identity-local",
+        "testIgnore": [],
+        "testMatch": ["identity.spec.ts"],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-identity",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-identity-local",
+        "testIgnore": [],
+        "testMatch": ["identity.spec.ts"],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-identity.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\Desktop\\studio-portal\\",
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort",
+      "url": "http://127.0.0.1:4187",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "identity.spec.ts",
+      "file": "identity.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "profile links, replay and original context at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5830,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:13:38.813Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-e79e02502cf9cc7e437c",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4312,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:13:44.751Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-1d216609a971767f3788",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 768",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4423,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:13:49.076Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-d2dbef39341b7545b444",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4591,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:13:53.510Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-497807bc2016284732d7",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 320",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 11852,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                      "column": 7,
+                      "line": 200
+                    },
+                    "snippet": "  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                        "column": 7,
+                        "line": 200
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:13:58.609Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-identity\\identity-profile-links-replay-and-original-context-at-320-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                    "column": 7,
+                    "line": 200
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-e524d2d7a28bbf0c5d1d",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 390",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 11953,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                      "column": 7,
+                      "line": 200
+                    },
+                    "snippet": "  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                        "column": 7,
+                        "line": 200
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:14:10.967Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-identity\\identity-profile-links-replay-and-original-context-at-390-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                    "column": 7,
+                    "line": 200
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-9a037b94cc4b7dbd768b",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 768",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 12330,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                      "column": 7,
+                      "line": 200
+                    },
+                    "snippet": "  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                        "column": 7,
+                        "line": 200
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:14:23.435Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-identity\\identity-profile-links-replay-and-original-context-at-768-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                    "column": 7,
+                    "line": 200
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-79162c488706de3e58a0",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "profile links, replay and original context at 1440",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 13171,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                      "column": 7,
+                      "line": 200
+                    },
+                    "snippet": "  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                        "column": 7,
+                        "line": 200
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeFocused\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator:  getByRole('button', { name: 'Link duplicate profiles', exact: true })\nExpected: focused\nReceived: inactive\nTimeout:  5000ms\n\nCall log:\n\u001b[2m  - Expect \"toBeFocused\" getByRole('button', { name: 'Link duplicate profiles', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('button', { name: 'Link duplicate profiles', exact: true })\u001b[22m\n\u001b[2m    14 × locator resolved to <button>Link duplicate profiles</button>\u001b[22m\n\u001b[2m       - unexpected value \"inactive\"\u001b[22m\n\n\n  198 |         exact: true,\n  199 |       }),\n> 200 |     ).toBeFocused();\n      |       ^\n  201 |   });\n  202 |\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts:200:7"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T23:14:36.294Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-identity\\identity-profile-links-replay-and-original-context-at-1440-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-identity-local\\identity.spec.ts",
+                    "column": 7,
+                    "line": 200
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "bc384e94f5cb1e491b4d-6e38d6d94aee38b91dba",
+          "file": "identity.spec.ts",
+          "line": 6,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-28T23:13:37.423Z",
+    "duration": 72319.345,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 4,
+    "flaky": 0
+  }
+}
