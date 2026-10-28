@@ -8,7 +8,7 @@ insert into public.memberships(studio_id,user_id,role,display_name) values
  ('e8700000-0000-4000-8000-000000000001','e8700000-0000-4000-8000-000000000003','student','E2E current student'),
  ('e8700000-0000-4000-8000-000000000001','e8700000-0000-4000-8000-000000000004','guardian','E2E duplicate guardian');
 create function pg_temp.identity_id(p_n integer) returns uuid language sql immutable as $$select ('e8700000-0000-4000-8000-'||lpad(p_n::text,12,'0'))::uuid$$;
-insert into public.students(id,studio_id,full_name,status) select pg_temp.identity_id(n),pg_temp.identity_id(1),'E2E retained profile '||n,'active' from generate_series(10,19)n;
+insert into public.students(id,studio_id,full_name,status) select pg_temp.identity_id(n),pg_temp.identity_id(1),'E2E retained profile '||n,'active' from generate_series(10,21)n;
 update public.students set user_id=pg_temp.identity_id(3) where id=pg_temp.identity_id(10);
 update public.students set user_id=pg_temp.identity_id(6) where id=pg_temp.identity_id(13);
 update public.students set stripe_customer_id='cus_e2e_identity_a' where id=pg_temp.identity_id(14);
@@ -17,6 +17,9 @@ update public.students set guardian_email='guardian-a@example.test' where id=pg_
 update public.students set guardian_email='guardian-b@example.test' where id=pg_temp.identity_id(17);
 insert into public.student_relationships(student_id,user_id,relationship,can_view_finance,can_manage_profile) values(pg_temp.identity_id(11),pg_temp.identity_id(4),'guardian',true,false);
 insert into public.linked_contacts(studio_id,student_id,user_id,full_name,email,can_view_finance,portal_enabled,is_primary_payer) values(pg_temp.identity_id(1),pg_temp.identity_id(11),pg_temp.identity_id(4),'E2E original payer','e2e-identity-4@example.test',true,true,true);
+insert into public.linked_contacts(studio_id,student_id,full_name,email,portal_enabled,is_primary_payer) values
+ (pg_temp.identity_id(1),pg_temp.identity_id(20),'E2E payer A','payer-a@example.test',false,true),
+ (pg_temp.identity_id(1),pg_temp.identity_id(21),'E2E payer B','payer-b@example.test',false,true);
 insert into public.student_credit_accounts(student_id,auto_apply) values(pg_temp.identity_id(10),false),(pg_temp.identity_id(11),true);
 insert into credit_internal.credit_coverage_jobs(student_id,requested_version) values(pg_temp.identity_id(11),1);
 insert into credit_internal.credit_command_receipts(key,student_id,actor_id,request,response) values('e2e-identity-existing-financial-receipt',pg_temp.identity_id(11),pg_temp.identity_id(2),'{"originalStudent":11}','{"originalResult":"retained"}');
@@ -55,6 +58,7 @@ select ok(not has_function_privilege('anon','public.command_student_identity_cha
 select ok(not has_function_privilege('service_role','public.command_student_identity_change(jsonb,text,text)','execute'),'Workers cannot impersonate a coach identity decision');
 select ok(not has_table_privilege('authenticated','workspace_internal.student_identity_members','SELECT'),'Raw identity membership is private');
 select ok(not has_table_privilege('service_role','workspace_internal.student_identity_receipts','SELECT'),'Provider service cannot read coach receipts');
+select ok(not has_function_privilege('authenticated','library_internal.merge_students_without_study(uuid,uuid)','execute'),'Legacy physical deletion implementation remains private');
 select set_config('request.jwt.claim.sub',pg_temp.identity_id(3)::text,true);
 set local role authenticated;
 select throws_ok($$select public.preview_student_identity_change(pg_temp.identity_value(10,11))$$,'42501','FORBIDDEN','Student cannot preview identity grouping');
@@ -69,6 +73,7 @@ select throws_ok($$select public.merge_studio_students(pg_temp.identity_id(10),p
 select is(public.preview_student_identity_change(pg_temp.identity_value(10,13))->>'blockedReason','different_authenticated_users','Distinct authenticated users remain a review hold');
 select is(public.preview_student_identity_change(pg_temp.identity_value(14,15))->>'blockedReason','different_provider_customers','Distinct provider customers remain a review hold');
 select is(public.preview_student_identity_change(pg_temp.identity_value(16,17))->>'blockedReason','different_guardian_identities','Distinct guardian identities remain a review hold');
+select is(public.preview_student_identity_change(pg_temp.identity_value(20,21))->>'blockedReason','different_payer_identities','Distinct non-portal payers remain a review hold');
 select throws_ok($$select public.preview_student_identity_change(pg_temp.identity_value(10,11)||'{"combineBalances":true}')$$,'P0001','VALIDATION_FAILED','No implicit financial consolidation flag exists');
 select set_config('e2e.identity.value',pg_temp.identity_value(10,11)::text,true);
 select set_config('e2e.identity.stamp',public.preview_student_identity_change(current_setting('e2e.identity.value')::jsonb)->>'stamp',true);
@@ -79,6 +84,7 @@ select is((public.student_identity_group(pg_temp.identity_id(11))->>'total')::in
 select is(public.student_identity_group(pg_temp.identity_id(11))#>>'{group,currentStudentId}',pg_temp.identity_id(10)::text,'Current navigation choice is explicit');
 select is(public.preview_student_identity_change(pg_temp.identity_value(11,12))->>'blockedReason','select_designated_current_profile','Adding through an alias cannot silently replace the designated current profile');
 select is(public.preview_student_identity_change(pg_temp.identity_value(10,11))->>'blockedReason','already_grouped','A new key cannot create duplicate membership');
+select is(public.preview_student_identity_change(pg_temp.identity_value(10,16))->>'blockedReason','group_identity_requires_review','Adding a new member also checks the existing duplicate guardian identity');
 select lives_ok($$select pg_temp.identity_commit(10,12,'e2e-identity-third')$$,'Coach may explicitly add an unlinked duplicate to an existing group');
 select set_config('request.jwt.claim.sub',pg_temp.identity_id(3)::text,true);
 select is(public.can_view_student_finance(pg_temp.identity_id(11)),false,'Grouping grants the current student no duplicate finance permission');
