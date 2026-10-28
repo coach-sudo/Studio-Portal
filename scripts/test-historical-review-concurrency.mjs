@@ -177,6 +177,209 @@ try {
   console.log(
     "PASS: observed concurrent identical commands share one receipt/revision/audit; changed payload conflicts; concurrent different keys reject a stale preview; no lesson or notification effect.",
   );
+  const student = "e8410000-0000-4000-8000-000000000005",
+    secondCandidate = "e8410000-0000-4000-8000-000000000007",
+    lateCandidate = "e8410000-0000-4000-8000-000000000008";
+  sql(`insert into public.students(id,studio_id,full_name,status) values('${student}','${studio}','e2e-historical-canonical-learner','active');
+insert into discovery_internal.candidates(id,scan_id,calendar_id,event_id,source_key,summary,status,starts_at,ends_at,reason_code) values
+('${secondCandidate}','${scan}','canonical-a','e2e-canonical-second',jsonb_build_array('canonical-a','e2e-canonical-second')::text,'E2E second source','active','2020-01-02T15:00Z','2020-01-02T16:00Z','event_detected'),
+('${lateCandidate}','${scan}','canonical-a','e2e-canonical-late',jsonb_build_array('canonical-a','e2e-canonical-late')::text,'E2E late source','active','2020-01-03T15:00Z','2020-01-03T16:00Z','event_detected');`);
+  const reopen = {
+    stamp: preview().stamp,
+    action: "reopen",
+    reason: "Explicit synthetic canonical reopening",
+  };
+  sql(
+    authenticated +
+      command(reopen, "e2e-canonical-explicit-reopen") +
+      "commit;",
+  );
+  const createValue = (day) => ({
+    action: "create",
+    studentId: student,
+    reason: "Explicit synthetic historical creation",
+    startsAt: day + "T15:00:00Z",
+    endsAt: day + "T16:00:00Z",
+    timezone: "UTC",
+    topic: "e2e-historical-canonical-record",
+    locationType: "in_person",
+    locationLabel: "E2E studio",
+  });
+  const canonicalPreview = (id, value) =>
+    JSON.parse(
+      sql(
+        authenticated +
+          `select public.preview_historical_calendar_reconciliation('${id}',${literal(value)});commit;`,
+      ),
+    );
+  const canonicalCommand = (id, value, stamp, key) =>
+    `select public.command_historical_calendar_reconciliation('${id}',${literal(value)},'${stamp}','${key}');`;
+  const firstValue = createValue("2020-01-01"),
+    firstStamp = canonicalPreview(candidate, firstValue).stamp;
+  const canonicalFirst = session(
+    authenticated +
+      `set local application_name='e2e-canonical-first';` +
+      canonicalCommand(
+        candidate,
+        firstValue,
+        firstStamp,
+        "e2e-canonical-same-key",
+      ) +
+      "select pg_sleep(5);commit;",
+  );
+  await observed("e2e-canonical-first", "wait_event='PgSleep'");
+  const canonicalSecond = session(
+    authenticated +
+      `set local application_name='e2e-canonical-second';` +
+      canonicalCommand(
+        candidate,
+        firstValue,
+        firstStamp,
+        "e2e-canonical-same-key",
+      ) +
+      "commit;",
+  );
+  await observed("e2e-canonical-second", "wait_event_type='Lock'");
+  const legacyInsert = (event, id) =>
+    `insert into public.integration_imports(id,studio_id,provider,external_id,detected_source,status,payload) values('${id}','${studio}','google_calendar','${event}','google_calendar','needs_review','{}');`;
+  const oldWorker = session(
+    `begin;set local role service_role;set local application_name='e2e-canonical-old-worker';` +
+      legacyInsert(
+        "e2e-historical-review-event",
+        "e8410000-0000-4000-8000-000000000041",
+      ) +
+      "commit;",
+  );
+  await observed("e2e-canonical-old-worker", "wait_event_type='Lock'");
+  const [canonOne, canonTwo, old] = await Promise.all([
+    canonicalFirst,
+    canonicalSecond,
+    oldWorker,
+  ]);
+  assert.equal(canonOne.status, 0, canonOne.stderr);
+  assert.equal(canonTwo.status, 0, canonTwo.stderr);
+  assert.deepEqual(result(canonOne), result(canonTwo));
+  assert.notEqual(old.status, 0);
+  assert.match(old.stderr, /historical reconciliation command/);
+  assert.equal(
+    sql(`select count(*) from public.lessons where studio_id='${studio}'`),
+    "1",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.integration_imports where studio_id='${studio}' and external_id='e2e-historical-review-event'`,
+    ),
+    "0",
+  );
+  const changedCanonical = await session(
+    authenticated +
+      canonicalCommand(
+        candidate,
+        { ...firstValue, reason: "Changed canonical request" },
+        firstStamp,
+        "e2e-canonical-same-key",
+      ) +
+      "commit;",
+  );
+  assert.notEqual(changedCanonical.status, 0);
+  assert.match(changedCanonical.stderr, /IDEMPOTENCY_CONFLICT/);
+  const secondValue = createValue("2020-01-02"),
+    secondStamp = canonicalPreview(secondCandidate, secondValue).stamp;
+  const differentFirst = session(
+    authenticated +
+      `set local application_name='e2e-canonical-new-first';` +
+      canonicalCommand(
+        secondCandidate,
+        secondValue,
+        secondStamp,
+        "e2e-canonical-new-key-one",
+      ) +
+      "select pg_sleep(3);commit;",
+  );
+  await observed("e2e-canonical-new-first", "wait_event='PgSleep'");
+  const differentSecond = session(
+    authenticated +
+      `set local application_name='e2e-canonical-new-second';` +
+      canonicalCommand(
+        secondCandidate,
+        secondValue,
+        secondStamp,
+        "e2e-canonical-new-key-two",
+      ) +
+      "commit;",
+  );
+  await observed("e2e-canonical-new-second", "wait_event_type='Lock'");
+  const [differentWon, differentHeld] = await Promise.all([
+    differentFirst,
+    differentSecond,
+  ]);
+  assert.equal(differentWon.status, 0, differentWon.stderr);
+  assert.notEqual(differentHeld.status, 0);
+  assert.match(differentHeld.stderr, /VERSION_CONFLICT/);
+  const lateValue = createValue("2020-01-03"),
+    lateStamp = canonicalPreview(lateCandidate, lateValue).stamp;
+  const rawFirst = session(
+    `begin;set local role service_role;set local application_name='e2e-canonical-import-first';` +
+      legacyInsert(
+        "e2e-canonical-late",
+        "e8410000-0000-4000-8000-000000000042",
+      ) +
+      "select pg_sleep(3);commit;",
+  );
+  await observed("e2e-canonical-import-first", "wait_event='PgSleep'");
+  const canonicalLate = session(
+    authenticated +
+      `set local application_name='e2e-canonical-after-import';` +
+      canonicalCommand(
+        lateCandidate,
+        lateValue,
+        lateStamp,
+        "e2e-canonical-after-import-key",
+      ) +
+      "commit;",
+  );
+  await observed("e2e-canonical-after-import", "wait_event_type='Lock'");
+  const [rawCommitted, lateHeld] = await Promise.all([rawFirst, canonicalLate]);
+  assert.equal(rawCommitted.status, 0, rawCommitted.stderr);
+  assert.notEqual(lateHeld.status, 0);
+  assert.match(lateHeld.stderr, /VERSION_CONFLICT/);
+  assert.equal(
+    sql(`select count(*) from public.lessons where studio_id='${studio}'`),
+    "2",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.lesson_participants p join public.lessons l on l.id=p.lesson_id where l.studio_id='${studio}' and p.status='confirmed'`,
+    ),
+    "2",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.lessons where studio_id='${studio}' and (status<>'scheduled' or payment_status<>'untracked' or paid_minor<>0 or price_minor<>0)`,
+    ),
+    "0",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.payment_entries where student_id='${student}'`,
+    ),
+    "0",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.outbox_messages where studio_id='${studio}'`,
+    ),
+    "0",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from public.calendar_projections p join public.lessons l on l.id=p.lesson_id where l.studio_id='${studio}'`,
+    ),
+    "0",
+  );
+  console.log(
+    "PASS: observed canonical same-key replay commits one lesson/participant; changed payload conflicts; different keys reject stale creation; both legacy-import race orderings are safe; no attendance, payment, notification or Calendar effect.",
+  );
 } finally {
   assert.equal(
     sql(
@@ -193,6 +396,11 @@ delete from discovery_internal.source_decisions where studio_id='${studio}';
 delete from discovery_internal.candidates where scan_id='${scan}';
 delete from discovery_internal.sources where scan_id='${scan}';
 delete from discovery_internal.scans where id='${scan}' and studio_id='${studio}';
+delete from public.integration_imports where studio_id='${studio}';
+delete from public.lesson_participants where lesson_id in(select id from public.lessons where studio_id='${studio}');
+delete from public.lessons where studio_id='${studio}';
+delete from credit_internal.credit_coverage_jobs where student_id in(select id from public.students where studio_id='${studio}');
+delete from public.students where studio_id='${studio}';
 delete from public.audit_events where studio_id='${studio}';
 delete from public.memberships where studio_id='${studio}';
 delete from public.studios where id='${studio}';
