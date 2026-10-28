@@ -43,6 +43,10 @@ const stripeWebhook = fs.readFileSync(
   "utf8",
 );
 const compactStripeWebhook = stripeWebhook.replace(/\s+/g, "");
+const stripeInstallmentEffects = fs.readFileSync(
+  "netlify/functions/_shared/stripe-installment-effects.ts",
+  "utf8",
+);
 const readSources = (...paths: string[]) =>
   paths.map((path) => fs.readFileSync(path, "utf8")).join("\n");
 const studentWorkspace = readSources(
@@ -275,7 +279,9 @@ describe("database contracts", () => {
     expect(compactPublicBooking).toContain(
       "Math.floor(totalMinor/billingCount)",
     );
-    expect(stripeWebhook).toContain("Final installment rounding adjustment");
+    expect(stripeInstallmentEffects).toContain(
+      "Final installment rounding adjustment",
+    );
     expect(booking).toContain("installment_remainder_minor");
   });
   it("resumes pre-claimed package checkout webhooks without dropping the purchase", () => {
@@ -302,7 +308,7 @@ describe("database contracts", () => {
     expect(setupBranch).toBeGreaterThan(-1);
     expect(packageMetadata).toBeGreaterThan(setupBranch);
     expect(compactStripeWebhook.slice(setupBranch, packageMetadata)).toContain(
-      "returndone(",
+      "returnawaitdone(",
     );
   });
 
