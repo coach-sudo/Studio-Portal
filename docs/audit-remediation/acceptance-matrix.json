@@ -7,8 +7,11 @@
       "trace": "Identified implementation trace: Public catalog and details → hold/checkout confirmation → booking participant and student linkage → optional portal provisioning.",
       "code": "Current source: src/features/booking/BookingFlow.tsx:1 · netlify/functions/_shared/portal-access.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted."
     },
     {
@@ -18,7 +21,7 @@
       "trace": "Identified implementation trace: Students guided setup → duplicate lookup/create-once command → student/set-up receipt → contact and finance actions → roster context.",
       "code": "Current source: src/features/coach/StudentGuidedSetup.tsx:1 · netlify/functions/_v2/students.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain."
     },
@@ -29,8 +32,10 @@
       "trace": "Identified implementation trace: Sign-in/recovery → Auth callback/access claim → AuthGate role selection → required password/terms step → workspace.",
       "code": "Current source: src/features/auth/MagicLinkLogin.tsx:1 · netlify/functions/portal-auth.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation."
     },
     {
@@ -40,7 +45,7 @@
       "trace": "Identified implementation trace: Student account → linked contact permissions → synchronized relationship → scoped portal navigation and record policies.",
       "code": "Current source: src/features/coach/StudentWorkspaceAccount.tsx:1 · netlify/functions/_v2/students.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients."
     },
@@ -51,7 +56,7 @@
       "trace": "Identified implementation trace: Student workspace → reviewed details/status/access commands → version/audit → retained records and account state.",
       "code": "Current source: src/features/coach/StudentWorkspaceAccount.tsx:1 · supabase/migrations/20261020153417_studio_operations_workflows.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation."
     },
@@ -62,8 +67,10 @@
       "trace": "Identified implementation trace: Service → format → live availability → details → holds/payment → canonical confirmation → calendar/notices. Public browser reached details.",
       "code": "Current source: src/features/booking/BookingFlow.tsx:1 · netlify/functions/public-booking.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope."
     },
     {
@@ -73,7 +80,7 @@
       "trace": "Identified implementation trace: Portal Schedule → booker context/entitlement → public booking policy and coverage → confirmation → scoped lesson list.",
       "code": "Current source: src/features/student/StudentPortalSchedule.tsx:1 · netlify/functions/public-booking.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states."
     },
@@ -84,8 +91,11 @@
       "trace": "Identified implementation trace: Coach manual dialog → check_conflicts → create_manual → independent booking/lesson/participant/projection/payment writes → queue/invite.",
       "code": "Current source: src/features/coach/BookingOverview.tsx:1 · netlify/functions/booking-admin.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested."
     },
     {
@@ -95,8 +105,11 @@
       "trace": "Identified implementation trace: Required historical workflow has only partial building blocks: direct lesson create, provider review and historical list, with conflicting past-time policies.",
       "code": "Current source: src/features/coach/StudentWorkspaceLessons.tsx:1 · netlify/functions/_v2/lessons.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required."
     },
     {
@@ -106,7 +119,7 @@
       "trace": "Identified implementation trace: Calendar interaction → proposal drawer/conflict query → lesson create or reviewed occurrence change → query invalidation.",
       "code": "Current source: src/components/InteractiveCalendarGrid.tsx:1 · src/features/coach/CalendarProposalDialog.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects."
     },
@@ -117,8 +130,10 @@
       "trace": "Identified implementation trace: Cadence/count → timezone-aware series dates → create/make_recurring → SQL occurrence generation and coverage → series management.",
       "code": "Current source: src/features/coach/BookingSeries.tsx:1 · netlify/functions/_v2/lessons.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions."
     },
     {
@@ -128,7 +143,7 @@
       "trace": "Identified implementation trace: Offering create/publish → public enrollment/capacity → participant cohort → class workspace/assignment command.",
       "code": "Current source: src/features/coach/BookingClasses.tsx:1 · netlify/functions/_v2/work.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility."
     },
@@ -139,8 +154,10 @@
       "trace": "Identified implementation trace: Reschedule form → preview_change dependency snapshot → execute_change replay/Google check → occurrence transaction → queued side effects.",
       "code": "Current source: src/components/LessonChangeReview.tsx:1 · netlify/functions/_v2/lessons.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh."
     },
     {
@@ -150,7 +167,7 @@
       "trace": "Identified implementation trace: Actor/policy choice → reviewed cancellation → canonical state and finance settlement → outbox/projection → portal.",
       "code": "Current source: src/components/CreditCancellationChoice.tsx:1 · netlify/functions/_shared/booking-cancellation.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths."
     },
@@ -161,8 +178,10 @@
       "trace": "Identified implementation trace: Coach completion command → locked student/lesson/credit state → audit/replay → teaching context and activity.",
       "code": "Current source: src/components/SessionAction.tsx:1 · supabase/migrations/20261014151934_credit_lifecycle_reliability.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains."
     },
     {
@@ -172,7 +191,7 @@
       "trace": "Identified implementation trace: Filter/select → frozen reviewed IDs/dependencies → bounded job/claims → per-item results/retry → guarded archive/void/delete.",
       "code": "Current source: src/components/LessonBulkWorkspace.tsx:1 · netlify/functions/_v2/lesson-bulk.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial."
     },
@@ -183,9 +202,9 @@
       "trace": "Identified implementation trace: Settings integrations → saved configuration evidence/health → optional intake-start endpoint.",
       "code": "Current source: src/features/coach/StudioSettings.tsx:1 · netlify/functions/platform-health.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "Worker health/receipt local tests: 28 passed, typecheck passed; full provider acceptance pending"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14."
     },
@@ -196,9 +215,10 @@
       "trace": "Identified implementation trace: Schedule → enabled gate → receipt/claim → paginated bounded Calendar scan → match/review/write → completion.",
       "code": "Current source: netlify/functions/provider-intake.ts:1 · netlify/functions/_shared/provider-intake.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "Worker health/receipt local tests: 28 passed, typecheck passed; full provider acceptance pending"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed."
     },
@@ -209,7 +229,7 @@
       "trace": "Identified implementation trace: Historical reconciliation is not a completed separate workflow: routine past guards and review controls exist, but source/date-window preview is absent in this path.",
       "code": "Current source: netlify/functions/_shared/provider-intake.ts:1 · src/features/coach/StudioToday.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows."
     },
@@ -220,9 +240,10 @@
       "trace": "Identified implementation trace: Gmail provider-keyword/time query → pagination → parse/classify → student match or review → linked occurrence.",
       "code": "Current source: netlify/functions/_shared/provider-intake.ts:1 · netlify/functions/_shared/provider-classification.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "Worker health/receipt local tests: 28 passed, typecheck passed; full provider acceptance pending"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled."
     },
@@ -233,7 +254,7 @@
       "trace": "Identified implementation trace: Claim projection → stable event ID lookup/etag → canonical update/delete/create → Meet result → finish receipt.",
       "code": "Current source: netlify/functions/calendar-worker.ts:1 · netlify/functions/_shared/calendar-projection.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here."
     },
@@ -244,8 +265,10 @@
       "trace": "Identified implementation trace: Today provider signal → exact student/existing lesson/create/ignore choice → locked atomic review receipt → import/audit/reservation.",
       "code": "Current source: src/features/coach/StudioToday.tsx:1 · supabase/migrations/20261021135617_provider_intake_review_safety.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains."
     },
     {
@@ -255,7 +278,7 @@
       "trace": "Identified implementation trace: Managed provider delta → occurrence command or conflict/recommendation → explicit review choice → canonical reconciliation.",
       "code": "Current source: src/features/coach/StudioToday.tsx:1 · netlify/functions/_shared/provider-intake.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery."
     },
@@ -266,8 +289,10 @@
       "trace": "Identified implementation trace: Student/service price → booking or lesson obligation → invoice/manual receipt/checkout → ledger coverage → account.",
       "code": "Current source: src/features/coach/StudentWorkspacePayments.tsx:1 · netlify/functions/_v2/invoices.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06."
     },
     {
@@ -277,7 +302,7 @@
       "trace": "Identified implementation trace: Package definition/offer → checkout/invoice → provider settlement → grant-once RPC → credit lot/expiry/renewal.",
       "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · netlify/functions/stripe-webhook-v2.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed."
     },
@@ -288,7 +313,7 @@
       "trace": "Identified implementation trace: Eligible occurrence → coverage job and locked lot selection → reservation ledger → completed/cancelled finalization → balance.",
       "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · supabase/migrations/20261014151934_credit_lifecycle_reliability.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance."
     },
@@ -299,7 +324,7 @@
       "trace": "Identified implementation trace: Credit account → total/auto/adjust/reconcile command → reservation floor and ledger review → immutable adjustments and balances.",
       "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · netlify/functions/_v2/finance.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made."
     },
@@ -310,8 +335,10 @@
       "trace": "Identified implementation trace: Draft lines → save/issue snapshot → separate recipient preview/send → checkout/manual settlement → PDF/account.",
       "code": "Current source: src/features/finance/InvoiceWorkspace.tsx:1 · netlify/functions/_v2/invoices.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end."
     },
     {
@@ -321,8 +348,11 @@
       "trace": "Identified implementation trace: Webhook/manual receipt → existing invoice/package/payment mapping → settlement/ledger → totals and exception review.",
       "code": "Current source: src/features/coach/FinancialDashboard.tsx:1 · netlify/functions/stripe-webhook-v2.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation."
     },
     {
@@ -332,7 +362,7 @@
       "trace": "Identified implementation trace: Today/readiness → lesson prep checklist → linked resource/join context → private note draft.",
       "code": "Current source: src/features/coach/LessonReadinessPanel.tsx:1 · netlify/functions/_v2/lessons.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage."
     },
@@ -343,7 +373,7 @@
       "trace": "Identified implementation trace: Lesson note draft → save → explicit publish/update → published timeline → correction/retraction policy.",
       "code": "Current source: src/features/coach/StudentWorkspaceNotes.tsx:1 · netlify/functions/_v2/work.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery."
     },
@@ -354,7 +384,7 @@
       "trace": "Identified implementation trace: Upload/select canonical resource → resource metadata → multiple assignment links/collections → paged authorized resource/download.",
       "code": "Current source: src/features/library/ResourceWorkspace.tsx:1 · src/data/library.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request."
     },
@@ -365,7 +395,7 @@
       "trace": "Identified implementation trace: Assign resource/work to student/class → due/status metadata → student study/progress → coach follow-up/history.",
       "code": "Current source: src/features/library/AssignmentEditor.tsx:1 · netlify/functions/_v2/work.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications."
     },
@@ -376,7 +406,7 @@
       "trace": "Identified implementation trace: Conversation/recipient → draft/send with undo → outbox eligibility → Gmail dispatch → conversation/read-state.",
       "code": "Current source: src/features/messages/Inbox.tsx:1 · netlify/functions/_v2/messaging.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope."
     },
@@ -387,7 +417,7 @@
       "trace": "Identified implementation trace: Template/audience/draft → reviewed approval/schedule → per-recipient queue → eligibility/dispatch/receipt → unsubscribe.",
       "code": "Current source: src/features/coach/Campaigns.tsx:1 · netlify/functions/_shared/automation-engine.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect."
     },
@@ -398,7 +428,7 @@
       "trace": "Identified implementation trace: Eligibility and private draft → approved fields/media → command publication revision → public projection → maintenance archive/restore.",
       "code": "Current source: src/features/coach/StudioActorPages.tsx:1 · netlify/functions/public-actor.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state."
     },
@@ -409,7 +439,7 @@
       "trace": "Identified implementation trace: Referral/gift code → public landing/checkout → payer/recipient match → redemption/grant-once → reporting/notices.",
       "code": "Current source: src/features/referrals/Referrals.tsx:1 · netlify/functions/package-gifts.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt."
     },
@@ -420,7 +450,7 @@
       "trace": "Identified implementation trace: Coach Today → prioritized operational cards → owning record/action → invalidate domains and refresh counts.",
       "code": "Current source: src/features/coach/CoachToday.tsx:1 · src/features/coach/StudioToday.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced."
     },
@@ -431,9 +461,9 @@
       "trace": "Identified implementation trace: Settings form → validated version/base patch → audit/receipt → public/coach configuration consumers.",
       "code": "Current source: src/features/coach/StudioSettings.tsx:1 · supabase/migrations/20261020185650_studio_settings_patches.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "Worker health/receipt local tests: 28 passed, typecheck passed; full provider acceptance pending"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values."
     },
@@ -444,9 +474,11 @@
       "trace": "Identified implementation trace: Schedule → dispatch/current receipt → claim/background stages → maintenance/outbox/coverage work → checked finish.",
       "code": "Current source: netlify/functions/booking-maintenance.ts:1 · netlify/functions/_shared/scheduled-worker.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "remediationEvidence": [
-        "Worker health/receipt local tests: 28 passed, typecheck passed; full provider acceptance pending"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain."
     },
@@ -457,8 +489,11 @@
       "trace": "Identified implementation trace: Role navigation/search → permission-aware result → deep-linked record → workspace history/back/focus.",
       "code": "Current source: src/components/WorkspaceSearch.tsx:1 · src/app/portalNavigation.ts:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified."
     },
     {
@@ -468,8 +503,14 @@
       "trace": "Identified implementation trace: Auth/session → role gate and RLS → privileged command/storage boundary → immutable audit → operations/backup/recovery.",
       "code": "Current source: src/app/AuthRoutes.tsx:1 · supabase/migrations/202607030002_rls.sql:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback.",
-      "status": "partially verified (audit source/fixtures); hosted acceptance unverified",
-      "remediationEvidence": [],
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback."
     }
   ],
@@ -479,31 +520,39 @@
       "name": "Booking → lesson/participant",
       "auditEvidence": "Direct manual writes confirmed; SP-05–07 fail canonical contract. Production sample has zero confirmed bookings with no participant.",
       "requiredDownstream": "One transaction, stable payer/service/time IDs, lost-response replay; inspect student screen and downstream effects.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ]
     },
     {
       "id": "X02",
       "name": "Lesson → Calendar/Meet",
       "auditEvidence": "Stable ID/etag/claim safeguards and tests; 80 production rows projected.",
       "requiredDownstream": "Match exact event, intended attendees, Meet URL, portal join access, retry after lost reply.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ]
     },
     {
       "id": "X03",
       "name": "Calendar intake → existing lesson",
       "auditEvidence": "Projection stable ID and prior import link precede matching; routine worker disabled.",
       "requiredDownstream": "Selected calendar/recurring occurrence identity, moved/deleted exception and no duplicate canonical occurrence.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "Fenced history and stage observations tested locally; external/recovery acceptance still unverified"
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
       ]
     },
     {
@@ -511,11 +560,12 @@
       "name": "Gmail/provider → student/household",
       "auditEvidence": "Conservative classifier/review and identity tests; three production Gmail reviews.",
       "requiredDownstream": "Ambiguous parent email/names, aliases and provider reschedule linked to correct dependent; failed scope recovery.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "Fenced history and stage observations tested locally; external/recovery acceptance still unverified"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
       ]
     },
     {
@@ -523,27 +573,33 @@
       "name": "Imported occurrence → finance",
       "auditEvidence": "Atomic provider-review receipts and coverage tests; manual path remains separate.",
       "requiredDownstream": "Same signal repeated concurrently, same lesson from two sources, no double grant/reservation after partial failure.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+      ]
     },
     {
       "id": "X06",
       "name": "Reschedule → credit/invoice/checkout",
       "auditEvidence": "Dependency-reviewed occurrence SQL and financial tests.",
       "requiredDownstream": "Expiring lot, pending checkout, invoice lock and stale version across every entry point; aborted operation leaves no hold.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ]
     },
     {
       "id": "X07",
       "name": "Cancellation → returned credit/cash",
       "auditEvidence": "Explicit policy and reversal tests; shared class protections exist.",
       "requiredDownstream": "Actual payer account/refund provider result, exactly-once reversal and portal visibility.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -553,27 +609,32 @@
       "name": "Completion → credits/notes/activity",
       "auditEvidence": "Completion command tests; SP-13 violates source-verification distinction.",
       "requiredDownstream": "Explicit attendance confirmation, no second debit, note privacy, correct actor activity after reversal.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74"
+      ]
     },
     {
       "id": "X09",
       "name": "Payment → settlement → grant",
       "auditEvidence": "New invoice/package RPC tests; historical webhook failure and legacy installment replay risk.",
       "requiredDownstream": "Signed duplicate/concurrent callbacks and fault after settlement; exact totals, one grant and no double provider action.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ]
     },
     {
       "id": "X10",
       "name": "Account ↔ coach records",
       "auditEvidence": "Auth gates, relationship sync, RLS/views/grants inspected.",
       "requiredDownstream": "Per-role direct API tests, dependent revocation, wrong studio, revoked student, stale invite and cache identity change.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -583,7 +644,7 @@
       "name": "Lesson → published teaching work",
       "auditEvidence": "Explicit notes status and work/resource policy functions.",
       "requiredDownstream": "Student sees correct published content; direct API cannot read drafts/another student's resources or annotations.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -593,7 +654,7 @@
       "name": "Lesson activity → actor eligibility",
       "auditEvidence": "Publication command/current public route identified; elapsed completion risk.",
       "requiredDownstream": "Reschedule/cancel/reverse attendance and archived profile transitions, explicit consent and correct public media.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -603,27 +664,35 @@
       "name": "Settings → public policy/coach overrides",
       "auditEvidence": "SP-02–04/08/09 show parity failures; branding failure SP-15.",
       "requiredDownstream": "Coach exemptions intentional; student restrictions retained; configured timezone, service price and appearance verified.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ]
     },
     {
       "id": "X14",
       "name": "Outbox/campaign → provider/inbox",
       "auditEvidence": "Queue/eligibility/undo tests; production sent/queued aggregates.",
       "requiredDownstream": "Actual provider ID and mailbox result, duplicate send ambiguity, consent changes, reply routing and readable status.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
-      "remediationEvidence": []
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ]
     },
     {
       "id": "X15",
       "name": "Bulk operation → dependent records",
       "auditEvidence": "Extensive frozen selection/dependency/snapshot/claim tests.",
       "requiredDownstream": "Hosted partial failure + retry and recurrence/finance/material/note/provider outcomes; recovered UI state.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -633,7 +702,7 @@
       "name": "Dashboard/search → record/back",
       "auditEvidence": "Workspace navigation/search tests and code.",
       "requiredDownstream": "Resolve real alert, update counts, browser back, query/scroll preservation and keyboard focus at all role widths.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -643,7 +712,7 @@
       "name": "Asset → many authorized links",
       "auditEvidence": "Canonical resource/assignment design and 12 local library DB cases.",
       "requiredDownstream": "Link/unlink two students, expiry and revoked authorization without deleting shared file or leaking annotations.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -653,7 +722,7 @@
       "name": "Ignored/reviewed → rescan",
       "auditEvidence": "Past/ignored skip verified; current review receipt protects replay.",
       "requiredDownstream": "Explicit reopen with new evidence; repeat scan respects decision, source identity and no financial duplication.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "not revalidated; original audit source/fixture boundary retained",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": []
@@ -663,11 +732,11 @@
       "name": "Scheduler accepted → completed",
       "auditEvidence": "Maintenance receipt succeeded; intake flag false and five disabled responses.",
       "requiredDownstream": "Three real full intake runs with receipt, stages, result reconciliation and safe replay. Current gate fails.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "Fenced history and stage observations tested locally; external/recovery acceptance still unverified"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69"
       ]
     },
     {
@@ -675,11 +744,15 @@
       "name": "Recovery/migration → preserved history",
       "auditEvidence": "71 applied versions, local command recovery tests and guarded deletion snapshots.",
       "requiredDownstream": "Backup restore drill, migration upgrade against full synthetic history, versioned rollback and external effect reconciliation.",
-      "status": "partially verified; end-to-end unverified",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
       "successPath": "unverified",
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
-        "Fenced history and stage observations tested locally; external/recovery acceptance still unverified"
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
       ]
     }
   ]
