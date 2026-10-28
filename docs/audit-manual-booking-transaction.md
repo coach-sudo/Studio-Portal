@@ -13,3 +13,9 @@ Canonical scheduling does not require an unconfigured Google account. A configur
 Release gates: exact-head full migration/SQL lint/type parity/pgTAP, payment/audit/intent fault injection, identical and changed replay, lost response, concurrent same/different keys, provider outage, coach/student/guardian/anonymous enforcement, browser input preservation, outbox failure/retry and controlled provider acceptance. Local mocks alone cannot resolve the financial findings.
 
 Rollback: revert application use; keep additive private receipt/intent tables and committed bookings. Drain or preserve pending intents deliberately under existing worker stops. Never delete a committed booking, ledger, historical migration or receipt as rollback. No hosted migration or publication is authorized.
+
+## Executed checkpoint
+
+At `0f035e57fb2b72229b30525a692dc821240804f5`, isolated [migration CI](https://github.com/coach-sudo/Studio-Portal/actions/runs/40634201357) passed upgrade/clean replay, SQL lint, pgTAP including payment/audit/intent rollback and role denial, plus all existing concurrency scripts and the new manual-booking same-key/different-key overlap races. The gate then correctly failed generated-type ordering. Verify CI correctly rejected one test-file formatting difference. Those are corrected without changing financial behavior; final-head revalidation is required.
+
+Local command/effect/form checks passed 12/12, and existing booking-flow/maintenance tests passed in separate focused runs. Canonical commit remains distinct from notification production and external delivery. Production remains unchanged.

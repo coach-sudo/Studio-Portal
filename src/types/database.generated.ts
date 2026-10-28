@@ -4953,6 +4953,10 @@ export type Database = {
         Args: { p_lesson?: string; p_limit?: number }
         Returns: Json
       }
+      claim_manual_booking_effects: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       claim_outbox_messages: {
         Args: { batch_size?: number }
         Returns: {
@@ -4990,10 +4994,6 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
-      }
-      claim_manual_booking_effects: {
-        Args: { p_limit?: number }
-        Returns: Json
       }
       claim_package_auto_renewals: {
         Args: { batch_size?: number }
@@ -5519,16 +5519,16 @@ export type Database = {
         }
         Returns: Json
       }
-      material_resource_workspace: {
-        Args: { p_assignment?: string; p_id: string; p_student?: string }
-        Returns: Json
-      }
       manual_booking_effect_current: {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
       manual_booking_replay: {
         Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      material_resource_workspace: {
+        Args: { p_assignment?: string; p_id: string; p_student?: string }
         Returns: Json
       }
       merge_studio_students: {

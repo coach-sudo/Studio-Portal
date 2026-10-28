@@ -58,18 +58,16 @@ beforeEach(() => {
   state.coach = true;
   state.google.mockReset().mockRejectedValue(Error("private token response"));
   state.conflict.mockReset().mockResolvedValue([]);
-  state.rpc
-    .mockReset()
-    .mockImplementation(async (name) => ({
-      data:
-        name === "manual_booking_replay"
-          ? null
-          : {
-              resource: { id: "one-booking", payment_status: "paid" },
-              sideEffects: "pending",
-            },
-      error: null,
-    }));
+  state.rpc.mockReset().mockImplementation(async (name) => ({
+    data:
+      name === "manual_booking_replay"
+        ? null
+        : {
+            resource: { id: "one-booking", payment_status: "paid" },
+            sideEffects: "pending",
+          },
+    error: null,
+  }));
   vi.stubGlobal("Netlify", {
     env: { get: () => (state.configured ? "synthetic-config" : undefined) },
   });

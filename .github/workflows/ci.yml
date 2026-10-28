@@ -7,6 +7,7 @@ on:
     branches:
       [
         main,
+        codex/audit-manual-booking-transaction,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
