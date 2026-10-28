@@ -34,9 +34,7 @@
         "name": "chromium",
         "testDir": "C:/Users/dariu/Desktop/studio-portal/.tmp/correction-before",
         "testIgnore": [],
-        "testMatch": [
-          "before.spec.ts"
-        ],
+        "testMatch": ["before.spec.ts"],
         "timeout": 60000
       },
       {
@@ -50,18 +48,13 @@
         "name": "webkit",
         "testDir": "C:/Users/dariu/Desktop/studio-portal/.tmp/correction-before",
         "testIgnore": [],
-        "testMatch": [
-          "before.spec.ts"
-        ],
+        "testMatch": ["before.spec.ts"],
         "timeout": 60000
       }
     ],
     "quiet": false,
     "reporter": [
-      [
-        "list",
-        null
-      ],
+      ["list", null],
       [
         "json",
         {
