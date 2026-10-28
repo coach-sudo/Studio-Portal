@@ -7,6 +7,8 @@ on:
     branches:
       [
         main,
+        codex/audit-provider-attendance,
+        codex/audit-calendar-discovery-preview,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
