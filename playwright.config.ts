@@ -20,6 +20,7 @@ export default defineConfig({
     "**/connected-coaching-local/**",
     "**/studio-operations-local/**",
     "**/quality-local/**",
+    "**/audit-historical-local/**",
   ],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",

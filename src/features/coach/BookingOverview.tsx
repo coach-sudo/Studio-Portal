@@ -1,6 +1,8 @@
 import { CheckCircle2, MoreHorizontal, RefreshCw } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Dialog, EmptyState, Status } from "../../components/Primitives";
+import { TimezoneSelect } from "../../components/TimezoneSelect";
+import { formatZonedInput, zonedInputInstants } from "../../domain/zonedInput";
 import {
   inspectSchedulingConflicts,
   type SchedulingConflict,
@@ -245,9 +247,22 @@ export function ManualBookingDialog({
 }) {
   const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
     [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
-    [startsAt, setStartsAt] = useState(
-      new Date(Date.now() + 3 * 86400000).toISOString().slice(0, 16),
-    ),
+    [startsAt, setStartsAt] = useState(() => {
+      try {
+        return formatZonedInput(
+          new Date(Date.now() + 3 * 86400000),
+          data.settings.timezone,
+        );
+      } catch {
+        return "";
+      }
+    }),
+    [timezone, setTimezone] = useState(data.settings.timezone || ""),
+    [fold, setFold] = useState(""),
+    [mode, setMode] = useState("schedule"),
+    [outcome, setOutcome] = useState("scheduled"),
+    [financial, setFinancial] = useState("record_only"),
+    [attendanceConfirmed, setAttendanceConfirmed] = useState(false),
     [location, setLocation] = useState<MeetingProvider>(
       data.bookingServices[0]?.defaultLocation ?? "google_meet",
     ),
@@ -274,6 +289,8 @@ export function ManualBookingDialog({
     setApprovedTime("");
   }, [serviceId, location, studentId]);
   const service = data.bookingServices.find((item) => item.id === serviceId);
+  const formId = useId();
+  const candidates = zonedInputInstants(startsAt, timezone);
   useEffect(() => {
     if (service && !service.locationOptions.includes(location))
       setLocation(service.defaultLocation);
@@ -281,21 +298,46 @@ export function ManualBookingDialog({
   return (
     <Dialog
       title="Create a booking"
-      description="May override public notice and pricing. Bookings are audited and create calendar and email work."
+      description={
+        mode === "historical"
+          ? "Historical records are audited. Attendance and financial treatment are explicit; Calendar and notifications are suppressed."
+          : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
+      }
       onClose={onClose}
     >
       <form
-        className="workflow-form"
+        className="workflow-form manual-booking-form"
         onSubmit={async (event) => {
           event.preventDefault();
-          const parsedStart = new Date(startsAt);
-          if (!startsAt || Number.isNaN(parsedStart.getTime())) {
+          const instant =
+            candidates.length === 1
+              ? candidates[0]
+              : candidates.find((value) => value === fold);
+          const parsedStart = new Date(instant || "");
+          if (!instant || Number.isNaN(parsedStart.getTime())) {
             setDateError(
-              "Choose a valid date and time before creating the booking.",
+              "Choose a valid clock time and explicit timezone. A skipped DST time cannot be scheduled; a repeated hour needs an occurrence choice.",
             );
             return;
           }
           setDateError("");
+          const historical = parsedStart.getTime() <= Date.now();
+          if (historical !== (mode === "historical")) {
+            setDateError(
+              historical
+                ? "Use Record Past Lesson to choose its outcome and financial treatment."
+                : "Record Past Lesson requires a past time; use Schedule Lesson for this time.",
+            );
+            return;
+          }
+          if (
+            historical &&
+            ["completed", "no_show"].includes(outcome) &&
+            !attendanceConfirmed
+          ) {
+            setDateError("Confirm the actual lesson outcome explicitly.");
+            return;
+          }
           const form = JSON.stringify([
             studentId,
             serviceId,
@@ -305,6 +347,12 @@ export function ManualBookingDialog({
             customPrice,
             markPaid,
             reason,
+            timezone,
+            fold,
+            mode,
+            outcome,
+            financial,
+            attendanceConfirmed,
           ]);
           if (attempt.current?.form === form) {
             setSaving(true);
@@ -350,14 +398,18 @@ export function ManualBookingDialog({
                 : await inspectSchedulingConflicts(
                     parsedStart.toISOString(),
                     endsAt.toISOString(),
+                    undefined,
+                    historical,
                   );
               const found = preview.conflicts;
               setExternalNote(
-                isDemo
-                  ? "Demo conflict preview uses local fixture lessons only."
-                  : preview.externalCalendarChecked
-                    ? "Google and local studio conflict checks completed."
-                    : "Google is not configured. Only local studio conflicts were checked.",
+                historical
+                  ? "Historical preview compares local records only. No provider availability check or delivery will run."
+                  : isDemo
+                    ? "Demo conflict preview uses local fixture lessons only."
+                    : preview.externalCalendarChecked
+                      ? "Google and local studio conflict checks completed."
+                      : "Google is not configured. Only local studio conflicts were checked.",
               );
               setConflicts(found);
               if (found.length) {
@@ -392,6 +444,15 @@ export function ManualBookingDialog({
               customPrice === "" ? null : Math.round(Number(customPrice) * 100),
             mark_paid: markPaid,
             reason,
+            timezone,
+            historical,
+            ...(historical
+              ? {
+                  historical_outcome: outcome,
+                  historical_financial: financial,
+                  attendance_confirmed: attendanceConfirmed,
+                }
+              : {}),
             allow_conflict: approvedTime === timeKey,
           };
           const fingerprint = JSON.stringify(payload);
@@ -421,14 +482,59 @@ export function ManualBookingDialog({
             Add a student to the roster before creating a coach booking.
           </p>
         )}
+        <label className="full" htmlFor={`${formId}-mode`}>
+          Entry type
+          <select
+            id={`${formId}-mode`}
+            value={mode}
+            onChange={(event) => {
+              setMode(event.target.value);
+              setDateError("");
+              setFold("");
+              setConflicts([]);
+              setApprovedTime("");
+              const offset =
+                event.target.value === "historical" ? -86400000 : 3 * 86400000;
+              try {
+                setStartsAt(
+                  formatZonedInput(new Date(Date.now() + offset), timezone),
+                );
+              } catch {
+                setStartsAt("");
+              }
+            }}
+          >
+            <option value="schedule">Schedule Lesson</option>
+            <option value="historical">Record Past Lesson</option>
+          </select>
+        </label>
+        <p className="full">
+          Studio timezone: {data.settings.timezone || "not configured"}. Device
+          timezone: {Intl.DateTimeFormat().resolvedOptions().timeZone}. The time
+          control uses {timezone || "the timezone you explicitly choose"}.
+        </p>
+        <label className="full" htmlFor={`${formId}-timezone`}>
+          Scheduling timezone
+          <TimezoneSelect
+            id={`${formId}-timezone`}
+            value={timezone}
+            onChange={(value) => {
+              setTimezone(value);
+              setFold("");
+              setApprovedTime("");
+              setConflicts([]);
+            }}
+          />
+        </label>
         {externalNote && (
           <p className="full" role="status">
             {externalNote}
           </p>
         )}
-        <label>
+        <label htmlFor={`${formId}-student`}>
           Student
           <select
+            id={`${formId}-student`}
             required
             value={studentId}
             onChange={(event) => setStudentId(event.target.value)}
@@ -443,9 +549,10 @@ export function ManualBookingDialog({
             ))}
           </select>
         </label>
-        <label>
+        <label htmlFor={`${formId}-service`}>
           Service
           <select
+            id={`${formId}-service`}
             required
             value={serviceId}
             onChange={(event) => {
@@ -466,29 +573,111 @@ export function ManualBookingDialog({
             ))}
           </select>
         </label>
-        <label>
+        <label htmlFor={`${formId}-starts`}>
           Starts
           <input
+            id={`${formId}-starts`}
+            aria-describedby={dateError ? `${formId}-error` : undefined}
             required
             type="datetime-local"
-            min={new Date().toISOString().slice(0, 16)}
             value={startsAt}
             onChange={(event) => {
               setStartsAt(event.target.value);
               setDateError("");
               setConflicts([]);
               setApprovedTime("");
+              setFold("");
             }}
           />
-          {dateError && (
-            <small className="inline-error" role="alert">
-              {dateError}
-            </small>
-          )}
         </label>
-        <label>
+        {dateError && (
+          <p id={`${formId}-error`} className="inline-error full" role="alert">
+            {dateError}
+          </p>
+        )}
+        {candidates.length > 1 && (
+          <label className="full" htmlFor={`${formId}-fold`}>
+            Repeated hour occurrence
+            <select
+              id={`${formId}-fold`}
+              required
+              value={fold}
+              onChange={(event) => setFold(event.target.value)}
+            >
+              <option value="">Choose the intended occurrence</option>
+              {candidates.map((value, index) => (
+                <option key={value} value={value}>
+                  {index === 0 ? "First" : "Second"} occurrence — {value} UTC
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {mode === "historical" && (
+          <>
+            <label htmlFor={`${formId}-outcome`}>
+              Historical outcome
+              <select
+                id={`${formId}-outcome`}
+                value={outcome}
+                onChange={(event) => {
+                  setOutcome(event.target.value);
+                  setAttendanceConfirmed(false);
+                }}
+              >
+                <option value="scheduled">Scheduled</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="no_show">No-show</option>
+              </select>
+            </label>
+            <label htmlFor={`${formId}-financial`}>
+              Historical financial treatment
+              <select
+                id={`${formId}-financial`}
+                value={financial}
+                onChange={(event) => setFinancial(event.target.value)}
+              >
+                <option value="record_only">Record only</option>
+                <option value="amount_due">Record amount due</option>
+                <option value="payment_received">
+                  Record payment received
+                </option>
+              </select>
+            </label>
+            {["completed", "no_show"].includes(outcome) && (
+              <label
+                className="check-row full"
+                htmlFor={`${formId}-attendance`}
+              >
+                <input
+                  id={`${formId}-attendance`}
+                  type="checkbox"
+                  checked={attendanceConfirmed}
+                  onChange={(event) =>
+                    setAttendanceConfirmed(event.target.checked)
+                  }
+                />
+                I confirm the actual{" "}
+                {outcome === "completed" ? "completed lesson" : "no-show"}{" "}
+                outcome; it is not inferred from the date.
+              </label>
+            )}
+            <p className="full">
+              {financial === "record_only" &&
+                "Record only creates no financial obligation. "}
+              {outcome === "scheduled" &&
+                "Scheduled leaves attendance unknown. "}
+              Historical records do not create Calendar events, notifications or
+              credit consumption. Any amount due or payment is recorded only
+              through the selected financial treatment.
+            </p>
+          </>
+        )}
+        <label htmlFor={`${formId}-meeting`}>
           Meeting format
           <select
+            id={`${formId}-meeting`}
             value={location}
             onChange={(event) =>
               setLocation(event.target.value as MeetingProvider)
@@ -502,19 +691,22 @@ export function ManualBookingDialog({
           </select>
         </label>
         {location === "in_person" && (
-          <label className="full">
+          <label className="full" htmlFor={`${formId}-location`}>
             Location
             <input
+              id={`${formId}-location`}
               value={locationLabel}
               onChange={(event) => setLocationLabel(event.target.value)}
               placeholder="Confirm now or leave blank to add later"
             />
           </label>
         )}
-        <label>
+        <label htmlFor={`${formId}-price`}>
           Custom price (USD)
           <input
+            id={`${formId}-price`}
             type="number"
+            disabled={mode === "historical" && financial === "record_only"}
             min="0"
             step="0.01"
             value={customPrice}
@@ -531,17 +723,21 @@ export function ManualBookingDialog({
           />
           <small>Leave blank to use the current service price.</small>
         </label>
-        <label className="check-row">
-          <input
-            type="checkbox"
-            checked={markPaid}
-            onChange={(event) => setMarkPaid(event.target.checked)}
-          />
-          Mark balance paid manually
-        </label>
-        <label className="full">
+        {mode !== "historical" && (
+          <label className="check-row" htmlFor={`${formId}-paid`}>
+            <input
+              id={`${formId}-paid`}
+              type="checkbox"
+              checked={markPaid}
+              onChange={(event) => setMarkPaid(event.target.checked)}
+            />
+            Mark balance paid manually
+          </label>
+        )}
+        <label className="full" htmlFor={`${formId}-reason`}>
           Override reason
           <input
+            id={`${formId}-reason`}
             required
             value={reason}
             onChange={(event) => setReason(event.target.value)}

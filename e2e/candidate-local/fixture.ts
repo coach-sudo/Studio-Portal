@@ -119,6 +119,7 @@ export async function installFixture(
     version: 1,
   };
   const state = {
+    bookingServices: [] as Record<string, unknown>[],
     imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
@@ -227,6 +228,7 @@ export async function installFixture(
   const rows = (table: string): unknown[] => {
     if (role === "unrelated" || state.revoked) return [];
     if (table === "students") return [student];
+    if (table === "booking_services") return state.bookingServices;
     if (table === "memberships")
       return role === "coach"
         ? [
@@ -366,6 +368,7 @@ export async function installFixture(
           studio: rows("studios")[0] || null,
           students: rows("students"),
           integrationImports: state.imports,
+          bookingServices: state.bookingServices,
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],

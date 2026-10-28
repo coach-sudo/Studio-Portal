@@ -40,7 +40,10 @@ const payload = {
   starts_at: "2031-11-03T18:00:00Z",
   mark_paid: true,
 };
-const call = (value = payload, key = "e2e-stable-manual") =>
+const call = (
+  value: Record<string, unknown> = payload,
+  key = "e2e-stable-manual",
+) =>
   handler(
     new Request("https://example.test/api/v2/admin/booking/bookings", {
       method: "POST",
@@ -77,13 +80,32 @@ afterEach(() => {
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
 });
-it("retains the existing server future-only guard until the historical UI change", async () => {
+it("requires explicit historical intent rather than inferring attendance from time", async () => {
   expect(
     (await call({ ...payload, starts_at: "2020-01-01T15:00:00Z" })).status,
   ).toBe(422);
   expect(state.rpc).not.toHaveBeenCalledWith(
     "command_create_manual_booking",
     expect.anything(),
+  );
+});
+it("accepts explicit historical recording without a Google dependency", async () => {
+  state.configured = true;
+  expect(
+    (
+      await call({
+        ...payload,
+        starts_at: "2020-01-01T15:00:00Z",
+        historical: true,
+        historical_outcome: "scheduled",
+        historical_financial: "record_only",
+      })
+    ).status,
+  ).toBe(201);
+  expect(state.google).not.toHaveBeenCalled();
+  expect(state.rpc).toHaveBeenLastCalledWith(
+    "command_create_manual_booking",
+    expect.objectContaining({ p_external_status: "not_checked" }),
   );
 });
 it("returns replay before any provider check or canonical re-execution", async () => {

@@ -54,13 +54,19 @@ export async function inspectSchedulingConflicts(
   startsAt: string,
   endsAt: string,
   lessonId?: string,
+  localOnly = false,
 ): Promise<{
   conflicts: SchedulingConflict[];
   externalCalendarChecked: boolean;
 }> {
   const result = await bookingAdminCommand("bookings", {
     command: "check_conflicts",
-    payload: { starts_at: startsAt, ends_at: endsAt, lesson_id: lessonId },
+    payload: {
+      starts_at: startsAt,
+      ends_at: endsAt,
+      lesson_id: lessonId,
+      historical: localOnly,
+    },
   });
   return {
     conflicts: result?.conflicts || [],
