@@ -43,6 +43,7 @@ import {
   studioDomainQueryKey,
 } from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
+import { CalendarDiscovery } from "./CalendarDiscovery";
 import { AutomationSettings } from "./AutomationSettings";
 import { BookingSetup } from "./BookingSetup";
 import {
@@ -390,19 +391,22 @@ export function StudioSettings({
           </>
         )}{" "}
         {panel === "integrations" && (
-          <Integrations
-            health={health}
-            onNotice={setNotice}
-            onRefresh={async () => {
-              await Promise.all([
-                refreshHealth(),
-                invalidateStudioDomains(queryClient, [
-                  "identity",
-                  "administration",
-                ]),
-              ]);
-            }}
-          />
+          <>
+            <Integrations
+              health={health}
+              onNotice={setNotice}
+              onRefresh={async () => {
+                await Promise.all([
+                  refreshHealth(),
+                  invalidateStudioDomains(queryClient, [
+                    "identity",
+                    "administration",
+                  ]),
+                ]);
+              }}
+            />
+            {!isDemo && <CalendarDiscovery timezone={data.settings.timezone} />}
+          </>
         )}{" "}
         {panel === "data" && (
           <DataPanel data={data} isDemo={isDemo} onNotice={setNotice} />

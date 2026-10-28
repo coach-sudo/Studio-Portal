@@ -1,0 +1,469 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\Desktop\\studio-portal\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      ".tmp/discovery-before/playwright.config.ts"
+    ],
+    "configFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\playwright.config.ts",
+    "rootDir": "C:/Users/dariu/Desktop/studio-portal/.tmp/discovery-before",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-discovery-before",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/.tmp/discovery-before",
+        "testIgnore": [],
+        "testMatch": ["before.spec.ts"],
+        "timeout": 45000
+      },
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-discovery-before",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/.tmp/discovery-before",
+        "testIgnore": [],
+        "testMatch": ["before.spec.ts"],
+        "timeout": 45000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-discovery-before.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\Desktop\\studio-portal\\",
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort",
+      "url": "http://127.0.0.1:4187",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "before.spec.ts",
+      "file": "before.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Connections before discovery interface at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2223,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:46.030Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-451a6a250de722a17953",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1202,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:49.036Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-6e33f56467a33fc5e0aa",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 768",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1242,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:50.248Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-f6e17287403d267d6e06",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1187,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:51.501Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-7d77bd8e77de33da9295",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 320",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5706,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                      "column": 80,
+                      "line": 8
+                    },
+                    "snippet": "   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                        "column": 80,
+                        "line": 8
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n\n   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:53.254Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-discovery-before\\before-Connections-before-discovery-interface-at-320-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                    "column": 80,
+                    "line": 8
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-a430d349320a9ceec0c8",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 390",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5595,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                      "column": 80,
+                      "line": 8
+                    },
+                    "snippet": "   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                        "column": 80,
+                        "line": 8
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n\n   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:02:59.913Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-discovery-before\\before-Connections-before-discovery-interface-at-390-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                    "column": 80,
+                    "line": 8
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-f834ea18112809867c14",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 768",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 5658,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                      "column": 80,
+                      "line": 8
+                    },
+                    "snippet": "   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                        "column": 80,
+                        "line": 8
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoBeVisible\u001b[2m(\u001b[22m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('heading', { name: 'Settings', exact: true })\nExpected: visible\nTimeout: 5000ms\nError: element(s) not found\n\nCall log:\n\u001b[2m  - Expect \"toBeVisible\" getByRole('heading', { name: 'Settings', exact: true }) with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('heading', { name: 'Settings', exact: true })\u001b[22m\n\n\n   6 |     await installFixture(context, \"coach\");\n   7 |     await page.goto(\"/coach/settings?panel=integrations\");\n>  8 |     await expect(page.getByRole(\"heading\", { name: \"Settings\", exact: true })).toBeVisible();\n     |                                                                                ^\n   9 |     await expect(page.getByRole(\"button\", { name: \"Calendar discovery previews\", exact: true })).toHaveCount(0);\n  10 |     await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });\n  11 |   });\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts:8:80"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:03:06.010Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-discovery-before\\before-Connections-before-discovery-interface-at-768-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\.tmp\\discovery-before\\before.spec.ts",
+                    "column": 80,
+                    "line": 8
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-6ea1e57a9c39e2050956",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        },
+        {
+          "title": "Connections before discovery interface at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 45000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2083,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T17:03:12.196Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-0932e870fda310a04dbe",
+          "file": "before.spec.ts",
+          "line": 4,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-28T17:02:43.393Z",
+    "duration": 31347.44,
+    "expected": 5,
+    "skipped": 0,
+    "unexpected": 3,
+    "flaky": 0
+  }
+}
