@@ -5217,6 +5217,15 @@ export type Database = {
         }
         Returns: Json
       }
+      command_historical_calendar_reconciliation: {
+        Args: {
+          p_candidate: string
+          p_key: string
+          p_stamp: string
+          p_value: Json
+        }
+        Returns: Json
+      }
       command_historical_calendar_review: {
         Args: { p_candidate: string; p_key: string; p_payload: Json }
         Returns: Json
@@ -5466,6 +5475,10 @@ export type Database = {
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
+      historical_calendar_decision_history: {
+        Args: { p_before_version?: number; p_candidate: string }
+        Returns: Json
+      }
       household_access_states: { Args: { p_student: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
@@ -5566,6 +5579,14 @@ export type Database = {
       }
       portal_student_contexts: {
         Args: { p_page?: number; p_student?: string }
+        Returns: Json
+      }
+      preview_historical_calendar_reconciliation: {
+        Args: { p_candidate: string; p_value: Json }
+        Returns: Json
+      }
+      preview_historical_calendar_reopening: {
+        Args: { p_candidate: string }
         Returns: Json
       }
       preview_historical_calendar_review: {
