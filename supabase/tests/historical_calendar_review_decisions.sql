@@ -63,6 +63,13 @@ select throws_ok($$select public.command_historical_calendar_review('e8400000-00
 select set_config('request.jwt.claim.sub','e8400000-0000-4000-8000-000000000003',true);
 select throws_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000010',current_setting('e2e.review.request')::jsonb,'e2e-review-replay')$$,'42501','FORBIDDEN','A different principal cannot retrieve a coach receipt');
 select set_config('request.jwt.claim.sub','e8400000-0000-4000-8000-000000000002',true);
+reset role;
+delete from public.memberships where studio_id='e8400000-0000-4000-8000-000000000001' and user_id='e8400000-0000-4000-8000-000000000002';
+set local role authenticated;
+select throws_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000010',current_setting('e2e.review.request')::jsonb,'e2e-review-replay')$$,'42501','FORBIDDEN','A removed coach cannot recover a previously committed receipt');
+reset role;
+insert into public.memberships(studio_id,user_id,role,display_name) values('e8400000-0000-4000-8000-000000000001','e8400000-0000-4000-8000-000000000002','coach','E2E coach');
+set local role authenticated;
 select lives_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000011',pg_temp.review_payload('e8400000-0000-4000-8000-000000000011','not_lesson'),'e2e-review-all-day')$$,'Historical date-only entry can be explicitly marked not a lesson without inventing time');
 select set_config('e2e.review.stale',pg_temp.review_payload('e8400000-0000-4000-8000-000000000018')::text,true);
 reset role;
@@ -70,6 +77,7 @@ update discovery_internal.candidates set etag='changed-source' where id='e840000
 set local role authenticated;
 select throws_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000018',current_setting('e2e.review.stale')::jsonb,'e2e-review-stale')$$,'P0001','VERSION_CONFLICT: Refresh the historical source preview.','Changed source invalidates the preview before any decision');
 select throws_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000014',pg_temp.reopen_payload('e8400000-0000-4000-8000-000000000014','e8400000-0000-4000-8000-000000000040')-'acknowledgeUnscoped','e2e-review-raw-noack')$$,'P0001','REVIEW_REQUIRED: Review the ambiguous legacy Calendar identity.','Legacy raw-ID reopening needs explicit acknowledgement');
+select throws_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000014',pg_temp.review_payload('e8400000-0000-4000-8000-000000000014','not_lesson'),'e2e-review-legacy-linked-hold')$$,'P0001','REVIEW_REQUIRED: Preserve the existing canonical lesson link.','Existing legacy canonical pointer cannot be ignored before a qualified decision exists');
 select set_config('e2e.review.reopen',pg_temp.reopen_payload('e8400000-0000-4000-8000-000000000014','e8400000-0000-4000-8000-000000000040')::text,true);
 select lives_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000014',current_setting('e2e.review.reopen')::jsonb,'e2e-review-reopen')$$,'Coach explicitly reopens one exact ignored source');
 select is(public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000014',current_setting('e2e.review.reopen')::jsonb,'e2e-review-reopen')#>>'{resource,disposition}','review','Reopen replay returns review, not lesson completion');
@@ -126,5 +134,17 @@ select is((select count(*) from public.lessons where studio_id='e8400000-0000-40
 select is((select count(*) from public.outbox_messages where studio_id='e8400000-0000-4000-8000-000000000001'),0::bigint,'Review queues no notification');
 select is((select count(*) from public.calendar_projections where lesson_id='e8400000-0000-4000-8000-000000000030'),0::bigint,'Review queues no provider projection');
 select is((select count(*) from discovery_internal.source_write_authorizations where transaction_id=txid_current()),0::bigint,'No private write authorization survives command completion or faults');
+-- A new review may acknowledge an already-corrected historical canonical time
+-- without rewriting the lesson or losing the earlier decision snapshot.
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type) values('e8400000-0000-4000-8000-000000000031','e8400000-0000-4000-8000-000000000001','e8400000-0000-4000-8000-000000000006','E2E corrected history','2020-02-01T15:00Z','2020-02-01T16:00Z','completed','in_person');
+insert into discovery_internal.candidates(id,scan_id,calendar_id,event_id,source_key,summary,status,starts_at,ends_at,reason_code) values('e8400000-0000-4000-8000-000000000019','e8400000-0000-4000-8000-000000000007','canonical-a','e2e-review-19',jsonb_build_array('canonical-a','e2e-review-19')::text,'E2E corrected source','active','2020-02-01T15:00Z','2020-02-01T16:00Z','event_detected');
+insert into discovery_internal.source_decisions(studio_id,calendar_id,event_id,disposition,lesson_id,lesson_ends_at,reviewed_hash,actor_id,reason) values('e8400000-0000-4000-8000-000000000001','canonical-a','e2e-review-19','linked','e8400000-0000-4000-8000-000000000031','2020-02-01T16:00Z',repeat('a',64),'e8400000-0000-4000-8000-000000000002','Previously linked historical lesson');
+update public.lessons set starts_at='2021-02-01T15:00Z',ends_at='2021-02-01T16:00Z' where id='e8400000-0000-4000-8000-000000000031';
+create temporary table reviewed_corrected_before as select to_jsonb(l) value from public.lessons l where id='e8400000-0000-4000-8000-000000000031';
+set local role authenticated;
+select lives_ok($$select public.command_historical_calendar_review('e8400000-0000-4000-8000-000000000019',pg_temp.review_payload('e8400000-0000-4000-8000-000000000019','reopen'),'e2e-review-corrected-history')$$,'Fresh explicit review can acknowledge an already-corrected historical lesson');
+reset role;
+select is((select lesson_ends_at from discovery_internal.source_decisions where studio_id='e8400000-0000-4000-8000-000000000001' and event_id='e2e-review-19'),'2021-02-01T16:00Z'::timestamptz,'New decision snapshots the current confirmed historical interval');
+select is((select to_jsonb(l) from public.lessons l where id='e8400000-0000-4000-8000-000000000031'),(select value from reviewed_corrected_before),'Review leaves the corrected canonical lesson byte-equivalent');
 select * from finish();
 rollback;

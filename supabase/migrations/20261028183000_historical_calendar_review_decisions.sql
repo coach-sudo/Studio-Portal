@@ -52,7 +52,7 @@ create function public.command_historical_calendar_review(p_candidate uuid,p_pay
 language plpgsql security definer set search_path='' as $$
 declare actor uuid:=auth.uid(); candidate discovery_internal.candidates; scan discovery_internal.scans; head discovery_internal.source_decisions;
  prior discovery_internal.review_receipts; before_head jsonb; before_import jsonb; after_import jsonb; original public.integration_imports;
- preview jsonb; fingerprint text; linked_lesson public.lessons; action text:=p_payload->>'action'; reason text:=trim(p_payload->>'reason'); result jsonb; audit_id uuid:=gen_random_uuid();
+ preview jsonb; fingerprint text; linked_lesson public.lessons; action text:=p_payload->>'action'; review_reason text:=trim(p_payload->>'reason'); result jsonb; audit_id uuid:=gen_random_uuid();
  digest text:=encode(extensions.digest(jsonb_build_object('command','historical_calendar_review','candidateId',p_candidate,'payload',p_payload)::text,'sha256'),'hex');
 begin
  select * into candidate from discovery_internal.candidates where id=p_candidate;
@@ -65,7 +65,7 @@ begin
  select * into prior from discovery_internal.review_receipts where actor_id=actor and request_key=p_key;
  if found then if prior.request_hash<>digest or prior.studio_id<>scan.studio_id then raise exception 'IDEMPOTENCY_CONFLICT';end if;return prior.result;end if;
  if jsonb_typeof(p_payload) is distinct from 'object' or length(p_payload::text)>10000 or action is null or action not in ('not_lesson','skip','reopen')
- or reason is null or length(reason) not between 3 and 500 or coalesce(p_payload->>'stamp','') !~ '^[0-9a-f]{64}$'
+ or review_reason is null or length(review_reason) not between 3 and 500 or coalesce(p_payload->>'stamp','') !~ '^[0-9a-f]{64}$'
  or exists(select 1 from jsonb_object_keys(p_payload) k where k not in ('action','reason','stamp','legacyImportId','legacyUpdatedAt','acknowledgeUnscoped')) then raise exception 'VALIDATION_FAILED';end if;
  select * into candidate from discovery_internal.candidates where id=p_candidate for update;
  perform pg_advisory_xact_lock(hashtextextended(jsonb_build_array(scan.studio_id,candidate.event_id)::text,0));
@@ -77,6 +77,10 @@ begin
  if preview->>'stamp'<>p_payload->>'stamp' then raise exception 'VERSION_CONFLICT: Refresh the historical source preview.';end if;
  select * into head from discovery_internal.source_decisions where studio_id=scan.studio_id and calendar_id=candidate.calendar_id and event_id=candidate.event_id;
  before_head:=case when head.id is not null then to_jsonb(head) end;
+ if head.lesson_id is not null then
+  select * into linked_lesson from public.lessons where id=head.lesson_id and studio_id=scan.studio_id;
+  if linked_lesson.id is null or linked_lesson.ends_at>now() then raise exception 'REVIEW_REQUIRED: Preserve the exact historical canonical lesson link.';end if;
+ end if;
  if action<>'reopen' and (head.lesson_id is not null or jsonb_array_length(preview->'linkedLessons')>0) then raise exception 'REVIEW_REQUIRED: Preserve the existing canonical lesson link.';end if;
  if action='reopen' then
   if nullif(p_payload->>'legacyImportId','') is not null then
@@ -97,11 +101,11 @@ begin
  fingerprint:=encode(extensions.digest(jsonb_build_object('calendarId',candidate.calendar_id,'event',preview->'observation')::text,'sha256'),'hex');
  if head.id is null then
   insert into discovery_internal.source_decisions(studio_id,calendar_id,event_id,disposition,reviewed_hash,actor_id,reason,lesson_id,lesson_ends_at)
-   values(scan.studio_id,candidate.calendar_id,candidate.event_id,case action when 'skip' then 'skipped' when 'reopen' then 'review' else 'not_lesson' end,fingerprint,actor,reason,linked_lesson.id,linked_lesson.ends_at) returning * into head;
+   values(scan.studio_id,candidate.calendar_id,candidate.event_id,case action when 'skip' then 'skipped' when 'reopen' then 'review' else 'not_lesson' end,fingerprint,actor,review_reason,linked_lesson.id,linked_lesson.ends_at) returning * into head;
  else
   update discovery_internal.source_decisions set disposition=case action when 'skip' then 'skipped' when 'reopen' then 'review' else 'not_lesson' end,
-   version=version+1,reviewed_hash=fingerprint,actor_id=actor,reason=command_historical_calendar_review.reason,decided_at=now(),
-   lesson_id=coalesce(head.lesson_id,linked_lesson.id),lesson_ends_at=coalesce(head.lesson_ends_at,linked_lesson.ends_at) where id=head.id returning * into head;
+   version=version+1,reviewed_hash=fingerprint,actor_id=actor,reason=review_reason,decided_at=now(),
+   lesson_id=coalesce(head.lesson_id,linked_lesson.id),lesson_ends_at=coalesce(linked_lesson.ends_at,head.lesson_ends_at) where id=head.id returning * into head;
  end if;
  if original.id is not null then
   insert into discovery_internal.source_write_authorizations(transaction_id,decision_id,import_id,actor_id) values(txid_current(),head.id,original.id,actor);
@@ -110,9 +114,9 @@ begin
   delete from discovery_internal.source_write_authorizations where transaction_id=txid_current() and decision_id=head.id and import_id=original.id and actor_id=actor;
  end if;
  insert into discovery_internal.decision_revisions(decision_id,version,actor_id,request_key,action,reason,before_state,after_state,import_before,import_after)
- values(head.id,head.version,actor,p_key,action,reason,before_head,to_jsonb(head),before_import,after_import);
+ values(head.id,head.version,actor,p_key,action,review_reason,before_head,to_jsonb(head),before_import,after_import);
  insert into public.audit_events(id,studio_id,actor_id,entity_type,entity_id,action,reason,correlation_id,source,before_state,after_state)
- values(audit_id,scan.studio_id,actor,'historical_calendar_decision',head.id,'discovery.historical_'||action,reason,p_key,'coach_historical_review',before_head,
+ values(audit_id,scan.studio_id,actor,'historical_calendar_decision',head.id,'discovery.historical_'||action,review_reason,p_key,'coach_historical_review',before_head,
   jsonb_build_object('decision',to_jsonb(head),'candidateId',p_candidate,'importBefore',before_import,'importAfter',after_import,'canonicalEffects','[]'::jsonb));
  result:=jsonb_build_object('resource',jsonb_build_object('candidateId',p_candidate,'decisionId',head.id,'version',head.version,'disposition',head.disposition,'lessonId',head.lesson_id,'attendanceVerified',false,'financialCoverageVerified',false),
   'auditEventId',audit_id,'queuedSideEffects','[]'::jsonb);
