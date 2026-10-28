@@ -16,6 +16,7 @@ import referrals from "./referrals";
 import { handleAutomationCommands } from "./_v2/automations";
 import { handleSetupCommands } from "./_v2/setup";
 import { handleCalendarDiscovery } from "./_v2/calendar-discovery";
+import { handleHistoricalCalendarReview } from "./_v2/historical-calendar-review";
 
 const domains = new Set([
   "setup",
@@ -43,6 +44,7 @@ const domains = new Set([
 ]);
 
 const commandHandlers: V2CommandHandler[] = [
+  handleHistoricalCalendarReview,
   handleCalendarDiscovery,
   handleSetupCommands,
   handleInvoiceCommands,
