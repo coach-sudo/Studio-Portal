@@ -55,11 +55,16 @@ it("authenticates before disclosing the legacy policy response", async () => {
   ).rejects.toThrow("FORBIDDEN");
   expect(f.rpc).not.toHaveBeenCalled();
 });
-it("keeps disabled intake disabled for ordinary review", async () => {
+it.each([
+  { action: "existing", studentId: "original-student" },
+  {
+    action: "existing",
+    studentId: "selected-student",
+    mergeStudentId: "original-student",
+  },
+])("keeps disabled intake disabled for review %j", async (payload) => {
   f.enabled.mockReturnValue(false);
-  const response = await handleAdministrationCommands(
-    ctx({ action: "existing", studentId: "original-student" }),
-  );
+  const response = await handleAdministrationCommands(ctx(payload));
   expect(response!.status).toBe(409);
   expect(f.rpc).not.toHaveBeenCalled();
 });

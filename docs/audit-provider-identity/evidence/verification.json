@@ -1,8 +1,9 @@
 {
-  "implementationCommit": "ce65d056baf470a2dfa61a2b7d2a5d63fffc83b6",
+  "initialImplementationCommit": "ce65d056baf470a2dfa61a2b7d2a5d63fffc83b6",
+  "correctedValidation": "After the retained 78a7572 worker-containment failure; exact final source and CI are in the PR checks and central remediation evidence.",
   "pullRequest": "https://github.com/coach-sudo/Studio-Portal/pull/89",
   "basePullRequest": 88,
-  "localTargeted": { "tests": 48, "files": 4, "passed": true, "newTests": 13 },
+  "localTargeted": { "tests": 85, "files": 5, "passed": true, "newTests": 14 },
   "typecheck": "npx tsc -b --pretty false: pass after correcting test query options",
   "lint": "zero errors; ten existing warnings in the two existing runtime files, no new-file warnings",
   "secrets": "pass",

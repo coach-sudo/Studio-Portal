@@ -1,0 +1,19 @@
+{
+  "commit": "78a757202830506007dc2fc79ed991439daee7f9",
+  "workflow": 40816575477,
+  "job": 123259017702,
+  "failedStep": "Run npm test",
+  "test": "manual/replay command review_import respects containment after authorization",
+  "file": "netlify/functions/_shared/worker-controls-entrypoints.test.ts",
+  "failure": "TypeError: Cannot read properties of undefined (reading 'mergeStudentId')",
+  "passedTests": 1073,
+  "failedTests": 1,
+  "correction": "Restore the disabled-worker return before enabled-only legacy payload validation; retain the original test and add disabled legacy-payload coverage.",
+  "database": "The earlier ce65d05 job 123258070491 completed all 387 actual PostgreSQL assertions; its later concurrency steps were cancelled by the evidence update and are not claimed passed.",
+  "notPassedByInference": [
+    "cancelled concurrency",
+    "skipped build",
+    "provider delivery",
+    "whole workflow acceptance"
+  ]
+}
