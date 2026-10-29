@@ -1,0 +1,38 @@
+{
+  "implementationCommit": "ce65d056baf470a2dfa61a2b7d2a5d63fffc83b6",
+  "pullRequest": "https://github.com/coach-sudo/Studio-Portal/pull/89",
+  "basePullRequest": 88,
+  "localTargeted": { "tests": 48, "files": 4, "passed": true, "newTests": 13 },
+  "typecheck": "npx tsc -b --pretty false: pass after correcting test query options",
+  "lint": "zero errors; ten existing warnings in the two existing runtime files, no new-file warnings",
+  "secrets": "pass",
+  "browsers": {
+    "engines": ["chromium", "webkit"],
+    "widths": [320, 390, 768, 1440],
+    "after": 8,
+    "before": 8,
+    "retries": 0,
+    "screenshots": 32,
+    "axeAA": "pass for unlinked review and linked identity hold",
+    "keyboard": "Enter, Tab, Escape and logical focus return pass",
+    "overflow": "none in tested viewports",
+    "requestReplay": "exact request and key retained in the open dialog after synthetic 503"
+  },
+  "parentDialogBlob": "a39cb7f0b562e1c0ac8a7058cf47631fcce9ea93",
+  "initialFixtureFailure": "all eight cases reached recovery assertion; synthetic error lacked mandatory correlationId, so client correctly used generic fallback",
+  "databaseAssertionsAdded": 9,
+  "databaseExecutionEvidence": "Use exact PR-head migration CI and central remediation report; local browser/handler results do not prove PostgreSQL behavior.",
+  "hostedAcceptance": "not executed",
+  "productionMutations": false,
+  "newMigrations": 0,
+  "releaseGates": [
+    "approved #87 identity contract and #88 interface",
+    "combined #74 attendance separation and historical source protection",
+    "hosted coach/student/guardian/unrelated roles",
+    "controlled provider acceptance",
+    "unknown response across dialog closure",
+    "committed success versus list refresh failure",
+    "manual assistive and touch checks",
+    "separate release authorization"
+  ]
+}
