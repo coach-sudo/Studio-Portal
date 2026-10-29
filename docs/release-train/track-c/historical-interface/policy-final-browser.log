@@ -29,7 +29,7 @@ Running 8 tests using 1 worker
   x  8 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 (11.6s)
 
 
-  1) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 
+  1) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -56,7 +56,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-1edc8-d-unchanged-recovery-at-320-chromium\error-context.md
 
-  2) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 
+  2) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -83,7 +83,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-73c80-d-unchanged-recovery-at-390-chromium\error-context.md
 
-  3) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 
+  3) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -110,7 +110,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-ea7a6-d-unchanged-recovery-at-768-chromium\error-context.md
 
-  4) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 
+  4) [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -137,7 +137,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-3d04b--unchanged-recovery-at-1440-chromium\error-context.md
 
-  5) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 
+  5) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -164,7 +164,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-1edc8-d-unchanged-recovery-at-320-webkit\error-context.md
 
-  6) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 
+  6) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -191,7 +191,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-73c80-d-unchanged-recovery-at-390-webkit\error-context.md
 
-  7) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 
+  7) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -218,7 +218,7 @@ Running 8 tests using 1 worker
 
     Error Context: test-results\audit-discovery\historical-historical-sour-ea7a6-d-unchanged-recovery-at-768-webkit\error-context.md
 
-  8) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 
+  8) [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440
 
     Error: expect(locator).toBeDisabled() failed
 
@@ -246,11 +246,11 @@ Running 8 tests using 1 worker
     Error Context: test-results\audit-discovery\historical-historical-sour-3d04b--unchanged-recovery-at-1440-webkit\error-context.md
 
   8 failed
-    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 
-    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 
-    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 
-    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 
-    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 
-    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 
-    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 
-    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 
+    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320
+    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390
+    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768
+    [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440
+    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320
+    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390
+    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768
+    [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440

@@ -194,21 +194,21 @@ Ignored nodes: comments, script, style
         Refresh source review
       </button>
       <p>
-        Calendar: 
+        Calendar:
         exact-calendar
-        . Event: 
+        . Event:
         active
-        . Current decision: 
+        . Current decision:
         Not reviewed
         .
       </p>
       <p>
         Source time:
-         
+
         2020-01-01 10:00 (America/New_York)
-         
+
         –
-         
+
         2020-01-01 11:00 (America/New_York)
         .
       </p>
@@ -335,4 +335,3 @@ Ignored nodes: comments, script, style
       Tests  1 failed | 57 passed (58)
    Start at  15:03:54
    Duration  18.63s (transform 443ms, setup 1.32s, import 1.41s, tests 10.11s, environment 4.30s)
-
