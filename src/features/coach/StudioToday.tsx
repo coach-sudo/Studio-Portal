@@ -1,4 +1,5 @@
 import { formatMoney } from "../../domain/finance";
+import { Link } from "react-router-dom";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { recordLink } from "../../app/recordLinks";
 import {
@@ -701,7 +702,7 @@ function importEmail(item: IntegrationImport, data: StudioSnapshot) {
   );
 }
 
-function ImportReviewDialog({
+export function ImportReviewDialog({
   item,
   similarCount,
   data,
@@ -724,23 +725,36 @@ function ImportReviewDialog({
       locationLabel?: string;
     },
     [mode, setMode] = useState<"existing" | "create">(
-      item.studentId ||
+      item.lessonId ||
+        item.studentId ||
         ["cancellation", "reschedule"].includes(
           String(item.payload?.changeType),
         )
         ? "existing"
         : "create",
     ),
-    [studentId, setStudentId] = useState(item.studentId || ""),
+    [studentId, setStudentId] = useState(
+      data.lessons.find((lesson) => lesson.id === item.lessonId)?.studentId ||
+        item.studentId ||
+        "",
+    ),
     [name, setName] = useState(""),
     [email, setEmail] = useState(importEmail(item, data)),
-    [merge, setMerge] = useState(false),
     [lessonId, setLessonId] = useState(item.lessonId || ""),
     [note, setNote] = useState(""),
     [saving, setSaving] = useState(false),
     [error, setError] = useState("");
   const isChange = ["cancellation", "reschedule"].includes(
     String(item.payload?.changeType),
+  );
+  const originalStudentId =
+    data.lessons.find((lesson) => lesson.id === item.lessonId)?.studentId ||
+    item.studentId;
+  const linkedIdentityMismatch = Boolean(
+    item.lessonId &&
+    (!originalStudentId ||
+      mode === "create" ||
+      studentId !== originalStudentId),
   );
   const reviewedRows = data.integrationImports
     .filter(
@@ -770,7 +784,7 @@ function ImportReviewDialog({
   };
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (saving) return;
+    if (saving || linkedIdentityMismatch) return;
     setSaving(true);
     setError("");
     try {
@@ -785,10 +799,6 @@ function ImportReviewDialog({
         studentId: mode === "existing" ? studentId : undefined,
         fullName: mode === "create" ? name : undefined,
         email: mode === "create" ? email : undefined,
-        mergeStudentId:
-          merge && item.studentId && item.studentId !== studentId
-            ? item.studentId
-            : undefined,
         note,
       });
       await onReviewed();
@@ -855,6 +865,12 @@ function ImportReviewDialog({
           Confirming creates or links this lesson in the selected student
           profile.
         </p>
+        {item.lessonId && !originalStudentId && (
+          <p className="inline-error full" role="alert">
+            Open the shared lesson workspace to review its original
+            participants.
+          </p>
+        )}
         {isChange && (
           <label className="full">
             Existing lesson to{" "}
@@ -908,7 +924,7 @@ function ImportReviewDialog({
           <button
             type="button"
             role="switch"
-            disabled={isChange}
+            disabled={isChange || Boolean(item.lessonId)}
             aria-checked={mode === "create"}
             className={`setting-toggle toggle-button ${mode === "create" ? "on" : ""}`}
             onClick={() => setMode("create")}
@@ -932,7 +948,6 @@ function ImportReviewDialog({
                 onChange={(event) => {
                   setStudentId(event.target.value);
                   setLessonId("");
-                  setMerge(false);
                 }}
               >
                 <option value="">Choose a student</option>
@@ -946,24 +961,27 @@ function ImportReviewDialog({
                   ))}
               </select>
             </label>
-            {item.studentId && studentId && item.studentId !== studentId && (
-              <label className="check-row full">
-                <input
-                  type="checkbox"
-                  checked={merge}
-                  onChange={(event) => setMerge(event.target.checked)}
-                />
-                <span>
-                  <strong>
-                    Merge {studentName(data, item.studentId)} into this record
-                  </strong>
-                  <small>
-                    Lessons, notes, materials, payments, relationships, and
-                    portal access move to the selected student.
-                  </small>
-                </span>
-              </label>
-            )}
+            {originalStudentId &&
+              studentId &&
+              originalStudentId !== studentId && (
+                <p className="full" role="status">
+                  {linkedIdentityMismatch
+                    ? "This lesson keeps its original student. Select that profile to review this signal. "
+                    : "Only this unlinked signal will use the selected student. Existing lessons, financial records and portal access keep their original owners. "}
+                  <Link
+                    to={recordLink("coach", {
+                      kind: "student",
+                      id: originalStudentId,
+                    })}
+                  >
+                    Open original student profile
+                  </Link>
+                  {" · "}
+                  <Link to="/coach/students">
+                    Review duplicate profile links in Students
+                  </Link>
+                </p>
+              )}
           </>
         ) : (
           <>
@@ -1001,7 +1019,10 @@ function ImportReviewDialog({
           <button type="button" disabled={saving} onClick={onClose}>
             Cancel
           </button>
-          <button className="primary" disabled={saving}>
+          <button
+            className="primary"
+            disabled={saving || linkedIdentityMismatch}
+          >
             {saving
               ? "Saving…"
               : mode === "create"

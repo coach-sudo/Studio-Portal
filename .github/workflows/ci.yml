@@ -9,6 +9,7 @@ on:
         main,
         codex/audit-worker-observability,
         codex/audit-student-identity-groups,
+        codex/audit-student-identity-interface,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
