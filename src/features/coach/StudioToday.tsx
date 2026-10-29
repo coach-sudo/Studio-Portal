@@ -969,6 +969,7 @@ export function ImportReviewDialog({
                     ? "This lesson keeps its original student. Select that profile to review this signal. "
                     : "Only this unlinked signal will use the selected student. Existing lessons, financial records and portal access keep their original owners. "}
                   <Link
+                    tabIndex={0}
                     to={recordLink("coach", {
                       kind: "student",
                       id: originalStudentId,
@@ -977,7 +978,7 @@ export function ImportReviewDialog({
                     Open original student profile
                   </Link>
                   {" · "}
-                  <Link to="/coach/students">
+                  <Link tabIndex={0} to="/coach/students">
                     Review duplicate profile links in Students
                   </Link>
                 </p>

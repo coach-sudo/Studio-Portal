@@ -3,6 +3,16 @@
   "correctedValidation": "After the retained 78a7572 worker-containment failure; exact final source and CI are in the PR checks and central remediation evidence.",
   "pullRequest": "https://github.com/coach-sudo/Studio-Portal/pull/89",
   "basePullRequest": 88,
+  "deployedDiscovery": { "tests": 62, "files": 18, "existingTestsRemoved": 0 },
+  "keyboardCorrection": "Explicit tabIndex=0 on both new links corrects observed native WebKit link skipping; expanded after journeys now assert link-to-link Tab before moving to the note field.",
+  "computedContrast": {
+    "samples": 8,
+    "minText": 16.513121508197194,
+    "minFocus": 3.303068817416212,
+    "focusWidthPx": 3,
+    "evidence": "computed-colors.json"
+  },
+  "deployedFixtureBoundary": "Run 40816309742 retained 61 original passes, one Stripe blocker and eight local-only fixture failures at the wrong port; root config now isolates the new loopback directory exactly like existing local fixtures, without excluding original cases.",
   "localTargeted": { "tests": 85, "files": 5, "passed": true, "newTests": 14 },
   "typecheck": "npx tsc -b --pretty false: pass after correcting test query options",
   "lint": "zero errors; ten existing warnings in the two existing runtime files, no new-file warnings",

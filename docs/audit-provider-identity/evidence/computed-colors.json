@@ -1,0 +1,270 @@
+{
+  "initialImplementationCommit": "5f93e9071fd21d166c287ae0d3e7d61f3ec88bbc",
+  "uiBlob": "16dbd993364c484caf865af4aa7f29ac9d5d4815",
+  "measurements": [
+    {
+      "engine": "chromium",
+      "width": 320,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "rgba(239, 93, 81, 0.45) solid 3px",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "chromium",
+      "width": 390,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "rgba(239, 93, 81, 0.45) solid 3px",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "chromium",
+      "width": 768,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "rgba(239, 93, 81, 0.45) solid 3px",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "chromium",
+      "width": 1440,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "rgba(239, 93, 81, 0.45) solid 3px",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "webkit",
+      "width": 320,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "3px solid rgba(239, 93, 81, 0.45)",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "webkit",
+      "width": 390,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "3px solid rgba(239, 93, 81, 0.45)",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "webkit",
+      "width": 768,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "3px solid rgba(239, 93, 81, 0.45)",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    },
+    {
+      "engine": "webkit",
+      "width": 1440,
+      "text": [
+        {
+          "label": "P",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        },
+        {
+          "label": "A",
+          "color": "rgb(23, 33, 29)",
+          "background": [255, 255, 255, 255],
+          "ratio": 16.513121508197194
+        }
+      ],
+      "focus": {
+        "active": true,
+        "visible": true,
+        "outline": "3px solid rgba(239, 93, 81, 0.45)",
+        "outlineWidth": 3,
+        "outlineColor": "rgba(239, 93, 81, 0.45)",
+        "background": [255, 255, 255, 255],
+        "ratio": 3.303068817416212
+      }
+    }
+  ]
+}

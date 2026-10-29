@@ -31,7 +31,11 @@ for (const width of [320, 390, 768, 1440])
       name: "Review duplicate profile links in Students",
     });
     await expect(links).toHaveAttribute("href", "/coach/students");
-    await links.focus();
+    await dialog
+      .getByRole("link", { name: "Open original student profile" })
+      .focus();
+    await page.keyboard.press("Tab");
+    await expect(links).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(
       dialog.getByRole("textbox", { name: "Verification note (optional)" }),
