@@ -23,6 +23,7 @@ export default defineConfig({
     "**/audit-historical-local/**",
     "**/audit-corrections-local/**",
     "**/audit-reschedule-local/**",
+    "**/audit-contrast-local/**",
   ],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",

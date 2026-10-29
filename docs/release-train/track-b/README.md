@@ -15,3 +15,7 @@ Supported call sites were inspected: BookingCenter uses create_manual/confirm_lo
 Minimum fix: reject generic booking CRUD before the fallback, revoke direct I/U/D/TRUNCATE from PUBLIC/anon/authenticated, remove the obsolete coach write policy while retaining the separate SELECT policy and all service/command authority. New CLI-generated additive migration: 20261029052836_booking_command_write_boundary.sql. Existing unrelated tables and service grants are untouched. Required actual PostgreSQL assertions cover denied direct writes, retained role reads and canonical paid creation; catalog shape does not change.
 
 Rollback keeps committed bookings, ledger, receipts, holds and pending intents. Application rollback may retain these reviewed commands; reverting before atomic creation would make manual creation unavailable under the new boundary, so do not restore old fragmented CRUD or regrant writes as a quick rollback. Hosted migration and release remain unauthorized.
+
+## Shared release foundation
+
+Release A frozen candidate ad8c819 is merged as a prerequisite, preserving its #70/#72/#76 ancestry. Its patched lock graph, semantic public colors and explicit test timezones are retained. Merge-only conflicts were the browser matrix steps, default test exclusions and TypeScript explicit include lists; each was resolved as a union. All booking/correction/Stripe concurrency gates and public contrast harness remain. Release A can ship independently; this higher-risk candidate advances from it without reverting those improvements.

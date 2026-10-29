@@ -112,6 +112,8 @@ jobs:
         run: npx playwright test --config e2e/audit-corrections-local/playwright.config.ts
       - name: Check reschedule conflict policies and recovery in Chromium and WebKit
         run: npx playwright test --config e2e/audit-reschedule-local/playwright.config.ts
+      - name: Check branded public booking in its isolated local browser harness
+        run: npx playwright test --config e2e/audit-contrast-local/playwright.config.ts
       - name: Start free ephemeral Supabase
         if: env.USE_EPHEMERAL_STACK == 'true'
         shell: bash

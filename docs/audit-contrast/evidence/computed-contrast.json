@@ -1,0 +1,3490 @@
+[
+  {
+    "engine": "chromium",
+    "width": 320,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "chromium",
+    "width": 390,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "chromium",
+    "width": 768,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "chromium",
+    "width": 1440,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "webkit",
+    "width": 320,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "webkit",
+    "width": 390,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "webkit",
+    "width": 768,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  },
+  {
+    "engine": "webkit",
+    "width": 1440,
+    "result": "passed",
+    "states": [
+      {
+        "state": "catalog",
+        "measured": []
+      },
+      {
+        "state": "setup",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "time-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "details",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "payment-disabled",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "error",
+        "measured": [
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "H1",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "SPAN",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DT",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "DD",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "P",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          },
+          {
+            "element": "STRONG",
+            "color": "rgb(255, 255, 255)",
+            "background": "rgb(55, 18, 155)",
+            "ratio": 12.1931459168502
+          }
+        ]
+      },
+      {
+        "state": "confirmation",
+        "measured": []
+      }
+    ]
+  }
+]

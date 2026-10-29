@@ -1,0 +1,28 @@
+
+> studio-portal@1.0.0 format:check
+> tsx scripts/check-format.ts
+
+Checking formatting...
+[warn] .github/workflows/ci.yml
+[warn] .prettierrc.json
+[warn] docs/release-safety.md
+[warn] docs/verification-baseline-2026-09-19.md
+[warn] eslint.config.js
+[warn] netlify/functions/_shared/release.ts
+[warn] netlify/functions/healthz.ts
+[warn] playwright.config.ts
+[warn] scripts/check-bundle-size.ts
+[warn] scripts/check-format.ts
+[warn] scripts/check-secrets.ts
+[warn] scripts/generate-database-types.ts
+[warn] docs/audit-booking-contrast.md
+[warn] docs/audit-contrast/evidence/computed-contrast.json
+[warn] docs/audit-test-portability.md
+[warn] docs/audit-toolchain-security.md
+[warn] docs/audit-toolchain/evidence/windows-npm-audit.json
+[warn] docs/audit-toolchain/evidence/windows-verification.json
+[warn] e2e/audit-contrast-local/contrast.spec.ts
+[warn] e2e/audit-contrast-local/playwright.config.ts
+[warn] scripts/test-booking-timezones.mjs
+[warn] src/lib/branding.test.ts
+[warn] Code style issues found in 22 files. Run Prettier with --write to fix.

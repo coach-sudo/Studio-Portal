@@ -55,6 +55,8 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
+      - name: Verify booking fixtures across explicit host timezones
+        run: node scripts/test-booking-timezones.mjs
       - name: Build production-shaped browser bundle
         env:
           VITE_SUPABASE_URL: https://ci.example.supabase.co
