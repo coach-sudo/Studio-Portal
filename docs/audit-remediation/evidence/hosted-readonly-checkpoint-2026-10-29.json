@@ -1,0 +1,44 @@
+{
+  "observedOn": "2026-10-29",
+  "repositoryMain": "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb",
+  "production": {
+    "siteId": "93829451-dbcf-4863-a07f-fa448cb17494",
+    "deployId": "6ae0227d28d529e36c4a41e6",
+    "commit": "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb",
+    "state": "ready",
+    "locked": true,
+    "publishedAt": "2026-10-27T04:05:59.566Z",
+    "providerIntakeEnabled": false,
+    "providerIntakeContext": "production",
+    "migrations": {
+      "count": 71,
+      "last": {
+        "version": "20261026161014",
+        "name": "reliable_scheduled_workers"
+      }
+    }
+  },
+  "securityAdvisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "level": "INFO",
+      "count": 17,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "level": "WARN",
+      "count": 20,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "level": "WARN",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ],
+  "interpretation": "Disabled leaked-password protection remains an approval/test gate. Signed-in SECURITY DEFINER execution is not itself evidence of an authorization bypass; command/helper role and argument guards require review. No-policy private/service tables can intentionally deny direct access. Do not blanket revoke required RPCs or weaken RLS to suppress advisor notices.",
+  "productionMutations": false,
+  "providerInvocations": false
+}

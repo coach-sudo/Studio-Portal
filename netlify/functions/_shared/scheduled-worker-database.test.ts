@@ -13,6 +13,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261028041034_worker_run_observations.sql",
+      "utf8",
+    ),
+  );
 });
 afterAll(() => db.close());
 const scalar = async (sql: string, args: unknown[] = []) =>
@@ -82,6 +88,13 @@ it("retains pending work, fences overlap, recovers expired claims and rejects st
   const secondJob = await scalar(
     "select enqueue_scheduled_worker('provider-intake') value",
   );
+  const health = (
+    await db.query<{
+      value: { [key: string]: { lastSuccessAt: string; history: unknown[] } };
+    }>("select scheduled_worker_health() value")
+  ).rows[0].value;
+  expect(health["provider-intake"].lastSuccessAt).toBeTruthy();
+  expect(health["provider-intake"].history).toHaveLength(2);
   expect(secondJob).not.toBe(job);
   expect(
     await scalar("select claim_scheduled_worker('provider-intake',$1) value", [
@@ -91,6 +104,16 @@ it("retains pending work, fences overlap, recovers expired claims and rejects st
 });
 it("does not expose receipts or privileged RPCs to portal roles", async () => {
   for (const role of ["anon", "authenticated"]) {
+    expect(
+      await scalar(
+        `select has_function_privilege('${role}','public.scheduled_worker_health()','execute')::text value`,
+      ),
+    ).toBe("false");
+    expect(
+      await scalar(
+        `select has_function_privilege('${role}','public.observe_scheduled_worker(text,uuid,uuid,text,text,text)','execute')::text value`,
+      ),
+    ).toBe("false");
     expect(
       await scalar(
         `select has_function_privilege('${role}','public.enqueue_scheduled_worker(text)','execute')::text value`,

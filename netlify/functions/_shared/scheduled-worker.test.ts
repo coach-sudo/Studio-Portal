@@ -105,6 +105,47 @@ it("authenticates and completes a claimed job", async () => {
     expect.objectContaining({ p_job: job, p_token: "claim-token" }),
   );
 });
+it("retains accepted dispatch separately from completed processing", async () => {
+  const request = await dispatchedRequest();
+  expect(f.rpc).toHaveBeenCalledWith(
+    "observe_scheduled_worker",
+    expect.objectContaining({ p_event: "accepted", p_job: job }),
+  );
+  await expect(
+    runScheduledWorker("provider-intake", request, context, async (log) => {
+      log.stage("calendar_processing");
+      log.stage("gmail_processing");
+      log.failure({
+        code: "GMAIL_READ_PERMISSION",
+        message: "private provider body",
+      });
+      throw new Error("PROVIDER_UNAVAILABLE: partial processing");
+    }),
+  ).rejects.toThrow();
+  const observations = f.rpc.mock.calls
+    .filter((c) => c[0] === "observe_scheduled_worker")
+    .map((c) => c[1]);
+  expect(observations).toContainEqual(
+    expect.objectContaining({
+      p_stage: "calendar_processing",
+      p_event: "stage_completed",
+    }),
+  );
+  expect(observations).toContainEqual(
+    expect.objectContaining({
+      p_stage: "gmail_processing",
+      p_event: "stage_failed",
+      p_error: "gmail_read_permission",
+    }),
+  );
+  expect(observations).not.toContainEqual(
+    expect.objectContaining({
+      p_stage: "gmail_processing",
+      p_event: "stage_completed",
+    }),
+  );
+  expect(JSON.stringify(observations)).not.toContain("private provider body");
+});
 it("rejects unsigned and tampered deliveries before claiming or mutating", async () => {
   const valid = await dispatchedRequest(),
     body = await valid.text();

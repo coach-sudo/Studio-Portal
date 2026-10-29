@@ -1,0 +1,1013 @@
+{
+  "workflows": [
+    {
+      "id": "A01",
+      "name": "Public lead / first booking → studio student",
+      "requiredTask": "Required task: Visit booking page → browse services/availability → select date/location → enter customer/student details → account/identity match or lead creation → payment intent if needed → booking and participation records → confirmation → student/guardian invitation or account linkage → dashboard availability. Audit email/name ambiguity, minors, duplicates, partial completion, recoverability, and guest-token scope.",
+      "trace": "Identified implementation trace: Public catalog and details → hold/checkout confirmation → booking participant and student linkage → optional portal provisioning.",
+      "code": "Current source: src/features/booking/BookingFlow.tsx:1 · netlify/functions/_shared/portal-access.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual identity collision/minor case, paid confirmation, received invite and correct portal account; no real booking was submitted.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "A02",
+      "name": "Coach creates student",
+      "requiredTask": "Required task: Coach Students → choose create → identity/contact fields → guardian/household relationships → service pricing and billing model → permission / terms → save → audit trail → record summary → availability in booking, messaging, finance and materials. Verify duplicate detection and safe invite behavior.",
+      "trace": "Identified implementation trace: Students guided setup → duplicate lookup/create-once command → student/set-up receipt → contact and finance actions → roster context.",
+      "code": "Current source: src/features/coach/StudentGuidedSetup.tsx:1 · netlify/functions/_v2/students.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "A03",
+      "name": "Student account activation / sign-in / recovery",
+      "requiredTask": "Required task: Invite or self-serve → magic link or credentials / Google identity → callback and role mapping → terms and temporary password as applicable → home route → session expiry → logout/recovery. Test wrong-role, revoked student, duplicate email, stale invite, minors, and cross-studio isolation.",
+      "trace": "Identified implementation trace: Sign-in/recovery → Auth callback/access claim → AuthGate role selection → required password/terms step → workspace.",
+      "code": "Current source: src/features/auth/MagicLinkLogin.tsx:1 · netlify/functions/portal-auth.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/guardian/coach session restoration, expired links, revoked account, wrong role, recovery and logout cache isolation.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "A04",
+      "name": "Guardian and household linking",
+      "requiredTask": "Required task: Existing/student account → coach or guardian request → verify relationship and consent → set scoped permissions → appropriate schedule/work/finance/profile screens → add/remove dependent → permission revocation and audit. Never infer guardian access solely from email similarity.",
+      "trace": "Identified implementation trace: Student account → linked contact permissions → synchronized relationship → scoped portal navigation and record policies.",
+      "code": "Current source: src/features/coach/StudentWorkspaceAccount.tsx:1 · netlify/functions/_v2/students.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "A05",
+      "name": "Student status lifecycle",
+      "requiredTask": "Required task: Lead → active → paused/inactive/alumni → access and policy effects → return/reactivation → retained historical records. Test actor-profile activity, reminders, billing and record visibility separately.",
+      "trace": "Identified implementation trace: Student workspace → reviewed details/status/access commands → version/audit → retained records and account state.",
+      "code": "Current source: src/features/coach/StudentWorkspaceAccount.tsx:1 · supabase/migrations/20261020153417_studio_operations_workflows.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Pause/reactivate effects on reminders, eligibility and billing; lifecycle status must not substitute for separate portal revocation.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "B01",
+      "name": "Public self-service booking",
+      "requiredTask": "Required task: Service catalog → location / price → timezone-aware availability → slot and capacity → identity → payment/credit choice → conflict/hold → checkout/confirmation → canonical booking and lesson occurrence → Google Calendar projection, messaging and portal visibility → cancel/reschedule path. Cross-check consent, retries, stale slot and payment failures.",
+      "trace": "Identified implementation trace: Service → format → live availability → details → holds/payment → canonical confirmation → calendar/notices. Public browser reached details.",
+      "code": "Current source: src/features/booking/BookingFlow.tsx:1 · netlify/functions/public-booking.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hold expiry, stale slot, payment failure, successful provider settlement, meeting link, delivered confirmation and manage token scope.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "B02",
+      "name": "Student/guardian self-service booking",
+      "requiredTask": "Required task: Authenticated schedule → entitlement/role policy → eligible time → coverage or charge → reviewed submit → canonical records → notification and lesson display. Confirm public lead-time/business-hours restrictions remain even as coach restrictions are relaxed.",
+      "trace": "Identified implementation trace: Portal Schedule → booker context/entitlement → public booking policy and coverage → confirmation → scoped lesson list.",
+      "code": "Current source: src/features/student/StudentPortalSchedule.tsx:1 · netlify/functions/public-booking.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Student/minor/guardian authority, correct payer, no policy override, credit reservation and all final states.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "B03",
+      "name": "Coach booking (single)",
+      "requiredTask": "Required task: Coach calendar/booking center/student record → select student/service/date/time/location → display timezone → check conflicts → allow justified coach override → review price/credit and notifications → save → canonical records → external projection → clear outcome message. Past dates must be accepted. Verify ManualBookingDialog minimum-date and UTC-local input bug candidates.",
+      "trace": "Identified implementation trace: Coach manual dialog → check_conflicts → create_manual → independent booking/lesson/participant/projection/payment writes → queue/invite.",
+      "code": "Current source: src/features/coach/BookingOverview.tsx:1 · netlify/functions/booking-admin.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. SP-02/03/05–09 must be resolved; production provider effects and role browser interaction remain untested.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "B04",
+      "name": "Coach historical lesson record",
+      "requiredTask": "Required task: Record Past Lesson → select actual student(s), historical date/time and service → choose Scheduled historical / Completed / Cancelled / No-show as appropriate → inspect matching provider, booking, invoice and credit history → explicitly choose financial treatment → save idempotently with recorded-at and occurred-at distinct → no automatic false historical notification or unauthorized Google event creation → history and reporting update. This is distinct from simple future booking.",
+      "trace": "Identified implementation trace: Required historical workflow has only partial building blocks: direct lesson create, provider review and historical list, with conflicting past-time policies.",
+      "code": "Current source: src/features/coach/StudentWorkspaceLessons.tsx:1 · netlify/functions/_v2/lessons.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No complete dedicated historical-record journey was verified; explicit attendance, financial treatment and suppression of historical notices are still required.",
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "B05",
+      "name": "Calendar click, drag, resize",
+      "requiredTask": "Required task: Day/week/month navigation → slot proposal or event move → correct timezone + duration → conflict and financial review → occurrence-safe commit → UI focus restoration and event position → queued calendar/notification side effects. Test mobile and keyboard equivalent; cancellation restores original focus.",
+      "trace": "Identified implementation trace: Calendar interaction → proposal drawer/conflict query → lesson create or reviewed occurrence change → query invalidation.",
+      "code": "Current source: src/components/InteractiveCalendarGrid.tsx:1 · src/features/coach/CalendarProposalDialog.tsx:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Mouse/touch/keyboard equivalence, focus/scroll restoration, DST mapping and committed provider/finance effects.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "B06",
+      "name": "Recurring bookings/series",
+      "requiredTask": "Required task: Create cadence → expand occurrences across timezone/DST → capacity and conflicts → invoice/credit constraints → one-series or individual occurrence command → audit and durable side effects → later generation and stopping rules. Ensure single-occurrence change cannot mutate other participants or recurring masters unintentionally.",
+      "trace": "Identified implementation trace: Cadence/count → timezone-aware series dates → create/make_recurring → SQL occurrence generation and coverage → series management.",
+      "code": "Current source: src/features/coach/BookingSeries.tsx:1 · netlify/functions/_v2/lessons.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Full series through DST, skipped/changed occurrence, generation cutoff, payer/invoice reservations and external recurring exceptions.",
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "B07",
+      "name": "Class/group enrollment",
+      "requiredTask": "Required task: Publish offering → seat/capacity eligibility → multiple students/household payer → group booking/attendance → credit and invoice per participation → student class workspace → reschedule/cancel preserving unaffected participants.",
+      "trace": "Identified implementation trace: Offering create/publish → public enrollment/capacity → participant cohort → class workspace/assignment command.",
+      "code": "Current source: src/features/coach/BookingClasses.tsx:1 · netlify/functions/_v2/work.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent last seat, household payer, per-participant finance, cancel one participant without affecting classmates, class visibility.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "B08",
+      "name": "Reschedule",
+      "requiredTask": "Required task: Coach/student authorized entry → choose single occurrence, future occurrences or series as applicable → dependency fingerprint/review → new slot check → reservation expiry/reallocation → transaction → audit → provider reconciliation and notification → refreshed views. No duplicated lesson or reservation.",
+      "trace": "Identified implementation trace: Reschedule form → preview_change dependency snapshot → execute_change replay/Google check → occurrence transaction → queued side effects.",
+      "code": "Current source: src/components/LessonChangeReview.tsx:1 · netlify/functions/_v2/lessons.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Historical correction limitation SP-04; hosted version conflict, checkout/expiry review, no duplicated reservation and portal refresh.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "B09",
+      "name": "Cancellation/late cancellation/excused",
+      "requiredTask": "Required task: Actor and policy determine cutoff → show explicit Return credit / Use credit / cash credit options as allowed → atomic state and finance entries → notifications → portal and actor eligibility update → replay-safe outcome. Never erase history.",
+      "trace": "Identified implementation trace: Actor/policy choice → reviewed cancellation → canonical state and finance settlement → outbox/projection → portal.",
+      "code": "Current source: src/components/CreditCancellationChoice.tsx:1 · netlify/functions/_shared/booking-cancellation.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Every credit/cash policy, refund provider result, repeated cancel and retained history under public/student/coach paths.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "B10",
+      "name": "Lesson completion/verification",
+      "requiredTask": "Required task: Time passes (not automatic proof) → coach confirms actual outcome → attendance and notes state → reserved credit finalization exactly once / payment status remains distinct → current work and progress timeline → actor page eligibility. Test completion correction/reversal and audit.",
+      "trace": "Identified implementation trace: Coach completion command → locked student/lesson/credit state → audit/replay → teaching context and activity.",
+      "code": "Current source: src/components/SessionAction.tsx:1 · supabase/migrations/20261014151934_credit_lifecycle_reliability.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Attendance proof and reversal across all creation paths; provider-review elapsed-time inference SP-13 remains.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "B11",
+      "name": "Bulk lesson management",
+      "requiredTask": "Required task: Filter and select → freeze exact IDs → review affected records/dependencies → confirm single/group/series scope → execute bounded job with concurrency fencing → per-item results → partial failures/retry → undo or authorized recovery where supported. Validate invoices, notes, assignments, material links and external projections.",
+      "trace": "Identified implementation trace: Filter/select → frozen reviewed IDs/dependencies → bounded job/claims → per-item results/retry → guarded archive/void/delete.",
+      "code": "Current source: src/components/LessonBulkWorkspace.tsx:1 · netlify/functions/_v2/lesson-bulk.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Hosted long-running execution, concurrent dependency edit, restored views and external projections/notices; local fixture protections alone are partial.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "C01",
+      "name": "Google Calendar connection",
+      "requiredTask": "Required task: Settings → discover configured credentials/scopes and accessible calendar list → choose calendars → display selected sources and operational status → safe test → expose last success and error reason. Assess token expiry/reconnect and absent permissions.",
+      "trace": "Identified implementation trace: Settings integrations → saved configuration evidence/health → optional intake-start endpoint.",
+      "code": "Current source: src/features/coach/StudioSettings.tsx:1 · netlify/functions/platform-health.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Accessible calendar enumeration/scopes, reconnect journey and truthful enabled/completion feedback; SP-01/10/14.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
+    },
+    {
+      "id": "C02",
+      "name": "Routine Calendar intake",
+      "requiredTask": "Required task: Schedule fires → durable receipt → background dispatch accepted → lease/claim → per-calendar paginated bounded event list → recurring expansion/deleted events → student/provider classification → managed projection reconciliation or review → checked writes → processing receipt and retry diagnostics. Receipt accepted must not equal processing complete.",
+      "trace": "Identified implementation trace: Schedule → enabled gate → receipt/claim → paginated bounded Calendar scan → match/review/write → completion.",
+      "code": "Current source: netlify/functions/provider-intake.ts:1 · netlify/functions/_shared/provider-intake.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Production currently disabled; three successful post-release scheduler-origin full runs and outcome reconciliation not observed.",
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "C03",
+      "name": "Historical Calendar reconciliation",
+      "requiredTask": "Required task: Coach selects one or more calendars and explicit date window → preview counts and candidate matches → distinguish previous ignored/reviewed from new → no mass automatic credit or notifications → coach approves link/create/not-a-lesson → durable replay identity → report imported, linked, skipped, failed. Preserve historical protection without silently excluding valid lessons.",
+      "trace": "Identified implementation trace: Historical reconciliation is not a completed separate workflow: routine past guards and review controls exist, but source/date-window preview is absent in this path.",
+      "code": "Current source: netlify/functions/_shared/provider-intake.ts:1 · src/features/coach/StudioToday.tsx:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Safe preview/import/link/skip report, stable historical identity, explicit finance and attendance; never auto-reset ignored rows.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "C04",
+      "name": "Gmail / other provider discovery",
+      "requiredTask": "Required task: Source credential → bounded query and pagination → parse booking signal → identity/classification → ambiguity review or supported confident import → lesson or existing source link → repeat delivery/replay protection → failure telemetry. Keep provider-specific provenance.",
+      "trace": "Identified implementation trace: Gmail provider-keyword/time query → pagination → parse/classify → student match or review → linked occurrence.",
+      "code": "Current source: netlify/functions/_shared/provider-intake.ts:1 · netlify/functions/_shared/provider-classification.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled.",
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "C05",
+      "name": "Managed Calendar projection",
+      "requiredTask": "Required task: Canonical lesson change → projection outbox → calendar worker fetch by stable ID → series/etag check → create/update/delete or review as needed → Meet link → projection outcome → student join visibility. Verify source edits and external deletion do not silently destroy history.",
+      "trace": "Identified implementation trace: Claim projection → stable event ID lookup/etag → canonical update/delete/create → Meet result → finish receipt.",
+      "code": "Current source: netlify/functions/calendar-worker.ts:1 · netlify/functions/_shared/calendar-projection.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Google event contents and Meet URL visible to the intended portal identity; no provider mutation run here.",
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "C06",
+      "name": "Review and verification queue",
+      "requiredTask": "Required task: Candidate flagged → coach Today/review center → full provenance and possible match → link existing lesson / create new / not a lesson / request more information → atomic review, lesson, reservation and audit effects → repeat scan with unchanged identity → no duplicate. Distinguish source verified from lesson completed.",
+      "trace": "Identified implementation trace: Today provider signal → exact student/existing lesson/create/ignore choice → locked atomic review receipt → import/audit/reservation.",
+      "code": "Current source: src/features/coach/StudioToday.tsx:1 · supabase/migrations/20261021135617_provider_intake_review_safety.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "C07",
+      "name": "Provider conflict resolution",
+      "requiredTask": "Required task: External edit/deletion versus authoritative record → show time/event/source deltas → protect prepaid/invoice/recurrence dependencies → explicit coach choice → transactional reconcile → notification/projected event outcomes → auditable recovery.",
+      "trace": "Identified implementation trace: Managed provider delta → occurrence command or conflict/recommendation → explicit review choice → canonical reconciliation.",
+      "code": "Current source: src/features/coach/StudioToday.tsx:1 · netlify/functions/_shared/provider-intake.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent external edit/deletion, invoice/prepaid protection, recurrence-master mismatch and durable notice recovery.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "D01",
+      "name": "Pay-as-you-go lesson",
+      "requiredTask": "Required task: Student/service price and overrides → booking → invoice or checkout/payment due → provider confirmation / manual receipt → lesson coverage → refunds/adjustments. Payment outstanding must be clearly visible without implying unpaid lessons never happened.",
+      "trace": "Identified implementation trace: Student/service price → booking or lesson obligation → invoice/manual receipt/checkout → ledger coverage → account.",
+      "code": "Current source: src/features/coach/StudentWorkspacePayments.tsx:1 · netlify/functions/_v2/invoices.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Payment due vs attended distinction, correct payer/override snapshot, refund and partial payment propagation; SP-05/06.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "D02",
+      "name": "Package purchase and grant",
+      "requiredTask": "Required task: Catalog/coach offer → checkout or invoice → payment settled → immutable item snapshot → idempotent credit grant → available/reserved balance → expiration and renewal. Failed payment never grants; repeated event never doubles grant.",
+      "trace": "Identified implementation trace: Package definition/offer → checkout/invoice → provider settlement → grant-once RPC → credit lot/expiry/renewal.",
+      "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · netlify/functions/stripe-webhook-v2.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Signed webhook fixture with duplicate, concurrent and delayed events plus actual external settlement; no real charge performed.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "D03",
+      "name": "Credit reservation and usage",
+      "requiredTask": "Required task: Eligible scheduled occurrence → policy and current balance → earliest-expiring valid credit → locked reservation → reserved balance shown → completed occurrence does not double-charge → cancellation applies explicit return/use policy. Test manual-versus-automatic switches.",
+      "trace": "Identified implementation trace: Eligible occurrence → coverage job and locked lot selection → reservation ledger → completed/cancelled finalization → balance.",
+      "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · supabase/migrations/20261014151934_credit_lifecycle_reliability.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Same rules across manual/public/provider paths and live portal read models; 112-case local financial DB suite gives partial assurance.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "D04",
+      "name": "Credit corrections, transfers and expiry",
+      "requiredTask": "Required task: Coach opens student account → current ledger and reservation floor → request adjustment with reason → review pending checkout or expired lots → append-only ledger → authoritative balances → messages only if explicitly intended. No silent historical rewrite.",
+      "trace": "Identified implementation trace: Credit account → total/auto/adjust/reconcile command → reservation floor and ledger review → immutable adjustments and balances.",
+      "code": "Current source: src/features/coach/LiveCreditAccount.tsx:1 · netlify/functions/_v2/finance.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Transfer/expiry and pending checkout edge cases across UI, receipt replay and audited correction reason; no production corrections made.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "D05",
+      "name": "Invoices and payments",
+      "requiredTask": "Required task: Draft invoice → line-level price/coverage/student/payor → issue (snapshot) → send separately → Stripe/manual payment, partial/failed/refund → settlement ledger → linked lesson/package → download and student/household visibility. Ensure issuance itself does not create lessons or credits.",
+      "trace": "Identified implementation trace: Draft lines → save/issue snapshot → separate recipient preview/send → checkout/manual settlement → PDF/account.",
+      "code": "Current source: src/features/finance/InvoiceWorkspace.tsx:1 · netlify/functions/_v2/invoices.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. No accidental grant on issue, partial/refund/cancel checkout, household access and delivered invoice visibility end to end.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "D06",
+      "name": "Reconciliation and reporting",
+      "requiredTask": "Required task: Payment provider/webhook/event → existing payment/charge/invoice mapping → idempotent transaction → discrepancy queue for unknown provider reference → dashboard/account totals and audit. Never infer that a paid Stripe intent is a completed lesson.",
+      "trace": "Identified implementation trace: Webhook/manual receipt → existing invoice/package/payment mapping → settlement/ledger → totals and exception review.",
+      "code": "Current source: src/features/coach/FinancialDashboard.tsx:1 · netlify/functions/stripe-webhook-v2.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Failed historical event classification, legacy-installment retry risk and provider-to-account exact reconciliation.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "E01",
+      "name": "Lesson preparation and readiness",
+      "requiredTask": "Required task: Scheduled lesson → student and material context → task checklist, join link and readiness → coach Today → lesson workspace → note draft. Student sees only explicitly publishable information.",
+      "trace": "Identified implementation trace: Today/readiness → lesson prep checklist → linked resource/join context → private note draft.",
+      "code": "Current source: src/features/coach/LessonReadinessPanel.tsx:1 · netlify/functions/_v2/lessons.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Role-appropriate context, current meeting link, saved failure recovery and no private draft leakage.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "E02",
+      "name": "Notes drafting, publishing and corrections",
+      "requiredTask": "Required task: Open lesson → private draft → save/recovery → publish explicitly → student timeline/search → edit/retract with history as permitted → homework and next focus. Test draft privacy under direct API requests.",
+      "trace": "Identified implementation trace: Lesson note draft → save → explicit publish/update → published timeline → correction/retraction policy.",
+      "code": "Current source: src/features/coach/StudentWorkspaceNotes.tsx:1 · netlify/functions/_v2/work.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Real student and limited-work guardian direct API checks; drafts, corrections and stale version/data recovery.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "E03",
+      "name": "Library/resource reuse",
+      "requiredTask": "Required task: Coach uploads or selects canonical resource → metadata, topics, multiple levels, medium and visibility → store single asset → link to many students/classes → current/vault distinction → student filtered/paginated search → authorized viewer/download → revoke/archive without deleting other student links.",
+      "trace": "Identified implementation trace: Upload/select canonical resource → resource metadata → multiple assignment links/collections → paged authorized resource/download.",
+      "code": "Current source: src/features/library/ResourceWorkspace.tsx:1 · src/data/library.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Single asset multiple students; unlink/archive isolation, expired signed URL, MIME handling and unauthorized path request.",
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "E04",
+      "name": "Assignments and student work",
+      "requiredTask": "Required task: Create assigned material/homework → lesson/student/class association → due date and permissions → student opens/marks progress/submits if available → coach review → history and relevant notifications. Verify study position/private annotations scoped to right student.",
+      "trace": "Identified implementation trace: Assign resource/work to student/class → due/status metadata → student study/progress → coach follow-up/history.",
+      "code": "Current source: src/features/library/AssignmentEditor.tsx:1 · netlify/functions/_v2/work.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Cross-student private annotations, class enrollment changes, completion/help feedback and notifications.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "E05",
+      "name": "Inbox and conversation",
+      "requiredTask": "Required task: Coach/student/guardian enters conversation → recipient/permission → send or draft → outbox and provider delivery → actual delivery outcome → notifications/read state → reply and identity mapping → retention, unsubscribe or preferences where applicable.",
+      "trace": "Identified implementation trace: Conversation/recipient → draft/send with undo → outbox eligibility → Gmail dispatch → conversation/read-state.",
+      "code": "Current source: src/features/messages/Inbox.tsx:1 · netlify/functions/_v2/messaging.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual recipient delivery and reply identity, failed/unknown sends, undo race and guardian communication scope.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "E06",
+      "name": "Campaigns and automated reminders",
+      "requiredTask": "Required task: Template/segment → audience preview → exclusions/consent → schedule/send → per-recipient outbox receipts and retry → reporting and unsubscribe. Explicitly distinguish drafted, queued, accepted, delivered and failed.",
+      "trace": "Identified implementation trace: Template/audience/draft → reviewed approval/schedule → per-recipient queue → eligibility/dispatch/receipt → unsubscribe.",
+      "code": "Current source: src/features/coach/Campaigns.tsx:1 · netlify/functions/_shared/automation-engine.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Audience exclusion/consent correctness, live provider failure retry, draft vs approved vs sent language and unsubscribe effect.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "F01",
+      "name": "Actor page lifecycle",
+      "requiredTask": "Required task: Student eligibility + permission → private profile draft → approved media/fields → coach publication → public route → warning after inactivity / archive and restore → profile privacy and embed security. Student access must never imply automatic publication.",
+      "trace": "Identified implementation trace: Eligibility and private draft → approved fields/media → command publication revision → public projection → maintenance archive/restore.",
+      "code": "Current source: src/features/coach/StudioActorPages.tsx:1 · netlify/functions/public-actor.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Minors/consent, revoked media, stale signed paths, reschedule/cancel/attendance reversal and actual public publication state.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "F02",
+      "name": "Referrals, gifts and redemption",
+      "requiredTask": "Required task: Referral/gift offer → code/token issuance → public landing/claim → identity + payment/credit grant where relevant → idempotent redemption → source attribution → notifications and reporting.",
+      "trace": "Identified implementation trace: Referral/gift code → public landing/checkout → payer/recipient match → redemption/grant-once → reporting/notices.",
+      "code": "Current source: src/features/referrals/Referrals.tsx:1 · netlify/functions/package-gifts.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Shared guardian email ambiguity, delayed gift, failed checkout, duplicate redemption, refund and actual recipient receipt.",
+      "verificationNotes": ""
+    },
+    {
+      "id": "F03",
+      "name": "Coach dashboard/Today",
+      "requiredTask": "Required task: Load role-scoped summaries → prioritize real needs (today's schedule, verification conflicts, overdue notes, unprotected payments, failed jobs) → one click to relevant record/action → perform action → counts/cards update without stale duplicate state. Do not turn dashboard into a second full management UI.",
+      "trace": "Identified implementation trace: Coach Today → prioritized operational cards → owning record/action → invalidate domains and refresh counts.",
+      "code": "Current source: src/features/coach/CoachToday.tsx:1 · src/features/coach/StudioToday.tsx:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
+      "verificationNotes": "#89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "F04",
+      "name": "Studio Settings and connections",
+      "requiredTask": "Required task: Configure business hours, services, prices, policies, integration credentials/health, automation templates and booking rules → validation + versioning + audit → affected flows refresh → history and rollback where appropriate. Distinguish configuration from operational success.",
+      "trace": "Identified implementation trace: Settings form → validated version/base patch → audit/receipt → public/coach configuration consumers.",
+      "code": "Current source: src/features/coach/StudioSettings.tsx:1 · supabase/migrations/20261020185650_studio_settings_patches.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Concurrent settings edit, rollback, saved policy effects in all roles and accessible paired branding values.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
+    },
+    {
+      "id": "F05",
+      "name": "Scheduled maintenance and outbox",
+      "requiredTask": "Required task: Job trigger → receipt and lease → checked bounded DB reads → stage telemetry → idempotent finance/notification/expiry work → retry on safe error → complete receipt → visibly actionable health. Verify no overlapping runs and no silent partial success.",
+      "trace": "Identified implementation trace: Schedule → dispatch/current receipt → claim/background stages → maintenance/outbox/coverage work → checked finish.",
+      "code": "Current source: netlify/functions/booking-maintenance.ts:1 · netlify/functions/_shared/scheduled-worker.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. One fresh maintenance completion observed; full stage outcomes, three distinct completed runs and intake re-enablement gate remain.",
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "F06",
+      "name": "Search, navigation, responsive interaction",
+      "requiredTask": "Required task: Global search from any supported role → permission-aware matching → route/detail deep link → update or back → keyboard focus and scroll restoration. Every page should have clear primary action, one obvious destination for each task, consistent empty/error states and mobile equivalents.",
+      "trace": "Identified implementation trace: Role navigation/search → permission-aware result → deep-linked record → workspace history/back/focus.",
+      "code": "Current source: src/components/WorkspaceSearch.tsx:1 · src/app/portalNavigation.ts:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "F07",
+      "name": "Security, backups and recovery",
+      "requiredTask": "Required task: Authentication → RLS and service-command enforcement → tenant/student/guardian boundaries → private signed files, audit, secret handling, rate limiting → backup + restore drill → reversible deployment and protected migrations → monitoring and incident response. Safety tests must include direct API attempts, not only hidden buttons.",
+      "trace": "Identified implementation trace: Auth/session → role gate and RLS → privileged command/storage boundary → immutable audit → operations/backup/recovery.",
+      "code": "Current source: src/app/AuthRoutes.tsx:1 · supabase/migrations/202607030002_rls.sql:1",
+      "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback.",
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    }
+  ],
+  "connections": [
+    {
+      "id": "X01",
+      "name": "Booking → lesson/participant",
+      "auditEvidence": "Direct manual writes confirmed; SP-05–07 fail canonical contract. Production sample has zero confirmed bookings with no participant.",
+      "requiredDownstream": "One transaction, stable payer/service/time IDs, lost-response replay; inspect student screen and downstream effects.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X02",
+      "name": "Lesson → Calendar/Meet",
+      "auditEvidence": "Stable ID/etag/claim safeguards and tests; 80 production rows projected.",
+      "requiredDownstream": "Match exact event, intended attendees, Meet URL, portal join access, retry after lost reply.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "X03",
+      "name": "Calendar intake → existing lesson",
+      "auditEvidence": "Projection stable ID and prior import link precede matching; routine worker disabled.",
+      "requiredDownstream": "Selected calendar/recurring occurrence identity, moved/deleted exception and no duplicate canonical occurrence.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "X04",
+      "name": "Gmail/provider → student/household",
+      "auditEvidence": "Conservative classifier/review and identity tests; three production Gmail reviews.",
+      "requiredDownstream": "Ambiguous parent email/names, aliases and provider reschedule linked to correct dependent; failed scope recovery.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "X05",
+      "name": "Imported occurrence → finance",
+      "auditEvidence": "Atomic provider-review receipts and coverage tests; manual path remains separate.",
+      "requiredDownstream": "Same signal repeated concurrently, same lesson from two sources, no double grant/reservation after partial failure.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "X06",
+      "name": "Reschedule → credit/invoice/checkout",
+      "auditEvidence": "Dependency-reviewed occurrence SQL and financial tests.",
+      "requiredDownstream": "Expiring lot, pending checkout, invoice lock and stale version across every entry point; aborted operation leaves no hold.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "X07",
+      "name": "Cancellation → returned credit/cash",
+      "auditEvidence": "Explicit policy and reversal tests; shared class protections exist.",
+      "requiredDownstream": "Actual payer account/refund provider result, exactly-once reversal and portal visibility.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X08",
+      "name": "Completion → credits/notes/activity",
+      "auditEvidence": "Completion command tests; SP-13 violates source-verification distinction.",
+      "requiredDownstream": "Explicit attendance confirmation, no second debit, note privacy, correct actor activity after reversal.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "X09",
+      "name": "Payment → settlement → grant",
+      "auditEvidence": "New invoice/package RPC tests; historical webhook failure and legacy installment replay risk.",
+      "requiredDownstream": "Signed duplicate/concurrent callbacks and fault after settlement; exact totals, one grant and no double provider action.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization."
+    },
+    {
+      "id": "X10",
+      "name": "Account ↔ coach records",
+      "auditEvidence": "Auth gates, relationship sync, RLS/views/grants inspected.",
+      "requiredDownstream": "Per-role direct API tests, dependent revocation, wrong studio, revoked student, stale invite and cache identity change.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "X11",
+      "name": "Lesson → published teaching work",
+      "auditEvidence": "Explicit notes status and work/resource policy functions.",
+      "requiredDownstream": "Student sees correct published content; direct API cannot read drafts/another student's resources or annotations.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X12",
+      "name": "Lesson activity → actor eligibility",
+      "auditEvidence": "Publication command/current public route identified; elapsed completion risk.",
+      "requiredDownstream": "Reschedule/cancel/reverse attendance and archived profile transitions, explicit consent and correct public media.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X13",
+      "name": "Settings → public policy/coach overrides",
+      "auditEvidence": "SP-02–04/08/09 show parity failures; branding failure SP-15.",
+      "requiredDownstream": "Coach exemptions intentional; student restrictions retained; configured timezone, service price and appearance verified.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/70",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "verificationNotes": " Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS."
+    },
+    {
+      "id": "X14",
+      "name": "Outbox/campaign → provider/inbox",
+      "auditEvidence": "Queue/eligibility/undo tests; production sent/queued aggregates.",
+      "requiredDownstream": "Actual provider ID and mailbox result, duplicate send ambiguity, consent changes, reply routing and readable status.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75"
+      ],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X15",
+      "name": "Bulk operation → dependent records",
+      "auditEvidence": "Extensive frozen selection/dependency/snapshot/claim tests.",
+      "requiredDownstream": "Hosted partial failure + retry and recurrence/finance/material/note/provider outcomes; recovered UI state.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [],
+      "verificationNotes": ""
+    },
+    {
+      "id": "X16",
+      "name": "Dashboard/search → record/back",
+      "auditEvidence": "Workspace navigation/search tests and code.",
+      "requiredDownstream": "Resolve real alert, update counts, browser back, query/scroll preservation and keyboard focus at all role widths.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    },
+    {
+      "id": "X17",
+      "name": "Asset → many authorized links",
+      "auditEvidence": "Canonical resource/assignment design and 12 local library DB cases.",
+      "requiredDownstream": "Link/unlink two students, expiry and revoked authorization without deleting shared file or leaking annotations.",
+      "status": "not revalidated; original audit source/fixture boundary retained",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+      ],
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+    },
+    {
+      "id": "X18",
+      "name": "Ignored/reviewed → rescan",
+      "auditEvidence": "Past/ignored skip verified; current review receipt protects replay.",
+      "requiredDownstream": "Explicit reopen with new evidence; repeat scan respects decision, source identity and no financial duplication.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/81",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+    },
+    {
+      "id": "X19",
+      "name": "Scheduler accepted → completed",
+      "auditEvidence": "Maintenance receipt succeeded; intake flag false and five disabled responses.",
+      "requiredDownstream": "Three real full intake runs with receipt, stages, result reconciliation and safe replay. Current gate fails.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
+    },
+    {
+      "id": "X20",
+      "name": "Recovery/migration → preserved history",
+      "auditEvidence": "71 applied versions, local command recovery tests and guarded deletion snapshots.",
+      "requiredDownstream": "Backup restore drill, migration upgrade against full synthetic history, versioned rollback and external effect reconciliation.",
+      "status": "partially verified in isolated layers; downstream/provider acceptance incomplete",
+      "successPath": "unverified",
+      "failureAndRecovery": "unverified",
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/75",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84",
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/87",
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
+    }
+  ]
+}

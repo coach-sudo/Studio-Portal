@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
+import type { IntakeDispatch, WorkerHealth } from "../domain/integrationHealth";
 
 export type BookingAdminResource =
   | "services"
@@ -84,6 +85,7 @@ export interface PlatformHealth {
         | "working"
         | "configured_unverified"
         | "attention_required"
+        | "disabled"
         | "unconfigured";
       configured: boolean;
       lastSuccessAt: string | null;
@@ -95,6 +97,7 @@ export interface PlatformHealth {
   googleCalendar: boolean;
   gmail: boolean;
   scheduledWorkers: boolean;
+  workers?: Record<string, WorkerHealth>;
   issues?: string[];
 }
 
@@ -171,7 +174,12 @@ export async function startProviderIntake() {
       response,
       "Calendar and Gmail check could not be started.",
     );
-  return true;
+  const result = await response.json();
+  if (!["disabled", "accepted", "already_running"].includes(result.status))
+    throw new Error(
+      "The worker returned an unknown dispatch outcome. Refresh receipt status before retrying.",
+    );
+  return { status: result.status, jobId: result.jobId } as IntakeDispatch;
 }
 
 const inFlightStudioCommands = new Map<string, Promise<any>>();

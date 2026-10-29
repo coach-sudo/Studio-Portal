@@ -30,6 +30,7 @@
     "src/domain/packagePricing.ts",
     "src/domain/availabilityVisibility.ts",
     "src/domain/intakeRecency.ts",
+    "src/domain/integrationHealth.ts",
     "src/domain/campaignTemplates.ts",
     "src/domain/campaignBlocks.ts",
     "src/domain/notificationRecipients.ts",
