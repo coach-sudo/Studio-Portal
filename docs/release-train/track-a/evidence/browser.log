@@ -1,0 +1,75 @@
+[WebServer] (node:22408) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:21332) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 1:23:39 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:40 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:41 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:41 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:42 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:42 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:43 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 1 [chromium] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 320 (4.9s)
+[WebServer] 1:23:44 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:45 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:45 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:46 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:46 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:47 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:47 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 2 [chromium] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 390 (4.3s)
+[WebServer] 1:23:48 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:49 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:50 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:50 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:51 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:51 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:52 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 3 [chromium] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 768 (4.6s)
+[WebServer] 1:23:53 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:54 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:54 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:55 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:55 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:56 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:23:56 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 4 [chromium] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 1440 (4.6s)
+(node:26780) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] 1:23:59 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:01 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:02 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:03 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:04 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:05 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:06 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 5 [webkit] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 320 (8.6s)
+[WebServer] 1:24:07 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:09 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:10 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:11 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:12 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:13 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:14 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 6 [webkit] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 390 (8.3s)
+[WebServer] 1:24:15 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:18 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:18 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:20 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:21 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:23 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:24 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 7 [webkit] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 768 (9.7s)
+[WebServer] 1:24:25 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:27 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:28 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:29 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:31 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:32 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+[WebServer] 1:24:33 AM [vite] (client) [console.warn] Couldn't load preload assets:  {"isTrusted":true}
+  ok 8 [webkit] › e2e\audit-contrast-local\contrast.spec.ts:11:3 › production brand booking at 1440 (9.2s)
+
+  8 passed (59.2s)

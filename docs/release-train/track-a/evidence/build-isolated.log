@@ -1,0 +1,153 @@
+
+> studio-portal@1.0.0 prebuild
+> tsx scripts/generate-release-metadata.ts
+
+Release metadata prepared for local (local).
+
+> studio-portal@1.0.0 build
+> tsc -b && vite build
+
+vite v8.1.6 building client environment for production...
+[2K
+transforming...✓ 2363 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                        2.68 kB │ gzip:   0.84 kB
+dist/assets/pdf.worker.min-CjEcRF4W.mjs            1,264.34 kB
+dist/assets/StudentFinancialSummary-C0FlG9y8.css       0.45 kB │ gzip:   0.26 kB
+dist/assets/WritingArea-DmbkpnXF.css                   0.64 kB │ gzip:   0.24 kB
+dist/assets/StudentGuidedSetup-BO04pzzx.css            0.93 kB │ gzip:   0.40 kB
+dist/assets/DailyPopup-DpGjggTG.css                    1.53 kB │ gzip:   0.67 kB
+dist/assets/LessonReadinessPanel-CcjNuZ3r.css          1.60 kB │ gzip:   0.56 kB
+dist/assets/ActorBuilder-Brpsaakc.css                  1.87 kB │ gzip:   0.68 kB
+dist/assets/Referrals-B830LiGY.css                     2.02 kB │ gzip:   0.68 kB
+dist/assets/Inbox-CxGtuUv5.css                         2.06 kB │ gzip:   0.75 kB
+dist/assets/public-DTj4yt0u.css                        2.20 kB │ gzip:   0.85 kB
+dist/assets/StudentPortal-DwRNRpBp.css                 2.73 kB │ gzip:   0.67 kB
+dist/assets/InvoiceWorkspace-CSRy-cEP.css              2.95 kB │ gzip:   0.98 kB
+dist/assets/ActorProfilePreview-C49bc7fA.css           3.19 kB │ gzip:   0.97 kB
+dist/assets/LessonBulkList-0ZZ7K0nX.css                3.21 kB │ gzip:   1.00 kB
+dist/assets/operational-intelligence-D1uUEjVR.css      4.15 kB │ gzip:   1.15 kB
+dist/assets/Campaigns-k25AER-V.css                     4.22 kB │ gzip:   1.19 kB
+dist/assets/SessionAction-B61qIzRK.css                 7.30 kB │ gzip:   2.11 kB
+dist/assets/ResourceBrowser-wllulog5.css               7.52 kB │ gzip:   1.78 kB
+dist/assets/booking-BvNoOsmN.css                      10.30 kB │ gzip:   2.59 kB
+dist/assets/ActorPageRenderer-DVB7Sthg.css            11.03 kB │ gzip:   2.58 kB
+dist/assets/BookingSetup-CWjRVAIm.css                 14.99 kB │ gzip:   3.13 kB
+dist/assets/index-C7faBpD7.css                       121.82 kB │ gzip:  21.99 kB
+dist/assets/check-Chvl7dPi.js                          0.11 kB │ gzip:   0.13 kB
+dist/assets/chevron-right-BPs6fFsU.js                  0.11 kB │ gzip:   0.13 kB
+dist/assets/plus-DBR-VhVk.js                           0.14 kB │ gzip:   0.14 kB
+dist/assets/arrow-left-mdRlYOQ-.js                     0.15 kB │ gzip:   0.15 kB
+dist/assets/clock-3-BvrYYkVY.js                        0.15 kB │ gzip:   0.15 kB
+dist/assets/search-B766G4Zs.js                         0.16 kB │ gzip:   0.16 kB
+dist/assets/user-round-D5cu1JvM.js                     0.17 kB │ gzip:   0.16 kB
+dist/assets/rotate-ccw-BNlc3FfE.js                     0.18 kB │ gzip:   0.17 kB
+dist/assets/credit-card-DXH_UKBV.js                    0.19 kB │ gzip:   0.17 kB
+dist/assets/mail-BI93DUC6.js                           0.20 kB │ gzip:   0.19 kB
+dist/assets/square-check-big-IGMJ5hAf.js               0.21 kB │ gzip:   0.18 kB
+dist/assets/message-square-BJCkNzT8.js                 0.22 kB │ gzip:   0.19 kB
+dist/assets/circle-dollar-sign-j3KTfyBN.js             0.23 kB │ gzip:   0.19 kB
+dist/assets/video-j8rdjs9k.js                          0.23 kB │ gzip:   0.21 kB
+dist/assets/map-pin-CTbTWEXR.js                        0.24 kB │ gzip:   0.21 kB
+dist/assets/send-Dhx15Q_7.js                           0.27 kB │ gzip:   0.22 kB
+dist/assets/folder-open-klLoFVT6.js                    0.28 kB │ gzip:   0.21 kB
+dist/assets/users-DpmchtKN.js                          0.29 kB │ gzip:   0.21 kB
+dist/assets/shield-check-D4KDKRoU.js                   0.30 kB │ gzip:   0.24 kB
+dist/assets/refresh-cw-guBJ1EO-.js                     0.31 kB │ gzip:   0.21 kB
+dist/assets/trash-2-D02o14cn.js                        0.31 kB │ gzip:   0.20 kB
+dist/assets/gift-CPEYP_Tw.js                           0.33 kB │ gzip:   0.24 kB
+dist/assets/clapperboard-X5-ychvX.js                   0.34 kB │ gzip:   0.25 kB
+dist/assets/usePrivateIdentity-rgBlh0lF.js             0.35 kB │ gzip:   0.25 kB
+dist/assets/file-text-CYk0W-KB.js                      0.37 kB │ gzip:   0.24 kB
+dist/assets/StudioHub--je6GwFa.js                      0.46 kB │ gzip:   0.31 kB
+dist/assets/calendar-days-DMytKwLz.js                  0.48 kB │ gzip:   0.25 kB
+dist/assets/packagePresentation-DQJ605w2.js            0.50 kB │ gzip:   0.30 kB
+dist/assets/WritingArea-BzCxXBl5.js                    0.57 kB │ gzip:   0.38 kB
+dist/assets/PasswordInput-BKObBp0E.js                  0.58 kB │ gzip:   0.35 kB
+dist/assets/StudentWorkspace.shared-BuSTEiQT.js        0.60 kB │ gzip:   0.37 kB
+dist/assets/CoachToday-DSYf4DI7.js                     0.60 kB │ gzip:   0.39 kB
+dist/assets/apiClientError-D3ABCpjA.js                 0.60 kB │ gzip:   0.34 kB
+dist/assets/branding-Dbw8x1tu.js                       0.62 kB │ gzip:   0.41 kB
+dist/assets/JoinLessonBanner-DDCfeu16.js               0.66 kB │ gzip:   0.42 kB
+dist/assets/useStudioMutation-CnaYVgqU.js              0.68 kB │ gzip:   0.41 kB
+dist/assets/rolldown-runtime-QTnfLwEv.js               0.69 kB │ gzip:   0.42 kB
+dist/assets/ActorProfilePreview-DbXZtHlt.js            0.71 kB │ gzip:   0.45 kB
+dist/assets/settings-CLX_UseR.js                       0.75 kB │ gzip:   0.35 kB
+dist/assets/PublicActorPage-LGOjPcwu.js                0.81 kB │ gzip:   0.49 kB
+dist/assets/StudentPortal.shared-D4sO0OE1.js           1.15 kB │ gzip:   0.46 kB
+dist/assets/preload-helper-Czpn1I53.js                 1.19 kB │ gzip:   0.67 kB
+dist/assets/paymentResponsibility-C_hDxbuC.js          1.24 kB │ gzip:   0.52 kB
+dist/assets/routeDomains-B7JD7D9v.js                   1.42 kB │ gzip:   0.44 kB
+dist/assets/studioOperations-BbJR4dN0.js               1.45 kB │ gzip:   0.75 kB
+dist/assets/studentWorkspace-bG7KTyIa.js               1.76 kB │ gzip:   0.73 kB
+dist/assets/coachNavigation-DOkcGcK2.js                1.91 kB │ gzip:   0.82 kB
+dist/assets/DailyPopup-BvF3lmIU.js                     1.98 kB │ gzip:   0.97 kB
+dist/assets/paymentReminder-DOTJQG3B.js                2.10 kB │ gzip:   0.90 kB
+dist/assets/AssignmentActivity-rfzM5WBc.js             2.26 kB │ gzip:   0.97 kB
+dist/assets/PackageLanding-BVqrGDQz.js                 2.28 kB │ gzip:   1.03 kB
+dist/assets/presentation-D_sumFQq.js                   2.31 kB │ gzip:   1.03 kB
+dist/assets/AuthCallback-DwmKcU7n.js                   2.35 kB │ gzip:   1.13 kB
+dist/assets/downloadInvoice-DWgs6s-0.js                2.43 kB │ gzip:   1.15 kB
+dist/assets/RecordRoute-B_oIMzsH.js                    2.57 kB │ gzip:   1.17 kB
+dist/assets/CoachingContinuity-DX72jhQK.js             2.59 kB │ gzip:   1.11 kB
+dist/assets/ChangeTemporaryPassword-DPqNH1oZ.js        3.06 kB │ gzip:   1.34 kB
+dist/assets/bookingCommands-CckYvt1j.js                3.22 kB │ gzip:   1.02 kB
+dist/assets/booking-D_kFOppj.js                        3.62 kB │ gzip:   1.65 kB
+dist/assets/StudentWorkspaceWork-DjxFa4Ro.js           3.63 kB │ gzip:   1.53 kB
+dist/assets/coachingContext-Bmm9pTG5.js                3.67 kB │ gzip:   1.45 kB
+dist/assets/StudentPortalWork-gcyFhZSD.js              3.80 kB │ gzip:   1.57 kB
+dist/assets/TimezoneSelect-CwUTEX7x.js                 3.83 kB │ gzip:   1.82 kB
+dist/assets/usePaginatedStudioRows-dieXbkwL.js         3.88 kB │ gzip:   1.72 kB
+dist/assets/AppShell-DWy0xhQf.js                       4.07 kB │ gzip:   1.43 kB
+dist/assets/StudentPortalActorPage-r9perg7s.js         4.08 kB │ gzip:   1.63 kB
+dist/assets/StudentWorkspaceNotes-BfxfPRrZ.js          4.19 kB │ gzip:   1.68 kB
+dist/assets/StudentWorkspaceActorPage-D5mw4DDm.js      4.22 kB │ gzip:   1.72 kB
+dist/assets/PdfReader-DJXXvXkz.js                      4.33 kB │ gzip:   1.88 kB
+dist/assets/AuthRoutes-Zt7Ilamq.js                     4.95 kB │ gzip:   2.02 kB
+dist/assets/PackageGift-MpU4iaoC.js                    5.09 kB │ gzip:   1.91 kB
+dist/assets/readinessPresentation-BAF6PjgK.js          5.88 kB │ gzip:   2.29 kB
+dist/assets/ClassWorkspace-Cxz7Fwtp.js                 6.44 kB │ gzip:   2.43 kB
+dist/assets/ResourceViewer-D_XDOZVM.js                 6.91 kB │ gzip:   2.80 kB
+dist/assets/MagicLinkLogin-ydi3-rkL.js                 6.96 kB │ gzip:   2.63 kB
+dist/assets/StudentWorkspaceOverview-DtagbzZf.js       7.62 kB │ gzip:   2.38 kB
+dist/assets/jsx-runtime-CIxEorsV.js                    7.89 kB │ gzip:   2.98 kB
+dist/assets/StudentPortalPayments-DLP_2JMV.js          8.75 kB │ gzip:   3.22 kB
+dist/assets/ActorPageRenderer-hj_nOlIL.js              8.87 kB │ gzip:   3.12 kB
+dist/assets/ActorBuilder-RYCtoAxN.js                   8.87 kB │ gzip:   2.58 kB
+dist/assets/library-Eo4M0lhm.js                        8.97 kB │ gzip:   3.33 kB
+dist/assets/LessonReadinessPanel-BPAQKHvk.js           8.98 kB │ gzip:   3.31 kB
+dist/assets/Referrals-CVKlnZbv.js                      9.36 kB │ gzip:   3.46 kB
+dist/assets/StudentPortalSchedule-EKC_0J9n.js         10.46 kB │ gzip:   3.77 kB
+dist/assets/StudentPortalSettings-DyxiCoUT.js         11.60 kB │ gzip:   3.94 kB
+dist/assets/StudentPortalWorkContent-IAee5cnU.js      11.92 kB │ gzip:   4.09 kB
+dist/assets/StudentPortalLessonHub-BFN4xDhy.js        12.22 kB │ gzip:   4.26 kB
+dist/assets/SessionAction-CbSfvoT4.js                 13.46 kB │ gzip:   5.06 kB
+dist/assets/StudentWorkspaceLessons-o-ojt345.js       18.03 kB │ gzip:   5.37 kB
+dist/assets/StudentGuidedSetup-BMmJlqkq.js            18.47 kB │ gzip:   5.68 kB
+dist/assets/Campaigns-B4NIN_E5.js                     19.10 kB │ gzip:   6.33 kB
+dist/assets/StudioToday-s6m5Yn5M.js                   19.57 kB │ gzip:   6.26 kB
+dist/assets/StudentWorkspacePayments-CNJSRcDd.js      19.78 kB │ gzip:   6.36 kB
+dist/assets/Inbox-2mWK0IKV.js                         21.29 kB │ gzip:   6.83 kB
+dist/assets/StudentPortal-DfzKoSwY.js                 22.25 kB │ gzip:   7.45 kB
+dist/assets/StudentWorkspaceAccount-D7BkfM5w.js       25.50 kB │ gzip:   7.67 kB
+dist/assets/TermsPage-VS5AC8Ku.js                     27.36 kB │ gzip:   9.17 kB
+dist/assets/StudentFinancialSummary-BdvUa4d4.js       28.55 kB │ gzip:   8.21 kB
+dist/assets/purify.es-B0g7npkC.js                     29.08 kB │ gzip:  11.45 kB
+dist/assets/InvoiceWorkspace-CrSIPg1s.js              31.00 kB │ gzip:   9.60 kB
+dist/assets/LessonBulkList-DTTUYGDu.js                31.43 kB │ gzip:   9.72 kB
+dist/assets/StudentWorkspace-BYrUcmQx.js              36.46 kB │ gzip:   9.95 kB
+dist/assets/useStudio-D295jBOY.js                     36.65 kB │ gzip:  10.98 kB
+dist/assets/PublicBooking-IICRvELC.js                 39.33 kB │ gzip:  11.43 kB
+dist/assets/ResourceBrowser-Cb5rKFDJ.js               49.12 kB │ gzip:  13.17 kB
+dist/assets/BookingCenter-DFhL6j5n.js                 50.36 kB │ gzip:  13.18 kB
+dist/assets/CoachSection-B4RWvGAt.js                  63.11 kB │ gzip:  17.63 kB
+dist/assets/BookingSetup-BUqBDXi5.js                  73.22 kB │ gzip:  19.49 kB
+dist/assets/schemas-Cgo9W8oI.js                       92.01 kB │ gzip:  25.99 kB
+dist/assets/invoice-font-metrics-D7dKORWb.js         175.21 kB │ gzip: 111.79 kB
+dist/assets/supabase-D1Nm1gIj.js                     202.75 kB │ gzip:  51.85 kB
+dist/assets/invoicePdf-CdWzw-yR.js                   248.06 kB │ gzip:  65.11 kB
+dist/assets/index-ZIlAM41y.js                        316.46 kB │ gzip:  99.53 kB
+dist/assets/pdf-renderer-DNLCD6fv.js                 429.95 kB │ gzip: 129.10 kB
+
+✓ built in 809ms

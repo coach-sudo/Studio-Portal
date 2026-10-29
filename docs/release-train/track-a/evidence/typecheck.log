@@ -1,0 +1,9 @@
+
+> studio-portal@1.0.0 pretypecheck
+> tsx scripts/generate-release-metadata.ts
+
+Release metadata prepared for local (local).
+
+> studio-portal@1.0.0 typecheck
+> tsc -b --pretty false
+
