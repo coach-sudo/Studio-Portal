@@ -1,0 +1,113 @@
+{
+  "observedAt": "2026-10-29T05:33:13.927Z",
+  "applicationSource": "fbba65bc34c32756143fd5b73af897064986c7b5",
+  "branch": "codex/release-b-booking-finance",
+  "sharedReleaseA": "ad8c819",
+  "risk": "high",
+  "releaseAuthorized": false,
+  "newMigrations": 5,
+  "historicalMigrationChanges": 0,
+  "originalPreservedHeads": {
+    "71": "de39cd9f6948c47f5db661fa5df0e4fce53a0c8e",
+    "73": "56c9fa9871e5f729f5732a51ac410b7ea589d742",
+    "75": "e4ffa489ef54454b44b219926fe49b0874b00cac",
+    "77": "7c181d2f24f228973cfa53d6b9115e863701fd62",
+    "78": "3d07af6547fdb7e80903319c43288bf5628e0573",
+    "81": "9dc30cde4a1920f88cdda11175226cea3071eaad",
+    "82": "28a32d114f00dd605c1b1c1e9f580e73e6fc50b2"
+  },
+  "targeted": {
+    "tests": 94,
+    "failed": 0,
+    "files": 13,
+    "source": "352a371",
+    "layer": "unit/component/mock-handler; not PostgreSQL/provider"
+  },
+  "finalSmoke": {
+    "tests": 15,
+    "failed": 0,
+    "files": 2,
+    "source": "fbba65bc34c32756143fd5b73af897064986c7b5"
+  },
+  "initialBrowserMatrix": {
+    "passed": 24,
+    "failed": 0,
+    "widths": [320, 390, 768, 1440],
+    "engines": ["chromium", "webkit"],
+    "source": "8e4f995 plus deterministic test-only clock change",
+    "evidence": "Executed tool output; superseded final smoke has durable JSON/screenshots below"
+  },
+  "finalBrowserSmoke": {
+    "stats": {
+      "startTime": "2026-10-29T05:31:30.892Z",
+      "duration": 23853.620000000003,
+      "expected": 6,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "width": 320,
+    "engines": ["chromium", "webkit"],
+    "screenshots": 18,
+    "retries": 0,
+    "network": "denied-by-default synthetic HTTP; no external provider calls",
+    "fixtures": {
+      "e2e/audit-historical-local/historical.spec.ts": {
+        "originalSha256": "a9d16f9a088b067e2574cc416cb8f760de5c5414aeec81ae2e541d8da7da71c0",
+        "executedSha256": "a9d16f9a088b067e2574cc416cb8f760de5c5414aeec81ae2e541d8da7da71c0",
+        "byteIdentical": true
+      },
+      "e2e/audit-corrections-local/corrections.spec.ts": {
+        "originalSha256": "ffbe2eafe0d84c24383744090f41533d6c99a627312cfebffd8a27610f8409c9",
+        "executedSha256": "ffbe2eafe0d84c24383744090f41533d6c99a627312cfebffd8a27610f8409c9",
+        "byteIdentical": true
+      },
+      "e2e/audit-reschedule-local/reschedule.spec.ts": {
+        "originalSha256": "9d50cf5983fac19baf50bbff22832dd27dc145d866ebab4ff34c131e33df7133",
+        "executedSha256": "9d50cf5983fac19baf50bbff22832dd27dc145d866ebab4ff34c131e33df7133",
+        "byteIdentical": true
+      }
+    }
+  },
+  "typecheck": {
+    "command": "node node_modules/typescript/bin/tsc -b --pretty false --force",
+    "passed": true,
+    "source": "fbba65bc34c32756143fd5b73af897064986c7b5"
+  },
+  "database": {
+    "newBoundaryAssertions": 28,
+    "actualPostgreSQLOnThisAssembly": "pending coordinator exact-candidate CI",
+    "priorIndependentEvidence": "retained in original draft branches; not asserted as assembly proof"
+  },
+  "knownFailures": [
+    {
+      "initial": "Missing release.generated.ts caused two suites and tsc to fail",
+      "resolution": "Ran existing required metadata generator, forced tsc and targeted rerun passed"
+    },
+    {
+      "initial": "Two form tests timed out because Date.now()+3days landed in upcoming repeated DST hour",
+      "resolution": "Explicit fixed test instant, existing gap/fold checks preserved;94/94 rerun passed"
+    }
+  ],
+  "externalBlockers": [
+    "Stripe staging key absent at site and team scope; no approved sandbox provider mutation acceptance",
+    "Controlled Calendar/notification outcome acceptance and role-connected hosted staging",
+    "Installment cutover and existing failed-delivery reconciliation; no automatic legacy balance repair",
+    "Final assembly real PostgreSQL role/fault/replay/concurrency, protected full CI and staging artifact packaging"
+  ],
+  "productionChanges": [],
+  "directFinancialBlocker": {
+    "file": "netlify/functions/_v2/lessons.ts",
+    "command": "payment_status",
+    "reason": "Service writes lesson and linked booking financial fields without payment_entries ledger insertion; linked booking update response unchecked.",
+    "required": "Reviewed ledger command or explicit hold and fault-injected tests; no all-entry-point financial certification."
+  },
+  "format": {
+    "passed": true,
+    "command": "node node_modules/tsx/dist/cli.mjs scripts/check-format.ts",
+    "initialCRLFOnlyWarnings": 63,
+    "normalizedFiles": 804,
+    "refreshedOnlyAfterGitBlobEquality": 804,
+    "unrelatedContentChanges": 0
+  }
+}
