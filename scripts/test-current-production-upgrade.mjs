@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
 import { createHash } from "node:crypto";
+import process from "node:process";
+import console from "node:console";
 assert.equal(process.env.CURRENT_PRODUCTION_ACCEPTANCE_LOCAL, "true");
 assert.ok(
   process.argv.length === 2 ||
