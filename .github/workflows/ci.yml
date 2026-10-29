@@ -62,7 +62,7 @@ jobs:
       - run: npm run bundle:check -- --require-configured-client
       - name: Upload failed build and test evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: verification-evidence-${{ github.run_id }}
           if-no-files-found: ignore
@@ -102,7 +102,7 @@ jobs:
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: migration-evidence-${{ github.run_id }}
           if-no-files-found: ignore
@@ -147,7 +147,7 @@ jobs:
           node scripts/staging/verify-linux-package.mjs "$GITHUB_WORKSPACE" "$RUNNER_TEMP/packaging-tools" "$RUNNER_TEMP/staging-public.json" "$GITHUB_WORKSPACE/.tmp/staging-candidate" "$CANDIDATE_SHA" "$lock_hash"
           tar -C .tmp/staging-candidate -czf "$RUNNER_TEMP/staging-candidate.tar.gz" dist functions functions-manifest.json netlify.toml artifact-identity.json
           sha256sum "$RUNNER_TEMP/staging-candidate.tar.gz" > .tmp/staging-candidate/archive.sha256
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: staging-candidate-${{ github.event.pull_request.head.sha }}
           retention-days: 14
