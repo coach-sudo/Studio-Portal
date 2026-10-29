@@ -1,10 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { ApiClientError } from "../data/apiClientError";
-import {
-  clearLessonPaymentAttempt,
-  loadLessonPayment,
-  saveLessonPayment,
-} from "../data/lessonPayments";
+import { loadLessonPayment, saveLessonPayment } from "../data/lessonPayments";
 import {
   paymentReviewMessage,
   type LessonPaymentContext,
@@ -179,7 +175,6 @@ export function LessonPaymentReceipt({
             e instanceof ApiClientError &&
             ["VALIDATION_FAILED", "REVIEW_REQUIRED"].includes(e.code);
           if (rejectedBeforeCommit) {
-            await clearLessonPaymentAttempt(lessonId);
             setUnknown(false);
             if (e.code !== "VALIDATION_FAILED") setReload((n) => n + 1);
           } else setUnknown(true);

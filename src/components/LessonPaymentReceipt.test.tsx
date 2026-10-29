@@ -1,10 +1,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
-const f = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn(), clear: vi.fn() }));
+const f = vi.hoisted(() => ({ load: vi.fn(), save: vi.fn() }));
 vi.mock("../data/lessonPayments", () => ({
   loadLessonPayment: f.load,
   saveLessonPayment: f.save,
-  clearLessonPaymentAttempt: f.clear,
 }));
 import { LessonPaymentReceipt } from "./LessonPaymentReceipt";
 import { ApiClientError } from "../data/apiClientError";
@@ -32,7 +31,6 @@ beforeEach(() => {
     currency: "USD",
     receiptId: "e2920000-0000-4000-8000-000000000099",
   });
-  f.clear.mockResolvedValue(undefined);
 });
 async function fill() {
   fireEvent.change(await screen.findByLabelText("Amount received (USD)"), {
@@ -106,7 +104,6 @@ it("retains a lost-response request through revoked access and restores the same
     await screen.findByRole("button", { name: "Recover payment receipt" }),
   );
   await screen.findByText(/Restore the original coach account/);
-  expect(f.clear).not.toHaveBeenCalled();
   expect(screen.getByLabelText("Amount received (USD)")).toBeDisabled();
   expect(
     screen.queryByRole("button", { name: "Record payment" }),
@@ -117,7 +114,6 @@ it("retains a lost-response request through revoked access and restores the same
   await screen.findByText(/Payment recorded:/);
   expect(f.save).toHaveBeenCalledTimes(3);
   expect(f.save.mock.calls[2]).toEqual(f.save.mock.calls[0]);
-  expect(f.clear).not.toHaveBeenCalled();
 });
 it.each(["IDEMPOTENCY_CONFLICT", "VERSION_CONFLICT"])(
   "keeps the original request locked after %s instead of offering a new payment",
@@ -138,7 +134,6 @@ it.each(["IDEMPOTENCY_CONFLICT", "VERSION_CONFLICT"])(
     await fill();
     fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
     await screen.findByText(/payment key needs financial review/);
-    expect(f.clear).not.toHaveBeenCalled();
     expect(screen.getByLabelText("Amount received (USD)")).toBeDisabled();
     expect(
       screen.queryByRole("button", { name: "Record payment" }),

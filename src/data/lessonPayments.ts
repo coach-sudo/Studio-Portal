@@ -71,6 +71,18 @@ function forget(owner: string) {
     /* safe replay remains */
   }
 }
+function forgetMatchingAttempt(owner: string, key: string) {
+  // Resolve no current session here: an old request may finish after an account
+  // switch. Remove only its captured owner's exact still-current envelope.
+  if (pending.get(owner)?.key !== key) return;
+  try {
+    const raw = sessionStorage.getItem(storageKey(owner));
+    if (!raw || JSON.parse(raw).key !== key) return;
+  } catch {
+    return;
+  }
+  forget(owner);
+}
 async function identity(lessonId: string) {
   if (!supabase) throw Error("The studio database is not configured.");
   const { data, error } = await supabase.auth.getSession();
@@ -105,6 +117,7 @@ export async function saveLessonPayment(
   const request = lessonPaymentRequestSchema.parse(value),
     owner = await identity(request.lessonId);
   let attempt = recovery(owner);
+  const wasPending = !!attempt;
   if (attempt && JSON.stringify(attempt.request) !== JSON.stringify(request))
     throw Error("Recover the pending payment before changing its request.");
   if (!attempt) {
@@ -124,31 +137,34 @@ export async function saveLessonPayment(
     }
     pending.set(owner, attempt);
   }
-  const response = await studioCommand(
-    "lessons",
-    {
-      command: "record_payment",
-      entityId: request.lessonId,
-      expectedVersion: request.version,
-      idempotencyKey: attempt.key,
-      payload: {
-        reviewToken: request.reviewToken,
-        amountMinor: request.amountMinor,
-        currency: request.currency,
-        method: request.method,
-      },
-      reason: request.reason,
-    },
-    owner.split(":")[0],
-  );
-  const receipt = lessonPaymentReceiptSchema.parse(response.resource);
-  forget(owner);
-  return receipt;
-}
-export async function clearLessonPaymentAttempt(lessonId: string) {
   try {
-    forget(await identity(lessonId));
-  } catch {
-    /* a different/ended session cannot clear the original actor's envelope */
+    const response = await studioCommand(
+      "lessons",
+      {
+        command: "record_payment",
+        entityId: request.lessonId,
+        expectedVersion: request.version,
+        idempotencyKey: attempt.key,
+        payload: {
+          reviewToken: request.reviewToken,
+          amountMinor: request.amountMinor,
+          currency: request.currency,
+          method: request.method,
+        },
+        reason: request.reason,
+      },
+      owner.split(":")[0],
+    );
+    const receipt = lessonPaymentReceiptSchema.parse(response.resource);
+    forgetMatchingAttempt(owner, attempt.key);
+    return receipt;
+  } catch (error) {
+    if (
+      !wasPending &&
+      error instanceof ApiClientError &&
+      ["VALIDATION_FAILED", "REVIEW_REQUIRED"].includes(error.code)
+    )
+      forgetMatchingAttempt(owner, attempt.key);
+    throw error;
   }
 }

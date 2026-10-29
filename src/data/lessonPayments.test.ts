@@ -4,12 +4,9 @@ vi.mock("../lib/supabase", () => ({
   supabase: { auth: { getSession: f.session } },
 }));
 vi.mock("./bookingCommands", () => ({ studioCommand: f.command }));
-import {
-  clearLessonPaymentAttempt,
-  loadLessonPayment,
-  saveLessonPayment,
-} from "./lessonPayments";
-import { ApiClientError } from "./apiClientError";
+let loadLessonPayment: typeof import("./lessonPayments").loadLessonPayment;
+let saveLessonPayment: typeof import("./lessonPayments").saveLessonPayment;
+let ApiClientError: typeof import("./apiClientError").ApiClientError;
 const lessonId = "e2930000-0000-4000-8000-000000000011";
 const context = {
   lessonId,
@@ -56,7 +53,9 @@ beforeEach(async () => {
     error: null,
   });
   f.command.mockReset();
-  await clearLessonPaymentAttempt(lessonId);
+  vi.resetModules();
+  ({ loadLessonPayment, saveLessonPayment } = await import("./lessonPayments"));
+  ({ ApiClientError } = await import("./apiClientError"));
 });
 afterEach(() => vi.restoreAllMocks());
 it("retains the same key and sealed request after an unknown committed response", async () => {
@@ -184,4 +183,127 @@ it("does not send a payment if the browser cannot preserve recovery identity", a
     message: expect.stringMatching(/Payment was not sent/),
   });
   expect(f.command).not.toHaveBeenCalled();
+});
+it("cleans only the captured newly rejected actor envelope after an account switch", async () => {
+  f.session.mockResolvedValue({
+    data: { session: { user: { id: "actor-b" } } },
+    error: null,
+  });
+  f.command.mockRejectedValueOnce(Error("B committed response lost"));
+  await expect(saveLessonPayment(context, value)).rejects.toThrow();
+  const keyB = f.command.mock.calls[0][1].idempotencyKey;
+  f.session.mockResolvedValue({
+    data: { session: { user: { id: "actor-a" } } },
+    error: null,
+  });
+  f.command.mockImplementationOnce(async () => {
+    f.session.mockResolvedValue({
+      data: { session: { user: { id: "actor-b" } } },
+      error: null,
+    });
+    throw new ApiClientError(
+      {
+        code: "REVIEW_REQUIRED",
+        message: "A definitively rejected",
+        retryable: false,
+      },
+      409,
+    );
+  });
+  await expect(saveLessonPayment(context, value)).rejects.toMatchObject({
+    code: "REVIEW_REQUIRED",
+  });
+  expect((await loadLessonPayment(lessonId)).attempt?.key).toBe(keyB);
+  expect(
+    JSON.parse(
+      sessionStorage.getItem(`studio.lesson-payment.actor-b:${lessonId}`)!,
+    ).key,
+  ).toBe(keyB);
+  expect(
+    sessionStorage.getItem(`studio.lesson-payment.actor-a:${lessonId}`),
+  ).toBeNull();
+  expect(f.command).toHaveBeenCalledTimes(2);
+});
+it("retains both actors' unknown envelopes when A's later recovery is rejected after switching to B", async () => {
+  f.command.mockRejectedValueOnce(Error("A committed response lost"));
+  await expect(saveLessonPayment(context, value)).rejects.toThrow();
+  const keyA = f.command.mock.calls[0][1].idempotencyKey;
+  f.session.mockResolvedValue({
+    data: { session: { user: { id: "actor-b" } } },
+    error: null,
+  });
+  f.command.mockRejectedValueOnce(Error("B committed response lost"));
+  await expect(saveLessonPayment(context, value)).rejects.toThrow();
+  const keyB = f.command.mock.calls[1][1].idempotencyKey;
+  f.session.mockResolvedValue({
+    data: { session: { user: { id: "actor-a" } } },
+    error: null,
+  });
+  f.command.mockImplementationOnce(async () => {
+    f.session.mockResolvedValue({
+      data: { session: { user: { id: "actor-b" } } },
+      error: null,
+    });
+    throw new ApiClientError(
+      {
+        code: "REVIEW_REQUIRED",
+        message: "Original receipt needs review",
+        retryable: false,
+      },
+      409,
+    );
+  });
+  await expect(saveLessonPayment(context, value)).rejects.toMatchObject({
+    code: "REVIEW_REQUIRED",
+  });
+  expect((await loadLessonPayment(lessonId)).attempt?.key).toBe(keyB);
+  f.session.mockResolvedValue({
+    data: { session: { user: { id: "actor-a" } } },
+    error: null,
+  });
+  expect((await loadLessonPayment(lessonId)).attempt?.key).toBe(keyA);
+  expect(f.command).toHaveBeenCalledTimes(3);
+});
+it("does not remove a different persisted key when a rejected request completes", async () => {
+  f.command.mockImplementationOnce(async () => {
+    const storage = `studio.lesson-payment.actor-a:${lessonId}`;
+    const envelope = JSON.parse(sessionStorage.getItem(storage)!);
+    sessionStorage.setItem(
+      storage,
+      JSON.stringify({ ...envelope, key: "another-exact-pending-key" }),
+    );
+    throw new ApiClientError(
+      {
+        code: "VALIDATION_FAILED",
+        message: "Rejected before commit",
+        retryable: false,
+      },
+      422,
+    );
+  });
+  await expect(saveLessonPayment(context, value)).rejects.toMatchObject({
+    code: "VALIDATION_FAILED",
+  });
+  expect(
+    JSON.parse(
+      sessionStorage.getItem(`studio.lesson-payment.actor-a:${lessonId}`)!,
+    ).key,
+  ).toBe("another-exact-pending-key");
+});
+it("does not remove a newer persisted key when an older successful response completes", async () => {
+  f.command.mockImplementationOnce(async () => {
+    const storage = `studio.lesson-payment.actor-a:${lessonId}`;
+    const envelope = JSON.parse(sessionStorage.getItem(storage)!);
+    sessionStorage.setItem(
+      storage,
+      JSON.stringify({ ...envelope, key: "newer-pending-received-money" }),
+    );
+    return { resource: receipt };
+  });
+  await expect(saveLessonPayment(context, value)).resolves.toEqual(receipt);
+  expect(
+    JSON.parse(
+      sessionStorage.getItem(`studio.lesson-payment.actor-a:${lessonId}`)!,
+    ).key,
+  ).toBe("newer-pending-received-money");
 });
