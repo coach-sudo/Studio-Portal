@@ -222,7 +222,7 @@ export async function studioCommand(
   // captured session/token used for this request, with no second auth lookup.
   if (expectedActorId && session.user?.id !== expectedActorId)
     throw new Error(
-      "The signed-in account changed. Return to the original coach account to recover this payment.",
+      "The signed-in account changed. Return to the original coach account to recover this change.",
     );
   // This private, short-lived key is never logged or exposed. A new session
   // must not subscribe to a previous session's in-flight response.
