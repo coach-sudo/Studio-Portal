@@ -422,11 +422,14 @@
       "regressionCoverage": "Eight Windows Chromium/WebKit × 320/390/768/1440 fixtures, seven states, keyboard, axe, overflow, retained input/retry; minimum summary 12.19:1 with production public palette.",
       "remainingAcceptance": "Approved deployment/real service/keyboard/screen-reader/touch acceptance; no external booking effects inferred from UI tests.",
       "implementation": "Semantic foreground/background pairs derived from configured branding; remove conflicting sidebar ownership; preserve identity, interactive pairs and focus visibility.",
-      "ci": "Exact implementation ce11181 passed production checks 40634329937 and browser 40634329942.",
-      "review": "draft; no merge/release approval",
+      "ci": "Exact implementation ce11181 passed production checks 40634329937 and browser 40634329942. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
       "residualRisk": "No unsolicited redesign. Manual screen reader and real device/provider journeys remain unverified.",
       "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/70"],
-      "commits": ["ce11181bfa1e75e5beb090ddcc79474136664534"],
+      "commits": [
+        "ce11181bfa1e75e5beb090ddcc79474136664534",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
+      ],
       "classification": "reproduced"
     },
     {
@@ -445,13 +448,17 @@
       "regressionCoverage": "Patched lock and actual clean Windows install: zero npm advisories. Vite 8.1.6 / Vitest 4.1.12; Node 22 CI and Node 24 Windows. Full Windows NY 1005/1005 across 147 files, typecheck, build, zero lint errors/unchanged 904 warnings, 8/8 Chromium/WebKit fixture browser cases.",
       "remainingAcceptance": "Reconcile overlapping Dependabot #59 manifest changes; final combined-candidate verification and separate release approval.",
       "implementation": "Pin Vite 8.1.6 and Vitest/mocker 4.1.12 on existing major/minor lines, with documented overlap to broad Dependabot #59.",
-      "ci": "Source 3270fc5 passed production 40684655183 and isolated browser 40684655163; Windows evidence head da2605b passed production 40691990777 and isolated browser 40691990880.",
-      "review": "draft; no merge/release approval",
+      "ci": "Source 3270fc5 passed production 40684655183 and isolated browser 40684655163; Windows evidence head da2605b passed production 40691990777 and isolated browser 40691990880. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
       "residualRisk": "The user freed disk space; clean patched install closes the ENOSPC blocker. Development-tooling exposure is distinct from unproven production runtime exposure; existing broader major upgrades remain separate.",
-      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/76"],
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
       "commits": [
         "3270fc5059171a8a343b3951780f7e9fc8af4e51",
-        "da2605b9efcdf33b16bc3631013aec76105db75b"
+        "da2605b9efcdf33b16bc3631013aec76105db75b",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
       ],
       "classification": "confirmed"
     },
@@ -513,11 +520,17 @@
       "regressionCoverage": "All original seven booking tests × NY/UTC/LA/Tokyo/Honolulu: 35/35. Full local New York baseline: 1005/1005 across 147 files.",
       "remainingAcceptance": "Integration of independent drafts and final full-system acceptance; this test repair does not certify SP-03 runtime behavior.",
       "implementation": "Original booking tests use explicit NY zone/instants and correct weekday/buffer expectations. Exclude diagnostic .tmp outputs from suite discovery; CI timezone matrix added.",
-      "ci": "Exact implementation 49d1c75 passed production checks 40634490248 and isolated browser 40634490205.",
-      "review": "draft; no merge/release approval",
+      "ci": "Exact implementation 49d1c75 passed production checks 40634490248 and isolated browser 40634490205. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
       "residualRisk": "No runtime/timezone behavior changed by this PR.",
-      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/72"],
-      "commits": ["49d1c755edec84b3eec3c69ce03c8413b6df558d"],
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/72",
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
+      "commits": [
+        "49d1c755edec84b3eec3c69ce03c8413b6df558d",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
+      ],
       "classification": "reproduced"
     }
   ],
