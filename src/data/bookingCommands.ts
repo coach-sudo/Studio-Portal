@@ -198,6 +198,7 @@ interface StudioCommandInput {
 export async function studioCommand(
   domain: string,
   input: StudioCommandInput,
+  expectedActorId?: string,
 ): Promise<any> {
   if (!isSupabaseConfigured || !supabase)
     throw new Error("Production database is not configured.");
@@ -209,6 +210,12 @@ export async function studioCommand(
   const session = data.session;
   if (error || !session?.access_token)
     throw new Error("Sign in to make this change.");
+  // Recovery envelopes belong to the actor who created them. Check the same
+  // captured session/token used for this request, with no second auth lookup.
+  if (expectedActorId && session.user?.id !== expectedActorId)
+    throw new Error(
+      "The signed-in account changed. Return to the original coach account to recover this payment.",
+    );
   // This private, short-lived key is never logged or exposed. A new session
   // must not subscribe to a previous session's in-flight response.
   const key = JSON.stringify([

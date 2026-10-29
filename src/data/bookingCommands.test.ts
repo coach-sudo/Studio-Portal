@@ -60,6 +60,25 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe("studio command request boundaries", () => {
+  it("does not send a recovery envelope after its owning actor changes", async () => {
+    fixture.getSession.mockResolvedValue(session("other-coach"));
+    await expect(
+      studioCommand("lessons", input(), "original-coach"),
+    ).rejects.toThrow(/signed-in account changed/);
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(fixture.getSession).toHaveBeenCalledOnce();
+  });
+  it("uses the matching actor's captured refreshed token for receipt recovery", async () => {
+    fixture.getSession.mockResolvedValue(
+      session("coach", "synthetic-refreshed"),
+    );
+    const request = studioCommand("lessons", input(), "coach");
+    active.push(request);
+    await reached(1);
+    expect(pending[0].authorization).toBe("Bearer synthetic-refreshed");
+    pending[0].finish(Response.json({ receipt: "original-owner" }));
+    await expect(request).resolves.toEqual({ receipt: "original-owner" });
+  });
   it("coalesces identical simultaneous commands without generating a second wire command", async () => {
     const first = submit(),
       second = submit();
