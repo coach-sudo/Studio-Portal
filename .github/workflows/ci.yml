@@ -7,6 +7,7 @@ on:
     branches:
       [
         main,
+        codex/audit-manual-booking-transaction,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
@@ -99,6 +100,7 @@ jobs:
       - run: node scripts/test-material-study-concurrency.mjs
       - run: node scripts/test-provider-intake-concurrency.mjs
       - run: node scripts/test-scheduled-worker-concurrency.mjs
+      - run: node scripts/test-manual-booking-concurrency.mjs
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()

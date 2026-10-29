@@ -1,11 +1,8 @@
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
-import { createHash, randomBytes } from "node:crypto";
-import { apiError, correlationId, json } from "./_shared/http";
+import { AppError, apiError, correlationId, json } from "./_shared/http";
 import { bookingAdminCommandSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
-import { queueBookingEmails } from "./_shared/booking-email";
-import { ensureBookingPortalAccess } from "./_shared/portal-access";
 import { googleAccessToken, googleCalendarConflicts } from "./_shared/google";
 
 const resources: Record<string, string> = {
@@ -17,6 +14,27 @@ const resources: Record<string, string> = {
   series: "recurring_series",
   participants: "lesson_participants",
 };
+async function googleObservation(startsAt: string, endsAt: string) {
+  if (!Netlify.env.get("GOOGLE_REFRESH_TOKEN"))
+    return { conflicts: [], checked: false };
+  try {
+    return {
+      conflicts: await googleCalendarConflicts(
+        await googleAccessToken(),
+        startsAt,
+        endsAt,
+      ),
+      checked: true,
+    };
+  } catch {
+    throw new AppError("CALENDAR_UNAVAILABLE", {
+      status: 503,
+      message:
+        "Google conflict checks are unavailable. Reconnect Google and retry. No booking was created.",
+      retryable: true,
+    });
+  }
+}
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -93,15 +111,14 @@ export default async (request: Request, context: Context) => {
           end: item.ends_at,
           source: "studio",
         }));
-      const google = Netlify.env.get("GOOGLE_REFRESH_TOKEN")
-        ? (
-            await googleCalendarConflicts(
-              await googleAccessToken(),
-              startsAt.toISOString(),
-              endsAt.toISOString(),
-            )
-          ).map((item) => ({ ...item, source: "google" }))
-        : [];
+      const observation = await googleObservation(
+        startsAt.toISOString(),
+        endsAt.toISOString(),
+      );
+      const google = observation.conflicts.map((item) => ({
+        ...item,
+        source: "google",
+      }));
       const seen = new Set<string>();
       const conflicts = [...local, ...google].filter((item) => {
         const key = `${item.summary}|${item.start}|${item.end}`;
@@ -112,18 +129,19 @@ export default async (request: Request, context: Context) => {
       return json({
         resource: {
           conflicts,
-          externalCalendarChecked: Boolean(
-            Netlify.env.get("GOOGLE_REFRESH_TOKEN"),
-          ),
+          externalCalendarChecked: observation.checked,
         },
       });
     }
 
-    if (
-      resource === "bookings" &&
-      body.command === "create_manual" &&
-      body.payload
-    ) {
+    if (resource === "bookings" && body.command === "create_manual") {
+      const key = request.headers.get("Idempotency-Key");
+      if (!key || key.length < 8 || key.length > 200)
+        throw new AppError("VALIDATION_FAILED", {
+          status: 422,
+          message:
+            "A stable booking request key is required. Reopen the booking form.",
+        });
       const { data: membership, error: membershipError } = await db
         .from("memberships")
         .select("studio_id")
@@ -131,227 +149,56 @@ export default async (request: Request, context: Context) => {
         .limit(1)
         .single();
       if (membershipError || !membership) throw new Error("FORBIDDEN");
-      const { data: student, error: studentError } = await db
-        .from("students")
-        .select("*")
-        .eq("id", String(body.payload.student_id || ""))
-        .eq("studio_id", membership.studio_id)
-        .single();
-      if (studentError || !student)
-        throw new Error(
-          "VALIDATION_FAILED: Choose a student from the studio roster.",
-        );
+      const replay = await db.rpc("manual_booking_replay", {
+        p_key: key,
+        p_value: body.payload,
+      });
+      if (replay.error) throw replay.error;
+      if (replay.data) return json(replay.data, 201);
       const { data: serviceRow, error: serviceError } = await db
         .from("booking_services")
-        .select("*")
+        .select("duration_minutes,default_location")
         .eq("id", String(body.payload.service_id || ""))
         .eq("studio_id", membership.studio_id)
         .single();
       if (serviceError || !serviceRow)
         throw new Error("VALIDATION_FAILED: Choose a booking service.");
-      const startsAt = new Date(String(body.payload.starts_at || "")),
-        endsAt = new Date(
-          startsAt.getTime() + Number(serviceRow.duration_minutes) * 60000,
-        ),
-        location = String(body.payload.location || serviceRow.default_location);
+      const startsAt = new Date(String(body.payload.starts_at || ""));
+      const endsAt = new Date(
+        startsAt.getTime() + Number(serviceRow.duration_minutes) * 60000,
+      );
       if (
         !Number.isFinite(startsAt.getTime()) ||
-        startsAt <= new Date() ||
-        !serviceRow.location_options.includes(location)
+        !Number.isFinite(endsAt.getTime()) ||
+        startsAt <= new Date()
       )
-        throw new Error(
-          "VALIDATION_FAILED: Choose a future time and supported meeting format.",
-        );
-      if (!body.payload.allow_conflict) {
-        const conflicts = await googleCalendarConflicts(
-          await googleAccessToken(),
+        throw new Error("VALIDATION_FAILED: Choose a future time.");
+      let external = "not_configured";
+      if (
+        body.payload.allow_conflict &&
+        Netlify.env.get("GOOGLE_REFRESH_TOKEN")
+      )
+        external = "overridden";
+      else if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
+        const { conflicts } = await googleObservation(
           startsAt.toISOString(),
           endsAt.toISOString(),
         );
-        const { count: localCount, error: conflictError } = await db
-          .from("lessons")
-          .select("id", { count: "exact", head: true })
-          .eq("studio_id", membership.studio_id)
-          .in("status", ["draft", "scheduled"])
-          .lt("starts_at", endsAt.toISOString())
-          .gt("ends_at", startsAt.toISOString());
-        if (conflictError) throw conflictError;
-        if (conflicts.length || Number(localCount || 0) > 0)
-          throw new Error(
-            "CALENDAR_CONFLICT: Review the conflicting calendar event before scheduling, or choose Schedule anyway.",
-          );
-      }
-      const upcharge = Number(
-          serviceRow.location_price_adjustments?.[location] || 0,
-        ),
-        { data: pricingRule } = student.special_pricing_enabled
-          ? await serviceClient()
-              .from("student_pricing_rules")
-              .select("*")
-              .eq("student_id", student.id)
-              .eq("service_id", serviceRow.id)
-              .eq("active", true)
-              .lte("starts_at", startsAt.toISOString())
-              .or(`ends_at.is.null,ends_at.gte.${startsAt.toISOString()}`)
-              .order("updated_at", { ascending: false })
-              .limit(1)
-              .maybeSingle()
-          : { data: null },
-        personalizedUpcharge = Number(
-          pricingRule?.location_price_adjustments?.[location] ?? upcharge,
-        ),
-        totalMinor =
-          body.payload.price_minor == null
-            ? Number(pricingRule?.price_minor ?? serviceRow.price_minor) +
-              personalizedUpcharge
-            : Number(body.payload.price_minor),
-        paidMinor = body.payload.mark_paid ? totalMinor : 0,
-        token = randomBytes(32).toString("base64url"),
-        tokenHash = createHash("sha256").update(token).digest("hex"),
-        reference = `SS-${randomBytes(4).toString("hex").toUpperCase()}`,
-        service = serviceClient(),
-        now = new Date().toISOString();
-      let bookingId: string | undefined, lessonId: string | undefined;
-      try {
-        const { data: booking, error: bookingError } = await service
-          .from("bookings")
-          .insert({
-            studio_id: membership.studio_id,
-            reference,
-            service_id: serviceRow.id,
-            student_id: student.id,
-            guest_name: student.full_name,
-            guest_email: student.email || student.guardian_email,
-            guardian_name: student.guardian_name,
-            guardian_email: student.guardian_email,
-            for_minor: student.is_minor,
-            starts_at: startsAt.toISOString(),
-            ends_at: endsAt.toISOString(),
-            timezone: student.timezone || "America/New_York",
-            location,
-            status: "confirmed",
-            payment_policy: "pay_later",
-            payment_status: paidMinor ? "paid" : "due",
-            total_minor: totalMinor,
-            paid_minor: paidMinor,
-            currency: serviceRow.currency,
-            policy_snapshot: {
-              ...serviceRow.policy,
-              policyVersion: serviceRow.policy_version,
-            },
-            pricing_snapshot: {
-              basePriceMinor: Number(serviceRow.price_minor),
-              locationUpchargeMinor: personalizedUpcharge,
-              unitPriceMinor: totalMinor,
-              studentPricingRuleId: pricingRule?.id || null,
-              adminOverride: true,
-            },
-            admin_override: {
-              schedule: true,
-              price: body.payload.price_minor != null,
-              createdByCoach: true,
-            },
-            manage_token_hash: tokenHash,
-          })
-          .select()
-          .single();
-        if (bookingError) throw bookingError;
-        bookingId = booking.id;
-        const locationLabel =
-            location === "in_person"
-              ? String(
-                  body.payload.location_label || "Location to be confirmed",
-                )
-              : "Google Meet pending",
-          { data: lesson, error: lessonError } = await service
-            .from("lessons")
-            .insert({
-              studio_id: membership.studio_id,
-              student_id: student.id,
-              topic: serviceRow.name,
-              starts_at: startsAt.toISOString(),
-              ends_at: endsAt.toISOString(),
-              status: "scheduled",
-              location_type: location === "in_person" ? "in_person" : "virtual",
-              location_label: locationLabel,
-              service_id: serviceRow.id,
-              meeting_provider: location,
-              capacity: 1,
-            })
-            .select()
-            .single();
-        if (lessonError) throw lessonError;
-        lessonId = lesson.id;
-        const [{ error: participantError }, { error: projectionError }] =
-          await Promise.all([
-            service.from("lesson_participants").insert({
-              lesson_id: lesson.id,
-              booking_id: booking.id,
-              student_id: student.id,
-              display_name: student.full_name,
-              email: student.email || student.guardian_email,
-              status: "confirmed",
-            }),
-            service
-              .from("calendar_projections")
-              .insert({ lesson_id: lesson.id, status: "queued" }),
-          ]);
-        if (participantError || projectionError)
-          throw participantError || projectionError;
-        if (paidMinor)
-          await service.from("payment_entries").insert({
-            student_id: student.id,
-            kind: "payment",
-            amount_minor: paidMinor,
-            currency: serviceRow.currency,
-            external_reference: `manual:${booking.id}`,
-            reason: `Manual payment for ${reference}`,
+        if (conflicts.length)
+          throw new AppError("SLOT_UNAVAILABLE", {
+            status: 409,
+            message:
+              "Review the Google conflict or choose another time. Studio lesson overlaps cannot be overridden.",
           });
-        await service.from("audit_events").insert({
-          studio_id: membership.studio_id,
-          entity_type: "booking",
-          entity_id: booking.id,
-          action: "booking.created_by_coach",
-          reason: String(
-            body.payload.reason ||
-              "Coach created booking with administrative override",
-          ),
-          correlation_id: id,
-          source: "booking_admin",
-          before_state: null,
-          after_state: booking,
-        });
-        await queueBookingEmails(service, booking.id, token);
-        try {
-          await ensureBookingPortalAccess(service, booking.id);
-        } catch (inviteError) {
-          await service.from("recommendations").upsert(
-            {
-              studio_id: membership.studio_id,
-              student_id: student.id,
-              entity_type: "booking",
-              entity_id: booking.id,
-              reason_code: "portal_invitation_failed",
-              title: "Portal invitation needs retry",
-              explanation:
-                "The booking is confirmed, but portal access could not be linked.",
-              evidence: [String(inviteError)],
-              urgency: 4,
-              suggested_action: "retry_portal_invitation",
-              requires_confirmation: false,
-              status: "open",
-              dedupe_key: `booking:${booking.id}:portal-invite`,
-            },
-            { onConflict: "dedupe_key" },
-          );
-        }
-        return json({ resource: booking, manageUrl: `/booking/${token}` }, 201);
-      } catch (error) {
-        if (lessonId) await service.from("lessons").delete().eq("id", lessonId);
-        if (bookingId)
-          await service.from("bookings").delete().eq("id", bookingId);
-        throw error;
+        external = "checked";
       }
+      const created = await db.rpc("command_create_manual_booking", {
+        p_key: key,
+        p_value: body.payload,
+        p_external_status: external,
+      });
+      if (created.error) throw created.error;
+      return json(created.data, 201);
     }
 
     if (

@@ -14,6 +14,7 @@ import { clearDeliveredPortalCredentials } from "./outbox-retention";
 import { processLessonChangeEffects } from "./lesson-notifications";
 import { applyAutomaticCredits } from "./auto-credits";
 import { processLessonBulkItems } from "./lesson-bulk";
+import { processManualBookingEffects } from "./manual-booking-effects";
 
 const render = (template: string, values: Record<string, string>) =>
   template.replace(/{{([a-zA-Z]+)}}/g, (_, key: string) => values[key] ?? "");
@@ -32,6 +33,7 @@ export const runBookingMaintenance = async (telemetry: WorkerTelemetry) => {
   });
   assertWorkerEnabled("booking-maintenance");
   telemetry.stage("lesson_change_effects");
+  if (workerEnabled("automations")) await processManualBookingEffects(db);
   const lessonChanges = workerEnabled("automations")
     ? await processLessonChangeEffects(db, undefined, () => {
         assertWorkerEnabled("booking-maintenance");

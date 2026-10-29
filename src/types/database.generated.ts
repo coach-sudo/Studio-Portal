@@ -4953,6 +4953,10 @@ export type Database = {
         Args: { p_lesson?: string; p_limit?: number }
         Returns: Json
       }
+      claim_manual_booking_effects: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       claim_outbox_messages: {
         Args: { batch_size?: number }
         Returns: {
@@ -5152,6 +5156,10 @@ export type Database = {
       }
       command_create_lesson_once: {
         Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      command_create_manual_booking: {
+        Args: { p_external_status?: string; p_key: string; p_value: Json }
         Returns: Json
       }
       command_create_service_offering: {
@@ -5417,6 +5425,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      finish_manual_booking_effect: {
+        Args: { p_failed?: boolean; p_id: string; p_token: string }
+        Returns: boolean
+      }
       finish_scheduled_worker: {
         Args: {
           p_error?: string
@@ -5505,6 +5517,14 @@ export type Database = {
           p_value: Json
           p_version: number
         }
+        Returns: Json
+      }
+      manual_booking_effect_current: {
+        Args: { p_id: string; p_token: string }
+        Returns: boolean
+      }
+      manual_booking_replay: {
+        Args: { p_key: string; p_value: Json }
         Returns: Json
       }
       material_resource_workspace: {
