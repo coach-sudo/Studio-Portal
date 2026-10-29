@@ -25,10 +25,11 @@
       "status": "not revalidated; original audit source/fixture boundary retained",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Coach browser journey, duplicate override, invitation recovery and availability in every downstream domain.",
-      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "A03",
@@ -58,10 +59,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Add/remove dependent, immediately revoked permissions across direct API, cached views and notification recipients.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "A05",
@@ -306,10 +308,11 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Read scope, actual missing messages, ambiguity/aliases and same-signal replay; prior saved run failed in Gmail and current worker is disabled.",
-      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "C05",
@@ -346,10 +349,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84",
         "https://github.com/coach-sudo/Studio-Portal/pull/85",
-        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Actual role interaction and cross-provider replay; SP-13 source verification vs attendance distinction remains.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "C07",
@@ -581,9 +585,11 @@
       "code": "Current source: src/features/coach/CoachToday.tsx:1 · src/features/coach/StudioToday.tsx:1",
       "auditValidation": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
       "status": "not revalidated; original audit source/fixture boundary retained",
-      "remediationEvidence": [],
+      "remediationEvidence": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
+      ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Resolve each alert in role session, remove stale cards and retain focus/back context; disabled intake must be surfaced.",
-      "verificationNotes": ""
+      "verificationNotes": "#89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "F04",
@@ -640,10 +646,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/80",
         "https://github.com/coach-sudo/Studio-Portal/pull/82",
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. All role/device widths, keyboard/calendar/search/dialog tasks, contrast and no stale cross-identity cache; public sidebar failure verified.",
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Source-aware overlap preview/form/proposal evidence only. No reservation, changed recurrence, downstream delivery or hosted role PASS. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "F07",
@@ -664,10 +671,11 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/76",
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
       "remaining": "Validation: source traced; local suite evidence applies only to covered assertions. End-to-end not verified. Direct adversarial API matrix, deployed-grant inventory for every RPC, rate limiting under abuse, backup/restore and exact-head rollback.",
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     }
   ],
   "connections": [
@@ -724,9 +732,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84",
         "https://github.com/coach-sudo/Studio-Portal/pull/85",
-        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "X04",
@@ -739,9 +748,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/69",
         "https://github.com/coach-sudo/Studio-Portal/pull/74",
-        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+        "https://github.com/coach-sudo/Studio-Portal/pull/85",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred."
+      "verificationNotes": " #85 stage/error attribution passed targeted, actual database and exact CI checks; no provider execution or external delivery is inferred. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "X05",
@@ -759,9 +769,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/78",
         "https://github.com/coach-sudo/Studio-Portal/pull/83",
         "https://github.com/coach-sudo/Studio-Portal/pull/84",
-        "https://github.com/coach-sudo/Studio-Portal/pull/86"
+        "https://github.com/coach-sudo/Studio-Portal/pull/86",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed."
+      "verificationNotes": " Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "X06",
@@ -835,9 +846,10 @@
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/81",
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": " Synthetic shared-command session/envelope isolation only; this is not a pass for the domain transaction or hosted authorization. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "X11",
@@ -915,9 +927,10 @@
       "failureAndRecovery": "unverified",
       "remediationEvidence": [
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": " FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     },
     {
       "id": "X17",
@@ -991,9 +1004,10 @@
         "https://github.com/coach-sudo/Studio-Portal/pull/84",
         "https://github.com/coach-sudo/Studio-Portal/pull/86",
         "https://github.com/coach-sudo/Studio-Portal/pull/87",
-        "https://github.com/coach-sudo/Studio-Portal/pull/88"
+        "https://github.com/coach-sudo/Studio-Portal/pull/88",
+        "https://github.com/coach-sudo/Studio-Portal/pull/89"
       ],
-      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys."
+      "verificationNotes": "Read-only preview/receipt/UI layers only; routine intake, canonical historical reconciliation and actual providers remain unverified. Historical source protection passes its actual PostgreSQL/old-worker race/retention gates at 3779d0c; browser completion passed. No canonical reconciliation writer or production effect. Explicit historical review decisions #84 pass local targeted, actual PostgreSQL/concurrency and full CI gates at acef7bd; their future interface/canonical writer and hosted acceptance remain pending. FIN-R02: actual coach merge fails on an existing recovery-job FK; no real-user data loss or financial merge correction is inferred. #86 exact d8e1927 passes 73 new actual SQL assertions within 561, upgrade/type/grants/concurrency and both full CI workflows; no canonical coach interface or hosted provider PASS is claimed. FIN-R02 approved identity-preserving grouping #87 exact 1005903 passes 47 new SQL assertions within 378 and real concurrency/full CI. Twelve seeded identity/history/financial/recovery/permission families remain byte-equivalent, with separate original-account access. #88 interface has 51 targeted cases and 8 Windows fixture journeys/8 parent comparisons/48 images; exact report head 41a6ec6 passes production 40787760137 and browser 40787759998 (61 passed, one Stripe test blocked; 20 no-retry calendar repeats and cleanup passed). These layers do not verify all original role, financial or private-work journeys. #89: isolated UI/API/PostgreSQL identity holds and retry verified. See evidence/provider-identity-validation.json; combined, provider, role and recovery acceptance remain. No complete-workflow PASS."
     }
   ]
 }
