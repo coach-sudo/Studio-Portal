@@ -1434,8 +1434,8 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     calendarReview = 0,
     gmailImported = 0,
     gmailReview = 0,
-    gmailScope = true,
-    failures = 0;
+    gmailScope = true;
+  const failures: unknown[] = [];
   for (const studio of studios || []) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
@@ -1446,7 +1446,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       .is("deleted_at", null);
     if (studentError) {
       telemetry?.failure(studentError);
-      failures++;
+      failures.push(studentError);
       continue;
     }
     telemetry?.stage("calendar_processing");
@@ -1456,7 +1456,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       calendarReview += calendar.review;
     } catch (error) {
       telemetry?.failure(error);
-      failures++;
+      failures.push(error);
     }
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
@@ -1466,18 +1466,22 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;
       if (!gmail.scope) {
-        telemetry?.failure({ code: "GMAIL_READ_PERMISSION" });
-        failures++;
+        const permission = { code: "GMAIL_READ_PERMISSION" };
+        telemetry?.failure(permission);
+        failures.push(permission);
       }
     } catch (error) {
       telemetry?.failure(error);
-      failures++;
+      failures.push(error);
     }
   }
-  if (failures)
-    throw new Error(
-      "PROVIDER_UNAVAILABLE: Intake has unfinished provider work.",
-    );
+  if (failures.length) {
+    // Close the actual final processing stage before rejecting the aggregate.
+    // Its success must not become a false Gmail failure. Retain the underlying
+    // category/retry guidance; the scheduled wrapper sanitizes it for receipts.
+    telemetry?.stage("completion");
+    throw failures[0];
+  }
   return {
     ok: true,
     calendarImported,
