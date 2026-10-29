@@ -96,6 +96,10 @@ jobs:
         env:
           WAVE_ONE_ACCEPTANCE_LOCAL: "true"
         run: node scripts/test-wave-one-upgrade.mjs
+      - name: Upgrade from current 71-migration production prefix with original identity and provider history
+        env:
+          CURRENT_PRODUCTION_ACCEPTANCE_LOCAL: "true"
+        run: node scripts/test-current-production-upgrade.mjs
       - run: npx supabase db reset --local --no-seed
       - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops,workspace_internal,worker_internal,discovery_internal --fail-on error
       - run: npm run supabase:types
