@@ -4804,6 +4804,10 @@ export type Database = {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
+      calendar_discovery_progress: {
+        Args: { p_cursor?: string; p_scan: string }
+        Returns: Json
+      }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -4937,6 +4941,16 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      claim_calendar_discovery_page: {
+        Args: {
+          p_actor: string
+          p_calendar: string
+          p_key: string
+          p_scan: string
+          p_sequence: number
+        }
+        Returns: Json
       }
       claim_calendar_projections: {
         Args: { batch_size?: number }
@@ -5203,6 +5217,19 @@ export type Database = {
         }
         Returns: Json
       }
+      command_historical_calendar_reconciliation: {
+        Args: {
+          p_candidate: string
+          p_key: string
+          p_stamp: string
+          p_value: Json
+        }
+        Returns: Json
+      }
+      command_historical_calendar_review: {
+        Args: { p_candidate: string; p_key: string; p_payload: Json }
+        Returns: Json
+      }
       command_make_lesson_recurring: {
         Args: {
           p_cadence: string
@@ -5380,6 +5407,15 @@ export type Database = {
         Returns: Json
       }
       extend_ongoing_series: { Args: never; Returns: number }
+      fail_calendar_discovery_page: {
+        Args: {
+          p_calendar: string
+          p_claim: string
+          p_code: string
+          p_scan: string
+        }
+        Returns: boolean
+      }
       finalize_booking_cancellation: {
         Args: {
           correlation_id: string
@@ -5401,6 +5437,16 @@ export type Database = {
       }
       find_student_duplicates: {
         Args: { p_email?: string; p_name: string; p_phone?: string }
+        Returns: Json
+      }
+      finish_calendar_discovery_page: {
+        Args: {
+          p_calendar: string
+          p_claim: string
+          p_scan: string
+          p_sequence: number
+          p_value: Json
+        }
         Returns: Json
       }
       finish_calendar_projection: {
@@ -5433,6 +5479,10 @@ export type Database = {
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
+      historical_calendar_decision_history: {
+        Args: { p_before_version?: number; p_candidate: string }
+        Returns: Json
+      }
       household_access_states: { Args: { p_student: string }; Returns: Json }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
@@ -5480,6 +5530,10 @@ export type Database = {
         }
         Returns: Json
       }
+      list_calendar_discoveries: {
+        Args: { p_cursor?: Json; p_studio: string }
+        Returns: Json
+      }
       manage_campaign_draft: {
         Args: {
           p_actor: string
@@ -5519,6 +5573,10 @@ export type Database = {
         Args: { keep_student_id: string; remove_student_id: string }
         Returns: Json
       }
+      observe_protected_calendar_sources: {
+        Args: { p_calendar: string; p_events: Json; p_studio: string }
+        Returns: Json
+      }
       observe_scheduled_worker: {
         Args: {
           p_error?: string
@@ -5536,6 +5594,18 @@ export type Database = {
       }
       portal_student_contexts: {
         Args: { p_page?: number; p_student?: string }
+        Returns: Json
+      }
+      preview_historical_calendar_reconciliation: {
+        Args: { p_candidate: string; p_value: Json }
+        Returns: Json
+      }
+      preview_historical_calendar_reopening: {
+        Args: { p_candidate: string }
+        Returns: Json
+      }
+      preview_historical_calendar_review: {
+        Args: { p_candidate: string }
         Returns: Json
       }
       preview_lesson_bulk: {
@@ -5798,6 +5868,15 @@ export type Database = {
           p_invoice: string
           p_key: string
           p_session: string
+        }
+        Returns: Json
+      }
+      start_calendar_discovery: {
+        Args: {
+          p_actor: string
+          p_key: string
+          p_studio: string
+          p_value: Json
         }
         Returns: Json
       }

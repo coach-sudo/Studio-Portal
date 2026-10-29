@@ -8,6 +8,8 @@ const f = vi.hoisted(() => ({
   calls: [] as { name: string; args: any }[],
   sequence: 0,
   readError: false,
+  protection: {} as Record<string, Record<string, unknown>[]>,
+  protectionError: false,
 }));
 vi.mock("../../netlify/functions/_shared/booking-email", () => ({
   queueLessonChangeEmails: vi.fn(async () => undefined),
@@ -103,6 +105,18 @@ vi.mock("../../netlify/functions/_shared/supabase", () => ({
       return q;
     },
     rpc: async (name: string, args: any) => {
+      if (name === "observe_protected_calendar_sources")
+        return {
+          data: args.p_events.flatMap(
+            (event: { id: string }) =>
+              f.protection[event.id] ?? [
+                { eventId: event.id, state: "unprotected" },
+              ],
+          ),
+          error: f.protectionError
+            ? new Error("Synthetic protection read failure")
+            : null,
+        };
       f.calls.push({ name, args });
       if (name === "reserve_student_upcoming_credits") {
         for (const l of f.tables.lessons.filter(
@@ -154,6 +168,8 @@ const counts = () =>
 beforeEach(() => {
   f.sequence = 0;
   f.readError = false;
+  f.protection = {};
+  f.protectionError = false;
   f.writes = [];
   f.calls = [];
   f.events = [event()];
@@ -199,8 +215,10 @@ beforeEach(() => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (url: string) => {
+      if (url.endsWith("?fields=id"))
+        return Response.json({ id: "synthetic-calendar" });
       expect(url).toMatch(
-        /^https:\/\/www.googleapis.com\/calendar\/v3\/calendars\/primary\/events\?/,
+        /^https:\/\/www.googleapis.com\/calendar\/v3\/calendars\/synthetic-calendar\/events\?/,
       );
       return Response.json({ items: f.events });
     }),
@@ -309,4 +327,65 @@ it("preserves managed Calendar rescheduling through the existing versioned occur
   ]);
   expect(f.tables.lessons[0].starts_at).toBe("2031-11-02T20:00:00Z");
   expect(counts()).toEqual([1, 1, 1, 1]);
+});
+
+it.each(["cancelled", "confirmed"])(
+  "holds a protected historical %s source before managed reconciliation or notifications",
+  async (status) => {
+    f.tables.calendar_projections[0].external_event_id = "calendar-signal";
+    f.events[0].status = status;
+    f.events[0].start.dateTime = "2031-11-02T20:00:00Z";
+    f.events[0].end.dateTime = "2031-11-02T21:00:00Z";
+    f.protection["calendar-signal"] = [
+      {
+        eventId: "calendar-signal",
+        state: "protected",
+        decisionId: "e8300000-0000-4000-8000-000000000001",
+        lessonId: "e8300000-0000-4000-8000-000000000002",
+        disposition: "linked",
+        changed: true,
+      },
+    ];
+    const before = structuredClone(f.tables);
+    expect(await importCalendar("fixture", studio, [student])).toEqual({
+      imported: 0,
+      review: 1,
+    });
+    expect(f.tables).toEqual(before);
+    expect(f.writes).toEqual([]);
+    expect(f.calls).toEqual([]);
+  },
+);
+it("does not resurrect a protected not-a-lesson decision or create a replacement from it", async () => {
+  f.events[0].id = "otherwise-new-event";
+  f.events[0].start.dateTime = "2031-11-04T18:00:00Z";
+  f.events[0].end.dateTime = "2031-11-04T19:00:00Z";
+  f.protection["otherwise-new-event"] = [
+    {
+      eventId: "otherwise-new-event",
+      state: "protected",
+      decisionId: "e8300000-0000-4000-8000-000000000001",
+      lessonId: null,
+      disposition: "not_lesson",
+      changed: false,
+    },
+  ];
+  const before = structuredClone(f.tables);
+  expect(await importCalendar("fixture", studio, [student])).toEqual({
+    imported: 0,
+    review: 0,
+  });
+  expect(f.tables).toEqual(before);
+  expect(f.writes).toEqual([]);
+  expect(f.calls).toEqual([]);
+});
+it("stops a protection lookup failure before managed or ordinary canonical writes", async () => {
+  f.protectionError = true;
+  f.tables.calendar_projections[0].external_event_id = "calendar-signal";
+  f.events[0].status = "cancelled";
+  await expect(importCalendar("fixture", studio, [student])).rejects.toThrow(
+    "Historical Calendar protection could not be checked",
+  );
+  expect(f.writes).toEqual([]);
+  expect(f.calls).toEqual([]);
 });

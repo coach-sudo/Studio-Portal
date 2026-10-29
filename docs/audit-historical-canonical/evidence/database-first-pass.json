@@ -1,0 +1,26 @@
+{
+  "source": "d7b78c2cc06b6bfca85a88e31aed19b3a7d01b77",
+  "productionRun": 40782196044,
+  "result": "success",
+  "newCanonicalAssertions": 67,
+  "totalSqlAssertions": 555,
+  "sqlFiles": 18,
+  "vitest": {
+    "passed": 1089,
+    "files": 153
+  },
+  "upgrade": "verified production-prefix synthetic-history upgrade and clean replay",
+  "roles": "actual PostgreSQL coach/student/guardian/unrelated permissions and private grants",
+  "concurrency": "observed same-key replay, changed-payload conflict, different-key stale rejection and both legacy import insertion orderings",
+  "generatedTypeParity": "passed",
+  "retainedBaselineWarnings": 904,
+  "providerInvocation": false,
+  "hostedMigration": false,
+  "newUnexecutedAssertions": 6,
+  "browserRun": 40782196061,
+  "browserResult": "pending at evidence capture",
+  "notes": [
+    "Transient registry Data limit exceeded messages recovered before setup completed; no failed stage counted as passed.",
+    "FIN-R02 legacy merge failure remains deliberately reproduced in parent SQL; unrelated identity-preserving policy now approved, implementation separate."
+  ]
+}
