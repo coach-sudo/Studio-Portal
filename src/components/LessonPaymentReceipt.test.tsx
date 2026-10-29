@@ -7,6 +7,7 @@ vi.mock("../data/lessonPayments", () => ({
   clearLessonPaymentAttempt: f.clear,
 }));
 import { LessonPaymentReceipt } from "./LessonPaymentReceipt";
+import { ApiClientError } from "../data/apiClientError";
 const lessonId = "e2920000-0000-4000-8000-000000000011";
 const context = {
   lessonId,
@@ -79,6 +80,76 @@ it("retains and locks the request after an unknown response", async () => {
   await screen.findByText(/Payment recorded:/);
   expect(f.save.mock.calls[0]).toEqual(f.save.mock.calls[1]);
 });
+it("retains a lost-response request through revoked access and restores the same receipt", async () => {
+  f.save
+    .mockRejectedValueOnce(Error("Synthetic committed response lost"))
+    .mockRejectedValueOnce(
+      new ApiClientError(
+        {
+          code: "FORBIDDEN",
+          message: "Coach access revoked",
+          retryable: false,
+        },
+        403,
+      ),
+    );
+  render(
+    <LessonPaymentReceipt
+      lessonId={lessonId}
+      isDemo={false}
+      onSaved={vi.fn()}
+    />,
+  );
+  await fill();
+  fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Recover payment receipt" }),
+  );
+  await screen.findByText(/Restore the original coach account/);
+  expect(f.clear).not.toHaveBeenCalled();
+  expect(screen.getByLabelText("Amount received (USD)")).toBeDisabled();
+  expect(
+    screen.queryByRole("button", { name: "Record payment" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", { name: "Recover payment receipt" }),
+  );
+  await screen.findByText(/Payment recorded:/);
+  expect(f.save).toHaveBeenCalledTimes(3);
+  expect(f.save.mock.calls[2]).toEqual(f.save.mock.calls[0]);
+  expect(f.clear).not.toHaveBeenCalled();
+});
+it.each(["IDEMPOTENCY_CONFLICT", "VERSION_CONFLICT"])(
+  "keeps the original request locked after %s instead of offering a new payment",
+  async (code) => {
+    f.save.mockRejectedValueOnce(
+      new ApiClientError(
+        { code, message: "Key conflict", retryable: false },
+        409,
+      ),
+    );
+    render(
+      <LessonPaymentReceipt
+        lessonId={lessonId}
+        isDemo={false}
+        onSaved={vi.fn()}
+      />,
+    );
+    await fill();
+    fireEvent.click(screen.getByRole("button", { name: "Record payment" }));
+    await screen.findByText(/payment key needs financial review/);
+    expect(f.clear).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Amount received (USD)")).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Record payment" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Recover payment receipt" }),
+    );
+    await screen.findByText(/Payment recorded:/);
+    expect(f.save.mock.calls[1]).toEqual(f.save.mock.calls[0]);
+  },
+);
 it("keeps committed success when downstream refresh fails", async () => {
   const saved = vi
     .fn()

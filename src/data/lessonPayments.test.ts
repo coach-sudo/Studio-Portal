@@ -9,6 +9,7 @@ import {
   loadLessonPayment,
   saveLessonPayment,
 } from "./lessonPayments";
+import { ApiClientError } from "./apiClientError";
 const lessonId = "e2930000-0000-4000-8000-000000000011";
 const context = {
   lessonId,
@@ -78,6 +79,56 @@ it("does not replace an unresolved payment with a changed amount", async () => {
   ).rejects.toThrow(/Recover the pending payment/);
   expect(f.command).toHaveBeenCalledOnce();
 });
+it("keeps the original key across a lost response, revoked coach access and restored access", async () => {
+  f.command
+    .mockRejectedValueOnce(Error("Synthetic committed response lost"))
+    .mockRejectedValueOnce(
+      new ApiClientError(
+        { code: "FORBIDDEN", message: "Coach revoked", retryable: false },
+        403,
+      ),
+    )
+    .mockResolvedValueOnce({ resource: receipt });
+  await expect(saveLessonPayment(context, value)).rejects.toThrow(
+    /response lost/,
+  );
+  const key = f.command.mock.calls[0][1].idempotencyKey;
+  await expect(saveLessonPayment(context, value)).rejects.toMatchObject({
+    code: "FORBIDDEN",
+  });
+  expect((await loadLessonPayment(lessonId)).attempt?.key).toBe(key);
+  await expect(saveLessonPayment(context, value)).resolves.toEqual(receipt);
+  expect(f.command.mock.calls.map((call) => call[1].idempotencyKey)).toEqual([
+    key,
+    key,
+    key,
+  ]);
+});
+it.each(["IDEMPOTENCY_CONFLICT", "VERSION_CONFLICT"])(
+  "retains stored pending identity on %s and refuses a fresh changed request",
+  async (code) => {
+    f.command.mockRejectedValueOnce(
+      new ApiClientError(
+        { code, message: "Key conflict", retryable: false },
+        409,
+      ),
+    );
+    await expect(saveLessonPayment(context, value)).rejects.toMatchObject({
+      code,
+    });
+    const key = f.command.mock.calls[0][1].idempotencyKey;
+    expect((await loadLessonPayment(lessonId)).attempt?.key).toBe(key);
+    expect(
+      JSON.parse(
+        sessionStorage.getItem(`studio.lesson-payment.actor-a:${lessonId}`)!,
+      ).key,
+    ).toBe(key);
+    await expect(
+      saveLessonPayment(context, { ...value, amountMinor: 2000 }),
+    ).rejects.toThrow(/Recover the pending payment/);
+    expect(f.command).toHaveBeenCalledOnce();
+  },
+);
 it("never hydrates another actor's pending request", async () => {
   f.command.mockRejectedValueOnce(Error("Unknown outcome"));
   await expect(saveLessonPayment(context, value)).rejects.toThrow();

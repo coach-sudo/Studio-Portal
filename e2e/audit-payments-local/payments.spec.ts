@@ -50,6 +50,16 @@ for (const entry of ["workspace", "calendar"] as const)
               },
             });
           }
+          if (writes.length === 2)
+            return route.fulfill({
+              status: 403,
+              json: {
+                code: "FORBIDDEN",
+                message: "Synthetic coach access revoked before receipt lookup",
+                retryable: false,
+                correlationId: "payment-access-restoration",
+              },
+            });
           return route.fulfill({
             json: {
               resource: {
@@ -142,9 +152,23 @@ for (const entry of ["workspace", "calendar"] as const)
       await page
         .getByRole("button", { name: "Recover payment receipt" })
         .click();
+      await expect(
+        page.getByText(/Restore the original coach account/),
+      ).toBeVisible();
+      await expect(page.getByLabel("Amount received (USD)")).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "Record payment", exact: true }),
+      ).toHaveCount(0);
+      await page.waitForLoadState("networkidle");
+      await page.reload();
+      await openPayment();
+      await page
+        .getByRole("button", { name: "Recover payment receipt" })
+        .click();
       await expect(page.getByText(/Payment recorded:.*10\.00/)).toBeVisible();
-      expect(writes).toHaveLength(2);
+      expect(writes).toHaveLength(3);
       expect(writes[1]).toEqual(writes[0]);
+      expect(writes[2]).toEqual(writes[0]);
       expect(ledgerEffects).toBe(1);
       expect(writes[0].entityId).toBe(ids.lesson);
       expect(

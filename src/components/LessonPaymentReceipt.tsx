@@ -171,24 +171,27 @@ export function LessonPaymentReceipt({
           }
         } catch (e) {
           if (activeLesson.current !== target) return;
-          const known =
+          // A prior unknown outcome remains unknown after access is revoked or
+          // context changes. VERSION_CONFLICT also represents key conflicts in
+          // the shared HTTP contract, so it cannot authorize a fresh identity.
+          const rejectedBeforeCommit =
+            !unknown &&
             e instanceof ApiClientError &&
-            [
-              "VALIDATION_FAILED",
-              "FORBIDDEN",
-              "VERSION_CONFLICT",
-              "REVIEW_REQUIRED",
-              "IDEMPOTENCY_CONFLICT",
-            ].includes(e.code);
-          if (known) {
+            ["VALIDATION_FAILED", "REVIEW_REQUIRED"].includes(e.code);
+          if (rejectedBeforeCommit) {
             await clearLessonPaymentAttempt(lessonId);
             setUnknown(false);
             if (e.code !== "VALIDATION_FAILED") setReload((n) => n + 1);
           } else setUnknown(true);
           setError(
-            e instanceof Error
-              ? e.message
-              : "The payment response is unknown. Retry this same request.",
+            e instanceof ApiClientError && e.code === "FORBIDDEN"
+              ? "This payment request is retained. Restore the original coach account and its studio access before recovering the same receipt. Do not record the money again."
+              : e instanceof ApiClientError &&
+                  ["VERSION_CONFLICT", "IDEMPOTENCY_CONFLICT"].includes(e.code)
+                ? "This payment key needs financial review. The original request is retained; recovery will reuse that key. Do not start another payment for this money."
+                : e instanceof Error
+                  ? e.message
+                  : "The payment response is unknown. Retry this same request.",
           );
         } finally {
           if (activeLesson.current === target) setBusy(false);

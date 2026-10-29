@@ -166,6 +166,28 @@ try {
   );
   assert.notEqual(revoked.status, 0);
   assert.match(revoked.error, /FORBIDDEN/);
+  sql(
+    `insert into public.memberships(studio_id,user_id,role,display_name) values('${studio}','${actor}','coach','Restored synthetic coach')`,
+  );
+  const restored = await session(
+    "e2e-payment-restored",
+    `begin;${role}${command(initial, "e2e-payment-race-same")}commit;`,
+  );
+  assert.equal(restored.status, 0, restored.error);
+  assert.equal(
+    JSON.parse(restored.out).receiptId,
+    JSON.parse(same[0].out.split("\n")[0]).receiptId,
+  );
+  assert.equal(
+    sql(`select paid_minor from public.lessons where id='${lesson}'`),
+    "2000",
+  );
+  assert.equal(
+    sql(
+      `select count(*) from lesson_ops.payment_receipts where studio_id='${studio}'`,
+    ),
+    "2",
+  );
   console.log(
     "Actual PostgreSQL payment races passed: observed same-key serialization, immutable replay, changed-payload rejection, one distinct-key winner, exact ledger/lesson totals, revoked coach denial; no notification effect.",
   );
