@@ -2,12 +2,49 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync } from "node:fs";
+import { createHash } from "node:crypto";
 assert.equal(process.env.CURRENT_PRODUCTION_ACCEPTANCE_LOCAL, "true");
-assert.equal(
-  process.argv.length,
-  2,
+assert.ok(
+  process.argv.length === 2 ||
+    (process.argv.length === 3 && process.argv[2] === "--verify-files-only"),
   "Remote targets and extra arguments are forbidden",
 );
+const manifest = JSON.parse(
+  readFileSync("docs/current-production-migrations.json", "utf8"),
+);
+assert.equal(manifest.commit, "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb");
+const versions = manifest.migrations.map((m) => m.version);
+assert.equal(versions.length, 71);
+assert.equal(versions.at(-1), "20261026161014");
+const files = readdirSync("supabase/migrations")
+  .filter((f) => f.endsWith(".sql"))
+  .sort();
+assert.deepEqual(
+  files.slice(0, versions.length),
+  manifest.migrations.map((m) => m.file),
+  "All71 filenames must match the audited Git prefix",
+);
+const digest = (bytes) => createHash("sha256").update(bytes).digest("hex");
+for (const item of manifest.migrations) {
+  assert.equal(item.file, `${item.version}_${item.name}.sql`);
+  const path = `supabase/migrations/${item.file}`;
+  assert.equal(
+    digest(execFileSync("git", ["show", `${manifest.commit}:${path}`])),
+    item.sha256,
+    `${path}: manifest must match the exact audited Git blob`,
+  );
+  assert.equal(
+    digest(readFileSync(path, "utf8").replaceAll("\r\n", "\n")),
+    item.sha256,
+    `${path}: candidate must preserve historical bytes`,
+  );
+}
+if (process.argv[2] === "--verify-files-only") {
+  console.log(
+    "All71 audited Git filenames and SHA256 checksums verified; no database operation executed. Hosted SQL contents are not asserted.",
+  );
+  process.exit(0);
+}
 const names = execFileSync(
   "docker",
   [
@@ -44,15 +81,6 @@ const query = (sql) =>
 const cli = (...args) =>
   execFileSync("npx", ["supabase", ...args], { stdio: "inherit" });
 assert.match(query("select version()"), /PostgreSQL 17\./);
-const manifest = JSON.parse(
-  readFileSync("docs/current-production-migrations.json", "utf8"),
-);
-const versions = manifest.migrations.map((m) => m.version);
-assert.equal(versions.length, 71);
-assert.equal(versions.at(-1), "20261026161014");
-const files = readdirSync("supabase/migrations")
-  .filter((f) => f.endsWith(".sql"))
-  .sort();
 assert.deepEqual(
   files.slice(0, versions.length).map((f) => f.split("_")[0]),
   versions,
@@ -73,6 +101,14 @@ const tables = JSON.parse(
     "select json_agg(format('%I.%I',n.nspname,c.relname) order by n.nspname,c.relname) from pg_class c join pg_namespace n on n.oid=c.relnamespace where c.relkind in ('r','p') and n.nspname in ('public','credit_internal','lesson_ops','workspace_internal','worker_internal','library_internal','discovery_internal')",
   ),
 );
+const quote = (value) => `'${value.replaceAll("'", "''")}'`;
+const columns = (table) =>
+  JSON.parse(
+    query(
+      `select json_agg(json_build_object('name',attname,'type',format_type(atttypid,atttypmod),'default',pg_get_expr(d.adbin,d.adrelid)) order by a.attnum) from pg_attribute a left join pg_attrdef d on d.adrelid=a.attrelid and d.adnum=a.attnum where a.attrelid=${quote(table)}::regclass and a.attnum>0 and not a.attisdropped`,
+    ),
+  );
+const baselineColumns = new Map(tables.map((table) => [table, columns(table)]));
 // Compare all original columns/rows, including owner IDs, outcomes, timestamps,
 // derived jobs, provider links, immutable receipts, authored work and accounting.
 const snapshot = () =>
@@ -81,13 +117,36 @@ const snapshot = () =>
       table,
       JSON.parse(
         query(
-          `select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text),'[]'::jsonb) from ${table} t`,
+          `select coalesce(jsonb_agg(original order by original::text),'[]'::jsonb) from (select (select jsonb_object_agg(k,to_jsonb(t)->k) from unnest(array[${baselineColumns
+            .get(table)
+            .map((c) => quote(c.name))
+            .join(",")}]) k) as original from ${table} t) original_rows`,
         ),
       ),
     ]),
   );
 const before = snapshot();
 cli("migration", "up", "--local");
+const addedColumns = [];
+for (const table of tables) {
+  const original = baselineColumns.get(table),
+    after = columns(table);
+  const names = new Set(original.map((c) => c.name));
+  assert.deepEqual(
+    after
+      .filter((c) => names.has(c.name))
+      .map(({ name, type }) => ({ name, type })),
+    original.map(({ name, type }) => ({ name, type })),
+    `${table}: original column names and types must survive`,
+  );
+  for (const column of after.filter((c) => !names.has(c.name)))
+    addedColumns.push({ table, ...column });
+}
+assert.deepEqual(
+  addedColumns,
+  manifest.expectedAddedOriginalTableColumns,
+  "New original-table columns/defaults require an explicit reviewed upgrade expectation",
+);
 assert.deepEqual(
   history(),
   files.map((f) => f.split("_")[0]),
