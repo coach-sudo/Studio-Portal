@@ -29,6 +29,8 @@ This isolated candidate assembles existing reviewed work into one compatible sou
 | 88  | 41a6ec66cae76910aaf5a2bade53e5958f3998cb | Related-profile interface                                                                                       |
 | 89  | 6dbc9db98d27e205520fad839e3003c836e4b9bc | Provider identity review and disabled-worker containment                                                        |
 
+Release A `ad8c819` (#70 + #72 + #76) is an additional shared source foundation; it remains releasable without C. Its semantic public colors, portable tests and patched toolchain are preserved. The coordinator documentation from `ac340b5` is included without changing its inventory claims.
+
 Seven existing additive migrations are present exactly once, ordered from worker observations (20261028041034) through identity groups (20261028230000). No migration file or RPC/hash contract is rewritten. Track B's scheduling/settlement migrations are not included here; the coordinator must validate any combined B/C source.
 
 ## Integration decisions and rollback
@@ -65,3 +67,9 @@ Application rollback cannot undo a committed accounting, identity or source deci
 6. Reconcile the approved synthetic records with a retention-safe plan; grouped identity history must be retained with its referenced profiles. Prove unrelated history was unchanged. Do not use existing cleanup as permission to erase private history.
 
 Before any production re-enablement, require exact candidate CI, successful controlled Calendar and Gmail outcomes with sanitized stage receipts, original intake-failure diagnosis/recovery, reviewed selected calendars/coverage, validated leases/fencing/idempotency, role isolation, independent provider-effect recovery, backlog/import scope approval, and a separately approved enablement/rollback window. An owner must explicitly authorize changing the flag. Successful HTTP dispatch alone satisfies none of these conditions.
+
+## Local assembled evidence
+
+The C assembly at `58017bb` passed 191 targeted cases in 19 files, plus 24 Chromium/WebKit fixture journeys (320, 390, 768 and 1440 pixels), with zero retries. These cover paginated discovery and partial-page recovery, original provider owner links and retained requests, profile grouping/reversal and role/account review holds, keyboard focus, overflow and axe A/AA checks. They use synthetic loopback services; they do not prove hosted roles, actual delivery or full canonical source-review acceptance. Original parent screenshots and color evidence were restored byte-for-byte after retaining current results under this directory. The final candidate includes A afterward, so its mandatory exact-source workflow reruns these three C suites and the A contrast suite once.
+
+Initial Windows format failures were line-ending-only: normalizing the 98 warned files produced no Git-filtered content changes. Forced TypeScript build, targeted changed-file lint (zero errors; 58 existing warnings), secret scanning and final format checks are recorded separately. Full schema/upgrade/concurrency CI and hosted acceptance remain pending; no parent test count is promoted to an assembled database pass.

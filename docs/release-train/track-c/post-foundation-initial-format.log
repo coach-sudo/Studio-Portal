@@ -1,0 +1,21 @@
+Checking formatting...
+[warn] .github/workflows/ci.yml
+[warn] docs/audit-booking-contrast.md
+[warn] docs/audit-contrast/evidence/computed-contrast.json
+[warn] docs/audit-remediation/acceptance-matrix.json
+[warn] docs/audit-remediation/register.json
+[warn] docs/audit-remediation/release-readiness.md
+[warn] docs/audit-test-portability.md
+[warn] docs/audit-toolchain-security.md
+[warn] docs/audit-toolchain/evidence/windows-npm-audit.json
+[warn] docs/audit-toolchain/evidence/windows-verification.json
+[warn] docs/release-train/README.md
+[warn] docs/release-train/inventory.json
+[warn] docs/release-train/track-a/README.md
+[warn] docs/release-train/track-a/evidence/npm-audit.json
+[warn] docs/release-train/track-a/evidence/verification.json
+[warn] e2e/audit-contrast-local/contrast.spec.ts
+[warn] e2e/audit-contrast-local/playwright.config.ts
+[warn] scripts/test-booking-timezones.mjs
+[warn] src/lib/branding.test.ts
+[warn] Code style issues found in 19 files. Run Prettier with --write to fix.
