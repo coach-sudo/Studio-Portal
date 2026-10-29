@@ -1,5 +1,9 @@
 /* Semantic aliases intentionally follow studio branding and portal appearance. */
 :root {
+  --on-forest: #ffffff;
+  --on-gold: #000000;
+  --on-coral: #000000;
+  --on-surface: #17211d;
   --muted: #526258;
   --space-1: 4px;
   --space-2: 8px;

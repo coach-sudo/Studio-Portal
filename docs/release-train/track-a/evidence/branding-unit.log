@@ -1,0 +1,9 @@
+
+ RUN  v4.1.12 C:/Users/dariu/.codex/worktrees/release-a-independent/studio-portal
+
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  01:23:04
+   Duration  19.42s (transform 60ms, setup 3.21s, import 19ms, tests 5ms, environment 15.52s)
+
