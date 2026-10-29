@@ -189,9 +189,11 @@ jobs:
           # otel 7.0.6 metadata exists but its npm tarball is unavailable (404).
           # Keep the established CLI and its previously verified otel 7.0.4,
           # scoped to this disposable CI runtime; application dependencies stay unchanged.
+          # @types/estree 1.0.10 also has metadata but no available tarball.
+          # Retain the verified 1.0.9 type package in this CLI sandbox only.
           cli_dir="$RUNNER_TEMP/netlify-cli"
           mkdir -p "$cli_dir"
-          printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4"}}' > "$cli_dir/package.json"
+          printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4","@types/estree":"1.0.9"}}' > "$cli_dir/package.json"
           npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
           export PATH="$cli_dir/node_modules/.bin:$PATH"
           npx tsx scripts/patch-netlify-dev-api-errors.ts
