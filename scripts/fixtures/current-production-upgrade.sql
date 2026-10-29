@@ -3,7 +3,10 @@ insert into auth.users(id,email) values('e1000000-0000-4000-8000-000000000002','
 insert into public.students(id,studio_id,full_name,email) values('e3000000-0000-4000-8000-000000000002','e2000000-0000-4000-8000-000000000001','Synthetic second original identity','e2e-current-upgrade-second@example.test');
 insert into public.linked_contacts(studio_id,student_id,user_id,full_name,email,can_view_finance,can_view_schedule,can_view_work) values('e2000000-0000-4000-8000-000000000001','e3000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','Synthetic original guardian','e2e-current-upgrade-guardian@example.test',true,true,true);
 insert into public.student_relationships(student_id,user_id,relationship,can_view_finance,can_view_schedule) values('e3000000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000002','guardian',true,true) on conflict(student_id,user_id) do nothing;
-insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider,google_event_id,payment_status,price_minor,paid_minor)
+-- fb2/current71 uses source_external_id (20260820184248), not google_event_id.
+-- The existing completed/paid lesson, attended participant and imported/ignored
+-- signals use their canonical enum/check values; original ownership is unchanged.
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider,source_external_id,payment_status,price_minor,paid_minor)
  values('e6000000-0000-4000-8000-000000000004','e2000000-0000-4000-8000-000000000001','e3000000-0000-4000-8000-000000000001','Original provider-linked completed lesson','2001-01-01T15:00:00Z','2001-01-01T16:00:00Z','completed','in_person','Original synthetic location','google_calendar','e2e-current-upgrade-completed','paid',6000,6000);
 insert into public.lesson_participants(lesson_id,student_id,display_name,email,status) values('e6000000-0000-4000-8000-000000000004','e3000000-0000-4000-8000-000000000001','Synthetic original owner','e2e-current-upgrade-student@example.test','attended');
 insert into public.payment_entries(student_id,kind,amount_minor,currency,external_reference,reason) values('e3000000-0000-4000-8000-000000000001','payment',6000,'USD','e2e-current-upgrade-payment','Original synthetic payment');
