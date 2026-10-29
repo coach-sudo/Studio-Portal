@@ -1,0 +1,209 @@
+{
+  "layer": "Windows loopback mocked-provider browser interaction; no hosted/provider execution",
+  "engines": ["chromium", "webkit"],
+  "widths": [320, 390, 768, 1440],
+  "runs": [
+    {
+      "name": "audit-discovery",
+      "stats": {
+        "startTime": "2026-10-29T05:27:00.788Z",
+        "duration": 42245.815,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceConfig": "C:\\Users\\dariu\\.codex\\worktrees\\release-c-integrations-identity\\studio-portal\\e2e\\audit-discovery-local\\playwright.config.ts"
+    },
+    {
+      "name": "audit-provider-identity",
+      "stats": {
+        "startTime": "2026-10-29T05:27:43.664Z",
+        "duration": 36540.333,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceConfig": "C:\\Users\\dariu\\.codex\\worktrees\\release-c-integrations-identity\\studio-portal\\e2e\\audit-provider-identity\\playwright.config.ts"
+    },
+    {
+      "name": "audit-identity",
+      "stats": {
+        "startTime": "2026-10-29T05:28:20.806Z",
+        "duration": 49603.840000000004,
+        "expected": 8,
+        "skipped": 0,
+        "unexpected": 0,
+        "flaky": 0
+      },
+      "sourceConfig": "C:\\Users\\dariu\\.codex\\worktrees\\release-c-integrations-identity\\studio-portal\\e2e\\audit-identity-local\\playwright.config.ts"
+    }
+  ],
+  "allScreenshots": [
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-chromium/discovery-create-1440.png",
+      "sha256": "61b7dd1201a97361ce61ddebb96bde6e16606b10606ca50761b96b73422dd91e"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-chromium/discovery-observations-1440.png",
+      "sha256": "596322e3b1c30c426340ec3e3e83d1b754c4a43abd5e697689ddc8b07b593aa8"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-chromium/discovery-partial-1440.png",
+      "sha256": "3c7654080cd1bb6a322e4d7ea17cb622d79fd30dcfff10c1082a00ba44df578b"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-chromium/discovery-saved-1440.png",
+      "sha256": "9f24a87466434db789f71d34d029d35da47465bc05dc868e3b15ec45fb9b4b63"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-webkit/discovery-create-1440.png",
+      "sha256": "28c3d588363139bc72c87e5f6a74ddda2ad74f698b88f408e307bb2b797e651f"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-webkit/discovery-observations-1440.png",
+      "sha256": "2b5ff2e3fdf713bf4901216a8af13f9331ac28933e23ca5bf7e21706f1ddd3a0"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-webkit/discovery-partial-1440.png",
+      "sha256": "59c35b43202edb050603ea01c10400c36478ca59e1badafa5f12b93e804456dc"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-1440-webkit/discovery-saved-1440.png",
+      "sha256": "b4293e32083ea5d799aa8541c72bccb5597eba29cad1784f732be57a810c851f"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-chromium/discovery-create-320.png",
+      "sha256": "8ce63607676ba00c3a4a4127189465e41691de0d4cf070a4a73a27bd5a1dab64"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-chromium/discovery-observations-320.png",
+      "sha256": "3ee982908d46d5ccd97aef37843504eb3e464380ac0f2a60a2a196dc7095796e"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-chromium/discovery-partial-320.png",
+      "sha256": "b9739705572e0684f7e03ed660bab2d47024da2eb069a23955b2acfcc9f0a866"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-chromium/discovery-saved-320.png",
+      "sha256": "0c821801a2744894a213dfac06cbe9cfc6f94aa514b5e1b03c14eb3f2c62a79f"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-webkit/discovery-create-320.png",
+      "sha256": "55db64e1745006609dfd65aca01f23a3d53be9112027fc045729994506d0d6ec"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-webkit/discovery-observations-320.png",
+      "sha256": "0fd252d5d4187d4411439b46c7a461bd8a1ef18ef24ef56996eb498c3d90ff16"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-webkit/discovery-partial-320.png",
+      "sha256": "00852c9e5b5434c553bb53f0cb4b8f830d1416780fc8792e75cda582bc63afd8"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-320-webkit/discovery-saved-320.png",
+      "sha256": "8adc42211d5adb453a34a5babe6e15b41fb4d229049287c5b4b7bea092657803"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-chromium/discovery-create-390.png",
+      "sha256": "1862074e649732901b87fc499c870050ecb1270c06affa34efdcdc546e542dfb"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-chromium/discovery-observations-390.png",
+      "sha256": "2d6d6890ac4298ef2d96155f9173221dbf32ddebe3e169d62f506a2088d4be14"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-chromium/discovery-partial-390.png",
+      "sha256": "46cc3004d6027d9aba39772ffd931180b166477a22fe4264a5c9d9d30a635a55"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-chromium/discovery-saved-390.png",
+      "sha256": "62b115a641738570ca1c4f645305547a44c4c93f72c09348cc8afda4b2521dde"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-webkit/discovery-create-390.png",
+      "sha256": "bf35d2ca0ec94905d03929f8aa0899cd5c8f3f6d58f1b3b462c9f4c8a7d8fe92"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-webkit/discovery-observations-390.png",
+      "sha256": "645f20c09a40f7f79d3e1f980981c508eb09807a79d651c5c315e35a3fe866f2"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-webkit/discovery-partial-390.png",
+      "sha256": "1959891b3b663ebdf9b072fd4f0b79ae31f589bb09355baffa77f877144f2fea"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-390-webkit/discovery-saved-390.png",
+      "sha256": "c7afabe34e88db27be915ecf35ca663b39d53967456c551e726b967cf81f5a0f"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-chromium/discovery-create-768.png",
+      "sha256": "466c136d3868c34b01a875760b0487244bc1c38c120659a5f644af5645daf72a"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-chromium/discovery-observations-768.png",
+      "sha256": "4bf80b6e2cd26acc929112ed1f8ee55532a3b21dd48966bb4bf2c1105d94911e"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-chromium/discovery-partial-768.png",
+      "sha256": "37c37c8ec1fe37af0b24090bc6810d977e1fc19b0fe4b76294cd4ce321feb0d9"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-chromium/discovery-saved-768.png",
+      "sha256": "84c77842a2d9d51e907d62cbc4e2db15ef648948904e97d234492e9943501f1f"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-webkit/discovery-create-768.png",
+      "sha256": "78fce0cdbb790b3fac149c45112ffd463dce89f38b98996913553836e32e63bc"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-webkit/discovery-observations-768.png",
+      "sha256": "0709b38013b88908489f760d92a4d5c3a28e84d5138d004daabca1e98cfb9127"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-webkit/discovery-partial-768.png",
+      "sha256": "3d607035e5d3f6763aa3e4d730b5576aba98235a2ad9bc051e36281ea3b71933"
+    },
+    {
+      "path": "test-results/audit-discovery/discovery-selected-calendar-preview-and-recovery-at-768-webkit/discovery-saved-768.png",
+      "sha256": "3cdc4171d665e8a540c83b30c084c35a592b77b296eb5eab1dc4e90c8d4145b7"
+    }
+  ],
+  "originalEvidenceRestoredFrom": "HEAD",
+  "restoredGeneratedPaths": [
+    "docs/audit-identity/evidence/chromium-colors-1440.json",
+    "docs/audit-identity/evidence/chromium-colors-320.json",
+    "docs/audit-identity/evidence/chromium-colors-390.json",
+    "docs/audit-identity/evidence/chromium-colors-768.json",
+    "docs/audit-identity/evidence/chromium-recovery-320.png",
+    "docs/audit-identity/evidence/webkit-colors-1440.json",
+    "docs/audit-identity/evidence/webkit-colors-320.json",
+    "docs/audit-identity/evidence/webkit-colors-390.json",
+    "docs/audit-identity/evidence/webkit-colors-768.json",
+    "docs/audit-provider-identity/evidence/chromium-1440-linked-hold.png",
+    "docs/audit-provider-identity/evidence/chromium-1440-recovery.png",
+    "docs/audit-provider-identity/evidence/chromium-1440-review.png",
+    "docs/audit-provider-identity/evidence/chromium-320-linked-hold.png",
+    "docs/audit-provider-identity/evidence/chromium-320-recovery.png",
+    "docs/audit-provider-identity/evidence/chromium-320-review.png",
+    "docs/audit-provider-identity/evidence/chromium-390-linked-hold.png",
+    "docs/audit-provider-identity/evidence/chromium-390-recovery.png",
+    "docs/audit-provider-identity/evidence/chromium-390-review.png",
+    "docs/audit-provider-identity/evidence/chromium-768-linked-hold.png",
+    "docs/audit-provider-identity/evidence/chromium-768-recovery.png",
+    "docs/audit-provider-identity/evidence/chromium-768-review.png",
+    "docs/audit-provider-identity/evidence/webkit-1440-linked-hold.png",
+    "docs/audit-provider-identity/evidence/webkit-1440-recovery.png",
+    "docs/audit-provider-identity/evidence/webkit-1440-review.png",
+    "docs/audit-provider-identity/evidence/webkit-320-linked-hold.png",
+    "docs/audit-provider-identity/evidence/webkit-320-recovery.png",
+    "docs/audit-provider-identity/evidence/webkit-320-review.png",
+    "docs/audit-provider-identity/evidence/webkit-390-linked-hold.png",
+    "docs/audit-provider-identity/evidence/webkit-390-recovery.png",
+    "docs/audit-provider-identity/evidence/webkit-390-review.png",
+    "docs/audit-provider-identity/evidence/webkit-768-linked-hold.png",
+    "docs/audit-provider-identity/evidence/webkit-768-recovery.png",
+    "docs/audit-provider-identity/evidence/webkit-768-review.png"
+  ]
+}

@@ -74,17 +74,27 @@ beforeEach(() => {
   f.writes.length = 0;
   vi.spyOn(console, "info").mockImplementation(() => {});
   vi.spyOn(console, "error").mockImplementation(() => {});
-  f.rpc.mockImplementation(() => {
-    const result = Promise.resolve({
-      data: null,
-      error: {
-        code: "P0001",
-        message:
-          "REVIEW_REQUIRED: synchronization_review_required; synthetic-private-message",
-      },
-    });
-    return Object.assign(result, { abortSignal: () => result });
-  });
+  f.rpc.mockImplementation(
+    (name: string, args: { p_events?: { id: string }[] }) => {
+      if (name === "observe_protected_calendar_sources")
+        return Promise.resolve({
+          data: args.p_events!.map((event) => ({
+            eventId: event.id,
+            state: "unprotected",
+          })),
+          error: null,
+        });
+      const result = Promise.resolve({
+        data: null,
+        error: {
+          code: "P0001",
+          message:
+            "REVIEW_REQUIRED: synchronization_review_required; synthetic-private-message",
+        },
+      });
+      return Object.assign(result, { abortSignal: () => result });
+    },
+  );
   vi.stubGlobal("Netlify", {
     env: {
       get: (key: string) =>
@@ -95,6 +105,8 @@ beforeEach(() => {
     "fetch",
     vi.fn(async (input: string | URL) => {
       const url = String(input);
+      if (url.includes("calendar/v3/calendars/") && !url.includes("/events"))
+        return Response.json({ id: "synthetic-canonical-calendar" });
       if (url.includes("calendar/v3/calendars/"))
         return Response.json({
           items: f.calendarFailure

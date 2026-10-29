@@ -393,20 +393,20 @@ export function StudioSettings({
         )}{" "}
         {panel === "integrations" && (
           <>
-          <Integrations
-            health={health}
-            onNotice={setNotice}
-            onRefresh={async () => {
-              const [next] = await Promise.all([
-                refreshHealth(),
-                invalidateStudioDomains(queryClient, [
-                  "identity",
-                  "administration",
-                ]),
-              ]);
-              return next;
-            }}
-          />
+            <Integrations
+              health={health}
+              onNotice={setNotice}
+              onRefresh={async () => {
+                const [next] = await Promise.all([
+                  refreshHealth(),
+                  invalidateStudioDomains(queryClient, [
+                    "identity",
+                    "administration",
+                  ]),
+                ]);
+                return next;
+              }}
+            />
             {!isDemo && <CalendarDiscovery timezone={data.settings.timezone} />}
           </>
         )}{" "}

@@ -102,9 +102,9 @@ reset role;
 select is((select status from public.bookings where id='e8300000-0000-4000-8000-000000000041'),'cancelled','Authorized booking cancellation commits');
 select is((select status::text from public.lessons where id='e8300000-0000-4000-8000-000000000042'),'cancelled','Authorized downstream lesson cancellation commits');
 select is((select jsonb_agg(to_jsonb(p) order by p.id) from public.payment_entries p where student_id='e8300000-0000-4000-8000-000000000004'),(select payments from source_history_before),'Booking cancellation does not mutate unrelated historical payment');
--- Exercise the existing authenticated profile merge, not a fabricated service
--- bypass. Its deliberate student reassociation retains canonical/source IDs and
--- every accounting value; observations themselves above remain byte-equivalent.
+-- The combined candidate uses the approved identity-preserving hold. The
+-- original baseline FK failure remains in PR #83 evidence and history; current
+-- legacy clients must not move canonical/source owners, with or without jobs.
 insert into public.students(id,studio_id,full_name,status) values('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000001','E2E retained profile','active');
 create temporary table source_merge_before as select
  (select jsonb_agg(to_jsonb(p)-'student_id' order by p.id) from public.payment_entries p where p.student_id='e8300000-0000-4000-8000-000000000004') payments,
@@ -115,21 +115,20 @@ select throws_ok($$update public.integration_imports set student_id='e8300000-00
 select set_config('request.jwt.claim.sub','e8300000-0000-4000-8000-000000000002',true);
 select throws_ok($$update public.integration_imports set student_id='e8300000-0000-4000-8000-000000000050' where id='e8300000-0000-4000-8000-000000000007'$$,'P0001','REVIEW_REQUIRED: Use the historical reconciliation command for this Calendar decision.','Coach association must agree with the canonical lesson or participant');
 set local role authenticated;
-select throws_ok($$select public.merge_studio_students('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000004')$$,'23503','update or delete on table "students" violates foreign key constraint "credit_coverage_jobs_student_id_fkey" on table "credit_coverage_jobs"','Retain newly discovered existing merge/recovery-job failure as a separate unresolved risk');
+select throws_ok($$select public.merge_studio_students('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000004')$$,'P0001','REVIEW_REQUIRED: Use the identity-preserving duplicate profile preview. Existing records and permissions have not moved.','Legacy physical merge is held before touching original records or recovery jobs');
 reset role;
 select is((select count(*) from public.students where id='e8300000-0000-4000-8000-000000000004'),1::bigint,'Existing merge failure rolls back the original student deletion');
 select is((select count(*) from credit_internal.credit_coverage_jobs where student_id='e8300000-0000-4000-8000-000000000004'),1::bigint,'Existing recovery intent survives the failed merge');
--- Isolate the new source guard from the independently reproduced baseline
--- merge defect. Remove only this rollback fixture's derived job, never a
--- canonical/financial record. Production merging with jobs remains blocked.
+-- Prove the legacy hold also applies without a derived recovery job. This
+-- deletion is confined to the rollback-only synthetic fixture.
 delete from credit_internal.credit_coverage_jobs where student_id='e8300000-0000-4000-8000-000000000004';
 set local role authenticated;
-select lives_ok($$select public.merge_studio_students('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000004')$$,'Authenticated coach merge without the existing recovery-job blocker remains compatible with source protection');
+select throws_ok($$select public.merge_studio_students('e8300000-0000-4000-8000-000000000050','e8300000-0000-4000-8000-000000000004')$$,'P0001','REVIEW_REQUIRED: Use the identity-preserving duplicate profile preview. Existing records and permissions have not moved.','Legacy physical merge remains held when no recovery job exists');
 reset role;
-select is((select count(*) from public.students where id='e8300000-0000-4000-8000-000000000004'),0::bigint,'Merged-away profile is removed by the existing command');
-select is((select student_id from public.lessons where id='e8300000-0000-4000-8000-000000000005'),'e8300000-0000-4000-8000-000000000050'::uuid,'Protected canonical lesson retains its identity under the keeper profile');
-select is((select student_id from public.integration_imports where id='e8300000-0000-4000-8000-000000000007'),'e8300000-0000-4000-8000-000000000050'::uuid,'Protected source follows the same canonical keeper');
-select is((select jsonb_agg(to_jsonb(p)-'student_id' order by p.id) from public.payment_entries p where p.student_id='e8300000-0000-4000-8000-000000000050'),(select payments from source_merge_before),'Existing merge preserves ledger IDs, amounts, reasons, references and creation time');
+select is((select count(*) from public.students where id='e8300000-0000-4000-8000-000000000004'),1::bigint,'Original profile remains intact after the held legacy request');
+select is((select student_id from public.lessons where id='e8300000-0000-4000-8000-000000000005'),'e8300000-0000-4000-8000-000000000004'::uuid,'Protected canonical lesson retains its original student owner');
+select is((select student_id from public.integration_imports where id='e8300000-0000-4000-8000-000000000007'),'e8300000-0000-4000-8000-000000000004'::uuid,'Protected source retains the original canonical student owner');
+select is((select jsonb_agg(to_jsonb(p)-'student_id' order by p.id) from public.payment_entries p where p.student_id='e8300000-0000-4000-8000-000000000004'),(select payments from source_merge_before),'Existing merge preserves ledger IDs, amounts, reasons, references and creation time');
 select is((select jsonb_agg(to_jsonb(d) order by d.id) from discovery_internal.source_decisions d where d.studio_id='e8300000-0000-4000-8000-000000000001'),(select decisions from source_merge_before),'Profile merge does not change historical source decisions');
 select is((select jsonb_agg(to_jsonb(i)-'student_id'-'updated_at' order by i.id) from public.integration_imports i where i.studio_id='e8300000-0000-4000-8000-000000000001'),(select imports from source_merge_before),'Profile merge preserves import source, link, payload and review outcome');
 select * from finish();

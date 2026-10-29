@@ -1,0 +1,10 @@
+{
+  "kind": "targeted_integration",
+  "total": 162,
+  "passed": 157,
+  "failed": 5,
+  "files": ["netlify/functions/_shared/provider-intake-outcomes.test.ts"],
+  "cause": "PR85 outcome fixture did not provide PR83 Calendar identity metadata/protection observation responses; it therefore failed closed before the intended synchronization fault.",
+  "change": "Explicit metadata/protection fixtures retain real source-protection code and original failure-category expectations.",
+  "runtimeChanged": false
+}

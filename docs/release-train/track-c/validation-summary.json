@@ -1,0 +1,100 @@
+{
+  "candidatePhase": "assembled source, final coordinator documentation and CI pending",
+  "targeted": {
+    "passed": 191,
+    "files": 19,
+    "failed": 0,
+    "originalFailurePreserved": "initial-integration-failures.json",
+    "providerLayer": "synthetic fault injection and authenticated-handler contracts, no real provider delivery"
+  },
+  "windowsBrowser": {
+    "passed": 24,
+    "failed": 0,
+    "retries": 0,
+    "engines": ["chromium", "webkit"],
+    "widths": [320, 390, 768, 1440],
+    "providerLayer": "loopback fixture only"
+  },
+  "typecheck": {
+    "command": "node node_modules/typescript/bin/tsc -b --pretty false --force",
+    "exitCode": 0
+  },
+  "changedLint": {
+    "errors": 0,
+    "warnings": 58,
+    "scope": [
+      "src/features/coach/StudioSettings.tsx",
+      "netlify/functions/_shared/provider-intake-outcomes.test.ts",
+      "netlify/functions/v2.ts"
+    ]
+  },
+  "secrets": {
+    "exitCode": 0
+  },
+  "migrations": [
+    {
+      "name": "20261028041034_worker_run_observations.sql",
+      "sha256": "4039145469a7fb445e9efa3ad16ae4a81ebe556b384be9232fceae29aa6ee663"
+    },
+    {
+      "name": "20261028051408_provider_attendance_separation.sql",
+      "sha256": "79f8f70b1096c0b62730550f2e7e4d9a4c407ebc1482b194026f55748e6103f0"
+    },
+    {
+      "name": "20261028131000_calendar_discovery_previews.sql",
+      "sha256": "2df8eabffe5f39847119b0b7b57c60229eea61162f36f540a225c939e7997e01"
+    },
+    {
+      "name": "20261028173500_historical_calendar_source_protection.sql",
+      "sha256": "d6258cba08f93219b19008389472c31febe0995b264df72eab4e8500dd5cc6fa"
+    },
+    {
+      "name": "20261028183000_historical_calendar_review_decisions.sql",
+      "sha256": "9cf97ffffcbaa11eba605a5156b61bbbca421cc6af5348cd9602542d6b1a8609"
+    },
+    {
+      "name": "20261028193000_historical_calendar_canonical_reconciliation.sql",
+      "sha256": "9bb22c16bc245240e749c69087403f4563e88198e1d4492ef299fcbbd94b76a3"
+    },
+    {
+      "name": "20261028230000_student_identity_groups.sql",
+      "sha256": "53146d0672b6857d2bea1d8251f82cdcb9938ebf8a76dc508334f876a461eafd"
+    }
+  ],
+  "unchangedMigrations": [
+    {
+      "name": "20261028041034_worker_run_observations.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028051408_provider_attendance_separation.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028131000_calendar_discovery_previews.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028173500_historical_calendar_source_protection.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028183000_historical_calendar_review_decisions.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028193000_historical_calendar_canonical_reconciliation.sql",
+      "unchangedFromParent": true
+    },
+    {
+      "name": "20261028230000_student_identity_groups.sql",
+      "unchangedFromParent": true
+    }
+  ],
+  "isolatedPostgreSQL": "NOT RUN on assembled candidate: coordinator final milestone required",
+  "fullCI": "NOT RUN on assembled candidate",
+  "hostedRoles": "NOT RUN",
+  "providerAcceptance": "NOT RUN",
+  "workerEnabled": false,
+  "workerFlagChanged": false
+}
