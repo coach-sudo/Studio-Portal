@@ -1,0 +1,19 @@
+[WebServer] (node:242228) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:223500) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\quality-local\quality.spec.ts:6:3 › coach: zoom reflow, short mobile sheet, keyboard and lazy viewer (7.7s)
+  ok 2 [chromium] › e2e\quality-local\quality.spec.ts:6:3 › student: zoom reflow, short mobile sheet, keyboard and lazy viewer (9.3s)
+  ok 3 [chromium] › e2e\quality-local\quality.spec.ts:6:3 › guardian: zoom reflow, short mobile sheet, keyboard and lazy viewer (9.2s)
+  ok 4 [chromium] › e2e\quality-local\quality.spec.ts:95:1 › provider change review requires the exact occurrence and keeps retries stable (2.8s)
+(node:45440) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 5 [webkit] › e2e\quality-local\quality.spec.ts:6:3 › coach: zoom reflow, short mobile sheet, keyboard and lazy viewer (11.5s)
+  ok 6 [webkit] › e2e\quality-local\quality.spec.ts:6:3 › student: zoom reflow, short mobile sheet, keyboard and lazy viewer (13.0s)
+  ok 7 [webkit] › e2e\quality-local\quality.spec.ts:6:3 › guardian: zoom reflow, short mobile sheet, keyboard and lazy viewer (13.1s)
+  ok 8 [webkit] › e2e\quality-local\quality.spec.ts:95:1 › provider change review requires the exact occurrence and keeps retries stable (2.6s)
+
+  8 passed (1.2m)
