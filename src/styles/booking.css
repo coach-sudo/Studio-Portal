@@ -75,13 +75,13 @@
 .booking-footer {
   padding: 38px max(24px, 5vw);
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .booking-footer p {
-  color: #bac8c1;
+  color: inherit;
   font-size: 12px;
 }
 .booking-flow {
@@ -92,11 +92,16 @@
 .booking-summary {
   padding: 70px clamp(28px, 6vw, 90px);
   background: var(--forest);
+  color: var(--on-forest);
+  border-radius: var(--radius-feature);
+  box-shadow: var(--app-shadow-card);
+  min-width: 0;
 }
 .booking-summary h1 {
   margin: 18px 0 12px;
-  font-size: clamp(38px, 5vw, 62px);
-  line-height: 1;
+  font-size: clamp(32px, 3.6vw, 48px);
+  line-height: 1.1;
+  overflow-wrap: anywhere;
   letter-spacing: -0.05em;
 }
 .booking-summary > p {
@@ -124,10 +129,11 @@
 .booking-step {
   padding: 34px clamp(22px, 6vw, 90px) 70px;
 }
-.booking-primary {
-  border-radius: 8px !important;
-  background: var(--gold) !important;
-  color: var(--ink) !important;
+.booking-public .booking-primary {
+  border-radius: 8px;
+  background: var(--gold);
+  color: var(--on-gold);
+  border-color: var(--gold);
   display: inline-flex !important;
   align-items: center;
   justify-content: center;
@@ -482,8 +488,8 @@
   height: 16px;
   padding: 0 3px;
   border-radius: 99px;
-  background: var(--sage);
-  color: white;
+  background: var(--forest);
+  color: var(--on-forest);
   display: grid;
   place-items: center;
   font-size: 8px;
@@ -718,25 +724,9 @@
     overflow-wrap: anywhere;
   }
 }
-.booking-summary,
-.booking-summary h1,
-.booking-summary > p,
-.booking-summary dl,
-.booking-summary .policy-note {
-  color: var(--ink);
-}
-.booking-summary p,
-.booking-summary dt {
-  color: var(--muted);
+.booking-summary :is(h1, p, dt, dd, span, small, strong, .policy-note svg) {
+  color: inherit;
   opacity: 1;
-}
-.booking-summary dd,
-.booking-summary span {
-  color: var(--ink);
-  opacity: 1;
-}
-.booking-summary p strong {
-  color: var(--ink);
 }
 @media (max-width: 768px) {
   .booking-step {
