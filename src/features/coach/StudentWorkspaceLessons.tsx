@@ -1,3 +1,4 @@
+import { LessonPaymentReceipt } from "../../components/LessonPaymentReceipt";
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { RecordUnavailable } from "../../components/RecordRoute";
@@ -231,15 +232,6 @@ function CoachLessonWorkspace({
     "details" | "reschedule" | "credits" | null
   >(null);
   const [actionBusy, setActionBusy] = useState("");
-  const [paymentStatus, setPaymentStatus] = useState<
-    NonNullable<Lesson["paymentStatus"]>
-  >(lesson?.paymentStatus || "untracked");
-  const [lessonPrice, setLessonPrice] = useState(
-    lesson?.priceMinor == null ? "" : String(lesson.priceMinor / 100),
-  );
-  const [lessonPaid, setLessonPaid] = useState(
-    String((lesson?.paidMinor || 0) / 100),
-  );
   if (!lesson || !belongsToStudent(data, lesson, student.id))
     return (
       <RecordUnavailable fallback={`/coach/students/${student.id}/lessons`} />
@@ -451,46 +443,6 @@ function CoachLessonWorkspace({
     } catch (reason) {
       setNotice(
         reason instanceof Error ? reason.message : "Credit could not be used.",
-      );
-    } finally {
-      setActionBusy("");
-    }
-  };
-  const savePaymentStatus = async () => {
-    if (actionBusy) return;
-    setActionBusy("payment");
-    const priceMinor =
-      lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
-    const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
-    try {
-      if (isDemo)
-        store.transact((draft) => {
-          const item = draft.lessons.find((row) => row.id === lesson.id);
-          if (item) {
-            item.paymentStatus = paymentStatus;
-            item.priceMinor = priceMinor;
-            item.paidMinor = paidMinor;
-            item.version += 1;
-            item.updatedAt = new Date().toISOString();
-          }
-        });
-      else {
-        await studioCommand("lessons", {
-          command: "set_payment_status",
-          entityId: lesson.id,
-          expectedVersion: lesson.version,
-          payload: { paymentStatus, priceMinor, paidMinor },
-          reason: "Coach updated lesson payment status",
-        });
-        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
-      }
-      setLessonAction(null);
-      setNotice("Lesson payment status saved.");
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Payment status could not be saved.",
       );
     } finally {
       setActionBusy("");
@@ -841,54 +793,18 @@ function CoachLessonWorkspace({
                   use it.
                 </p>
               ) : (
-                <div className="inline-command payment-status-command">
-                  <label>
-                    Status
-                    <select
-                      value={paymentStatus}
-                      onChange={(event) =>
-                        setPaymentStatus(
-                          event.target.value as typeof paymentStatus,
-                        )
-                      }
-                    >
-                      <option value="untracked">Not tracked</option>
-                      <option value="due">Due</option>
-                      <option value="partially_paid">Partially paid</option>
-                      <option value="paid">Paid</option>
-                      <option value="waived">Waived</option>
-                      <option value="refunded">Refunded</option>
-                    </select>
-                  </label>
-                  <label>
-                    Lesson price (USD)
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={lessonPrice}
-                      onChange={(event) => setLessonPrice(event.target.value)}
-                    />
-                  </label>
-                  <label>
-                    Amount paid (USD)
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={lessonPaid}
-                      onChange={(event) => setLessonPaid(event.target.value)}
-                    />
-                  </label>
-                  <button
-                    disabled={Boolean(actionBusy)}
-                    onClick={() => void savePaymentStatus()}
-                  >
-                    {actionBusy === "payment"
-                      ? "Saving…"
-                      : "Save payment status"}
-                  </button>
-                </div>
+                <LessonPaymentReceipt
+                  key={lesson.id}
+                  lessonId={lesson.id}
+                  isDemo={isDemo}
+                  onSaved={() =>
+                    invalidateStudioDomains(queryClient, [
+                      "lessons",
+                      "finance",
+                      "booking",
+                    ])
+                  }
+                />
               )}
             </section>
           </div>

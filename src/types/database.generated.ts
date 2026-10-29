@@ -5495,6 +5495,10 @@ export type Database = {
         Args: { p_cursor?: Json; p_lesson: string }
         Returns: Json
       }
+      lesson_payment_context: {
+        Args: { p_lesson: string }
+        Returns: Json
+      }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
@@ -5622,6 +5626,10 @@ export type Database = {
         Returns: Json
       }
       record_datetime_correction_review: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      record_lesson_payment: {
         Args: { p_key: string; p_value: Json }
         Returns: Json
       }

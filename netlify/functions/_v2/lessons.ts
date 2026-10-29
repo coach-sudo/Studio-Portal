@@ -1,3 +1,4 @@
+import { handleLessonPaymentCommands } from "./lesson-payments";
 import { queueLessonChangeEmails } from "../_shared/booking-email";
 import { googleAccessToken, googleFreeBusy } from "../_shared/google";
 import { json } from "../_shared/http";
@@ -11,6 +12,8 @@ export async function handleLessonsCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   const { audit, db, domain, id, input, requireCoach } = ctx;
+  const payment = await handleLessonPaymentCommands(ctx);
+  if (payment) return payment;
   const correction = await handleLessonDatetimeCorrections(ctx);
   if (correction) return correction;
   const bulk = await handleLessonBulkCommands(ctx);
@@ -109,13 +112,20 @@ export async function handleLessonsCommands(
       !studentId ||
       !startsAt ||
       !endsAt ||
-      !Number.isFinite(Date.parse(startsAt)) || !Number.isFinite(Date.parse(endsAt)) ||
+      !Number.isFinite(Date.parse(startsAt)) ||
+      !Number.isFinite(Date.parse(endsAt)) ||
       new Date(endsAt) <= new Date(startsAt)
     )
       throw new Error("VALIDATION_FAILED");
     const cadence = String(input.payload.recurrence || "none");
     const occurrenceCount = Number(input.payload.occurrenceCount || 1);
-    if (!["none","weekly","biweekly"].includes(cadence) || !Number.isInteger(occurrenceCount) || occurrenceCount < 1 || occurrenceCount > 52) throw new Error("VALIDATION_FAILED");
+    if (
+      !["none", "weekly", "biweekly"].includes(cadence) ||
+      !Number.isInteger(occurrenceCount) ||
+      occurrenceCount < 1 ||
+      occurrenceCount > 52
+    )
+      throw new Error("VALIDATION_FAILED");
     const value = {
       ...input.payload,
       studentId,
@@ -146,10 +156,30 @@ export async function handleLessonsCommands(
     if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
       const token = await googleAccessToken();
       const tz = String(input.payload.timezone || "America/New_York");
-      const starts = cadence === "none" ? [startsAt] : seriesDates(startsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
-      const ends = cadence === "none" ? [endsAt] : seriesDates(endsAt,cadence as "weekly"|"biweekly",occurrenceCount,tz);
-      for (let i=0;i<starts.length;i++)
-        if ((await googleFreeBusy(token,starts[i],ends[i])).length && !input.payload.allowConflict) throw new Error("SLOT_UNAVAILABLE");
+      const starts =
+        cadence === "none"
+          ? [startsAt]
+          : seriesDates(
+              startsAt,
+              cadence as "weekly" | "biweekly",
+              occurrenceCount,
+              tz,
+            );
+      const ends =
+        cadence === "none"
+          ? [endsAt]
+          : seriesDates(
+              endsAt,
+              cadence as "weekly" | "biweekly",
+              occurrenceCount,
+              tz,
+            );
+      for (let i = 0; i < starts.length; i++)
+        if (
+          (await googleFreeBusy(token, starts[i], ends[i])).length &&
+          !input.payload.allowConflict
+        )
+          throw new Error("SLOT_UNAVAILABLE");
     }
     const created = await db.rpc(
       "command_create_lesson_once" as never,
@@ -364,122 +394,6 @@ export async function handleLessonsCommands(
       ],
       correlationId: id,
     });
-  }
-
-  if (
-    domain === "lessons" &&
-    input.command === "set_payment_status" &&
-    input.entityId
-  ) {
-    const studioId = await requireCoach();
-    const allowed = new Set([
-      "untracked",
-      "due",
-      "partially_paid",
-      "paid",
-      "paid_by_credit",
-      "waived",
-      "refunded",
-    ]);
-    const paymentStatus = String(input.payload.paymentStatus || "");
-    const priceMinor =
-      input.payload.priceMinor == null
-        ? null
-        : Math.max(0, Math.round(Number(input.payload.priceMinor)));
-    const paidMinor = Math.max(
-      0,
-      Math.round(Number(input.payload.paidMinor || 0)),
-    );
-    if (
-      !allowed.has(paymentStatus) ||
-      (priceMinor != null && paidMinor > priceMinor)
-    )
-      throw new Error(
-        "VALIDATION_FAILED: Choose a valid payment status and amounts.",
-      );
-    const service = serviceClient();
-    const { data: before, error: readError } = await service
-      .from("lessons")
-      .select("*")
-      .eq("id", input.entityId)
-      .eq("studio_id", studioId)
-      .single();
-    if (readError || !before) throw new Error("FORBIDDEN");
-    if (before.invoice_id)
-      throw new Error(
-        "INVALID_TRANSITION: Record payments and credits through the linked invoice.",
-      );
-    if (before.student_id) {
-      const coverage = await service
-        .from("package_credit_entries")
-        .select("quantity,packages!inner(student_id)")
-        .eq("lesson_id", before.id)
-        .eq("packages.student_id", before.student_id);
-      if (coverage.error) throw coverage.error;
-      if (
-        (coverage.data ?? []).reduce(
-          (total: number, entry: { quantity: number }) =>
-            total + entry.quantity,
-          0,
-        ) < 0
-      )
-        throw new Error(
-          "INVALID_TRANSITION: A lesson credit is attached. Cancellation lets you return or use that credit.",
-        );
-    }
-    if (paymentStatus === "paid_by_credit")
-      throw new Error(
-        "VALIDATION_FAILED: Apply a lesson credit using the credit action.",
-      );
-    if (Number(before.version) !== Number(input.expectedVersion))
-      throw new Error("VERSION_CONFLICT");
-    const { data, error } = await service
-      .from("lessons")
-      .update({
-        payment_status: paymentStatus,
-        price_minor: priceMinor,
-        paid_minor: paidMinor,
-        version: Number(before.version) + 1,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", before.id)
-      .eq("version", input.expectedVersion)
-      .select()
-      .single();
-    if (error) throw error;
-    const { data: participant } = await service
-      .from("lesson_participants")
-      .select("booking_id")
-      .eq("lesson_id", before.id)
-      .not("booking_id", "is", null)
-      .limit(1)
-      .maybeSingle();
-    if (participant?.booking_id) {
-      const bookingStatus =
-        paymentStatus === "paid_by_credit" || paymentStatus === "waived"
-          ? "paid"
-          : paymentStatus === "untracked"
-            ? "due"
-            : paymentStatus;
-      await service
-        .from("bookings")
-        .update({
-          payment_status: bookingStatus,
-          ...(priceMinor == null ? {} : { total_minor: priceMinor }),
-          paid_minor: paidMinor,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", participant.booking_id);
-    }
-    const auditEventId = await audit(
-      studioId,
-      "lesson",
-      before.id,
-      "lesson.payment_status_changed",
-      before,
-      data,
-    );
-    return json({ resource: data, auditEventId, correlationId: id });
   }
 
   if (

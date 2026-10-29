@@ -1,5 +1,7 @@
 # Release B: scheduling and financial integrity
 
+Current continuation: [actual received-payment command and release gates](lesson-payment-command.md) supersedes the legacy payment-path implementation gap below with a draft transactional replacement. Its real PostgreSQL, concurrency, upgrade and exact-candidate CI remain mandatory pending gates. Earlier sections retain their original checkpoint provenance; they are not validation of the new command. The coordinator reported corrected 17307d8 Production checks40877191317 passed, including real PostgreSQL and concurrency, before this additional financial work.
+
 Preimplementation scope, 2026-10-29: preserve #82 ancestry (#71 → #73 → #77 → #78 → #82), merge #75 installment settlement and #81 complete-request/session isolation once. The branch owns no shared release register. Coach-visible changes are atomic booking, explicit historical recording, accurate timezone inputs, audited corrections and truthful overlap/recovery.
 
 Affected inventory: B03/B04/B06/B07/B08/B09/B10, C05/C06, D01/D03/D05/D06, E05/F05; X01/X02/X04/X05/X06/X08/X09/X13/X14/X19/X20. The complete original 19/42/20 register remains coordinator-owned. No workflow is promoted to end-to-end PASS here.
