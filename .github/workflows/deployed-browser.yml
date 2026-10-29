@@ -109,6 +109,10 @@ jobs:
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npx playwright install --with-deps chromium
+      - name: Check discovery preview and recovery in Chromium and WebKit
+        run: |
+          npx playwright install --with-deps webkit
+          npx playwright test --config e2e/audit-discovery-local/playwright.config.ts
       - name: Start free ephemeral Supabase
         if: env.USE_EPHEMERAL_STACK == 'true'
         shell: bash

@@ -1,0 +1,49 @@
+.calendar-discovery-dialog
+  :is(form, article, fieldset, p, strong, small, label) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.calendar-discovery-dialog button {
+  min-height: 44px;
+  max-width: 100%;
+}
+.calendar-discovery-dialog input,
+.calendar-discovery-dialog select {
+  min-width: 0;
+  max-width: 100%;
+}
+.calendar-discovery-dialog input[type="checkbox"] {
+  width: 18px;
+  min-width: 18px;
+}
+.calendar-discovery-dialog .workflow-form > .full {
+  grid-column: 1 / -1;
+}
+.calendar-discovery-dialog .workflow-form {
+  gap: 12px;
+}
+.calendar-discovery-dialog .workflow-form > p {
+  margin: 0;
+}
+.workflow-dialog.calendar-discovery-dialog > .discovery-navigation {
+  padding-block: 12px;
+  gap: 8px;
+}
+.discovery-calendar-options {
+  padding: 12px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.discovery-calendar-options label {
+  min-height: 44px;
+  padding: 10px;
+}
+.discovery-sources > article,
+.discovery-candidate {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.discovery-sources small {
+  display: block;
+}

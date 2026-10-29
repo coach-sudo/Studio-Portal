@@ -1,0 +1,11 @@
+import { test, expect } from "@playwright/test";
+import { installFixture } from "../../e2e/candidate-local/fixture";
+for (const width of [320, 390, 768, 1440])
+  test(`Connections before discovery interface at ${width}`, async ({ page, context }, info) => {
+    await page.setViewportSize({ width, height: 1000 });
+    await installFixture(context, "coach");
+    await page.goto("/coach/settings?panel=integrations");
+    await expect(page.getByRole("heading", { name: "Settings", exact: true })).toBeVisible({ timeout: 20000 });
+    await expect(page.getByRole("button", { name: "Calendar discovery previews", exact: true })).toHaveCount(0);
+    await page.screenshot({ path: info.outputPath(`before-connections-${width}.png`), fullPage: false });
+  });
