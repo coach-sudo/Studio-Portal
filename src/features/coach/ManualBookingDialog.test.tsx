@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ManualBookingDialog } from "./BookingOverview";
 import { demoSnapshot } from "../../data/demo";
 const mock = vi.hoisted(() => ({ preview: vi.fn() }));
@@ -7,7 +7,14 @@ vi.mock("../../data/bookingCommands", async (original) => ({
   ...(await original<typeof import("../../data/bookingCommands")>()),
   inspectSchedulingConflicts: mock.preview,
 }));
-afterEach(() => vi.clearAllMocks());
+// Keep the default future time outside a repeated DST hour on every run date.
+beforeEach(() => {
+  vi.spyOn(Date, "now").mockReturnValue(Date.parse("2026-10-27T12:00:00Z"));
+});
+afterEach(() => {
+  vi.clearAllMocks();
+  vi.restoreAllMocks();
+});
 it("retries an unchanged failed response with the same key before another conflict preview", async () => {
   mock.preview.mockResolvedValue({
     conflicts: [],

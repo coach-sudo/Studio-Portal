@@ -551,6 +551,16 @@ export default async (request: Request, context: Context) => {
       return json({ resource: data });
     }
 
+    if (
+      resource === "bookings" &&
+      ["create", "update", "delete"].includes(body.command)
+    )
+      throw new AppError("VALIDATION_FAILED", {
+        status: 422,
+        message:
+          "Use a reviewed booking action. Direct booking changes cannot bypass lesson, payment and audit safeguards.",
+      });
+
     if (!body.payload)
       throw new Error("VALIDATION_FAILED: payload is required.");
     if (resource === "services") {

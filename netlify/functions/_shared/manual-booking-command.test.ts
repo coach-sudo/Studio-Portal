@@ -168,3 +168,28 @@ it("reports configured Google outage without claiming checks passed", async () =
   );
   expect(state.rpc).toHaveBeenCalledTimes(1);
 });
+
+it.each(["create", "update", "delete"])(
+  "rejects generic booking %s before fragmented writes",
+  async (command) => {
+    const result = await handler(
+      new Request("https://example.test/api/v2/admin/booking/bookings", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          command,
+          id: "e2900000-0000-4000-8000-000000000001",
+          expectedVersion: 1,
+          payload: { payment_status: "paid", paid_minor: 6000 },
+        }),
+      }),
+      {
+        params: { resource: "bookings" },
+        requestId: "synthetic-bypass",
+      } as never,
+    );
+    expect(result.status).toBe(422);
+    expect((await result.json()).message).toMatch(/reviewed booking action/);
+    expect(state.rpc).not.toHaveBeenCalled();
+  },
+);
