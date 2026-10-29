@@ -31,6 +31,19 @@ insert into public.student_relationships(student_id,user_id,relationship,can_vie
 insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values
  ('e2900000-0000-4000-8000-000000000012','e2900000-0000-4000-8000-000000000010','e2e-boundary','E2E boundary coaching','private',60,6000);
 
+-- Exercise actual service DML, not only catalog privileges. This unconfirmed
+-- synthetic hold has no lesson, ledger or provider side effect and is removed
+-- before the canonical actor/role checks below. The outer transaction rolls back.
+set local role service_role;
+select lives_ok($$insert into public.bookings(id,studio_id,reference,service_id,student_id,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,paid_minor,currency,policy_snapshot,manage_token_hash)
+ values('e2900000-0000-4000-8000-000000000022','e2900000-0000-4000-8000-000000000010','E2E-SERVICE-BOUNDARY','e2900000-0000-4000-8000-000000000012','e2900000-0000-4000-8000-000000000011','E2E service boundary','e2e-boundary-service@example.test','2031-01-16T15:00:00Z','2031-01-16T16:00:00Z','America/New_York','in_person','held','pay_later','due',6000,0,'USD','{}','e2e-boundary-service-token')$$,'Service role can create a pending booking after caller write revocation');
+select is((select guest_name from public.bookings where id='e2900000-0000-4000-8000-000000000022'),'E2E service boundary','Service role can read the inserted booking');
+select lives_ok($$update public.bookings set guest_name='E2E service boundary updated' where id='e2900000-0000-4000-8000-000000000022'$$,'Service role can update a pending booking');
+select is((select guest_name from public.bookings where id='e2900000-0000-4000-8000-000000000022'),'E2E service boundary updated','Service update affected the intended synthetic row');
+select lives_ok($$delete from public.bookings where id='e2900000-0000-4000-8000-000000000022'$$,'Service role can remove its unconfirmed synthetic hold');
+select is((select count(*) from public.bookings where id='e2900000-0000-4000-8000-000000000022'),0::bigint,'Synthetic service DML leaves no extra booking');
+reset role;
+
 set local role authenticated;
 select set_config('request.jwt.claim.sub','e2900000-0000-4000-8000-000000000001',true);
 select throws_ok($$insert into public.bookings default values$$,'42501','permission denied for table bookings','Direct coach insert is denied before fragmented records can appear');

@@ -75,8 +75,8 @@
     "source": "fbba65bc34c32756143fd5b73af897064986c7b5"
   },
   "database": {
-    "newBoundaryAssertions": 28,
-    "actualPostgreSQLOnThisAssembly": "pending coordinator exact-candidate CI",
+    "newBoundaryAssertions": 34,
+    "actualPostgreSQLOnThisAssembly": "Initial7d9ffab run failed serviceprivilege assertion; corrected service-only grant and6 operation assertions pending exact CI",
     "priorIndependentEvidence": "retained in original draft branches; not asserted as assembly proof"
   },
   "knownFailures": [
@@ -140,6 +140,41 @@
     ],
     "forcedPrivateCacheTypecheck": "passed",
     "changedFileLint": "passed;zero output",
-    "review": "Independent review identified the defect; the coordinator completed guard review/tests after worker usage interruption. No second-agent approval is inferred."
+    "review": "Independent review identified the defect; the coordinator completed guard review/tests after worker usage interruption. No second-agent approval is inferred.",
+    "independentReview": {
+      "source": "7d9ffab0fada17329ee8d81456c212bf56f90313",
+      "reviewer": "Agent C",
+      "result": "No actionable guard issue found in bounded source review",
+      "releaseApproval": false
+    }
+  },
+  "serviceGrantCorrection": {
+    "sourceParent": "7d9ffab0fada17329ee8d81456c212bf56f90313",
+    "initialRun": "40875879115",
+    "initialRunUrl": "https://github.com/coach-sudo/Studio-Portal/actions/runs/40875879115",
+    "initialPostgres": {
+      "passed": 484,
+      "total": 485,
+      "files": 19,
+      "boundaryPassed": 27,
+      "boundaryTotal": 28,
+      "failedAssertion": 10,
+      "failedMessage": "Existing service mutation authority remains",
+      "laterConcurrencyScripts": "not executed after failing pgTAP step"
+    },
+    "cause": "Replay lacks explicit service_role booking table CRUD; BYPASSRLS is not a table grant; PUBLIC-inheritance cause not proven.",
+    "correction": "GRANT SELECT,INSERT,UPDATE,DELETE ON TABLE public.bookings TO service_role",
+    "preserves": [
+      "PUBLIC/anon/authenticated I/U/D/TRUNCATE denial",
+      "RLS and scoped SELECT policy",
+      "all original28 assertions",
+      "existing definer command authorization",
+      "unrelated table grants"
+    ],
+    "newActualServiceOperationAssertions": 6,
+    "totalBoundaryAssertions": 34,
+    "correctedDatabaseExecution": "pending",
+    "productionChanges": [],
+    "coordinatorReview": "Completed bounded source review: narrow service CRUD grant and six synthetic held-booking operation assertions preserve original28 assertions; local commit/freeze approved, no release approval."
   }
 }
