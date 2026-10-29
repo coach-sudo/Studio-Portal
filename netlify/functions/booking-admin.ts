@@ -73,18 +73,42 @@ export default async (request: Request, context: Context) => {
       );
     const body = bookingAdminCommandSchema.parse(await request.json());
 
+    // Verify the actor, not a coach row that RLS also makes visible.
+    const { data: auth, error: authError } = await db.auth.getUser();
+    if (authError || !auth.user)
+      throw new AppError("AUTHENTICATION_REQUIRED", {
+        status: 401,
+        message: "Sign in as the coach to manage bookings.",
+      });
+    const actorId = auth.user.id;
+    const coachMembership = async (studioId?: string) => {
+      let query = db
+        .from("memberships")
+        .select("studio_id")
+        .eq("user_id", actorId)
+        .eq("role", "coach");
+      if (studioId) query = query.eq("studio_id", studioId);
+      const { data, error } = await query.limit(1).single();
+      if (
+        error ||
+        !data ||
+        !data.studio_id ||
+        (studioId && data.studio_id !== studioId)
+      )
+        throw AppError.forbidden(error);
+      return data;
+    };
+    const requireTargetCoach = async (studioId: unknown) => {
+      if (typeof studioId !== "string" || !studioId) throw AppError.forbidden();
+      await coachMembership(studioId);
+    };
+    const membership = await coachMembership();
+
     if (
       resource === "bookings" &&
       body.command === "check_conflicts" &&
       body.payload
     ) {
-      const { data: membership, error: membershipError } = await db
-        .from("memberships")
-        .select("studio_id")
-        .eq("role", "coach")
-        .limit(1)
-        .single();
-      if (membershipError || !membership) throw new Error("FORBIDDEN");
       const startsAt = new Date(String(body.payload.starts_at || ""));
       const endsAt = new Date(String(body.payload.ends_at || ""));
       if (
@@ -168,13 +192,6 @@ export default async (request: Request, context: Context) => {
           message:
             "A stable booking request key is required. Reopen the booking form.",
         });
-      const { data: membership, error: membershipError } = await db
-        .from("memberships")
-        .select("studio_id")
-        .eq("role", "coach")
-        .limit(1)
-        .single();
-      if (membershipError || !membership) throw new Error("FORBIDDEN");
       const replay = await db.rpc("manual_booking_replay", {
         p_key: key,
         p_value: body.payload,
@@ -273,6 +290,7 @@ export default async (request: Request, context: Context) => {
         .eq("id", body.id)
         .single();
       if (offeringError || !offering) throw new Error("FORBIDDEN");
+      await requireTargetCoach(offering.studio_id);
       if (offering.version !== body.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${body.expectedVersion}`);
       const { count } = await db
@@ -319,6 +337,7 @@ export default async (request: Request, context: Context) => {
         .eq("id", body.id)
         .single();
       if (visibleError || !visible) throw new Error("FORBIDDEN");
+      await requireTargetCoach(visible.studio_id);
       if (visible.version !== body.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${body.expectedVersion}`);
       if (visible.location !== "in_person")
@@ -384,6 +403,7 @@ export default async (request: Request, context: Context) => {
         .eq("id", body.id)
         .single();
       if (visibleError || !visible) throw new Error("FORBIDDEN");
+      await requireTargetCoach(visible.studio_id);
       if (!body.expectedVersion || visible.version !== body.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${body.expectedVersion ?? 0}`);
       if (body.command === "cancel" && visible.status !== "confirmed")
@@ -477,6 +497,7 @@ export default async (request: Request, context: Context) => {
         .eq("id", body.id)
         .single();
       if (visibleError || !visible) throw new Error("FORBIDDEN");
+      await requireTargetCoach(visible.studio_id);
       if (visible.version !== body.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${body.expectedVersion}`);
       const next = String(body.payload.status);

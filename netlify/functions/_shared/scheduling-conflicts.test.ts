@@ -16,6 +16,12 @@ const fixture = vi.hoisted(() => ({
 }));
 vi.mock("./supabase", () => ({
   userClient: () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: "synthetic-coach" } },
+        error: null,
+      }),
+    },
     from: (table: string) => {
       const q: Record<string, unknown> = {};
       for (const method of ["eq", "limit", "in", "lt", "gt"])

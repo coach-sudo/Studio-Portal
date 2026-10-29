@@ -9,6 +9,12 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("./supabase", () => ({
   userClient: () => ({
+    auth: {
+      getUser: async () => ({
+        data: { user: { id: "synthetic-coach" } },
+        error: null,
+      }),
+    },
     rpc: state.rpc,
     from: (table: string) => {
       const q: Record<string, unknown> = {};

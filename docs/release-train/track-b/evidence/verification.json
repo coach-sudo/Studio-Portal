@@ -109,5 +109,37 @@
     "normalizedFiles": 804,
     "refreshedOnlyAfterGitBlobEquality": 804,
     "unrelatedContentChanges": 0
+  },
+  "authorityPatch": {
+    "observedAt": "2026-10-29T12:44:10.783Z",
+    "newRoleCases": 36,
+    "combinedTargetedCases": 59,
+    "files": 3,
+    "failed": 0,
+    "layer": "mock-handler authorization; actual PostgreSQL and hosted role acceptance remain separate",
+    "verifiedActor": true,
+    "targetStudioBound": true,
+    "deniedRoles": [
+      "student",
+      "guardian",
+      "unrelated",
+      "coach of another studio",
+      "invalid/absent actor"
+    ],
+    "denialPrevents": [
+      "service client construction",
+      "Stripe/refund/subscription effects",
+      "Google reads"
+    ],
+    "supportedCoachCommands": [
+      "confirm_location",
+      "cancel",
+      "refund",
+      "series status",
+      "offering delete"
+    ],
+    "forcedPrivateCacheTypecheck": "passed",
+    "changedFileLint": "passed;zero output",
+    "review": "Independent review identified the defect; the coordinator completed guard review/tests after worker usage interruption. No second-agent approval is inferred."
   }
 }
