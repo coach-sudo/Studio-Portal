@@ -83,11 +83,13 @@ export function DiscoveryProgressView({
   onRead,
   onRefresh,
   onMore,
+  onReview,
 }: {
   data: DiscoveryProgress;
   busy: boolean;
   pending: ReadonlySet<string>;
   onRead: Dispatch<DiscoveryProgress["sources"][number]>;
+  onReview?: Dispatch<DiscoveryCandidate>;
   onRefresh: () => void;
   onMore: () => void;
 }) {
@@ -174,6 +176,15 @@ export function DiscoveryProgressView({
             )?.label || item.calendarId}
           </small>
           <Candidate item={item} timezone={data.timezone} />
+          {onReview && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onReview(item)}
+            >
+              Review source: {item.summary}
+            </button>
+          )}
         </div>
       ))}
       {!data.total && (

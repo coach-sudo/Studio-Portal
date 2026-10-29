@@ -23,6 +23,7 @@ export default defineConfig({
     "**/audit-identity-local/**",
     "**/audit-provider-identity/**",
     "**/audit-discovery-local/**",
+    "**/identity-connected/**",
     "**/audit-contrast-local/**",
   ],
   outputDir: "test-results/artifacts",

@@ -6,28 +6,40 @@ import {
   identityReceiptSchema,
   type IdentityProposal,
 } from "../domain/studentIdentity";
-export async function previewStudentIdentity(proposal: IdentityProposal) {
+export async function previewStudentIdentity(
+  proposal: IdentityProposal,
+  actorId?: string,
+) {
   const value = identityProposalSchema.parse(proposal);
-  const result = await studioCommand("students", {
-    command: "preview_identity_change",
-    expectedVersion: 0,
-    reason: value.reason,
-    payload: { proposal: value },
-  });
+  const result = await studioCommand(
+    "students",
+    {
+      command: "preview_identity_change",
+      expectedVersion: 0,
+      reason: value.reason,
+      payload: { proposal: value },
+    },
+    actorId,
+  );
   return identityPreviewSchema.parse(result.resource);
 }
 export async function saveStudentIdentity(
   proposal: IdentityProposal,
   stamp: string,
   key: string,
+  actorId?: string,
 ) {
-  const result = await studioCommand("students", {
-    command: "identity_change",
-    expectedVersion: 0,
-    idempotencyKey: key,
-    reason: proposal.reason,
-    payload: { proposal, stamp },
-  });
+  const result = await studioCommand(
+    "students",
+    {
+      command: "identity_change",
+      expectedVersion: 0,
+      idempotencyKey: key,
+      reason: proposal.reason,
+      payload: { proposal, stamp },
+    },
+    actorId,
+  );
   return identityReceiptSchema.parse(result);
 }
 export async function loadStudentIdentity(

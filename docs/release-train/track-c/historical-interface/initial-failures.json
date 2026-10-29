@@ -1,0 +1,28 @@
+{
+  "unit": [
+    {
+      "failed": 2,
+      "cause": "Native required repeated-hour selector prevented submission; unchanged reason text did not fire an edit. Test expectations corrected; UI behavior was correct."
+    }
+  ],
+  "browser": [
+    {
+      "failed": 1,
+      "cause": "Native select locator used label matching instead of its accessible combobox name."
+    },
+    {
+      "failed": 2,
+      "cause": "Test retained a locator with the old dialog title after changing views."
+    },
+    {
+      "failed": 8,
+      "cause": "Playwright toBeDisabled on native option reported enabled despite disabled HTML attribute; assertion now checks the native disabled attribute. No application guard was weakened."
+    }
+  ],
+  "typecheck": [
+    {
+      "cause": "New test helper supplied unsupported exact option to Testing Library getByRole; helper corrected."
+    }
+  ],
+  "productFailuresProvenByTheseIterations": 0
+}

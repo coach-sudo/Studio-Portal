@@ -4,6 +4,9 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { StudentIdentityDialog, StudentIdentityLinks } from "./StudentIdentity";
 import { ApiClientError } from "../../data/apiClientError";
+vi.mock("../../data/reviewActor", () => ({
+  captureReviewActor: () => Promise.resolve("original-coach"),
+}));
 const f = vi.hoisted(() => ({
   preview: vi.fn(),
   save: vi.fn(),
@@ -116,10 +119,14 @@ it("invalidates a review when the coach changes a selection or reason", async ()
   ).toBeNull();
   expect(f.save).not.toHaveBeenCalled();
 });
-it("retains input after a confirmed stale-preview rejection", async () => {
+it("retains input after a confirmed validation rejection", async () => {
   f.save.mockRejectedValueOnce(
     new ApiClientError(
-      { code: "VERSION_CONFLICT", message: "Refresh review", retryable: false },
+      {
+        code: "VALIDATION_FAILED",
+        message: "Refresh review",
+        retryable: false,
+      },
       409,
     ),
   );
@@ -234,4 +241,81 @@ it("a related-group read failure offers recovery instead of an empty success", a
   await waitFor(() =>
     expect(screen.getByRole("link", { name: "Alex Current" })).toBeVisible(),
   );
+});
+
+it("retains the original actor and review after a changed-session no-fetch rejection", async () => {
+  f.save.mockRejectedValueOnce(
+    Error(
+      "The signed-in account changed. Return to the original account to recover this change.",
+    ),
+  );
+  dialog();
+  const user = await review();
+  expect(f.preview.mock.calls[0][1]).toBe("original-coach");
+  await user.click(
+    screen.getByRole("button", { name: "Confirm profile links" }),
+  );
+  await screen.findByText(/signed-in account changed/);
+  expect(screen.getByLabelText("Reason")).toBeDisabled();
+  expect(f.save.mock.calls[0][3]).toBe("original-coach");
+  await user.click(screen.getByRole("button", { name: "Retry saved request" }));
+  await screen.findByText(/Profiles linked\./);
+  expect(f.save.mock.calls[1]).toEqual(f.save.mock.calls[0]);
+  expect(f.preview).toHaveBeenCalledOnce();
+});
+
+it.each(["FORBIDDEN", "IDEMPOTENCY_CONFLICT", "VERSION_CONFLICT"])(
+  "retains an unknown identity attempt through %s and recovers the original receipt",
+  async (code) => {
+    f.save
+      .mockRejectedValueOnce(Error("Response lost"))
+      .mockRejectedValueOnce(
+        new ApiClientError(
+          { code, message: "Original receipt recovery held", retryable: false },
+          409,
+        ),
+      );
+    dialog();
+    const user = await review();
+    await user.click(
+      screen.getByRole("button", { name: "Confirm profile links" }),
+    );
+    await screen.findByRole("button", { name: "Retry saved request" });
+    await user.click(
+      screen.getByRole("button", { name: "Retry saved request" }),
+    );
+    await screen.findByText("Original receipt recovery held");
+    expect(screen.getByLabelText("Reason")).toBeDisabled();
+    await user.click(
+      screen.getByRole("button", { name: "Retry saved request" }),
+    );
+    await screen.findByText(/Profiles linked\./);
+    expect(f.save.mock.calls[1]).toEqual(f.save.mock.calls[0]);
+    expect(f.save.mock.calls[2]).toEqual(f.save.mock.calls[0]);
+    expect(f.preview).toHaveBeenCalledOnce();
+  },
+);
+
+it("holds a first conflated version/key conflict without issuing a new identity request", async () => {
+  f.save.mockRejectedValueOnce(
+    new ApiClientError(
+      {
+        code: "VERSION_CONFLICT",
+        message: "Conflicting retained request",
+        retryable: false,
+      },
+      409,
+    ),
+  );
+  dialog();
+  const user = await review();
+  await user.click(
+    screen.getByRole("button", { name: "Confirm profile links" }),
+  );
+  await screen.findByText("Conflicting retained request");
+  expect(screen.getByLabelText("Reason")).toBeDisabled();
+  await user.click(screen.getByRole("button", { name: "Retry saved request" }));
+  await screen.findByText(/Profiles linked\./);
+  expect(f.save.mock.calls[1]).toEqual(f.save.mock.calls[0]);
+  expect(f.preview).toHaveBeenCalledOnce();
 });

@@ -57,6 +57,7 @@
     "src/domain/paymentReminder.ts",
     "src/security/e2eSafety.ts",
     "src/security/hostedAcceptance.ts",
-    "src/security/candidateAcceptance.ts"
+    "src/security/candidateAcceptance.ts",
+    "src/domain/historicalCalendarReview.ts"
   ]
 }

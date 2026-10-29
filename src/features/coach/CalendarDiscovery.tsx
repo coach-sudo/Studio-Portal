@@ -18,6 +18,7 @@ import {
 import type {
   AccessibleCalendar,
   DiscoveryPageRequest,
+  DiscoveryCandidate,
   DiscoveryProgress,
   SavedDiscoveries,
 } from "../../domain/calendarDiscovery";
@@ -28,15 +29,27 @@ import {
   SavedDiscoveryView,
 } from "./CalendarDiscoveryViews";
 import "./CalendarDiscovery.css";
+import { useHistoricalCalendarReview } from "./useHistoricalCalendarReview";
+import { HistoricalCalendarReview } from "./HistoricalCalendarReview";
 
 const errorText = (error: unknown) =>
   error instanceof Error
     ? error.message
     : "The preview could not be updated. Your input and saved progress are retained.";
-export function CalendarDiscovery({ timezone }: { timezone: string }) {
+export function CalendarDiscovery({
+  timezone,
+  onChanged,
+}: {
+  timezone: string;
+  onChanged?: () => Promise<void>;
+}) {
+  const review = useHistoricalCalendarReview(timezone, onChanged),
+    opener = useRef<HTMLButtonElement | null>(null);
   const id = useId(),
     [open, setOpen] = useState(false),
-    [view, setView] = useState<"create" | "progress" | "saved">("create");
+    [view, setView] = useState<"create" | "progress" | "saved" | "review">(
+      "create",
+    );
   const [from, setFrom] = useState(""),
     [to, setTo] = useState(""),
     [fromFold, setFromFold] = useState(""),
@@ -123,10 +136,12 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
   };
   const show = (event: MouseEvent<HTMLButtonElement>, next: typeof view) => {
     event.currentTarget.focus();
-    setView(next);
+    opener.current = event.currentTarget;
+    setView(review.pending ? "review" : next);
     setOpen(true);
     setError("");
-    if (next === "saved") void perform("history", () => readSaved());
+    if (next === "saved" && !review.pending)
+      void perform("history", () => readSaved());
   };
   const loadCalendars = (cursor?: string) =>
     void perform("calendars", async () => {
@@ -278,7 +293,16 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
       <div className="form-actions">
         <button
           type="button"
-          onClick={(e) => show(e, scanId ? "progress" : "create")}
+          onClick={(e) =>
+            show(
+              e,
+              view === "review" && review.candidate
+                ? "review"
+                : scanId
+                  ? "progress"
+                  : "create",
+            )
+          }
         >
           Calendar discovery previews
         </button>
@@ -293,12 +317,17 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
           title={
             view === "create"
               ? "Preview Calendar events"
-              : view === "progress"
-                ? "Calendar preview progress"
-                : "Saved Calendar previews"
+              : view === "review"
+                ? "Review Calendar source"
+                : view === "progress"
+                  ? "Calendar preview progress"
+                  : "Saved Calendar previews"
           }
           description="Source preview for coach review."
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setOpen(false);
+            queueMicrotask(() => opener.current?.focus());
+          }}
         >
           {error && (
             <p className="inline-error workflow-content" role="alert">
@@ -308,14 +337,14 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
           <div className="workflow-content header-actions discovery-navigation">
             <button
               type="button"
-              disabled={!!busy}
+              disabled={!!busy || review.locked}
               onClick={() => setView("create")}
             >
               New preview
             </button>
             <button
               type="button"
-              disabled={!!busy}
+              disabled={!!busy || review.locked}
               onClick={() => {
                 setView("saved");
                 void perform("history", () => readSaved());
@@ -323,6 +352,24 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
             >
               Browse saved previews
             </button>
+            {scanId && (
+              <button
+                type="button"
+                disabled={!!busy || review.locked}
+                onClick={() => setView("progress")}
+              >
+                Back to source observations
+              </button>
+            )}
+            {review.candidate && view !== "review" && (
+              <button
+                type="button"
+                disabled={!!busy}
+                onClick={() => setView("review")}
+              >
+                Return to source review
+              </button>
+            )}
             {busy && (
               <p role="status">
                 {busy === "page"
@@ -333,6 +380,9 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
               </p>
             )}
           </div>
+          {view === "review" && (
+            <HistoricalCalendarReview control={review} timezone={timezone} />
+          )}
           {view === "create" && (
             <form className="workflow-form" onSubmit={start}>
               <p className="full">
@@ -442,6 +492,10 @@ export function CalendarDiscovery({ timezone }: { timezone: string }) {
                   )
                 }
                 onRead={readPage}
+                onReview={(item: DiscoveryCandidate) => {
+                  review.select(item);
+                  setView("review");
+                }}
                 onRefresh={() =>
                   void perform("progress", () => readProgress(scanId))
                 }

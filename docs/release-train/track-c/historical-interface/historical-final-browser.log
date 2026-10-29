@@ -1,0 +1,19 @@
+[WebServer] (node:9168) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:8756) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 (4.5s)
+  ok 2 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 (4.4s)
+  ok 3 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 (4.9s)
+  ok 4 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 (6.3s)
+(node:27092) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 5 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 (11.9s)
+  ok 6 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 (9.0s)
+  ok 7 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 (11.2s)
+  ok 8 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 (11.2s)
+
+  8 passed (1.1m)

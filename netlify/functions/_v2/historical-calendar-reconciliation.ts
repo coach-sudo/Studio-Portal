@@ -1,50 +1,8 @@
 import { z } from "zod";
+import { historicalProposalSchema as proposal } from "../../../src/domain/historicalCalendarReview";
 import { json } from "../_shared/http";
 import type { V2CommandContext } from "./types";
 
-const common = {
-  studentId: z.string().uuid(),
-  reason: z.string().trim().min(3).max(500),
-  acknowledgeSourceDifference: z.boolean().optional(),
-  acknowledgeDuplicateReview: z.boolean().optional(),
-};
-const proposal = z.discriminatedUnion("action", [
-  z
-    .object({
-      ...common,
-      action: z.literal("link"),
-      lessonId: z.string().uuid(),
-      lessonVersion: z.number().int().positive(),
-    })
-    .strict(),
-  z
-    .object({
-      ...common,
-      action: z.literal("create"),
-      startsAt: z.string().datetime({ offset: true }),
-      endsAt: z.string().datetime({ offset: true }),
-      timezone: z
-        .string()
-        .min(1)
-        .max(100)
-        .refine((value) => {
-          try {
-            new Intl.DateTimeFormat("en", { timeZone: value });
-            return true;
-          } catch {
-            return false;
-          }
-        }, "Choose an explicit valid timezone."),
-      topic: z.string().trim().min(1).max(300),
-      locationType: z.enum(["in_person", "virtual"]),
-      locationLabel: z.string().trim().min(1).max(500),
-    })
-    .strict()
-    .refine(
-      (value) => Date.parse(value.endsAt) > Date.parse(value.startsAt),
-      "Choose an increasing interval.",
-    ),
-]);
 const candidateSchema = z.object({ candidateId: z.string().uuid() }).strict();
 const previewSchema = candidateSchema.extend({ proposal }).strict();
 const commandSchema = previewSchema

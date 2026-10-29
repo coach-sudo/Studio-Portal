@@ -2,7 +2,7 @@ import { defineConfig } from "@playwright/test";
 import { fileURLToPath } from "node:url";
 export default defineConfig({
   testDir: ".",
-  testMatch: "discovery.spec.ts",
+  testMatch: ["discovery.spec.ts", "historical.spec.ts"],
   outputDir: "../../test-results/audit-discovery",
   workers: 1,
   retries: 0,

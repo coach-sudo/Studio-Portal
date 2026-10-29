@@ -407,7 +407,20 @@ export function StudioSettings({
                 return next;
               }}
             />
-            {!isDemo && <CalendarDiscovery timezone={data.settings.timezone} />}
+            {!isDemo && (
+              <CalendarDiscovery
+                timezone={data.settings.timezone}
+                onChanged={() =>
+                  invalidateStudioDomains(queryClient, [
+                    "identity",
+                    "students",
+                    "lessons",
+                    "booking",
+                    "administration",
+                  ])
+                }
+              />
+            )}
           </>
         )}{" "}
         {panel === "data" && (

@@ -1,5 +1,7 @@
 # Release C: integrations, verification and original identity
 
+The original assembly evidence below describes the earlier frozen candidate. See [the subsequent historical interface and connected acceptance increment](historical-interface/README.md) for current implementation and pending exact-source gates; earlier counts are not promoted to current acceptance.
+
 This isolated candidate assembles existing reviewed work into one compatible source. It does not enable intake, publish a site, apply hosted migrations, call providers or alter hosted identities. The coordinator owns the final release decision and the central 19-finding / 42-workflow / 20-connection inventory.
 
 ## User benefit
@@ -8,7 +10,7 @@ This isolated candidate assembles existing reviewed work into one compatible sou
 - Coaches can select accessible Calendars and explicit ranges, inspect paginated saved observations, and recover partial reads without assuming attendance or financial coverage.
 - Duplicate profiles can be reviewed as navigation links while preserving every original student, account, receipt, permission and lesson owner.
 - Provider review no longer promises a destructive profile merge. Existing linked lessons retain their owner; a held or failed review cannot report canonical success.
-- Historical source guards and explicit reconciliation commands protect reviewed and ignored signals from routine worker overwrite. A complete coach interface for canonical historical reconciliation remains a direct acceptance gap.
+- Historical source guards and explicit reconciliation commands protect reviewed and ignored signals from routine worker overwrite. The initial frozen assembly left canonical historical reconciliation as a direct acceptance gap. The subsequent [interface and connected-harness increment](historical-interface/README.md) implements that path with exact CI and operational gates explicitly pending.
 
 ## Frozen dependency graph
 

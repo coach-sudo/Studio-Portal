@@ -1,0 +1,19 @@
+[WebServer] (node:26324) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 8 tests using 1 worker
+
+(node:17072) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [chromium] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 320 (5.4s)
+  ok 2 [chromium] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 390 (4.2s)
+  ok 3 [chromium] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 768 (4.2s)
+  ok 4 [chromium] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 1440 (4.7s)
+(node:6004) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 5 [webkit] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 320 (7.2s)
+  ok 6 [webkit] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 390 (7.4s)
+  ok 7 [webkit] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 768 (7.4s)
+  ok 8 [webkit] › e2e\audit-identity-local\identity.spec.ts:7:3 › profile links, replay and original context at 1440 (9.4s)
+
+  8 passed (52.9s)

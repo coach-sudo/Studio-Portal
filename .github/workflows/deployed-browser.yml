@@ -280,6 +280,7 @@ jobs:
           npx playwright test e2e/calendar-booking-drawer.spec.ts --retries=0 --fail-on-flaky-tests --repeat-each=10 --workers=2 --reporter=line,json --output=test-results/calendar-repeat-artifacts
           node scripts/check-calendar-repeat.mjs
       - name: Verify fixture cleanup and non-E2E isolation
+        id: standard-cleanup-proof
         if: always() && env.USE_EPHEMERAL_STACK == 'true'
         shell: bash
         run: |
@@ -320,6 +321,13 @@ jobs:
           echo "remaining e2e auth users: $e2e_auth_users" | tee -a test-results/cleanup-verification.txt
           if [ "$e2e_auth_users" != "0" ]; then failed=1; fi
           exit "$failed"
+      - name: Verify connected original-identity journey in a separate disposable lifecycle
+        if: success() && env.USE_EPHEMERAL_STACK == 'true' && steps.standard-cleanup-proof.outcome == 'success'
+        env:
+          IDENTITY_CONNECTED_LOCAL: "true"
+        run: |
+          node --test scripts/identity-connected/guards.node.mjs
+          node scripts/run-identity-connected.mjs
       - name: Collect credential-free function diagnostics
         if: failure() && env.USE_EPHEMERAL_STACK == 'true'
         run: npx tsx scripts/collect-e2e-function-diagnostics.ts

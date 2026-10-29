@@ -1,0 +1,338 @@
+
+ RUN  v4.1.12 C:/Users/dariu/.codex/worktrees/release-c-integrations-identity/studio-portal
+
+ ❯ src/features/coach/HistoricalCalendarReview.test.tsx (10 tests | 1 failed) 1588ms
+   × retains the reviewed actor and request after a changed-session no-fetch rejection 168ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/coach/HistoricalCalendarReview.test.tsx > retains the reviewed actor and request after a changed-session no-fetch rejection
+TestingLibraryElementError: Unable to find an accessible element with the role "button" and name "Retry saved source decision"
+
+Here are the accessible roles:
+
+  button:
+
+  Name "Open source":
+  <button />
+
+  Name "Refresh source review":
+  <button
+    disabled=""
+    type="button"
+  />
+
+  Name "Preview source decision":
+  <button
+    class="primary"
+    type="submit"
+  />
+
+  Name "Recover unchanged source request":
+  <button
+    class="primary"
+    type="button"
+  />
+
+  Name "Load source decision history":
+  <button
+    disabled=""
+    type="button"
+  />
+
+  --------------------------------------------------
+  heading:
+
+  Name "Past coaching signal":
+  <h3 />
+
+  Name "Review before saving":
+  <h3 />
+
+  Name "Decision history":
+  <h3 />
+
+  --------------------------------------------------
+  paragraph:
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  Name "":
+  <p />
+
+  --------------------------------------------------
+  alert:
+
+  Name "":
+  <p
+    class="inline-error"
+    role="alert"
+  />
+
+  --------------------------------------------------
+  status:
+
+  Name "":
+  <p
+    role="status"
+  />
+
+  --------------------------------------------------
+  group:
+
+  Name "Choose an explicit outcome":
+  <fieldset
+    disabled=""
+  />
+
+  --------------------------------------------------
+  combobox:
+
+  Name "Review action":
+  <select
+    id="_r_9_action"
+  />
+
+  --------------------------------------------------
+  option:
+
+  Name "Link existing historical lesson":
+  <option
+    value="link"
+  />
+
+  Name "Record scheduled historical lesson":
+  <option
+    value="create"
+  />
+
+  Name "Reopen for review":
+  <option
+    value="reopen"
+  />
+
+  Name "Not a lesson":
+  <option
+    value="not_lesson"
+  />
+
+  Name "Skip with reason":
+  <option
+    value="skip"
+  />
+
+  --------------------------------------------------
+  textbox:
+
+  Name "Reason for this source decision":
+  <textarea
+    id="_r_9_reason"
+    maxlength="500"
+    minlength="3"
+    required=""
+  />
+
+  --------------------------------------------------
+  region:
+
+  Name "Source decision preview":
+  <section
+    aria-label="Source decision preview"
+    class="historical-review-summary"
+  />
+
+  Name "Source decision history":
+  <section
+    aria-label="Source decision history"
+  />
+
+  --------------------------------------------------
+
+Ignored nodes: comments, script, style
+<body>
+  <div>
+    <button>
+      Open source
+    </button>
+    <div
+      class="workflow-content historical-source-review"
+    >
+      <h3>
+        Past coaching signal
+      </h3>
+      <p>
+        Confirm what this source means. Source verification never proves attendance or payment.
+      </p>
+      <p
+        class="inline-error"
+        role="alert"
+      >
+        The signed-in account changed. Return to the original account to recover this change.
+      </p>
+      <p
+        role="status"
+      >
+        The last save result is unknown. Your exact request is retained. Retry unchanged to recover its receipt before making another decision.
+      </p>
+      <button
+        disabled=""
+        type="button"
+      >
+        Refresh source review
+      </button>
+      <p>
+        Calendar: 
+        exact-calendar
+        . Event: 
+        active
+        . Current decision: 
+        Not reviewed
+        .
+      </p>
+      <p>
+        Source time:
+         
+        2020-01-01 10:00 (America/New_York)
+         
+        –
+         
+        2020-01-01 11:00 (America/New_York)
+        .
+      </p>
+      <form
+        class="historical-review-form"
+      >
+        <fieldset
+          disabled=""
+        >
+          <legend>
+            Choose an explicit outcome
+          </legend>
+          <label
+            for="_r_9_action"
+          >
+            Review action
+            <select
+              id="_r_9_action"
+            >
+              <option
+                value="link"
+              >
+                Link existing historical lesson
+              </option>
+              <option
+                value="create"
+              >
+                Record scheduled historical lesson
+              </option>
+              <option
+                value="reopen"
+              >
+                Reopen for review
+              </option>
+              <option
+                value="not_lesson"
+              >
+                Not a lesson
+              </option>
+              <option
+                value="skip"
+              >
+                Skip with reason
+              </option>
+            </select>
+          </label>
+          <p>
+            This records a historical source decision only. Existing linked lessons, attendance and financial history remain unchanged.
+          </p>
+          <label
+            for="_r_9_reason"
+          >
+            Reason for this source decision
+            <textarea
+              id="_r_9_reason"
+              maxlength="500"
+              minlength="3"
+              required=""
+            >
+              Coach verified original source identity
+            </textarea>
+          </label>
+          <button
+            class="primary"
+            type="submit"
+          >
+            Preview source decision
+          </button>
+        </fieldset>
+      </form>
+      <section
+        aria-label="Source decision preview"
+        class="historical-review-summary"
+      >
+        <h3>
+          Review before saving
+        </h3>
+        <p>
+          Save skip for this source only.
+        </p>
+        <p>
+          Attendance and financial coverage remain unverified. No provider or message delivery is requested.
+        </p>
+        <button
+          class="primary"
+          type="button"
+        >
+          Recover unchanged source request
+        </button>
+      </section>
+      <section
+        aria-label="Source decision history"
+      >
+        <h3>
+          Decision history
+        </h3>
+        <button
+          disabled=""
+          type="button"
+        >
+          Load source decision history
+        </button>
+      </section>
+    </div>
+  </div>
+</body>
+ ❯ Object.getElementError ../../../../Desktop/studio-portal/node_modules/@testing-library/dom/dist/config.js:37:19
+ ❯ ../../../../Desktop/studio-portal/node_modules/@testing-library/dom/dist/query-helpers.js:76:38
+ ❯ ../../../../Desktop/studio-portal/node_modules/@testing-library/dom/dist/query-helpers.js:52:17
+ ❯ ../../../../Desktop/studio-portal/node_modules/@testing-library/dom/dist/query-helpers.js:95:19
+ ❯ click src/features/coach/HistoricalCalendarReview.test.tsx:93:26
+     91|   });
+     92| const click = (name: string) =>
+     93|   fireEvent.click(screen.getByRole("button", { name }));
+       |                          ^
+     94| async function open() {
+     95|   click("Open source");
+ ❯ src/features/coach/HistoricalCalendarReview.test.tsx:404:3
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 4 passed (5)
+      Tests  1 failed | 57 passed (58)
+   Start at  15:03:54
+   Duration  18.63s (transform 443ms, setup 1.32s, import 1.41s, tests 10.11s, environment 4.30s)
+

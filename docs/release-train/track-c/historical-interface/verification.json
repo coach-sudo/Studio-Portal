@@ -1,0 +1,58 @@
+{
+  "phase": "reviewable implementation; exact CI pending",
+  "newMigrationFiles": 0,
+  "RPCPayloadChanges": 0,
+  "sourceContracts": [
+    "preview_historical_calendar_review",
+    "historical_calendar_review",
+    "preview_historical_calendar_reopening",
+    "preview_historical_calendar_reconciliation",
+    "historical_calendar_reconciliation",
+    "historical_calendar_decision_history"
+  ],
+  "unit": {
+    "passed": 116,
+    "files": 10,
+    "scope": "targeted source/identity/transport clients, components and historical server handlers"
+  },
+  "windowsBrowser": {
+    "passed": 16,
+    "newHistoricalJourneys": 8,
+    "retainedDiscoveryJourneys": 8,
+    "engines": ["chromium", "webkit"],
+    "widths": [320, 390, 768, 1440],
+    "retries": 0,
+    "providerLayer": "loopback fixture only",
+    "actorBoundIdentityJourneys": 8,
+    "actorBoundDiscoveryAndHistoricalJourneys": 16,
+    "policyParityHistoricalJourneys": 8
+  },
+  "destructiveTargetGuards": {
+    "passed": 10,
+    "failed": 0
+  },
+  "current71GitFiles": {
+    "passed": 71,
+    "actualDatabaseUpgrade": "PENDING CI",
+    "hostedSQLContentVerified": false
+  },
+  "connectedRoleAndCanonicalJourneys": {
+    "implemented": true,
+    "executed": false,
+    "status": "DIRECT engineering gate until actual CI proof",
+    "names": [
+      "original-identity grouping/permission preservation/lost-response recovery/reversal",
+      "historical source reopen/create/replay/skip/not-lesson/link with preserved paid attendance"
+    ]
+  },
+  "hostedProviderAcceptance": "UNEXECUTED: separate approval/credentials required",
+  "productionProviderIntake": "unchanged; disabled",
+  "publication": "not authorized for C",
+  "requestRecovery": {
+    "capturedActorBound": true,
+    "wireOrHashChanges": false,
+    "retainsOriginalKeyAfterUnknownOutcome": true,
+    "holdsForbiddenVersionAndIdempotencyConflicts": true,
+    "firstVersionConflictHeld": "shared API compatibility maps idempotency and version errors together"
+  }
+}

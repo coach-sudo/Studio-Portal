@@ -1,0 +1,18 @@
+✔ only the explicit isolated loopback target is accepted (0.8654ms)
+✔ rejects unsafe CI (1.4983ms)
+✔ rejects unsafe USE_EPHEMERAL_STACK (0.2067ms)
+✔ rejects unsafe E2E_EPHEMERAL (0.1575ms)
+✔ rejects unsafe IDENTITY_CONNECTED_LOCAL (0.1365ms)
+✔ rejects unsafe STAGING_BASE_URL (0.2147ms)
+✔ rejects unsafe SUPABASE_URL (0.1666ms)
+✔ rejects unsafe DB_CONTAINER (0.1363ms)
+✔ rejects unsafe GITHUB_WORKSPACE (0.1293ms)
+✔ a nonliteral loopback lookalike is rejected (0.3243ms)
+ℹ tests 10
+ℹ suites 0
+ℹ pass 10
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 92.5582

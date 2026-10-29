@@ -1,3 +1,4 @@
+import { captureReviewActor } from "../../data/reviewActor";
 import {
   useEffect,
   useId,
@@ -26,7 +27,7 @@ const message = (error: unknown) =>
   error instanceof Error
     ? error.message
     : "The related profiles could not be updated. Your selections are retained.";
-type Reviewed = { preview: IdentityPreview; key: string };
+type Reviewed = { preview: IdentityPreview; key: string; actorId: string };
 export function StudentIdentityDialog({
   students,
   loading,
@@ -73,8 +74,9 @@ export function StudentIdentityDialog({
                 reason: reason.trim(),
               }
             : { action, currentStudentId: currentId, reason: reason.trim() };
-        const preview = await previewStudentIdentity(proposal);
-        setReview({ preview, key: crypto.randomUUID() });
+        const actorId = await captureReviewActor();
+        const preview = await previewStudentIdentity(proposal, actorId);
+        setReview({ preview, key: crypto.randomUUID(), actorId });
       } else {
         const saved = pending ?? review!;
         setPending(saved);
@@ -82,6 +84,7 @@ export function StudentIdentityDialog({
           saved.preview.proposal,
           saved.preview.stamp,
           saved.key,
+          saved.actorId,
         );
         setPending(undefined);
         setReview(undefined);
@@ -101,14 +104,9 @@ export function StudentIdentityDialog({
     } catch (failure) {
       setError(message(failure));
       if (
+        !pending &&
         failure instanceof ApiClientError &&
-        [
-          "VERSION_CONFLICT",
-          "REVIEW_REQUIRED",
-          "FORBIDDEN",
-          "VALIDATION_FAILED",
-          "IDEMPOTENCY_CONFLICT",
-        ].includes(failure.code)
+        ["REVIEW_REQUIRED", "VALIDATION_FAILED"].includes(failure.code)
       ) {
         setPending(undefined);
         setReview(undefined);
