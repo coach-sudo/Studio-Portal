@@ -44,10 +44,14 @@
 .booking-step {
   padding: 32px;
 }
+.booking-public {
+  /* The shared focus owner consumes this scope; other routes keep its legacy fallback. */
+  --focus-outline: 2px solid #000;
+  --booking-focus-halo: #fff;
+}
 .booking-public :is(button, a, input, select, textarea):focus-visible {
-  outline: 2px solid #000;
   outline-offset: 3px;
-  box-shadow: 0 0 0 3px #fff;
+  box-shadow: 0 0 0 3px var(--booking-focus-halo);
 }
 .booking-public .stepper li.active > span {
   color: var(--on-gold);
