@@ -1,0 +1,395 @@
+{
+  "sourceAssemblySha": "3ade455881df01441bbe506f79642fc57e4d9ffa",
+  "baselineSha": "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb",
+  "testPlatform": "Windows, Node 24.14.1; patched shared package contents with private worktree cache root",
+  "browser": {
+    "stats": {
+      "startTime": "2026-10-29T05:23:35.145Z",
+      "duration": 59208.974,
+      "expected": 8,
+      "skipped": 0,
+      "unexpected": 0,
+      "flaky": 0
+    },
+    "cases": [
+      {
+        "project": "chromium",
+        "width": 320,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 4893,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "chromium",
+        "width": 390,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 4332,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "chromium",
+        "width": 768,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 4633,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "chromium",
+        "width": 1440,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 4580,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "webkit",
+        "width": 320,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 8595,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "webkit",
+        "width": 390,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 8272,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "webkit",
+        "width": 768,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 9698,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      },
+      {
+        "project": "webkit",
+        "width": 1440,
+        "status": "passed",
+        "retry": 0,
+        "durationMs": 9152,
+        "states": [
+          {
+            "state": "catalog",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          },
+          {
+            "state": "setup",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "time-disabled",
+            "measuredTextPairs": 12,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "details",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "payment-disabled",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "error",
+            "measuredTextPairs": 14,
+            "minimumSummaryTextContrast": 12.1931459168502
+          },
+          {
+            "state": "confirmation",
+            "measuredTextPairs": 0,
+            "minimumSummaryTextContrast": null
+          }
+        ]
+      }
+    ]
+  },
+  "targetedUnit": {
+    "branding": 1,
+    "bookingPerTimezone": 7,
+    "timezoneCount": 5,
+    "bookingExecutions": 35
+  },
+  "npmAudit": {
+    "total": 0,
+    "source": "npm-audit.json"
+  },
+  "isolatedTypecheck": "passed: tsc -b --force --pretty false",
+  "isolatedBuild": "passed: npm run build, production-shaped non-secret browser configuration",
+  "bundleBudget": "passed: npm run bundle:check -- --require-configured-client",
+  "finalExactCandidateCI": "coordinator-owned; pending",
+  "mutations": {
+    "production": false,
+    "hostedStaging": false,
+    "provider": false,
+    "schema": false
+  },
+  "limits": [
+    "Synthetic HTTP browser fixture is not hosted-role acceptance",
+    "No real payment, Calendar, email or booking completion",
+    "Manual screen-reader and full touch sessions not claimed",
+    "Original audit before screenshots use a different source and viewport"
+  ]
+}

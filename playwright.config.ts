@@ -23,6 +23,7 @@ export default defineConfig({
     "**/audit-identity-local/**",
     "**/audit-provider-identity/**",
     "**/audit-discovery-local/**",
+    "**/audit-contrast-local/**",
   ],
   outputDir: "test-results/artifacts",
   globalSetup: "./e2e/global.setup.ts",
