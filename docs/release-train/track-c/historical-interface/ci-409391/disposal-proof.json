@@ -1,0 +1,13 @@
+{
+  "syntheticAuthUsers": 0,
+  "identityGroups": 0,
+  "identityMembers": 0,
+  "identityReceipts": 0,
+  "identityRevisions": 0,
+  "duplicateStudents": 0,
+  "historicalDecisions": 0,
+  "historicalReceipts": 0,
+  "historicalRevisions": 0,
+  "discardedWholeDisposableDatabase": true,
+  "hostedActions": []
+}

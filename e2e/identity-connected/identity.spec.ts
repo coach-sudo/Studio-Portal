@@ -217,6 +217,7 @@ test("original identity grouping, role isolation, lost response and retained his
         headers: { Authorization: `Bearer ${token}` },
         data: {
           command: "identity_group",
+          idempotencyKey: `e2e-connected-role-denial-${role}-${original}`,
           payload: { studentId: original },
           expectedVersion: 0,
           reason: "Synthetic access check",
@@ -224,11 +225,15 @@ test("original identity grouping, role isolation, lost response and retained his
       },
     );
     expect([401, 403]).toContain(denied.status());
+    const denial = await denied.json();
+    expect(["FORBIDDEN", "AUTHENTICATION_REQUIRED"]).toContain(denial.code);
     roleProof.push({
       role,
       originalFinance: role !== "unrelated",
       duplicateFinance: false,
       identityCommandDenied: true,
+      identityDenialStatus: denied.status(),
+      identityDenialCode: denial.code,
     });
     await actor.context.close();
   }
@@ -238,6 +243,7 @@ test("original identity grouping, role isolation, lost response and retained his
     {
       data: {
         command: "identity_group",
+        idempotencyKey: `e2e-connected-role-denial-anonymous-${original}`,
         payload: { studentId: original },
         expectedVersion: 0,
         reason: "Synthetic anonymous denial",
@@ -245,6 +251,9 @@ test("original identity grouping, role isolation, lost response and retained his
     },
   );
   expect([401, 403]).toContain(deny.status());
+  expect(["FORBIDDEN", "AUTHENTICATION_REQUIRED"]).toContain(
+    (await deny.json()).code,
+  );
   await anonymous.close();
   expect(snapshot()).toEqual(before);
   await coach.page.goto("/coach/students");

@@ -1,5 +1,7 @@
 # Historical review and connected original identity
 
+Exact candidate `5ffd7e8` has now passed production CI, both real database upgrade drills and the historical connected journey. Its new identity journey failed on a missing idempotency key in a handcrafted denial request; the corrected harness remains pending. See [precise CI outcomes and retained failure evidence](ci-409391/README.md). Local-only statements below describe the original implementation milestone, not a full current PASS.
+
 This increment completes the coach path from a saved Calendar observation to explicit historical review. It adds no migrations, provider actions, financial effects or RPC payload changes. It reuses #84/#86 and the #87/#88 identity journey. Root coordinates exact-source CI and reuses PR #89; C publication is not authorized.
 
 ## User benefit and preserved contracts
@@ -26,7 +28,7 @@ Application rollback may revert this interface while retaining compatible #84/#8
 - All 71 Git migration filenames/SHA256 match audited fb2. Hosted version/name inventory was verified by root; hosted SQL contents were not compared. Actual PostgreSQL upgrade remains unexecuted locally.
 - Forced TypeScript/build, formatting, lint budget and secret checks accompany the final source. Initial locator/fixture failures are retained separately. No unexecuted check is assumed green.
 
-## New connected acceptance: implemented, pending actual CI
+## Connected acceptance: historical passed, corrected identity journey pending
 
 The CI-only disposable lifecycle runs after the existing full browser suite, focus-repeat checks and unchanged generic cleanup proof. It verifies five pre-fixture dataset baselines and zero synthetic Auth users before resetting only its explicitly owned local database. Existing protected fixture setup creates coach/student/guardian/unrelated accounts. There is no application cleanup endpoint or privileged private-history deletion.
 
@@ -34,7 +36,7 @@ The historical real UI/server/PostgreSQL journey reopens an ignored source, exer
 
 After proof, the wrapper discards the entire CI-owned disposable database. Disposal counts cover synthetic Auth and private-history rows; they do not claim byte-equivalent restoration of all original baseline tables. Blanket service grants duplicate existing local fixture scaffolding only. Production ACL proof stays with independent PostgreSQL role/grant checks.
 
-Both connected journeys and the current 71-prefix PostgreSQL upgrade drill remain DIRECT ENGINEERING GATES until exact CI executes and passes. They require no Google/Stripe credentials. Missing external credentials are not an excuse for these pending engineering checks.
+Exact CI at 5ffd7e8 passed both database upgrade drills and the historical connected journey. The complete identity role/reversal journey remains a DIRECT ENGINEERING GATE until its corrected denial requests execute successfully in exact successor CI. It requires no Google/Stripe credentials; missing external credentials do not excuse that pending engineering check.
 
 ## External gates
 
