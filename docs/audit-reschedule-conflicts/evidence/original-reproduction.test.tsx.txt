@@ -1,0 +1,13 @@
+import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import { expect, it, vi } from "vitest";
+import { demoSnapshot } from "../data/demo";
+import { RescheduleLessonForm } from "./RescheduleLessonForm";
+it("reproduces private-overlap override being passed to a reschedule command", async () => {
+  const user = userEvent.setup(), submit = vi.fn();
+  render(<RescheduleLessonForm lesson={{...demoSnapshot.lessons[0], startsAt:'2031-11-03T18:00:00Z', endsAt:'2031-11-03T19:00:00Z'}} studentName="Synthetic learner" timezone="America/New_York" cancellationWindowHours={36} busy={false} onCancel={()=>{}} onSubmit={submit} onCheckConflicts={async()=>[{id:'synthetic-private',summary:'Another private lesson',start:'2031-11-10T18:00:00Z',end:'2031-11-10T19:00:00Z',source:'studio',policy:'private_overlap',blocksChange:true}]} />);
+  await user.click(screen.getByRole('button',{name:'Next week'}));
+  await user.click(screen.getByRole('button',{name:'Confirm new time'}));
+  await user.click(await screen.findByRole('button',{name:'Reschedule anyway'}));
+  expect(submit).toHaveBeenCalledWith('2031-11-10T18:00:00.000Z','2031-11-10T19:00:00.000Z',true);
+});

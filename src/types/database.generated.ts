@@ -4953,6 +4953,10 @@ export type Database = {
         Args: { p_lesson?: string; p_limit?: number }
         Returns: Json
       }
+      claim_manual_booking_effects: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
       claim_outbox_messages: {
         Args: { batch_size?: number }
         Returns: {
@@ -5046,6 +5050,10 @@ export type Database = {
       claim_scheduled_worker: {
         Args: { p_job: string; p_worker: string }
         Returns: string
+      }
+      claim_stripe_booking_invoice_effect: {
+        Args: { p_invoice: string }
+        Returns: Json
       }
       claim_studio_invoice_checkout: {
         Args: {
@@ -5152,6 +5160,10 @@ export type Database = {
       }
       command_create_lesson_once: {
         Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      command_create_manual_booking: {
+        Args: { p_external_status?: string; p_key: string; p_value: Json }
         Returns: Json
       }
       command_create_service_offering: {
@@ -5317,6 +5329,10 @@ export type Database = {
         }
         Returns: Json
       }
+      correct_lesson_datetime: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
       create_booking_hold: {
         Args: {
           target_end: string
@@ -5417,12 +5433,25 @@ export type Database = {
         }
         Returns: boolean
       }
+      finish_manual_booking_effect: {
+        Args: { p_failed?: boolean; p_id: string; p_token: string }
+        Returns: boolean
+      }
       finish_scheduled_worker: {
         Args: {
           p_error?: string
           p_job: string
           p_token: string
           p_worker: string
+        }
+        Returns: boolean
+      }
+      finish_stripe_booking_invoice_effect: {
+        Args: {
+          p_invoice: string
+          p_reference?: string
+          p_step: string
+          p_token: string
         }
         Returns: boolean
       }
@@ -5462,6 +5491,11 @@ export type Database = {
         Args: { p_lesson: string }
         Returns: boolean
       }
+      lesson_datetime_correction_history: {
+        Args: { p_cursor?: Json; p_lesson: string }
+        Returns: Json
+      }
+      lesson_payment_context: { Args: { p_lesson: string }; Returns: Json }
       lesson_payment_status_from_booking: {
         Args: { value: string }
         Returns: string
@@ -5507,6 +5541,14 @@ export type Database = {
         }
         Returns: Json
       }
+      manual_booking_effect_current: {
+        Args: { p_id: string; p_token: string }
+        Returns: boolean
+      }
+      manual_booking_replay: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
       material_resource_workspace: {
         Args: { p_assignment?: string; p_id: string; p_student?: string }
         Returns: Json
@@ -5530,6 +5572,10 @@ export type Database = {
           p_studio: string
           p_value: Json
         }
+        Returns: Json
+      }
+      preview_lesson_datetime_correction: {
+        Args: { p_value: Json }
         Returns: Json
       }
       preview_lesson_occurrence_change: {
@@ -5574,6 +5620,14 @@ export type Database = {
       }
       reconcile_student_credit_reservations: {
         Args: { p_student: string; p_version: number }
+        Returns: Json
+      }
+      record_datetime_correction_review: {
+        Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      record_lesson_payment: {
+        Args: { p_key: string; p_value: Json }
         Returns: Json
       }
       refund_package_gift: { Args: { target_gift: string }; Returns: Json }
@@ -5762,6 +5816,7 @@ export type Database = {
         Args: { p_lesson: string; p_student?: string; p_use: boolean }
         Returns: undefined
       }
+      settle_stripe_booking_invoice: { Args: { p_value: Json }; Returns: Json }
       settle_studio_invoice: {
         Args: {
           p_amount: number

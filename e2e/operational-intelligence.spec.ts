@@ -9,6 +9,12 @@ import {
 import type { Page } from "@playwright/test";
 import type { Browser } from "@playwright/test";
 import type { E2ERuntime } from "./support/runtime";
+import { writeFile } from "node:fs/promises";
+import {
+  cleanupManifestPath,
+  cleanupManifestSchema,
+} from "../scripts/e2e-payment-receipt-cleanup";
+import { lessonPaymentReceiptSchema } from "../src/domain/lessonPayment";
 
 async function openOperationalCoach(
   browser: Browser,
@@ -232,16 +238,121 @@ test.describe("Stateful operational acceptance", () => {
       const [lesson] = await read(
         page,
         "lessons",
-        `select=version&id=eq.${ids.lessonDue}`,
+        `select=*&id=eq.${ids.lessonDue}`,
       );
-      await command(
+      const beforeLedger = await read(
         page,
-        runtime,
+        "payment_entries",
+        `select=id&student_id=eq.${ids.operationalStudent}`,
+      );
+      const beforeMessages = await read(
+        page,
+        "outbox_messages",
+        `select=id&lesson_id=eq.${ids.lessonDue}`,
+      );
+      await page.goto(
+        `/coach/students/${ids.operationalStudent}/lessons/${ids.lessonDue}`,
+      );
+      await page
+        .getByText("Payment, credits & lesson administration", { exact: true })
+        .click();
+      await page
+        .getByRole("button", { name: "Credits & payment", exact: true })
+        .click();
+      await page.getByLabel("Amount received (USD)").fill("75.00");
+      await page
+        .getByLabel("Payment reason")
+        .fill(`${runtime.runId} synthetic cash already received`);
+      const isPayment = (request: import("@playwright/test").Request) =>
+        request.url().endsWith("/api/v2/lessons") &&
+        request.method() === "POST" &&
+        request.postDataJSON()?.command === "record_payment";
+      const [request, response] = await Promise.all([
+        page.waitForRequest(isPayment),
+        page.waitForResponse((r) => isPayment(r.request())),
+        page
+          .getByRole("button", { name: "Record payment", exact: true })
+          .click(),
+      ]);
+      expect(response.ok()).toBe(true);
+      const receipt = lessonPaymentReceiptSchema.parse(
+        (await response.json()).resource,
+      );
+      await expect(page.getByText(/Payment recorded:.*75\.00/)).toBeVisible();
+      const envelope = request.postDataJSON();
+      expect(receipt).toMatchObject({
+        lessonId: ids.lessonDue,
+        studentId: ids.operationalStudent,
+        bookingId: null,
+        amountMinor: 7500,
+        paidMinor: 7500,
+        remainingMinor: 0,
+        currency: "USD",
+        queuedSideEffects: [],
+      });
+      const [updated] = await read(
+        page,
         "lessons",
-        "set_payment_status",
-        ids.lessonDue,
-        lesson.version,
-        { paymentStatus: "paid", priceMinor: 7500, paidMinor: 7500 },
+        `select=*&id=eq.${ids.lessonDue}`,
+      );
+      expect(updated).toMatchObject({
+        student_id: lesson.student_id,
+        studio_id: lesson.studio_id,
+        price_minor: lesson.price_minor,
+        created_at: lesson.created_at,
+        status: lesson.status,
+        paid_minor: 7500,
+        payment_status: "paid",
+        version: lesson.version + 1,
+      });
+      const [ledger] = await read(
+        page,
+        "payment_entries",
+        `select=*&id=eq.${receipt.paymentEntryId}`,
+      );
+      expect(ledger).toMatchObject({
+        student_id: ids.operationalStudent,
+        kind: "payment",
+        amount_minor: 7500,
+        currency: "USD",
+        external_reference: `lesson-payment:${receipt.receiptId}`,
+      });
+      const [audit] = await read(
+        page,
+        "audit_events",
+        `select=*&id=eq.${receipt.auditEventId}`,
+      );
+      expect(audit).toMatchObject({
+        entity_id: ids.lessonDue,
+        studio_id: lesson.studio_id,
+        action: "lesson.payment_recorded",
+        after_state: receipt,
+      });
+      const token = await accessToken(page);
+      const replay = await page.request.post("/api/v2/lessons", {
+        headers: { Authorization: `Bearer ${token}` },
+        data: envelope,
+      });
+      expect(replay.ok()).toBe(true);
+      expect((await replay.json()).resource).toEqual(receipt);
+      const afterLedger = await read(
+        page,
+        "payment_entries",
+        `select=id&student_id=eq.${ids.operationalStudent}`,
+      );
+      expect(afterLedger.map((e: { id: string }) => e.id).sort()).toEqual(
+        [
+          ...beforeLedger.map((e: { id: string }) => e.id),
+          receipt.paymentEntryId,
+        ].sort(),
+      );
+      const afterMessages = await read(
+        page,
+        "outbox_messages",
+        `select=id&lesson_id=eq.${ids.lessonDue}`,
+      );
+      expect(afterMessages.map((m: { id: string }) => m.id).sort()).toEqual(
+        beforeMessages.map((m: { id: string }) => m.id).sort(),
       );
       const [message] = await read(
         page,
@@ -250,6 +361,24 @@ test.describe("Stateful operational acceptance", () => {
       );
       expect(message.status).toBe("cancelled");
       expect(message.suppression_reason).toBe("financial_condition_resolved");
+      const manifest = cleanupManifestSchema.parse({
+        runId: runtime.runId,
+        studioId: lesson.studio_id,
+        lessonId: ids.lessonDue,
+        studentId: ids.operationalStudent,
+        actorId: audit.actor_id,
+        receiptId: receipt.receiptId,
+        paymentEntryId: receipt.paymentEntryId,
+        auditEventId: receipt.auditEventId,
+        key: envelope.idempotencyKey,
+        amountMinor: 7500,
+        currency: "USD",
+        canonicalAssertionsPassed: true,
+      });
+      await writeFile(
+        cleanupManifestPath(runtime.runId),
+        JSON.stringify(manifest, null, 2),
+      );
     });
     await test.step("08 Cancellation suppresses stale reminders", async () => {
       const [lesson] = await read(

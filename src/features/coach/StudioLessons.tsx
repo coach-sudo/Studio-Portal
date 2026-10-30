@@ -1,3 +1,5 @@
+import { LessonPaymentReceipt } from "../../components/LessonPaymentReceipt";
+import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { LessonChangeReview } from "../../components/LessonChangeReview";
 import { LessonBulkList } from "../../components/LessonBulkList";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -14,6 +16,7 @@ import {
 } from "../../components/LessonCalendar";
 import { Dialog, Section, Status } from "../../components/Primitives";
 import { RescheduleLessonForm } from "../../components/RescheduleLessonForm";
+import { LessonDatetimeCorrections } from "../../components/LessonDatetimeCorrections";
 import {
   checkSchedulingConflicts,
   studioCommand,
@@ -62,21 +65,12 @@ export function LessonsView({
     [confirmCancel, setConfirmCancel] = useState(false),
     [consumeCredit, setConsumeCredit] = useState(false),
     [cadence, setCadence] = useState<"weekly" | "biweekly">("weekly"),
-    [occurrences, setOccurrences] = useState(6),
-    [paymentStatus, setPaymentStatus] =
-      useState<NonNullable<Lesson["paymentStatus"]>>("untracked"),
-    [lessonPrice, setLessonPrice] = useState(""),
-    [lessonPaid, setLessonPaid] = useState("");
+    [occurrences, setOccurrences] = useState(6);
   const openLesson = (lesson: Lesson) => {
     setSelected(lesson);
     setPanel("details");
     setConfirmCancel(false);
     setConsumeCredit(false);
-    setPaymentStatus(lesson.paymentStatus || "untracked");
-    setLessonPrice(
-      lesson.priceMinor == null ? "" : String(lesson.priceMinor / 100),
-    );
-    setLessonPaid(String((lesson.paidMinor || 0) / 100));
   };
   const update = async (status: "completed" | "cancelled") => {
     if (!selected || busy) return;
@@ -264,46 +258,6 @@ export function LessonsView({
       setBusy("");
     }
   };
-  const savePaymentStatus = async () => {
-    if (!selected || busy) return;
-    setBusy("payment");
-    const priceMinor =
-      lessonPrice === "" ? undefined : Math.round(Number(lessonPrice) * 100);
-    const paidMinor = Math.round(Number(lessonPaid || 0) * 100);
-    try {
-      if (isDemo)
-        store.transact((draft) => {
-          const item = draft.lessons.find((row) => row.id === selected.id);
-          if (item) {
-            item.paymentStatus = paymentStatus;
-            item.priceMinor = priceMinor;
-            item.paidMinor = paidMinor;
-            item.version += 1;
-            item.updatedAt = new Date().toISOString();
-          }
-        });
-      else {
-        await studioCommand("lessons", {
-          command: "set_payment_status",
-          entityId: selected.id,
-          expectedVersion: selected.version,
-          payload: { paymentStatus, priceMinor, paidMinor },
-          reason: "Coach updated lesson payment status",
-        });
-        await invalidateStudioDomains(queryClient, ["lessons", "finance"]);
-      }
-      setNotice("Lesson payment status saved.");
-      setSelected(undefined);
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Payment status could not be saved.",
-      );
-    } finally {
-      setBusy("");
-    }
-  };
   const selectedStudent = selected
     ? data.students.find((student) => student.id === selected.studentId)
     : undefined;
@@ -447,7 +401,7 @@ export function LessonsView({
         <Dialog
           title={
             panel === "reschedule"
-              ? "Reschedule lesson"
+              ? "Reschedule upcoming lesson"
               : panel === "credits"
                 ? "Lesson credits"
                 : selected.topic
@@ -455,6 +409,23 @@ export function LessonsView({
           description={`${studentName(data, selected.studentId)} · ${formatStudioDateTime(selected.startsAt, data.settings.timezone)} · ${sourceLabel(selected.sourceProvider)}`}
           onClose={() => setSelected(undefined)}
         >
+          {!isDemo && (
+            <div className="workflow-content">
+              <LessonDatetimeCorrections
+                lesson={selected}
+                timezone={data.settings.timezone}
+                onApplied={async () => {
+                  await invalidateStudioDomains(queryClient, [
+                    "lessons",
+                    "booking",
+                    "finance",
+                  ]);
+                  setSelected(undefined);
+                }}
+                onFinancialReview={() => setPanel("credits")}
+              />
+            </div>
+          )}
           {panel === "reschedule" ? (
             <RescheduleLessonForm
               lesson={selected}
@@ -467,20 +438,12 @@ export function LessonsView({
               onCheckConflicts={(startsAt, endsAt) =>
                 isDemo
                   ? Promise.resolve(
-                      data.lessons
-                        .filter(
-                          (lesson) =>
-                            lesson.id !== selected.id &&
-                            lesson.status === "scheduled" &&
-                            lesson.startsAt < endsAt &&
-                            lesson.endsAt > startsAt,
-                        )
-                        .map((lesson) => ({
-                          id: lesson.id,
-                          summary: lesson.topic,
-                          start: lesson.startsAt,
-                          end: lesson.endsAt,
-                        })),
+                      localSchedulingConflicts(
+                        data.lessons,
+                        selected,
+                        startsAt,
+                        endsAt,
+                      ),
                     )
                   : checkSchedulingConflicts(startsAt, endsAt, selected.id)
               }
@@ -713,56 +676,18 @@ export function LessonsView({
                       or use it.
                     </p>
                   ) : (
-                    <div className="inline-command payment-status-command">
-                      <label>
-                        Status
-                        <select
-                          value={paymentStatus}
-                          onChange={(event) =>
-                            setPaymentStatus(
-                              event.target.value as typeof paymentStatus,
-                            )
-                          }
-                        >
-                          <option value="untracked">Not tracked</option>
-                          <option value="due">Due</option>
-                          <option value="partially_paid">Partially paid</option>
-                          <option value="paid">Paid</option>
-                          <option value="waived">Waived</option>
-                          <option value="refunded">Refunded</option>
-                        </select>
-                      </label>
-                      <label>
-                        Lesson price (USD)
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={lessonPrice}
-                          onChange={(event) =>
-                            setLessonPrice(event.target.value)
-                          }
-                        />
-                      </label>
-                      <label>
-                        Amount paid (USD)
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={lessonPaid}
-                          onChange={(event) =>
-                            setLessonPaid(event.target.value)
-                          }
-                        />
-                      </label>
-                      <button
-                        disabled={Boolean(busy)}
-                        onClick={() => void savePaymentStatus()}
-                      >
-                        {busy === "payment" ? "Saving…" : "Save payment status"}
-                      </button>
-                    </div>
+                    <LessonPaymentReceipt
+                      key={selected.id}
+                      lessonId={selected.id}
+                      isDemo={isDemo}
+                      onSaved={() =>
+                        invalidateStudioDomains(queryClient, [
+                          "lessons",
+                          "finance",
+                          "booking",
+                        ])
+                      }
+                    />
                   )}
                 </section>
               )}

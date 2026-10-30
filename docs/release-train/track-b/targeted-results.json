@@ -1,0 +1,1088 @@
+{
+  "numTotalTestSuites": 15,
+  "numPassedTestSuites": 15,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 94,
+  "numPassedTests": 94,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793251832370,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "previews a zoned historical correction, requires financial acknowledgement and preserves request identity after a lost response",
+          "status": "passed",
+          "title": "previews a zoned historical correction, requires financial acknowledgement and preserves request identity after a lost response",
+          "duration": 213.63089999999988,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires an explicit timezone rather than guessing invalid studio policy ",
+          "status": "passed",
+          "title": "requires an explicit timezone rather than guessing invalid studio policy ",
+          "duration": 6.619899999999916,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires an explicit timezone rather than guessing invalid studio policy Not/A_Real_Zone",
+          "status": "passed",
+          "title": "requires an explicit timezone rather than guessing invalid studio policy Not/A_Real_Zone",
+          "duration": 5.894700000000057,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects a DST gap locally without calling the command",
+          "status": "passed",
+          "title": "rejects a DST gap locally without calling the command",
+          "duration": 34.35130000000004,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires an explicit repeated-hour occurrence and preserves the completed outcome",
+          "status": "passed",
+          "title": "requires an explicit repeated-hour occurrence and preserves the completed outcome",
+          "duration": 53.46479999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251846589,
+      "endTime": 1793251846902.4648,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/components/LessonDatetimeCorrections.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "blocks a private exclusion and cannot submit it through a direct form event",
+          "status": "passed",
+          "title": "blocks a private exclusion and cannot submit it through a direct form event",
+          "duration": 271.27880000000005,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires refreshed classification for a response from an older server",
+          "status": "passed",
+          "title": "requires refreshed classification for a response from an older server",
+          "duration": 138.27680000000032,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires an explicit Google busy-time acknowledgement and sends only that override",
+          "status": "passed",
+          "title": "requires an explicit Google busy-time acknowledgement and sends only that override",
+          "duration": 174.2532000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "acknowledges a group/draft advisory without sending a Google override",
+          "status": "passed",
+          "title": "acknowledges a group/draft advisory without sending a Google override",
+          "duration": 185.18780000000015,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "never lets a Google acknowledgement bypass a simultaneous private exclusion",
+          "status": "passed",
+          "title": "never lets a Google acknowledgement bypass a simultaneous private exclusion",
+          "duration": 124.69130000000041,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "clears the blocked preview after a time edit and checks the new interval",
+          "status": "passed",
+          "title": "clears the blocked preview after a time edit and checks the new interval",
+          "duration": 231.83690000000024,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "disables date/time/duration and quick controls until their request finishes",
+          "status": "passed",
+          "title": "disables date/time/duration and quick controls until their request finishes",
+          "duration": 141.73859999999968,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "preserves selected time after provider failure and performs a fresh check on retry",
+          "status": "passed",
+          "title": "preserves selected time after provider failure and performs a fresh check on retry",
+          "duration": 191.76800000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "displays both dates in the chosen studio zone across midnight instead of browser-local times",
+          "status": "passed",
+          "title": "displays both dates in the chosen studio zone across midnight instead of browser-local times",
+          "duration": 141.26220000000012,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "invalidates a Google acknowledgement after an interval change",
+          "status": "passed",
+          "title": "invalidates a Google acknowledgement after an interval change",
+          "duration": 223.96139999999968,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251837880,
+      "endTime": 1793251839704.9614,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/components/RescheduleLessonForm.conflicts.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["RescheduleLessonForm"],
+          "fullName": "RescheduleLessonForm moves a lesson by a quick date while preserving its duration",
+          "status": "passed",
+          "title": "moves a lesson by a quick date while preserving its duration",
+          "duration": 224.81439999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["RescheduleLessonForm"],
+          "fullName": "RescheduleLessonForm does not submit an unchanged lesson time",
+          "status": "passed",
+          "title": "does not submit an unchanged lesson time",
+          "duration": 14.906000000000176,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["RescheduleLessonForm"],
+          "fullName": "RescheduleLessonForm locks controls while the calendar check is running",
+          "status": "passed",
+          "title": "locks controls while the calendar check is running",
+          "duration": 14.140499999999975,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251848256,
+      "endTime": 1793251848509.1404,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/components/RescheduleLessonForm.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries coalesces identical simultaneous commands without generating a second wire command",
+          "status": "passed",
+          "title": "coalesces identical simultaneous commands without generating a second wire command",
+          "duration": 56.208700000000135,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries keeps an identical explicit replay key on one in-flight wire request",
+          "status": "passed",
+          "title": "keeps an identical explicit replay key on one in-flight wire request",
+          "duration": 60.175899999999956,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries does not share delayed coach results with a different session",
+          "status": "passed",
+          "title": "does not share delayed coach results with a different session",
+          "duration": 126.85339999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries isolates a refreshed token for the same principal",
+          "status": "passed",
+          "title": "isolates a refreshed token for the same principal",
+          "duration": 125.36490000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries rejects a signed-out invocation instead of joining a signed-in request",
+          "status": "passed",
+          "title": "rejects a signed-out invocation instead of joining a signed-in request",
+          "duration": 64.40060000000017,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries rejects auth lookup failure without disclosing its raw error or sending a command",
+          "status": "passed",
+          "title": "rejects auth lookup failure without disclosing its raw error or sending a command",
+          "duration": 0.9674999999999727,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed expectedVersion separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed expectedVersion separately instead of returning the first command's result",
+          "duration": 124.86189999999988,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed reason separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed reason separately instead of returning the first command's result",
+          "duration": 126.33789999999976,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed nextStatus separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed nextStatus separately instead of returning the first command's result",
+          "duration": 126.11919999999964,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed entityType separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed entityType separately instead of returning the first command's result",
+          "duration": 127.23649999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed entityId separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed entityId separately instead of returning the first command's result",
+          "duration": 125.92389999999978,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed command separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed command separately instead of returning the first command's result",
+          "duration": 125.06129999999985,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed idempotencyKey separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed idempotencyKey separately instead of returning the first command's result",
+          "duration": 123.8777,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed payload separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed payload separately instead of returning the first command's result",
+          "duration": 125.28659999999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries keeps different domains separate",
+          "status": "passed",
+          "title": "keeps different domains separate",
+          "duration": 123.4043999999999,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries lets the server reject changed-payload reuse of an explicit key",
+          "status": "passed",
+          "title": "lets the server reject changed-payload reuse of an explicit key",
+          "duration": 125.1247000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries snapshots nested payload and metadata before a delayed auth lookup, then uses its token once",
+          "status": "passed",
+          "title": "snapshots nested payload and metadata before a delayed auth lookup, then uses its token once",
+          "duration": 62.296200000000226,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries releases a network failure so an identical explicit key can recover its receipt",
+          "status": "passed",
+          "title": "releases a network failure so an identical explicit key can recover its receipt",
+          "duration": 123.1596999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries releases structured HTTP failures so corrected or retried requests reach the server",
+          "status": "passed",
+          "title": "releases structured HTTP failures so corrected or retried requests reach the server",
+          "duration": 121.12089999999989,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries an older session's failure does not evict a newer session's active request",
+          "status": "passed",
+          "title": "an older session's failure does not evict a newer session's active request",
+          "duration": 122.64060000000018,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries does not turn completed in-flight coalescing into a persistent response cache",
+          "status": "passed",
+          "title": "does not turn completed in-flight coalescing into a persistent response cache",
+          "duration": 125.56840000000011,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251833852,
+      "endTime": 1793251836094.5684,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/data/bookingCommands.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "matches the scheduled/private exclusion while preserving class and draft semantics",
+          "status": "passed",
+          "title": "matches the scheduled/private exclusion while preserving class and draft semantics",
+          "duration": 2.6865999999999985,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not treat an old or inconsistent classification as permission to bypass a conflict",
+          "status": "passed",
+          "title": "does not treat an old or inconsistent classification as permission to bypass a conflict",
+          "duration": 0.31930000000011205,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "shares source-aware local checks, excludes self/cancelled/boundary touches and compares instants",
+          "status": "passed",
+          "title": "shares source-aware local checks, excludes self/cancelled/boundary touches and compares instants",
+          "duration": 0.972400000000107,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251853704,
+      "endTime": 1793251853707.9724,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/domain/schedulingConflicts.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "formats local control values independently of the host timezone",
+          "status": "passed",
+          "title": "formats local control values independently of the host timezone",
+          "duration": 16.706300000000056,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects impossible dates and DST gaps and exposes both repeated hours",
+          "status": "passed",
+          "title": "rejects impossible dates and DST gaps and exposes both repeated hours",
+          "duration": 1.4530999999999494,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251851481,
+      "endTime": 1793251851499.4531,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/domain/zonedInput.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "routes preview_datetime_correction through coach JWT database authority",
+          "status": "passed",
+          "title": "routes preview_datetime_correction through coach JWT database authority",
+          "duration": 21.317700000000002,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "routes correct_datetime through coach JWT database authority",
+          "status": "passed",
+          "title": "routes correct_datetime through coach JWT database authority",
+          "duration": 1.3798000000000457,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "routes datetime_correction_history through coach JWT database authority",
+          "status": "passed",
+          "title": "routes datetime_correction_history through coach JWT database authority",
+          "duration": 0.5614000000000487,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "routes review_datetime_correction through coach JWT database authority",
+          "status": "passed",
+          "title": "routes review_datetime_correction through coach JWT database authority",
+          "duration": 0.4977999999999838,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects a non-coach before any RPC even if the payload claims authority",
+          "status": "passed",
+          "title": "rejects a non-coach before any RPC even if the payload claims authority",
+          "duration": 1.4799000000000433,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "never reports a failed SQL transaction as successful",
+          "status": "passed",
+          "title": "never reports a failed SQL transaction as successful",
+          "duration": 2.1380000000000337,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251849632,
+      "endTime": 1793251849660.138,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_v2/lesson-datetime-corrections.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "requires explicit historical intent rather than inferring attendance from time",
+          "status": "passed",
+          "title": "requires explicit historical intent rather than inferring attendance from time",
+          "duration": 9.318199999999933,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "accepts explicit historical recording without a Google dependency",
+          "status": "passed",
+          "title": "accepts explicit historical recording without a Google dependency",
+          "duration": 1.0316000000000258,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "returns replay before any provider check or canonical re-execution",
+          "status": "passed",
+          "title": "returns replay before any provider check or canonical re-execution",
+          "duration": 0.788599999999974,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "cannot return paid success when the transactional ledger write is rejected",
+          "status": "passed",
+          "title": "cannot return paid success when the transactional ledger write is rejected",
+          "duration": 1.1377999999999702,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "schedules locally without requiring an unconfigured Google account",
+          "status": "passed",
+          "title": "schedules locally without requiring an unconfigured Google account",
+          "duration": 0.7887999999999238,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "returns committed canonical state with pending effects without compensating writes",
+          "status": "passed",
+          "title": "returns committed canonical state with pending effects without compensating writes",
+          "duration": 0.7219000000000051,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects conflicting replay payload and missing coach authority",
+          "status": "passed",
+          "title": "rejects conflicting replay payload and missing coach authority",
+          "duration": 0.8810999999999467,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports configured Google outage without claiming checks passed",
+          "status": "passed",
+          "title": "reports configured Google outage without claiming checks passed",
+          "duration": 1.564899999999966,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking create before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking create before fragmented writes",
+          "duration": 0.9316000000000031,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking update before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking update before fragmented writes",
+          "duration": 0.5376999999999725,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking delete before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking delete before fragmented writes",
+          "duration": 0.3987999999999374,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251852063,
+      "endTime": 1793251852081.3987,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_shared/manual-booking-command.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "retains the canonical booking when notification production fails",
+          "status": "passed",
+          "title": "retains the canonical booking when notification production fails",
+          "duration": 3.5831999999999766,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "uses the same booking identity when retrying queue production",
+          "status": "passed",
+          "title": "uses the same booking identity when retrying queue production",
+          "duration": 0.4531999999999812,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not queue stale or superseded work",
+          "status": "passed",
+          "title": "does not queue stale or superseded work",
+          "duration": 0.4076999999999771,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251852440,
+      "endTime": 1793251852445.4077,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_shared/manual-booking-effects.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "classifies private scheduled overlaps as database-blocked without requiring Google",
+          "status": "passed",
+          "title": "classifies private scheduled overlaps as database-blocked without requiring Google",
+          "duration": 10.026099999999929,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports target class overlap as advisory without inventing a database exclusion",
+          "status": "passed",
+          "title": "reports target class overlap as advisory without inventing a database exclusion",
+          "duration": 0.772199999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports target draft overlap as advisory without inventing a database exclusion",
+          "status": "passed",
+          "title": "reports target draft overlap as advisory without inventing a database exclusion",
+          "duration": 0.7142000000000053,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports other class overlap as advisory without inventing a database exclusion",
+          "status": "passed",
+          "title": "reports other class overlap as advisory without inventing a database exclusion",
+          "duration": 0.6739999999999782,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports other draft overlap as advisory without inventing a database exclusion",
+          "status": "passed",
+          "title": "reports other draft overlap as advisory without inventing a database exclusion",
+          "duration": 0.6841000000000577,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "assumes a new private scheduled lesson only when no existing target was supplied",
+          "status": "passed",
+          "title": "assumes a new private scheduled lesson only when no existing target was supplied",
+          "duration": 0.559099999999944,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "excludes the current occurrence from its own conflicts",
+          "status": "passed",
+          "title": "excludes the current occurrence from its own conflicts",
+          "duration": 0.5109999999999673,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not expose other-studio target details or proceed to provider reads",
+          "status": "passed",
+          "title": "does not expose other-studio target details or proceed to provider reads",
+          "duration": 0.7696000000000822,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires coach authority before target, overlap or provider reads",
+          "status": "passed",
+          "title": "requires coach authority before target, overlap or provider reads",
+          "duration": 0.7125999999999522,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not convert a database read failure into an empty successful check",
+          "status": "passed",
+          "title": "does not convert a database read failure into an empty successful check",
+          "duration": 0.753099999999904,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "preserves distinct studio and Google warnings with the same ID and interval",
+          "status": "passed",
+          "title": "preserves distinct studio and Google warnings with the same ID and interval",
+          "duration": 0.6153999999999087,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "returns a sanitized recoverable provider error instead of declaring availability",
+          "status": "passed",
+          "title": "returns a sanitized recoverable provider error instead of declaring availability",
+          "duration": 0.5971000000000686,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251850271,
+      "endTime": 1793251850288.5972,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_shared/scheduling-conflicts.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "provider failure and same/different event replay add one financial effect",
+          "status": "passed",
+          "title": "provider failure and same/different event replay add one financial effect",
+          "duration": 25.187400000000025,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "a lost committed response replays without incrementing again",
+          "status": "passed",
+          "title": "a lost committed response replays without incrementing again",
+          "duration": 1.2306999999999562,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "ledger rejection never changes the booking or starts provider work",
+          "status": "passed",
+          "title": "ledger rejection never changes the booking or starts provider work",
+          "duration": 0.8901999999999362,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "a failed webhook acknowledgement retries only the saved logical result",
+          "status": "passed",
+          "title": "a failed webhook acknowledgement retries only the saved logical result",
+          "duration": 0.8298999999999523,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rounding uses one durable identity and stops unknown outcomes beyond its retry window",
+          "status": "passed",
+          "title": "rounding uses one durable identity and stops unknown outcomes beyond its retry window",
+          "duration": 2.919499999999971,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "notification failure retains recovery independently of the committed installment",
+          "status": "passed",
+          "title": "notification failure retains recovery independently of the committed installment",
+          "duration": 0.8397999999999683,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "an unknown cancellation response is reconciled through subscription state",
+          "status": "passed",
+          "title": "an unknown cancellation response is reconciled through subscription state",
+          "duration": 0.43430000000000746,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "setup-mode checkout acknowledges without purchasing or settling an installment",
+          "status": "passed",
+          "title": "setup-mode checkout acknowledges without purchasing or settling an installment",
+          "duration": 0.4977000000000089,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251849172,
+      "endTime": 1793251849204.4978,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_shared/stripe-installment-settlement.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "does not offer a move/resize override or downstream review for a private exclusion",
+          "status": "passed",
+          "title": "does not offer a move/resize override or downstream review for a private exclusion",
+          "duration": 150.6365000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires explicit Google overlap acknowledgement before its financial/occurrence review",
+          "status": "passed",
+          "title": "requires explicit Google overlap acknowledgement before its financial/occurrence review",
+          "duration": 616.8891000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps a studio advisory distinct from Google authority in downstream review",
+          "status": "passed",
+          "title": "keeps a studio advisory distinct from Google authority in downstream review",
+          "duration": 459.35339999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "blocks a new private creation proposal without offering an override checkbox",
+          "status": "passed",
+          "title": "blocks a new private creation proposal without offering an override checkbox",
+          "duration": 34.51330000000007,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "blocks an old unclassified response rather than promising an override",
+          "status": "passed",
+          "title": "blocks an old unclassified response rather than promising an override",
+          "duration": 29.254699999999957,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "requires a new acknowledgement when a background refresh changes reviewed Google conflicts",
+          "status": "passed",
+          "title": "requires a new acknowledgement when a background refresh changes reviewed Google conflicts",
+          "duration": 127.13529999999992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251841641,
+      "endTime": 1793251843059.1353,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/features/coach/CalendarProposalDialog.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "retries an unchanged failed response with the same key before another conflict preview",
+          "status": "passed",
+          "title": "retries an unchanged failed response with the same key before another conflict preview",
+          "duration": 243.72239999999988,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not offer a local overlap override",
+          "status": "passed",
+          "title": "does not offer a local overlap override",
+          "duration": 67.50930000000017,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "records past wall time in the studio zone with explicit outcome and financial choices",
+          "status": "passed",
+          "title": "records past wall time in the studio zone with explicit outcome and financial choices",
+          "duration": 88.96809999999982,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects a DST gap and requires a repeated-hour occurrence",
+          "status": "passed",
+          "title": "rejects a DST gap and requires a repeated-hour occurrence",
+          "duration": 79.86680000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251844625,
+      "endTime": 1793251845104.8667,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/features/coach/ManualBookingDialog.test.tsx"
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { formatMoney } from "../../domain/finance";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { recordLink } from "../../app/recordLinks";
@@ -621,7 +622,7 @@ export function TodayView({
       )}
       {rescheduling && (
         <Dialog
-          title="Reschedule lesson"
+          title="Reschedule upcoming lesson"
           description={`${studentName(data, rescheduling.studentId)} · ${rescheduling.topic}`}
           onClose={() => !rescheduleBusy && setRescheduling(undefined)}
         >
@@ -636,20 +637,12 @@ export function TodayView({
             onCheckConflicts={(startsAt, endsAt) =>
               isDemo
                 ? Promise.resolve(
-                    data.lessons
-                      .filter(
-                        (lesson) =>
-                          lesson.id !== rescheduling.id &&
-                          lesson.status === "scheduled" &&
-                          lesson.startsAt < endsAt &&
-                          lesson.endsAt > startsAt,
-                      )
-                      .map((lesson) => ({
-                        id: lesson.id,
-                        summary: lesson.topic,
-                        start: lesson.startsAt,
-                        end: lesson.endsAt,
-                      })),
+                    localSchedulingConflicts(
+                      data.lessons,
+                      rescheduling,
+                      startsAt,
+                      endsAt,
+                    ),
                   )
                 : checkSchedulingConflicts(startsAt, endsAt, rescheduling.id)
             }

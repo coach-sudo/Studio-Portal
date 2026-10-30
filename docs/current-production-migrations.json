@@ -1,0 +1,437 @@
+{
+  "verifiedAt": "2026-10-29T14:22:41.907Z",
+  "project": "htwthzshhilrjtqwprlo",
+  "commit": "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb",
+  "source": "Read-only Supabase list_migrations",
+  "migrations": [
+    {
+      "version": "202607030001",
+      "name": "core",
+      "file": "202607030001_core.sql",
+      "sha256": "e24d1d8abd6d00e3979836a46dfde4998f49589df8f9ba1d991b2547660f86ef"
+    },
+    {
+      "version": "202607030002",
+      "name": "rls",
+      "file": "202607030002_rls.sql",
+      "sha256": "65ed0188b8aa1596b1a500713caa7f62ed0f2532258a51b981a2a105882ef35f"
+    },
+    {
+      "version": "202607030003",
+      "name": "commands",
+      "file": "202607030003_commands.sql",
+      "sha256": "99429670d141a2ed1fd288d31e0ef278c39e35dbcb68b204d38d0c331c082fff"
+    },
+    {
+      "version": "202608070004",
+      "name": "booking_platform",
+      "file": "202608070004_booking_platform.sql",
+      "sha256": "7565c80aa91b823c0978da14aa7120d8e2003e8bdd608cc6ab2e60f966d2d726"
+    },
+    {
+      "version": "20260820054301",
+      "name": "configurable_business_rules",
+      "file": "20260820054301_configurable_business_rules.sql",
+      "sha256": "f517a0064a419a1bcf98a1cb17fd09dfbce99c63c7cc0d555aed5499615c38f7"
+    },
+    {
+      "version": "20260820055359",
+      "name": "live_content_and_personalization",
+      "file": "20260820055359_live_content_and_personalization.sql",
+      "sha256": "8488f4027b11f1f69a9dc99198f7ea5e3303e25a3f7298422492f552531c787a"
+    },
+    {
+      "version": "20260820055805",
+      "name": "booking_branding_and_location_pricing",
+      "file": "20260820055805_booking_branding_and_location_pricing.sql",
+      "sha256": "caee93455e7320519acf9cafeffbd5f88d25eedf3c5760e511efcd27fa9d9bc8"
+    },
+    {
+      "version": "20260820061547",
+      "name": "email_automation_and_locations",
+      "file": "20260820061547_email_automation_and_locations.sql",
+      "sha256": "7e9e1f1557be08110119f1d3279052a0e6306c13e51a5fd1e318922496cabc3c"
+    },
+    {
+      "version": "20260820184240",
+      "name": "actor_view_security_invoker",
+      "file": "20260820184240_actor_view_security_invoker.sql",
+      "sha256": "1f07966ad2fe0dd5acfac60e9460e9e7cef54b6ec1b1b08b994c681ede57cdc9"
+    },
+    {
+      "version": "20260820184248",
+      "name": "actor_portfolios_and_provider_intake",
+      "file": "20260820184248_actor_portfolios_and_provider_intake.sql",
+      "sha256": "a2ef5ad2f1148183c26e2d24bc1ef6d46af834efdcb07f7d1a1825f2bbb1985c"
+    },
+    {
+      "version": "20260820184252",
+      "name": "merge_student_profiles",
+      "file": "20260820184252_merge_student_profiles.sql",
+      "sha256": "1e796e173f3e634e1bd157eac2a7cfd2d473655215c3a6f4909c218b6a93448b"
+    },
+    {
+      "version": "20260820184254",
+      "name": "portal_credentials_terms",
+      "file": "20260820184254_portal_credentials_terms.sql",
+      "sha256": "7e344089f569be14b21aeca33f275d00ee0bafbf388fe784f0090026ed1ab702"
+    },
+    {
+      "version": "20260820184601",
+      "name": "global_portal_usernames",
+      "file": "20260820184601_global_portal_usernames.sql",
+      "sha256": "a2de3c770fb274c86c79a9ebfcff2fd2ae20eea0824d3c44427dd030b7c52273"
+    },
+    {
+      "version": "20260824062936",
+      "name": "lesson_hubs_and_offerings",
+      "file": "20260824062936_lesson_hubs_and_offerings.sql",
+      "sha256": "53804e90a237222bc83ff0678a7cdb1a74665ac0c5cd3bb1fd3dcd7b6041eeb5"
+    },
+    {
+      "version": "20260824063423",
+      "name": "enrolled_offering_access_and_indexes",
+      "file": "20260824063423_enrolled_offering_access_and_indexes.sql",
+      "sha256": "a510e172992ad3e2d74bc8ecea1f388169b531eaf41e33cb7e8b0fc70b1f24cf"
+    },
+    {
+      "version": "20260824072704",
+      "name": "cohesive_portal_operations",
+      "file": "20260824072704_cohesive_portal_operations.sql",
+      "sha256": "9db6c84efa9a8503fefb2d073680453b7fe24a73953b35cb47b83f86e9614a4a"
+    },
+    {
+      "version": "20260824072802",
+      "name": "cohesive_portal_indexes",
+      "file": "20260824072802_cohesive_portal_indexes.sql",
+      "sha256": "93ef9cfd0b2e00105d12bf46fba96a76623dcf5ddc50082d9b8fc117309d2861"
+    },
+    {
+      "version": "20260825172349",
+      "name": "operational_calendar_controls",
+      "file": "20260825172349_operational_calendar_controls.sql",
+      "sha256": "07cd15106b4a51eef146eac80e45085aa37927f523e2f475113debd5a8a0b70f"
+    },
+    {
+      "version": "20260825173126",
+      "name": "booking_contact_preferences",
+      "file": "20260825173126_booking_contact_preferences.sql",
+      "sha256": "7654248f19ae4b3fcf77a69eaf04db0de60d847f57dcb3c7f98bf293b9acf347"
+    },
+    {
+      "version": "20260825174213",
+      "name": "server_command_execution_hardening",
+      "file": "20260825174213_server_command_execution_hardening.sql",
+      "sha256": "facbb7f035a94ff6ccdc34c061ea87403e296fd475fbabf884b20acf4231acbb"
+    },
+    {
+      "version": "20260825183731",
+      "name": "storage_retention",
+      "file": "20260825183731_storage_retention.sql",
+      "sha256": "ec115d30afcc65460afa026973c76c3ecbd9627e6f48d91452b0ccf3e30bb4fd"
+    },
+    {
+      "version": "20260826022808",
+      "name": "unified_lesson_operations",
+      "file": "20260826022808_unified_lesson_operations.sql",
+      "sha256": "c408a8d6961f1f0536a7876385404f2e6deee09eeab0c42da5055f703fbb0f72"
+    },
+    {
+      "version": "20260826072918",
+      "name": "close_production_workflow_gaps",
+      "file": "20260826072918_close_production_workflow_gaps.sql",
+      "sha256": "b0a16fae570d5107b606b65fbe3f1ac1591cdef446fcbfe2497856fe61bc2ba2"
+    },
+    {
+      "version": "20260826073351",
+      "name": "portal_account_grants_and_whiteboard_removal",
+      "file": "20260826073351_portal_account_grants_and_whiteboard_removal.sql",
+      "sha256": "495a98c5a716e6c5c9d3602d3b4e3a848e3d1abbf0abc05885c1bb05c4778427"
+    },
+    {
+      "version": "20260826190425",
+      "name": "optional_booking_portal_invites",
+      "file": "20260826190425_optional_booking_portal_invites.sql",
+      "sha256": "8c442cea1097bd97573a62eb896a11adeb3f8bd1ad1219958c31b8043a9fc20e"
+    },
+    {
+      "version": "20260830214801",
+      "name": "activity_receipts_student_pricing_and_lesson_financials",
+      "file": "20260830214801_activity_receipts_student_pricing_and_lesson_financials.sql",
+      "sha256": "da57a653f5267395b18b0177f34ed972f1796c2327684ff179003c56ba4028b6"
+    },
+    {
+      "version": "20260830220952",
+      "name": "notification_receipt_related_access",
+      "file": "20260830220952_notification_receipt_related_access.sql",
+      "sha256": "54a28620d994cc311abd26cc64cca88c9814f9df4eb3641abf13228f11aeb832"
+    },
+    {
+      "version": "20260830221230",
+      "name": "sync_lesson_booking_financials",
+      "file": "20260830221230_sync_lesson_booking_financials.sql",
+      "sha256": "3c0eb61fe04b01d542c1da365c208cb7e0ff7a012b2c90d126d896837ed34f7d"
+    },
+    {
+      "version": "20260902011922",
+      "name": "cleanup_non_lesson_provider_reviews",
+      "file": "20260902011922_cleanup_non_lesson_provider_reviews.sql",
+      "sha256": "0c0a7a0c050f68385786899328086b848cf0e448f4010cedbe5db4f51678055c"
+    },
+    {
+      "version": "20260902172443",
+      "name": "packages_households_notifications_pwa",
+      "file": "20260902172443_packages_households_notifications_pwa.sql",
+      "sha256": "cad5047dece00c045a4bcd0faa5795a2e838961ed09e8d2e4717f82db27812a1"
+    },
+    {
+      "version": "20260902223243",
+      "name": "fix_lesson_rls_recursion",
+      "file": "20260902223243_fix_lesson_rls_recursion.sql",
+      "sha256": "cf119669274b45e8a2914b5d27924e33500fdd7e29310e54abda4f30b9d83ac5"
+    },
+    {
+      "version": "20260902223544",
+      "name": "harden_household_and_package_lifecycle",
+      "file": "20260902223544_harden_household_and_package_lifecycle.sql",
+      "sha256": "2b5ccdb4a54b22aa318ed261a8a17ea71251276efb51efdea9fcafd2080080d4"
+    },
+    {
+      "version": "20260902224107",
+      "name": "revoke_anonymous_household_helpers",
+      "file": "20260902224107_revoke_anonymous_household_helpers.sql",
+      "sha256": "9fb1a7600f0c949f525f20128010b724c3d71fbb9a173553bed9ea86021a0e81"
+    },
+    {
+      "version": "20260903051455",
+      "name": "add_group_class_workspace",
+      "file": "20260903051455_add_group_class_workspace.sql",
+      "sha256": "261215e72010edba73c08a5a4e6800674431343da7e97ce744010b831fc69efc"
+    },
+    {
+      "version": "20260903153607",
+      "name": "unified_inbox_and_undoable_manual_email",
+      "file": "20260903153607_unified_inbox_and_undoable_manual_email.sql",
+      "sha256": "872df4663c13e1ffa4e7f1a7e7226b3f1bc05175010762f7e17fb985a5a21e3c"
+    },
+    {
+      "version": "20260903161123",
+      "name": "repair_legacy_procedure_lint",
+      "file": "20260903161123_repair_legacy_procedure_lint.sql",
+      "sha256": "0a8ad9689f3f15bffb3f7243191458989b4c9a9ee88d3b2538220567f8f6abcd"
+    },
+    {
+      "version": "20260904123000",
+      "name": "household_contact_sync_and_inbox_state",
+      "file": "20260904123000_household_contact_sync_and_inbox_state.sql",
+      "sha256": "c8bd356245c3da9fcc422675d29d1c28765711fd074fd6928fa951555257ff0a"
+    },
+    {
+      "version": "20260905141058",
+      "name": "google_portal_identity_claim",
+      "file": "20260905141058_google_portal_identity_claim.sql",
+      "sha256": "14c300628922f29a124fcb2518d74a47ba9d15a0e2cecb5c1bbadcc6dbf94176"
+    },
+    {
+      "version": "20260913160351",
+      "name": "email_campaigns_and_daily_popup",
+      "file": "20260913160351_email_campaigns_and_daily_popup.sql",
+      "sha256": "9b9e91122f7be20911cb95059215387665bf379a1c9810a4bf25aaf1b13ba3f2"
+    },
+    {
+      "version": "20260913190801",
+      "name": "student_referrals",
+      "file": "20260913190801_student_referrals.sql",
+      "sha256": "2b5f6d3286769b4190a3e811d31a61c84ad4609668a719dcc4777128000b0a5a"
+    },
+    {
+      "version": "20260913191600",
+      "name": "repair_referral_notification",
+      "file": "20260913191600_repair_referral_notification.sql",
+      "sha256": "4d0a421c9cf51aa94499dd8b111b141324aa255dbd1ba7abc49f78baa6d2ef2b"
+    },
+    {
+      "version": "20260919090000",
+      "name": "visible_inbox_realtime",
+      "file": "20260919090000_visible_inbox_realtime.sql",
+      "sha256": "79e45b9d4d0d5527e1f895d9a8e5fa2ad6c8d57d30a796ec45a2a94540a40346"
+    },
+    {
+      "version": "20260919091000",
+      "name": "route_snapshot_rpc",
+      "file": "20260919091000_route_snapshot_rpc.sql",
+      "sha256": "af12286832927fb1bde853e180defac4068340beb3769b286ac5f2651238da8c"
+    },
+    {
+      "version": "20260919092000",
+      "name": "restrict_route_snapshot_anon_execute",
+      "file": "20260919092000_restrict_route_snapshot_anon_execute.sql",
+      "sha256": "31bf3b4cd10a438ad7cebd38a3708faedd5d8ef8402107a7a094a68ce2c7f0ef"
+    },
+    {
+      "version": "20260920120823",
+      "name": "material_library_page",
+      "file": "20260920120823_material_library_page.sql",
+      "sha256": "4c527c87fbf2cf5299e72a951491684f76c2035fdba9e4e5c6fbc361585673a9"
+    },
+    {
+      "version": "20260922125950",
+      "name": "pr6_product_polish_configuration",
+      "file": "20260922125950_pr6_product_polish_configuration.sql",
+      "sha256": "45b403c90451772f20cc1fd8f78d8432a0363f85fe6ad560dfb35a7cb591087c"
+    },
+    {
+      "version": "20261005014016",
+      "name": "lesson_operational_intelligence",
+      "file": "20261005014016_lesson_operational_intelligence.sql",
+      "sha256": "21da399a3547454e7a946831f9b1464eb39018708b497332541fa0e91c5a716d"
+    },
+    {
+      "version": "20261006204647",
+      "name": "unified_credits_and_invoices",
+      "file": "20261006204647_unified_credits_and_invoices.sql",
+      "sha256": "76e75acdadca9111937fd9ce7fc9af2ba47f045a3e4938b944cbd9d7c9f29f3a"
+    },
+    {
+      "version": "20261008120000",
+      "name": "preserve_package_gift_price",
+      "file": "20261008120000_preserve_package_gift_price.sql",
+      "sha256": "0f20bc6be4ac7649a3a3db97ebdf76454e649ef8eff7b2fefba90c2aa5bba176"
+    },
+    {
+      "version": "20261008203319",
+      "name": "studio_library_resources",
+      "file": "20261008203319_studio_library_resources.sql",
+      "sha256": "a0585e844240a2bbad5500b0a44e290efef16038af5e08540c6b78badff062af"
+    },
+    {
+      "version": "20261008220659",
+      "name": "bounded_legacy_material_snapshots",
+      "file": "20261008220659_bounded_legacy_material_snapshots.sql",
+      "sha256": "098d008a8841932c05e316470195cd5a9c6643b10d82947c51f29cea2fad9bd7"
+    },
+    {
+      "version": "20261014142813",
+      "name": "credit_coverage_diagnostics",
+      "file": "20261014142813_credit_coverage_diagnostics.sql",
+      "sha256": "25c5ae5f18c8942457df3fdc762f3d1b7cdca31705972522fed0d3337dd85f94"
+    },
+    {
+      "version": "20261014151934",
+      "name": "credit_lifecycle_reliability",
+      "file": "20261014151934_credit_lifecycle_reliability.sql",
+      "sha256": "fde7a14b784f0a6b6452e74e0ef0e34d6d626eed74980dcec291d231b96e91f9"
+    },
+    {
+      "version": "20261014163444",
+      "name": "occurrence_safe_lesson_changes",
+      "file": "20261014163444_occurrence_safe_lesson_changes.sql",
+      "sha256": "2b48214e759e1d8f9810c44dce4ebdd1a34a676bae244915915eface2d695eac"
+    },
+    {
+      "version": "20261014203257",
+      "name": "bulk_lesson_management",
+      "file": "20261014203257_bulk_lesson_management.sql",
+      "sha256": "d195fd9f73df626f2d7adcf749ae1d1933779e84e36f05b7ac19fa50b08e8ff1"
+    },
+    {
+      "version": "20261014224415",
+      "name": "lesson_bulk_review_context",
+      "file": "20261014224415_lesson_bulk_review_context.sql",
+      "sha256": "3443ec91c11baaee91364a8a77b962d296e0c0b9767fc00d714eae3c32fbf83e"
+    },
+    {
+      "version": "20261015123428",
+      "name": "student_workspace_summary",
+      "file": "20261015123428_student_workspace_summary.sql",
+      "sha256": "f13d1433f8361d7544904b80de7474a2c44dbf0bbccc7da8df740f942227a394"
+    },
+    {
+      "version": "20261018222228",
+      "name": "workspace_navigation_search",
+      "file": "20261018222228_workspace_navigation_search.sql",
+      "sha256": "701d36703afb4166d3ca8e69d92ae1db9d9764bc6163b8443082959d3080e272"
+    },
+    {
+      "version": "20261019111534",
+      "name": "lesson_notice_cutover_identity",
+      "file": "20261019111534_lesson_notice_cutover_identity.sql",
+      "sha256": "5d29eeb3ee39b20016ab6d653c406f06e849a45b23c250a2929375abafeb85a9"
+    },
+    {
+      "version": "20261019113845",
+      "name": "guard_lesson_notice_trigger_roles",
+      "file": "20261019113845_guard_lesson_notice_trigger_roles.sql",
+      "sha256": "e67aa65279b2bf0ac471893fe382d2d6c3fa284bb18aa9cd32f991e8301c7e7a"
+    },
+    {
+      "version": "20261019165111",
+      "name": "material_resource_study_workspace",
+      "file": "20261019165111_material_resource_study_workspace.sql",
+      "sha256": "45033f2a991cf1de4e5b412415bcd6fcab0537aa2e24a40ac4b82611f5c6d7da"
+    },
+    {
+      "version": "20261020153417",
+      "name": "studio_operations_workflows",
+      "file": "20261020153417_studio_operations_workflows.sql",
+      "sha256": "762b0133226c75f60713a8c334d7bc11af508da4d02e865025346cb3df3381e6"
+    },
+    {
+      "version": "20261020183938",
+      "name": "studio_operations_reads",
+      "file": "20261020183938_studio_operations_reads.sql",
+      "sha256": "03690458ff1b2c686680b9337b741ff57be792c94cef83f01cdc05181a3c984d"
+    },
+    {
+      "version": "20261020184422",
+      "name": "studio_publication_workflows",
+      "file": "20261020184422_studio_publication_workflows.sql",
+      "sha256": "1208e651e15401d13ced2954250ffa6eaddda487b83abb4346256f369dae60f0"
+    },
+    {
+      "version": "20261020185011",
+      "name": "studio_campaign_drafts",
+      "file": "20261020185011_studio_campaign_drafts.sql",
+      "sha256": "1dd9785444d3f1ae79f1171882901e5e76d456f66fd946a0624c678507299808"
+    },
+    {
+      "version": "20261020185650",
+      "name": "studio_settings_patches",
+      "file": "20261020185650_studio_settings_patches.sql",
+      "sha256": "de1179e0d30e9aa57c250d09cac52cbb9021d723b4dbf773165b4483014241b5"
+    },
+    {
+      "version": "20261020201048",
+      "name": "studio_actor_legacy_draft_compatibility",
+      "file": "20261020201048_studio_actor_legacy_draft_compatibility.sql",
+      "sha256": "a1769397b82c3fe46f01052491dfbc9a6187c88ddec404a12540b725a9738618"
+    },
+    {
+      "version": "20261021010314",
+      "name": "studio_operations_review_guards",
+      "file": "20261021010314_studio_operations_review_guards.sql",
+      "sha256": "74bfce69d78368231415a567977145683152265d910102b3b65ffca9cdc9f1ce"
+    },
+    {
+      "version": "20261021050357",
+      "name": "studio_branding_asset_access",
+      "file": "20261021050357_studio_branding_asset_access.sql",
+      "sha256": "3d4a2a61ee9251fc7379938f3fbb6251572c0d2be478a27b73da564981e46aff"
+    },
+    {
+      "version": "20261021135617",
+      "name": "provider_intake_review_safety",
+      "file": "20261021135617_provider_intake_review_safety.sql",
+      "sha256": "3cf4c1f518d1e8ba2dcf078c1ebb2a5ce7c6b9626714d4ac273e928e723b6eca"
+    },
+    {
+      "version": "20261026161014",
+      "name": "reliable_scheduled_workers",
+      "file": "20261026161014_reliable_scheduled_workers.sql",
+      "sha256": "1fa9ead6aec27f3cc65bbcd2bd79b7849821a79b919adc4be82ff6d22901736b"
+    }
+  ],
+  "proofLimit": "Hosted list_migrations verifies versions/names only, not hosted SQL contents. File hashes below prove exact Git source bytes at audited commit fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb, not a hosted SQL content hash.",
+  "fileHashEncoding": "SHA-256 of original Git blob bytes; working-tree CRLF normalized to LF for Windows checks.",
+  "expectedAddedOriginalTableColumns": []
+}

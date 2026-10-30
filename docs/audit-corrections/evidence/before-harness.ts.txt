@@ -1,0 +1,9 @@
+import { test, expect } from "@playwright/test";
+import { ids, installFixture } from "../../e2e/candidate-local/fixture";
+for (const width of [320,390,768,1440]) test(`parent lesson actions before correction UI at ${width}`, async ({page,context},info)=>{
+  await page.setViewportSize({width,height:1000}); await installFixture(context,"coach");
+  await page.goto(`/coach/students/${ids.student}/lessons/${ids.lesson}`);
+  await expect(page.getByRole("heading",{name:"Candidate scene study",exact:true})).toBeVisible();
+  await expect(page.getByRole("button",{name:"Correct lesson date/time",exact:true})).toHaveCount(0);
+  await page.screenshot({path:info.outputPath(`before-lesson-actions-${width}.png`),fullPage:true});
+});
