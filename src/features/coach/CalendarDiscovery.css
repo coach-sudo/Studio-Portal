@@ -1,0 +1,99 @@
+.calendar-discovery-dialog
+  :is(form, article, fieldset, p, strong, small, label) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.calendar-discovery-dialog button {
+  min-height: 44px;
+  max-width: 100%;
+}
+.calendar-discovery-dialog input,
+.calendar-discovery-dialog select {
+  min-width: 0;
+  max-width: 100%;
+}
+.calendar-discovery-dialog input[type="checkbox"] {
+  width: 18px;
+  min-width: 18px;
+}
+.calendar-discovery-dialog .workflow-form > .full {
+  grid-column: 1 / -1;
+}
+.calendar-discovery-dialog .workflow-form {
+  gap: 12px;
+}
+.calendar-discovery-dialog .workflow-form > p {
+  margin: 0;
+}
+.workflow-dialog.calendar-discovery-dialog > .discovery-navigation {
+  padding-block: 12px;
+  gap: 8px;
+}
+.discovery-calendar-options {
+  padding: 12px;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.discovery-calendar-options label {
+  min-height: 44px;
+  padding: 10px;
+}
+.discovery-sources > article,
+.discovery-candidate {
+  padding: 16px 0;
+  border-bottom: 1px solid var(--line);
+}
+.historical-source-review :is(fieldset, section, ul, li, textarea) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.historical-review-form fieldset {
+  display: grid;
+  gap: 12px;
+  margin-block: 16px;
+  padding: 16px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+}
+.historical-review-form label {
+  display: grid;
+  gap: 6px;
+}
+.historical-review-form :is(input, select, textarea) {
+  border-color: currentColor;
+}
+.historical-review-form .historical-review-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+}
+.historical-review-check input {
+  flex: 0 0 18px;
+  margin-top: 3px;
+}
+.historical-time-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.historical-review-summary {
+  padding: 16px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  margin-block: 16px;
+}
+.historical-source-review :is(button, a):focus-visible {
+  outline: 3px solid var(--color-focus, #875e13);
+  outline-offset: 3px;
+}
+@media (max-width: 480px) {
+  .historical-time-fields {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.discovery-sources small {
+  display: block;
+}

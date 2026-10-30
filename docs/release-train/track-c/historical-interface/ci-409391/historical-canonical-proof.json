@@ -1,0 +1,12 @@
+{
+  "layer": "real authenticated UI→server→PostgreSQL, isolated loopback only",
+  "identicalReplay": true,
+  "originalFinancialAndAttendanceHash": "0c8fce67b28471d515b33ec008cdb0ec27f98e8447b036ccfd2c2189a7f85d62",
+  "afterHash": "0c8fce67b28471d515b33ec008cdb0ec27f98e8447b036ccfd2c2189a7f85d62",
+  "createdLessons": 1,
+  "createdOutcome": "scheduled",
+  "createdPaymentStatus": "untracked",
+  "createdPaidMinor": 0,
+  "sourceReceipts": 6,
+  "providerMutationsRequestedByHarness": false
+}

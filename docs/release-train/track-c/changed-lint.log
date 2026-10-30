@@ -1,0 +1,63 @@
+
+C:\Users\dariu\.codex\worktrees\release-c-integrations-identity\studio-portal\src\features\coach\StudioSettings.tsx
+     7:3   warning  'Megaphone' is defined but never used                                                                                           no-unused-vars
+     7:3   warning  'Megaphone' is defined but never used                                                                                           @typescript-eslint/no-unused-vars
+    13:3   warning  'Users' is defined but never used                                                                                               no-unused-vars
+    13:3   warning  'Users' is defined but never used                                                                                               @typescript-eslint/no-unused-vars
+    61:14  warning  Fast refresh only works when a file only exports components. Use a new file to share constants or functions between components  react-refresh/only-export-components
+   132:6   warning  React Hook useEffect has a missing dependency: 'isDemo'. Either include it or remove the dependency array                       react-hooks/exhaustive-deps
+   243:6   warning  React Hook useEffect has a missing dependency: 'settingsMutation'. Either include it or remove the dependency array             react-hooks/exhaustive-deps
+   246:7   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   428:12  warning  'v' is defined but never used                                                                                                   no-unused-vars
+   514:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   522:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   531:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   539:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   546:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   555:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   562:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+   562:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   569:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   592:15  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   608:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   641:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   692:12  warning  'v' is defined but never used                                                                                                   no-unused-vars
+   716:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   723:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+   723:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   735:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   752:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   772:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   824:12  warning  'v' is defined but never used                                                                                                   no-unused-vars
+   845:11  warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   861:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   876:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   897:12  warning  'value' is defined but never used                                                                                               no-unused-vars
+   939:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   948:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+   948:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   959:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   968:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+   968:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   979:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   988:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+   988:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+   999:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1008:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+  1008:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1019:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1028:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+  1028:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1039:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1048:9   warning  A form label must be associated with a control                                                                                  jsx-a11y/label-has-associated-control
+  1048:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1059:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1068:9   warning  Form label must have ALL of the following types of associated control: nesting, id                                              jsx-a11y/label-has-for
+  1098:14  warning  'value' is defined but never used                                                                                               no-unused-vars
+  1376:14  warning  'v' is defined but never used                                                                                                   no-unused-vars
+  1411:6   warning  React Hook useEffect has a missing dependency: 'refreshStorage'. Either include it or remove the dependency array               react-hooks/exhaustive-deps
+  1640:14  warning  'v' is defined but never used                                                                                                   no-unused-vars
+  1643:5   warning  A control must be associated with a text label                                                                                  jsx-a11y/control-has-associated-label
+
+✖ 58 problems (0 errors, 58 warnings)
+

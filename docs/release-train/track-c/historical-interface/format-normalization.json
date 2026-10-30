@@ -1,0 +1,65 @@
+{
+  "tracked": [
+    {
+      "file": ".github/workflows/ci.yml",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/chromium-colors-1440.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/chromium-colors-320.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/chromium-colors-390.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/chromium-colors-768.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/webkit-colors-1440.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/webkit-colors-320.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/webkit-colors-390.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/audit-identity/evidence/webkit-colors-768.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "docs/current-production-migrations.json",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "scripts/test-current-production-upgrade.mjs",
+      "gitFilteredContentUnchanged": true
+    },
+    {
+      "file": "src/data/bookingCommands.test.ts",
+      "gitFilteredContentUnchanged": true
+    }
+  ],
+  "newJsonFormatted": [
+    "docs/release-train/track-c/historical-interface/actor-browser-results.json",
+    "docs/release-train/track-c/historical-interface/actor-identity-browser-results.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/chromium-colors-1440.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/chromium-colors-320.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/chromium-colors-390.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/chromium-colors-768.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/webkit-colors-1440.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/webkit-colors-320.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/webkit-colors-390.json",
+    "docs/release-train/track-c/historical-interface/identity-evidence/webkit-colors-768.json",
+    "docs/release-train/track-c/historical-interface/policy-browser-results.json"
+  ]
+}

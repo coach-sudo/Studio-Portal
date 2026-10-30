@@ -1,0 +1,35 @@
+{
+  "commit": "47e247d2451baeec10a09b1e760e81ef873cc4be",
+  "productionWorkflow": {
+    "id": 40818224001,
+    "conclusion": "success",
+    "unitTests": 1075,
+    "unitFiles": 155,
+    "sqlAssertions": 387,
+    "sqlFiles": 16
+  },
+  "browserWorkflow": {
+    "id": 40818224058,
+    "conclusion": "failure",
+    "job": 123264445871,
+    "step": "Start ephemeral deployed preview",
+    "testsExecuted": false
+  },
+  "failure": "npm E404 for https://registry.npmjs.org/@types/estree/-/estree-1.0.10.tgz",
+  "independentReadOnlyChecks": {
+    "missingTarballStatus": 404,
+    "previousTarball": "https://registry.npmjs.org/@types/estree/-/estree-1.0.9.tgz",
+    "previousTarballStatus": 200,
+    "installedLocalTypeVersion": "1.0.9"
+  },
+  "correction": "Pin the verified type-only package within the existing disposable CLI overrides. No application dependency, test, retry count or production configuration changes.",
+  "remainingDebt": "Other CLI transitive ranges are still resolved at setup time; no complete CLI lock or reproducibility claim.",
+  "fixtureBaselineRestored": [
+    "public",
+    "lesson-ops",
+    "storage",
+    "auth-users",
+    "auth-identities"
+  ],
+  "localStackStopped": true
+}

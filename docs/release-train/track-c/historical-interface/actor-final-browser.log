@@ -1,0 +1,27 @@
+[WebServer] (node:27804) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 16 tests using 1 worker
+
+(node:8028) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  1 [chromium] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 320 (3.9s)
+  ok  2 [chromium] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 390 (3.0s)
+  ok  3 [chromium] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 768 (3.7s)
+  ok  4 [chromium] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 1440 (3.8s)
+  ok  5 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 (4.6s)
+  ok  6 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 (4.5s)
+  ok  7 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 (5.0s)
+  ok  8 [chromium] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 (6.1s)
+(node:27888) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok  9 [webkit] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 320 (5.8s)
+  ok 10 [webkit] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 390 (7.5s)
+  ok 11 [webkit] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 768 (8.6s)
+  ok 12 [webkit] › e2e\audit-discovery-local\discovery.spec.ts:6:3 › selected-calendar preview and recovery at 1440 (6.5s)
+  ok 13 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 320 (8.0s)
+  ok 14 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 390 (9.1s)
+  ok 15 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 768 (11.1s)
+  ok 16 [webkit] › e2e\audit-discovery-local\historical.spec.ts:7:3 › historical source decisions and unchanged recovery at 1440 (18.3s)
+
+  16 passed (1.9m)

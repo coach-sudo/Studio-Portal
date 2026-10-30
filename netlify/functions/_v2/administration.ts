@@ -23,6 +23,10 @@ export async function handleAdministrationCommands(
     await requireCoach();
     if (!workerEnabled("provider-intake"))
       return disabledWorkerResponse("provider-intake");
+    if (input.payload.mergeStudentId != null)
+      throw new Error(
+        "REVIEW_REQUIRED: Review duplicate profile links separately in Students. Existing records and permissions have not moved.",
+      );
     const { data, error } = await db.rpc("command_review_provider_import", {
       p_import: input.entityId,
       p_payload: input.payload,

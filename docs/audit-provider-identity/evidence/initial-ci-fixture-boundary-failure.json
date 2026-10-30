@@ -1,0 +1,21 @@
+{
+  "commit": "ce65d056baf470a2dfa61a2b7d2a5d63fffc83b6",
+  "workflow": 40816309742,
+  "job": 123258070370,
+  "originalPassed": 61,
+  "existingStripeBlocked": 1,
+  "failedLocalCases": 8,
+  "failure": "page.goto: net::ERR_FAILED at http://127.0.0.1:8888/coach/today",
+  "cause": "Root deployed Playwright config collected the new before/after loopback-only fixtures, which require port 4187, a separate config and synthetic routing.",
+  "correction": "Add the new fixture directory to the existing explicit local-fixture testIgnore list. No original test is excluded; root discovery retains 62 tests in 18 files, and all eight after/eight before cases execute separately.",
+  "focusRepeatPassed": 20,
+  "focusRepeatRetries": 0,
+  "fixtureBaselineRestored": [
+    "public",
+    "lesson-ops",
+    "storage",
+    "auth-users",
+    "auth-identities"
+  ],
+  "productPassInferred": false
+}

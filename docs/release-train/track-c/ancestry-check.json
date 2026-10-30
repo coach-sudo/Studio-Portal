@@ -1,0 +1,24 @@
+{
+  "dependencies": {
+    "A": "ad8c819",
+    "pr89": "6dbc9db",
+    "pr86": "d8e1927",
+    "pr80": "69d6eaa",
+    "pr85": "b51dd68"
+  },
+  "allFrozenTipsAreAncestors": true,
+  "uniqueMigrationFiles": 78,
+  "cAdditiveMigrations": [
+    "20261028041034_worker_run_observations.sql",
+    "20261028051408_provider_attendance_separation.sql",
+    "20261028131000_calendar_discovery_previews.sql",
+    "20261028173500_historical_calendar_source_protection.sql",
+    "20261028183000_historical_calendar_review_decisions.sql",
+    "20261028193000_historical_calendar_canonical_reconciliation.sql",
+    "20261028230000_student_identity_groups.sql"
+  ],
+  "centralDocsCommit": "88fd1b6",
+  "centralDocsOwner": "coordinator",
+  "mainUntouched": true,
+  "hostedActions": []
+}

@@ -1,0 +1,101 @@
+-- Disposable full-schema PostgreSQL only. All synthetic observations roll back.
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+insert into auth.users(id,email) values
+ ('e7900000-0000-4000-8000-000000000002','e2e-discovery-coach@example.test'),
+ ('e7900000-0000-4000-8000-000000000003','e2e-discovery-student@example.test'),
+ ('e7900000-0000-4000-8000-000000000004','e2e-discovery-guardian@example.test'),
+ ('e7900000-0000-4000-8000-000000000005','e2e-discovery-unrelated@example.test');
+insert into public.studios(id,name,slug) values('e7900000-0000-4000-8000-000000000001','E2E discovery','e2e-discovery'),('e7900000-0000-4000-8000-000000000006','E2E other discovery','e2e-discovery-other');
+insert into public.memberships(studio_id,user_id,role,display_name) values
+ ('e7900000-0000-4000-8000-000000000001','e7900000-0000-4000-8000-000000000002','coach','Synthetic coach'),
+ ('e7900000-0000-4000-8000-000000000001','e7900000-0000-4000-8000-000000000003','student','Synthetic learner'),
+ ('e7900000-0000-4000-8000-000000000001','e7900000-0000-4000-8000-000000000004','guardian','Synthetic guardian'),
+ ('e7900000-0000-4000-8000-000000000006','e7900000-0000-4000-8000-000000000005','coach','Unrelated coach');
+insert into public.integration_imports(studio_id,provider,external_id,detected_source,status,payload) values('e7900000-0000-4000-8000-000000000001','google_calendar','event-1','google_calendar','ignored','{"privatePayload":"must not be returned"}');
+create temporary table e2e_discovery_state(name text primary key,value jsonb);
+grant all on e2e_discovery_state to authenticated,service_role;
+create function pg_temp.discovery_scan() returns uuid language sql as $$select (value->>'scanId')::uuid from e2e_discovery_state where name='scan'$$;
+create function pg_temp.discovery_value() returns jsonb language sql as $$select '{"from":"2000-01-01T00:00:00Z","to":"2035-01-01T00:00:00Z","timezone":"UTC","calendars":[{"id":"alpha","label":"Synthetic alpha","timezone":"UTC"},{"id":"beta","label":"Synthetic beta"}]}'::jsonb$$;
+create function pg_temp.discovery_page() returns jsonb language sql as $$select jsonb_build_object('nextPageToken','page-two','items',jsonb_agg(jsonb_build_object('id','event-'||n,'summary','Synthetic event '||n,'status','active','startsAt','2020-01-01T10:00:00Z','endsAt','2020-01-01T11:00:00Z','reasonCode','event_detected'))) from generate_series(1,250)n$$;
+select ok(not has_function_privilege('anon','public.start_calendar_discovery(uuid,uuid,jsonb,text)','execute'),'Anonymous cannot start provider reads');
+select ok(not has_function_privilege('authenticated','public.finish_calendar_discovery_page(uuid,text,integer,uuid,jsonb)','execute'),'Portal callers cannot fabricate provider checkpoints');
+select ok(not has_table_privilege('authenticated','discovery_internal.candidates','insert'),'Observation tables cannot be forged by portal roles');
+set local role service_role;
+select throws_ok($$select public.start_calendar_discovery('e7900000-0000-4000-8000-000000000003','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value(),'e2e-discovery-denied')$$,'42501','FORBIDDEN','Service command cannot treat a student as a coach');
+select throws_ok($$select public.start_calendar_discovery('e7900000-0000-4000-8000-000000000004','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value(),'e2e-discovery-denied')$$,'42501','FORBIDDEN','Guardian cannot impersonate a coach');
+select throws_ok($$select public.start_calendar_discovery('e7900000-0000-4000-8000-000000000005','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value(),'e2e-discovery-denied')$$,'42501','FORBIDDEN','An unrelated studio coach is denied');
+insert into e2e_discovery_state values('scan',public.start_calendar_discovery('e7900000-0000-4000-8000-000000000002','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value(),'e2e-discovery-start'));
+select is(public.start_calendar_discovery('e7900000-0000-4000-8000-000000000002','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value(),'e2e-discovery-start'),(select value from e2e_discovery_state where name='scan'),'Lost start response returns its same logical receipt');
+select throws_ok($$select public.start_calendar_discovery('e7900000-0000-4000-8000-000000000002','e7900000-0000-4000-8000-000000000001',pg_temp.discovery_value()||'{"timezone":"Asia/Tokyo"}'::jsonb,'e2e-discovery-start')$$,'P0001','IDEMPOTENCY_CONFLICT','Changed start payload cannot reuse identity');
+insert into e2e_discovery_state values('alpha',public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',0,'e2e-discovery-alpha-0'));
+select throws_ok($$select public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',0,'e2e-discovery-alpha-other')$$,'P0001','DISCOVERY_RUNNING','A second request cannot fetch a live claimed page');
+reset role;
+create function pg_temp.discovery_fault() returns trigger language plpgsql as $$begin if new.calendar_id='alpha' and new.page_sequence=0 and new.outcome='completed' and current_setting('e2e.discovery_fault',true)='true' then raise exception 'SYNTHETIC_DISCOVERY_FAULT';end if;return new;end$$;
+create trigger e2e_discovery_fault before insert on discovery_internal.page_observations for each row execute function pg_temp.discovery_fault();
+select set_config('e2e.discovery_fault','true',true);
+set local role service_role;
+select throws_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),pg_temp.discovery_page())$$,'P0001','SYNTHETIC_DISCOVERY_FAULT','Late observation rejection rolls back all candidate and cursor writes');
+reset role;
+select is((select count(*) from discovery_internal.candidates where scan_id=pg_temp.discovery_scan()),0::bigint,'Failure leaves no successful candidate writes');
+select is((select page_sequence from discovery_internal.sources where scan_id=pg_temp.discovery_scan() and calendar_id='alpha'),0,'Failure does not advance the page');
+select set_config('e2e.discovery_fault','false',true);
+set local role service_role;
+select lives_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),pg_temp.discovery_page())$$,'A successful page saves all 250 observations and continuation');
+select lives_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),pg_temp.discovery_page())$$,'Lost checkpoint response replays without another write');
+select throws_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),pg_temp.discovery_page()||'{"nextPageToken":"changed"}'::jsonb)$$,'P0001','IDEMPOTENCY_CONFLICT','A changed checkpoint body cannot replace committed evidence');
+select is(public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',0,'e2e-discovery-alpha-0')->>'replay','true','Original page request recovers its receipt');
+select is(public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',0,'e2e-discovery-alpha-alias')->>'replay','true','A new key for an already saved page does not fetch it again');
+select throws_ok($$select public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',1,'e2e-discovery-alpha-alias')$$,'P0001','IDEMPOTENCY_CONFLICT','A receipt recovered under a new key also binds its payload');
+update e2e_discovery_state set value=public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',1,'e2e-discovery-alpha-1') where name='alpha';
+select lives_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',1,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),'{"items":[],"nextPageToken":"page-three"}')$$,'An empty page with continuation still advances safely');
+update e2e_discovery_state set value=public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'alpha',2,'e2e-discovery-alpha-2') where name='alpha';
+select throws_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',2,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),'{"items":[],"nextPageToken":"page-three"}')$$,'P0001','INVALID_DISCOVERY_PAGINATION','A repeated cursor cannot report completion or loop silently');
+select lives_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'alpha',2,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='alpha'),'{"items":[{"id":"all-day","summary":"Date-only evidence","status":"active","startDate":"2020-01-01","endDate":"2020-01-02","reasonCode":"date_only_requires_time"},{"id":"cancelled-instance","summary":"Cancelled occurrence","status":"cancelled","recurringEventId":"series","originalStart":"2020-01-02","reasonCode":"cancelled_source_requires_review"},{"id":"exception","summary":"Recurring exception","status":"active","recurringEventId":"series","originalStart":"2020-01-03T10:00:00Z","startsAt":"2020-01-04T10:00:00Z","endsAt":"2020-01-04T11:00:00Z","reasonCode":"event_detected"}]}')$$,'Date-only, cancellation and exception evidence is saved without inventing attendance');
+insert into e2e_discovery_state values('beta',public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'beta',0,'e2e-discovery-beta-0'));
+select is(public.fail_calendar_discovery_page(pg_temp.discovery_scan(),'beta',(select (value->>'claimToken')::uuid from e2e_discovery_state where name='beta'),'access_denied'),true,'A failed calendar records a sanitized failure');
+reset role;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e7900000-0000-4000-8000-000000000002',true);
+select is(public.calendar_discovery_progress(pg_temp.discovery_scan())->>'status','partial','Successful source is preserved while another calendar fails');
+select is(public.calendar_discovery_progress(pg_temp.discovery_scan())->>'total','253','More than 250 events remain discoverable');
+select ok(public.calendar_discovery_progress(pg_temp.discovery_scan())::text !~ 'claimToken|pageToken|privatePayload','Public progress hides provider cursors, claims and raw payloads');
+reset role;
+set local role service_role;
+update e2e_discovery_state set value=public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'beta',0,'e2e-discovery-beta-0') where name='beta';
+reset role;
+update discovery_internal.sources set claim_until=now()-interval '1 second' where scan_id=pg_temp.discovery_scan() and calendar_id='beta';
+set local role authenticated;
+select is(public.calendar_discovery_progress(pg_temp.discovery_scan())->>'status','partial','Expired lease is not falsely reported as running');
+reset role;
+set local role service_role;
+select throws_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'beta',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='beta'),'{"items":[]}')$$,'P0001','STALE_DISCOVERY_CLAIM','An expired claimant cannot complete a preview page');
+insert into e2e_discovery_state values('stale-beta',(select value from e2e_discovery_state where name='beta'));
+update e2e_discovery_state set value=public.claim_calendar_discovery_page('e7900000-0000-4000-8000-000000000002',pg_temp.discovery_scan(),'beta',0,'e2e-discovery-beta-0') where name='beta';
+select is(public.fail_calendar_discovery_page(pg_temp.discovery_scan(),'beta',(select (value->>'claimToken')::uuid from e2e_discovery_state where name='stale-beta'),'provider_unavailable'),false,'A stale failure cannot overwrite the new claim');
+select lives_ok($$select public.finish_calendar_discovery_page(pg_temp.discovery_scan(),'beta',0,(select (value->>'claimToken')::uuid from e2e_discovery_state where name='beta'),'{"items":[{"id":"event-1","summary":"Other calendar same event id","status":"active","reasonCode":"invalid_time_requires_review"}]}')$$,'Recovered calendar can finish with its own source namespace');
+reset role;
+create function pg_temp.all_discovery_items(p_scan uuid) returns jsonb language plpgsql as $$declare p jsonb; cursor uuid; items jsonb:='[]';begin loop p:=public.calendar_discovery_progress(p_scan,cursor);items:=items||(p->'items');exit when not (p->>'hasMore')::boolean;cursor:=(p->>'nextCursor')::uuid;end loop;return items;end$$;
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e7900000-0000-4000-8000-000000000002',true);
+select is(public.calendar_discovery_progress(pg_temp.discovery_scan())->>'status','completed','Completed means preview pages saved, not lessons imported');
+select is(jsonb_array_length(public.calendar_discovery_progress(pg_temp.discovery_scan())->'items'),25,'Candidate retrieval is bounded with explicit continuation');
+select is(jsonb_array_length(pg_temp.all_discovery_items(pg_temp.discovery_scan())),254,'Cursor traversal reaches every candidate without hidden history caps');
+select is((select count(distinct x->>'sourceKey') from jsonb_array_elements(pg_temp.all_discovery_items(pg_temp.discovery_scan()))x where x->>'eventId'='event-1'),2::bigint,'Equal event IDs on different calendars remain distinct');
+select is((select x#>>'{possiblePriorSignals,0,matchType}' from jsonb_array_elements(pg_temp.all_discovery_items(pg_temp.discovery_scan()))x where x->>'eventId'='event-1' limit 1),'legacy_unscoped','Legacy unscoped matches are described as possible, not automatically linked');
+select is(public.list_calendar_discoveries('e7900000-0000-4000-8000-000000000001')->>'total','1','Saved preview can be discovered after browser restart');
+select set_config('request.jwt.claim.sub','e7900000-0000-4000-8000-000000000003',true);
+select throws_ok($$select public.calendar_discovery_progress(pg_temp.discovery_scan())$$,'42501','FORBIDDEN','Student cannot read discovery details');
+select set_config('request.jwt.claim.sub','e7900000-0000-4000-8000-000000000004',true);
+select throws_ok($$select public.calendar_discovery_progress(pg_temp.discovery_scan())$$,'42501','FORBIDDEN','Guardian cannot read discovery details');
+select set_config('request.jwt.claim.sub','e7900000-0000-4000-8000-000000000005',true);
+select throws_ok($$select public.calendar_discovery_progress(pg_temp.discovery_scan())$$,'42501','FORBIDDEN','Unrelated coach cannot read a different studio preview');
+reset role;
+select is((select status from public.integration_imports where studio_id='e7900000-0000-4000-8000-000000000001'),'ignored','Discovery does not reopen ignored signals');
+select is((select count(*) from public.lessons where studio_id='e7900000-0000-4000-8000-000000000001'),0::bigint,'Preview creates no lesson or attendance');
+select is((select count(*) from public.students where studio_id='e7900000-0000-4000-8000-000000000001'),0::bigint,'Preview creates no student, credit or payment identity');
+select is((select count(*) from public.outbox_messages where studio_id='e7900000-0000-4000-8000-000000000001'),0::bigint,'Preview queues no notification');
+select is((select count(*) from public.audit_events where studio_id='e7900000-0000-4000-8000-000000000001' and action='discovery.preview_requested'),1::bigint,'Start replay creates one request audit');
+select * from finish();
+rollback;

@@ -14,7 +14,11 @@ import type { V2CommandContext, V2CommandHandler } from "./_v2/types";
 import platformHealth from "./platform-health";
 import referrals from "./referrals";
 import { handleAutomationCommands } from "./_v2/automations";
+import { handleStudentIdentity } from "./_v2/student-identity";
 import { handleSetupCommands } from "./_v2/setup";
+import { handleCalendarDiscovery } from "./_v2/calendar-discovery";
+import { handleHistoricalCalendarReview } from "./_v2/historical-calendar-review";
+import { handleHistoricalCalendarReconciliation } from "./_v2/historical-calendar-reconciliation";
 
 const domains = new Set([
   "setup",
@@ -42,6 +46,10 @@ const domains = new Set([
 ]);
 
 const commandHandlers: V2CommandHandler[] = [
+  handleStudentIdentity,
+  handleHistoricalCalendarReconciliation,
+  handleHistoricalCalendarReview,
+  handleCalendarDiscovery,
   handleSetupCommands,
   handleInvoiceCommands,
   handleAutomationCommands,

@@ -1,5 +1,6 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
+import type { IntakeDispatch, WorkerHealth } from "../domain/integrationHealth";
 
 export type BookingAdminResource =
   | "services"
@@ -84,6 +85,7 @@ export interface PlatformHealth {
         | "working"
         | "configured_unverified"
         | "attention_required"
+        | "disabled"
         | "unconfigured";
       configured: boolean;
       lastSuccessAt: string | null;
@@ -95,6 +97,7 @@ export interface PlatformHealth {
   googleCalendar: boolean;
   gmail: boolean;
   scheduledWorkers: boolean;
+  workers?: Record<string, WorkerHealth>;
   issues?: string[];
 }
 
@@ -171,56 +174,78 @@ export async function startProviderIntake() {
       response,
       "Calendar and Gmail check could not be started.",
     );
-  return true;
+  const result = await response.json();
+  if (!["disabled", "accepted", "already_running"].includes(result.status))
+    throw new Error(
+      "The worker returned an unknown dispatch outcome. Refresh receipt status before retrying.",
+    );
+  return { status: result.status, jobId: result.jobId } as IntakeDispatch;
 }
 
 const inFlightStudioCommands = new Map<string, Promise<any>>();
 
-export function studioCommand(
+interface StudioCommandInput {
+  command: string;
+  idempotencyKey?: string;
+  entityType?: string;
+  entityId?: string;
+  expectedVersion: number;
+  nextStatus?: string;
+  payload?: Record<string, unknown>;
+  reason: string;
+}
+
+export async function studioCommand(
   domain: string,
-  input: {
-    command: string;
-    idempotencyKey?: string;
-    entityType?: string;
-    entityId?: string;
-    expectedVersion: number;
-    nextStatus?: string;
-    payload?: Record<string, unknown>;
-    reason: string;
-  },
+  input: StudioCommandInput,
+  expectedActorId?: string,
 ): Promise<any> {
-  const key = `${domain}:${input.command}:${input.entityId || "new"}:${JSON.stringify(input.payload || {})}`;
+  if (!isSupabaseConfigured || !supabase)
+    throw new Error("Production database is not configured.");
+  // Snapshot the wire envelope before awaiting auth: callers may edit the form
+  // while a session lookup is pending. The key and sent body must describe the
+  // same command, including its version, reason and explicit replay identity.
+  const serializedInput = JSON.stringify(input);
+  const { data, error } = await supabase.auth.getSession();
+  const session = data.session;
+  if (error || !session?.access_token)
+    throw new Error("Sign in to make this change.");
+  // Recovery envelopes belong to the actor who created them. Check the same
+  // captured session/token used for this request, with no second auth lookup.
+  if (expectedActorId && session.user?.id !== expectedActorId)
+    throw new Error(
+      "The signed-in account changed. Return to the original coach account to recover this change.",
+    );
+  // This private, short-lived key is never logged or exposed. A new session
+  // must not subscribe to a previous session's in-flight response.
+  const key = JSON.stringify([
+    session.user?.id ?? null,
+    session.access_token,
+    domain,
+    serializedInput,
+  ]);
   const existing = inFlightStudioCommands.get(key);
   if (existing) return existing;
-  const request = executeStudioCommand(domain, input).finally(() =>
-    inFlightStudioCommands.delete(key),
-  );
+  const request = executeStudioCommand(
+    domain,
+    serializedInput,
+    session.access_token,
+  ).finally(() => inFlightStudioCommands.delete(key));
   inFlightStudioCommands.set(key, request);
   return request;
 }
 
 async function executeStudioCommand(
   domain: string,
-  input: {
-    command: string;
-    idempotencyKey?: string;
-    entityType?: string;
-    entityId?: string;
-    expectedVersion: number;
-    nextStatus?: string;
-    payload?: Record<string, unknown>;
-    reason: string;
-  },
+  serializedInput: string,
+  accessToken: string,
 ) {
-  if (!isSupabaseConfigured || !supabase)
-    throw new Error("Production database is not configured.");
-  const { data: session } = await supabase.auth.getSession();
-  if (!session.session) throw new Error("Sign in to make this change.");
+  const input: StudioCommandInput = JSON.parse(serializedInput);
   const response = await fetch(`/api/v2/${domain}`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${session.session.access_token}`,
+      Authorization: `Bearer ${accessToken}`,
     },
     body: JSON.stringify({
       ...input,

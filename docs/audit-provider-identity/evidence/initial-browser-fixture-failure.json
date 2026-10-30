@@ -1,0 +1,619 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\Desktop\\studio-portal\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "e2e/audit-provider-identity/playwright.config.ts"
+    ],
+    "configFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\playwright.config.ts",
+    "rootDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-provider-identity",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-provider-identity",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-provider-identity",
+        "testIgnore": [],
+        "testMatch": ["review.spec.ts"],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-provider-identity",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-provider-identity",
+        "testIgnore": [],
+        "testMatch": ["review.spec.ts"],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\Desktop\\studio-portal\\",
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort",
+      "url": "http://127.0.0.1:4187",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "review.spec.ts",
+      "file": "review.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "original provider identity and retry at 320",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 9281,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:09:21.661Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-320-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-9563bc1e828fe1aa566d",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 390",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6866,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:09:31.834Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-390-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-5aeeb0e5474365faa67b",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 768",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 2,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6883,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:09:39.283Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-768-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-f880c46ad2501ce4cf02",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 1440",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 3,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 6882,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    14 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:09:46.724Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-1440-chromium\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-900ac61f6a33c27c876b",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 320",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 4,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 8400,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:09:54.208Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-320-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-f9ed224b997099f5fe11",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 390",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 5,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 7650,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:10:03.151Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-390-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-82602696b20b994000c7",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 768",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 6,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 7800,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:10:11.315Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-768-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-ad19bfeda5255c54b95d",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        },
+        {
+          "title": "original provider identity and retry at 1440",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 7,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 7802,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45",
+                    "location": {
+                      "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                      "column": 45,
+                      "line": 66
+                    },
+                    "snippet": "  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                        "column": 45,
+                        "line": 66
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mlocator\u001b[39m\u001b[2m).\u001b[22mtoContainText\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m failed\n\nLocator: getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\nExpected substring: \u001b[32m\"Synthetic response lost\"\u001b[39m\nReceived string:    \u001b[31m\"The studio command failed.\"\u001b[39m\nTimeout: 5000ms\n\nCall log:\n\u001b[2m  - Expect \"toContainText\" getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert') with timeout 5000ms\u001b[22m\n\u001b[2m  - waiting for getByRole('dialog', { name: 'Verify imported lesson', exact: true }).getByRole('alert')\u001b[22m\n\u001b[2m    13 × locator resolved to <p role=\"alert\" class=\"inline-error\">The studio command failed.</p>\u001b[22m\n\u001b[2m       - unexpected value \"The studio command failed.\"\u001b[22m\n\n\n  64 |     });\n  65 |     await confirm.click();\n> 66 |     await expect(dialog.getByRole(\"alert\")).toContainText(\n     |                                             ^\n  67 |       \"Synthetic response lost\",\n  68 |     );\n  69 |     await expect(student).toHaveValue(selectedId);\n    at C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts:66:45"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T04:10:19.622Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "error-context",
+                      "contentType": "text/markdown",
+                      "path": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-provider-identity\\review-original-provider-identity-and-retry-at-1440-webkit\\error-context.md"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-provider-identity\\review.spec.ts",
+                    "column": 45,
+                    "line": 66
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "12f883ce49bb8436c3d7-3e30b72c0bd4c7b07a14",
+          "file": "review.spec.ts",
+          "line": 6,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-29T04:09:20.329Z",
+    "duration": 67344.59,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 8,
+    "flaky": 0
+  }
+}

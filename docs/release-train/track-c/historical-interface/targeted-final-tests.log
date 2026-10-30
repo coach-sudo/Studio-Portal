@@ -1,0 +1,8 @@
+
+ RUN  v4.1.12 C:/Users/dariu/.codex/worktrees/release-c-integrations-identity/studio-portal
+
+
+ Test Files  10 passed (10)
+      Tests  116 passed (116)
+   Start at  15:11:08
+   Duration  26.07s (transform 514ms, setup 2.35s, import 1.80s, tests 14.76s, environment 5.03s)

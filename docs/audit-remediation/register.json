@@ -1,0 +1,558 @@
+{
+  "baseline": "fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb",
+  "findings": [
+    {
+      "id": "SP-01",
+      "severity": "P1",
+      "title": "SP-01 · P1 · Provider intake is disabled in production",
+      "disposition": "draft implementation validated in isolation; operational failure remains",
+      "rootCause": "Evidence: production context explicitly sets WORKER_PROVIDER_INTAKE_ENABLED=false; the five scheduler records in evidence/hosted-readonly-observations.json each contain worker.disabled. The latest saved intake receipt is failed, requested 2026-10-27 04:00:19.042908 UTC and finished 04:00:52.382725 UTC. The current deploy was published later, at 04:05:59.566 UTC. Earlier background telemetry reaches Calendar processing, then fails at Gmail processing with category provider after about 31.8 seconds total. Read-only reproduction: inspect the deployed flag, filter scheduler logs by FunctionName provider-intake, compare the receipt's times against deployment publication. Do not invoke the worker or flip the flag as an audit test. Impact: newly added provider lessons cannot be discovered by this worker while disabled. Existing portal lessons/projection work may still function. No evidence here establishes the original reason for disabling it or the exact Gmail error. Recommendation: retain the safety stop until the failure is understood; expose disabled state, selected source and last completed run in Settings; validate in staging, then obtain approval for production re-enablement and historical review. Publication gate: blocks a claim that intake is healthy. Later read-only correlation and a synthetic processor reproduction show the final Gmail-stage label can mask an earlier Calendar failure; the exact originating historical event remains unknown. See #85 evidence.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/worker-controls.ts#L12",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/scheduled-worker.ts#L26"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: integrations/operations. Roles: coach indirectly affects every portal role. Flows C01–C04/C06, F04/F05; X03/X04/X18/X19.",
+      "proposedFix": "Impact: newly added provider lessons cannot be discovered by this worker while disabled. Existing portal lessons/projection work may still function. No evidence here establishes the original reason for disabling it or the exact Gmail error. Recommendation: retain the safety stop until the failure is understood; expose disabled state, selected source and last completed run in Settings; validate in staging, then obtain approval for production re-enablement and historical review. Publication gate: blocks a claim that intake is healthy.",
+      "regressionCoverage": "28 targeted unit/component/PGlite cases; typecheck; actual isolated PostgreSQL migration and concurrency; full suite/build/isolated browser CI. #85: 64 targeted cases and nine new actual PostgreSQL health assertions; full upgrade/grants/types/fencing/concurrency and isolated browser passed.",
+      "remainingAcceptance": "Controlled Calendar/Gmail errors/recovery and three real scheduler-origin completions; authenticated production-equivalent Settings; separate worker enablement approval.",
+      "implementation": "Private append-only run/stage observations, service-only claim fencing, disabled-aware health, preserved stage failure, receipt-following Settings; no fixed 15-second completion assumption. #85 preserves the first actual intake error and closes the final source stage before aggregate completion fails, avoiding false Gmail attribution.",
+      "ci": "Source implementation passed 40633111054 / 40633111028; documentation checkpoint 963c05b passed 40685577256 / 40685576886. Full isolated PostgreSQL, upgrade, grants, fencing and concurrency passed; real provider acceptance remains open. #85 exact b51dd68 passed production 40747671964 and browser 40747671939.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "Production intake remains disabled. Read-only historical evidence correlates Calendar synchronization holds followed by resolved Gmail scope status and a generic final failure; exact event causality is unproven. Provider/hosted acceptance remains open.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "commits": [
+        "78f5fdfe72cbb7c9f254428bf1ffbd958b385964",
+        "b51dd6830a815f68975eab485ea272053bfa79e6"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-02",
+      "severity": "P1",
+      "title": "SP-02 · P1 · Manual coach booking rejects past times in both browser and server",
+      "disposition": "historical creation implemented; connected acceptance incomplete",
+      "rootCause": "Reproduction: in a safe test environment open Calendar → create booking, choose yesterday; then test the same request directly as coach to demonstrate the server boundary. Required repair: define a coach historical-record command with explicit occurred-at/status/financial/notification treatment. Preserve public/student lead-time policy. Changing only the input cannot resolve this. Blocks coach historical recording through this entry point.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/features/coach/BookingOverview.tsx#L391",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L159"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: scheduling. Coach; B03/B04/X13. The form's native datetime minimum blocks historical entries, and create_manual separately requires startsAt > now. The targeted mocked-handler test sends a 2020 timestamp and gets 422 before any write. A real authenticated browser submission was not attempted.",
+      "proposedFix": "Reproduction: in a safe test environment open Calendar → create booking, choose yesterday; then test the same request directly as coach to demonstrate the server boundary. Required repair: define a coach historical-record command with explicit occurred-at/status/financial/notification treatment. Preserve public/student lead-time policy. Changing only the input cannot resolve this. Blocks coach historical recording through this entry point.",
+      "regressionCoverage": "Historical SQL outcome/role/replay/no-effect assertions and concurrency passed isolated CI 40682452141; 20 targeted tests plus 15 disclosure/dialog tests; eight Windows Chromium/WebKit fixtures.",
+      "remainingAcceptance": "authenticated coach/student creation; downstream finance/provider/role acceptance.",
+      "implementation": "Explicit coach-only Record Past Lesson using the atomic command, explicit outcome/financial treatment and recorded-at audit; no inferred attendance/payment/notifications.",
+      "ci": "Exact source 56c9fa9 passed production 40684262033 and isolated browser 40684261997.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "Existing-record corrections are separately implemented in #77/#78; hosted financial/provider/role acceptance remains open.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/73"
+      ],
+      "commits": [
+        "de39cd9f6948c47f5db661fa5df0e4fce53a0c8e",
+        "56c9fa9871e5f729f5732a51ac410b7ea589d742"
+      ],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-03",
+      "severity": "P1",
+      "title": "SP-03 · P1 · Manual datetime defaults and minimum mix UTC strings with local wall time",
+      "disposition": "manual input corrected; systemwide timezone acceptance incomplete",
+      "rootCause": "Recommendation: make the chosen timezone explicit; use one studio/viewer-aware wall-time converter for display and serialization; test UTC, New York, Los Angeles, positive offsets and DST gaps/folds. Verify that changing service or duration invalidates conflict approval. Publication gate: blocks confidence in this form's timezone behavior.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/features/coach/BookingOverview.tsx#L245",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/features/coach/BookingOverview.tsx#L277"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: scheduling/time. B03/X13. The form writes toISOString().slice(0,16) into a datetime-local, then parses it with new Date(startsAt), which interprets the offset-free string in browser local time. In TZ=America/New_York, with now fixed to 2026-10-27T18:00Z (14:00 local), the minimum is 2026-10-27T18:00, parsed as 22:00Z: four hours later. The default three-days-ahead value similarly shifts. This proves the conversion mismatch; no specific existing production lesson is attributed to it.",
+      "proposedFix": "Recommendation: make the chosen timezone explicit; use one studio/viewer-aware wall-time converter for display and serialization; test UTC, New York, Los Angeles, positive offsets and DST gaps/folds. Verify that changing service or duration invalidates conflict approval. Publication gate: blocks confidence in this form's timezone behavior.",
+      "regressionCoverage": "UTC/NY/Tokyo/Kolkata/date-boundary/gap/fold tests; historical browser fixtures; typed server input and PostgreSQL tests.",
+      "remainingAcceptance": "Recurring occurrences, payment/cancellation cutoffs, all viewer-zone policies and authenticated device acceptance.",
+      "implementation": "Shared explicit IANA wall-time formatter/parser; display studio/device/control zone; reject gaps and require repeated-hour choice. Shared reschedule converter reused.",
+      "ci": "Exact source 56c9fa9 passed production 40684262033 and isolated browser 40684261997.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "Other provider timezone fallbacks, recurring occurrences, cutoff and viewer-zone policies remain. No whole-system timezone claim.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/73",
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "commits": [
+        "56c9fa9871e5f729f5732a51ac410b7ea589d742",
+        "7c181d2f24f228973cfa53d6b9115e863701fd62",
+        "3a9dc1214b8317732588b60ce4104c73490fed6d",
+        "0bfefda9608e87d7ec04878cf79d774969a4709a"
+      ],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-04",
+      "severity": "P2",
+      "title": "SP-04 · P2 · Coach rescheduling also excludes historical correction",
+      "disposition": "approved correction policy implemented in separate draft contract and interface; hosted acceptance incomplete",
+      "rootCause": "Recommendation: distinguish a scheduling move from a historical correction. A correction needs audit, financial review, provider linkage and intentional notification treatment; do not casually remove safeguards from a shared component. Test role-specific policy and recurrence scope.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/components/RescheduleLessonForm.tsx#L125",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/components/RescheduleLessonForm.tsx#L219",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/features/coach/StudentWorkspaceLessons.tsx#L722"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: scheduling/records. Coach B08/B04. The shared form computes inPast, returns early on submit, supplies today's minimum date and disables the action. There is no coach exemption prop. Use a past target in a safe coach lesson workspace to reproduce; this run verified the source guards, not a signed-in browser journey.",
+      "proposedFix": "Recommendation: distinguish a scheduling move from a historical correction. A correction needs audit, financial review, provider linkage and intentional notification treatment; do not casually remove safeguards from a shared component. Test role-specific policy and recurrence scope.",
+      "regressionCoverage": "40 actual PostgreSQL assertions and eight concurrency scripts passed at 0cd3419; generated-type alignment then exact production CI 40691999170 passed. 23 targeted handler/form/timezone/reschedule cases; Windows Chromium/WebKit x four widths: 8/8 correction fixtures, 8/8 parent comparison, 2/2 existing reschedule recovery smoke; 32 screenshots, axe/keyboard/overflow/replay/cursor/error evidence.",
+      "remainingAcceptance": "hosted coach/student/guardian/unrelated/anonymous acceptance; real Calendar review/recovery and financial review handling; manual screen reader/touch and final combined-candidate checks.",
+      "implementation": "Coach-only sealed dependency preview and atomic correction receipt/audit; preserve creation/attendance/accounting/notes/participants, align sole booking, retain shared series anchor, block checkout/private overlap, fence Calendar leases and automatic credit use. Cursor history and explicit review notes; historical corrections remain separate from upcoming reschedule.",
+      "ci": "Exact contract 7c181d2 passed production 40691999170 and isolated browser 40691999242. Interface evidence head 3d07af6 passed production 40696505235 and isolated browser 40696505173. Earlier fixture/type/format failures are retained and corrected.",
+      "review": "draft implementation authorized; merge/migration/deployment not authorized",
+      "residualRisk": "Corrected records retain explicit financial and provider review holds. Recording a review is not delivery proof or automatic accounting/coverage repair. Additive migration is unapplied in hosted environments; no historical record was mutated.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/77",
+        "https://github.com/coach-sudo/Studio-Portal/pull/78"
+      ],
+      "commits": [
+        "7c181d2f24f228973cfa53d6b9115e863701fd62",
+        "3a9dc1214b8317732588b60ce4104c73490fed6d",
+        "3d07af6547fdb7e80903319c43288bf5628e0573"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-05",
+      "severity": "P1",
+      "title": "SP-05 · P1 · A manual booking can report paid even when payment-ledger insertion fails",
+      "disposition": "atomic manual command implemented; provider/role acceptance incomplete",
+      "rootCause": "Reproduction: run the five-case harness from the package after copying it to its documented repository-relative path; no provider or production DB is used. This is not evidence that any existing live booking has this defect. Recommendation: write booking, participant, lesson, ledger, audit and durable side-effect intents in one checked transactional command; financial failure must roll back all canonical state. Add failure injection after each write. This blocks release of a claimed financial-consistency fix until covered.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L301",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L234"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: finance/scheduling. Coach and affected payer; B03/D01/D06/X01/X09. The payment insert is awaited without checking its returned error. In the isolated harness, payment_entries insertion returns an error and the endpoint still returns 201 with payment_status: paid.",
+      "proposedFix": "Reproduction: run the five-case harness from the package after copying it to its documented repository-relative path; no provider or production DB is used. This is not evidence that any existing live booking has this defect. Recommendation: write booking, participant, lesson, ledger, audit and durable side-effect intents in one checked transactional command; financial failure must roll back all canonical state. Add failure injection after each write. This blocks release of a claimed financial-consistency fix until covered.",
+      "regressionCoverage": "Payment/audit/intent rejection rollback, exact/changed replay, role denial, real PostgreSQL same-key and overlapping-request concurrency; lost-response/input retry component checks.",
+      "remainingAcceptance": "Approved authenticated first-save/retry/lost-response and provider-outage downstream acceptance; verify new intents through external delivery.",
+      "implementation": "One authoritative transaction for booking, lesson, participant, ledger, coverage, audit, durable provider/notification intent and immutable hashed replay receipt. No compensating canonical deletion.",
+      "ci": "Exact implementation de39cd9 passed production checks 40635032632 and isolated browser 40635032775.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "External delivery is unverified. Existing legacy/manual history is not repaired; intent retention and physical-deletion dependency need review.",
+      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
+      "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-06",
+      "severity": "P1",
+      "title": "SP-06 · P1 · Manual booking uses compensating deletes across canonical and notification writes",
+      "disposition": "atomic manual command implemented; provider/role acceptance incomplete",
+      "rootCause": "Recommendation: canonical transaction plus durable outbox, with side-effect failure represented as pending/failed delivery after successful booking. Do not erase a canonical booking because a notification failed. Verify financial and audit persistence, partial queue failure, timeout after commit, replay and clean recovery. Blocks a claim of end-to-end atomicity.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L214",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L324",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L350"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: architecture/finance. B03/E05/F07; X01/X14/X20. The handler separately inserts a booking, lesson, participant, projection, optional payment and audit, then queues notifications. On a later thrown error it deletes the lesson and booking. The test forces notification queue failure after a paid booking and observes payment insertion followed by both compensating deletes. Actual DB foreign keys and prior queue effects determine what can remain; the test does not emulate those constraints and does not prove production orphan counts.",
+      "proposedFix": "Recommendation: canonical transaction plus durable outbox, with side-effect failure represented as pending/failed delivery after successful booking. Do not erase a canonical booking because a notification failed. Verify financial and audit persistence, partial queue failure, timeout after commit, replay and clean recovery. Blocks a claim of end-to-end atomicity.",
+      "regressionCoverage": "Payment/audit/intent rejection rollback, exact/changed replay, role denial, real PostgreSQL same-key and overlapping-request concurrency; lost-response/input retry component checks.",
+      "remainingAcceptance": "Approved authenticated first-save/retry/lost-response and provider-outage downstream acceptance; verify new intents through external delivery.",
+      "implementation": "One authoritative transaction for booking, lesson, participant, ledger, coverage, audit, durable provider/notification intent and immutable hashed replay receipt. No compensating canonical deletion.",
+      "ci": "Exact implementation de39cd9 passed production checks 40635032632 and isolated browser 40635032775.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "External delivery is unverified. Existing legacy/manual history is not repaired; intent retention and physical-deletion dependency need review.",
+      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
+      "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-07",
+      "severity": "P1",
+      "title": "SP-07 · P1 · The manual endpoint ignores the supplied idempotency key",
+      "disposition": "atomic manual command implemented; provider/role acceptance incomplete",
+      "rootCause": "Recommendation: persist the intended command key across retries, bind it to actor/studio and request hash, and return the stored response. Reject key reuse with changed data. Reuse the newer transactional command pattern rather than adding only a disabled submit button.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/data/bookingCommands.ts#L27",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L55",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261020153417_studio_operations_workflows.sql#L53"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: command platform. B03/X01/X05. The client sends an Idempotency-Key header but the manual handler does not consume it or a receipt RPC. Two mocked calls with the same key execute two booking insert sequences and return 201. Production's private-lesson overlap constraint normally prevents a second identical scheduled lesson; therefore two successful mock calls are not proof of duplicate production lessons. They prove absent request replay handling. After the first lesson is moved, or for differing content under the same key, that constraint is not a request-identity solution.",
+      "proposedFix": "Recommendation: persist the intended command key across retries, bind it to actor/studio and request hash, and return the stored response. Reject key reuse with changed data. Reuse the newer transactional command pattern rather than adding only a disabled submit button.",
+      "regressionCoverage": "Payment/audit/intent rejection rollback, exact/changed replay, role denial, real PostgreSQL same-key and overlapping-request concurrency; lost-response/input retry component checks.",
+      "remainingAcceptance": "Approved authenticated first-save/retry/lost-response and provider-outage downstream acceptance; verify new intents through external delivery.",
+      "implementation": "One authoritative transaction for booking, lesson, participant, ledger, coverage, audit, durable provider/notification intent and immutable hashed replay receipt. No compensating canonical deletion.",
+      "ci": "Exact implementation de39cd9 passed production checks 40635032632 and isolated browser 40635032775.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "External delivery is unverified. Existing legacy/manual history is not repaired; intent retention and physical-deletion dependency need review.",
+      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
+      "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-08",
+      "severity": "P2",
+      "title": "SP-08 · P2 · Manual save requires Google OAuth even when conflict preview is local",
+      "disposition": "local scheduling separated from absent Google configuration",
+      "rootCause": "Recommendation: choose an explicit integration outage policy for coach scheduling: block with an actionable unavailable state, or permit an audited coach override with local conflict checks. Never silently imply live Google was checked. Map missing configuration to a useful typed error. This is parity/reliability work, not permission to schedule blindly.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L96",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L165"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: scheduling/integrations. B03/C01/X13. Conflict preview conditionally contacts Google only when a refresh token is configured. Manual save calls googleAccessToken unconditionally unless allow_conflict is true. In the mock test an unavailable token causes a 500 before any write, despite the local-only preview design. The newer lesson-create path checks configuration first.",
+      "proposedFix": "Recommendation: choose an explicit integration outage policy for coach scheduling: block with an actionable unavailable state, or permit an audited coach override with local conflict checks. Never silently imply live Google was checked. Map missing configuration to a useful typed error. This is parity/reliability work, not permission to schedule blindly.",
+      "regressionCoverage": "Mock-handler unavailable/unconfigured/override tests; typed preview metadata; real SQL authority/overlap gates.",
+      "remainingAcceptance": "Controlled Google unavailable/expired-token/conflict cases and authenticated feedback/recovery.",
+      "implementation": "Unconfigured Google permits local canonical scheduling with truthful unchecked status. Configured outage requires an explicit permitted coach-only Google override; local conflicts stay blocking.",
+      "ci": "Exact implementation CI passed (40635032632 / 40635032775).",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "No real Google conflict check or delivery has been verified.",
+      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/71"],
+      "commits": ["de39cd9f6948c47f5db661fa5df0e4fce53a0c8e"],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-09",
+      "severity": "P2",
+      "title": "SP-09 · P2 · Coach overlap approval conflicts with the production exclusion constraint",
+      "disposition": "manual/shared reschedule/proposal mismatch repaired and validated in isolated drafts; hosted acceptance remains",
+      "rootCause": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261020153417_studio_operations_workflows.sql#L68",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/booking-admin.ts#L165"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: scheduling/data model. B03/B05/B08/X13. Production has lessons_private_overlap, excluding overlapping time ranges within the same studio for scheduled private lessons (offering_id null). Application allowConflict bypasses prechecks, but does not bypass this constraint. “Schedule anyway” cannot consistently authorize local private-lesson overlap. Google-only conflicts are different.",
+      "proposedFix": "Reproduction to run in staging: create one private scheduled lesson; approve another overlapping private lesson; inspect the exclusion error and UI feedback. This audit inspected the actual constraint but did not submit that production mutation. Recommendation: either state that local double-booking is prohibited and offer an alternative, or design an explicit audited representation for approved overlaps. Do not drop the protection casually. Test different students, group offerings and concurrent submissions.",
+      "regressionCoverage": "One retained parent reproduction demonstrates the local private override defect. 42 targeted cases (31 new, 11 retained) pass in NY and UTC; project-reference typecheck and secret scan pass. Eight Windows Chromium/WebKit/four-width fixtures, eight before captures, 32 after screenshots, axe/keyboard/overflow/provider-error/advisory/Google review proof. Twelve new actual PostgreSQL assertions and full schema/upgrade/type/concurrency CI passed (417 suite assertions).",
+      "remainingAcceptance": "recurring future occurrence checks, authenticated roles, real Google/outage/Calendar/notification recovery, manual assistive/touch and combined-candidate acceptance.",
+      "implementation": "Manual creation retains its studio-overlap policy. Shared reschedule and Calendar proposals now distinguish scheduled/private database exclusions, group/draft advisories and Google busy-time review. Authorize the target in the server; unclassified responses cannot override; only explicit Google acknowledgement sets allowConflict. Shared local helper replaces three repeated filters. The database constraint and financial/occurrence reviews are unchanged.",
+      "ci": "Manual source de39cd9 passed production 40635032632/browser 40635032775. Corrected shared-policy source 28a32d114f00dd605c1b1c1e9f580e73e6fc50b2 passed production 40736579251 and isolated browser 40736579235. All 12 new actual PostgreSQL assertions passed within 417 suite assertions, with baseline upgrade/type parity and concurrent sessions. The first payment fixture column error is retained as a failed run.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "No structural overlap exception was introduced; scheduled private exclusion remains concurrent-safe in the database. Advisory is not permission to bypass financial/class policy or a reservation. Routine source reconciliation and whole-system time policy remain separate.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/71",
+        "https://github.com/coach-sudo/Studio-Portal/pull/82"
+      ],
+      "commits": [
+        "de39cd9f6948c47f5db661fa5df0e4fce53a0c8e",
+        "0bfefda9608e87d7ec04878cf79d774969a4709a",
+        "28a32d114f00dd605c1b1c1e9f580e73e6fc50b2"
+      ],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-10",
+      "severity": "P1",
+      "title": "SP-10 · P1 · Calendar discovery is single-source and a fixed rolling window",
+      "disposition": "bounded multi-calendar preview contract/interface validated; routine coverage/reconciliation/provider acceptance remain",
+      "rootCause": "Reproduction: with isolated provider fixtures, compare identical valid lesson signals inside/outside the range and in selected/unselected calendars. The bound is proven in source; event-specific absence was not measured against the user's Google account. Recommendation: explicit selected calendars, visible source/window, bounded checkpointing and a separate preview-first historical reconciliation flow. Respect scope and duplicate protections. Blocks a claim that the importer covers all Calendar lessons.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L610",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L613"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: integrations. C01/C02/C03/X03. importCalendar scans only GOOGLE_CALENDAR_ID or primary, from now minus 14 days to now plus 90 days. Events elsewhere are outside discovery. Pagination exists; the 250-item page size is not a total-event cap. No current Google API calendar-list enumeration or historical preview command was identified in this intake path.",
+      "proposedFix": "Reproduction: with isolated provider fixtures, compare identical valid lesson signals inside/outside the range and in selected/unselected calendars. The bound is proven in source; event-specific absence was not measured against the user's Google account. Recommendation: explicit selected calendars, visible source/window, bounded checkpointing and a separate preview-first historical reconciliation flow. Respect scope and duplicate protections. Blocks a claim that the importer covers all Calendar lessons.",
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 56 actual SQL assertions within 488 suite assertions and observed command-concurrency gates passed.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 controlled provider acceptance, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 passed. #84 source acef7bd passed production 40746514894 and browser 40746514892, including SQL/upgrade/types and separate-session concurrency.",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5",
+        "acef7bd3debd62c47058c5621275e9c2ee2aa2d9"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-11",
+      "severity": "P1",
+      "title": "SP-11 · P1 · Past and ignored import states suppress historical recovery",
+      "disposition": "historical previews, source guards and explicit review decisions validated in isolated layers; canonical reconciliation/interface/provider acceptance remain",
+      "rootCause": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L763",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L795",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L1392"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: integrations/records. B04/C03/C06/X18. Unlinked past Calendar events are skipped. A needs_review event may become ignored with matched_by past_appointment; existing ignored entries are skipped on rescan. runProviderIntake also ages stale pending reviews into ignored before scanning. Production contains one Calendar and seven Gmail imports tagged past_appointment, without claiming they were all misclassified or all created by the current release.",
+      "proposedFix": "Reproduction: feed an unlinked past event, then repeat as needs_review and ignored; inspect disposition without changing financial data. Recommendation: preserve routine anti-duplicate protection, expose skipped reasons and offer an explicit coach historical-review lane. Extending only the 14-day window will not recover these entries. Never auto-reset all ignored rows.",
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 56 actual SQL assertions within 488 suite assertions and observed command-concurrency gates passed.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication. #83 controlled provider acceptance, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 passed. #84 source acef7bd passed production 40746514894 and browser 40746514892, including SQL/upgrade/types and separate-session concurrency.",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5",
+        "acef7bd3debd62c47058c5621275e9c2ee2aa2d9"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-12",
+      "severity": "P2",
+      "title": "SP-12 · P2 · All-day Calendar entries and older/provider-unrecognized Gmail messages are outside intake coverage",
+      "disposition": "date-only/recurrence/cancelled Calendar observations retained; Gmail coverage unchanged",
+      "rootCause": "Recommendation: show these exclusions, centralize documented bounds and allow reviewed date/time correction of genuine all-day candidates. Maintain conservative classification. Do not turn every calendar block or arbitrary email into a lesson. Incident attribution needs specific missing event/message identities and source evidence.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L715",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/_shared/provider-intake.ts#L1014",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/domain/intakeRecency.ts#L13"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: integrations. C02–C04/X04/X18. Calendar entries without start/end dateTime are skipped; a date-only all-day lesson cannot enter this path. Gmail discovery searches 90 days and a fixed set of provider keywords, while undated review items can age out based on a 30-day email threshold. Pagination exists for Gmail too.",
+      "proposedFix": "Recommendation: show these exclusions, centralize documented bounds and allow reviewed date/time correction of genuine all-day candidates. Maintain conservative classification. Do not turn every calendar block or arbitrary email into a lesson. Incident attribution needs specific missing event/message identities and source evidence.",
+      "regressionCoverage": "Contract 9925be4: 17 targeted provider/API cases; 43 new actual PostgreSQL assertions within 373 SQL assertions, baseline upgrade/type/grant checks and concurrent start/claim/checkpoint/fencing. Interface: 26 provider/API/UI/adapter cases in NY and UTC, 8 Chromium/WebKit fixtures at four widths, 32 after/8 before screenshots, axe/keyboard/overflow/recovery/pagination. Initial comparison readiness failures and first CI type-option failure retained.",
+      "remainingAcceptance": "Canonical historical reconciliation/reopen/link/create/not-lesson/skip commands and routine-worker qualified source compatibility; Gmail search/date coverage; hosted accessible-calendar permissions, recurrence/deletion/provider faults, roles/manual assistive/touch, combined Connections validation and separately approved staging publication.",
+      "implementation": "Draft #79 adds explicit selected calendar/range/timezone previews, private source-scoped observations, cursor checkpoints, fenced page claims, sanitized failures and saved progress; no canonical lesson/financial/attendance changes. #80 adds explicit source selection, range/DST policy, manual continuation, lost-response receipt recovery, saved previews and paginated observations. Routine intake and Gmail coverage remain unchanged. #84 drafts explicit historical date-only exclusions; it invents no instant/attendance and does not expand Gmail discovery.",
+      "ci": "Contract 9925be4 passed production 40697136185 and isolated browser 40697136259. Corrected interface 69d6eaa passed production 40733218774 and isolated browser 40733218734. Initial readiness/type-option failures are retained; project-reference typecheck verified. #84 exact PostgreSQL/full CI passed at acef7bd (40746514894/40746514892).",
+      "review": "draft; no merge/migration/publication approval",
+      "residualRisk": "Preview completion proves saved observations only. No Google provider invocation, import, ignored-state reopening, attendance, credit/payment, notification or Calendar mutation occurred. GOOGLE_DISCOVERY_STUDIO_ID requires explicit configuration; production intake remains disabled.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/79",
+        "https://github.com/coach-sudo/Studio-Portal/pull/80",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "9925be4c1953bd272a437261a8cafdc322de8ed8",
+        "69d6eaa87468ea2db59332a3d00dd52562cf4cec",
+        "9b63691944e40719a4298964428cbe156e4e0ec5",
+        "acef7bd3debd62c47058c5621275e9c2ee2aa2d9"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-13",
+      "severity": "P1",
+      "title": "SP-13 · P1 · Provider review can infer lesson completion from elapsed time",
+      "disposition": "attendance inference removed; controlled provider acceptance pending",
+      "rootCause": "Reproduction to run in staging: keep a valid needs_review signal, advance its occurrence into the past, approve its student link, inspect lesson status and any dependent effects. No production review was executed. Recommendation: explicit Scheduled historical / Completed / Cancelled / No-show outcome with independent attendance confirmation and financial review. Test actor eligibility and completion correction. Do not mass rewrite existing completed records.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261021135617_provider_intake_review_safety.sql#L82"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: lesson lifecycle/finance. B10/C06/X08/X12. When provider review creates a previously unlinked occurrence, the SQL sets completed if its end is before now, otherwise scheduled. The review action confirms a source/student link; the payload has no separately required attendance outcome at this insertion point. This differs from the audit invariant that source detection/verification is not proof teaching occurred. Routine past-event skipping limits reachability, but stale or legacy review candidates make the branch meaningful.",
+      "proposedFix": "Reproduction to run in staging: keep a valid needs_review signal, advance its occurrence into the past, approve its student link, inspect lesson status and any dependent effects. No production review was executed. Recommendation: explicit Scheduled historical / Completed / Cancelled / No-show outcome with independent attendance confirmation and financial review. Test actor eligibility and completion correction. Do not mass rewrite existing completed records.",
+      "regressionCoverage": "39 provider-attendance/worker entrypoint tests; actual PostgreSQL past review/replay/no-finance/no-projection/history assertions; full CI and isolated browser. #83: 74 targeted metadata/protection/attendance/replay/disabled-entrypoint cases and project-reference typecheck pass; 59 actual PostgreSQL assertions pass within 432 suite assertions, including upgrade/grants/type parity and three observed-lock scenarios. The 59 include preservation of a separately unresolved profile-merge failure; that behavior is not fixed. #84 passes 102 local targeted cases, project-reference typecheck, targeted lint and secrets; 56 actual SQL assertions within 488 suite assertions and observed command-concurrency gates passed.",
+      "remainingAcceptance": "Controlled provider and coach explicit-attendance journeys; inspect historical candidates individually. #83 controlled provider acceptance, controlled metadata read permissions, canonical linking/creation and the historical review interface remain required.",
+      "implementation": "Additive reviewed command and Calendar/Gmail creation use scheduled/confirmed, never elapsed-time completed/attended. Calendar inserts cannot upsert existing outcomes or delete participants. Existing completion history retained. #83 adds a private historical source protection prerequisite, canonical Calendar identity resolution, minimal observations before managed processing and old-worker/retention guards. No sources are automatically bound and no public reconciliation writer exists. #84 drafts authenticated historical not-a-lesson/skip/reopen commands with sealed previews, single ignored-source identity acknowledgement, retained canonical pointers and atomic revision/audit/replay receipts. No canonical lesson or financial writer/interface exists in this draft.",
+      "ci": "Exact implementation 5e9cfc4 passed production checks 40682483135 and isolated browser 40682483169. Source-protection head 3779d0c passes production checks 40744236554 (432 actual SQL assertions and concurrency); browser 40744236303 passed. #84 source acef7bd passed production 40746514894 and browser 40746514892, including SQL/upgrade/types and separate-session concurrency.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "Read-only aggregate: 13 completed provider-linked lessons, 11 without completion-named audit. These are candidates, not proven incorrect outcomes.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/74",
+        "https://github.com/coach-sudo/Studio-Portal/pull/83",
+        "https://github.com/coach-sudo/Studio-Portal/pull/84"
+      ],
+      "commits": [
+        "5e9cfc4abbe1abcdf10961cc282cb8ddc633731e",
+        "454035769726f1aaa22a4d1fe6e022feb249fbc3",
+        "3779d0ceaae96cdccdb31234be87b667bb7c229c",
+        "9b63691944e40719a4298964428cbe156e4e0ec5",
+        "acef7bd3debd62c47058c5621275e9c2ee2aa2d9"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-14",
+      "severity": "P2",
+      "title": "SP-14 · P2 · Integration health does not report scheduled receipt state or disabled intake",
+      "disposition": "draft implementation validated in isolation; operational failure remains",
+      "rootCause": "Recommendation: preserve job identity/state, disabled reason, source-stage failures, last success and age; distinguish accepted, claimed, completed and failed. A routine 200 disabled response must not imply imports started. Expose logs through sanitized actionable errors. Retain an append-only run history: the current per-worker row is overwritten on subsequent jobs and cannot alone prove three historical runs.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/platform-health.ts#L111",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/features/coach/StudioSettings.tsx#L1102",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/data/bookingCommands.ts#L156"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: operations/UX. C01/F03–F05/X16/X19. Health derives scheduledWorkers from the studio read and gives it no last-success timestamp. It does not query scheduled_jobs or the worker flag. startProviderIntake returns true for any successful HTTP response, losing accepted/already_running/disabled distinctions. Settings announces the check started and refreshes health once after 15 seconds, rather than following the returned job.",
+      "proposedFix": "Recommendation: preserve job identity/state, disabled reason, source-stage failures, last success and age; distinguish accepted, claimed, completed and failed. A routine 200 disabled response must not imply imports started. Expose logs through sanitized actionable errors. Retain an append-only run history: the current per-worker row is overwritten on subsequent jobs and cannot alone prove three historical runs.",
+      "regressionCoverage": "28 targeted unit/component/PGlite cases; typecheck; actual isolated PostgreSQL migration and concurrency; full suite/build/isolated browser CI. #85: 64 targeted cases and nine new actual PostgreSQL health assertions; full upgrade/grants/types/fencing/concurrency and isolated browser passed.",
+      "remainingAcceptance": "Controlled Calendar/Gmail errors/recovery and three real scheduler-origin completions; authenticated production-equivalent Settings; separate worker enablement approval.",
+      "implementation": "Private append-only run/stage observations, service-only claim fencing, disabled-aware health, preserved stage failure, receipt-following Settings; no fixed 15-second completion assumption. #85 preserves the first actual intake error and closes the final source stage before aggregate completion fails, avoiding false Gmail attribution.",
+      "ci": "Source implementation passed 40633111054 / 40633111028; documentation checkpoint 963c05b passed 40685577256 / 40685576886. Full isolated PostgreSQL, upgrade, grants, fencing and concurrency passed; real provider acceptance remains open. #85 exact b51dd68 passed production 40747671964 and browser 40747671939.",
+      "review": "draft; no merge/release approval",
+      "residualRisk": "Production intake remains disabled. Read-only historical evidence correlates Calendar synchronization holds followed by resolved Gmail scope status and a generic final failure; exact event causality is unproven. Provider/hosted acceptance remains open.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/69",
+        "https://github.com/coach-sudo/Studio-Portal/pull/85"
+      ],
+      "commits": [
+        "78f5fdfe72cbb7c9f254428bf1ffbd958b385964",
+        "b51dd6830a815f68975eab485ea272053bfa79e6"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-15",
+      "severity": "P1",
+      "title": "SP-15 · P1 · Public booking sidebar has insufficient contrast under live branding",
+      "disposition": "semantic contrast correction validated in fixtures",
+      "rootCause": "Reproduction: catalog → 30-minute service → setup or Choose a time. Inspect the left summary. Screenshots are in screenshots/. Recommendation: explicit semantic surface/foreground pairs, accessible branding validation and actual computed-color tests for configured brand values across lazy-loaded routes. Check every text/state pair, not only default green branding. This is an accessibility release blocker for the affected booking view.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/styles/booking.css#L92",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/styles/booking.css#L722",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/styles/public.css#L48",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/lib/branding.ts#L9"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: design/accessibility. Public B01/F06/X13. At /book/private-acting-coaching-30, title/selection text is rgb(23,33,29), body rgb(82,98,88), background rgb(55,18,155), measured at 1363×936. Standard relative-luminance calculation gives 1.35:1 title contrast and 1.89:1 body contrast: both below even the 3:1 large-text threshold, and body below 4.5:1. The public overrides and booking styles share selectors, while branding changes --forest without paired foreground tokens. Exact winning-rule order requires CSS-cascade inspection; the computed-color failure is directly observed.",
+      "proposedFix": "Reproduction: catalog → 30-minute service → setup or Choose a time. Inspect the left summary. Screenshots are in screenshots/. Recommendation: explicit semantic surface/foreground pairs, accessible branding validation and actual computed-color tests for configured brand values across lazy-loaded routes. Check every text/state pair, not only default green branding. This is an accessibility release blocker for the affected booking view.",
+      "regressionCoverage": "Eight Windows Chromium/WebKit × 320/390/768/1440 fixtures, seven states, keyboard, axe, overflow, retained input/retry; minimum summary 12.19:1 with production public palette.",
+      "remainingAcceptance": "Approved deployment/real service/keyboard/screen-reader/touch acceptance; no external booking effects inferred from UI tests.",
+      "implementation": "Semantic foreground/background pairs derived from configured branding; remove conflicting sidebar ownership; preserve identity, interactive pairs and focus visibility.",
+      "ci": "Exact implementation ce11181 passed production checks 40634329937 and browser 40634329942. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
+      "residualRisk": "No unsolicited redesign. Manual screen reader and real device/provider journeys remain unverified.",
+      "prs": ["https://github.com/coach-sudo/Studio-Portal/pull/70"],
+      "commits": [
+        "ce11181bfa1e75e5beb090ddcc79474136664534",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
+      ],
+      "classification": "reproduced"
+    },
+    {
+      "id": "SP-16",
+      "severity": "P2",
+      "title": "SP-16 · P2 · Current development toolchain has published dependency advisories",
+      "disposition": "patched compatible toolchain validated on CI and Windows; draft review pending",
+      "rootCause": "Vendor advisories confirm Vite 8.1.x affected through 8.1.5 and patched at 8.1.6 for the Windows launch-editor bypass; mocker is patched at 4.1.12. Sources: https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm and https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8 . Recommendation: a reviewed lockfile update to compatible patched versions, then local/CI/build/Windows acceptance. Production-only npm audit in CI does not cover these dev dependencies. No upgrades were made.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/package-lock.json#L7588",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/package-lock.json#L3324",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/package-lock.json#L7666"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: build/security. F07. Fresh npm audit reports three affected package entries: vite high, @vitest/mocker moderate, vitest moderate (the latter includes a transitive effect, not a separate count of independent exploits). Advisory details and ranges are retained in npm-audit.json. These are development tooling findings; the audit does not claim the static production site exposes a Vite dev server.",
+      "proposedFix": "Vendor advisories confirm Vite 8.1.x affected through 8.1.5 and patched at 8.1.6 for the Windows launch-editor bypass; mocker is patched at 4.1.12. Sources: https://github.com/vitejs/launch-editor/security/advisories/GHSA-587h-7wmj-h5pm and https://github.com/vitest-dev/vitest/security/advisories/GHSA-qxg6-89mg-rqv8 . Recommendation: a reviewed lockfile update to compatible patched versions, then local/CI/build/Windows acceptance. Production-only npm audit in CI does not cover these dev dependencies. No upgrades were made.",
+      "regressionCoverage": "Patched lock and actual clean Windows install: zero npm advisories. Vite 8.1.6 / Vitest 4.1.12; Node 22 CI and Node 24 Windows. Full Windows NY 1005/1005 across 147 files, typecheck, build, zero lint errors/unchanged 904 warnings, 8/8 Chromium/WebKit fixture browser cases.",
+      "remainingAcceptance": "Reconcile overlapping Dependabot #59 manifest changes; final combined-candidate verification and separate release approval.",
+      "implementation": "Pin Vite 8.1.6 and Vitest/mocker 4.1.12 on existing major/minor lines, with documented overlap to broad Dependabot #59.",
+      "ci": "Source 3270fc5 passed production 40684655183 and isolated browser 40684655163; Windows evidence head da2605b passed production 40691990777 and isolated browser 40691990880. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
+      "residualRisk": "The user freed disk space; clean patched install closes the ENOSPC blocker. Development-tooling exposure is distinct from unproven production runtime exposure; existing broader major upgrades remain separate.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/76",
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
+      "commits": [
+        "3270fc5059171a8a343b3951780f7e9fc8af4e51",
+        "da2605b9efcdf33b16bc3631013aec76105db75b",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
+      ],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-17",
+      "severity": "P2",
+      "title": "SP-17 · P2 · Route snapshots still aggregate entire histories in several domains",
+      "disposition": "unbounded source histories confirmed; impact/pagination work incomplete",
+      "rootCause": "Recommendation: bounded role-specific summary/read models and cursor-paged detail endpoints; measure payload, DB execution plan and render work on representative synthetic history. Preserve financial totals as authoritative server aggregates rather than truncating client rows. No slow production incident is asserted.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/supabase/migrations/20261008220659_bounded_legacy_material_snapshots.sql#L50",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/data/repository.ts#L128"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: data/query architecture. F03/F06/E05/D06/X16. Route-domain selection reduces breadth and materials were substantially bounded, but lesson, notes, assignments, finance, conversation-message and administration aggregates still have no per-list page/date boundary in the route snapshot. A single RPC avoids many round trips yet can return an ever-growing JSON result. The fallback direct table reads similarly lack pagination for several domains. RLS still applies; this is not evidence of a data leak.",
+      "proposedFix": "Recommendation: bounded role-specific summary/read models and cursor-paged detail endpoints; measure payload, DB execution plan and render work on representative synthetic history. Preserve financial totals as authoritative server aggregates rather than truncating client rows. No slow production incident is asserted.",
+      "regressionCoverage": "Audit source evidence; no measured before/after or bounded-query implementation yet.",
+      "remainingAcceptance": "Large synthetic histories; query/payload/render/memory timing; cursor design preserving aggregate totals and cross-record navigation; isolated DB and browser verification.",
+      "implementation": "Source aggregation retains entire histories in several route snapshots. No arbitrary caps or unsupported performance improvement introduced.",
+      "ci": "No implementation CI.",
+      "review": "investigation/proposal",
+      "residualRisk": "Performance severity and large-history behavior remain unmeasured.",
+      "prs": [],
+      "commits": [],
+      "classification": "unresolved risk"
+    },
+    {
+      "id": "SP-18",
+      "severity": "P2",
+      "title": "SP-18 · P2 · Compromised-password protection is disabled in production Auth",
+      "disposition": "enablement proposal prepared; production setting unchanged",
+      "rootCause": "",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/netlify/functions/portal-auth.ts#L25"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: identity/security. A03/F07/X10. The production security advisor returns auth_leaked_password_protection WARN. Recommendation: review enabling it and test invitation, first-password change and recovery UX. Other advisor results must be interpreted: 17 RLS-enabled/no-policy internal tables are consistent with service-only receipts, and 20 authenticated security-definer functions require reviewed authorization, not blanket removal. These warnings are not 37 proven vulnerabilities. No authentication configuration was changed.",
+      "proposedFix": "Owner: identity/security. A03/F07/X10. The production security advisor returns auth_leaked_password_protection WARN. Recommendation: review enabling it and test invitation, first-password change and recovery UX. Other advisor results must be interpreted: 17 RLS-enabled/no-policy internal tables are consistent with service-only receipts, and 20 authenticated security-definer functions require reviewed authorization, not blanket removal. These warnings are not 37 proven vulnerabilities. No authentication configuration was changed.",
+      "regressionCoverage": "Read-only advisor; existing SQL/ephemeral role checks on other drafts are bounded evidence only. Hosted breached-password behavior not exercised.",
+      "remainingAcceptance": "Approved non-production Auth/capture mailbox/identities; setup/invite/recovery/weak-password/revocation/server/database roles; explicit production Auth approval.",
+      "implementation": "Current read-only production Auth advisor confirms disabled leaked-password protection. decisions.md defines staged password/invite/recovery/role gates and separate production approval.",
+      "ci": "No production configuration change or hosted enablement test.",
+      "review": "investigation/proposal",
+      "residualRisk": "Protection remains disabled; guarded SECURITY DEFINER and private no-policy RLS advisories require contextual review, not blanket permission changes.",
+      "prs": [],
+      "commits": [],
+      "classification": "confirmed"
+    },
+    {
+      "id": "SP-19",
+      "severity": "P3",
+      "title": "SP-19 · P3 · A booking test assumes the New York execution timezone",
+      "disposition": "test portability repaired and validated",
+      "rootCause": "Recommendation: use explicit instants/timezones in fixtures, and add timezone-matrix tests for the real conversion boundaries. Preserve New York CI behavior while removing accidental host dependence. Existing canvas-not-implemented messages are environment warnings, not failed tests.",
+      "affectedCode": [
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/src/domain/booking.test.ts#L8",
+        "https://github.com/coach-sudo/Studio-Portal/blob/fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb/.github/workflows/ci.yml#L35"
+      ],
+      "affectedWorkflowsAndConnections": "Owner: testing. B01/F07. The original host-timezone run produced 1004 passes and one failed blackout-window case. With TZ=America/New_York the focused seven-case suite passes, and the complete suite passes 1005/1005. Fixtures construct offset-free local Dates while availability rules carry studio timezone. This is insufficient evidence of an application blackout defect.",
+      "proposedFix": "Recommendation: use explicit instants/timezones in fixtures, and add timezone-matrix tests for the real conversion boundaries. Preserve New York CI behavior while removing accidental host dependence. Existing canvas-not-implemented messages are environment warnings, not failed tests.",
+      "regressionCoverage": "All original seven booking tests × NY/UTC/LA/Tokyo/Honolulu: 35/35. Full local New York baseline: 1005/1005 across 147 files.",
+      "remainingAcceptance": "Integration of independent drafts and final full-system acceptance; this test repair does not certify SP-03 runtime behavior.",
+      "implementation": "Original booking tests use explicit NY zone/instants and correct weekday/buffer expectations. Exclude diagnostic .tmp outputs from suite discovery; CI timezone matrix added.",
+      "ci": "Exact implementation 49d1c75 passed production checks 40634490248 and isolated browser 40634490205. Release A exact assembled ad8c819 is running mandatory production40823556552/browser40823556460; no pass is inferred while pending.",
+      "review": "Consolidated Release A in existing draft #70; owner merge/publication approval absent.",
+      "residualRisk": "No runtime/timezone behavior changed by this PR.",
+      "prs": [
+        "https://github.com/coach-sudo/Studio-Portal/pull/72",
+        "https://github.com/coach-sudo/Studio-Portal/pull/70"
+      ],
+      "commits": [
+        "49d1c755edec84b3eec3c69ce03c8413b6df558d",
+        "ad8c81952ea9dabbbedcea6065d3618ade9a0e6c"
+      ],
+      "classification": "reproduced"
+    }
+  ],
+  "updatedAt": "2026-10-28T22:43:29.985Z",
+  "additionalRisks": [
+    {
+      "id": "FIN-R01",
+      "classification": "reproduced",
+      "description": "Legacy installment counters commit before provider/ledger completion, allowing same-invoice overcount on retry.",
+      "implementation": "https://github.com/coach-sudo/Studio-Portal/pull/75",
+      "commit": "e4ffa489ef54454b44b219926fe49b0874b00cac",
+      "evidence": "Original synthetic partial-settlement fault retained in #75. Exact source e4ffa48 passed production 40684758098 and isolated browser 40684758440, including full PostgreSQL fault/role/first-payment/replay/concurrent-invoice checks. Stripe sandbox and legacy exception handling remain unverified.",
+      "remaining": "Stripe sandbox, historical partial reconciliation, zero-value/exception policy review, invitation and other financial branches; no live balance discrepancy or correction claimed."
+    },
+    {
+      "id": "SEC-R01",
+      "classification": "reproduced",
+      "description": "Frontend in-flight command coalescing can return a previous session's delayed result and ignores changed version/reason/status/key metadata.",
+      "implementation": "https://github.com/coach-sudo/Studio-Portal/pull/81",
+      "commit": "9dc30cde4a1920f88cdda11175226cea3071eaad",
+      "evidence": "Two synthetic baseline reproductions retained; 21 new request-boundary tests plus four existing identity/error tests pass. Captured auth and complete serialized envelope isolate requests; delayed input edits, session switch/sign-out/refresh, HTTP/network failure and receipt retry are covered. Project-reference typecheck and secret check pass; no new lint warnings. Exact source 9dc30cde4a1920f88cdda11175226cea3071eaad passed production 40733081494 and isolated browser 40733081301.",
+      "remaining": "combined browser/session/hosted role acceptance. No real-user disclosure is inferred; server/database authorization and durable receipts remain authoritative. This does not enable compromised-password protection."
+    }
+  ]
+}

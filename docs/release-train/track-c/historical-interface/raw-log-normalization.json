@@ -1,0 +1,33 @@
+{
+  "scope": "Documentation display copies only; product source and test outcomes unchanged. Raw copies retained locally in ignored .tmp evidence.",
+  "logs": [
+    {
+      "file": "actor-targeted-tests.log",
+      "rawCopy": ".tmp/release-c-historical-raw-logs/actor-targeted-tests.log",
+      "rawSHA256": "31df0f4377840876113fe20ee98b5f3542f35ee2b7b4413c4b492f857785b470",
+      "displaySHA256": "9fffde52d23da9710f74ba9db77a8deba4e45249045b875c8d8e3ac0f7f4ec07",
+      "normalization": "Trailing whitespace and extra EOF blank lines removed; all nonblank lines retained, including failed results."
+    },
+    {
+      "file": "policy-final-browser.log",
+      "rawCopy": ".tmp/release-c-historical-raw-logs/policy-final-browser.log",
+      "rawSHA256": "bf861d9f6b6eeece65d0c3cd4615af87f07494bccfcd2e1c06d0909d5e335736",
+      "displaySHA256": "4582b42f710125496c446f870074bc168d1976045b9094a5b7eba3e349e1931e",
+      "normalization": "Trailing whitespace and extra EOF blank lines removed; all nonblank lines retained, including failed results."
+    },
+    {
+      "file": "targeted-final-tests.log",
+      "rawCopy": ".tmp/release-c-historical-raw-logs/targeted-final-tests.log",
+      "rawSHA256": "c4d0e3f20522f14846fa69b96127215814c973efe15aee82fb51b9a67d81a032",
+      "displaySHA256": "6873f2055858f763076cb8a2bb0606c452aebdbb01122c4285c9c94e81b9e046",
+      "normalization": "Trailing whitespace and extra EOF blank lines removed; all nonblank lines retained, including failed results."
+    },
+    {
+      "file": "targeted-tests.log",
+      "rawCopy": ".tmp/release-c-historical-raw-logs/targeted-tests.log",
+      "rawSHA256": "c359e43fc6990eb4b70af6afc4f1c10c646b5edaba3b48957c2836225979f0f2",
+      "displaySHA256": "bd3761f4e45d0205a3c24958f318120b667f437b6926b326f62c8dc6bd759c24",
+      "normalization": "Trailing whitespace and extra EOF blank lines removed; all nonblank lines retained, including failed results."
+    }
+  ]
+}

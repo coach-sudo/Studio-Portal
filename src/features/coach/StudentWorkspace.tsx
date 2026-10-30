@@ -52,6 +52,7 @@ import { invalidateStudioDomains, useStudioRoute } from "../../hooks/useStudio";
 import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useStudioStore } from "../../state/StudioStore";
 
+import { StudentIdentityLinks } from "./StudentIdentity";
 import { belongsToStudent, now, uid } from "./StudentWorkspace.shared";
 import { studentWorkspaceDomains } from "./routeDomains";
 const Account = lazy(() =>
@@ -709,6 +710,7 @@ export function StudentWorkspace() {
           </button>
         </div>
       )}
+      <StudentIdentityLinks studentId={student.id} enabled={!isDemo} />
       <nav className="record-tabs" aria-label={`${student.fullName} sections`}>
         {tabs.map(([path, label]) => (
           <NavLink

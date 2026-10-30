@@ -7,6 +7,13 @@ on:
     branches:
       [
         main,
+        codex/audit-worker-observability,
+        codex/audit-student-identity-groups,
+        codex/audit-student-identity-interface,
+        codex/audit-provider-attendance,
+        codex/audit-calendar-discovery-preview,
+        codex/audit-calendar-source-protection,
+        codex/audit-historical-review-decisions,
         codex/credit-coverage-diagnostics,
         codex/credit-lifecycle-reliability,
         codex/occurrence-safe-lesson-changes,
@@ -78,6 +85,7 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+          fetch-depth: 0
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v5
         with:
@@ -89,8 +97,12 @@ jobs:
         env:
           WAVE_ONE_ACCEPTANCE_LOCAL: "true"
         run: node scripts/test-wave-one-upgrade.mjs
+      - name: Upgrade from current 71-migration production prefix with original identity and provider history
+        env:
+          CURRENT_PRODUCTION_ACCEPTANCE_LOCAL: "true"
+        run: node scripts/test-current-production-upgrade.mjs
       - run: npx supabase db reset --local --no-seed
-      - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops,workspace_internal,worker_internal --fail-on error
+      - run: npx supabase db lint --local --schema public,credit_internal,lesson_ops,workspace_internal,worker_internal,discovery_internal --fail-on error
       - run: npm run supabase:types
       - run: npx supabase test db
       - run: node scripts/test-credit-concurrency.mjs
@@ -98,6 +110,8 @@ jobs:
       - run: node scripts/test-lesson-bulk-concurrency.mjs
       - run: node scripts/test-material-study-concurrency.mjs
       - run: node scripts/test-provider-intake-concurrency.mjs
+      - run: node scripts/test-student-identity-concurrency.mjs
+      - run: node scripts/test-historical-review-concurrency.mjs
       - run: node scripts/test-scheduled-worker-concurrency.mjs
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence

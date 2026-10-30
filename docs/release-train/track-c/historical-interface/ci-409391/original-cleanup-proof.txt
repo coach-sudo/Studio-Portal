@@ -1,0 +1,6 @@
+public: restored to the pre-fixture baseline
+lesson-ops: restored to the pre-fixture baseline
+storage: restored to the pre-fixture baseline
+auth-users: restored to the pre-fixture baseline
+auth-identities: restored to the pre-fixture baseline
+remaining e2e auth users: 0

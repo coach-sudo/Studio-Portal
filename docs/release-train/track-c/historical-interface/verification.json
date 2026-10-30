@@ -1,0 +1,79 @@
+{
+  "phase": "exact 5ffd7e8 production CI passed; browser CI blocked by malformed connected-role acceptance request; harness-only successor pending",
+  "newMigrationFiles": 0,
+  "RPCPayloadChanges": 0,
+  "sourceContracts": [
+    "preview_historical_calendar_review",
+    "historical_calendar_review",
+    "preview_historical_calendar_reopening",
+    "preview_historical_calendar_reconciliation",
+    "historical_calendar_reconciliation",
+    "historical_calendar_decision_history"
+  ],
+  "unit": {
+    "passed": 116,
+    "files": 10,
+    "scope": "targeted source/identity/transport clients, components and historical server handlers"
+  },
+  "windowsBrowser": {
+    "passed": 16,
+    "newHistoricalJourneys": 8,
+    "retainedDiscoveryJourneys": 8,
+    "engines": ["chromium", "webkit"],
+    "widths": [320, 390, 768, 1440],
+    "retries": 0,
+    "providerLayer": "loopback fixture only",
+    "actorBoundIdentityJourneys": 8,
+    "actorBoundDiscoveryAndHistoricalJourneys": 16,
+    "policyParityHistoricalJourneys": 8
+  },
+  "destructiveTargetGuards": {
+    "passed": 10,
+    "failed": 0
+  },
+  "current71GitFiles": {
+    "passed": 71,
+    "actualDatabaseUpgrade": "PASS at5ffd7e8:71baseline+7additive,83 original table families byte-equivalent",
+    "hostedSQLContentVerified": false
+  },
+  "connectedRoleAndCanonicalJourneys": {
+    "implemented": true,
+    "executed": true,
+    "status": "Historical PASS; identity PARTIAL/FAILED at missing envelope idempotencyKey; corrected harness still DIRECT engineering gate",
+    "names": [
+      "original-identity grouping/permission preservation/lost-response recovery/reversal",
+      "historical source reopen/create/replay/skip/not-lesson/link with preserved paid attendance"
+    ]
+  },
+  "hostedProviderAcceptance": "UNEXECUTED: separate approval/credentials required",
+  "productionProviderIntake": "unchanged; disabled",
+  "publication": "not authorized for C",
+  "requestRecovery": {
+    "capturedActorBound": true,
+    "wireOrHashChanges": false,
+    "retainsOriginalKeyAfterUnknownOutcome": true,
+    "holdsForbiddenVersionAndIdempotencyConflicts": true,
+    "firstVersionConflictHeld": "shared API compatibility maps idempotency and version errors together"
+  },
+  "exactCI": {
+    "source": "5ffd7e89e219a7602b9c1126984dd2d8ee0deae3",
+    "productionRun": 40939111716,
+    "productionResult": "PASS",
+    "unit": 1208,
+    "unitFiles": 168,
+    "postgresAssertions": 637,
+    "postgresFiles": 20,
+    "current71Upgrade": "PASS",
+    "original51Upgrade": "PASS",
+    "browserRun": 40939111523,
+    "browserResult": "FAILED",
+    "standardBrowserPassed": 61,
+    "standardStripeBlocked": 1,
+    "focusRepetitionsPassed": 20,
+    "originalCleanup": "PASS",
+    "realHistoricalJourney": "PASS",
+    "realIdentityJourney": "FAILED:malformed acceptance envelope, downstream roles/reversal not reached",
+    "disposal": "PASS:owned database discarded;9 synthetic/private counts zero",
+    "correctedSuccessorCI": "PENDING"
+  }
+}

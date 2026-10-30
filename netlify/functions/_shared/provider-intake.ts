@@ -7,6 +7,10 @@ import {
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
+import {
+  observeCalendarProtection,
+  resolveCalendarIdentity,
+} from "./calendar-source-protection";
 import { serviceClient } from "./supabase";
 import type { WorkerTelemetry } from "./worker-telemetry";
 import { zonedDateTimeToUtc } from "./timezone";
@@ -607,13 +611,24 @@ export async function importCalendar(
 ) {
   assertWorkerEnabled("provider-intake");
   const db = serviceClient(),
-    calendar = encodeURIComponent(
+    calendarId = await resolveCalendarIdentity(
+      token,
       Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
     ),
+    calendar = encodeURIComponent(calendarId),
     from = new Date(Date.now() - 14 * 86400000).toISOString(),
     to = new Date(Date.now() + 90 * 86400000).toISOString();
   const events = await listCalendarEvents(token, calendar, from, to),
-    managed = await managedCalendarRows(db, events);
+    protectedEvents = await observeCalendarProtection(
+      db,
+      studio.id,
+      calendarId,
+      events,
+    ),
+    managed = await managedCalendarRows(
+      db,
+      events.filter((event) => !event.id || !protectedEvents.has(event.id)),
+    );
   let imported = 0,
     review = 0;
   const failures: unknown[] = [];
@@ -621,6 +636,19 @@ export async function importCalendar(
     assertWorkerEnabled("provider-intake");
     try {
       if (!event.id) continue;
+      const protectedSource = protectedEvents.get(event.id);
+      if (protectedSource) {
+        if (
+          protectedSource.some(
+            (item) =>
+              item.changed ||
+              item.state === "ambiguous" ||
+              item.disposition === "review",
+          )
+        )
+          review++;
+        continue;
+      }
       const projection = managed.projections.get(event.id),
         managedLesson = projection
           ? managed.lessons.get(projection.lesson_id)
@@ -906,38 +934,31 @@ export async function importCalendar(
       if (student) {
         const { data: lesson, error } = await db
           .from("lessons")
-          .upsert(
-            {
-              studio_id: studio.id,
-              student_id: student.id,
-              topic: event.summary || `${displayProvider(source)} lesson`,
-              starts_at: event.start.dateTime,
-              ends_at: event.end.dateTime,
-              status:
-                new Date(event.end.dateTime) < new Date()
-                  ? "completed"
-                  : "scheduled",
-              location_type: event.hangoutLink ? "virtual" : "in_person",
-              location_label: event.hangoutLink
-                ? "Google Meet"
-                : event.location || displayProvider(source),
-              join_url: event.hangoutLink || null,
-              meeting_provider: event.hangoutLink ? "google_meet" : "in_person",
-              source_provider: source,
-              source_external_id: event.id,
-              source_confidence: confidence,
-              imported_at: new Date().toISOString(),
-            },
-            { onConflict: "studio_id,source_provider,source_external_id" },
-          )
+          .insert({
+            studio_id: studio.id,
+            student_id: student.id,
+            topic: event.summary || `${displayProvider(source)} lesson`,
+            starts_at: event.start.dateTime,
+            ends_at: event.end.dateTime,
+            status: "scheduled",
+            location_type: event.hangoutLink ? "virtual" : "in_person",
+            location_label: event.hangoutLink
+              ? "Google Meet"
+              : event.location || displayProvider(source),
+            join_url: event.hangoutLink || null,
+            meeting_provider: event.hangoutLink ? "google_meet" : "in_person",
+            source_provider: source,
+            source_external_id: event.id,
+            source_confidence: confidence,
+            imported_at: new Date().toISOString(),
+          })
           .select("id,version")
           .single();
+        // A source may establish a schedule, never overwrite an existing outcome.
+        // A unique source collision remains a retry/review failure, not an upsert.
+        if (error) throw error;
         if (!error && lesson) {
           lessonId = lesson.id;
-          await db
-            .from("lesson_participants")
-            .delete()
-            .eq("lesson_id", lesson.id);
           await checkedAll([
             checkedQuery(
               db.from("lesson_participants").insert({
@@ -1026,6 +1047,8 @@ export async function scanGmail(
       ),
       payload = providerPayload(gmailListSchema, await list.json());
     if (!list.ok) {
+      if (![401, 403].includes(list.status))
+        throw new Error("PROVIDER_UNAVAILABLE: Gmail listing is unavailable.");
       await checkedQuery(
         db.from("recommendations").upsert(
           {
@@ -1035,7 +1058,9 @@ export async function scanGmail(
             title: "Reconnect Google to import booking emails",
             explanation:
               "Sending email works, but smart booking intake also needs read-only Gmail permission.",
-            evidence: [payload.error?.message || "Gmail read unavailable"],
+            evidence: [
+              "Gmail read permission is unavailable. Reconnect and verify the read-only scope in a controlled account.",
+            ],
             urgency: 3,
             suggested_action: "open_integrations",
             requires_confirmation: false,
@@ -1270,10 +1295,7 @@ export async function scanGmail(
             topic: candidate.topic,
             starts_at: candidate.startsAt,
             ends_at: candidate.endsAt,
-            status:
-              new Date(candidate.endsAt) < new Date()
-                ? "completed"
-                : "scheduled",
+            status: "scheduled",
             location_type: candidate.joinUrl ? "virtual" : "in_person",
             location_label: candidate.locationLabel,
             join_url: candidate.joinUrl || null,
@@ -1291,6 +1313,7 @@ export async function scanGmail(
           })
           .select("id")
           .single();
+        if (created.error) throw created.error;
         if (!created.error && created.data) {
           lessonId = created.data.id;
           createdFromGmail = true;
@@ -1411,8 +1434,8 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     calendarReview = 0,
     gmailImported = 0,
     gmailReview = 0,
-    gmailScope = true,
-    failures = 0;
+    gmailScope = true;
+  const failures: unknown[] = [];
   for (const studio of studios || []) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
@@ -1423,7 +1446,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       .is("deleted_at", null);
     if (studentError) {
       telemetry?.failure(studentError);
-      failures++;
+      failures.push(studentError);
       continue;
     }
     telemetry?.stage("calendar_processing");
@@ -1433,7 +1456,7 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       calendarReview += calendar.review;
     } catch (error) {
       telemetry?.failure(error);
-      failures++;
+      failures.push(error);
     }
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
@@ -1442,16 +1465,23 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       gmailImported += gmail.imported;
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;
-      if (!gmail.scope) failures++;
+      if (!gmail.scope) {
+        const permission = { code: "GMAIL_READ_PERMISSION" };
+        telemetry?.failure(permission);
+        failures.push(permission);
+      }
     } catch (error) {
       telemetry?.failure(error);
-      failures++;
+      failures.push(error);
     }
   }
-  if (failures)
-    throw new Error(
-      "PROVIDER_UNAVAILABLE: Intake has unfinished provider work.",
-    );
+  if (failures.length) {
+    // Close the actual final processing stage before rejecting the aggregate.
+    // Its success must not become a false Gmail failure. Retain the underlying
+    // category/retry guidance; the scheduled wrapper sanitizes it for receipts.
+    telemetry?.stage("completion");
+    throw failures[0];
+  }
   return {
     ok: true,
     calendarImported,

@@ -1,0 +1,86 @@
+{
+  "pairs": [
+    {
+      "element": "H2",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": null
+    },
+    {
+      "element": "P",
+      "foreground": "rgb(82, 98, 88)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 6.467992963799774,
+      "borderRatio": null
+    },
+    {
+      "element": "LABEL",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": null
+    },
+    {
+      "element": "SELECT",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": 16.513121508197194
+    },
+    {
+      "element": "LABEL",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": null
+    },
+    {
+      "element": "SELECT",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": 16.513121508197194
+    },
+    {
+      "element": "LABEL",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": null
+    },
+    {
+      "element": "SELECT",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": 16.513121508197194
+    },
+    {
+      "element": "LABEL",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": null
+    },
+    {
+      "element": "TEXTAREA",
+      "foreground": "rgb(23, 33, 29)",
+      "background": [255, 255, 255, 255],
+      "textRatio": 16.513121508197194,
+      "borderRatio": 16.513121508197194
+    },
+    {
+      "element": "BUTTON",
+      "foreground": "rgb(255, 255, 255)",
+      "background": [23, 63, 53, 255],
+      "textRatio": 11.674172584721212,
+      "borderRatio": null
+    }
+  ],
+  "focus": {
+    "width": 3,
+    "style": "solid",
+    "ratio": 3.303068817416212
+  }
+}
