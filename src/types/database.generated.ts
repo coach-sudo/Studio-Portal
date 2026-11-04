@@ -5047,6 +5047,10 @@ export type Database = {
         Args: { p_job: string; p_worker: string }
         Returns: string
       }
+      claim_stripe_booking_invoice_effect: {
+        Args: { p_invoice: string }
+        Returns: Json
+      }
       claim_studio_invoice_checkout: {
         Args: {
           p_amount: number
@@ -5426,6 +5430,15 @@ export type Database = {
         }
         Returns: boolean
       }
+      finish_stripe_booking_invoice_effect: {
+        Args: {
+          p_invoice: string
+          p_reference?: string
+          p_step: string
+          p_token: string
+        }
+        Returns: boolean
+      }
       get_material_assignment: { Args: { p_id: string }; Returns: Json }
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
@@ -5762,6 +5775,7 @@ export type Database = {
         Args: { p_lesson: string; p_student?: string; p_use: boolean }
         Returns: undefined
       }
+      settle_stripe_booking_invoice: { Args: { p_value: Json }; Returns: Json }
       settle_studio_invoice: {
         Args: {
           p_amount: number
