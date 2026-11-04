@@ -1,0 +1,141 @@
+{
+  "commit": "6dbc9db98d27e205520fad839e3003c836e4b9bc",
+  "implementationCommit": "47e247d2451baeec10a09b1e760e81ef873cc4be",
+  "uiBlob": "16dbd993364c484caf865af4aa7f29ac9d5d4815",
+  "pullRequest": "https://github.com/coach-sudo/Studio-Portal/pull/89",
+  "dependsOn": [87, 88],
+  "combinedAttendanceDependency": 74,
+  "workflows": [
+    {
+      "id": 40818896666,
+      "name": "Production checks",
+      "conclusion": "success",
+      "url": "https://github.com/coach-sudo/Studio-Portal/actions/runs/40818896666"
+    },
+    {
+      "id": 40818896663,
+      "name": "Deployed browser checks",
+      "conclusion": "success",
+      "url": "https://github.com/coach-sudo/Studio-Portal/actions/runs/40818896663"
+    }
+  ],
+  "unit": {
+    "tests": 1075,
+    "files": 155,
+    "timezone": "America/New_York",
+    "job": 123266439223,
+    "lintErrors": 0,
+    "lintWarnings": 897,
+    "unchangedWarningBudget": 904,
+    "buildTypesFormatBudgetSecrets": "pass"
+  },
+  "sql": {
+    "assertions": 387,
+    "files": 16,
+    "newAssertions": 9,
+    "job": 123266439508,
+    "upgradeGrantsCatalogTypesConcurrency": "pass",
+    "scope": "Isolated PostgreSQL; direct legacy review rollback, original identity/financial/attendance/source/access/receipt preservation and role denials. No hosted migration."
+  },
+  "browser": {
+    "passed": 61,
+    "blocked": 1,
+    "blockedCase": "08: staging STRIPE_SECRET_KEY is absent or is not a Stripe test-mode key",
+    "retries": 0,
+    "focusRepeats": 20,
+    "focusRepeatSkipsFailuresFlakesRetries": 0,
+    "job": 123266439994,
+    "fixtureDatasetsRestored": [
+      "public",
+      "lesson-ops",
+      "storage",
+      "auth-users",
+      "auth-identities"
+    ],
+    "syntheticAuthUsers": 0,
+    "localStackStopped": true,
+    "scope": "Isolated Chromium desktop/mobile and axe; no real provider delivery claim."
+  },
+  "local": {
+    "targetedTests": 85,
+    "targetedFiles": 5,
+    "newTests": 14,
+    "includesOriginalWorkerEntrypoints": 36,
+    "typecheck": "npx tsc -b --pretty false: pass",
+    "windowsAfterJourneys": 8,
+    "parentComparisons": 8,
+    "engines": ["chromium", "webkit"],
+    "widths": [320, 390, 768, 1440],
+    "screenshots": 32,
+    "axeAA": "pass for changed dialog states",
+    "nativeLinkTabFocus": "pass after explicit tabIndex=0",
+    "computedColorSamples": 8,
+    "minNewTextContrast": 16.513121508197194,
+    "minFocusContrast": 3.303068817416212,
+    "focusWidthPx": 3,
+    "sourceUiBlob": "16dbd993364c484caf865af4aa7f29ac9d5d4815",
+    "evidenceDirectory": "https://github.com/coach-sudo/Studio-Portal/tree/codex/audit-provider-identity-review/docs/audit-provider-identity/evidence"
+  },
+  "retainedFailures": [
+    {
+      "workflow": 40816575477,
+      "kind": "actual new containment regression",
+      "passed": 1073,
+      "failed": 1,
+      "correction": "restore original disabled-worker gate ordering; retain original test; add disabled legacy-payload coverage"
+    },
+    {
+      "workflow": 40816309742,
+      "kind": "local-only fixtures wrongly collected by deployed config",
+      "originalPassed": 61,
+      "failedLocalCases": 8,
+      "blocked": 1,
+      "focusRepeatsPassed": 20,
+      "correction": "isolate new loopback directory; preserve all original 62 tests in 18 files"
+    },
+    {
+      "workflow": 40818224058,
+      "kind": "external npm tarball 404 before browser execution",
+      "testsExecuted": false,
+      "correction": "pin available type-only @types/estree 1.0.9 in existing disposable CLI overrides",
+      "fixtureDatasetsRestored": [
+        "public",
+        "lesson-ops",
+        "storage",
+        "auth-users",
+        "auth-identities"
+      ]
+    },
+    {
+      "workflow": 40817041300,
+      "kind": "superseded browser run cancelled after checking exact old source/branch",
+      "passInferred": false
+    },
+    {
+      "kind": "initial malformed browser error fixture",
+      "failed": 8,
+      "correction": "include mandatory correlationId; preserve generic client fallback"
+    },
+    {
+      "kind": "initial measurement harness serialization and invalid test-query options",
+      "productFailureInferred": false
+    }
+  ],
+  "hostedReadonlyEvidence": "hosted-readonly-checkpoint-2026-10-29.json",
+  "remainingAcceptance": [
+    "canonical historical source review interface",
+    "combined attendance/source/identity branches and legacy policy fixtures",
+    "hosted coach/student/guardian/unrelated roles and controlled providers",
+    "Stripe test-mode key and remaining financial/provider recovery paths",
+    "unknown response across dialog closure and committed-success/list-refresh distinction",
+    "manual assistive/touch/configured appearance",
+    "SP-17 measured history performance",
+    "SP-18 non-production password/invitation/recovery validation and separate production Auth approval",
+    "complete reusable CLI dependency lock",
+    "separate merge/migration/publication approval"
+  ],
+  "productionMutations": false,
+  "hostedMigrationsApplied": 0,
+  "backgroundWorkersEnabled": 0,
+  "fullWorkflowPassAwarded": false
+}

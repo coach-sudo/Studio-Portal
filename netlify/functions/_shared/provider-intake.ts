@@ -1026,6 +1026,8 @@ export async function scanGmail(
       ),
       payload = providerPayload(gmailListSchema, await list.json());
     if (!list.ok) {
+      if (![401, 403].includes(list.status))
+        throw new Error("PROVIDER_UNAVAILABLE: Gmail listing is unavailable.");
       await checkedQuery(
         db.from("recommendations").upsert(
           {
@@ -1035,7 +1037,9 @@ export async function scanGmail(
             title: "Reconnect Google to import booking emails",
             explanation:
               "Sending email works, but smart booking intake also needs read-only Gmail permission.",
-            evidence: [payload.error?.message || "Gmail read unavailable"],
+            evidence: [
+              "Gmail read permission is unavailable. Reconnect and verify the read-only scope in a controlled account.",
+            ],
             urgency: 3,
             suggested_action: "open_integrations",
             requires_confirmation: false,
@@ -1442,7 +1446,10 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
       gmailImported += gmail.imported;
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;
-      if (!gmail.scope) failures++;
+      if (!gmail.scope) {
+        telemetry?.failure({ code: "GMAIL_READ_PERMISSION" });
+        failures++;
+      }
     } catch (error) {
       telemetry?.failure(error);
       failures++;

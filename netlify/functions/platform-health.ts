@@ -2,11 +2,20 @@ import type { Config } from "@netlify/functions";
 import { apiError, correlationId, json } from "./_shared/http";
 import { releaseMetadata } from "./_shared/release";
 import { serviceClient, userClient } from "./_shared/supabase";
+import { workerEnabled } from "./_shared/worker-controls";
+import {
+  workerHealth,
+  type WorkerReceipt,
+} from "../../src/domain/integrationHealth";
 const has = (...names: string[]) =>
   names.some((n) => Boolean(Netlify.env.get(n)));
 type Evidence = {
   state:
-    "working" | "configured_unverified" | "attention_required" | "unconfigured";
+    | "working"
+    | "configured_unverified"
+    | "attention_required"
+    | "unconfigured"
+    | "disabled";
   configured: boolean;
   lastSuccessAt: string | null;
 };
@@ -21,7 +30,7 @@ export const evidence = (
     ? "unconfigured"
     : failed
       ? "attention_required"
-      : lastSuccessAt && Date.parse(lastSuccessAt) > Date.now() - 86400000
+      : lastSuccessAt
         ? "working"
         : "configured_unverified",
 });
@@ -49,7 +58,7 @@ export default async (request: Request) => {
     const studioId = membership.data.studio_id,
       db = serviceClient();
     // These are scoped database observations. No token refresh, provider probe, delivery or worker invocation.
-    const [studio, calendar, calendarFailure, email, emailFailure] =
+    const [studio, calendar, calendarFailure, email, emailFailure, workerRead] =
       await Promise.all([
         db.from("studios").select("id").eq("id", studioId).single(),
         db
@@ -82,7 +91,19 @@ export default async (request: Request) => {
           .eq("status", "failed")
           .limit(1)
           .maybeSingle(),
+        db.rpc("scheduled_worker_health"),
       ]);
+    const receipts = (workerRead.data ?? {}) as Record<string, WorkerReceipt>;
+    const workers = Object.fromEntries(
+      (["provider-intake", "booking-maintenance"] as const).map((worker) => [
+        worker,
+        workerHealth(
+          workerEnabled(worker),
+          receipts[worker] ?? null,
+          !!workerRead.error,
+        ),
+      ]),
+    );
     const oauth =
       has("GOOGLE_CLIENT_ID", "GOOGLE_OAUTH_CLIENT_ID") &&
       has("GOOGLE_CLIENT_SECRET", "GOOGLE_OAUTH_CLIENT_SECRET") &&
@@ -108,7 +129,20 @@ export default async (request: Request) => {
         null,
         false,
       ),
-      scheduledWorkers: evidence(!studio.error, null, false),
+      scheduledWorkers: {
+        configured: !workerRead.error,
+        lastSuccessAt:
+          workers["booking-maintenance"].receipt?.lastSuccessAt ?? null,
+        state: Object.values(workers).some((w) => w.status === "disabled")
+          ? ("disabled" as const)
+          : Object.values(workers).some((w) =>
+                ["failed", "partial", "unknown"].includes(w.status),
+              )
+            ? ("attention_required" as const)
+            : Object.values(workers).every((w) => w.status === "completed")
+              ? ("working" as const)
+              : ("configured_unverified" as const),
+      },
     };
     return json({
       mode: studio.error ? "demo" : "live",
@@ -119,6 +153,7 @@ export default async (request: Request) => {
         ]),
       ),
       integrations,
+      workers,
       issues: Object.values(integrations).some(
         (v) => v.state === "attention_required",
       )

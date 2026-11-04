@@ -12,7 +12,7 @@ import {
   ShieldCheck,
   Users,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
 import {
@@ -55,6 +55,7 @@ import {
   validateStudioImage,
 } from "../../domain/settingsAssets";
 import { mergeStudioSettings } from "../../data/settings";
+import { intakeDispatchNotice } from "../../domain/integrationHealth";
 
 export const studioRecoverySummary = (data: StudioSnapshot) =>
   `${data.students.length} people · ${data.lessons.length} lessons · ${data.materials.length} materials.`;
@@ -128,11 +129,11 @@ export function StudioSettings({
           ),
         );
   }, []);
-  const refreshHealth = async () => {
+  const refreshHealth = useCallback(async () => {
     const next = await loadPlatformHealth();
     setHealth(next);
     return next;
-  };
+  }, []);
   const save = async (updates: Partial<Settings>, message: string) => {
     if (settingsMutation.isPending())
       throw new Error("Another Settings save is still running. Please wait.");
@@ -394,13 +395,14 @@ export function StudioSettings({
             health={health}
             onNotice={setNotice}
             onRefresh={async () => {
-              await Promise.all([
+              const [next] = await Promise.all([
                 refreshHealth(),
                 invalidateStudioDomains(queryClient, [
                   "identity",
                   "administration",
                 ]),
               ]);
+              return next;
             }}
           />
         )}{" "}
@@ -1083,27 +1085,55 @@ function EmailAutomationForm({
   );
 }
 
-function Integrations({
+export function Integrations({
   health,
   onNotice,
   onRefresh,
 }: {
   health: PlatformHealth;
   onNotice: (value: string) => void;
-  onRefresh: () => Promise<unknown>;
+  onRefresh: () => Promise<PlatformHealth>;
 }) {
   const [syncing, setSyncing] = useState(false),
     [repairing, setRepairing] = useState(false),
-    [refreshing, setRefreshing] = useState(false);
+    [refreshing, setRefreshing] = useState(false),
+    [watching, setWatching] = useState(false);
+  const intake = health.workers?.["provider-intake"];
+  const active =
+    !!intake && ["queued", "accepted", "running"].includes(intake.status);
+  useEffect(() => {
+    if (!watching && !active) return;
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void onRefresh()
+        .then((next) => {
+          if (cancelled) return;
+          const status = next.workers?.["provider-intake"]?.status;
+          if (!status || !["queued", "accepted", "running"].includes(status))
+            setWatching(false);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setWatching(false);
+            onNotice(
+              "Receipt status could not be refreshed. Processing outcome is unknown; refresh status before retrying.",
+            );
+          }
+        });
+    }, 2000);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [watching, active, health.workers, onRefresh, onNotice]);
   const sync = async () => {
     if (syncing) return;
     setSyncing(true);
     try {
-      await startProviderIntake();
-      onNotice(
-        "Calendar and Gmail check started. High-confidence lessons will appear automatically; uncertain provider messages stay in Today for review.",
-      );
-      window.setTimeout(() => void onRefresh(), 15000);
+      const dispatch = await startProviderIntake();
+      onNotice(intakeDispatchNotice(dispatch));
+      setWatching(dispatch.status !== "disabled");
+      await onRefresh();
     } catch (reason) {
       onNotice(
         reason instanceof Error
@@ -1206,7 +1236,7 @@ function Integrations({
               </Status>
               {evidence?.lastSuccessAt && (
                 <small>
-                  Last success{" "}
+                  Last recorded success{" "}
                   {new Date(evidence.lastSuccessAt).toLocaleString()}
                 </small>
               )}
@@ -1214,11 +1244,96 @@ function Integrations({
           );
         })}
       </div>
+      {Object.entries(health.workers ?? {}).map(([worker, observation]) => (
+        <article
+          className="settings-card"
+          key={worker}
+          aria-label={`${worker} processing status`}
+        >
+          <h3>
+            {worker === "provider-intake"
+              ? "Calendar & Gmail intake"
+              : "Scheduled maintenance"}
+          </h3>
+          <p>
+            <strong>{observation.status.replaceAll("_", " ")}</strong> ·{" "}
+            {observation.enabled ? "Enabled" : "Disabled"}
+          </p>
+          <p>{observation.recovery}</p>
+          {observation.receipt && (
+            <>
+              <p>
+                Last requested:{" "}
+                {new Date(observation.receipt.requestedAt).toLocaleString()}.
+                Attempt {observation.receipt.attempts}.
+              </p>
+              <p>
+                Last started:{" "}
+                {observation.receipt.startedAt
+                  ? new Date(observation.receipt.startedAt).toLocaleString()
+                  : "Not started"}
+                .
+              </p>
+              <p>
+                Last completed successfully:{" "}
+                {observation.receipt.lastSuccessAt
+                  ? new Date(observation.receipt.lastSuccessAt).toLocaleString()
+                  : "No saved successful completion"}
+                .
+              </p>
+              <p>
+                Saved receipt: {observation.receipt.state}.{" "}
+                {observation.receipt.errorCategory &&
+                  `Failure category: ${observation.receipt.errorCategory.replaceAll("_", " ")}.`}
+              </p>
+              <ul>
+                {observation.receipt.stages
+                  .filter((stage) =>
+                    ["calendar_processing", "gmail_processing"].includes(
+                      stage.stage,
+                    ),
+                  )
+                  .map((stage) => (
+                    <li key={stage.stage}>
+                      {stage.stage === "calendar_processing"
+                        ? "Calendar"
+                        : "Gmail"}
+                      : {stage.state.replace("stage_", "")}
+                      {stage.errorCategory
+                        ? ` (${stage.errorCategory.replaceAll("_", " ")})`
+                        : ""}
+                    </li>
+                  ))}
+              </ul>
+              {!observation.receipt.stages.length && (
+                <p>Stage outcomes were not retained for this receipt.</p>
+              )}
+              {!!observation.receipt.history.length && (
+                <details>
+                  <summary>Recent recorded attempts</summary>
+                  <ul>
+                    {observation.receipt.history.map((run, index) => (
+                      <li key={`${run.jobId}:${run.attempt}:${index}`}>
+                        {new Date(run.at).toLocaleString()}: {run.state},
+                        attempt {run.attempt}
+                        {run.errorCategory ? ` (${run.errorCategory})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              )}
+            </>
+          )}
+        </article>
+      ))}
       <div className="form-actions">
         <button
           className="primary"
           disabled={
             syncing ||
+            active ||
+            watching ||
+            intake?.enabled === false ||
             !(
               health.integrations?.googleCalendar?.configured ??
               health.googleCalendar

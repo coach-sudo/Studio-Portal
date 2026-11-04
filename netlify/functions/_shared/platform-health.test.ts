@@ -4,6 +4,7 @@ const state = vi.hoisted(() => ({
 }));
 vi.mock("./supabase", () => {
   const client = {
+    rpc: async () => ({ data: {}, error: null }),
     from: (table: string) => {
       const q: Record<string, unknown> = {};
       let failed = false;
@@ -54,9 +55,8 @@ it("reports configuration and saved success evidence without provider or worker 
     lastSuccessAt: state.last,
   });
   expect(body.integrations.stripe.state).toBe("configured_unverified");
-  expect(body.integrations.scheduledWorkers.state).toBe(
-    "configured_unverified",
-  );
+  expect(body.integrations.scheduledWorkers.state).toBe("disabled");
+  expect(body.workers["provider-intake"].status).toBe("disabled");
   expect(body.stripe).toBe(false);
   expect(fetch).not.toHaveBeenCalled();
 });

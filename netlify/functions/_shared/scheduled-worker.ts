@@ -65,6 +65,14 @@ export async function dispatchScheduledWorker(
       throw new Error(
         "PROVIDER_UNAVAILABLE: Background dispatch was not accepted.",
       );
+    const accepted = await db.rpc("observe_scheduled_worker", {
+      p_worker: worker,
+      p_job: job.data,
+      p_token: null,
+      p_event: "accepted",
+    });
+    if (accepted.error || !accepted.data)
+      throw new Error("Worker receipt unavailable.");
     telemetry.success();
     return Response.json(
       { ok: true, status: "accepted", jobId: job.data },
@@ -119,10 +127,23 @@ export async function runScheduledWorker(
       return;
     }
     token = claim.data;
+    telemetry.persistWith(async ({ event, stage, category }) => {
+      const result = await db.rpc("observe_scheduled_worker", {
+        p_worker: worker,
+        p_job: jobId,
+        p_token: token,
+        p_event: event,
+        p_stage: stage,
+        p_error: category ?? null,
+      });
+      if (result.error) throw result.error;
+      if (!result.data) throw new Error("Worker observation claim expired.");
+    });
     assertWorkerEnabled(worker);
     await process(telemetry);
     assertWorkerEnabled(worker);
     telemetry.stage("completion");
+    await telemetry.flush();
     const finish = await db.rpc("finish_scheduled_worker", {
       p_worker: worker,
       p_job: jobId,
@@ -138,12 +159,20 @@ export async function runScheduledWorker(
       : telemetry.failure(error);
     if (token) {
       try {
+        await telemetry.flush();
+      } catch {
+        // Preserve the original stage failure; completion must still be fenced.
+      }
+      try {
         const db = serviceClient();
         const finish = await db.rpc("finish_scheduled_worker", {
           p_worker: worker,
           p_job: jobId,
           p_token: token,
-          p_error: safe.category,
+          p_error:
+            safe.category === "gmail_read_permission"
+              ? "provider"
+              : safe.category,
         });
         if (finish.error || !finish.data)
           telemetry.failure(new Error("Worker receipt unavailable."));

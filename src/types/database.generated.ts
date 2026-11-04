@@ -5515,6 +5515,17 @@ export type Database = {
         Args: { keep_student_id: string; remove_student_id: string }
         Returns: Json
       }
+      observe_scheduled_worker: {
+        Args: {
+          p_error?: string
+          p_event: string
+          p_job: string
+          p_stage?: string
+          p_token: string
+          p_worker: string
+        }
+        Returns: boolean
+      }
       package_credit_balance: {
         Args: { target_package: string }
         Returns: number
@@ -5705,6 +5716,7 @@ export type Database = {
         Args: { p_key: string; p_value: Json; p_version?: number }
         Returns: Json
       }
+      scheduled_worker_health: { Args: never; Returns: Json }
       search_material_collections: {
         Args: {
           p_include_archived?: boolean

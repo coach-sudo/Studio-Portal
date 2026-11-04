@@ -1,0 +1,192 @@
+{
+  "observedAt": "2026-10-28; exact query timestamp not captured",
+  "project": "htwthzshhilrjtqwprlo",
+  "access": "Read-only pg_constraint metadata; no user records or mutations",
+  "rows": [
+    {
+      "dependent_table": "actor_profiles",
+      "conname": "actor_profiles_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "assignments",
+      "conname": "assignments_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "booking_admin_overrides",
+      "conname": "booking_admin_overrides_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "bookings",
+      "conname": "bookings_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "conversations",
+      "conname": "conversations_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "credit_internal.credit_command_receipts",
+      "conname": "credit_command_receipts_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id)"
+    },
+    {
+      "dependent_table": "credit_internal.credit_coverage_jobs",
+      "conname": "credit_coverage_jobs_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "discount_codes",
+      "conname": "discount_codes_restricted_student_id_fkey",
+      "definition": "FOREIGN KEY (restricted_student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "file_assets",
+      "conname": "file_assets_owner_student_id_fkey",
+      "definition": "FOREIGN KEY (owner_student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "integration_imports",
+      "conname": "integration_imports_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "lesson_messages",
+      "conname": "lesson_messages_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "lesson_participants",
+      "conname": "lesson_participants_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "lessons",
+      "conname": "lessons_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "linked_contacts",
+      "conname": "linked_contacts_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "material_collection_assignments",
+      "conname": "material_collection_assignments_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "material_links",
+      "conname": "material_links_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "material_study_annotations",
+      "conname": "material_study_annotations_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "material_study_state",
+      "conname": "material_study_state_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "materials",
+      "conname": "materials_owner_student_id_fkey",
+      "definition": "FOREIGN KEY (owner_student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "notes",
+      "conname": "notes_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "outbox_messages",
+      "conname": "outbox_messages_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "package_gifts",
+      "conname": "package_gifts_claimed_student_id_fkey",
+      "definition": "FOREIGN KEY (claimed_student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "package_subscriptions",
+      "conname": "package_subscriptions_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "packages",
+      "conname": "packages_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "payment_entries",
+      "conname": "payment_entries_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "portal_accounts",
+      "conname": "portal_accounts_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "private.reader_requests",
+      "conname": "reader_requests_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "recommendations",
+      "conname": "recommendations_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "recurring_series",
+      "conname": "recurring_series_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "referrals",
+      "conname": "referrals_referred_student_id_fkey",
+      "definition": "FOREIGN KEY (referred_student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "referrals",
+      "conname": "referrals_referrer_student_id_fkey",
+      "definition": "FOREIGN KEY (referrer_student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "student_credit_accounts",
+      "conname": "student_credit_accounts_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    },
+    {
+      "dependent_table": "student_pricing_rules",
+      "conname": "student_pricing_rules_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "student_relationships",
+      "conname": "student_relationships_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE CASCADE"
+    },
+    {
+      "dependent_table": "studio_invoices",
+      "conname": "studio_invoices_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id)"
+    },
+    {
+      "dependent_table": "terms_acceptances",
+      "conname": "terms_acceptances_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE SET NULL"
+    },
+    {
+      "dependent_table": "workspace_internal.student_setups",
+      "conname": "student_setups_student_id_fkey",
+      "definition": "FOREIGN KEY (student_id) REFERENCES students(id) ON DELETE RESTRICT"
+    }
+  ]
+}
