@@ -239,6 +239,12 @@ export async function handleInvoiceCommands(
     const key = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!key) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });
+    if (input.command !== "checkout" && !invoice.checkout_key)
+      return json({ resource: invoice });
+    // Validate the return destination before reserving a fresh checkout.
+    const returnOrigin = invoice.checkout_session_id
+      ? undefined
+      : portalOrigin(ctx.context);
     let claimed = invoice;
     if (input.command === "checkout") {
       const claim = await service.rpc("claim_studio_invoice_checkout", {
@@ -267,8 +273,8 @@ export async function handleInvoiceCommands(
                 quantity: 1,
               },
             ],
-            success_url: `${portalOrigin()}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}&checkout=processing`,
-            cancel_url: `${portalOrigin()}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}`,
+            success_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}&checkout=processing`,
+            cancel_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}`,
             metadata: {
               studio_invoice_id: claimed.id,
               invoice_checkout_key: claimed.checkout_key,
