@@ -5240,6 +5240,10 @@ export type Database = {
         }
         Returns: Json
       }
+      command_student_identity_change: {
+        Args: { p_key: string; p_stamp: string; p_value: Json }
+        Returns: Json
+      }
       command_transition: {
         Args: {
           correlation_id: string
@@ -5547,6 +5551,10 @@ export type Database = {
         Args: { p_actor: string; p_value: Json }
         Returns: Json
       }
+      preview_student_identity_change: {
+        Args: { p_value: Json }
+        Returns: Json
+      }
       process_credit_coverage_job: {
         Args: { p_student: string }
         Returns: Json
@@ -5808,6 +5816,10 @@ export type Database = {
       }
       student_credit_summary: { Args: { p_student: string }; Returns: Json }
       student_financial_overview: { Args: { p_student: string }; Returns: Json }
+      student_identity_group: {
+        Args: { p_after_student?: string; p_student: string }
+        Returns: Json
+      }
       student_payment_balance: {
         Args: { target_student: string }
         Returns: number
