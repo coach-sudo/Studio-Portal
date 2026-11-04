@@ -1,0 +1,88 @@
+{
+  "access": "Read-only Netlify request log and Supabase log/metadata queries; no provider or production mutation.",
+  "window": {
+    "from": "2026-10-27T03:59:50Z",
+    "to": "2026-10-27T04:02:00Z"
+  },
+  "netlifySampledObservations": [
+    {
+      "timestamp": "2026-10-27T04:00:20.277Z",
+      "stage": "initialization",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:20.29Z",
+      "stage": "authorization",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:20.678Z",
+      "stage": "studios_and_stale_reviews",
+      "event": "stage_started"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:21.252Z",
+      "stage": "studios_and_stale_reviews",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:21.253Z",
+      "stage": "google_token",
+      "event": "stage_started"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:21.333Z",
+      "stage": "google_token",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:21.458Z",
+      "stage": "student_identities",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:27.768Z",
+      "stage": "calendar_processing",
+      "event": "stage_completed"
+    },
+    {
+      "timestamp": "2026-10-27T04:00:52.113Z",
+      "stage": "gmail_processing",
+      "event": "failed",
+      "category": "provider",
+      "message": "Provider operation failed.",
+      "retryable": true
+    }
+  ],
+  "postgresErrors": {
+    "result": [
+      {
+        "event_message": "REVIEW_REQUIRED: synchronization_review_required",
+        "observed_at": "2026-10-27 04:00:24.015 UTC",
+        "routines": [
+          "lesson_ops.require_change",
+          "public.command_change_lesson_state"
+        ],
+        "sqlstate": "P0001"
+      },
+      {
+        "event_message": "REVIEW_REQUIRED: synchronization_review_required",
+        "observed_at": "2026-10-27 04:00:25.418 UTC",
+        "routines": [
+          "lesson_ops.require_change",
+          "public.command_change_lesson_state"
+        ],
+        "sqlstate": "P0001"
+      }
+    ]
+  },
+  "gmailScopeRecommendation": [
+    {
+      "reason_code": "gmail_read_scope_required",
+      "status": "resolved",
+      "created_at": "2026-08-20 17:28:24.295366+00",
+      "updated_at": "2026-10-27 04:00:51.97+00"
+    }
+  ],
+  "limits": "Ten sampled request lines. Calendar database holds and successful Gmail scope cleanup precede final generic Gmail-stage failure. Exact originating item/complete causality unverified; no provider outage, authorization failure or full import success is inferred."
+}

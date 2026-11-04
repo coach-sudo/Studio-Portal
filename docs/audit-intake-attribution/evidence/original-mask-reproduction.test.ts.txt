@@ -1,0 +1,162 @@
+// @vitest-environment node
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { runProviderIntake } from "./provider-intake";
+import {
+  safeWorkerError,
+  workerTelemetry,
+  type WorkerObservation,
+} from "./worker-telemetry";
+const f = vi.hoisted(() => ({
+  calendarFailure: true,
+  gmailStatus: 200,
+  rpc: vi.fn(),
+  writes: [] as string[],
+}));
+vi.mock("./google", () => ({
+  googleAccessToken: async () => "synthetic-provider-token",
+}));
+vi.mock("./supabase", () => ({
+  serviceClient: () => ({
+    rpc: f.rpc,
+    from: (table: string) => {
+      const data =
+        table === "studios"
+          ? [{ id: "synthetic-studio", timezone: "UTC", settings: {} }]
+          : table === "calendar_projections"
+            ? [
+                {
+                  lesson_id: "synthetic-lesson",
+                  external_event_id: "synthetic-event",
+                },
+              ]
+            : table === "lessons"
+              ? [
+                  {
+                    id: "synthetic-lesson",
+                    studio_id: "synthetic-studio",
+                    student_id: null,
+                    starts_at: "2099-01-01T15:00:00Z",
+                    ends_at: "2099-01-01T16:00:00Z",
+                    status: "scheduled",
+                    version: 1,
+                  },
+                ]
+              : [];
+      const query = {
+        select: () => query,
+        eq: () => query,
+        is: () => query,
+        in: () => query,
+        update: () => {
+          f.writes.push(table);
+          return query;
+        },
+        upsert: () => {
+          f.writes.push(table);
+          return query;
+        },
+        insert: () => {
+          f.writes.push(table);
+          return query;
+        },
+        abortSignal: () => query,
+        then: (resolve: (value: unknown) => void) =>
+          resolve({ data, error: null }),
+      };
+      return query;
+    },
+  }),
+}));
+beforeEach(() => {
+  vi.clearAllMocks();
+  f.calendarFailure = true;
+  f.gmailStatus = 200;
+  f.writes.length = 0;
+  vi.spyOn(console, "info").mockImplementation(() => {});
+  vi.spyOn(console, "error").mockImplementation(() => {});
+  f.rpc.mockImplementation(() => {
+    const result = Promise.resolve({
+      data: null,
+      error: {
+        code: "P0001",
+        message:
+          "REVIEW_REQUIRED: synchronization_review_required; synthetic-private-message",
+      },
+    });
+    return Object.assign(result, { abortSignal: () => result });
+  });
+  vi.stubGlobal("Netlify", {
+    env: {
+      get: (key: string) =>
+        key === "WORKER_PROVIDER_INTAKE_ENABLED" ? "true" : undefined,
+    },
+  });
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: string | URL) => {
+      const url = String(input);
+      if (url.includes("calendar/v3/calendars/"))
+        return Response.json({
+          items: f.calendarFailure
+            ? [
+                {
+                  id: "synthetic-event",
+                  status: "cancelled",
+                  etag: "synthetic-version",
+                },
+              ]
+            : [],
+        });
+      if (
+        url.startsWith(
+          "https://gmail.googleapis.com/gmail/v1/users/me/messages?",
+        )
+      )
+        return Response.json(
+          f.gmailStatus === 200
+            ? { messages: [] }
+            : { error: { message: "synthetic-private-provider-error" } },
+          { status: f.gmailStatus },
+        );
+      throw Error("Unexpected provider request");
+    }),
+  );
+});
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+async function outcomes() {
+  const telemetry = workerTelemetry("provider-intake", "synthetic-execution"),
+    events: WorkerObservation[] = [];
+  telemetry.persistWith(async (value) => {
+    events.push(value);
+  });
+  let failure: ReturnType<typeof safeWorkerError> | null = null;
+  try {
+    await runProviderIntake(telemetry);
+    telemetry.stage("completion");
+  } catch (error) {
+    failure = telemetry.failure(error);
+  }
+  await telemetry.flush();
+  return { events, failure };
+}
+it("reproduces the original aggregate masking a Calendar review hold as a failed Gmail/provider stage", async () => {
+  const { events, failure } = await outcomes();
+  expect(events).toContainEqual({
+    event: "stage_failed",
+    stage: "calendar_processing",
+    category: "database",
+  });
+  expect(events).toContainEqual({
+    event: "stage_failed",
+    stage: "gmail_processing",
+    category: "provider",
+  });
+  expect(failure?.category).toBe("provider");
+  expect(f.rpc).toHaveBeenCalledWith(
+    "command_change_lesson_state",
+    expect.objectContaining({ p_queue_calendar: false }),
+  );
+});
