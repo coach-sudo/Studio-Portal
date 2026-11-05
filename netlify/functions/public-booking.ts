@@ -288,7 +288,7 @@ async function availability(url: URL) {
     .slice(0, 1000);
 }
 
-async function createBooking(request: Request) {
+async function createBooking(request: Request, context: Context) {
   const idempotency = request.headers.get("idempotency-key") || randomUUID(),
     raw = await request.json(),
     input = publicBookingSchema.parse(raw),
@@ -874,7 +874,7 @@ async function createBooking(request: Request) {
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" }),
-      origin = portalOrigin(),
+      origin = portalOrigin(context),
       recurring = ["subscription", "installments"].includes(
         input.paymentPolicy,
       );
@@ -1142,7 +1142,7 @@ export default async (request: Request, context: Context) => {
     if (action === "availability" && request.method === "GET")
       return json({ slots: await availability(url) });
     if (action === "holds" && request.method === "POST")
-      return json(await createBooking(request), 201);
+      return json(await createBooking(request, context), 201);
     if (
       action === "manage" &&
       (request.method === "GET" || request.method === "POST")
