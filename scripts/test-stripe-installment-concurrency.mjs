@@ -40,8 +40,11 @@ sql(`begin;
 insert into public.studios(id,name,slug) values('${studio}','E2E installment concurrency','e2e-installment-concurrency');
 insert into public.students(id,studio_id,full_name,email) values('${student}','${studio}','E2E installment concurrency','e2e-installment-concurrency@example.test');
 insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values('${service}','${studio}','e2e-installment-concurrency','E2E installment concurrency','private',60,300);
+alter table public.bookings disable trigger reject_new_installment_booking;
 insert into public.bookings(id,studio_id,reference,service_id,student_id,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,paid_minor,currency,policy_snapshot,manage_token_hash,stripe_subscription_id,installment_count,installments_paid)
-values('${booking}','${studio}','E2E-INSTALLMENT-CONCURRENCY','${service}','${student}','E2E installment concurrency','e2e-installment-concurrency@example.test','2031-11-10T18:00:00Z','2031-11-10T19:00:00Z','UTC','in_person','confirmed','installments','due',300,0,'USD','{}','e2e-installment-concurrency-token','sub_e2e_concurrency',3,0);commit;`);
+values('${booking}','${studio}','E2E-INSTALLMENT-CONCURRENCY','${service}','${student}','E2E installment concurrency','e2e-installment-concurrency@example.test','2031-11-10T18:00:00Z','2031-11-10T19:00:00Z','UTC','in_person','confirmed','installments','due',300,0,'USD','{}','e2e-installment-concurrency-token','sub_e2e_concurrency',3,0);
+alter table public.bookings enable always trigger reject_new_installment_booking;
+commit;`);
 const command = (invoice, amount = 100) =>
   `select public.settle_stripe_booking_invoice('{"bookingId":"${booking}","invoiceId":"${invoice}","subscriptionId":"sub_e2e_concurrency","amountMinor":${amount},"currency":"USD"}');`;
 function session(input) {

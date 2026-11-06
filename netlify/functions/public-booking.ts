@@ -108,6 +108,9 @@ async function publicServices(request: Request) {
     const rate = pricingRules.find((row) => row.service_id === item.id);
     return ({
       ...item,
+      payment_policies: item.payment_policies.filter(
+        (policy: string) => policy !== "installments",
+      ),
       price_minor: Number(rate?.price_minor ?? item.price_minor),
       deposit_minor: Number(rate?.deposit_minor ?? item.deposit_minor),
       location_price_adjustments: {
@@ -119,7 +122,7 @@ async function publicServices(request: Request) {
         ...(rate?.location_price_adjustments || {}),
       },
       personalized: Boolean(rate),
-    }); }),
+    }); }).filter((item) => item.payment_policies.length > 0),
     branding = { ...(studio.settings?.branding || {}) };
   delete branding.coachProfilePhotoUrl;
   delete branding.coachProfilePhotoStoragePath;

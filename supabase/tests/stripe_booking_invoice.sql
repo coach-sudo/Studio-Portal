@@ -9,8 +9,27 @@ select ok(not has_table_privilege('service_role','workspace_internal.stripe_book
 insert into public.studios(id,name,slug) values('e7400000-0000-4000-8000-000000000001','E2E installment studio','e2e-installment-studio');
 insert into public.students(id,studio_id,full_name,email) values('e7400000-0000-4000-8000-000000000002','e7400000-0000-4000-8000-000000000001','E2E installment learner','e2e-installment@example.test');
 insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values('e7400000-0000-4000-8000-000000000003','e7400000-0000-4000-8000-000000000001','e2e-installments','E2E installment service','private',60,18001);
+set local role service_role;
+select lives_ok($$
+insert into public.bookings(studio_id,reference,service_id,guest_name,guest_email,starts_at,ends_at,timezone,location,payment_policy,total_minor,policy_snapshot,manage_token_hash)
+select 'e7400000-0000-4000-8000-000000000001', 'GUARD-'||policy, 'e7400000-0000-4000-8000-000000000003',
+ 'Synthetic learner','guard@example.test','2031-11-12T18:00:00Z','2031-11-12T19:00:00Z','UTC','in_person',policy,100,'{}','guard-token-'||policy
+from unnest(array['pay_now','pay_later','deposit','credits','subscription']) policy
+$$,'Service-role writes still accept every other booking payment policy');
+select throws_ok($$
+insert into public.bookings(studio_id,reference,service_id,guest_name,guest_email,starts_at,ends_at,timezone,location,payment_policy,total_minor,policy_snapshot,manage_token_hash)
+select studio_id,'GUARD-NEW',service_id,guest_name,guest_email,starts_at,ends_at,timezone,location,'installments',total_minor,policy_snapshot,'guard-new-token'
+from public.bookings where reference='GUARD-pay_now'
+$$,'23514','Installment bookings are unavailable. Choose another payment option.','Legacy service writer cannot insert an installment booking');
+select throws_ok($$
+update public.bookings set payment_policy='installments' where reference='GUARD-pay_now'
+$$,'23514','Installment bookings are unavailable. Choose another payment option.','Direct writer cannot convert a booking to installments');
+reset role;
+-- Seed an agreement that represents a row carried across the release boundary.
+alter table public.bookings disable trigger reject_new_installment_booking;
 insert into public.bookings(id,studio_id,reference,service_id,student_id,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,paid_minor,currency,policy_snapshot,manage_token_hash,stripe_subscription_id,stripe_customer_id,installment_count,installments_paid,installment_remainder_minor)
 values('e7400000-0000-4000-8000-000000000004','e7400000-0000-4000-8000-000000000001','E2E-INSTALLMENTS','e7400000-0000-4000-8000-000000000003','e7400000-0000-4000-8000-000000000002','E2E installment learner','e2e-installment@example.test','2031-11-10T18:00:00Z','2031-11-10T19:00:00Z','UTC','in_person','confirmed','installments','partially_paid',18001,6000,'USD','{}','e2e-installment-token','sub_e2e_installments','cus_e2e_installments',3,1,1);
+alter table public.bookings enable always trigger reject_new_installment_booking;
 create function pg_temp.installment_value(p_invoice text default 'in_e2e_second',p_amount bigint default 6000) returns jsonb language sql as $$
  select jsonb_build_object('bookingId','e7400000-0000-4000-8000-000000000004','invoiceId',p_invoice,'subscriptionId','sub_e2e_installments','customerId','cus_e2e_installments','amountMinor',p_amount,'currency','USD');
 $$;
@@ -68,8 +87,10 @@ select is((select cancel_required from workspace_internal.stripe_booking_invoice
 -- Invoice can arrive before checkout.session.completed. Confirm first booking and
 -- append its first invoice inside this same command, never twice.
 insert into public.booking_holds(id,studio_id,service_id,starts_at,ends_at) values('e7400000-0000-4000-8000-000000000006','e7400000-0000-4000-8000-000000000001','e7400000-0000-4000-8000-000000000003','2031-11-11T18:00:00Z','2031-11-11T19:00:00Z');
+alter table public.bookings disable trigger reject_new_installment_booking;
 insert into public.bookings(id,studio_id,reference,service_id,student_id,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,paid_minor,currency,policy_snapshot,manage_token_hash,installment_count,hold_ids)
 values('e7400000-0000-4000-8000-000000000005','e7400000-0000-4000-8000-000000000001','E2E-INSTALLMENT-FIRST','e7400000-0000-4000-8000-000000000003','e7400000-0000-4000-8000-000000000002','E2E installment learner','e2e-installment@example.test','2031-11-11T18:00:00Z','2031-11-11T19:00:00Z','UTC','in_person','pending_payment','installments','processing',18000,0,'USD','{}','e2e-installment-first-token',3,array['e7400000-0000-4000-8000-000000000006'::uuid]);
+alter table public.bookings enable always trigger reject_new_installment_booking;
 set local role service_role;
 select lives_ok($$select public.settle_stripe_booking_invoice(pg_temp.installment_value('in_e2e_first')||'{"bookingId":"e7400000-0000-4000-8000-000000000005","subscriptionId":"sub_e2e_first","holdId":"e7400000-0000-4000-8000-000000000006"}'::jsonb)$$,'Initial invoice confirms the booking, lesson and payment atomically');
 select lives_ok($$select public.settle_stripe_booking_invoice(pg_temp.installment_value('in_e2e_first')||'{"bookingId":"e7400000-0000-4000-8000-000000000005","subscriptionId":"sub_e2e_first","holdId":"e7400000-0000-4000-8000-000000000006"}'::jsonb)$$,'First invoice replay does not repeat canonical confirmation');
