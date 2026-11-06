@@ -440,6 +440,10 @@ describe("occurrence-safe lesson changes against the dependent SQL stack", () =>
     const claimed = (
       await db.query<any>(`select * from claim_calendar_projections(10)`)
     ).rows[0];
+    await db.query(
+      `update calendar_projections set attempts=44 where lesson_id=$1`,
+      [l],
+    );
     await db.query(`insert into sync_conflicts values('lesson',$1,'open')`, [
       l,
     ]);
@@ -457,13 +461,56 @@ describe("occurrence-safe lesson changes against the dependent SQL stack", () =>
     ).toBe(false);
     expect(
       await scalar(
-        `select status,last_error from calendar_projections where lesson_id=$1`,
+        `select status,last_error,
+           next_attempt_at > now() as delayed,
+           next_attempt_at <= now()+interval '1 hour' as delay_capped
+         from calendar_projections where lesson_id=$1`,
         [l],
       ),
     ).toEqual({
       status: "failed",
       last_error: "synchronization_review_required",
+      delayed: true,
+      delay_capped: true,
     });
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/20261106191206_hold_calendar_projection_conflicts.sql",
+        "utf8",
+      ),
+    );
+    await db.query(
+      `update calendar_projections set next_attempt_at=now() where lesson_id=$1`,
+      [l],
+    );
+    const other = await lesson();
+    await db.query(
+      `insert into calendar_projections(lesson_id,status) values($1,'failed')`,
+      [other],
+    );
+    const whileOpen = await db.query<{ lesson: { id: string } }>(
+      `select * from claim_calendar_projections(10)`,
+    );
+    expect(whileOpen.rows.map((row) => row.lesson.id)).toEqual([other]);
+    expect(
+      await scalar(
+        `select attempts,claim_token from calendar_projections where lesson_id=$1`,
+        [l],
+      ),
+    ).toEqual({ attempts: 44, claim_token: null });
+    await db.query(
+      `update sync_conflicts set status='accepted_internal' where entity_id=$1`,
+      [l],
+    );
+    const afterResolution = await db.query<{ lesson: { id: string } }>(
+      `select * from claim_calendar_projections(10)`,
+    );
+    expect(afterResolution.rows.map((row) => row.lesson.id)).toEqual([l]);
+    expect(
+      await scalar(
+        `select count(*)::integer as claimed from claim_calendar_projections(10)`,
+      ),
+    ).toEqual({ claimed: 0 });
   });
   it("rejects mismatched studio/booking associations without returning another studio's booking identity", async () => {
     await reset();

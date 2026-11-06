@@ -149,11 +149,31 @@ try {
     ),
     "1",
   );
-  const claim = JSON.parse(
-    query(
-      `select projection from claim_calendar_projections(25) where lesson->>'id'='${first}';`,
-    ),
+  const claimSql = `select projection from claim_calendar_projections(25) where lesson->>'id'='${first}';`;
+  let signalClaim;
+  const claimedInTransaction = new Promise((resolve) => {
+    signalClaim = resolve;
+  });
+  const claimHolder = session(
+    `begin;${claimSql}select 'calendar-claim-held';select pg_sleep(5);commit;`,
+    (output) => {
+      if (output.includes("calendar-claim-held")) signalClaim();
+    },
   );
+  await Promise.race([
+    claimedInTransaction,
+    claimHolder.then(() => {
+      throw new Error("Calendar claim transaction exited before signaling");
+    }),
+  ]);
+  const skipped = await session(
+    `begin;set local statement_timeout='2s';${claimSql}commit;`,
+  );
+  assert.equal(skipped.trim(), "", "A second worker skips the locked claim");
+  const claim = JSON.parse(
+    (await claimHolder).split("\n").find((line) => line.startsWith("{")),
+  );
+  assert.equal(query(claimSql), "", "An active lease prevents another claim");
   const finish = `select finish_calendar_projection('${claim.id}','${claim.claim_token}','{"id":"concurrent-event","etag":"etag"}');`;
   const [, late] = await contend(
     `update lessons set version=version+1 where id='${first}';`,
