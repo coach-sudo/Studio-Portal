@@ -13,6 +13,10 @@ import type { CalendarProposal } from "../../domain/calendarProposals";
 import type { StudioSnapshot } from "../../domain/model";
 import { formatStudioDateTime } from "../../domain/presentation";
 import { uid } from "./StudentWorkspace.shared";
+import {
+  conflictDisposition,
+  localSchedulingConflicts,
+} from "../../domain/schedulingConflicts";
 
 export function CalendarProposalDialog({
   proposal,
@@ -37,7 +41,7 @@ export function CalendarProposalDialog({
     ),
     [count, setCount] = useState(6),
     [reviewing, setReviewing] = useState(false),
-    [override, setOverride] = useState(false),
+    [approvedConflicts, setApprovedConflicts] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [key] = useState(() => crypto.randomUUID());
@@ -46,6 +50,9 @@ export function CalendarProposalDialog({
       "calendar-proposal",
       identity,
       proposal.lesson?.id,
+      proposal.lesson?.version,
+      proposal.lesson?.status,
+      proposal.lesson?.offeringId,
       proposal.startsAt,
       proposal.endsAt,
     ],
@@ -58,16 +65,23 @@ export function CalendarProposalDialog({
     enabled: !isDemo && !!identity,
     retry: false,
   });
-  const localConflicts = data.lessons
-      .filter(
-        (l) =>
-          l.id !== proposal.lesson?.id &&
-          l.status === "scheduled" &&
-          l.startsAt < proposal.endsAt &&
-          l.endsAt > proposal.startsAt,
+  const warnings = isDemo
+    ? localSchedulingConflicts(
+        data.lessons,
+        proposal.lesson,
+        proposal.startsAt,
+        proposal.endsAt,
       )
-      .map((l) => ({ id: l.id, summary: l.topic })),
-    warnings = isDemo ? localConflicts : conflicts.data || [];
+    : conflicts.data || [];
+  const blocked = warnings.some((item) =>
+    ["blocked", "unclassified"].includes(conflictDisposition(item)),
+  );
+  const googleOverlap = warnings.some(
+    (item) => conflictDisposition(item) === "google_override",
+  );
+  const conflictKey = JSON.stringify(warnings);
+  const override = !blocked && approvedConflicts === conflictKey;
+  const overlapReviewed = !blocked && (!warnings.length || override);
   const applied = async () => {
     await invalidateStudioDomains(queryClient, [
       "students",
@@ -79,7 +93,13 @@ export function CalendarProposalDialog({
     onClose();
   };
   const create = async () => {
-    if (busy || !reviewing) return;
+    if (
+      busy ||
+      !reviewing ||
+      !overlapReviewed ||
+      (!isDemo && (!conflicts.isSuccess || conflicts.isFetching))
+    )
+      return;
     setBusy(true);
     setError("");
     try {
@@ -128,7 +148,7 @@ export function CalendarProposalDialog({
             recurrence,
             occurrenceCount: recurrence === "none" ? 1 : count,
             timezone: data.settings.timezone,
-            allowConflict: override,
+            allowConflict: override && googleOverlap,
           },
           reason: "Coach confirmed a calendar slot proposal",
         });
@@ -198,21 +218,33 @@ export function CalendarProposalDialog({
           {warnings.map((w) => (
             <p key={w.id}>{w.summary}</p>
           ))}
-          <label className="check-row">
-            <input
-              type="checkbox"
-              checked={override}
-              onChange={(e) => setOverride(e.target.checked)}
-            />
-            I have reviewed these conflicts and authorize the existing coach
-            override.
-          </label>
+          {blocked ? (
+            <p role="alert">
+              {warnings.some((item) => conflictDisposition(item) === "blocked")
+                ? "Scheduled private lessons cannot overlap. Choose a different time in the calendar."
+                : "The conflict policy could not be identified. Refresh this proposal before proceeding."}
+            </p>
+          ) : (
+            <label className="check-row">
+              <input
+                type="checkbox"
+                checked={override}
+                onChange={(e) =>
+                  setApprovedConflicts(e.target.checked ? conflictKey : "")
+                }
+              />
+              {googleOverlap
+                ? "I reviewed and authorize the Google busy-time overlap."
+                : "I reviewed the advisory studio overlap."}
+            </label>
+          )}
         </div>
       )}
       {proposal.lesson ? (
         !conflicts.isError &&
         (isDemo || conflicts.isSuccess) &&
-        (!warnings.length || override) && (
+        !conflicts.isFetching &&
+        overlapReviewed && (
           <>
             {isDemo ? (
               <div className="form-actions">
@@ -243,7 +275,7 @@ export function CalendarProposalDialog({
                 times={{
                   startsAt: proposal.startsAt,
                   endsAt: proposal.endsAt,
-                  allowConflict: override,
+                  allowConflict: override && googleOverlap,
                 }}
                 onApplied={applied}
                 onCancel={onClose}
@@ -351,7 +383,11 @@ export function CalendarProposalDialog({
                 </button>
                 <button
                   className="primary"
-                  disabled={busy}
+                  disabled={
+                    busy ||
+                    !overlapReviewed ||
+                    (!isDemo && (!conflicts.isSuccess || conflicts.isFetching))
+                  }
                   onClick={() => void create()}
                 >
                   {busy ? "Scheduling…" : "Confirm & schedule"}
@@ -364,7 +400,8 @@ export function CalendarProposalDialog({
                   !studentId ||
                   !topic.trim() ||
                   (!isDemo && !conflicts.isSuccess) ||
-                  (!!warnings.length && !override)
+                  conflicts.isFetching ||
+                  !overlapReviewed
                 }
                 onClick={() => setReviewing(true)}
               >

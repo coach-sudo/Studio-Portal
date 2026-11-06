@@ -1,0 +1,427 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\Desktop\\studio-portal\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      "e2e/audit-corrections-local/playwright.config.ts"
+    ],
+    "configFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\e2e\\audit-corrections-local\\playwright.config.ts",
+    "rootDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-corrections-local",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-corrections",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-corrections-local",
+        "testIgnore": [],
+        "testMatch": ["corrections.spec.ts"],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/dariu/Desktop/studio-portal/test-results/audit-corrections",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/Desktop/studio-portal/e2e/audit-corrections-local",
+        "testIgnore": [],
+        "testMatch": ["corrections.spec.ts"],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\dariu\\Desktop\\studio-portal\\test-results\\audit-corrections.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\Desktop\\studio-portal\\",
+      "command": "node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 4187 --strictPort",
+      "url": "http://127.0.0.1:4187",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "corrections.spec.ts",
+      "file": "corrections.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "correction, receipt recovery and history at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4131,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:58:57.027Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjlkMWY2NTBlLWU0YzItNDI4Yy05Yjg5LWY4M2IxZTNjOTcyZCIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiOWQxZjY1MGUtZTRjMi00MjhjLTliODktZjgzYjFlM2M5NzJkIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-d3855a8fe9b72745b6a0",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3192,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:01.276Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjRmMzkzOWY5LTcyNDUtNGI0OS1hZWIxLWMyZjFmNWE1MGUzNSIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiNGYzOTM5ZjktNzI0NS00YjQ5LWFlYjEtYzJmMWY1YTUwZTM1IiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-37405123147c018c4595",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 768",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3311,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:04.478Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjgzNzcwNTFiLTgzZjEtNDkyMi05M2Q0LTQ3Y2VjOTk3M2RjZiIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiODM3NzA1MWItODNmMS00OTIyLTkzZDQtNDdjZWM5OTczZGNmIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-7393c5f36e7207531a9b",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3487,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:07.798Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogImYwZDZiNmVjLTMzNzAtNDhiZi1iOWU4LTJhODM1NzZhYTI3NCIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiZjBkNmI2ZWMtMzM3MC00OGJmLWI5ZTgtMmE4MzU3NmFhMjc0IiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-023ca5421e04e57e1974",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4310,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:11.792Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogImVjMGEyNWY1LWEwOGUtNGQxZi05MjNhLTk5NWMxNGQxMDUwNiIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiZWMwYTI1ZjUtYTA4ZS00ZDFmLTkyM2EtOTk1YzE0ZDEwNTA2IiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-8ccfe4201d23f2618021",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 390",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4121,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:16.177Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjcwMTZlM2NlLTdkYmQtNGVlYi1iMzllLWUzZDk4ZDNjY2M4YSIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiNzAxNmUzY2UtN2RiZC00ZWViLWIzOWUtZTNkOThkM2NjYzhhIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-8667580e96ae04920a9a",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 768",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4418,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:20.307Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjYwY2I1OTQ5LWZlNmMtNGNmYS04MzUzLWI0ODBmNWNjYmRmMiIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiNjBjYjU5NDktZmU2Yy00Y2ZhLTgzNTMtYjQ4MGY1Y2NiZGYyIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-b7f1230bb219fd3e828e",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4557,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-28T12:59:24.735Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogImY1YWU0YzJiLTNmOTMtNGFlZS04YTk5LWI0Njg0ZTkwOWYzMiIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiZjVhZTRjMmItM2Y5My00YWVlLThhOTktYjQ2ODRlOTA5ZjMyIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "a479613f48eeef676b25-8f117017e6d1dbfb666c",
+          "file": "corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-28T12:58:55.658Z",
+    "duration": 33995.136,
+    "expected": 8,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

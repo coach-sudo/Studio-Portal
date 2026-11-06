@@ -1,0 +1,10 @@
+{
+  "observedAt": "2026-10-29T05:26:54.446Z",
+  "siteId": "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+  "siteKeyPresent": false,
+  "teamKeyPresent": false,
+  "error": false,
+  "rawValuesRetained": false,
+  "teamLookupResult": "No env var found matching key: STRIPE_SECRET_KEY",
+  "readOnly": true
+}

@@ -21,11 +21,13 @@
     "netlify/functions/**/*.ts",
     "src/types/database.generated.ts",
     "src/domain/model.ts",
+    "src/domain/schedulingConflicts.ts",
     "src/data/demo.ts",
     "src/domain/recommendations.ts",
     "src/domain/packageRecommendations.ts",
     "src/domain/actorLayout.ts",
     "src/domain/booking.ts",
+    "src/domain/zonedInput.ts",
     "src/domain/studentSetup.ts",
     "src/domain/settingsPatch.ts",
     "src/domain/settingsAssets.ts",
@@ -55,6 +57,7 @@
     "src/domain/paymentReminder.ts",
     "src/security/e2eSafety.ts",
     "src/security/hostedAcceptance.ts",
-    "src/security/candidateAcceptance.ts"
+    "src/security/candidateAcceptance.ts",
+    "src/domain/lessonPayment.ts"
   ]
 }

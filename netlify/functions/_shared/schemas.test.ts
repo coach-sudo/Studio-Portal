@@ -41,6 +41,41 @@ describe("public booking terms", () => {
     timezone: "America/New_York",
   } as const;
 
+  it("blocks new installments while preserving the other public payment policies", () => {
+    const recurring = {
+      ...booking,
+      recurrence: "weekly",
+      occurrenceCount: 2,
+      termsAccepted: true,
+      termsVersion: "2026-08-20",
+    };
+    const disabled = publicBookingSchema.safeParse({
+      ...recurring,
+      paymentPolicy: "installments",
+    });
+    expect(disabled.success).toBe(false);
+    if (!disabled.success)
+      expect(disabled.error.issues).toContainEqual(
+        expect.objectContaining({
+          path: ["paymentPolicy"],
+          message: expect.stringContaining(
+            "Installment bookings are unavailable",
+          ),
+        }),
+      );
+    for (const paymentPolicy of [
+      "pay_now",
+      "pay_later",
+      "deposit",
+      "credits",
+      "subscription",
+    ])
+      expect(
+        publicBookingSchema.parse({ ...recurring, paymentPolicy })
+          .paymentPolicy,
+      ).toBe(paymentPolicy);
+  });
+
   it("requires the current terms version and affirmative acceptance", () => {
     const parsed = publicBookingSchema.parse({
       ...booking,

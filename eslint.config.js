@@ -53,10 +53,11 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
-      "no-unused-vars": "off",
       ...asWarnings(eslint.configs.recommended.rules),
       ...typescriptWarnings,
       ...asWarnings(jsxA11y.configs.recommended.rules),
+      // TypeScript's rule handles signatures and type-only references correctly.
+      "no-unused-vars": "off",
       "react-hooks/rules-of-hooks": "error",
       "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-explicit-any": "warn",

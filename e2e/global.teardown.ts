@@ -1,5 +1,6 @@
 import { readRuntime } from "./support/runtime";
 import { assertFixtureMutationTarget } from "../src/security/hostedAcceptance";
+import { cleanupEphemeralPaymentReceipt } from "../scripts/e2e-payment-receipt-cleanup";
 
 export default async function globalTeardown() {
   const token = process.env.STAGING_E2E_FIXTURE_TOKEN || "";
@@ -12,6 +13,7 @@ export default async function globalTeardown() {
   }
   if (!runtime.fixtureReady) return;
   assertFixtureMutationTarget(runtime.baseURL);
+  await cleanupEphemeralPaymentReceipt(runtime);
   const response = await fetch(`${runtime.baseURL}/api/e2e/fixtures`, {
     method: "POST",
     headers: {

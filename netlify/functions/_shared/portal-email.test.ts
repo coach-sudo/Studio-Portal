@@ -1,9 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { resolvePortalOrigin, portalActionUrl } from "./portal-url";
+import {
+  resolveCheckoutOrigin,
+  resolvePortalOrigin,
+  portalActionUrl,
+} from "./portal-url";
 import { renderStudioEmail } from "./email-presentation";
 import { presentOutboxMessage } from "./outbox-presentation";
 
 describe("trusted email origins", () => {
+  it("pins invoice checkout to the private runtime deploy even with only the primary URL configured", () => {
+    const site = {
+      id: "d83ff6cb-f57b-4741-8c3c-3eaae7adab19",
+      name: "coachd-staging",
+      url: "https://coachd-staging.netlify.app",
+    };
+    const preview = {
+      context: "deploy-preview",
+      siteId: site.id,
+      siteUrl: site.url,
+    };
+    const deploy = {
+      id: "6aebaf2c3614f41db77b4b43",
+      context: "deploy-preview",
+      published: false,
+    } as const;
+    expect(resolveCheckoutOrigin(preview, { site, deploy })).toBe(
+      "https://6aebaf2c3614f41db77b4b43--coachd-staging.netlify.app",
+    );
+    for (const runtime of [
+      undefined,
+      { site, deploy: { ...deploy, id: "not-a-deploy" } },
+      { site, deploy: { ...deploy, published: true } },
+      { site: { ...site, id: "different-site" }, deploy },
+    ]) {
+      expect(() => resolveCheckoutOrigin(preview, runtime)).toThrow(
+        "Private checkout preview identity is unavailable",
+      );
+    }
+    expect(
+      resolveCheckoutOrigin({
+        context: "production",
+        siteUrl: "https://portal.d-a-j.com",
+      }),
+    ).toBe("https://portal.d-a-j.com");
+    expect(
+      resolveCheckoutOrigin({
+        ...preview,
+        ephemeral: true,
+        testUrl: "http://127.0.0.1:8888",
+      }),
+    ).toBe("http://127.0.0.1:8888");
+  });
   it("uses the real production origin even with a legacy configured URL", () => {
     expect(
       resolvePortalOrigin({

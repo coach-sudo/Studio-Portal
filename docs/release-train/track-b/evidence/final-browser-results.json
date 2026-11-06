@@ -1,0 +1,352 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config=.tmp/release-b-browser/playwright.config.ts",
+      "--grep",
+      "at 320"
+    ],
+    "configFile": "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\.tmp\\release-b-browser\\playwright.config.ts",
+    "rootDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/release-b-browser",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/test-results/release-b-browser",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/release-b-browser",
+        "testIgnore": [],
+        "testMatch": ["**/*.spec.ts"],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/test-results/release-b-browser",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/release-b-browser",
+        "testIgnore": [],
+        "testMatch": ["**/*.spec.ts"],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "../../test-results/release-b-browser.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal",
+      "command": "node node_modules/vite/bin/vite.js --config .tmp/release-b-vite.config.ts --host 127.0.0.1 --port 4192 --strictPort",
+      "url": "http://127.0.0.1:4192",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "audit-corrections-local\\corrections.spec.ts",
+      "file": "audit-corrections-local/corrections.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "correction, receipt recovery and history at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3968,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:31.901Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjUzNTkzM2Q5LTcxYzEtNDJlZi1iMGNlLTYzNTY1MGE0ZjBlNSIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiNTM1OTMzZDktNzFjMS00MmVmLWIwY2UtNjM1NjUwYTRmMGU1IiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "2f748e1fb8a50c8902f6-18fac6e3b59461090f6c",
+          "file": "audit-corrections-local/corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        },
+        {
+          "title": "correction, receipt recovery and history at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 4048,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:41.906Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "synthetic-acceptance",
+                      "contentType": "application/json",
+                      "body": "ewogICJsYXllciI6ICJIVFRQLWZpeHR1cmUgYnJvd3NlciIsCiAgImlkZW50aWNhbFJlcGxheSI6IHRydWUsCiAgImN1cnNvclZlcmlmaWVkIjogdHJ1ZSwKICAiZXh0ZXJuYWxFZmZlY3RzIjogIm5vdCBleGVyY2lzZWQiLAogICJjb21tYW5kcyI6IFsKICAgIHsKICAgICAgImNvbW1hbmQiOiAiY29ycmVjdF9kYXRldGltZSIsCiAgICAgICJlbnRpdHlJZCI6ICI3MDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMDMiLAogICAgICAiZXhwZWN0ZWRWZXJzaW9uIjogMSwKICAgICAgImlkZW1wb3RlbmN5S2V5IjogIjQ4ZjE4ZTJmLTVhMzMtNDU1ZS1iMGE3LTM4NDYyYjlhNTEwMCIsCiAgICAgICJyZWFzb24iOiAiT3JpZ2luYWwgdGltZSB3YXMgbWlzdHlwZWQiLAogICAgICAicGF5bG9hZCI6IHsKICAgICAgICAic3RhcnRzQXQiOiAiMjAyMC0wMS0wMVQxNDowMDowMC4wMDBaIiwKICAgICAgICAiZW5kc0F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAgICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgICAgICJyZXZpZXdUb2tlbiI6ICJzeW50aGV0aWMtc2VhbCIsCiAgICAgICAgImZpbmFuY2lhbEFja25vd2xlZGdlZCI6IHRydWUsCiAgICAgICAgIm91dGNvbWVBY2tub3dsZWRnZWQiOiBmYWxzZQogICAgICB9CiAgICB9LAogICAgewogICAgICAiY29tbWFuZCI6ICJjb3JyZWN0X2RhdGV0aW1lIiwKICAgICAgImVudGl0eUlkIjogIjcwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwMyIsCiAgICAgICJleHBlY3RlZFZlcnNpb24iOiAxLAogICAgICAiaWRlbXBvdGVuY3lLZXkiOiAiNDhmMThlMmYtNWEzMy00NTVlLWIwYTctMzg0NjJiOWE1MTAwIiwKICAgICAgInJlYXNvbiI6ICJPcmlnaW5hbCB0aW1lIHdhcyBtaXN0eXBlZCIsCiAgICAgICJwYXlsb2FkIjogewogICAgICAgICJzdGFydHNBdCI6ICIyMDIwLTAxLTAxVDE0OjAwOjAwLjAwMFoiLAogICAgICAgICJlbmRzQXQiOiAiMjAyMC0wMS0wMVQxNTowMDowMC4wMDBaIiwKICAgICAgICAidGltZXpvbmUiOiAiQW1lcmljYS9OZXdfWW9yayIsCiAgICAgICAgInJldmlld1Rva2VuIjogInN5bnRoZXRpYy1zZWFsIiwKICAgICAgICAiZmluYW5jaWFsQWNrbm93bGVkZ2VkIjogdHJ1ZSwKICAgICAgICAib3V0Y29tZUFja25vd2xlZGdlZCI6IGZhbHNlCiAgICAgIH0KICAgIH0KICBdCn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "2f748e1fb8a50c8902f6-2cb0a04aa315e1cd4cc6",
+          "file": "audit-corrections-local/corrections.spec.ts",
+          "line": 8,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "audit-historical-local\\historical.spec.ts",
+      "file": "audit-historical-local/historical.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "historical booking and replay form at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2007,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:35.985Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "request-identity",
+                      "contentType": "application/json",
+                      "body": "ewogICJzYW1lS2V5IjogdHJ1ZSwKICAicHJldmlld3MiOiAxLAogICJwYXlsb2FkIjogewogICAgInN0dWRlbnRfaWQiOiAiNzAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAyIiwKICAgICJzZXJ2aWNlX2lkIjogImU3MzAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAxMiIsCiAgICAic3RhcnRzX2F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAibG9jYXRpb24iOiAiZ29vZ2xlX21lZXQiLAogICAgImxvY2F0aW9uX2xhYmVsIjogIiIsCiAgICAicHJpY2VfbWlub3IiOiBudWxsLAogICAgIm1hcmtfcGFpZCI6IGZhbHNlLAogICAgInJlYXNvbiI6ICJDb2FjaC1jcmVhdGVkIGJvb2tpbmciLAogICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgImhpc3RvcmljYWwiOiB0cnVlLAogICAgImhpc3RvcmljYWxfb3V0Y29tZSI6ICJzY2hlZHVsZWQiLAogICAgImhpc3RvcmljYWxfZmluYW5jaWFsIjogInJlY29yZF9vbmx5IiwKICAgICJhdHRlbmRhbmNlX2NvbmZpcm1lZCI6IGZhbHNlLAogICAgImFsbG93X2NvbmZsaWN0IjogZmFsc2UKICB9Cn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ae3433a7b8b223de875c-ffe822fcfe205731ffed",
+          "file": "audit-historical-local/historical.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "historical booking and replay form at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2809,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:46.027Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "request-identity",
+                      "contentType": "application/json",
+                      "body": "ewogICJzYW1lS2V5IjogdHJ1ZSwKICAicHJldmlld3MiOiAxLAogICJwYXlsb2FkIjogewogICAgInN0dWRlbnRfaWQiOiAiNzAwMDAwMDAtMDAwMC00MDAwLTgwMDAtMDAwMDAwMDAwMDAyIiwKICAgICJzZXJ2aWNlX2lkIjogImU3MzAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAxMiIsCiAgICAic3RhcnRzX2F0IjogIjIwMjAtMDEtMDFUMTU6MDA6MDAuMDAwWiIsCiAgICAibG9jYXRpb24iOiAiZ29vZ2xlX21lZXQiLAogICAgImxvY2F0aW9uX2xhYmVsIjogIiIsCiAgICAicHJpY2VfbWlub3IiOiBudWxsLAogICAgIm1hcmtfcGFpZCI6IGZhbHNlLAogICAgInJlYXNvbiI6ICJDb2FjaC1jcmVhdGVkIGJvb2tpbmciLAogICAgInRpbWV6b25lIjogIkFtZXJpY2EvTmV3X1lvcmsiLAogICAgImhpc3RvcmljYWwiOiB0cnVlLAogICAgImhpc3RvcmljYWxfb3V0Y29tZSI6ICJzY2hlZHVsZWQiLAogICAgImhpc3RvcmljYWxfZmluYW5jaWFsIjogInJlY29yZF9vbmx5IiwKICAgICJhdHRlbmRhbmNlX2NvbmZpcm1lZCI6IGZhbHNlLAogICAgImFsbG93X2NvbmZsaWN0IjogZmFsc2UKICB9Cn0="
+                    }
+                  ]
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "ae3433a7b8b223de875c-309f5204ad13905ef8bb",
+          "file": "audit-historical-local/historical.spec.ts",
+          "line": 5,
+          "column": 3
+        }
+      ]
+    },
+    {
+      "title": "audit-reschedule-local\\reschedule.spec.ts",
+      "file": "audit-reschedule-local/reschedule.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "source-aware overlap and provider recovery at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 3388,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:38.014Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c2577b1c80883c42251e-8ba417852071d286aeed",
+          "file": "audit-reschedule-local/reschedule.spec.ts",
+          "line": 5,
+          "column": 3
+        },
+        {
+          "title": "source-aware overlap and provider recovery at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 5684,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T05:31:48.863Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "c2577b1c80883c42251e-485b381782d6fa306333",
+          "file": "audit-reschedule-local/reschedule.spec.ts",
+          "line": 5,
+          "column": 3
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-29T05:31:30.892Z",
+    "duration": 23853.620000000003,
+    "expected": 6,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

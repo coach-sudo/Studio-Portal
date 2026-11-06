@@ -1,25 +1,22 @@
 import { AlertTriangle, CalendarClock, Clock3 } from "lucide-react";
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
-import { zonedDateTimeToUtc } from "../domain/booking";
+import {
+  useId,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
+import { formatZonedInput, zonedInputInstants } from "../domain/zonedInput";
 import type { Lesson } from "../domain/model";
+import {
+  conflictDisposition,
+  type SchedulingConflict,
+} from "../domain/schedulingConflicts";
 import "./RescheduleLessonForm.css";
 
 function wallParts(value: string, timeZone: string) {
-  const parts = new Intl.DateTimeFormat("en-CA", {
-    timeZone,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(new Date(value));
-  const part = (type: Intl.DateTimeFormatPartTypes) =>
-    parts.find((item) => item.type === type)?.value || "";
-  return {
-    date: [part("year"), part("month"), part("day")].join("-"),
-    time: [part("hour"), part("minute")].join(":"),
-  };
+  const [date, time] = formatZonedInput(value, timeZone).split("T");
+  return { date, time };
 }
 
 function shiftedDate(value: string, timeZone: string, days: number) {
@@ -31,13 +28,6 @@ function shiftedDate(value: string, timeZone: string, days: number) {
     String(shifted.getUTCMonth() + 1).padStart(2, "0"),
     String(shifted.getUTCDate()).padStart(2, "0"),
   ].join("-");
-}
-
-function asUtc(date: string, time: string, timeZone: string) {
-  const [year, month, day] = date.split("-").map(Number);
-  const [hour, minute] = time.split(":").map(Number);
-  if (![year, month, day, hour, minute].every(Number.isFinite)) return;
-  return zonedDateTimeToUtc({ year, month, day, hour, minute }, timeZone);
 }
 
 function display(value: Date | string, timeZone: string) {
@@ -76,9 +66,7 @@ export function RescheduleLessonForm({
   onCheckConflicts?: (
     startsAt: string,
     endsAt: string,
-  ) => Promise<
-    Array<{ id: string; summary: string; start: string; end: string }>
-  >;
+  ) => Promise<SchedulingConflict[]>;
   renderReview?: (
     times: { startsAt: string; endsAt: string; allowConflict: boolean },
     back: () => void,
@@ -92,9 +80,13 @@ export function RescheduleLessonForm({
   const initial = wallParts(lesson.startsAt, timezone);
   const [date, setDate] = useState(initial.date);
   const [time, setTime] = useState(initial.time);
-  const [conflicts, setConflicts] = useState<
-    Array<{ id: string; summary: string; start: string; end: string }>
-  >([]);
+  const [conflicts, setConflicts] = useState<SchedulingConflict[]>([]);
+  const blocked = conflicts.some((item) =>
+    ["blocked", "unclassified"].includes(conflictDisposition(item)),
+  );
+  const googleOverlap = conflicts.some(
+    (item) => conflictDisposition(item) === "google_override",
+  );
   const [approvedTime, setApprovedTime] = useState("");
   const [checking, setChecking] = useState(false);
   const [checkError, setCheckError] = useState("");
@@ -111,10 +103,17 @@ export function RescheduleLessonForm({
     Number.isInteger(durationMinutes) &&
     durationMinutes >= 15 &&
     durationMinutes <= 720;
-  const nextStart = useMemo(
-    () => asUtc(date, time, timezone),
+  const foldId = useId();
+  const [fold, setFold] = useState(lesson.startsAt);
+  const candidates = useMemo(
+    () => zonedInputInstants(date + "T" + time, timezone),
     [date, time, timezone],
   );
+  const nextInstant =
+    candidates.length === 1
+      ? candidates[0]
+      : candidates.find((value) => value === fold);
+  const nextStart = nextInstant ? new Date(nextInstant) : undefined;
   const nextEnd =
     nextStart && validDuration
       ? new Date(nextStart.getTime() + durationMinutes * 60_000)
@@ -129,9 +128,18 @@ export function RescheduleLessonForm({
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
-    if (!nextStart || !nextEnd || !validDuration || unchanged || inPast || busy)
+    if (
+      !nextStart ||
+      !nextEnd ||
+      !validDuration ||
+      unchanged ||
+      inPast ||
+      busy ||
+      checking
+    )
       return;
     const key = `${nextStart.toISOString()}|${nextEnd.toISOString()}`;
+    if (blocked && approvedTime === key) return;
     if (onCheckConflicts && approvedTime !== key) {
       setChecking(true);
       setCheckError("");
@@ -160,14 +168,14 @@ export function RescheduleLessonForm({
       setReviewTimes({
         startsAt: nextStart.toISOString(),
         endsAt: nextEnd.toISOString(),
-        allowConflict: conflicts.length > 0 && approvedTime === key,
+        allowConflict: googleOverlap && approvedTime === key,
       });
       return;
     }
     await onSubmit(
       nextStart.toISOString(),
       nextEnd.toISOString(),
-      conflicts.length > 0 && approvedTime === key,
+      googleOverlap && approvedTime === key,
     );
   };
 
@@ -197,10 +205,11 @@ export function RescheduleLessonForm({
             <button
               type="button"
               key={String(days)}
-              disabled={busy}
+              disabled={busy || checking}
               onClick={() => {
                 setDate(shiftedDate(lesson.startsAt, timezone, Number(days)));
                 setConflicts([]);
+                setFold("");
                 setApprovedTime("");
               }}
             >
@@ -217,10 +226,11 @@ export function RescheduleLessonForm({
             type="date"
             value={date}
             min={wallParts(new Date().toISOString(), timezone).date}
-            disabled={busy}
+            disabled={busy || checking}
             onChange={(event) => {
               setDate(event.target.value);
               setConflicts([]);
+              setFold("");
               setApprovedTime("");
             }}
           />
@@ -231,16 +241,41 @@ export function RescheduleLessonForm({
             type="time"
             step="900"
             value={time}
-            disabled={busy}
+            disabled={busy || checking}
             onChange={(event) => {
               setTime(event.target.value);
               setConflicts([]);
+              setFold("");
               setApprovedTime("");
             }}
           />
         </label>
       </div>
 
+      {candidates.length > 1 && (
+        <label htmlFor={foldId}>
+          Repeated hour occurrence
+          <select
+            id={foldId}
+            required
+            value={fold}
+            onChange={(event) => setFold(event.target.value)}
+          >
+            <option value="">Choose the intended occurrence</option>
+            {candidates.map((value, index) => (
+              <option key={value} value={value}>
+                {index === 0 ? "First" : "Second"} occurrence — {value} UTC
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!nextStart && date && time && (
+        <p role="alert">
+          Choose a valid time in {timezone}; skipped DST times are invalid and
+          repeated hours require an occurrence choice.
+        </p>
+      )}
       <label>
         Duration (minutes)
         <input
@@ -249,10 +284,11 @@ export function RescheduleLessonForm({
           max={720}
           step={15}
           value={durationMinutes}
-          disabled={busy}
+          disabled={busy || checking}
           onChange={(e) => {
             setDurationMinutes(Number(e.target.value));
             setConflicts([]);
+            setFold("");
             setApprovedTime("");
           }}
         />
@@ -271,7 +307,10 @@ export function RescheduleLessonForm({
         <p className="field-help">Choose a different date or time.</p>
       )}
       {inPast && (
-        <p className="form-error">The new lesson time must be in the future.</p>
+        <p className="form-error">
+          Upcoming reschedules need a future time. For a historical correction,
+          use Correct lesson date/time from the lesson workspace.
+        </p>
       )}
       {checkError && (
         <p className="form-error" role="alert">
@@ -282,23 +321,32 @@ export function RescheduleLessonForm({
         <div className="calendar-conflict" role="alert">
           <AlertTriangle />
           <div>
-            <strong>Calendar conflict</strong>
+            <strong>
+              {blocked
+                ? "This time needs a different choice"
+                : "Review overlapping time"}
+            </strong>
             {conflicts.map((item) => (
-              <p key={`${item.id}-${item.start}`}>
-                You have “{item.summary}” from{" "}
-                {new Date(item.start).toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}
-                –
-                {new Date(item.end).toLocaleTimeString([], {
-                  hour: "numeric",
-                  minute: "2-digit",
-                })}{" "}
-                that day. Do you still want to reschedule for this time?
+              <p key={`${item.source}-${item.id}-${item.start}`}>
+                {item.source === "google" ? "Google Calendar" : "Studio"}: “
+                {item.summary}” · {display(item.start, timezone)} –{" "}
+                {display(item.end, timezone)} ({timezone}).{" "}
+                {conflictDisposition(item) === "blocked"
+                  ? "Scheduled private lessons cannot overlap."
+                  : conflictDisposition(item) === "unclassified"
+                    ? "This check did not identify the applicable policy. Refresh before proceeding."
+                    : conflictDisposition(item) === "advisory"
+                      ? "Review this studio overlap; execution still applies the lesson and financial safeguards."
+                      : "A coach can explicitly authorize this Google busy-time overlap."}
               </p>
             ))}
-            <small>Confirm again to override the conflict.</small>
+            {!blocked && (
+              <small>
+                {googleOverlap
+                  ? "Confirm the Google overlap to continue to the existing review."
+                  : "Confirm that you reviewed the advisory overlap."}
+              </small>
+            )}
           </div>
         </div>
       )}
@@ -322,7 +370,7 @@ export function RescheduleLessonForm({
         <button
           type="button"
           className="text-button"
-          disabled={busy}
+          disabled={busy || checking}
           onClick={onCancel}
         >
           Keep current time
@@ -332,6 +380,7 @@ export function RescheduleLessonForm({
           disabled={
             busy ||
             checking ||
+            blocked ||
             !nextStart ||
             !validDuration ||
             unchanged ||
@@ -340,9 +389,13 @@ export function RescheduleLessonForm({
         >
           {busy || checking
             ? "Checking calendar…"
-            : conflicts.length
-              ? "Reschedule anyway"
-              : "Confirm new time"}
+            : blocked
+              ? "Choose another time"
+              : conflicts.length
+                ? googleOverlap
+                  ? "Confirm Google overlap"
+                  : "Review studio overlap"
+                : "Confirm new time"}
         </button>
       </div>
     </form>

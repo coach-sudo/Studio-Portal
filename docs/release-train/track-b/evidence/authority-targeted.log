@@ -1,0 +1,8 @@
+
+ RUN  v4.1.12 C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal
+
+
+ Test Files  3 passed (3)
+      Tests  59 passed (59)
+   Start at  08:41:40
+   Duration  1.37s (transform 201ms, setup 690ms, import 813ms, tests 114ms, environment 0ms)

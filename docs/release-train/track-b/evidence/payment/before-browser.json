@@ -1,0 +1,243 @@
+{
+  "config": {
+    "argv": [
+      "C:\\Program Files\\nodejs\\node.exe",
+      "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\node_modules\\@playwright\\test\\cli.js",
+      "test",
+      "--config",
+      ".tmp/payment-browser/audit-payments-local/before.config.ts"
+    ],
+    "configFile": "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\.tmp\\payment-browser\\audit-payments-local\\before.config.ts",
+    "rootDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/payment-browser/audit-payments-local",
+    "failOnFlakyTests": false,
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 1
+    },
+    "preserveOutput": "always",
+    "projects": [
+      {
+        "outputDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/test-results/payment-before",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/payment-browser/audit-payments-local",
+        "testIgnore": [],
+        "testMatch": ["before.spec.ts"],
+        "timeout": 60000
+      },
+      {
+        "outputDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/test-results/payment-before",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 1
+        },
+        "id": "webkit",
+        "name": "webkit",
+        "testDir": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/.tmp/payment-browser/audit-payments-local",
+        "testIgnore": [],
+        "testMatch": ["before.spec.ts"],
+        "timeout": 60000
+      }
+    ],
+    "quiet": false,
+    "reporter": [
+      ["list", null],
+      [
+        "json",
+        {
+          "outputFile": "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\test-results\\payment-before.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "shard": null,
+    "tags": [],
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.63.0",
+    "workers": 1,
+    "webServer": {
+      "cwd": "C:\\Users\\dariu\\.codex\\worktrees\\release-b-booking-finance\\studio-portal\\",
+      "command": "node node_modules/vite/bin/vite.js --config .tmp/payment-before-vite.config.ts --host 127.0.0.1 --port 4192 --strictPort",
+      "url": "http://127.0.0.1:4192",
+      "reuseExistingServer": false,
+      "env": {
+        "VITE_SUPABASE_URL": "http://127.0.0.1:54399",
+        "VITE_SUPABASE_ANON_KEY": "local-browser-contract-key",
+        "VITE_ENABLE_DEMO_MODE": "false",
+        "VITE_QUERY_LAYER_V2": "true"
+      }
+    }
+  },
+  "suites": [
+    {
+      "title": "before.spec.ts",
+      "file": "before.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "Prior payment editor at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 46041,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T19:05:14.851Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-ba1c5c676ef45207e171",
+          "file": "before.spec.ts",
+          "line": 3,
+          "column": 32
+        },
+        {
+          "title": "Prior payment editor at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 1949,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T19:06:01.054Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-2faba5ca75f576af001c",
+          "file": "before.spec.ts",
+          "line": 3,
+          "column": 32
+        },
+        {
+          "title": "Prior payment editor at 320",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2344,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T19:06:03.548Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-8b8b2ba2e1db314977f9",
+          "file": "before.spec.ts",
+          "line": 3,
+          "column": 32
+        },
+        {
+          "title": "Prior payment editor at 1440",
+          "ok": true,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 60000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "webkit",
+              "projectName": "webkit",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 0,
+                  "status": "passed",
+                  "duration": 2971,
+                  "errors": [],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2026-10-29T19:06:05.965Z",
+                  "annotations": [],
+                  "attachments": []
+                }
+              ],
+              "status": "expected"
+            }
+          ],
+          "id": "9cf2fb1c901de146c8b4-27a3d29a5243353d5a05",
+          "file": "before.spec.ts",
+          "line": 3,
+          "column": 32
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2026-10-29T19:05:12.972Z",
+    "duration": 56206.876000000004,
+    "expected": 4,
+    "skipped": 0,
+    "unexpected": 0,
+    "flaky": 0
+  }
+}

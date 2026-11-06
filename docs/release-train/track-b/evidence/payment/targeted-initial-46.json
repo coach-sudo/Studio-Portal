@@ -1,0 +1,527 @@
+{
+  "numTotalTestSuites": 5,
+  "numPassedTestSuites": 5,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 46,
+  "numPassedTests": 46,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793300341422,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "records an amount received without a price or status editor",
+          "status": "passed",
+          "title": "records an amount received without a price or status editor",
+          "duration": 151.52960000000007,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains and locks the request after an unknown response",
+          "status": "passed",
+          "title": "retains and locks the request after an unknown response",
+          "duration": 60.96730000000002,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps committed success when downstream refresh fails",
+          "status": "passed",
+          "title": "keeps committed success when downstream refresh fails",
+          "duration": 34.28530000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "shows a financial review hold without a money submission",
+          "status": "passed",
+          "title": "shows a financial review hold without a money submission",
+          "duration": 11.847000000000207,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "recovers a remounted unknown request even when fresh financial context is paid",
+          "status": "passed",
+          "title": "recovers a remounted unknown request even when fresh financial context is paid",
+          "duration": 31.23829999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not show a previous lesson receipt after the selected lesson changes",
+          "status": "passed",
+          "title": "does not show a previous lesson receipt after the selected lesson changes",
+          "duration": 47.42890000000011,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793300346440,
+      "endTime": 1793300346777.429,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/components/LessonPaymentReceipt.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries does not send a recovery envelope after its owning actor changes",
+          "status": "passed",
+          "title": "does not send a recovery envelope after its owning actor changes",
+          "duration": 3.183999999999969,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries uses the matching actor's captured refreshed token for receipt recovery",
+          "status": "passed",
+          "title": "uses the matching actor's captured refreshed token for receipt recovery",
+          "duration": 56.92669999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries coalesces identical simultaneous commands without generating a second wire command",
+          "status": "passed",
+          "title": "coalesces identical simultaneous commands without generating a second wire command",
+          "duration": 59.48810000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries keeps an identical explicit replay key on one in-flight wire request",
+          "status": "passed",
+          "title": "keeps an identical explicit replay key on one in-flight wire request",
+          "duration": 61.74490000000014,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries does not share delayed coach results with a different session",
+          "status": "passed",
+          "title": "does not share delayed coach results with a different session",
+          "duration": 125.44460000000004,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries isolates a refreshed token for the same principal",
+          "status": "passed",
+          "title": "isolates a refreshed token for the same principal",
+          "duration": 125.80849999999987,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries rejects a signed-out invocation instead of joining a signed-in request",
+          "status": "passed",
+          "title": "rejects a signed-out invocation instead of joining a signed-in request",
+          "duration": 61.83310000000006,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries rejects auth lookup failure without disclosing its raw error or sending a command",
+          "status": "passed",
+          "title": "rejects auth lookup failure without disclosing its raw error or sending a command",
+          "duration": 0.4837999999999738,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed expectedVersion separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed expectedVersion separately instead of returning the first command's result",
+          "duration": 123.6101000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed reason separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed reason separately instead of returning the first command's result",
+          "duration": 127.7009999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed nextStatus separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed nextStatus separately instead of returning the first command's result",
+          "duration": 126.54289999999992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed entityType separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed entityType separately instead of returning the first command's result",
+          "duration": 126.08239999999978,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed entityId separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed entityId separately instead of returning the first command's result",
+          "duration": 124.80639999999994,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed command separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed command separately instead of returning the first command's result",
+          "duration": 125.10609999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed idempotencyKey separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed idempotencyKey separately instead of returning the first command's result",
+          "duration": 123.52160000000003,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries sends changed payload separately instead of returning the first command's result",
+          "status": "passed",
+          "title": "sends changed payload separately instead of returning the first command's result",
+          "duration": 125.30029999999988,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries keeps different domains separate",
+          "status": "passed",
+          "title": "keeps different domains separate",
+          "duration": 123.67379999999957,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries lets the server reject changed-payload reuse of an explicit key",
+          "status": "passed",
+          "title": "lets the server reject changed-payload reuse of an explicit key",
+          "duration": 126.28859999999986,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries snapshots nested payload and metadata before a delayed auth lookup, then uses its token once",
+          "status": "passed",
+          "title": "snapshots nested payload and metadata before a delayed auth lookup, then uses its token once",
+          "duration": 61.05459999999994,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries releases a network failure so an identical explicit key can recover its receipt",
+          "status": "passed",
+          "title": "releases a network failure so an identical explicit key can recover its receipt",
+          "duration": 124.89329999999973,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries releases structured HTTP failures so corrected or retried requests reach the server",
+          "status": "passed",
+          "title": "releases structured HTTP failures so corrected or retried requests reach the server",
+          "duration": 124.36319999999978,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries an older session's failure does not evict a newer session's active request",
+          "status": "passed",
+          "title": "an older session's failure does not evict a newer session's active request",
+          "duration": 123.98170000000027,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": ["studio command request boundaries"],
+          "fullName": "studio command request boundaries does not turn completed in-flight coalescing into a persistent response cache",
+          "status": "passed",
+          "title": "does not turn completed in-flight coalescing into a persistent response cache",
+          "duration": 125.41409999999996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793300342819,
+      "endTime": 1793300345126.414,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/data/bookingCommands.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "retains the same key and sealed request after an unknown committed response",
+          "status": "passed",
+          "title": "retains the same key and sealed request after an unknown committed response",
+          "duration": 7.666899999999941,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not replace an unresolved payment with a changed amount",
+          "status": "passed",
+          "title": "does not replace an unresolved payment with a changed amount",
+          "duration": 0.7743000000000393,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "never hydrates another actor's pending request",
+          "status": "passed",
+          "title": "never hydrates another actor's pending request",
+          "duration": 1.481800000000021,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains recovery across token refresh for the same actual actor",
+          "status": "passed",
+          "title": "retains recovery across token refresh for the same actual actor",
+          "duration": 0.4460999999998876,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unverified actor state before recording or reading pending money",
+          "status": "passed",
+          "title": "rejects unverified actor state before recording or reading pending money",
+          "duration": 0.45719999999982974,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "recovers a reload from actor-scoped session storage using the original key",
+          "status": "passed",
+          "title": "recovers a reload from actor-scoped session storage using the original key",
+          "duration": 3.810000000000173,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not send a payment if the browser cannot preserve recovery identity",
+          "status": "passed",
+          "title": "does not send a payment if the browser cannot preserve recovery identity",
+          "duration": 1.2230999999999312,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793300348073,
+      "endTime": 1793300348089.2231,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/data/lessonPayments.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "reads the exact lesson using the caller JWT database client",
+          "status": "passed",
+          "title": "reads the exact lesson using the caller JWT database client",
+          "duration": 19.217399999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "delegates the full stable identity and checked receipt command",
+          "status": "passed",
+          "title": "delegates the full stable identity and checked receipt command",
+          "duration": 2.4862999999999715,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "never falls through to the old fragmented financial write",
+          "status": "passed",
+          "title": "never falls through to the old fragmented financial write",
+          "duration": 1.26400000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unexpected financial authority priceMinor",
+          "status": "passed",
+          "title": "rejects unexpected financial authority priceMinor",
+          "duration": 1.3754000000000133,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unexpected financial authority paidMinor",
+          "status": "passed",
+          "title": "rejects unexpected financial authority paidMinor",
+          "duration": 0.34449999999998226,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unexpected financial authority paymentStatus",
+          "status": "passed",
+          "title": "rejects unexpected financial authority paymentStatus",
+          "duration": 0.29570000000001073,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unexpected financial authority studentId",
+          "status": "passed",
+          "title": "rejects unexpected financial authority studentId",
+          "duration": 0.33320000000003347,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "propagates FORBIDDEN without a success body",
+          "status": "passed",
+          "title": "propagates FORBIDDEN without a success body",
+          "duration": 0.29400000000003956,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "propagates SYNTHETIC_LEDGER_FAILURE without a success body",
+          "status": "passed",
+          "title": "propagates SYNTHETIC_LEDGER_FAILURE without a success body",
+          "duration": 0.230700000000013,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "propagates IDEMPOTENCY_CONFLICT without a success body",
+          "status": "passed",
+          "title": "propagates IDEMPOTENCY_CONFLICT without a success body",
+          "duration": 0.266399999999976,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793300348556,
+      "endTime": 1793300348582.2664,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_v2/lesson-payments.test.ts"
+    }
+  ]
+}

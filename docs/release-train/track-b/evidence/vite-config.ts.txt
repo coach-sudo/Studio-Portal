@@ -1,0 +1,2 @@
+import base from '../vite.config';
+export default (env:any)=>({...base(env),cacheDir:'.tmp/release-b-vite-cache'});

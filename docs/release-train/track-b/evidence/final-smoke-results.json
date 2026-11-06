@@ -1,0 +1,199 @@
+{
+  "numTotalTestSuites": 2,
+  "numPassedTestSuites": 2,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 15,
+  "numPassedTests": 15,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793251921790,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "requires explicit historical intent rather than inferring attendance from time",
+          "status": "passed",
+          "title": "requires explicit historical intent rather than inferring attendance from time",
+          "duration": 10.09839999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "accepts explicit historical recording without a Google dependency",
+          "status": "passed",
+          "title": "accepts explicit historical recording without a Google dependency",
+          "duration": 1.1186999999999898,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "returns replay before any provider check or canonical re-execution",
+          "status": "passed",
+          "title": "returns replay before any provider check or canonical re-execution",
+          "duration": 0.8861000000000558,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "cannot return paid success when the transactional ledger write is rejected",
+          "status": "passed",
+          "title": "cannot return paid success when the transactional ledger write is rejected",
+          "duration": 1.3747999999999365,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "schedules locally without requiring an unconfigured Google account",
+          "status": "passed",
+          "title": "schedules locally without requiring an unconfigured Google account",
+          "duration": 0.7996000000000549,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "returns committed canonical state with pending effects without compensating writes",
+          "status": "passed",
+          "title": "returns committed canonical state with pending effects without compensating writes",
+          "duration": 0.7585000000000264,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects conflicting replay payload and missing coach authority",
+          "status": "passed",
+          "title": "rejects conflicting replay payload and missing coach authority",
+          "duration": 0.9329000000000178,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "reports configured Google outage without claiming checks passed",
+          "status": "passed",
+          "title": "reports configured Google outage without claiming checks passed",
+          "duration": 1.7232000000000198,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking create before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking create before fragmented writes",
+          "duration": 1.002399999999966,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking update before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking update before fragmented writes",
+          "duration": 0.6242999999999483,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects generic booking delete before fragmented writes",
+          "status": "passed",
+          "title": "rejects generic booking delete before fragmented writes",
+          "duration": 0.4572000000000571,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251922584,
+      "endTime": 1793251922603.4573,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/netlify/functions/_shared/manual-booking-command.test.ts"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "retries an unchanged failed response with the same key before another conflict preview",
+          "status": "passed",
+          "title": "retries an unchanged failed response with the same key before another conflict preview",
+          "duration": 245.66859999999997,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not offer a local overlap override",
+          "status": "passed",
+          "title": "does not offer a local overlap override",
+          "duration": 59.42969999999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "records past wall time in the studio zone with explicit outcome and financial choices",
+          "status": "passed",
+          "title": "records past wall time in the studio zone with explicit outcome and financial choices",
+          "duration": 81.91480000000024,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects a DST gap and requires a repeated-hour occurrence",
+          "status": "passed",
+          "title": "rejects a DST gap and requires a repeated-hour occurrence",
+          "duration": 71.89069999999992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793251924297,
+      "endTime": 1793251924755.8906,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/features/coach/ManualBookingDialog.test.tsx"
+    }
+  ]
+}

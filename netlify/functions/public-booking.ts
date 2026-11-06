@@ -108,6 +108,9 @@ async function publicServices(request: Request) {
     const rate = pricingRules.find((row) => row.service_id === item.id);
     return ({
       ...item,
+      payment_policies: item.payment_policies.filter(
+        (policy: string) => policy !== "installments",
+      ),
       price_minor: Number(rate?.price_minor ?? item.price_minor),
       deposit_minor: Number(rate?.deposit_minor ?? item.deposit_minor),
       location_price_adjustments: {
@@ -119,7 +122,7 @@ async function publicServices(request: Request) {
         ...(rate?.location_price_adjustments || {}),
       },
       personalized: Boolean(rate),
-    }); }),
+    }); }).filter((item) => item.payment_policies.length > 0),
     branding = { ...(studio.settings?.branding || {}) };
   delete branding.coachProfilePhotoUrl;
   delete branding.coachProfilePhotoStoragePath;
@@ -288,7 +291,7 @@ async function availability(url: URL) {
     .slice(0, 1000);
 }
 
-async function createBooking(request: Request) {
+async function createBooking(request: Request, context: Context) {
   const idempotency = request.headers.get("idempotency-key") || randomUUID(),
     raw = await request.json(),
     input = publicBookingSchema.parse(raw),
@@ -874,7 +877,7 @@ async function createBooking(request: Request) {
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(stripeKey, { apiVersion: "2026-07-29.dahlia" }),
-      origin = portalOrigin(),
+      origin = portalOrigin(context),
       recurring = ["subscription", "installments"].includes(
         input.paymentPolicy,
       );
@@ -1142,7 +1145,7 @@ export default async (request: Request, context: Context) => {
     if (action === "availability" && request.method === "GET")
       return json({ slots: await availability(url) });
     if (action === "holds" && request.method === "POST")
-      return json(await createBooking(request), 201);
+      return json(await createBooking(request, context), 201);
     if (
       action === "manage" &&
       (request.method === "GET" || request.method === "POST")

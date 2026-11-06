@@ -1,0 +1,15 @@
+{
+  "passed": 8,
+  "projects": ["chromium", "webkit"],
+  "widths": [320, 390, 768, 1440],
+  "kind": "local browser fixture; synthetic HTTP responses; no database or provider proof",
+  "failed": 0,
+  "assertions": [
+    "keyboard submit and retry",
+    "input preserved after 503",
+    "same command key and payload",
+    "one conflict preview",
+    "zero dialog axe WCAG A/AA violations",
+    "no horizontal dialog overflow"
+  ]
+}

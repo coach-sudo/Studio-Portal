@@ -281,9 +281,13 @@ describe("content disclosure and decision context", () => {
     );
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveAccessibleDescription(
-      "May override public notice and pricing. Bookings are audited and create calendar and email work.",
+      "May override public notice and pricing. Future bookings are audited and queue calendar and email work.",
     );
     expect(dialog.querySelector("header details")).toBeNull();
+    await user.selectOptions(screen.getByLabelText("Entry type"), "historical");
+    expect(dialog).toHaveAccessibleDescription(
+      "Historical records are audited. Attendance and financial treatment are explicit; Calendar and notifications are suppressed.",
+    );
   });
 
   it("retains labeled student creation and dialog focus behavior without its introduction", async () => {

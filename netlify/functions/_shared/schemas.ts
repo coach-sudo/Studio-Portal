@@ -228,10 +228,14 @@ export const publicBookingSchema = z
         path: ["guardianEmail"],
         message: "Guardian email is required.",
       });
-    if (
-      value.recurrence === "none" &&
-      ["installments", "subscription"].includes(value.paymentPolicy)
-    )
+    if (value.paymentPolicy === "installments")
+      ctx.addIssue({
+        code: "custom",
+        path: ["paymentPolicy"],
+        message:
+          "Installment bookings are unavailable. Choose another payment option.",
+      });
+    if (value.recurrence === "none" && value.paymentPolicy === "subscription")
       ctx.addIssue({
         code: "custom",
         path: ["paymentPolicy"],

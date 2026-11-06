@@ -63,4 +63,24 @@ describe("TimezoneSelect", () => {
     );
     expect(change).toHaveBeenCalledWith(detected);
   });
+
+  it("keeps an explicit empty policy empty, including after Escape", async () => {
+    const user = userEvent.setup(),
+      change = vi.fn();
+    render(
+      <TimezoneSelect value="" onChange={change} defaultToDevice={false} />,
+    );
+    const input = screen.getByRole("combobox");
+    expect(input).toHaveValue("");
+    await user.click(input);
+    expect(
+      screen
+        .getAllByRole("option")
+        .every((option) => option.getAttribute("aria-selected") === "false"),
+    ).toBe(true);
+    await user.type(input, "Tokyo");
+    await user.keyboard("{Escape}");
+    expect(input).toHaveValue("");
+    expect(change).not.toHaveBeenCalled();
+  });
 });

@@ -1,0 +1,15 @@
+import {test,expect} from '@playwright/test';
+import {installFixture,ids} from '../../e2e/candidate-local/fixture';
+for(const width of [320,390,768,1440])test(`parent private-overlap override at ${width}`,async({page,context},info)=>{
+ await page.setViewportSize({width,height:1000});await installFixture(context,'coach');
+ await context.route('**/api/v2/admin/booking/bookings',route=>{
+  const body=route.request().postDataJSON();
+  return route.fulfill({json:{resource:{conflicts:[{id:'synthetic-overlap',summary:'Synthetic overlapping lesson',start:body.payload.starts_at,end:body.payload.ends_at,source:'studio',policy:'private_overlap',blocksChange:true}],externalCalendarChecked:false}}});
+ });
+ await page.goto(`/coach/students/${ids.student}/lessons/${ids.lesson}`);
+ const opener=page.getByRole('button',{name:'Reschedule upcoming lesson',exact:true});await expect(opener).toBeVisible({timeout:20000});await opener.click();
+ const dialog=page.getByRole('dialog',{name:'Reschedule upcoming lesson',exact:true});
+ await dialog.getByRole('button',{name:'Next day',exact:true}).click();await dialog.getByRole('button',{name:'Confirm new time',exact:true}).click();
+ const override=dialog.getByRole('button',{name:'Reschedule anyway',exact:true});await expect(override).toBeEnabled();await override.scrollIntoViewIfNeeded();
+ await page.screenshot({path:info.outputPath(`before-private-override-${width}.png`),fullPage:false});
+});

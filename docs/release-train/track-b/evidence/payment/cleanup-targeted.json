@@ -1,0 +1,279 @@
+{
+  "numTotalTestSuites": 2,
+  "numPassedTestSuites": 2,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 23,
+  "numPassedTests": 23,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793301629668,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "records an amount received without a price or status editor",
+          "status": "passed",
+          "title": "records an amount received without a price or status editor",
+          "duration": 148.62340000000017,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains and locks the request after an unknown response",
+          "status": "passed",
+          "title": "retains and locks the request after an unknown response",
+          "duration": 60.23949999999991,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains a lost-response request through revoked access and restores the same receipt",
+          "status": "passed",
+          "title": "retains a lost-response request through revoked access and restores the same receipt",
+          "duration": 61.725799999999936,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps the original request locked after IDEMPOTENCY_CONFLICT instead of offering a new payment",
+          "status": "passed",
+          "title": "keeps the original request locked after IDEMPOTENCY_CONFLICT instead of offering a new payment",
+          "duration": 45.88619999999992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps the original request locked after VERSION_CONFLICT instead of offering a new payment",
+          "status": "passed",
+          "title": "keeps the original request locked after VERSION_CONFLICT instead of offering a new payment",
+          "duration": 31.059799999999996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps committed success when downstream refresh fails",
+          "status": "passed",
+          "title": "keeps committed success when downstream refresh fails",
+          "duration": 30.297399999999925,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "shows a financial review hold without a money submission",
+          "status": "passed",
+          "title": "shows a financial review hold without a money submission",
+          "duration": 15.754599999999982,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "recovers a remounted unknown request even when fresh financial context is paid",
+          "status": "passed",
+          "title": "recovers a remounted unknown request even when fresh financial context is paid",
+          "duration": 30.64319999999998,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not show a previous lesson receipt after the selected lesson changes",
+          "status": "passed",
+          "title": "does not show a previous lesson receipt after the selected lesson changes",
+          "duration": 47.9208000000001,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793301632439,
+      "endTime": 1793301632910.921,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/components/LessonPaymentReceipt.test.tsx"
+    },
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "retains the same key and sealed request after an unknown committed response",
+          "status": "passed",
+          "title": "retains the same key and sealed request after an unknown committed response",
+          "duration": 107.36439999999993,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not replace an unresolved payment with a changed amount",
+          "status": "passed",
+          "title": "does not replace an unresolved payment with a changed amount",
+          "duration": 2.8720999999998185,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps the original key across a lost response, revoked coach access and restored access",
+          "status": "passed",
+          "title": "keeps the original key across a lost response, revoked coach access and restored access",
+          "duration": 4.157200000000103,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains stored pending identity on IDEMPOTENCY_CONFLICT and refuses a fresh changed request",
+          "status": "passed",
+          "title": "retains stored pending identity on IDEMPOTENCY_CONFLICT and refuses a fresh changed request",
+          "duration": 2.389299999999821,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains stored pending identity on VERSION_CONFLICT and refuses a fresh changed request",
+          "status": "passed",
+          "title": "retains stored pending identity on VERSION_CONFLICT and refuses a fresh changed request",
+          "duration": 2.223199999999906,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "never hydrates another actor's pending request",
+          "status": "passed",
+          "title": "never hydrates another actor's pending request",
+          "duration": 2.673999999999978,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains recovery across token refresh for the same actual actor",
+          "status": "passed",
+          "title": "retains recovery across token refresh for the same actual actor",
+          "duration": 1.5101999999999407,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects unverified actor state before recording or reading pending money",
+          "status": "passed",
+          "title": "rejects unverified actor state before recording or reading pending money",
+          "duration": 1.4575999999999567,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "recovers a reload from actor-scoped session storage using the original key",
+          "status": "passed",
+          "title": "recovers a reload from actor-scoped session storage using the original key",
+          "duration": 3.859100000000126,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not send a payment if the browser cannot preserve recovery identity",
+          "status": "passed",
+          "title": "does not send a payment if the browser cannot preserve recovery identity",
+          "duration": 2.7263000000000375,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "cleans only the captured newly rejected actor envelope after an account switch",
+          "status": "passed",
+          "title": "cleans only the captured newly rejected actor envelope after an account switch",
+          "duration": 2.4020000000000437,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "retains both actors' unknown envelopes when A's later recovery is rejected after switching to B",
+          "status": "passed",
+          "title": "retains both actors' unknown envelopes when A's later recovery is rejected after switching to B",
+          "duration": 1.6441999999999553,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not remove a different persisted key when a rejected request completes",
+          "status": "passed",
+          "title": "does not remove a different persisted key when a rejected request completes",
+          "duration": 1.307399999999916,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "does not remove a newer persisted key when an older successful response completes",
+          "status": "passed",
+          "title": "does not remove a newer persisted key when an older successful response completes",
+          "duration": 1.6348999999997886,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793301630993,
+      "endTime": 1793301631131.635,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/src/data/lessonPayments.test.ts"
+    }
+  ]
+}

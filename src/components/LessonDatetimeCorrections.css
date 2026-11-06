@@ -1,0 +1,17 @@
+.corrections-dialog :is(form, article, p, strong) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.corrections-dialog article {
+  padding-block: 16px;
+  border-bottom: 1px solid var(--line);
+}
+.corrections-dialog .workflow-content button {
+  min-height: 44px;
+  margin: 4px;
+}
+.corrections-dialog textarea {
+  display: block;
+  width: 100%;
+  min-height: 100px;
+}

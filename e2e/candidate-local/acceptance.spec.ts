@@ -385,7 +385,9 @@ test("local reschedule conflict-check failure keeps the existing lesson", async 
 }) => {
   const state = await installFixture(context, "coach");
   await page.goto(`${studentPath}/lessons/${ids.lesson}`);
-  await page.getByRole("button", { name: "Reschedule", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Reschedule upcoming lesson", exact: true })
+    .click();
   await page.getByRole("button", { name: "Next day", exact: true }).click();
   await page
     .getByRole("button", { name: "Confirm new time", exact: true })

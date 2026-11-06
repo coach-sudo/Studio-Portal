@@ -1,0 +1,49 @@
+{
+  "head": "62a1eba8246ca1f4db73ebd19bd7db2534289f78",
+  "productionRun": 40981041735,
+  "migrationJob": 123820898269,
+  "verifyJob": 123820898479,
+  "verify": "passed",
+  "legacy51Upgrade": "passed",
+  "current71Upgrade": {
+    "result": "passed",
+    "baseline": 71,
+    "additive": 6,
+    "originalTableFamilies": 83
+  },
+  "pgTap": {
+    "result": "passed",
+    "files": 20,
+    "assertions": 549,
+    "newLessonPaymentAssertions": 58
+  },
+  "concurrency": {
+    "result": "all scripts passed, including observed same/distinct-key lesson-payment races and revoked/restored-coach replay"
+  },
+  "overallProduction": "failed: generated types byte parity",
+  "failure": "lesson_payment_context generated compact one-line signature differs from handwritten formatting; no semantic catalog difference",
+  "generatedArtifact": {
+    "id": 12945296026,
+    "sha256": "be42b7696e4b17beb728272c216ca793edb650772aa700a6a0af750ef6f1a56a"
+  },
+  "priorBrowser": {
+    "head": "d769b77da2ac02c08ba2c271796f3d87af1cf086",
+    "run": 40938124339,
+    "job": 123673998329,
+    "passed": 60,
+    "failed": 1,
+    "blocked": 1,
+    "failure": "operational-intelligence journey07 called retired set_payment_status; HTTP409",
+    "artifact": {
+      "id": 12926457875,
+      "sha256": "3752e903442d7f56c5e7f4dab77f8bf253267924f554b18c6c42da59e8afb2ce"
+    },
+    "cleanup": "five datasets restored; zero remaining synthetic auth users"
+  },
+  "limits": [
+    "No overall CI pass claimed",
+    "New exact-head gates required after test/scaffold and generated-type correction",
+    "Browser artifact provider delivery is simulated/local; Stripe sandbox absent",
+    "Prior fixture-only failure40938124351 retained separately"
+  ]
+}

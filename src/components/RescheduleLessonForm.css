@@ -47,7 +47,7 @@
   gap: 7px;
 }
 .reschedule-quick button {
-  min-height: 36px;
+  min-height: 44px;
   padding: 7px 11px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -66,6 +66,7 @@
 }
 .reschedule-fields input {
   width: 100%;
+  min-height: 44px;
 }
 .reschedule-preview {
   border-color: color-mix(in srgb, var(--forest) 28%, var(--line));

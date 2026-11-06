@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { V2CommandContext } from "./types";
 import type { Student, LinkedContact } from "../../../src/domain/model";
 import { handleInvoiceCommands } from "./invoices";
@@ -9,6 +9,21 @@ const mocks = vi.hoisted(() => ({
   upsert: vi.fn(),
   dispatch: vi.fn(),
   update: vi.fn(),
+  origin: vi.fn(() => "https://studio.test"),
+  create: vi.fn(),
+  retrieve: vi.fn(),
+  expire: vi.fn(),
+}));
+vi.mock("stripe", () => ({
+  default: class {
+    checkout = {
+      sessions: {
+        create: mocks.create,
+        retrieve: mocks.retrieve,
+        expire: mocks.expire,
+      },
+    };
+  },
 }));
 vi.mock("../_shared/outbox-dispatch", () => ({
   dispatchOutbox: mocks.dispatch,
@@ -24,7 +39,7 @@ vi.mock("../_shared/notification-recipients", () => ({
   resolveEventRecipients: vi.fn(),
 }));
 vi.mock("../_shared/portal-url", () => ({
-  portalOrigin: () => "https://studio.test",
+  portalOrigin: mocks.origin,
 }));
 const studentId = "10000000-0000-4000-8000-000000000001";
 const serviceId = "10000000-0000-4000-8000-000000000002";
@@ -159,6 +174,241 @@ beforeEach(() => {
       error: null,
     }),
   );
+});
+
+describe("invoice Checkout return and recovery", () => {
+  const preview =
+    "https://6aebaf2c3614f41db77b4b43--coachd-staging.netlify.app";
+  const session = {
+    id: "cs_test_fixture",
+    status: "open",
+    payment_status: "unpaid",
+    url: "https://checkout.stripe.com/test",
+  };
+  const claim = {
+    ...legacyInvoice,
+    checkout_key: "coach:checkout-key",
+    checkout_amount: 100,
+    checkout_session_id: null as string | null,
+  };
+
+  function checkout(command = "checkout", invoice: typeof claim = claim) {
+    const ctx = fixture();
+    ctx.input = {
+      command,
+      entityId: invoice.id,
+      expectedVersion: invoice.version,
+      reason: "Test checkout recovery",
+      idempotencyKey: "checkout-key",
+      payload: { returnTo: "coach", amountMinor: 100 },
+    };
+    ctx.db.from = vi.fn(() => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        single: async () => ({ data: invoice }),
+      };
+      return query;
+    }) as unknown as typeof ctx.db.from;
+    return ctx;
+  }
+
+  beforeEach(() => {
+    vi.stubGlobal("Netlify", { env: { get: () => "rk_test_fixture" } });
+    mocks.origin.mockReturnValue(preview);
+    mocks.create.mockReset().mockResolvedValue(session);
+    mocks.retrieve.mockReset().mockResolvedValue(session);
+    mocks.expire
+      .mockReset()
+      .mockResolvedValue({ ...session, status: "expired" });
+    mocks.rpc.mockImplementation(async (name: string) =>
+      name === "claim_studio_invoice_checkout"
+        ? { data: claim }
+        : { data: null },
+    );
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    mocks.origin.mockReset().mockReturnValue("https://studio.test");
+  });
+
+  it("uses trusted function context for both return links before claiming the invoice", async () => {
+    const ctx = checkout();
+    ctx.request = new Request("https://untrusted.test", {
+      headers: { origin: "https://untrusted.test" },
+    });
+    await handleInvoiceCommands(ctx);
+    expect(mocks.origin).toHaveBeenCalledWith(ctx.context);
+    expect(mocks.origin.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rpc.mock.invocationCallOrder[0],
+    );
+    expect(mocks.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        success_url: `${preview}/coach/finance?invoice=invoice-id&checkout=processing`,
+        cancel_url: `${preview}/coach/finance?invoice=invoice-id`,
+      }),
+      { idempotencyKey: claim.checkout_key },
+    );
+  });
+
+  it("fails before any claim or provider call if the private origin cannot be verified", async () => {
+    mocks.origin.mockImplementationOnce(() => {
+      throw Error("Private checkout preview identity is unavailable");
+    });
+    await expect(handleInvoiceCommands(checkout())).rejects.toThrow(
+      "Private checkout preview identity",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("keeps the claim on an interrupted provider request and retries with identical Stripe parameters", async () => {
+    mocks.create.mockRejectedValueOnce(
+      Error("Connection closed before the response"),
+    );
+    await expect(handleInvoiceCommands(checkout())).rejects.toThrow(
+      "Connection closed",
+    );
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "claim_studio_invoice_checkout",
+    ]);
+    const response = await handleInvoiceCommands(checkout());
+    expect(await response!.json()).toEqual({
+      resource: { url: session.url, status: "pending" },
+    });
+    expect(mocks.create.mock.calls[1]).toEqual(mocks.create.mock.calls[0]);
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "claim_studio_invoice_checkout",
+      "claim_studio_invoice_checkout",
+      "attach_studio_invoice_checkout",
+    ]);
+  });
+
+  it("recovers the same Checkout Session if Stripe accepted it but attaching it failed", async () => {
+    mocks.rpc
+      .mockResolvedValueOnce({ data: claim })
+      .mockResolvedValueOnce({ error: Error("Attach response lost") });
+    await expect(handleInvoiceCommands(checkout())).rejects.toThrow(
+      "Attach response lost",
+    );
+    await handleInvoiceCommands(checkout());
+    expect(mocks.create.mock.calls[1]).toEqual(mocks.create.mock.calls[0]);
+    expect(
+      mocks.rpc.mock.calls
+        .filter(([name]) => name === "attach_studio_invoice_checkout")
+        .map(([, args]) => args.p_session),
+    ).toEqual([session.id, session.id]);
+    expect(
+      mocks.rpc.mock.calls.some(
+        ([name]) => name.includes("settle") || name.includes("release"),
+      ),
+    ).toBe(false);
+  });
+
+  it("expires an open checkout before releasing the claim and never settles it", async () => {
+    const response = await handleInvoiceCommands(
+      checkout("cancel_checkout", {
+        ...claim,
+        checkout_session_id: session.id,
+      }),
+    );
+    expect(await response!.json()).toEqual({ resource: { status: "expired" } });
+    expect(mocks.retrieve).toHaveBeenCalledWith(session.id);
+    expect(mocks.expire).toHaveBeenCalledWith(session.id);
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "attach_studio_invoice_checkout",
+      "release_studio_invoice_checkout",
+    ]);
+    expect(mocks.expire.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.rpc.mock.invocationCallOrder[1],
+    );
+  });
+
+  it("does not release or settle an open checkout when cancellation loses the provider response", async () => {
+    mocks.expire.mockRejectedValueOnce(Error("Expire response lost"));
+    await expect(
+      handleInvoiceCommands(
+        checkout("cancel_checkout", {
+          ...claim,
+          checkout_session_id: session.id,
+        }),
+      ),
+    ).rejects.toThrow("Expire response lost");
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "attach_studio_invoice_checkout",
+    ]);
+    mocks.retrieve.mockResolvedValueOnce({ ...session, status: "expired" });
+    const response = await handleInvoiceCommands(
+      checkout("check_checkout", { ...claim, checkout_session_id: session.id }),
+    );
+    expect(await response!.json()).toEqual({ resource: { status: "expired" } });
+    expect(mocks.expire).toHaveBeenCalledTimes(1);
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "attach_studio_invoice_checkout",
+      "attach_studio_invoice_checkout",
+      "release_studio_invoice_checkout",
+    ]);
+  });
+
+  it("keeps an interrupted or declined payment unpaid while Stripe reports the checkout open", async () => {
+    const response = await handleInvoiceCommands(
+      checkout("check_checkout", { ...claim, checkout_session_id: session.id }),
+    );
+    expect(await response!.json()).toEqual({
+      resource: { url: session.url, status: "pending" },
+    });
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "attach_studio_invoice_checkout",
+    ]);
+  });
+
+  it("settles through the same canonical RPC if the provider reports payment won the cancellation race", async () => {
+    mocks.retrieve.mockResolvedValueOnce({
+      ...session,
+      status: "complete",
+      payment_status: "paid",
+      currency: "usd",
+      amount_total: 100,
+    });
+    await handleInvoiceCommands(
+      checkout("cancel_checkout", {
+        ...claim,
+        checkout_session_id: session.id,
+      }),
+    );
+    expect(mocks.expire).not.toHaveBeenCalled();
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "attach_studio_invoice_checkout",
+      "settle_studio_invoice_checkout",
+    ]);
+    expect(mocks.rpc).toHaveBeenLastCalledWith(
+      "settle_studio_invoice_checkout",
+      {
+        p_invoice: claim.id,
+        p_key: claim.checkout_key,
+        p_session: session.id,
+        p_amount: 100,
+      },
+    );
+  });
+
+  it("denies an invoice the caller cannot see before making a Stripe call or reserving money", async () => {
+    const ctx = checkout();
+    ctx.db.from = vi.fn(() => {
+      const query = {
+        select: () => query,
+        eq: () => query,
+        single: async () => ({ data: null, error: Error("Not visible") }),
+      };
+      return query;
+    }) as unknown as typeof ctx.db.from;
+    await expect(handleInvoiceCommands(ctx)).rejects.toThrow("FORBIDDEN");
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
+    expect(mocks.retrieve).not.toHaveBeenCalled();
+  });
 });
 describe("invoices bill and email the responsible payer", () => {
   it("corrects an older invoice's addressee to the current payer when the coach sends it", async () => {

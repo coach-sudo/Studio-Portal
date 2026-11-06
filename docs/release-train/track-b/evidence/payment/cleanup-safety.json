@@ -1,0 +1,180 @@
+{
+  "numTotalTestSuites": 1,
+  "numPassedTestSuites": 1,
+  "numFailedTestSuites": 0,
+  "numPendingTestSuites": 0,
+  "numTotalTests": 14,
+  "numPassedTests": 14,
+  "numFailedTests": 0,
+  "numPendingTests": 0,
+  "numTodoTests": 0,
+  "snapshot": {
+    "added": 0,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0,
+    "didUpdate": false
+  },
+  "startTime": 1793321194902,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest runId before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest runId before constructing cleanup",
+          "duration": 7.684799999999996,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest lessonId before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest lessonId before constructing cleanup",
+          "duration": 1.032699999999977,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest studentId before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest studentId before constructing cleanup",
+          "duration": 0.804300000000012,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest canonicalAssertionsPassed before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest canonicalAssertionsPassed before constructing cleanup",
+          "duration": 0.9532999999998992,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest amountMinor before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest amountMinor before constructing cleanup",
+          "duration": 0.5285999999998694,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "rejects changed manifest key before constructing cleanup",
+          "status": "passed",
+          "title": "rejects changed manifest key before constructing cleanup",
+          "duration": 0.5374000000001615,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies unsafe CI before any database call",
+          "status": "passed",
+          "title": "denies unsafe CI before any database call",
+          "duration": 1.2377000000001317,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies unsafe E2E_EPHEMERAL before any database call",
+          "status": "passed",
+          "title": "denies unsafe E2E_EPHEMERAL before any database call",
+          "duration": 0.6442999999999302,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies unsafe SUPABASE_URL before any database call",
+          "status": "passed",
+          "title": "denies unsafe SUPABASE_URL before any database call",
+          "duration": 0.6778000000001612,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies unsafe DB_CONTAINER before any database call",
+          "status": "passed",
+          "title": "denies unsafe DB_CONTAINER before any database call",
+          "duration": 0.6745999999998276,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies unsafe GITHUB_REPOSITORY before any database call",
+          "status": "passed",
+          "title": "denies unsafe GITHUB_REPOSITORY before any database call",
+          "duration": 0.5744999999999436,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "denies hosted API and mismatched workspace before any database call",
+          "status": "passed",
+          "title": "denies hosted API and mismatched workspace before any database call",
+          "duration": 1.2632999999998447,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "keeps the manifest on PostgreSQL version or cleanup-count failure",
+          "status": "passed",
+          "title": "keeps the manifest on PostgreSQL version or cleanup-count failure",
+          "duration": 2.0734999999999673,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        },
+        {
+          "ancestorTitles": [],
+          "fullName": "records exact cleanup counts only after the guarded transaction succeeds",
+          "status": "passed",
+          "title": "records exact cleanup counts only after the guarded transaction succeeds",
+          "duration": 1.0269000000000688,
+          "failureMessages": [],
+          "meta": {},
+          "tags": []
+        }
+      ],
+      "startTime": 1793321196271,
+      "endTime": 1793321196291.0269,
+      "status": "passed",
+      "message": "",
+      "name": "C:/Users/dariu/.codex/worktrees/release-b-booking-finance/studio-portal/scripts/e2e-payment-receipt-cleanup.test.ts"
+    }
+  ]
+}

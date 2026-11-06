@@ -67,8 +67,6 @@ function database(paymentError = false) {
         {
           get(_target, method) {
             if (method === "then")
-              // ESLint's base rule also checks names in callback type signatures.
-              // eslint-disable-next-line no-unused-vars
               return (resolve: (value: unknown) => unknown) =>
                 resolve({
                   data: [],

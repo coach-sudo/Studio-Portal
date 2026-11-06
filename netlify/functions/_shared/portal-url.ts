@@ -1,3 +1,4 @@
+import type { Context } from "@netlify/functions";
 import { releaseMetadata } from "./release";
 
 export interface PortalDeployment {
@@ -67,8 +68,35 @@ export function resolvePortalOrigin(deployment: PortalDeployment): string {
   return url.origin;
 }
 
-export function portalOrigin() {
-  return resolvePortalOrigin({
+type RuntimeDeployment = Pick<Context, "site" | "deploy">;
+
+export function resolveCheckoutOrigin(
+  deployment: PortalDeployment,
+  runtime?: RuntimeDeployment,
+) {
+  if (
+    !deployment.ephemeral &&
+    deployment.context === "deploy-preview" &&
+    (runtime?.site?.id === stagingSiteId || deployment.siteId === stagingSiteId)
+  ) {
+    if (
+      runtime?.site?.id !== stagingSiteId ||
+      runtime.deploy?.context !== "deploy-preview" ||
+      runtime.deploy.published !== false ||
+      !/^[a-f0-9]{24}$/.test(runtime.deploy.id)
+    )
+      throw new Error(
+        "PROVIDER_UNAVAILABLE: Private checkout preview identity is unavailable.",
+      );
+    // Manual previews can expose only the staging primary URL in the function
+    // environment. The runtime deploy identity pins the return to this snapshot.
+    return `https://${runtime.deploy.id}--coachd-staging.netlify.app`;
+  }
+  return resolvePortalOrigin(deployment);
+}
+
+export function portalOrigin(runtime?: RuntimeDeployment) {
+  const deployment = {
     context: releaseMetadata().context,
     siteId: Netlify.env.get("SITE_ID"),
     deployPrimeUrl: Netlify.env.get("DEPLOY_PRIME_URL"),
@@ -76,7 +104,10 @@ export function portalOrigin() {
     siteUrl: Netlify.env.get("URL"),
     ephemeral: Netlify.env.get("E2E_EPHEMERAL") === "true",
     testUrl: Netlify.env.get("STAGING_BASE_URL"),
-  });
+  };
+  return runtime
+    ? resolveCheckoutOrigin(deployment, runtime)
+    : resolvePortalOrigin(deployment);
 }
 
 export type PortalAction =

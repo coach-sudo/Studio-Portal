@@ -1,0 +1,38 @@
+import { afterEach, expect, it, vi } from "vitest";
+const fixture = vi.hoisted(() => ({
+  session: { access_token: "synthetic-coach-token", user: { id: "synthetic-coach" } },
+}));
+vi.mock("../lib/supabase", () => ({
+  isSupabaseConfigured: true,
+  supabase: { auth: { getSession: vi.fn(async () => ({ data: { session: fixture.session } })) } },
+}));
+import { studioCommand } from "./bookingCommands";
+afterEach(() => vi.unstubAllGlobals());
+const input = { command: "review", entityType: "lesson", entityId: "synthetic-record", expectedVersion: 1, reason: "Synthetic review", payload: { value: "same" } };
+it("reproduces a new principal joining the coach's delayed response", async () => {
+  let finish!: (response: Response) => void;
+  const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const coach = studioCommand("synthetic", input);
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+  fixture.session = { access_token: "synthetic-student-token", user: { id: "synthetic-student" } };
+  const student = studioCommand("synthetic", input);
+  expect(student).toBe(coach);
+  finish(Response.json({ syntheticPrivateCoachResult: true }));
+  expect(await student).toEqual({ syntheticPrivateCoachResult: true });
+  await coach;
+  expect(fetchMock).toHaveBeenCalledOnce();
+});
+it("reproduces changed version, reason, outcome and retry key joining the first request", async () => {
+  let finish!: (response: Response) => void;
+  const fetchMock = vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; }));
+  vi.stubGlobal("fetch", fetchMock);
+  const first = studioCommand("synthetic", { ...input, idempotencyKey: "first", nextStatus: "scheduled" });
+  await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledOnce());
+  const changed = studioCommand("synthetic", { ...input, expectedVersion: 2, reason: "Different review", idempotencyKey: "second", nextStatus: "cancelled" });
+  expect(changed).toBe(first);
+  finish(Response.json({ recordedVersion: 1, recordedStatus: "scheduled" }));
+  expect(await changed).toEqual({ recordedVersion: 1, recordedStatus: "scheduled" });
+  await first;
+  expect(fetchMock).toHaveBeenCalledOnce();
+});
