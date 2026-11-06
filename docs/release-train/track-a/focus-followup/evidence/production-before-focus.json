@@ -1,0 +1,92 @@
+{
+  "capturedAt": "2026-10-29T18:57:28.057Z",
+  "release": {
+    "commit": "9b1b57fb1877",
+    "context": "production"
+  },
+  "browser": "chromium",
+  "width": 390,
+  "computedFocus": {
+    "tag": "BUTTON",
+    "text": "Choose a time",
+    "ariaLabel": null,
+    "outlineStyle": "solid",
+    "outlineWidth": "3px",
+    "outlineColor": "rgba(239, 93, 81, 0.45)",
+    "adjacentBackground": "rgb(255, 255, 255)",
+    "outlineOffset": "3px",
+    "boxShadow": "rgb(255, 255, 255) 0px 0px 0px 3px",
+    "focusVisible": true
+  },
+  "compositing": {
+    "foregroundRgba": [239, 93, 81, 0.45],
+    "adjacentRgba": [255, 255, 255, 1],
+    "compositeRgb": [247.8, 182.1, 176.7],
+    "contrastRatio": 1.7051221364924511,
+    "target": 3,
+    "passesTarget": false
+  },
+  "measuredOpaqueBackgroundTargets": [
+    {
+      "name": "Google MeetA private link is added automatically.",
+      "computedBackground": "rgb(255, 255, 255)",
+      "compositeRgb": [247.8, 182.1, 176.7],
+      "contrastRatio": 1.7051221364924511,
+      "target": 3
+    },
+    {
+      "name": "In person$30.00 upcharge. Location arrives with confirmation.",
+      "computedBackground": "rgb(255, 255, 255)",
+      "compositeRgb": [247.8, 182.1, 176.7],
+      "contrastRatio": 1.7051221364924511,
+      "target": 3
+    },
+    {
+      "name": "One time",
+      "computedBackground": "rgb(241, 243, 235)",
+      "compositeRgb": [240.10000000000002, 175.5, 165.7],
+      "contrastRatio": 1.641587158864067,
+      "target": 3
+    },
+    {
+      "name": "weekly",
+      "computedBackground": "rgb(241, 243, 235)",
+      "compositeRgb": [240.10000000000002, 175.5, 165.7],
+      "contrastRatio": 1.641587158864067,
+      "target": 3
+    },
+    {
+      "name": "biweekly",
+      "computedBackground": "rgb(241, 243, 235)",
+      "compositeRgb": [240.10000000000002, 175.5, 165.7],
+      "contrastRatio": 1.641587158864067,
+      "target": 3
+    },
+    {
+      "name": "Choose a time",
+      "computedBackground": "rgb(255, 255, 255)",
+      "compositeRgb": [247.8, 182.1, 176.7],
+      "contrastRatio": 1.7051221364924511,
+      "target": 3
+    }
+  ],
+  "unmeasuredTranslucentBackgroundTargets": [
+    {
+      "name": "Back to services",
+      "adjacentBackground": "rgba(255, 253, 248, 0.95)",
+      "reason": "Underlying ancestor composite not sampled; no numeric contrast claim for this target"
+    },
+    {
+      "name": "Student or guardian sign in",
+      "adjacentBackground": "rgba(255, 253, 248, 0.95)",
+      "reason": "Underlying ancestor composite not sampled; no numeric contrast claim for this target"
+    }
+  ],
+  "sourceCause": "src/styles.css:3 globally declares *:focus-visible outline:3px solid #ef5d5173!important, overriding the scoped public.css outline declaration. The new white box-shadow still applies.",
+  "limits": [
+    "Measured one representative production Chromium390 focus state; all eight initial captures independently recorded the same outline color/style/width",
+    "This confirms low focus-indicator contrast against this white background, not absent keyboard focus",
+    "The eight automated axe scans do not test this focus-indicator contrast",
+    "Existing focus rule predates Release A; no automatic rollback or unapproved source change"
+  ]
+}

@@ -1,0 +1,6 @@
+
+> studio-portal@1.0.0 format:check
+> tsx scripts/check-format.ts
+
+Checking formatting...
+All matched files use Prettier code style!
