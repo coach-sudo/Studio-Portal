@@ -1,0 +1,35 @@
+
+> studio-portal@1.0.0 bundle:check
+> tsx scripts/check-bundle-size.ts --require-configured-client
+
+{
+  "generatedAt": "2026-10-29T19:08:02.392Z",
+  "javascript": {
+    "file": "invoice-font-metrics-D7dKORWb.js",
+    "bytes": 175211,
+    "gzipBytes": 111672
+  },
+  "stylesheet": {
+    "file": "index-BB-lM0g3.css",
+    "bytes": 121850,
+    "gzipBytes": 21955
+  },
+  "pdfAssets": [
+    {
+      "file": "pdf-renderer-DNLCD6fv.js",
+      "gzipBytes": 127937,
+      "failureGzipBytes": 250000
+    },
+    {
+      "file": "pdf.worker.min-CjEcRF4W.mjs",
+      "gzipBytes": 376488,
+      "failureGzipBytes": 500000
+    }
+  ],
+  "budgets": {
+    "javascriptWarningGzipBytes": 120000,
+    "javascriptFailureGzipBytes": 130000,
+    "stylesheetWarningGzipBytes": 22000,
+    "stylesheetFailureGzipBytes": 25000
+  }
+}
