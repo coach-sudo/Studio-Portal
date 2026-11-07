@@ -4804,6 +4804,10 @@ export type Database = {
         Args: { p_id: string; p_token: string }
         Returns: boolean
       }
+      calendar_inbound_checkpoint: {
+        Args: { p_calendar: string; p_studio: string }
+        Returns: Json
+      }
       campaign_delivery_stats: {
         Args: { p_studio_id: string }
         Returns: {
@@ -5310,6 +5314,18 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      commit_calendar_inbound_page: {
+        Args: {
+          p_calendar: string
+          p_events: Json
+          p_next_page: string
+          p_next_sync: string
+          p_reset: boolean
+          p_revision: number
+          p_studio: string
+        }
+        Returns: Json
       }
       communication_activity: {
         Args: {

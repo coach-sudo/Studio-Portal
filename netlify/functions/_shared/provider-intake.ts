@@ -7,6 +7,7 @@ import {
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
+import { syncInboundCalendar } from "./calendar-inbound";
 import { serviceClient } from "./supabase";
 import type { WorkerTelemetry } from "./worker-telemetry";
 import { zonedDateTimeToUtc } from "./timezone";
@@ -1413,6 +1414,17 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     gmailReview = 0,
     gmailScope = true,
     failures = 0;
+  const incremental =
+    Netlify.env.get("GOOGLE_CALENDAR_INBOUND_ENABLED") === "true";
+  const calendarStudio =
+    Netlify.env.get("GOOGLE_CALENDAR_STUDIO_ID") ||
+    (studios?.length === 1 ? studios[0].id : undefined);
+  if (incremental && !studios?.some((studio) => studio.id === calendarStudio)) {
+    telemetry?.failure(
+      new Error("Calendar intake requires one configured studio"),
+    );
+    failures++;
+  }
   for (const studio of studios || []) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
@@ -1428,7 +1440,16 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     }
     telemetry?.stage("calendar_processing");
     try {
-      const calendar = await importCalendar(token, studio, students || []);
+      const calendar = incremental
+        ? studio.id === calendarStudio
+          ? await syncInboundCalendar(
+              db,
+              studio.id,
+              Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
+              token,
+            )
+          : { imported: 0, review: 0 }
+        : await importCalendar(token, studio, students || []);
       calendarImported += calendar.imported;
       calendarReview += calendar.review;
     } catch (error) {
