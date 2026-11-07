@@ -2,6 +2,8 @@
 
 The incremental worker uses the existing provider intake schedule and requires `GOOGLE_CALENDAR_INBOUND_ENABLED=true` in addition to the existing provider intake gate. `GOOGLE_CALENDAR_ID` selects the Google calendar. The worker resolves `primary` to a stable Google calendar ID. A deployment with multiple studios must specify `GOOGLE_CALENDAR_STUDIO_ID` before running incremental Calendar intake.
 
+Isolated staging can set the functions-only secret `GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN` for a separate Gmail read-only grant issued to the same OAuth client. Calendar and the other Google integrations continue to use the existing credential. If the intake-specific grant is absent, Gmail intake uses the existing shared grant.
+
 The private `calendar_inbound` schema stores one cursor and one page checkpoint per studio and calendar. It commits each page and its reconciliation in the same database transaction. An overlapping worker can read the same Google page, but only the worker holding the current checkpoint revision can commit it. The final page replaces the sync token. An expired token starts a new scan while retaining lesson history and previous observations. A previously mapped event absent from a completed replacement scan goes to review.
 
 The first observation of an existing projection requires the exact Google event ID and acknowledged provider revision. Later observations retain the calendar-qualified link. The worker records recurring parent and original occurrence start, including on cancellation tombstones. Unlinked transparent events are personal and opaque events are busy-only. Existing verified imports and ambiguous portal identities go to review without changing their records.

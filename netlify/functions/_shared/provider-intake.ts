@@ -1408,6 +1408,10 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
   assertWorkerEnabled("provider-intake");
   telemetry?.stage("google_token");
   const token = await googleAccessToken();
+  const separateGmailGrant = Boolean(
+    Netlify.env.get("GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN"),
+  );
+  let gmailToken: Promise<string> | undefined;
   let calendarImported = 0,
     calendarReview = 0,
     gmailImported = 0,
@@ -1459,7 +1463,14 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
     try {
-      const gmail = await scanGmail(token, studio, students || []);
+      if (separateGmailGrant) {
+        gmailToken ??= googleAccessToken("GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN");
+      }
+      const gmail = await scanGmail(
+        gmailToken ? await gmailToken : token,
+        studio,
+        students || [],
+      );
       gmailImported += gmail.imported;
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;
