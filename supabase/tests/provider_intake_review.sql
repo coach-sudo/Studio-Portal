@@ -61,5 +61,24 @@ drop trigger e2e_wave6_late_failure on public.audit_events;
 set local role authenticated;
 select lives_ok($$select public.command_review_provider_import('e6600000-0000-4000-8000-000000000009','{"action":"create","fullName":"Late failure recovery"}','e2e-wave6-late-failure')$$,'Same request key succeeds after actual rollback');
 select is((select count(*) from public.students where full_name='Late failure recovery'),1::bigint,'Recovery creates exactly one record');
+reset role;
+insert into public.integration_imports(id,studio_id,provider,external_id,detected_source,status,payload) values
+ ('e6600000-0000-4000-8000-000000000010','e6600000-0000-4000-8000-000000000003','gmail','attendance-past','lessonface','needs_review','{"candidate":{"startsAt":"2020-11-03T18:00:00Z","endsAt":"2020-11-03T19:00:00Z"}}');
+set local role authenticated;
+select lives_ok($$select public.command_review_provider_import('e6600000-0000-4000-8000-000000000010','{"action":"create","fullName":"Historical attendance unknown","status":"completed"}','e2e-attendance-past')$$,'Past source verification does not accept attendance from a source payload');
+select lives_ok($$select public.command_review_provider_import('e6600000-0000-4000-8000-000000000010','{"action":"create","fullName":"Historical attendance unknown","status":"completed"}','e2e-attendance-past')$$,'Past source verification replay remains stable');
+select is((select status::text from public.lessons where student_id=(select student_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010')),'scheduled','Past imported lesson remains scheduled until coach confirms actual attendance');
+select is((select p.status from public.lesson_participants p join public.integration_imports i on i.lesson_id=p.lesson_id where i.id='e6600000-0000-4000-8000-000000000010'),'confirmed','Source verification does not mark participant attended');
+select is((select count(*) from public.lessons where student_id=(select student_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010')),1::bigint,'Past replay creates one lesson');
+reset role;
+select is((select count(*) from public.calendar_projections c join public.integration_imports i on i.lesson_id=c.lesson_id where i.id='e6600000-0000-4000-8000-000000000010'),0::bigint,'Past verification projects no Calendar event');
+select is((select count(*) from public.payment_entries p join public.integration_imports i on i.student_id=p.student_id where i.id='e6600000-0000-4000-8000-000000000010'),0::bigint,'Past source verification creates no payment');
+select is((select count(*) from public.outbox_messages where studio_id='e6600000-0000-4000-8000-000000000003'),0::bigint,'Source confirmation sends no notification');
+update public.lessons set status='completed' where student_id=(select student_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010');
+insert into public.integration_imports(id,studio_id,provider,external_id,detected_source,status,payload,lesson_id)
+ select 'e6600000-0000-4000-8000-000000000011',studio_id,'google_calendar','attendance-existing','lessonface','needs_review',payload,lesson_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010';
+set local role authenticated;
+select lives_ok(format($$select public.command_review_provider_import('e6600000-0000-4000-8000-000000000011',%L::jsonb,'e2e-attendance-existing')$$,jsonb_build_object('action','existing','studentId',(select student_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010'))),'Linking a historical completed lesson preserves its existing outcome');
+select is((select status::text from public.lessons where student_id=(select student_id from public.integration_imports where id='e6600000-0000-4000-8000-000000000010')),'completed','Existing completed history is unchanged');
 select * from finish();
 rollback;
