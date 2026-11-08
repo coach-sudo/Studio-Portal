@@ -37,6 +37,19 @@ begin
   return jsonb_build_object('revision',checkpoint.revision,'syncToken',checkpoint.sync_token,'pageToken',checkpoint.page_token);
 end $$;
 
+-- Callers hold the lesson and projection locks in that order.
+create function calendar_inbound.hold_for_review(p_lesson public.lessons, p_projection uuid, p_payload jsonb)
+returns void language plpgsql set search_path='' as $$
+begin
+  if not exists(select 1 from public.sync_conflicts c where c.studio_id=p_lesson.studio_id and c.entity_type='lesson'
+      and c.entity_id=p_lesson.id and c.status='open') then
+    insert into public.sync_conflicts(studio_id,entity_type,entity_id,source,internal_version,external_payload)
+      values(p_lesson.studio_id,'lesson',p_lesson.id,'google_calendar',p_lesson.version,p_payload);
+  end if;
+  update public.calendar_projections set status='failed',last_error='synchronization_review_required'
+    where id=p_projection and status<>'review_required' and (claim_until is null or claim_until<=now());
+end $$;
+
 create function calendar_inbound.observe_event(p_studio uuid, p_calendar text, p_scan uuid, p_event jsonb)
 returns text language plpgsql set search_path='' as $$
 declare
@@ -52,7 +65,7 @@ declare
   disposition text;
   action text;
   applied boolean := false;
-  reviewed boolean := false;
+  has_conflict boolean;
 begin
   select * into prior from calendar_inbound.events e
     where e.studio_id=p_studio and e.calendar_id=p_calendar and e.event_id=source_event_id;
@@ -92,6 +105,8 @@ begin
     -- revision establishes provenance on the first scan of this calendar.
     disposition := 'needs_review';
   else
+    select exists(select 1 from public.sync_conflicts c where c.studio_id=p_studio and c.entity_type='lesson'
+      and c.entity_id=target and c.status='open') into has_conflict;
     if cancelled and lesson.status not in ('cancelled','late_cancelled') then action := 'cancel';
     elsif not cancelled and (starts is distinct from lesson.starts_at or ends is distinct from lesson.ends_at)
       then action := 'reschedule';
@@ -101,8 +116,22 @@ begin
       disposition := 'needs_review';
     elsif action is null then
       disposition := case when cancelled then 'cancelled' else 'studio_lesson' end;
-      if source_revision is not null and projection.status='projected' and projection.projected_version=lesson.version
-        then update public.calendar_projections set external_version=source_revision where id=projection.id; end if;
+      if source_revision is not null and source_revision is distinct from projection.external_version then
+        if not has_conflict and (projection.claim_until is null or projection.claim_until<=now()) and (
+          (projection.status='projected' and projection.projected_version=lesson.version)
+          or (projection.status in ('queued','failed','projecting') and projection.projected_version<lesson.version
+            and lesson.status='scheduled' and lesson.starts_at>now() and p_event->>'status'='confirmed'
+            and prior.observation->>'etag'=projection.external_version)
+        ) then
+          -- Acknowledge agreement on timing only. Outbound still owns the rest
+          -- of the projection and must finish under its normal claim and ETag fences.
+          update public.calendar_projections set external_version=source_revision,
+            next_attempt_at=case when last_error='calendar_external_change_requires_review' then now() else next_attempt_at end
+            where id=projection.id;
+        else
+          disposition := 'needs_review';
+        end if;
+      end if;
     elsif lesson.status<>'scheduled' or lesson.starts_at<=now()
       or p_event->>'status'='tentative'
       or projection.status<>'projected' or projection.projected_version<>lesson.version
@@ -111,8 +140,7 @@ begin
       or (action='reschedule' and exists(select 1 from public.lessons other
         where other.studio_id=p_studio and other.id<>target and other.status='scheduled'
           and other.starts_at<ends and other.ends_at>starts))
-      or exists(select 1 from public.sync_conflicts c where c.studio_id=p_studio and c.entity_type='lesson'
-        and c.entity_id=target and c.status='open') then
+      or has_conflict then
       disposition := 'needs_review';
     else
       begin
@@ -133,22 +161,15 @@ begin
   end if;
 
   if disposition='needs_review' and lesson.id is not null then
-    if not exists(select 1 from public.sync_conflicts c where c.studio_id=p_studio and c.entity_type='lesson'
-        and c.entity_id=lesson.id and c.status='open') then
-      insert into public.sync_conflicts(studio_id,entity_type,entity_id,source,internal_version,external_payload)
-        values(p_studio,'lesson',lesson.id,'google_calendar',lesson.version,p_event||jsonb_build_object('calendarId',p_calendar));
-    end if;
-    update public.calendar_projections set status='failed',last_error='synchronization_review_required'
-      where id=projection.id and (claim_until is null or claim_until<=now());
+    perform calendar_inbound.hold_for_review(lesson,projection.id,p_event||jsonb_build_object('calendarId',p_calendar));
   end if;
-  reviewed := disposition='needs_review';
   -- Preserve a trusted mapping, but do not promote a first revision mismatch.
   if prior.lesson_id is distinct from target and disposition='needs_review' then target := prior.lesson_id; end if;
   insert into calendar_inbound.events(studio_id,calendar_id,event_id,scan_id,lesson_id,observation,disposition)
     values(p_studio,p_calendar,source_event_id,p_scan,target,p_event,disposition)
     on conflict on constraint events_pkey do update set scan_id=excluded.scan_id,lesson_id=excluded.lesson_id,
       observation=excluded.observation,disposition=excluded.disposition;
-  return case when applied then 'applied' when reviewed then 'review' else 'observed' end;
+  return case when applied then 'applied' when disposition='needs_review' then 'review' else 'observed' end;
 end $$;
 
 create function public.commit_calendar_inbound_page(
@@ -157,11 +178,13 @@ create function public.commit_calendar_inbound_page(
 ) returns jsonb language plpgsql security definer set search_path='' as $$
 declare
   checkpoint calendar_inbound.checkpoints;
+  missing calendar_inbound.events;
+  lesson public.lessons;
+  projection public.calendar_projections;
   item jsonb;
   outcome text;
   applied integer := 0;
   review integer := 0;
-  missing integer;
 begin
   select * into strict checkpoint from calendar_inbound.checkpoints
     where studio_id=p_studio and calendar_id=p_calendar for update;
@@ -185,10 +208,23 @@ begin
   if p_next_sync is not null and checkpoint.sync_token is null then
     -- A lost token can hide old tombstones. Absence from a complete scan is
     -- review evidence, never permission to cancel a canonical lesson.
+    for missing in
+      select * from calendar_inbound.events where studio_id=p_studio and calendar_id=p_calendar
+        and scan_id<>checkpoint.scan_id and disposition<>'cancelled' and lesson_id is not null
+        order by lesson_id,event_id
+    loop
+      select * into lesson from public.lessons where id=missing.lesson_id and studio_id=p_studio for update;
+      if found then
+        select * into projection from public.calendar_projections where lesson_id=lesson.id for update;
+        if projection.external_event_id=missing.event_id then
+          perform calendar_inbound.hold_for_review(lesson,projection.id,missing.observation||jsonb_build_object(
+            'calendarId',p_calendar,'reason','mapped_event_missing_from_full_scan'));
+        end if;
+      end if;
+      review := review+1;
+    end loop;
     update calendar_inbound.events set disposition=case when lesson_id is null then 'cancelled' else 'needs_review' end
       where studio_id=p_studio and calendar_id=p_calendar and scan_id<>checkpoint.scan_id and disposition<>'cancelled';
-    get diagnostics missing = row_count;
-    review := review + missing;
   end if;
   update calendar_inbound.checkpoints set revision=revision+1,page_token=p_next_page,
     sync_token=coalesce(p_next_sync,sync_token),
