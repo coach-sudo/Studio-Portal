@@ -16,6 +16,7 @@ type Projection = {
   id: string;
   claim_token: string;
   external_event_id?: string;
+  external_version?: string;
   conference_request_id?: string;
 };
 import type { Tables } from "../../../src/types/database.generated";
@@ -68,6 +69,14 @@ export async function projectCalendarItem(
       throw new Error(`calendar_lookup_${lookup.status}`);
     if (existing?.recurrence?.length)
       throw new Error("calendar_series_requires_review");
+    if (
+      existing?.etag &&
+      p.external_version &&
+      existing.etag !== p.external_version &&
+      Netlify.env.get("GOOGLE_CALENDAR_INBOUND_ENABLED") === "true" &&
+      workerEnabled("provider-intake")
+    )
+      throw new Error("calendar_external_change_requires_review");
     if (existing) result = existing;
     if (existing?.etag) headers["If-Match"] = existing.etag;
     const current = await db.rpc("calendar_claim_current", {
