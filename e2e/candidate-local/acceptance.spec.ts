@@ -432,7 +432,11 @@ for (const role of ["student", "guardian"] as const)
     await page
       .getByRole("button", { name: "View lesson›", exact: true })
       .click();
-    await expect(page).toHaveURL(new RegExp(`/portal/lessons/${ids.lesson}$`));
+    await expect(page).toHaveURL(
+      (url) =>
+        url.pathname === "/portal/lessons/" + ids.lesson &&
+        url.searchParams.get("student") === ids.student,
+    );
     await expect(
       page.getByRole("heading", { name: "Candidate scene study", exact: true }),
     ).toBeVisible();
@@ -442,7 +446,7 @@ for (const role of ["student", "guardian"] as const)
     ).toBeVisible();
     await expect(
       page.getByRole("button", {
-        name: /Adjust lesson credits|Apply eligible credits now|Review and enable/,
+        name: /Manage credits|Adjust lesson credits|Apply eligible credits now|Review and enable/,
       }),
     ).toHaveCount(0);
   });

@@ -89,16 +89,21 @@ export function PageHeader({
 export function Section({
   title,
   marked,
+  landmark,
   aside,
   children,
 }: {
   title: string;
   marked?: boolean;
+  landmark?: boolean;
   aside?: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section className={`section ${marked ? "marked" : ""}`}>
+    <section
+      aria-label={landmark ? title : undefined}
+      className={`section ${marked ? "marked" : ""}`}
+    >
       <header>
         <h2>{title}</h2>
         {aside}

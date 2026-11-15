@@ -172,7 +172,7 @@ export function StudentCoverageSummary({
 }) {
   const query = useCoverage(studentId, 1, true);
   return (
-    <Section title="Lesson Credits">
+    <Section title="Lesson Credits" landmark>
       {query.data && !query.isError ? (
         <CoverageRows view={query.data} timezone={timezone} compact />
       ) : (
@@ -230,7 +230,7 @@ export function HouseholdLessonCoverage({
   timezone: string;
 }) {
   return (
-    <Section title="Household Lesson Coverage">
+    <Section title="Household Lesson Coverage" landmark>
       {members.map((member) => (
         <HouseholdMember key={member.id} member={member} timezone={timezone} />
       ))}
