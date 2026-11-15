@@ -734,9 +734,83 @@ export async function handleFinanceCommands(
     });
   }
 
+  if (domain === "finance" && input.command === "renewal_options") {
+    const studentId = String(input.payload.studentId || "");
+    const lessonId = String(input.payload.lessonId || "");
+    const result = await db.rpc("portal_renewal_options", {
+      p_student: studentId,
+      p_lesson: lessonId,
+    });
+    if (result.error) throw result.error;
+    const access = result.data as {
+      canPurchase: boolean;
+      definitionIds: string[];
+    };
+    if (
+      !access.canPurchase ||
+      !access.definitionIds.length ||
+      !Netlify.env.get("STRIPE_SECRET_KEY")
+    )
+      return json({
+        resource: { canPurchase: access.canPurchase, options: [] },
+      });
+    const service = serviceClient();
+    const definitions = await service
+      .from("package_definitions")
+      .select("*")
+      .in("id", access.definitionIds);
+    if (definitions.error) throw definitions.error;
+    const options = await Promise.all(
+      (definitions.data ?? []).map(async (definition) => {
+        const quote = await quotePackageDefinition(
+          service,
+          definition,
+          studentId,
+        );
+        return {
+          id: definition.id,
+          name: definition.name,
+          credits: definition.session_count,
+          durationMinutes: definition.session_duration_minutes,
+          expirationDays: definition.expiration_days,
+          priceMinor: quote.price_minor,
+          currency: quote.currency,
+        };
+      }),
+    );
+    return json({
+      resource: {
+        canPurchase: true,
+        options: options.filter((option) => option.priceMinor > 0),
+      },
+    });
+  }
+
   if (domain === "finance" && input.command === "checkout_definition") {
     const definitionId = String(input.payload.packageDefinitionId || "");
     const requestedMode = String(input.payload.renewalMode || "one_time");
+    const studentId = String(input.payload.studentId || "");
+    const lessonId = input.payload.lessonId
+      ? String(input.payload.lessonId)
+      : undefined;
+    const access = await db.rpc("portal_renewal_options", {
+      p_student: studentId,
+      ...(lessonId ? { p_lesson: lessonId } : {}),
+    });
+    if (access.error) throw access.error;
+    const eligibility = access.data as {
+      canPurchase?: boolean;
+      definitionIds?: string[];
+    } | null;
+    if (!eligibility?.canPurchase) throw new Error("FORBIDDEN");
+    if (
+      lessonId &&
+      (requestedMode !== "one_time" ||
+        !eligibility.definitionIds?.includes(definitionId))
+    )
+      throw new Error(
+        "VALIDATION_FAILED: This package can no longer be used for this lesson.",
+      );
     const [
       { data: student, error: studentError },
       { data: definition, error: definitionError },
@@ -745,7 +819,7 @@ export async function handleFinanceCommands(
       db
         .from("students")
         .select("id,studio_id,stripe_customer_id")
-        .limit(1)
+        .eq("id", studentId)
         .single(),
       db
         .from("package_definitions")
@@ -845,14 +919,21 @@ export async function handleFinanceCommands(
         packageSubscriptionId = subscription.id;
       }
       const integrationIdentifier = `coachd_pkg_${Array.from(crypto.getRandomValues(new Uint8Array(8)), (value) => String.fromCharCode(97 + (value % 26))).join("")}`;
+      const destination = lessonId
+        ? "/portal/credits?student=" +
+          student.id +
+          "&lesson=" +
+          lessonId +
+          "&checkout="
+        : "/portal/payments?student=" + student.id + "&checkout=";
       const checkout = await stripe.checkout.sessions.create(
         {
           mode: scheduled ? "subscription" : "payment",
           integration_identifier: integrationIdentifier,
           line_items: [{ price: stripePriceId, quantity: 1 }],
           client_reference_id: `${student.id}:${pkg.id}`,
-          success_url: `${origin}/portal/payments?checkout=processing`,
-          cancel_url: `${origin}/portal/payments?checkout=cancelled`,
+          success_url: origin + destination + "processing",
+          cancel_url: origin + destination + "cancelled",
           ...(student.stripe_customer_id
             ? { customer: student.stripe_customer_id }
             : {}),

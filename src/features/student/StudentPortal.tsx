@@ -36,6 +36,7 @@ import { useStudioRoute } from "../../hooks/useStudio";
 import { applyStudioBranding } from "../../lib/branding";
 import { SessionAction } from "../../components/SessionAction";
 import { portalDomains } from "./StudentPortal.shared";
+import { CreditsAndLessons, HouseholdLessonCoverage } from "./LessonCoverage";
 import { GuardianHome, StudentHome } from "./StudentPortalHome";
 
 const PortalClassWorkspace = lazy(() =>
@@ -201,7 +202,10 @@ function PortalWorkspace({
 }: {
   role: Extract<Role, "student" | "guardian">;
   studentId: string;
-  contexts: { id: string; fullName: string; preferredName?: string | null }[];
+  contexts: (
+    | { id: string; fullName: string; preferredName?: string | null }
+    | PortalContext
+  )[];
   access?: PortalContext;
 }) {
   const location = useLocation();
@@ -449,14 +453,25 @@ function PortalWorkspace({
               index
               element={
                 role === "guardian" ? (
-                  <GuardianHome
-                    data={data}
-                    base={base}
-                    isDemo={isDemo}
-                    canViewWork={guardianWork}
-                    canViewSchedule={guardianSchedule}
-                    canViewFinance={guardianFinance}
-                  />
+                  <>
+                    <GuardianHome
+                      data={data}
+                      base={base}
+                      isDemo={isDemo}
+                      canViewWork={guardianWork}
+                      canViewSchedule={guardianSchedule}
+                      canViewFinance={guardianFinance}
+                    />
+                    {!isDemo && (
+                      <HouseholdLessonCoverage
+                        timezone={data.settings.timezone}
+                        members={contexts.filter(
+                          (item): item is PortalContext =>
+                            "canViewFinance" in item,
+                        )}
+                      />
+                    )}
+                  </>
                 ) : (
                   <StudentHome data={data} base={base} isDemo={isDemo} />
                 )
@@ -555,6 +570,20 @@ function PortalWorkspace({
             <Route
               path="materials"
               element={<Navigate to={`${base}/work`} replace />}
+            />
+            <Route
+              path="credits"
+              element={
+                <CreditsAndLessons
+                  studentId={studentId}
+                  timezone={data.settings.timezone}
+                  contact={data.settings.contactEmail}
+                  enabled={
+                    !isDemo &&
+                    (role === "guardian" ? guardianFinance : !person?.isMinor)
+                  }
+                />
+              }
             />
             <Route
               path="payments"

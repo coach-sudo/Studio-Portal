@@ -5570,6 +5570,10 @@ export type Database = {
         Args: { target_package: string }
         Returns: number
       }
+      portal_renewal_options: {
+        Args: { p_lesson?: string; p_student: string }
+        Returns: Json
+      }
       portal_student_contexts: {
         Args: { p_page?: number; p_student?: string }
         Returns: Json

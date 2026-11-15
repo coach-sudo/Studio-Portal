@@ -15,6 +15,7 @@ const studentNavigation: NavigationItem[] = [
   { to: "work", label: "My Work", icon: BookOpen },
   { to: "bookings", label: "Schedule", icon: CalendarDays },
   { to: "inbox", label: "Messages", icon: MessageSquare },
+  { to: "credits", label: "Credits & Lessons", icon: CalendarDays },
   { to: "payments", label: "Payments", icon: CircleDollarSign },
   { to: "referrals", label: "Referrals", icon: Gift },
   { to: "actor-page", label: "Actor Page", icon: Users },
@@ -44,7 +45,7 @@ export function portalNavigation(
         : item,
     )
     .filter((item) => {
-      if (item.to === "payments")
+      if (item.to === "payments" || item.to === "credits")
         return role === "guardian"
           ? permissions?.canViewFinance !== false
           : !isMinor;

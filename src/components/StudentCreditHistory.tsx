@@ -23,6 +23,14 @@ const schema = z.object({
     )
     .max(25),
 });
+const creditHistoryLabels: Record<string, string> = {
+  purchase: "Credits added",
+  reservation: "Credit reserved",
+  consumption: "Credit used",
+  release: "Credit returned",
+  adjustment: "Credit balance adjusted",
+  expiration: "Credit expired",
+};
 export function StudentCreditHistory({
   studentId,
   timezone,
@@ -67,8 +75,10 @@ export function StudentCreditHistory({
                 <div>
                   <strong>{item.packageName}</strong>
                   <small>
-                    {item.reason || item.kind} ·{" "}
-                    {formatStudioDateTime(item.createdAt, timezone)}
+                    {item.reason ||
+                      creditHistoryLabels[item.kind] ||
+                      "Credit activity"}{" "}
+                    · {formatStudioDateTime(item.createdAt, timezone)}
                   </small>
                 </div>
                 <span>

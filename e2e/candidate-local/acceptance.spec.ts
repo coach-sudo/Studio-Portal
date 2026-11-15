@@ -62,9 +62,17 @@ for (const role of ["student", "guardian"] as const)
   }) => {
     await installFixture(context, role);
     await page.goto("/portal");
-    const account = page.getByRole("region", { name: "Account", exact: true });
+    const account = page.getByRole("region", {
+      name: role === "student" ? "Lesson Credits" : "Account",
+      exact: true,
+    });
     await expect(
-      account.getByText("0 lesson credits available", { exact: true }),
+      account.getByText(
+        role === "student"
+          ? "No lesson packages."
+          : "0 lesson credits available",
+        { exact: true },
+      ),
     ).toBeVisible();
     for (const text of await account.locator("strong,small").all()) {
       expect(
@@ -74,9 +82,17 @@ for (const role of ["student", "guardian"] as const)
         await text.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
       ).toBe(true);
     }
-    await account
-      .getByRole("button", { name: "View payments›", exact: true })
-      .click();
+    if (role === "student") {
+      await account.getByRole("link", { name: "Credits & Lessons" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Credits & Lessons" }),
+      ).toBeVisible();
+      await page.goto("/portal/payments?student=" + ids.student);
+    } else {
+      await account
+        .getByRole("button", { name: "View payments›", exact: true })
+        .click();
+    }
     await expect(
       page.getByText("Amount due · USD", { exact: true }),
     ).toBeVisible();

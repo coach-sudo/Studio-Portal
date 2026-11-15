@@ -23,6 +23,15 @@ export type CommandInput = z.infer<typeof commandSchema>;
 const uuid = z.string().uuid();
 const dateTime = z.string().datetime();
 const commandPayloadSchemas = {
+  "finance:renewal_options": z.object({ studentId: uuid, lessonId: uuid }),
+  "finance:checkout_definition": z.object({
+    studentId: uuid,
+    lessonId: uuid.optional(),
+    packageDefinitionId: uuid,
+    renewalMode: z.string().optional(),
+    expectedPriceMinor: z.number().int().optional(),
+    expectedCurrency: z.string().length(3).optional(),
+  }),
   "credits:package_review": z.object({
     studentId: uuid,
     packageId: uuid.optional(),
