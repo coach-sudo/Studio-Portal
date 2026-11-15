@@ -1,6 +1,7 @@
 import { useSearchParams } from "react-router-dom";
 import { CreditExpiration } from "./CreditExpiration";
 import { SharedCreditRestoration } from "./SharedCreditRestoration";
+import { SharedPoolBilling } from "./SharedPoolBilling";
 import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "../../components/Primitives";
@@ -206,6 +207,11 @@ export function HouseholdCreditAdmin({
                       >
                         <SharedCreditPoolDetails
                           pool={pool}
+                          timezone={timezone}
+                        />
+                        <SharedPoolBilling
+                          studentId={studentId}
+                          packageId={pool.id}
                           timezone={timezone}
                         />
                         <CreditExpiration

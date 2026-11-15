@@ -471,6 +471,9 @@ export async function handleFinanceCommands(
       p_key: `coach-credit:${input.idempotencyKey}`,
       p_value: {
         quantity,
+        ...(input.payload.customTerms
+          ? { customTerms: input.payload.customTerms }
+          : {}),
         kind: "adjustment",
         ...(input.payload.portalVisible === false
           ? { portalVisible: false }

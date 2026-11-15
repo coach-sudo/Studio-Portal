@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { CustomCreditGrant } from "./CustomCreditGrant";
 import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
 import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { useQueryClient } from "@tanstack/react-query";
@@ -236,6 +237,12 @@ export function Payments({
       )}
       {!isDemo && <StudentFinancialSummary studentId={student.id} />}
       <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
+      {!isDemo && (
+        <CustomCreditGrant
+          studentId={student.id}
+          services={data.bookingServices}
+        />
+      )}
       <details
         className="disclosure-section"
         open={params.has("invoice") || undefined}

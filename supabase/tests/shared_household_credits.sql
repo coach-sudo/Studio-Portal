@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(83);
+select plan(95);
 
 insert into auth.users(id,email)
 select md5('shared-user-'||n)::uuid,'shared-role-'||n||'@example.test' from generate_series(1,5) n;
@@ -276,6 +276,58 @@ select is((select status::text from lessons where id=md5('shared-lesson-1')::uui
   'Restoration preserves completed lesson status');
 select is(jsonb_array_length(pg_temp.h('restore_list',pg_temp.restore_request())),0,
   'Restored uses cannot be selected again');
+
+
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+update linked_contacts set is_primary_payer=true where student_id=md5('shared-student-2')::uuid
+  and user_id=md5('shared-user-3')::uuid;
+insert into linked_contacts(id,studio_id,student_id,user_id,full_name,email,portal_enabled,can_view_finance,can_receive_notifications)
+values(md5('pool-billing-alternate')::uuid,md5('shared-studio')::uuid,md5('shared-student-2')::uuid,
+ md5('shared-user-5')::uuid,'Shared pool payer','pool-payer@example.test',true,true,true);
+select is((select full_name from linked_contacts where id=credit_internal.shared_pool_billing_contact(
+  pg_temp.pool(),md5('shared-student-2')::uuid)), 'Guardian','Pool falls back to affected student’s designated payer');
+create function pg_temp.billing_change(p_contact uuid,p_key text) returns jsonb language sql as $$
+  select pg_temp.h('billing_apply',v||jsonb_build_object(
+    'key',p_key,'preview',pg_temp.h('billing_preview',v),'reason','Reviewed pool billing'))
+  from (select jsonb_build_object('packageId',pg_temp.pool(),'contactId',p_contact) v) x
+$$;
+select is(pg_temp.billing_change(md5('pool-billing-alternate')::uuid,'reviewed-pool-payer')->>'status',
+  'completed','Coach can designate an eligible pool contact');
+select is(credit_internal.shared_pool_billing_contact(pg_temp.pool(),md5('shared-student-2')::uuid),
+  md5('pool-billing-alternate')::uuid,'Authorized pool contact takes precedence');
+update linked_contacts set can_receive_notifications=false where id=md5('pool-billing-alternate')::uuid;
+select is((select full_name from linked_contacts where id=credit_internal.shared_pool_billing_contact(
+  pg_temp.pool(),md5('shared-student-2')::uuid)), 'Guardian','Revoked permission uses the valid fallback');
+select is(pg_temp.billing_change(null,'cleared-pool-payer')->>'status','completed','Coach can clear designation');
+select is(jsonb_array_length(pg_temp.h('billing_read',jsonb_build_object('packageId',pg_temp.pool()))->'history'),
+  2,'Changes record an audit history');
+select set_config('request.jwt.claim.sub',md5('shared-user-3')::uuid::text,true);
+select throws_ok($$select pg_temp.h('billing_read',jsonb_build_object('packageId',pg_temp.pool()))$$,
+  '42501','FORBIDDEN','Guardian cannot read private pool billing settings');
+
+
+create temporary table custom_credit_fixture as
+select command_grant_student_credits(md5('shared-student-3')::uuid,'typed-discretionary-test',
+  jsonb_build_object('quantity',2,'kind','adjustment','reason','Typed credit grant','portalVisible',false,
+    'customTerms',jsonb_build_object('serviceId',md5('shared-service-1')::uuid,'durationMinutes',60)),
+  md5('shared-user-1')::uuid) as result;
+select ok(credit_internal.package_terms_match((result#>>'{package,id}')::uuid,md5('shared-studio')::uuid,
+ md5('shared-service-1')::uuid,interval '1 hour'),'Typed discretionary lot matches the explicit terms') from custom_credit_fixture;
+select is(credit_internal.package_terms_match((result#>>'{package,id}')::uuid,md5('shared-studio')::uuid,
+ md5('shared-service-2')::uuid,interval '1 hour'),false,'Typed discretionary lot rejects a different service') from custom_credit_fixture;
+select is(credit_internal.package_terms_match((result#>>'{package,id}')::uuid,md5('shared-studio')::uuid,
+ md5('shared-service-1')::uuid,interval '30 minutes'),false,'Typed discretionary lot rejects a different duration') from custom_credit_fixture;
+select is((select count(*) from payment_entries where student_id=md5('shared-student-3')::uuid),0::bigint,
+ 'Discretionary grants create no financial entry');
+
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider)
+values(md5('unclassified-manual-test')::uuid,md5('shared-studio')::uuid,md5('shared-student-3')::uuid,
+ 'Unclassified manual test',now()+interval '20 days',now()+interval '20 days 1 hour','scheduled','virtual','Meet','studio');
+select is((select item->>'coverageStatus' from jsonb_array_elements(student_credit_coverage(
+  md5('shared-student-3')::uuid,1,20,false)->'items') item
+  where item->>'lessonId'=md5('unclassified-manual-test')::uuid::text),
+  'studio_review','An unclassified manual lesson requires review without a guessed billing obligation');
 
 select * from finish();
 rollback;
