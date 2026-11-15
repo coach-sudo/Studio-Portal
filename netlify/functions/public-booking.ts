@@ -508,6 +508,7 @@ async function createBooking(request: Request, context: Context) {
         p_student: student.id,
         p_service: service.id,
         p_starts: occurrenceStarts,
+        ...(input.offeringId ? { p_offering: input.offeringId } : {}),
       });
       if (result.error) throw result.error;
       const status = (result.data as { status?: string } | null)?.status;

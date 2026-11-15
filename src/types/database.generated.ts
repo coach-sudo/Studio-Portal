@@ -4801,7 +4801,7 @@ export type Database = {
         Returns: undefined
       }
       booking_credit_preflight: {
-        Args: { p_service: string; p_starts: string[]; p_student: string }
+        Args: { p_offering?: string; p_service: string; p_starts: string[]; p_student: string }
         Returns: Json
       }
       calendar_claim_current: {

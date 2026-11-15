@@ -12,9 +12,9 @@ create function credit_internal.available_lesson_package(
 $$;
 revoke all on function credit_internal.available_lesson_package(uuid,uuid,uuid,interval,timestamptz,jsonb,uuid,boolean) from public,anon,authenticated;
 
-create function public.booking_credit_preflight(p_student uuid,p_service uuid,p_starts timestamptz[])
+create function public.booking_credit_preflight(p_student uuid,p_service uuid,p_starts timestamptz[],p_offering uuid default null)
 returns jsonb language plpgsql stable security definer set search_path='' as $$
-declare svc public.booking_services; occurrence timestamptz; chosen uuid;
+declare svc public.booking_services; occurrence record; chosen uuid; total integer:=0;
   allocated jsonb:='{}'; covered integer:=0; uncertain boolean:=false;
 begin
   select b.* into svc from public.booking_services b join public.students s on s.studio_id=b.studio_id
@@ -25,22 +25,31 @@ begin
   if (public.student_credit_summary(p_student)->>'needsReview')::boolean then
     return jsonb_build_object('status','review_required','eligibleOccurrences',0);
   end if;
-  for occurrence in select unnest(p_starts) order by 1 loop
-    chosen:=credit_internal.available_lesson_package(p_student,svc.studio_id,svc.id,
-      make_interval(mins=>svc.duration_minutes),occurrence,allocated,null,false);
+  for occurrence in
+    select start_at,svc.id service_id,make_interval(mins=>svc.duration_minutes) duration
+      from unnest(p_starts) start_at where p_offering is null
+    union all
+    select l.starts_at,l.service_id,l.ends_at-l.starts_at from public.service_offerings o
+      join public.lessons l on l.id=any(o.lesson_ids)
+      where o.id=p_offering and o.service_id=svc.id and l.studio_id=svc.studio_id
+    order by 1
+  loop
+    total:=total+1;
+    chosen:=credit_internal.available_lesson_package(p_student,svc.studio_id,occurrence.service_id,
+      occurrence.duration,occurrence.start_at,allocated,null,false);
     if chosen is null then continue; end if;
     covered:=covered+1;
-    uncertain:=uncertain or credit_internal.package_terms_match(chosen,svc.studio_id,svc.id,
-      make_interval(mins=>svc.duration_minutes)) is null;
+    uncertain:=uncertain or credit_internal.package_terms_match(chosen,svc.studio_id,occurrence.service_id,
+      occurrence.duration) is null;
     allocated:=jsonb_set(allocated,array[chosen::text],to_jsonb(coalesce((allocated->>chosen::text)::integer,0)+1));
   end loop;
   return jsonb_build_object('status',case
-    when covered<cardinality(p_starts) then 'needs_credit'
+    when total=0 or covered<total then 'needs_credit'
     when uncertain then 'legacy_eligible'
     else 'eligible' end,'eligibleOccurrences',covered);
 end $$;
-revoke all on function public.booking_credit_preflight(uuid,uuid,timestamptz[]) from public,anon,authenticated;
-grant execute on function public.booking_credit_preflight(uuid,uuid,timestamptz[]) to service_role;
+revoke all on function public.booking_credit_preflight(uuid,uuid,timestamptz[],uuid) from public,anon,authenticated;
+grant execute on function public.booking_credit_preflight(uuid,uuid,timestamptz[],uuid) to service_role;
 
 create table credit_internal.reconciliation_cases (
   id uuid primary key default gen_random_uuid(),

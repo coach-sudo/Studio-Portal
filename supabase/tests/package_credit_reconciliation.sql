@@ -124,7 +124,7 @@ select ok((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'
 select is(booking_credit_preflight('c3000000-0000-4000-8000-000000000001',
   'c4000000-0000-4000-8000-000000000002',array[now()+interval '3 days'])->>'status','needs_credit',
   'Preflight excludes a package with a different duration after legacy fallback');
-select ok(not has_function_privilege('authenticated','public.booking_credit_preflight(uuid,uuid,timestamptz[])','EXECUTE'),
+select ok(not has_function_privilege('authenticated','public.booking_credit_preflight(uuid,uuid,timestamptz[],uuid)','EXECUTE'),
   'Public preflight RPC requires the server role');
 create function pg_temp.find_case(p_finding text) returns jsonb language sql as $$
   select e from jsonb_array_elements(pg_temp.review('c6000000-0000-4000-8000-000000000001')->'cases') e
