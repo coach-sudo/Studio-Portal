@@ -5686,6 +5686,10 @@ export type Database = {
         Args: { p_key: string; p_value: Json }
         Returns: Json
       }
+      refresh_credit_reminder_conditions: {
+        Args: { p_at?: string; p_student: string }
+        Returns: Json
+      }
       refund_package_gift: { Args: { target_gift: string }; Returns: Json }
       release_booking_discount: {
         Args: { target_code: string }
