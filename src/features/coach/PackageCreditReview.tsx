@@ -49,6 +49,13 @@ const caseSchema = z.object({
   ]),
   version: z.number().int(),
   reason: z.string().nullable(),
+  evidence: z
+    .object({
+      checkoutDuplicates: z.array(
+        z.object({ entryId: id, relatedEntryId: id }),
+      ),
+    })
+    .optional(),
   history: z.array(
     z.object({
       at: z.string(),
@@ -400,6 +407,7 @@ export function PackageCreditReview({
                     return (
                       <details
                         key={item.id}
+                        name={formId + "-case"}
                         className="disclosure-section"
                         onToggle={(event) => {
                           if (event.currentTarget.open) setCaseReason("");
@@ -413,6 +421,26 @@ export function PackageCreditReview({
                           Review the package history and affected reservations
                           below before deciding.
                         </p>
+                        {!!item.evidence?.checkoutDuplicates.length && (
+                          <details>
+                            <summary>Confirmed source entries</summary>
+                            <ul>
+                              {item.evidence.checkoutDuplicates.map(
+                                (duplicate) => (
+                                  <li
+                                    key={
+                                      duplicate.entryId +
+                                      duplicate.relatedEntryId
+                                    }
+                                  >
+                                    {duplicate.entryId} and{" "}
+                                    {duplicate.relatedEntryId}
+                                  </li>
+                                ),
+                              )}
+                            </ul>
+                          </details>
+                        )}
                         {item.history.length > 0 && (
                           <ul>
                             {item.history.map((entry, index) => (

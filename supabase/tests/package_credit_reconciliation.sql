@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(41);
+select plan(43);
 
 insert into auth.users(id,email) values
  ('c1000000-0000-4000-8000-000000000001','e2e-stage-b-coach@example.test'),
@@ -79,6 +79,11 @@ select is(credit_internal.evaluate_student_lesson_credit(
   'c3000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000004',
   'manual','{}','c6000000-0000-4000-8000-000000000001')->>'state','review_required',
   'A different service cannot allocate a defined package');
+set local request.jwt.claim.sub='c1000000-0000-4000-8000-000000000001';
+select is((select e->>'coverageStatus' from jsonb_array_elements(student_credit_coverage(
+  'c3000000-0000-4000-8000-000000000001',1,5,false)->'items') e
+  where e->>'lessonId'='c7000000-0000-4000-8000-000000000001'),'covered',
+  'Student-facing status reports a verified reserved lesson as covered');
 select throws_ok($$update lessons set ends_at=starts_at+interval '30 minutes'
   where id='c7000000-0000-4000-8000-000000000001'$$,'P0001',
   'INVALID_TRANSITION: Review incompatible or expired package coverage before changing this lesson.',
@@ -131,8 +136,11 @@ create function pg_temp.decide(p_case jsonb,p_status text,p_key text) returns js
     jsonb_build_object('caseId',p_case->>'id','status',p_status,'reason','Reviewed the original entries'),
     (p_case->>'version')::integer,p_key,'c1000000-0000-4000-8000-000000000001')
 $$;
+create temporary table original_case as select pg_temp.find_case('purchase_source_unverified') item;
 select is(pg_temp.decide(pg_temp.find_case('purchase_source_unverified'),'dismissed','case-dismiss-test')->'case'->>'status',
   'dismissed','Dismissal records a reason and closes the case');
+select throws_ok($$select pg_temp.decide((select item from original_case),'under_review','case-stale-test')$$,
+  'P0001','VERSION_CONFLICT: Refresh the finding before deciding.','A stale competing decision cannot overwrite a dismissal');
 select is(pg_temp.find_case('purchase_source_unverified')->>'status','dismissed','Unchanged scans preserve a dismissal');
 insert into package_credit_entries(package_id,kind,quantity,reason)
   values('c6000000-0000-4000-8000-000000000001','adjustment',1,'New accounting evidence');

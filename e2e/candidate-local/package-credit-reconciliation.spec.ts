@@ -53,9 +53,28 @@ test("coach reviews package corrections and reservation conflicts", async ({
 }, info) => {
   await installFixture(context, "coach");
   const corrections: unknown[] = [];
+  const reconciliation = {
+    id: "61000000-0000-4000-8000-000000000009",
+    finding: "unverified_reservation_eligibility",
+    status: "needs_review",
+    version: 1,
+    reason: null as string | null,
+    history: [] as { at: string; reason: string; status: string }[],
+  };
   await context.route("**/api/v2/credits", async (route) => {
     const { command, payload } = route.request().postDataJSON();
     if (command === "package_correct") corrections.push(payload);
+    if (command === "case_decide") {
+      reconciliation.status = payload.status;
+      reconciliation.version++;
+      reconciliation.reason = payload.reason;
+      reconciliation.history.push({
+        at: "2026-10-15T12:00:00Z",
+        reason: payload.reason,
+        status: payload.status,
+      });
+      return route.fulfill({ json: { resource: { case: reconciliation } } });
+    }
     if (command !== "package_review") return route.fallback();
     return route.fulfill({
       json: {
@@ -65,6 +84,7 @@ test("coach reviews package corrections and reservation conflicts", async ({
           page: 1,
           lots: [fixturePackage],
           selected: payload.packageId ? fixturePackage : null,
+          cases: payload.packageId ? [reconciliation] : [],
           entries: payload.packageId ? entries : [],
           total: payload.packageId ? entries.length : 0,
           reservations: payload.packageId
@@ -133,5 +153,16 @@ test("coach reviews package corrections and reservation conflicts", async ({
     await page.keyboard.press("Escape");
     await expect(page.getByRole("button", { name: action })).toBeFocused();
   }
+  const cases = page.getByRole("region", { name: "Reconciliation cases" });
+  await cases.getByText(/^Needs review/).click();
+  await cases
+    .getByLabel("Review reason")
+    .fill("Confirmed synthetic reservation context");
+  await cases.getByRole("button", { name: "Dismiss", exact: true }).click();
+  await expect(cases.getByText(/^Dismissed/)).toBeVisible();
+  await expect(
+    cases.getByText(/Confirmed synthetic reservation context/),
+  ).toBeVisible();
+  await page.screenshot({ path: info.outputPath("case-decision.png") });
   expect(corrections).toHaveLength(0);
 });

@@ -390,7 +390,7 @@ begin
   summary := public.student_credit_summary(p_student);
   lessons_visible := current_setting('role', true) = 'service_role' or public.can_view_student_schedule(p_student);
   if lessons_visible then
-    for l in select x.id, x.topic, x.starts_at, x.ends_at, x.version from public.lessons x
+    for l in select x.id, x.topic, x.starts_at, x.ends_at, x.version, x.service_id from public.lessons x
       join public.students s on s.id = p_student and s.studio_id = x.studio_id
       where x.status = 'scheduled' and x.starts_at >= now()
         and (x.student_id = p_student or exists(select 1 from public.lesson_participants lp
@@ -425,7 +425,8 @@ begin
         else 'separate_payment' end;
       if total > (p_page::bigint - 1) * p_page_size and total <= p_page::bigint * p_page_size then
         items := items || jsonb_build_array(result || jsonb_build_object(
-          'coverageStatus',student_status,'lessonId', l.id, 'topic', l.topic, 'startsAt', l.starts_at, 'endsAt', l.ends_at, 'version', l.version));
+          'coverageStatus',student_status,'serviceId',l.service_id,
+          'durationMinutes',extract(epoch from l.ends_at-l.starts_at)/60,'lessonId', l.id, 'topic', l.topic, 'startsAt', l.starts_at, 'endsAt', l.ends_at, 'version', l.version));
       end if;
     end loop;
   end if;

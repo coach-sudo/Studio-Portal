@@ -47,3 +47,13 @@ The public booking preflight still uses a package balance advisory before the tr
 The full isolated Supabase replay passed 582 pgTAP assertions, including snapshot stability after a catalog edit, coach and portal balance parity, and private evidence redaction. SQL lint passed at the error threshold. Two-session grant and package-correction tests passed. A synthetic backup restored to a fresh database with matching issued duration, service count, source entry, credit balance, audit record, and original payment amount.
 
 The previous Stage A and Stage B deployed browser runs each failed the same four cases on obsolete balance selectors. The tests now assert the same ledger amounts using the package view and current Unused Credits label. The separate local candidate run retains all 18 inherited student and guardian failures.
+
+## Final stabilization follow-up
+
+Migration 20261115150000_credit_reconciliation_stabilization adds durable coach-only reconciliation decisions, evidence versions with explicit reopen audit events, a server-only advisory booking check, and a student-safe coverage status field. Existing booking confirmation still revalidates and reserves in its database transaction. The advisory result uses the same package selector as confirmation and retains established legacy allocation.
+
+Exact replay keys remain in place for booking and checkout events. Verified Stripe checkout sessions carrying the same payment intent now share an additional duplicate guard for package issuance. Historical active grants with distinct session references and the same verified intent are confirmed candidates for manual correction. A repeated description is only a review clue. Stripe event and intent evidence does not establish a link to an independent provider that holds no shared verified reference. Provider-wide matching remains limited to available provenance.
+
+Reconciliation cases are synchronized on coach package review. Unchanged dismissed findings stay dismissed. Material evidence changes are audited and can reopen a case. Cases can retain a package-linked correction and never write to financial records. Household pools and review scope remain deferred to Stage C.
+
+Rollback is a reviewed forward migration restoring the earlier RPC bodies and keeping newly collected audit evidence. Keep credit ledger history and preserve private case records. The public booking application and its preflight RPC must be rolled back together. The hosted acceptance requirements are in the separate manifest.
