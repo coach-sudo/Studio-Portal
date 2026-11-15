@@ -174,6 +174,57 @@ for (const role of ["student", "guardian"] as const) {
     context,
   }, info) => {
     await installFixture(context, role);
+    await context.route("**/rest/v1/rpc/household_credit_access", (route) =>
+      route.fulfill({ json: [] }),
+    );
+    await context.route(
+      "**/rest/v1/rpc/student_credit_coverage",
+      async (route) => {
+        return route.fulfill({
+          json: {
+            studentId: ids.student,
+            evaluatedAt: new Date().toISOString(),
+            previewEnable: false,
+            settingReasonCode: null,
+            lessonsVisible: true,
+            packages: [],
+            items: [
+              {
+                lessonId: ids.lesson,
+                topic: "Candidate scene study",
+                startsAt: "2027-01-20T18:00:00Z",
+                endsAt: "2027-01-20T19:00:00Z",
+                durationMinutes: 60,
+                version: 1,
+                state: "ineligible",
+                reasonCode: "no_available_credits",
+                eligible: false,
+                coverageStatus: "needs_credit",
+              },
+            ],
+            summary: {
+              remaining: 0,
+              reserved: 0,
+              available: 0,
+              expired: 0,
+              version: 1,
+              autoApply: true,
+              needsReview: false,
+            },
+            counts: {
+              covered: 0,
+              eligible: 0,
+              uncovered: 1,
+              reviewRequired: 0,
+            },
+            page: route.request().postDataJSON().p_page,
+            pageSize: route.request().postDataJSON().p_page_size,
+            total: 1,
+            hasMore: false,
+          },
+        });
+      },
+    );
     await context.route(
       "**/rest/v1/rpc/credit_reminder_history",
       async (route) => {
@@ -200,6 +251,14 @@ for (const role of ["student", "guardian"] as const) {
       },
     );
     await page.goto("/portal/credits?student=" + ids.student);
+    await expect(
+      page.getByText("Candidate scene study", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: /unread notifications/ }).click();
+    await expect(
+      page.getByRole("button", { name: /A lesson needs a credit/ }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Close notifications" }).click();
     await page.getByText("Renewal reminders", { exact: true }).click();
     await expect(
       page.getByText("The upcoming lesson is still scheduled."),
