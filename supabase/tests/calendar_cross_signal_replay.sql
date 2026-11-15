@@ -10,12 +10,14 @@ insert into public.students(id,studio_id,full_name) values
  ('e6900000-0000-4000-8000-000000000013','e6900000-0000-4000-8000-000000000012','Gmail learner'),
  ('e6900000-0000-4000-8000-000000000014','e6900000-0000-4000-8000-000000000012','Studio learner');
 insert into public.student_credit_accounts(student_id,auto_apply) select id,true from public.students where studio_id='e6900000-0000-4000-8000-000000000012';
+insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes) values('e6900000-0000-4000-8000-000000000017','e6900000-0000-4000-8000-000000000012','calendar-replay-service','Credit fixture service','private',60);
 insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider,source_external_id) values
  ('e6900000-0000-4000-8000-000000000015','e6900000-0000-4000-8000-000000000012','e6900000-0000-4000-8000-000000000013','Gmail original',now()+interval '1 day',now()+interval '1 day 1 hour','scheduled','in_person','Studio','gmail','original-email'),
  ('e6900000-0000-4000-8000-000000000016','e6900000-0000-4000-8000-000000000012','e6900000-0000-4000-8000-000000000014','Studio original',now()+interval '2 days',now()+interval '2 days 1 hour','scheduled','in_person','Studio','studio',null);
+update public.lessons set service_id='e6900000-0000-4000-8000-000000000017' where studio_id='e6900000-0000-4000-8000-000000000012' and service_id is null;
 insert into public.lesson_participants(lesson_id,student_id,display_name,email,status) select id,student_id,topic,'e2e-replay@example.test','confirmed' from public.lessons where studio_id='e6900000-0000-4000-8000-000000000012';
 insert into public.calendar_projections(lesson_id,projected_version,status) select id,version,'queued' from public.lessons where studio_id='e6900000-0000-4000-8000-000000000012';
-select public.command_grant_student_credits(id,'e2e-replay-grant-'||id,'{"quantity":1,"kind":"adjustment","reason":"Isolated replay test"}','e6900000-0000-4000-8000-000000000011') from public.students where studio_id='e6900000-0000-4000-8000-000000000012';
+select public.command_grant_student_credits(id,'e2e-replay-grant-'||id,'{"quantity":1,"kind":"adjustment","reason":"Isolated replay test","customTerms":{"serviceId":"e6900000-0000-4000-8000-000000000017","durationMinutes":60}}','e6900000-0000-4000-8000-000000000011') from public.students where studio_id='e6900000-0000-4000-8000-000000000012';
 select set_config('request.jwt.claim.sub','e6900000-0000-4000-8000-000000000011',true);
 -- Imported payment policy requires deliberate manual credit use; do not weaken it.
 select public.command_apply_lesson_credit(id,null,'Synthetic reviewed credit use','e2e-replay-manual-'||id) from public.lessons where studio_id='e6900000-0000-4000-8000-000000000012' and source_provider='gmail';

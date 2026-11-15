@@ -49,6 +49,21 @@ export const householdReplySchema = z.looseObject({
   status: z.enum(["completed", "preview", "stale", "unapplied"]),
   canApply: z.boolean().optional(),
   packageName: z.string().optional(),
+  grantPreview: z
+    .object({
+      householdId: z.string(),
+      definitionId: z.string(),
+      definitionVersion: z.number(),
+      serviceId: z.string(),
+      serviceName: z.string(),
+      durationMinutes: z.number(),
+      quantity: z.number(),
+      expiresAt: z.string().nullable(),
+      members: z.array(z.string()),
+      reason: z.string(),
+      portalVisible: z.boolean(),
+    })
+    .optional(),
   durationMinutes: z.number().nullable().optional(),
   sourceAvailable: z.number().optional(),
   sourceReserved: z.number().optional(),

@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(113);
+select plan(134);
 
 insert into auth.users(id,email)
 select md5('shared-user-'||n)::uuid,'shared-role-'||n||'@example.test' from generate_series(1,5) n;
@@ -237,13 +237,20 @@ select throws_ok($$select pg_temp.h('attention_cases')$$,'42501','FORBIDDEN','Gu
 
 
 select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+insert into packages(id,student_id,name)
+values(md5('historical-private-adjustment')::uuid,md5('shared-student-3')::uuid,'Studio lesson credits');
+with seed as (
+  insert into package_credit_entries(package_id,kind,quantity,reason)
+  values(md5('historical-private-adjustment')::uuid,'adjustment',4,'Historical fixture') returning id
+)
+insert into credit_internal.hidden_portal_credit_entries(entry_id) select id from seed;
 select lives_ok($$select command_student_credit_settings(md5('shared-student-3')::uuid,'set_total',
-  '{"total":2,"reason":"Private legacy correction","portalVisible":false,"reviewedBalance":{"remaining":0,"reserved":0,"available":0}}',
-  1,'private-legacy-test',md5('shared-user-1')::uuid)$$,'A legacy correction can opt out of portal history');
+  '{"total":2,"reason":"Private legacy correction","portalVisible":false,"reviewedBalance":{"remaining":4,"reserved":0,"available":4}}',
+  (student_credit_summary(md5('shared-student-3')::uuid)->>'version')::integer,'private-legacy-test',md5('shared-user-1')::uuid)$$,'A legacy correction can opt out of portal history');
 select is(student_credit_summary(md5('shared-student-3')::uuid)->>'remaining','2',
   'Hiding a legacy adjustment preserves the changed balance');
 select is((select count(*) from credit_internal.hidden_portal_credit_entries h join package_credit_entries e on e.id=h.entry_id
-  where e.idempotency_key='credit-total:private-legacy-test:add'),1::bigint,'Legacy grant entry is marked private');
+  where e.idempotency_key='credit-total:private-legacy-test:'||md5('historical-private-adjustment')::uuid::text),1::bigint,'Legacy balance reduction is marked private');
 select is((select count(*) from audit_events where correlation_id='private-legacy-test' and reason='Private legacy correction'),
   1::bigint,'Legacy visibility does not erase coach audit');
 insert into credit_internal.reconciliation_cases(student_id,package_id,finding,evidence)
@@ -404,6 +411,87 @@ select ok(exists(select 1 from jsonb_array_elements(pg_temp.h('billing_attention
  'Recipient revocation refreshes the coach routing finding');
 select is((select count(*) from audit_events where entity_id=(select id::uuid from routing_fixture)
  and action='credits.routing_review'),2::bigint,'A material routing change retains both audit events');
+
+create function pg_temp.calendar_proposal(p_arrangement text default 'pay_later') returns jsonb language sql as $$
+ select jsonb_build_object('studentId',md5('shared-student-3')::uuid,'serviceId',md5('shared-service-1')::uuid,
+   'durationMinutes',60,'topic','Classified proposal','startsAt',now()+interval '65 days',
+   'endsAt',now()+interval '65 days 1 hour','billingArrangement',p_arrangement,
+   'reason','Verified calendar classification','timezone','UTC','locationType','virtual',
+   'recurrence','weekly','occurrenceCount',2)
+$$;
+select throws_ok($$select command_create_lesson_once(pg_temp.calendar_proposal()-'billingArrangement','proposal-incomplete')$$,
+  'P0001','VALIDATION_FAILED: Choose a matching service, duration, and billing arrangement.','Calendar proposals require billing classification');
+select throws_ok($$select command_create_lesson_once(pg_temp.calendar_proposal()||'{"durationMinutes":30}','proposal-duration-mismatch')$$,
+  'P0001','VALIDATION_FAILED: Choose a matching service, duration, and billing arrangement.','Calendar proposals reject a duration mismatch');
+create temporary table classified_series as
+select command_create_lesson_once(pg_temp.calendar_proposal('credits'),'classified-calendar-series') result;
+select is((select count(*) from bookings where series_id=(select (result#>>'{recurrence,seriesId}')::uuid from classified_series)
+ and payment_policy='credits' and total_minor=0),2::bigint,'Every occurrence uses the selected prepaid classification and no charge');
+select is((select count(*) from package_credit_entries e join lessons l on l.id=e.lesson_id
+ where l.series_id=(select (result#>>'{recurrence,seriesId}')::uuid from classified_series)
+ and e.kind='reservation'),2::bigint,'Both occurrences reserve through the shared authoritative allocator');
+select is(command_create_lesson_once(pg_temp.calendar_proposal('credits'),'classified-calendar-series'),
+ (select result from classified_series),'Calendar confirmation replays without duplicate allocations');
+select throws_ok($$select command_create_lesson_once(pg_temp.calendar_proposal(),'calendar-private-conflict')$$,
+ 'P0001','SLOT_UNAVAILABLE: Studio lessons cannot overlap.','Calendar confirmation preserves server-side overlap protection');
+
+create function pg_temp.discretionary_shared(p_member integer default 1) returns jsonb language sql as $$
+  select jsonb_build_object('householdId',pg_temp.household(),'definitionId',md5('shared-definition')::uuid,
+    'serviceId',md5('shared-service-1')::uuid,'durationMinutes',60,'quantity',2,'expiresAt',now()+interval '20 days',
+    'members',array[md5('shared-student-'||p_member)::uuid],'portalVisible',false,'reason','Verified discretionary issue')
+$$;
+select throws_ok($$select pg_temp.h('discretionary_preview',pg_temp.discretionary_shared(3))$$,
+ '42501','FORBIDDEN','A student outside the household cannot be included');
+select throws_ok($$select pg_temp.h('discretionary_preview',pg_temp.discretionary_shared()||'{"durationMinutes":30}')$$,
+ 'P0001','INVALID_TRANSITION: Choose a service and duration approved for this shared credit type.','The package policy controls shared eligibility');
+select throws_ok($$select pg_temp.h('discretionary_preview',pg_temp.discretionary_shared()||'{"expiresAt":null}')$$,
+ 'P0001','VALIDATION_FAILED: Choose an expiration within the shared credit type terms.','A custom grant respects the definition expiration limit');
+create temporary table discretionary_shared_confirmation as
+select v||jsonb_build_object('key','new-discretionary-shared-lot',
+ 'preview',pg_temp.h('discretionary_preview',v)->'grantPreview') request
+from (select pg_temp.discretionary_shared() v) p;
+select throws_ok($$select pg_temp.h('discretionary_apply',request||'{"quantity":3}') from discretionary_shared_confirmation$$,
+ 'P0001','VERSION_CONFLICT: Review the shared grant again.','The reviewed quantity must match confirmation');
+create temporary table discretionary_shared_receipt as
+select pg_temp.h('discretionary_apply',request) result from discretionary_shared_confirmation;
+select is(pg_temp.h('discretionary_apply',request),(select result from discretionary_shared_receipt),
+ 'An exact retry returns the one new lot') from discretionary_shared_confirmation;
+select ok(p.student_id is null and p.household_id=pg_temp.household() and p.expires_at=now()+interval '20 days'
+ and t.issuance_entry_id is not null and t.duration_minutes=60 and cardinality(t.service_ids)=1,
+ 'New lot keeps one owner and persists explicit original terms')
+ from discretionary_shared_receipt r join packages p on p.id=(r.result->>'packageId')::uuid
+ join credit_internal.package_credit_terms t on t.package_id=p.id;
+select ok(credit_internal.student_may_spend_pool((result->>'packageId')::uuid,md5('shared-student-1')::uuid)
+ and not credit_internal.student_may_spend_pool((result->>'packageId')::uuid,md5('shared-student-2')::uuid),
+ 'The new lot is limited to its explicit student roster') from discretionary_shared_receipt;
+select is((select count(*) from credit_internal.hidden_portal_credit_entries where entry_id=(result->>'entryId')::uuid),
+  1::bigint,'The discretionary grant preserves portal visibility preferences') from discretionary_shared_receipt;
+select is((select count(*) from payment_entries where student_id in (md5('shared-student-1')::uuid,md5('shared-student-3')::uuid)),
+  0::bigint,'Calendar credit reservations and shared issuance do not create payment entries');
+select set_config('request.jwt.claim.sub',md5('shared-user-3')::uuid::text,true);
+select throws_ok($$select pg_temp.h('discretionary_preview',pg_temp.discretionary_shared())$$,
+ '42501','FORBIDDEN','Guardians cannot preview administrative shared grants');
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+
+-- Preserve an untyped legacy lot without treating it as a new entitlement.
+insert into packages(id,student_id,name,auto_apply)
+values(md5('legacy-untyped-fixture')::uuid,md5('shared-student-2')::uuid,'Legacy untyped credits',true);
+insert into package_credit_entries(package_id,kind,quantity,reason)
+values(md5('legacy-untyped-fixture')::uuid,'adjustment',4,'Synthetic historical entry');
+select is(credit_internal.available_lesson_package(md5('shared-student-2')::uuid,md5('shared-studio')::uuid,
+  md5('shared-service-1')::uuid,interval '1 hour',now()+interval '45 days','{}',md5('legacy-untyped-fixture')::uuid,false),
+  null::uuid,'Public booking preflight cannot spend an untyped lot');
+select is(credit_internal.evaluate_student_lesson_credit(md5('shared-student-2')::uuid,
+  (select id::uuid from routing_fixture),'manual','{}',md5('legacy-untyped-fixture')::uuid)->>'state',
+  'review_required','Manual allocation exposes uncertainty instead of spending an untyped lot');
+select throws_ok($$select command_grant_student_credits(md5('shared-student-2')::uuid,'legacy-untyped-unsafe',
+  '{"quantity":1,"kind":"adjustment","reason":"Synthetic unsupported grant"}',md5('shared-user-1')::uuid)$$,
+  'P0001','VALIDATION_FAILED: Choose a defined credit type or enter service and duration.','Untyped standalone grants are rejected');
+select throws_ok($$select command_grant_student_credits(md5('shared-student-2')::uuid,'target-untyped-unsafe',
+  jsonb_build_object('packageId',md5('legacy-untyped-fixture')::uuid,'quantity',1,'kind','adjustment','reason','Untyped lot increment'),
+  md5('shared-user-1')::uuid)$$,
+  'P0001','VALIDATION_FAILED: Choose a credit lot with a verified service and duration.','Selecting a legacy lot does not bypass typed issuance');
+select is(package_credit_balance(md5('legacy-untyped-fixture')::uuid),4,'The original untyped ledger is preserved');
 
 select * from finish();
 rollback;

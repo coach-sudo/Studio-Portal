@@ -22,6 +22,7 @@ type Action =
   | "create_household"
   | "configure_definition"
   | "issue"
+  | "discretionary"
   | "membership"
   | "transfer";
 type Confirmation = { action: string; values: CommandValue; key: string };
@@ -85,9 +86,18 @@ export function HouseholdCreditAdmin({
       values.definitionId = definitionId;
       values.shared = form.has("shared");
       values.transfer = form.has("transfer");
-    } else if (action === "issue") {
+    } else if (action === "issue" || action === "discretionary") {
       values.householdId = householdId;
       values.definitionId = definitionId;
+      if (action === "discretionary") {
+        const expires = String(form.get("expiresAt") ?? "");
+        values.serviceId = String(form.get("serviceId"));
+        values.durationMinutes = Number(form.get("durationMinutes"));
+        values.quantity = Number(form.get("quantity"));
+        values.expiresAt = expires ? new Date(expires).toISOString() : null;
+        values.members = form.getAll("members").map(String);
+        values.portalVisible = form.has("portalVisible");
+      }
     } else {
       values.packageId = String(form.get("packageId"));
       if (action === "membership") {
@@ -102,18 +112,24 @@ export function HouseholdCreditAdmin({
     setBusy(true);
     setMessage("");
     try {
-      const reviewed = action === "membership" || action === "transfer";
+      const reviewed =
+        action === "membership" ||
+        action === "transfer" ||
+        action === "discretionary";
       if (reviewed) {
         const reply = householdReplySchema.parse(
           await householdCreditCommand(studentId, action + "_preview", values),
         );
         setPreview(reply);
         if (!reply.canApply) return;
-        values.preview = Object.fromEntries(
-          Object.entries(reply).filter(
-            ([key]) => key !== "status" && key !== "canApply",
-          ),
-        ) as Json;
+        values.preview =
+          action === "discretionary"
+            ? (reply.grantPreview ?? null)
+            : (Object.fromEntries(
+                Object.entries(reply).filter(
+                  ([key]) => key !== "status" && key !== "canApply",
+                ),
+              ) as Json);
       }
       setConfirmation({
         action: reviewed ? action + "_apply" : action,
@@ -267,6 +283,9 @@ export function HouseholdCreditAdmin({
                         Set package sharing and transfer policy
                       </option>
                       <option value="issue">Issue a shared package</option>
+                      <option value="discretionary">
+                        Grant a new shared credit lot
+                      </option>
                       <option value="membership">
                         Change eligible student
                       </option>
@@ -313,7 +332,8 @@ export function HouseholdCreditAdmin({
                     </>
                   )}
                   {(action === "configure_definition" ||
-                    action === "issue") && (
+                    action === "issue" ||
+                    action === "discretionary") && (
                     <label htmlFor={formId + "-definition"}>
                       Package definition
                       <select
@@ -360,7 +380,9 @@ export function HouseholdCreditAdmin({
                       </label>
                     </div>
                   )}
-                  {(action === "issue" || action === "membership") && (
+                  {(action === "issue" ||
+                    action === "membership" ||
+                    action === "discretionary") && (
                     <label htmlFor={formId + "-household"}>
                       Household
                       <select
@@ -377,6 +399,68 @@ export function HouseholdCreditAdmin({
                         ))}
                       </select>
                     </label>
+                  )}
+                  {action === "discretionary" && household && (
+                    <>
+                      <label>
+                        Eligible lesson service
+                        <select name="serviceId" required>
+                          <option value="">
+                            Choose a service approved by this package
+                          </option>
+                          {services.map((service) => (
+                            <option key={service.id} value={service.id}>
+                              {service.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        Eligible duration in minutes
+                        <input
+                          name="durationMinutes"
+                          type="number"
+                          min={15}
+                          max={480}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Credit quantity
+                        <input
+                          name="quantity"
+                          type="number"
+                          min={1}
+                          max={100000}
+                          required
+                        />
+                      </label>
+                      <label>
+                        Expiration (leave blank if allowed by the package)
+                        <input name="expiresAt" type="datetime-local" />
+                      </label>
+                      <fieldset key={household.id}>
+                        <legend>Eligible students</legend>
+                        {household.members.map((member) => (
+                          <label key={member.id}>
+                            <input
+                              type="checkbox"
+                              name="members"
+                              value={member.id}
+                            />
+                            {member.name}
+                          </label>
+                        ))}
+                      </fieldset>
+                      <label>
+                        <input
+                          type="checkbox"
+                          name="portalVisible"
+                          defaultChecked
+                        />
+                        Show the grant in portal credit history
+                      </label>
+                    </>
                   )}
                   {action === "membership" && household && (
                     <>
@@ -541,6 +625,39 @@ export function HouseholdCreditAdmin({
               )}
               {preview && (
                 <div className="portal-notice household-credit-preview">
+                  {preview.grantPreview && (
+                    <>
+                      <p>
+                        New pool · {preview.grantPreview.serviceName} ·{" "}
+                        {preview.grantPreview.durationMinutes} min
+                      </p>
+                      <p>
+                        Available credits 0 → {preview.grantPreview.quantity}
+                      </p>
+                      <p>
+                        {preview.grantPreview.expiresAt
+                          ? "Expires " +
+                            new Date(
+                              preview.grantPreview.expiresAt,
+                            ).toLocaleString()
+                          : "No expiration"}
+                      </p>
+                      <p>
+                        Eligible students ·{" "}
+                        {household?.members
+                          .filter((member) =>
+                            preview.grantPreview?.members.includes(member.id),
+                          )
+                          .map((member) => member.name)
+                          .join(", ")}
+                      </p>
+                      <p>
+                        {preview.grantPreview.portalVisible
+                          ? "Shown in portal credit history"
+                          : "Private audit only"}
+                      </p>
+                    </>
+                  )}
                   {preview.packageName && (
                     <p>
                       {preview.packageName} · {preview.durationMinutes} min

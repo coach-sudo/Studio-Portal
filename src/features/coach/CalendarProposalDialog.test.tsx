@@ -53,7 +53,17 @@ function mount(create = false) {
           startsAt: conflict.start,
           endsAt: conflict.end,
         }}
-        data={demoSnapshot}
+        data={{
+          ...demoSnapshot,
+          bookingServices: [
+            {
+              ...demoSnapshot.bookingServices[0],
+              id: "classified-proposal-service",
+              name: "Classified proposal service",
+              durationMinutes: 60,
+            },
+          ],
+        }}
         isDemo={false}
         onClose={() => {}}
       />
@@ -178,4 +188,42 @@ it("requires a new acknowledgement when a background refresh changes reviewed Go
   );
   expect(screen.queryByLabelText("Change scope")).not.toBeInTheDocument();
   expect(f.command).not.toHaveBeenCalled();
+});
+it("requires explicit classification and preserves the recurrence in the booking command", async () => {
+  f.check.mockResolvedValue([]);
+  const { user } = mount(true);
+  const review = screen.getByRole("button", { name: "Review proposed lesson" });
+  await user.selectOptions(
+    screen.getByLabelText("Student"),
+    demoSnapshot.students[0].id,
+  );
+  expect(review).toBeDisabled();
+  await user.selectOptions(
+    screen.getByLabelText("Service · 60 minutes"),
+    "classified-proposal-service",
+  );
+  await user.selectOptions(
+    screen.getByLabelText("Billing arrangement"),
+    "credits",
+  );
+  await user.type(screen.getByLabelText("Reason"), "Confirmed prepaid lessons");
+  await user.selectOptions(screen.getByLabelText("Repeat"), "weekly");
+  await user.click(review);
+  await user.click(screen.getByRole("button", { name: "Confirm & schedule" }));
+  await waitFor(() =>
+    expect(f.command).toHaveBeenCalledWith(
+      "lessons",
+      expect.objectContaining({
+        command: "create",
+        payload: expect.objectContaining({
+          studentId: demoSnapshot.students[0].id,
+          serviceId: "classified-proposal-service",
+          durationMinutes: 60,
+          billingArrangement: "credits",
+          recurrence: "weekly",
+          occurrenceCount: 6,
+        }),
+      }),
+    ),
+  );
 });

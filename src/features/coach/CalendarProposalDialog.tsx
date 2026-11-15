@@ -34,6 +34,9 @@ export function CalendarProposalDialog({
     store = useStudioStore(),
     [studentId, setStudentId] = useState(proposal.lesson?.studentId || ""),
     [topic, setTopic] = useState("Private coaching"),
+    [serviceId, setServiceId] = useState(""),
+    [billingArrangement, setBillingArrangement] = useState(""),
+    [reason, setReason] = useState(""),
     [location, setLocation] = useState(""),
     [format, setFormat] = useState<"in_person" | "virtual">("in_person"),
     [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly">(
@@ -45,6 +48,16 @@ export function CalendarProposalDialog({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [key] = useState(() => crypto.randomUUID());
+  const durationMinutes =
+    (Date.parse(proposal.endsAt) - Date.parse(proposal.startsAt)) / 60000;
+  const compatibleServices = data.bookingServices.filter(
+    (service) => service.durationMinutes === durationMinutes,
+  );
+  const classified =
+    isDemo ||
+    (compatibleServices.some((service) => service.id === serviceId) &&
+      !!billingArrangement &&
+      reason.trim().length >= 3);
   const conflicts = useQuery({
     queryKey: [
       "calendar-proposal",
@@ -96,6 +109,7 @@ export function CalendarProposalDialog({
     if (
       busy ||
       !reviewing ||
+      !classified ||
       !overlapReviewed ||
       (!isDemo && (!conflicts.isSuccess || conflicts.isFetching))
     )
@@ -149,8 +163,12 @@ export function CalendarProposalDialog({
             occurrenceCount: recurrence === "none" ? 1 : count,
             timezone: data.settings.timezone,
             allowConflict: override && googleOverlap,
+            serviceId,
+            durationMinutes,
+            billingArrangement,
+            reason: reason.trim(),
           },
-          reason: "Coach confirmed a calendar slot proposal",
+          reason: reason.trim(),
         });
       await applied();
     } catch (e) {
@@ -356,6 +374,54 @@ export function CalendarProposalDialog({
               />
             </label>
           )}
+          {!isDemo && (
+            <>
+              <label>
+                Service · {durationMinutes} minutes
+                <select
+                  disabled={reviewing}
+                  value={serviceId}
+                  onChange={(e) => setServiceId(e.target.value)}
+                >
+                  <option value="">Choose a matching service</option>
+                  {compatibleServices.map((service) => (
+                    <option key={service.id} value={service.id}>
+                      {service.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {!compatibleServices.length && (
+                <p className="full">
+                  Choose a calendar slot that matches a service duration.
+                </p>
+              )}
+              <label>
+                Billing arrangement
+                <select
+                  disabled={reviewing}
+                  value={billingArrangement}
+                  onChange={(e) => setBillingArrangement(e.target.value)}
+                >
+                  <option value="">Choose an arrangement</option>
+                  <option value="credits">Prepaid credits</option>
+                  <option value="credit_exception">
+                    Approved uncovered exception
+                  </option>
+                  <option value="pay_later">Pay as you go</option>
+                  <option value="custom">Custom billing</option>
+                </select>
+              </label>
+              <label className="full">
+                Reason
+                <input
+                  disabled={reviewing}
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                />
+              </label>
+            </>
+          )}
           {reviewing && (
             <div className="setup-existing full">
               <Status tone="warn">Review before scheduling</Status>
@@ -399,6 +465,7 @@ export function CalendarProposalDialog({
                 disabled={
                   !studentId ||
                   !topic.trim() ||
+                  !classified ||
                   (!isDemo && !conflicts.isSuccess) ||
                   conflicts.isFetching ||
                   !overlapReviewed

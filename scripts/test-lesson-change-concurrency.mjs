@@ -94,10 +94,13 @@ try {
     insert into memberships(studio_id,user_id,role,display_name) values('${studio}','${coach}','coach','Concurrency coach');
     insert into students(id,studio_id,full_name) values('${student}','${studio}','Concurrency student');
     insert into student_credit_accounts(student_id,auto_apply) values('${student}',true);
+    insert into booking_services(id,studio_id,slug,name,category,duration_minutes)
+      values('${service}','${studio}','occurrence-concurrent-service','Occurrence service','private',60);
     insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values
       ('${first}','${studio}','${student}','First',now()+interval '2 days',now()+interval '2 days 1 hour','scheduled','in_person','Studio','studio'),
       ('${next}','${studio}','${student}','Next',now()+interval '9 days',now()+interval '9 days 1 hour','scheduled','in_person','Studio','studio');
-    select command_grant_student_credits('${student}','occurrence-concurrent-grant','{"quantity":1,"kind":"adjustment","reason":"Concurrency credit"}','${coach}');commit;`);
+    update lessons set service_id='${service}' where studio_id='${studio}';
+    select command_grant_student_credits('${student}','occurrence-concurrent-grant','{"quantity":1,"kind":"adjustment","reason":"Concurrency credit","customTerms":{"serviceId":"${service}","durationMinutes":60}}','${coach}');commit;`);
   const cancel = `select command_cancel_lesson_credit('${first}',(select version from lessons where id='${first}'),false)->>'duplicate';`;
   await contend(
     cancel,
@@ -197,10 +200,11 @@ try {
     "PostgreSQL cancellation/coverage, reviewed replay, and stale calendar completion passed (separate sessions; observed contention).",
   );
   query(`begin;
-    insert into booking_services(id,studio_id,slug,name,category,duration_minutes) values('${service}','${studio}','concurrent-booking','Concurrent service','private',60);
+
     insert into bookings(id,studio_id,student_id,service_id,reference,guest_name,guest_email,starts_at,ends_at,timezone,location,status,payment_policy,payment_status,total_minor,policy_snapshot,manage_token_hash)
       values('${booking}','${studio}','${student}','${service}','CONCURRENT-BOOKING','Student','e2e-booked@example.test',now()+interval '16 days',now()+interval '16 days 1 hour','America/New_York','in_person','confirmed','pay_later','due',0,'{"cancellationWindowHours":36}','concurrent-booking-token');
     insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values('${booked}','${studio}','${student}','Booked concurrent lesson',now()+interval '16 days',now()+interval '16 days 1 hour','scheduled','in_person','Studio','studio');
+    update lessons set service_id='${service}' where id='${booked}';
     insert into lesson_participants(lesson_id,student_id,booking_id,display_name,email) values('${booked}','${student}','${booking}','Student','e2e-booked@example.test');
     select reserve_student_upcoming_credits('${student}');commit;`);
   await contend(

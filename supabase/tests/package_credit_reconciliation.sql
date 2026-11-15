@@ -166,6 +166,9 @@ select is(process_stripe_checkout('evt_stage_b_separate','checkout.session.compl
 insert into packages(id,student_id,name) values
  ('c6000000-0000-4000-8000-000000000005','c3000000-0000-4000-8000-000000000001','First bulk package'),
  ('c6000000-0000-4000-8000-000000000006','c3000000-0000-4000-8000-000000000002','Second bulk package');
+update credit_internal.package_credit_terms set
+ service_ids=array['c4000000-0000-4000-8000-000000000001'::uuid],duration_minutes=60
+ where package_id in ('c6000000-0000-4000-8000-000000000005','c6000000-0000-4000-8000-000000000006');
 create temporary table bulk_request as select jsonb_build_object('reason','Private bulk explanation','portalVisible',false,
  'rows',jsonb_build_array(
   jsonb_build_object('studentId','c3000000-0000-4000-8000-000000000001','packageId','c6000000-0000-4000-8000-000000000005','delta',2),

@@ -1,6 +1,6 @@
 # Stage C protected staging acceptance
 
-Pin the exact draft PR #96 head in the approval record, deployment health response, and evidence manifest. Use only the approved SSO-protected staging project and isolated Supabase database. Verify the full chain through `20261115195815_typed_shared_pool_grants.sql` and use matching generated types. Retain the exact-host controls from [Stage B protected acceptance](credit-stage-b-hosted-acceptance.md).
+Pin the exact draft PR #96 head in the approval record, deployment health response, and evidence manifest. Use only the approved SSO-protected staging project and isolated Supabase database. Verify the full chain through `20261115201508_finish_credit_classification.sql` and use matching generated types. Retain the exact-host controls from [Stage B protected acceptance](credit-stage-b-hosted-acceptance.md).
 
 Prepare synthetic accounts for a coach, an independent student, two students in one explicit credit household, their designated payer, a finance-only guardian, a schedule-only guardian, and an unrelated household member. Create typed package definitions with distinct service and duration eligibility and terms that enable sharing and transfers. Include a nontransferable lot and an expired lot. Keep exact-host perimeter and role sessions outside the repository. Obtain separate approval for test writes, bookings, and test-mode Stripe checkout.
 

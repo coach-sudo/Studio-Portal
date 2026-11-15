@@ -53,7 +53,8 @@ function session(sql, onOutput = () => {}) {
 const coach = "91000000-0000-4000-8000-000000000001",
   studio = "92000000-0000-4000-8000-000000000001",
   student = "93000000-0000-4000-8000-000000000001";
-const grant = `select public.command_grant_student_credits('${student}','concurrency-grant','{"quantity":2,"kind":"adjustment","reason":"Concurrent regression grant"}','${coach}')->>'duplicate';`;
+const grantService = "94000000-0000-4000-8000-000000000001";
+const grant = `select public.command_grant_student_credits('${student}','concurrency-grant','{"quantity":2,"kind":"adjustment","reason":"Concurrent regression grant","customTerms":{"serviceId":"${grantService}","durationMinutes":60}}','${coach}')->>'duplicate';`;
 try {
   query(`begin;
     insert into auth.users(id,email) values('${coach}','e2e-concurrency-coach@example.test');
@@ -61,8 +62,11 @@ try {
     insert into public.memberships(studio_id,user_id,role,display_name) values('${studio}','${coach}','coach','Concurrent coach');
     insert into public.students(id,studio_id,full_name) values('${student}','${studio}','Concurrent student');
     insert into public.student_credit_accounts(student_id,auto_apply) values('${student}',true);
+    insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes)
+      values('${grantService}','${studio}','credit-concurrency-service','Concurrency service','private',60);
     insert into public.lessons(studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label)
       select '${studio}','${student}','Concurrency lesson',now()+n*interval '1 day',now()+n*interval '1 day'+interval '1 hour','scheduled','virtual','Meet' from generate_series(1,3) n;
+    update public.lessons set service_id='${grantService}' where studio_id='${studio}';
     commit;`);
   let locked;
   const ready = new Promise((resolve) => {
@@ -122,7 +126,7 @@ try {
     "2",
   );
   query(`update public.student_credit_accounts set auto_apply=false where student_id='${student}';
-    select public.command_grant_student_credits('${student}','manual-race-grant','{"quantity":1,"kind":"adjustment","reason":"Manual race fixture"}','${coach}');`);
+    select public.command_grant_student_credits('${student}','manual-race-grant','{"quantity":1,"kind":"adjustment","reason":"Manual race fixture","customTerms":{"serviceId":"${grantService}","durationMinutes":60}}','${coach}');`);
   const version = query(
     `select version from public.student_credit_accounts where student_id='${student}'`,
   );
@@ -166,6 +170,7 @@ try {
     delete from public.calendar_projections where lesson_id in(select id from public.lessons where studio_id='${studio}');
     delete from public.lessons where studio_id='${studio}';delete from public.packages where student_id='${student}';
     delete from public.student_credit_accounts where student_id='${student}';delete from public.students where id='${student}';
+    delete from public.booking_services where id='${grantService}';
     delete from public.memberships where studio_id='${studio}';delete from public.studios where id='${studio}';
     delete from auth.users where id='${coach}';commit;`);
 }

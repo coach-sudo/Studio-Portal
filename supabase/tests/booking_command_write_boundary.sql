@@ -47,7 +47,7 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub','e2900000-0000-4000-8000-000000000001',true);
 select throws_ok($$insert into public.bookings default values$$,'42501','permission denied for table bookings','Direct coach insert is denied before fragmented records can appear');
-select lives_ok($$select public.command_create_manual_booking('e2e-boundary-paid','{"student_id":"e2900000-0000-4000-8000-000000000011","service_id":"e2900000-0000-4000-8000-000000000012","starts_at":"2031-01-15T15:00:00Z","mark_paid":true,"reason":"Synthetic command boundary"}'::jsonb,'not_configured')$$,'Atomic coach paid booking still commits under the reduced caller grant');
+select lives_ok($$select public.command_create_manual_booking('e2e-boundary-paid','{"student_id":"e2900000-0000-4000-8000-000000000011","service_id":"e2900000-0000-4000-8000-000000000012","starts_at":"2031-01-15T15:00:00Z","mark_paid":true,"billing_arrangement":"pay_later","duration_minutes":60,"reason":"Synthetic command boundary"}'::jsonb,'not_configured')$$,'Atomic coach paid booking still commits under the reduced caller grant');
 select throws_ok($$update public.bookings set paid_minor=999999,payment_status='paid' where studio_id='e2900000-0000-4000-8000-000000000010'$$,'42501','permission denied for table bookings','Direct coach financial mutation is denied');
 select throws_ok($$delete from public.bookings where studio_id='e2900000-0000-4000-8000-000000000010'$$,'42501','permission denied for table bookings','Direct coach deletion cannot bypass canonical history');
 select is((select count(*) from public.bookings where studio_id='e2900000-0000-4000-8000-000000000010'),1::bigint,'Coach can read the committed booking');
