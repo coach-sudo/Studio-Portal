@@ -18,7 +18,7 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
 }, info) => {
   requireFixtures(runtime);
   test.setTimeout(180000);
-  const f = await bulkFixture(runtime, 12, false, 100);
+  const f = await bulkFixture(runtime, 12, false, 100, true);
   const mobile = info.project.name.startsWith("mobile");
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
@@ -41,7 +41,7 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     f.sql(`update students set focus_area='Callback confidence',portal_enabled=true where id='${f.studentId}';
       update lessons set payment_status='due',price_minor=4000 where id in ('${f.lessonIds[0]}','${f.lessonIds[1]}');
       insert into notes(id,student_id,lesson_id,title,body,status) values('${note}','${f.studentId}','${f.lessonIds[0]}','Latest private takeaway','Find the clear objective','draft');
-      insert into packages(id,student_id,name,expires_at) values('${packages[0]}','${f.studentId}','Study credits',null),('${packages[1]}','${f.studentId}','Expired credits',now()-interval '1 day');
+      insert into packages(id,student_id,definition_id,name,expires_at) values('${packages[0]}','${f.studentId}','${f.definitionId}','Study credits',null),('${packages[1]}','${f.studentId}','${f.definitionId}','Expired credits',now()-interval '1 day');
       insert into package_credit_entries(package_id,kind,quantity,reason) values('${packages[0]}','purchase',2,'Isolated credit purchase'),('${packages[1]}','purchase',1,'Expired fixture');
       insert into student_credit_accounts(student_id,auto_apply) values('${f.studentId}',false) on conflict(student_id) do update set auto_apply=false;
       insert into payment_entries(student_id,kind,amount_minor,currency,reason,account_credit) select '${f.studentId}','payment',100,'USD','Isolated history '||n,false from generate_series(1,125)n;

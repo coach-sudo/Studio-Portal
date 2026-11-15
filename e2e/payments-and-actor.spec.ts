@@ -25,9 +25,28 @@ test("@journey Journey 08: package and payment context is usable without a provi
     page.getByText(`${runtime.runId} fixture payment`),
   ).toBeVisible();
   await expect(
-    page.getByText("Includes a coach-authored E2E package benefit."),
+    page.getByText("Package purchases are handled by the designated billing contact."),
   ).toBeVisible();
+  await expect(page.getByRole("button", { name: "Choose package" })).toHaveCount(0);
   await context.close();
+
+  const guardian = await openAs(browser, "guardian");
+  try {
+    await guardian.page.goto(`/portal/payments?student=${runtime.ids!.student}`);
+    const offer = guardian.page.getByRole("article").filter({
+      has: guardian.page.getByRole("button", { name: "Choose package" }),
+      hasText: `${runtime.runId} Four-session package`,
+    });
+    await expect(
+      offer.getByText("Includes a coach-authored E2E package benefit."),
+    ).toBeVisible();
+    await offer.getByRole("button", { name: "Choose package" }).click();
+    await expect(
+      guardian.page.getByRole("dialog").getByText(/one eligible \d+-minute lesson/),
+    ).toBeVisible();
+  } finally {
+    await guardian.context.close();
+  }
 });
 
 test("@journey Journey 08: Stripe test checkout hands off only to test-mode infrastructure", async ({
@@ -39,11 +58,14 @@ test("@journey Journey 08: Stripe test checkout hands off only to test-mode infr
     "stripeTest",
     "staging STRIPE_SECRET_KEY is absent or is not a Stripe test-mode key",
   );
-  const { context, page } = await openAs(browser, "student");
-  await page.goto("/portal/payments");
+  const { context, page } = await openAs(browser, "guardian");
+  await page.goto(`/portal/payments?student=${runtime.ids!.student}`);
   const packageRow = page
-    .locator("article", { hasText: `${runtime.runId} Four-session package` })
-    .first();
+    .getByRole("article")
+    .filter({
+      has: page.getByRole("button", { name: "Choose package" }),
+      hasText: `${runtime.runId} Four-session package`,
+    });
   await packageRow.getByRole("button", { name: "Choose package" }).click();
   await Promise.all([
     page.waitForURL(/https:\/\/checkout\.stripe\.com\//, { timeout: 30_000 }),

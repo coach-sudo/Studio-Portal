@@ -19,7 +19,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
 }, info) => {
   requireFixtures(runtime);
   test.setTimeout(180000);
-  const f = await bulkFixture(runtime, 6, false, 240);
+  const f = await bulkFixture(runtime, 6, false, 240, true);
   const pkg = crypto.randomUUID();
   const context = await browser.newContext({
     baseURL: runtime.baseURL,
@@ -93,7 +93,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       .map((id) => `'${id}'`)
       .join(",")});
       update lessons set payment_status='partially_paid',paid_minor=1000 where id='${f.lessonIds[2]}';
-      insert into packages(id,student_id,name) values('${pkg}','${f.studentId}','Integrated study credits');
+      insert into packages(id,student_id,definition_id,name) values('${pkg}','${f.studentId}','${f.definitionId}','Integrated study credits');
       insert into package_credit_entries(package_id,kind,quantity,reason) values('${pkg}','purchase',2,'Isolated integrated purchase');
       insert into student_credit_accounts(student_id,auto_apply) values('${f.studentId}',false) on conflict(student_id) do update set auto_apply=false;`);
     await page.goto(`${base}/payments`);
