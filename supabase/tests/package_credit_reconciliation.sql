@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(30);
+select plan(41);
 
 insert into auth.users(id,email) values
  ('c1000000-0000-4000-8000-000000000001','e2e-stage-b-coach@example.test'),
@@ -116,6 +116,45 @@ select ok((select not (e ?| array['terms','issues','purchaseReferences']) from j
 delete from credit_internal.package_credit_terms where package_id='c6000000-0000-4000-8000-000000000001';
 select ok((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'issues') ? 'legacy_terms_unverified',
   'A legacy record without a snapshot is marked for review');
+select is(booking_credit_preflight('c3000000-0000-4000-8000-000000000001',
+  'c4000000-0000-4000-8000-000000000002',array[now()+interval '3 days'])->>'status','needs_credit',
+  'Preflight excludes a package with a different duration after legacy fallback');
+select ok(not has_function_privilege('authenticated','public.booking_credit_preflight(uuid,uuid,timestamptz[])','EXECUTE'),
+  'Public preflight RPC requires the server role');
+create function pg_temp.find_case(p_finding text) returns jsonb language sql as $$
+  select e from jsonb_array_elements(pg_temp.review('c6000000-0000-4000-8000-000000000001')->'cases') e
+  where e->>'finding'=p_finding
+$$;
+select is(pg_temp.find_case('purchase_source_unverified')->>'status','needs_review','Review creates a persistent case');
+create function pg_temp.decide(p_case jsonb,p_status text,p_key text) returns jsonb language sql as $$
+  select command_student_credit_settings('c3000000-0000-4000-8000-000000000001','case_decide',
+    jsonb_build_object('caseId',p_case->>'id','status',p_status,'reason','Reviewed the original entries'),
+    (p_case->>'version')::integer,p_key,'c1000000-0000-4000-8000-000000000001')
+$$;
+select is(pg_temp.decide(pg_temp.find_case('purchase_source_unverified'),'dismissed','case-dismiss-test')->'case'->>'status',
+  'dismissed','Dismissal records a reason and closes the case');
+select is(pg_temp.find_case('purchase_source_unverified')->>'status','dismissed','Unchanged scans preserve a dismissal');
+insert into package_credit_entries(package_id,kind,quantity,reason)
+  values('c6000000-0000-4000-8000-000000000001','adjustment',1,'New accounting evidence');
+select is(pg_temp.find_case('purchase_source_unverified')->>'status','reopened','Material new evidence reopens an unresolved finding');
+select ok(not has_table_privilege('authenticated','credit_internal.reconciliation_cases','SELECT'),
+  'Students and guardians cannot read the private case table');
+select is(process_stripe_checkout('evt_stage_b_first','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_first","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_first','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'false','First verified Stripe representation grants credits');
+select is(process_stripe_checkout('evt_stage_b_first','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_first","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_first','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'true','Repeated event ID is a no-op');
+select is(process_stripe_checkout('evt_stage_b_second','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_second","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_second','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicateEvidence',
+  'stripe_payment_intent','A second session backed by the same verified payment cannot issue credits');
+select is(process_stripe_checkout('evt_stage_b_separate','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_separate","payment_intent":"pi_stage_b_separate"}}}',
+  'cs_stage_b_separate','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'false','A similar purchase with a different verified payment remains legitimate');
 select * from finish();
 rollback;
 

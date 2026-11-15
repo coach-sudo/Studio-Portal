@@ -28,6 +28,13 @@ const commandPayloadSchemas = {
     packageId: uuid.optional(),
     page: z.number().int().min(1).max(100000).optional(),
   }),
+  "credits:case_decide": z.object({
+    studentId: uuid,
+    caseId: uuid,
+    status: z.enum(["under_review", "resolved", "dismissed", "reopened"]),
+    reason: z.string().trim().min(3).max(500),
+    correctionId: uuid.optional(),
+  }),
   "credits:package_correct": z.object({
     studentId: uuid,
     packageId: uuid,

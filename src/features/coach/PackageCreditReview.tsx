@@ -37,7 +37,37 @@ const lot = z.object({
   issues: z.array(z.string()),
   purchaseReferences: z.array(z.string()),
 });
+const caseSchema = z.object({
+  id,
+  finding: z.string(),
+  status: z.enum([
+    "needs_review",
+    "under_review",
+    "resolved",
+    "dismissed",
+    "reopened",
+  ]),
+  version: z.number().int(),
+  reason: z.string().nullable(),
+  history: z.array(
+    z.object({
+      at: z.string(),
+      reason: z.string(),
+      status: z.string().nullable(),
+    }),
+  ),
+});
+const caseStatus = {
+  needs_review: "Needs review",
+  under_review: "Under review",
+  resolved: "Resolved",
+  dismissed: "Dismissed",
+  reopened: "Reopened",
+};
+type CaseDecision = "under_review" | "resolved" | "dismissed" | "reopened";
+
 const reviewSchema = z.object({
+  cases: z.array(caseSchema).optional(),
   studentId: id,
   version: z.number(),
   lots: z.array(lot),
@@ -68,6 +98,8 @@ const reviewSchema = z.object({
   ),
 });
 const findings: Record<string, string> = {
+  confirmed_checkout_duplicate:
+    "Two active credit grants reference the same Stripe payment.",
   legacy_terms_unverified:
     "Purchase-time terms are unavailable. Current rules are shown for reference.",
   purchase_source_unverified:
@@ -112,6 +144,12 @@ export function PackageCreditReview({
   const [packageId, setPackageId] = useState("");
   const [page, setPage] = useState(1);
   const [finding, setFinding] = useState<string>();
+  const [caseReason, setCaseReason] = useState("");
+  const [decisionKey, setDecisionKey] = useState<{
+    intent: string;
+    key: string;
+  }>();
+  const [linkedCorrection, setLinkedCorrection] = useState<string>();
   const [draft, setDraft] = useState<{ action: Operation; entry?: Entry }>();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
@@ -165,13 +203,14 @@ export function PackageCreditReview({
     setBusy(true);
     setNotice("");
     try {
-      await studioCommand("credits", {
+      const response = await studioCommand("credits", {
         command: "package_correct",
         expectedVersion: intent.version,
         idempotencyKey: intent.key,
         payload: intent.payload,
         reason: intent.reason,
       });
+      setLinkedCorrection(id.safeParse(response.resource?.entryId).data);
       setNotice("Package credit correction recorded.");
       setDraft(undefined);
       setIntent(undefined);
@@ -191,6 +230,50 @@ export function PackageCreditReview({
       }
       setNotice(
         error instanceof Error ? error.message : "Credit correction failed.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function decide(
+    item: z.infer<typeof caseSchema>,
+    status: CaseDecision,
+  ) {
+    if (busy || caseReason.trim().length < 3) return;
+    const payload = {
+      studentId,
+      caseId: item.id,
+      status,
+      reason: caseReason.trim(),
+      ...(status === "resolved" && linkedCorrection
+        ? { correctionId: linkedCorrection }
+        : {}),
+    };
+    const signature = JSON.stringify([payload, item.version]);
+    const key =
+      decisionKey?.intent === signature ? decisionKey.key : crypto.randomUUID();
+    setDecisionKey({ intent: signature, key });
+    setBusy(true);
+    setNotice("");
+    try {
+      await studioCommand("credits", {
+        command: "case_decide",
+        expectedVersion: item.version,
+        idempotencyKey: key,
+        payload,
+        reason: payload.reason,
+      });
+      await review.refetch();
+      setCaseReason("");
+      setDecisionKey(undefined);
+      setNotice("Review decision recorded.");
+    } catch (error) {
+      if (error instanceof ApiClientError && error.code === "VERSION_CONFLICT")
+        await review.refetch();
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "Review decision could not be saved.",
       );
     } finally {
       setBusy(false);
@@ -242,6 +325,7 @@ export function PackageCreditReview({
                 setPackageId(event.target.value);
                 setPage(1);
                 setFinding(undefined);
+                setLinkedCorrection(undefined);
                 setNotice("");
               }}
             >
@@ -301,6 +385,77 @@ export function PackageCreditReview({
                     ))}
                   </ul>
                 </details>
+              )}
+              {!!review.data.cases?.length && (
+                <section aria-label="Reconciliation cases">
+                  <h4>Reconciliation cases</h4>
+                  {review.data.cases.map((item) => {
+                    const closed =
+                      item.status === "resolved" || item.status === "dismissed";
+                    const options: CaseDecision[] = closed
+                      ? ["reopened"]
+                      : item.status === "under_review"
+                        ? ["resolved", "dismissed"]
+                        : ["under_review", "resolved", "dismissed"];
+                    return (
+                      <details
+                        key={item.id}
+                        className="disclosure-section"
+                        onToggle={(event) => {
+                          if (event.currentTarget.open) setCaseReason("");
+                        }}
+                      >
+                        <summary>
+                          {caseStatus[item.status]} ·{" "}
+                          {findings[item.finding] ?? item.finding}
+                        </summary>
+                        <p>
+                          Review the package history and affected reservations
+                          below before deciding.
+                        </p>
+                        {item.history.length > 0 && (
+                          <ul>
+                            {item.history.map((entry, index) => (
+                              <li key={index}>
+                                {formatStudioDateTime(entry.at, timezone)} ·{" "}
+                                {entry.reason}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                        <label htmlFor={item.id + "-decision"}>
+                          Review reason
+                          <textarea
+                            id={item.id + "-decision"}
+                            maxLength={500}
+                            value={caseReason}
+                            onChange={(event) =>
+                              setCaseReason(event.target.value)
+                            }
+                          />
+                        </label>
+                        <div className="header-actions">
+                          {options.map((status) => (
+                            <button
+                              key={status}
+                              disabled={busy || caseReason.trim().length < 3}
+                              onClick={() => void decide(item, status)}
+                            >
+                              {
+                                {
+                                  under_review: "Start review",
+                                  resolved: "Resolve",
+                                  dismissed: "Dismiss",
+                                  reopened: "Reopen",
+                                }[status]
+                              }
+                            </button>
+                          ))}
+                        </div>
+                      </details>
+                    );
+                  })}
+                </section>
               )}
               {selected.issues.length > 0 && (
                 <ul aria-label="Reconciliation findings">

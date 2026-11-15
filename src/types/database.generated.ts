@@ -4800,6 +4800,10 @@ export type Database = {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
       }
+      booking_credit_preflight: {
+        Args: { p_service: string; p_starts: string[]; p_student: string }
+        Returns: Json
+      }
       calendar_claim_current: {
         Args: { p_id: string; p_token: string }
         Returns: boolean

@@ -72,6 +72,17 @@ export const creditCoverageSchema = z
             "review_required",
           ]),
           reasonCode: creditCoverageReasonSchema,
+          coverageStatus: z
+            .enum([
+              "covered",
+              "needs_credit",
+              "expiration_review",
+              "processing",
+              "studio_review",
+              "separate_payment",
+              "awaiting_reservation",
+            ])
+            .optional(),
           eligible: z.boolean(),
           existingReservation: z.boolean().optional(),
           packageId: z.string().uuid().optional(),

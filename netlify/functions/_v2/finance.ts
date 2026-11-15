@@ -31,6 +31,7 @@ export async function handleFinanceCommands(
       "apply_upcoming",
       "package_review",
       "package_correct",
+      "case_decide",
     ].includes(input.command)
   ) {
     const studioId = await requireCoach();
