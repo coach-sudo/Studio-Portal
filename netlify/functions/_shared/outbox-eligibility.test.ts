@@ -56,6 +56,25 @@ describe("credit reminder cutover", () => {
     ).toEqual({ allowed: false, reason: "replaced_by_credit_reminders" });
     expect(db.from).not.toHaveBeenCalled();
   });
+
+  it.each(["package.gift", "package.renewal_failed"])(
+    "keeps %s in the existing dispatch flow",
+    async (event) => {
+      const lookup = new Error("Reached the existing dispatch checks");
+      const db = {
+        from: vi.fn(() => {
+          throw lookup;
+        }),
+      } as unknown as SupabaseClient;
+      await expect(
+        checkOutboxEligibility(
+          db,
+          { ...message, event_key: event, recipient_intent: null },
+          now,
+        ),
+      ).rejects.toBe(lookup);
+    },
+  );
 });
 function client(rows: Record<string, unknown>) {
   return {
