@@ -142,6 +142,12 @@ beforeAll(async () => {
       "utf8",
     ),
   );
+  await db.exec(
+    readFileSync(
+      "supabase/migrations/20261115120000_reviewed_credit_adjustments.sql",
+      "utf8",
+    ),
+  );
 }, 30000);
 afterAll(async () => {
   await db?.close();
@@ -373,6 +379,43 @@ describe("student workspace summaries and explicit credit intent", () => {
     ).rejects.toThrow("FORBIDDEN");
     await db.query(`select set_config('app.uid',$1,false)`, [coach]);
   });
+  it("rejects stale reviewed totals and records both sides of a confirmed adjustment", async () => {
+    await reset();
+    await lot(3);
+    const version = (await summary()).version;
+    const sql =
+      "select command_student_credit_settings($1,'set_total',$2,$3,$4,$5) result";
+    const payload = {
+      total: 2,
+      reason: "Remove duplicate credit",
+      reviewedBalance: { remaining: 2, available: 2, reserved: 0 },
+    };
+    const key = "reviewed-adjustment";
+    await expect(
+      db.query(sql, [student, payload, version, key, coach]),
+    ).rejects.toThrow("VERSION_CONFLICT");
+    expect(await summary()).toMatchObject({ remaining: 3, version });
+    payload.reviewedBalance = { remaining: 3, available: 3, reserved: 0 };
+    await expect(
+      db.query(sql, [student, payload, version, key, student]),
+    ).rejects.toThrow("FORBIDDEN");
+    const result = (await scalar(sql, [student, payload, version, key, coach]))!
+      .result;
+    expect(result).toMatchObject({ remaining: 2 });
+    expect(
+      (await scalar(sql, [student, payload, version, key, coach]))!.result,
+    ).toMatchObject({ remaining: 2, duplicate: true });
+    expect(
+      await scalar(
+        "select before_state,after_state from audit_events where correlation_id=$1",
+        [key],
+      ),
+    ).toMatchObject({
+      before_state: { remaining: 3, available: 3, reserved: 0 },
+      after_state: { remaining: 2, available: 2, reserved: 0 },
+    });
+  });
+
   it("retains a failed manual request for recovery while automatic use remains off", async () => {
     await reset();
     await lot(1);
