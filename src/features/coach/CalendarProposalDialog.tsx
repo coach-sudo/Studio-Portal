@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Drawer, Status } from "../../components/Primitives";
 import { LessonChangeReview } from "../../components/LessonChangeReview";
@@ -48,6 +48,7 @@ export function CalendarProposalDialog({
     [busy, setBusy] = useState(false),
     [error, setError] = useState(""),
     [key] = useState(() => crypto.randomUUID());
+  const classificationId = useId();
   const durationMinutes =
     (Date.parse(proposal.endsAt) - Date.parse(proposal.startsAt)) / 60000;
   const compatibleServices = data.bookingServices.filter(
@@ -376,9 +377,10 @@ export function CalendarProposalDialog({
           )}
           {!isDemo && (
             <>
-              <label>
+              <label htmlFor={classificationId + "-service"}>
                 Service · {durationMinutes} minutes
                 <select
+                  id={classificationId + "-service"}
                   disabled={reviewing}
                   value={serviceId}
                   onChange={(e) => setServiceId(e.target.value)}
@@ -396,9 +398,10 @@ export function CalendarProposalDialog({
                   Choose a calendar slot that matches a service duration.
                 </p>
               )}
-              <label>
+              <label htmlFor={classificationId + "-billing"}>
                 Billing arrangement
                 <select
+                  id={classificationId + "-billing"}
                   disabled={reviewing}
                   value={billingArrangement}
                   onChange={(e) => setBillingArrangement(e.target.value)}
@@ -412,9 +415,10 @@ export function CalendarProposalDialog({
                   <option value="custom">Custom billing</option>
                 </select>
               </label>
-              <label className="full">
+              <label className="full" htmlFor={classificationId + "-reason"}>
                 Reason
                 <input
+                  id={classificationId + "-reason"}
                   disabled={reviewing}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}

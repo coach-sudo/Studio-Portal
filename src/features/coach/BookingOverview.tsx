@@ -714,9 +714,10 @@ export function ManualBookingDialog({
           </label>
         )}
         {mode !== "historical" && (
-          <label>
+          <label htmlFor={formId + "-billing"}>
             Billing arrangement
             <select
+              id={formId + "-billing"}
               required
               value={billingArrangement}
               onChange={(event) => setBillingArrangement(event.target.value)}

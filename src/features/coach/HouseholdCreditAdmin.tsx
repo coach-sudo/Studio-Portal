@@ -402,9 +402,13 @@ export function HouseholdCreditAdmin({
                   )}
                   {action === "discretionary" && household && (
                     <>
-                      <label>
+                      <label htmlFor={formId + "-grant-serviceId"}>
                         Eligible lesson service
-                        <select name="serviceId" required>
+                        <select
+                          id={formId + "-grant-serviceId"}
+                          name="serviceId"
+                          required
+                        >
                           <option value="">
                             Choose a service approved by this package
                           </option>
@@ -415,9 +419,10 @@ export function HouseholdCreditAdmin({
                           ))}
                         </select>
                       </label>
-                      <label>
+                      <label htmlFor={formId + "-grant-durationMinutes"}>
                         Eligible duration in minutes
                         <input
+                          id={formId + "-grant-durationMinutes"}
                           name="durationMinutes"
                           type="number"
                           min={15}
@@ -425,9 +430,10 @@ export function HouseholdCreditAdmin({
                           required
                         />
                       </label>
-                      <label>
+                      <label htmlFor={formId + "-grant-quantity"}>
                         Credit quantity
                         <input
+                          id={formId + "-grant-quantity"}
                           name="quantity"
                           type="number"
                           min={1}
@@ -435,15 +441,23 @@ export function HouseholdCreditAdmin({
                           required
                         />
                       </label>
-                      <label>
+                      <label htmlFor={formId + "-grant-expiresAt"}>
                         Expiration (leave blank if allowed by the package)
-                        <input name="expiresAt" type="datetime-local" />
+                        <input
+                          id={formId + "-grant-expiresAt"}
+                          name="expiresAt"
+                          type="datetime-local"
+                        />
                       </label>
                       <fieldset key={household.id}>
                         <legend>Eligible students</legend>
                         {household.members.map((member) => (
-                          <label key={member.id}>
+                          <label
+                            key={member.id}
+                            htmlFor={formId + "-grant-" + member.id}
+                          >
                             <input
+                              id={formId + "-grant-" + member.id}
                               type="checkbox"
                               name="members"
                               value={member.id}
@@ -452,8 +466,9 @@ export function HouseholdCreditAdmin({
                           </label>
                         ))}
                       </fieldset>
-                      <label>
+                      <label htmlFor={formId + "-grant-visible"}>
                         <input
+                          id={formId + "-grant-visible"}
                           type="checkbox"
                           name="portalVisible"
                           defaultChecked
