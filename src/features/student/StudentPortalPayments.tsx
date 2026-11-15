@@ -478,8 +478,8 @@ export function Payments({
             </select>
           </label>
           <p>
-            One credit covers one lesson of any service or duration. Your
-            account’s automatic-use preference applies.
+            Each credit covers one eligible {purchaseDefinition.sessionDurationMinutes}-minute lesson.
+            Your account’s automatic-use preference applies.
           </p>
           {renewalMode === "balance_threshold" && (
             <p className="portal-notice">

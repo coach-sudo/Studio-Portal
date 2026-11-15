@@ -25,7 +25,7 @@ test.describe("student product-review evidence", () => {
       ["actor-editor", "/portal/actor-page"],
     ] as const;
     for (const [name, route] of routes) {
-      await page.goto(route);
+      await page.goto(`${route}?student=${runtime.ids!.student}`);
       await expect(page.locator("main h1").first()).toBeVisible();
       await expectNoHorizontalOverflow(page);
       if (name === "actor-editor") {
@@ -79,7 +79,7 @@ test.describe("student product-review evidence", () => {
       await page.screenshot({ path: testInfo.outputPath(`${name}.png`) });
     }
 
-    await page.goto("/portal/inbox");
+    await page.goto(`/portal/inbox?student=${runtime.ids!.student}`);
     await expect(page.getByRole("heading", { name: "Inbox" })).toBeVisible();
     if (!(await page.getByLabel("Message").isVisible())) {
       await page
@@ -116,7 +116,7 @@ test.describe("guardian product-review evidence", () => {
       ["home", "/portal"],
       ["schedule", "/portal/bookings"],
     ] as const) {
-      await page.goto(route);
+      await page.goto(`${route}?student=${runtime.ids!.student}`);
       await expect(page.getByLabel("Household context")).toBeVisible();
       await expectNoHorizontalOverflow(page);
       await page.screenshot({

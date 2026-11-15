@@ -81,6 +81,14 @@ export async function checkOutboxEligibility(
   const db = client as SupabaseClient<Database>,
     intent = messageIntent(message);
   if (
+    message.recipient_intent === "package_low" ||
+    message.recipient_intent === "package_shortfall" ||
+    /^(automation\.package_(low|shortfall)\.|package\.package_(low|shortfall)\.)/.test(
+      message.event_key ?? "",
+    )
+  )
+    return { allowed: false, reason: "replaced_by_credit_reminders" };
+  if (
     options.requireApproval &&
     intent &&
     ["payment_due", "payment_past_due"].includes(intent) &&

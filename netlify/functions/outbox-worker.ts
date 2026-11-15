@@ -3,6 +3,7 @@ import {
   disabledWorkerResponse,
 } from "./_shared/worker-controls";
 import type { Config } from "@netlify/functions";
+import { runCreditReminderBatch } from "./_shared/credit-reminder-worker";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { evaluateStudioAutomations } from "./_shared/automation-engine";
 import { serviceClient } from "./_shared/supabase";
@@ -33,6 +34,11 @@ export default async () => {
         }),
       );
     }
+  }
+  try {
+    await runCreditReminderBatch(db, Date.now() + 8_000);
+  } catch {
+    console.error(JSON.stringify({ event: "credit_reminders.worker_failed" }));
   }
   return Response.json({
     ok: true,

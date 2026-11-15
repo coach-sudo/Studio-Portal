@@ -49,6 +49,9 @@ export async function evaluateAndQueueRule(
     return { ...disabledWorkerResult("automations"), outboxIds: [] };
   const db = client as SupabaseClient<Database>,
     rule = mapAutomationRule(row);
+  const replacedCreditRule = ["package_low", "package_shortfall"].includes(
+    rule.key,
+  );
   const data =
     options.data ??
     (rule.key === "delivery_failure"
@@ -138,7 +141,7 @@ export async function evaluateAndQueueRule(
               };
   const outboxIds: string[] = [];
   const queuedStatuses: string[] = [];
-  if (!preview && decision.eligible)
+  if (!preview && !replacedCreditRule && decision.eligible)
     for (const stage of decision.stages) {
       assertWorkerEnabled("automations");
       const recipients = stage.coachEscalation
@@ -372,6 +375,7 @@ export async function evaluateStudioAutomations(
         "lesson_reminder",
         "payment_failed",
         "package_low",
+        "package_shortfall",
         "package_expiration",
       ].includes(rule.rule_key)
     )

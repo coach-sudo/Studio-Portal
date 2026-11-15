@@ -30,6 +30,7 @@ export async function queuePackageWarning(
     legacyEnabled: boolean;
   },
 ) {
+  if (input.key === "package_low") return [];
   const rule = await compatibleRule(client, input.studioId, input.key),
     status = compatibleQueueStatus(rule, input.legacyEnabled);
   if (!status) return [];

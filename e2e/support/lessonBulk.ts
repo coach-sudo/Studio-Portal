@@ -16,6 +16,7 @@ export async function bulkFixture(
   count = 32,
   completed = false,
   slotOffset = 0,
+  typedCredits = false,
 ) {
   test.skip(
     process.env.USE_EPHEMERAL_STACK !== "true",
@@ -124,7 +125,19 @@ export async function bulkFixture(
       { encoding: "utf8" },
     ).trim();
   };
+  const serviceId = typedCredits ? crypto.randomUUID() : null;
+  const definitionId = typedCredits ? crypto.randomUUID() : null;
+  if (serviceId && definitionId) {
+    sql(`begin;
+      insert into booking_services(id,studio_id,slug,name,category,duration_minutes,payment_policies)
+        values('${serviceId}','${studioId}','${serviceId}','${run} Study service','private',60,array['credits','pay_later']);
+      insert into package_definitions(id,studio_id,name,session_count,session_duration_minutes,price_minor,eligible_service_ids)
+        values('${definitionId}','${studioId}','${run} Study package',2,60,8000,array['${serviceId}'::uuid]);
+      update lessons set service_id='${serviceId}' where student_id='${studentId}';
+      commit;`);
+  }
   return {
+    definitionId,
     db,
     run,
     studioId,
@@ -184,6 +197,12 @@ export async function bulkFixture(
           .in("id", ids)
           .eq("studio_id", studioId);
         expect(lessons.error).toBeNull();
+      }
+      if (serviceId && definitionId) {
+        sql(`begin;
+          delete from package_definitions where id='${definitionId}';
+          delete from booking_services where id='${serviceId}';
+          commit;`);
       }
       if (bookingIds.length) {
         const b = await db.from("bookings").delete().in("id", bookingIds);

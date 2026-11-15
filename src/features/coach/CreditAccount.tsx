@@ -288,7 +288,7 @@ function DemoCreditAccount({
       }
     >
       <p className="section-intro">
-        One credit covers one lesson of any service or duration.
+        Each credit covers one lesson matching the package’s service and duration.
       </p>
       <div className="metric-strip compact-metrics">
         {[

@@ -4839,6 +4839,10 @@ export type Database = {
         Args: { p_invoice: string; p_key: string; p_session: string }
         Returns: undefined
       }
+      begin_credit_reminder_email: {
+        Args: { p_at?: string; p_delivery: string; p_token: string }
+        Returns: Json
+      }
       booking_credit_preflight: {
         Args: {
           p_offering?: string
@@ -4992,6 +4996,10 @@ export type Database = {
           lesson: Json
           projection: Json
         }[]
+      }
+      claim_credit_reminder_email: {
+        Args: { p_at?: string; p_limit?: number }
+        Returns: Json
       }
       claim_lesson_bulk_items: {
         Args: { p_job?: string; p_limit?: number }
@@ -5414,6 +5422,7 @@ export type Database = {
       }
       credit_coverage_work: { Args: { p_limit?: number }; Returns: Json }
       credit_reconciliation: { Args: never; Returns: Json }
+      credit_reminder_history: { Args: { p_students: string[] }; Returns: Json }
       current_campaign_contacts: {
         Args: { p_studio_id: string }
         Returns: {
@@ -5468,6 +5477,16 @@ export type Database = {
           p_failed?: boolean
           p_id: string
           p_result: Json
+          p_token: string
+        }
+        Returns: boolean
+      }
+      finish_credit_reminder_email: {
+        Args: {
+          p_at?: string
+          p_delivery: string
+          p_outcome: string
+          p_reference?: string
           p_token: string
         }
         Returns: boolean
@@ -5572,6 +5591,10 @@ export type Database = {
           p_value: Json
           p_version: number
         }
+        Returns: Json
+      }
+      manage_credit_reminders: {
+        Args: { p_action: string; p_student: string; p_value?: Json }
         Returns: Json
       }
       manage_material_resources: {
@@ -5684,6 +5707,10 @@ export type Database = {
       }
       record_lesson_payment: {
         Args: { p_key: string; p_value: Json }
+        Returns: Json
+      }
+      refresh_credit_reminder_conditions: {
+        Args: { p_at?: string; p_student: string }
         Returns: Json
       }
       refund_package_gift: { Args: { target_gift: string }; Returns: Json }
@@ -5813,6 +5840,10 @@ export type Database = {
       }
       save_studio_invoice: {
         Args: { p_key: string; p_value: Json; p_version?: number }
+        Returns: Json
+      }
+      scan_credit_reminders: {
+        Args: { p_at?: string; p_limit?: number }
         Returns: Json
       }
       search_material_collections: {

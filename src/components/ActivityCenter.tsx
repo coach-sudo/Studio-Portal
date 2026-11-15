@@ -1,3 +1,4 @@
+import { useCreditReminderHistory } from "../data/creditReminders";
 import { useWorkspaceNavigation } from "../hooks/useWorkspaceLocation";
 import {
   Bell,
@@ -52,6 +53,14 @@ export function ActivityCenter({
       : studentId || activityData?.students[0]?.id,
     isSupabaseConfigured && !!activityData,
   );
+  const reminders = useCreditReminderHistory(
+    audience === "guardian"
+      ? (activityData?.students ?? data.students).map((student) => student.id)
+      : studentId
+        ? [studentId]
+        : [],
+    audience !== "coach" && isSupabaseConfigured,
+  );
   const feed = useMemo(
     () =>
       activityData
@@ -93,8 +102,23 @@ export function ActivityCenter({
     return () => window.removeEventListener("pointerdown", close);
   }, []);
 
-  const unread = feed.filter((item) => !read.has(item.key)).length;
-  const visibleFeed = feed.filter((item) => !read.has(item.key));
+  const reminderItems: ActivityItem[] = (reminders.data ?? [])
+    .filter((item) => Date.parse(item.at) >= Date.now() - 30 * 86_400_000)
+    .map((item) => ({
+      key: "credit-reminder:" + item.id,
+      entityKey: item.id,
+      kind: "message",
+      priority: item.requiresAction ? "action" : "update",
+      title: item.subject,
+      detail: item.requiresAction
+        ? "Review lesson credits"
+        : "No action required",
+      occurredAt: item.at,
+      route: item.path,
+    }));
+  const items = [...reminderItems, ...feed];
+  const unread = items.filter((item) => !read.has(item.key)).length;
+  const visibleFeed = items.filter((item) => !read.has(item.key));
   async function markRead(item: ActivityItem) {
     setRead((current) => new Set(current).add(item.key));
     if (!supabase) return;

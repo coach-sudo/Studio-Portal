@@ -39,6 +39,43 @@ describe("payment reminder approval", () => {
     expect(db.from).not.toHaveBeenCalled();
   });
 });
+describe("credit reminder cutover", () => {
+  it.each([
+    ["package.package_low.student", "package_low"],
+    ["automation.package_shortfall.hours-24", "package_shortfall"],
+    ["automation.package_shortfall.coach", "coach"],
+    ["package.package_low.student", null],
+  ])("holds legacy %s while the new scheduler is off", async (event, intent) => {
+    const db = { from: vi.fn() } as unknown as SupabaseClient;
+    expect(
+      await checkOutboxEligibility(
+        db,
+        { ...message, event_key: event, recipient_intent: intent },
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "replaced_by_credit_reminders" });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+
+  it.each(["package.gift", "package.renewal_failed"])(
+    "keeps %s in the existing dispatch flow",
+    async (event) => {
+      const lookup = new Error("Reached the existing dispatch checks");
+      const db = {
+        from: vi.fn(() => {
+          throw lookup;
+        }),
+      } as unknown as SupabaseClient;
+      await expect(
+        checkOutboxEligibility(
+          db,
+          { ...message, event_key: event, recipient_intent: null },
+          now,
+        ),
+      ).rejects.toBe(lookup);
+    },
+  );
+});
 function client(rows: Record<string, unknown>) {
   return {
     from: (table: string) => {
