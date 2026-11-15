@@ -225,7 +225,7 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     await page.goto(`/coach/students/${f.secondStudent}/payments`);
     await expect(
       page
-        .getByText("Remaining", { exact: true })
+        .getByText("Unused Credits", { exact: true })
         .locator("..")
         .getByText("0", { exact: true }),
     ).toBeVisible();

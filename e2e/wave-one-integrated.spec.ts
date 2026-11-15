@@ -51,10 +51,18 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       available: number;
     };
     expect(totals).toMatchObject({ remaining: 2, reserved: 2, available: 0 });
-    for (const label of ["Remaining", "Available", "Reserved"] as const)
-      await expect(metric(label)).toHaveText(
-        String(totals[label.toLowerCase() as keyof typeof totals]),
-      );
+    const packageBalance = page
+      .getByRole("group", { name: "Package credit balances" })
+      .getByRole("article")
+      .filter({ hasText: "Integrated study credits" });
+    await expect(packageBalance).toContainText(
+      totals.remaining +
+        " unused · " +
+        totals.reserved +
+        " reserved · " +
+        totals.available +
+        " available",
+    );
     const finance = await page.request.post(
       `${process.env.SUPABASE_URL}/rest/v1/rpc/student_financial_overview`,
       {
@@ -176,7 +184,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
     });
     await page.goto(`/coach/students/${f.secondStudent}/payments`);
     await expect(metric("Amount due · USD")).toHaveText("$0.00");
-    await expect(metric("Remaining")).toHaveText("0");
+    await expect(metric("Unused Credits")).toHaveText("0");
     await expect(page.getByText(f.rows[0].topic!, { exact: true })).toHaveCount(
       0,
     );

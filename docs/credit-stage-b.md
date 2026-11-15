@@ -33,3 +33,17 @@ Use the project's unpublished PR workflow. Protected hosted evidence requires se
 ## Verification
 
 A disposable PostgreSQL 17 Supabase stack replayed the full migration chain. SQL lint passed at the error threshold. All 575 pgTAP assertions passed across 21 files, including 23 new package tests. The existing two-session credit concurrency test passed with observed lock contention. The focused coach package flow passed at all three screenshot widths. The broader candidate run includes the 18 inherited Stage A student and guardian checks so failures remain visible.
+
+## Purchase-time terms and portal consistency follow-up
+
+Migration 20261115140000_capture_credit_lot_terms.sql records each new lot's original owner, package definition and name, services, duration, expiration, and first issuance ledger reference. Eligibility and the typed-hold guard use the stored services and duration. The effective expiration still follows the issued package record. Catalog edits affect future lots. Legacy rows retain their supported allocation behavior and are marked for review. The migration does not populate historical terms from current catalog data.
+
+The guarded credit coverage read now projects package balances for the active coach, student, and authorized guardian. It omits coach-only findings, purchase references, and original owner metadata. The live credit account and coach and portal package lists display the same per-package amounts. The portal home routes multiple packages to their details instead of presenting a combined entitlement total. Live lesson dialogs defer eligibility to the server rather than summing available credits for unrelated packages. Normal query invalidation refreshes the package, coverage, workspace, and invoice views after adjustments.
+
+New reconciliation findings identify missing purchase references and mismatched lesson and ledger package references. Repeated purchase descriptions and quantities are clues for human review. The same description is insufficient to establish duplicate issuance. The coach can expand each finding, follow its supporting history, and use the existing reviewed correction or linked reversal when eligible. Ambiguous historical entries and immutable original records are preserved.
+
+The public booking preflight still uses a package balance advisory before the transactional allocator, and the studio finance KPI remains an aggregate reporting view. Cross-provider historical duplication without stable references, durable reject or resolution state for findings, and complete end-to-end verification of every authorized portal route remain open. This draft is not yet the technical acceptance point for Stage C.
+
+The full isolated Supabase replay passed 582 pgTAP assertions, including snapshot stability after a catalog edit, coach and portal balance parity, and private evidence redaction. SQL lint passed at the error threshold. Two-session grant and package-correction tests passed. A synthetic backup restored to a fresh database with matching issued duration, service count, source entry, credit balance, audit record, and original payment amount.
+
+The previous Stage A and Stage B deployed browser runs each failed the same four cases on obsolete balance selectors. The tests now assert the same ledger amounts using the package view and current Unused Credits label. The separate local candidate run retains all 18 inherited student and guardian failures.

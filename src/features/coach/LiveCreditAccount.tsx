@@ -223,7 +223,11 @@ function CreditControls({
       {current ? (
         <>
           {current.packages?.length ? (
-            <div className="table-list">
+            <div
+              className="table-list"
+              role="group"
+              aria-label="Package credit balances"
+            >
               {current.packages.map((balance) => (
                 <article key={balance.id}>
                   <div>

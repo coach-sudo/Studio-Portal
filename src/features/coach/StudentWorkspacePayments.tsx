@@ -1,3 +1,5 @@
+import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
+import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router-dom";
 import { CircleDollarSign } from "lucide-react";
@@ -73,6 +75,10 @@ export function Payments({
   );
   const assigningNow = useRef(false);
   const [assignBusy, setAssignBusy] = useState(false);
+  const creditBalances = useCreditPackageBalances(
+    student.id,
+    !isDemo && pkgs.length > 0,
+  );
   const paymentPage = usePagedList(payments);
   const packagePage = usePagedList(pkgs);
   const autoApplyOnAssign = pkgs.length > 0 && pkgs.every((p) => p.autoApply);
@@ -272,24 +278,47 @@ export function Payments({
               label="packages"
             />
             <div className="table-list">
-              {packagePage.visible.map((pkg) => (
-                <article key={pkg.id}>
-                  <CircleDollarSign />
-                  <div>
-                    <strong>{pkg.name}</strong>
-                    <small>{formatMoney(pkg.priceMinor, pkg.currency)}</small>
-                  </div>
-                  <Status tone="good">
-                    {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                    remaining
-                  </Status>
-                  <small>
-                    {pkg.expiresAt
-                      ? `Expires ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`
-                      : "No expiration"}
-                  </small>
-                </article>
-              ))}
+              {packagePage.visible.map((pkg) => {
+                const liveBalance = creditBalances.isError
+                  ? undefined
+                  : creditBalances.data?.find((item) => item.id === pkg.id);
+                return (
+                  <article key={pkg.id}>
+                    <CircleDollarSign />
+                    <div>
+                      <strong>{pkg.name}</strong>
+                      <small>
+                        Package price{" "}
+                        {formatMoney(pkg.priceMinor, pkg.currency)}
+                      </small>
+                      {!isDemo &&
+                        (liveBalance ? (
+                          <CreditPackageMetrics balance={liveBalance} />
+                        ) : (
+                          <small>
+                            {creditBalances.isFetching
+                              ? "Checking credit balance…"
+                              : "Credit balance unavailable"}
+                          </small>
+                        ))}
+                    </div>
+                    {isDemo && (
+                      <Status tone="good">
+                        {
+                          packageSummary(pkg, data.creditEntries)
+                            .remainingCredits
+                        }{" "}
+                        available
+                      </Status>
+                    )}
+                    <small>
+                      {pkg.expiresAt
+                        ? `Expires ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`
+                        : "No expiration"}
+                    </small>
+                  </article>
+                );
+              })}
               {!pkgs.length && (
                 <EmptyState
                   title="No package"
