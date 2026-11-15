@@ -140,6 +140,9 @@ export async function handleFinanceCommands(
       p_value: {
         quantity: definition.session_count,
         kind: "adjustment",
+        ...(input.payload.portalVisible === false
+          ? { portalVisible: false }
+          : {}),
         reason: String(input.payload.reason || "Coach assigned package"),
         package: {
           definitionId: definition.id,
@@ -469,6 +472,9 @@ export async function handleFinanceCommands(
       p_value: {
         quantity,
         kind: "adjustment",
+        ...(input.payload.portalVisible === false
+          ? { portalVisible: false }
+          : {}),
         reason,
         lessonId: String(input.payload.lessonId || "") || null,
       },

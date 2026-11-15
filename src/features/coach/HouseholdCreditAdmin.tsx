@@ -1,5 +1,6 @@
 import { useSearchParams } from "react-router-dom";
 import { CreditExpiration } from "./CreditExpiration";
+import { SharedCreditRestoration } from "./SharedCreditRestoration";
 import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "../../components/Primitives";
@@ -211,6 +212,11 @@ export function HouseholdCreditAdmin({
                           studentId={studentId}
                           packageId={pool.id}
                           expiresAt={pool.expiresAt}
+                          timezone={timezone}
+                        />
+                        <SharedCreditRestoration
+                          studentId={studentId}
+                          packageId={pool.id}
                           timezone={timezone}
                         />
                       </div>

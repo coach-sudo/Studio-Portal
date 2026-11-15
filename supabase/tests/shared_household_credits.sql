@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(77);
+select plan(83);
 
 insert into auth.users(id,email)
 select md5('shared-user-'||n)::uuid,'shared-role-'||n||'@example.test' from generate_series(1,5) n;
@@ -252,6 +252,30 @@ select is(pg_temp.h('attention_cases')#>>'{0,status}','needs_review','Attention 
 select set_config('request.jwt.claim.sub',md5('shared-user-4')::uuid::text,true);
 select is(student_credit_history(md5('shared-student-3')::uuid,1)->>'total','0',
   'Student history omits the private legacy reason and entry');
+
+
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+create function pg_temp.restore_request() returns jsonb language sql as $$
+  select jsonb_build_object('packageId',pg_temp.pool(),'entryId',id)
+  from package_credit_entries where package_id=pg_temp.pool() and kind='consumption'
+    and lesson_id=md5('shared-lesson-1')::uuid
+$$;
+select is(jsonb_array_length(pg_temp.h('restore_list',pg_temp.restore_request())),1,
+  'Restore list includes the completed shared debit even after membership removal');
+create temporary table reviewed_shared_restore as
+select pg_temp.restore_request()||jsonb_build_object('preview',pg_temp.h('restore_preview',pg_temp.restore_request()),
+  'key','restore-shared-pool-test','reason','Incorrect shared deduction','portalVisible',false) as request;
+select is(pg_temp.h('restore_apply',(select request from reviewed_shared_restore))->>'status','completed',
+  'Coach restores the shared debit');
+select is(pg_temp.h('restore_apply',(select request from reviewed_shared_restore))->>'status','completed',
+  'Exact restoration retry returns its receipt');
+select is((select count(*) from package_credit_entries where idempotency_key='shared-restoration:restore-shared-pool-test'
+  and used_by_student_id=md5('shared-student-1')::uuid and package_id=pg_temp.pool()),1::bigint,
+  'Shared restoration preserves student attribution and original pool');
+select is((select status::text from lessons where id=md5('shared-lesson-1')::uuid),'completed',
+  'Restoration preserves completed lesson status');
+select is(jsonb_array_length(pg_temp.h('restore_list',pg_temp.restore_request())),0,
+  'Restored uses cannot be selected again');
 
 select * from finish();
 rollback;
