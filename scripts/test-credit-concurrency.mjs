@@ -1,5 +1,7 @@
 // Runs only inside the local Supabase Docker database. No linked/remote target exists.
 import assert from "node:assert/strict";
+import console from "node:console";
+import { setTimeout as delay } from "node:timers/promises";
 import { execFileSync, spawn } from "node:child_process";
 const containers = execFileSync(
   "docker",
@@ -76,7 +78,7 @@ try {
   const b = session(
     `begin;set application_name='credit-reliability-racer';${grant}commit;`,
   );
-  await new Promise((resolve) => setTimeout(resolve, 250));
+  await delay(250);
   assert.equal(
     query(
       "select count(*) from pg_stat_activity where application_name='credit-reliability-racer' and wait_event_type='Lock';",
@@ -165,5 +167,149 @@ try {
     delete from public.lessons where studio_id='${studio}';delete from public.packages where student_id='${student}';
     delete from public.student_credit_accounts where student_id='${student}';delete from public.students where id='${student}';
     delete from public.memberships where studio_id='${studio}';delete from public.studios where id='${studio}';
+    delete from auth.users where id='${coach}';commit;`);
+}
+
+// A single shared lot must serialize different student locks.
+const second = "93000000-0000-4000-8000-000000000002";
+const family = "93000000-0000-4000-8000-000000000003";
+const shared = "93000000-0000-4000-8000-000000000004";
+const service = "93000000-0000-4000-8000-000000000005";
+const definition = "93000000-0000-4000-8000-000000000006";
+const lessonA = "93000000-0000-4000-8000-000000000007";
+const lessonB = "93000000-0000-4000-8000-000000000008";
+
+async function raceShared(holderSql, contenderSql) {
+  let notify;
+  const ready = new Promise((resolve) => {
+    notify = resolve;
+  });
+  const holder = session(
+    `begin;select id from public.packages where id='${shared}' for update;
+     ${holderSql} select 'shared-lock';select pg_sleep(2);commit;`,
+    (output) => {
+      if (output.includes("shared-lock")) notify();
+    },
+  );
+  await Promise.race([
+    ready,
+    holder.then(() => {
+      throw new Error("Holder finished before opening the race");
+    }),
+  ]);
+  const contender = session(
+    `set application_name='shared-credit-racer';${contenderSql}`,
+  );
+  try {
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const waiting = query(
+        "select count(*) from pg_stat_activity where application_name='shared-credit-racer' and wait_event_type='Lock'",
+      );
+      if (waiting === "1") return await Promise.all([holder, contender]);
+      await delay(50);
+    }
+    throw new Error(
+      "Expected the second household session to contend on the pool lock",
+    );
+  } finally {
+    await Promise.allSettled([holder, contender]);
+  }
+}
+
+try {
+  query(`begin;
+    insert into auth.users(id,email) values('${coach}','e2e-concurrency-coach@example.test');
+    insert into public.studios(id,name,slug) values('${studio}','Shared concurrency','e2e-credit-shared-concurrency');
+    insert into public.memberships(studio_id,user_id,role,display_name) values('${studio}','${coach}','coach','Shared coach');
+    insert into public.students(id,studio_id,full_name) values('${student}','${studio}','Student 1'),('${second}','${studio}','Student 2');
+    insert into credit_internal.credit_households(id,studio_id,name) values('${family}','${studio}','Family');
+    insert into credit_internal.credit_household_members(household_id,student_id) values('${family}','${student}'),('${family}','${second}');
+    insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes)
+      values('${service}','${studio}','shared-race','Shared','private',60);
+    insert into public.package_definitions(id,studio_id,name,session_count,session_duration_minutes,price_minor,
+      eligible_service_ids,allow_household_credits,allow_credit_transfer)
+      values('${definition}','${studio}','Shared',1,60,10000,array['${service}'::uuid],true,true);
+    insert into public.packages(id,household_id,definition_id,name)
+      values('${shared}','${family}','${definition}','Shared');
+    insert into public.package_credit_entries(package_id,kind,quantity,reason) values('${shared}','adjustment',1,'Test grant');
+    insert into credit_internal.credit_pool_members(package_id,household_id,student_id)
+      values('${shared}','${family}','${student}'),('${shared}','${family}','${second}');
+    insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,service_id)
+      values('${lessonA}','${studio}','${student}','Student 1 lesson',now()+interval '1 day',now()+interval '25 hours','scheduled','virtual','Meet','${service}'),
+        ('${lessonB}','${studio}','${second}','Student 2 lesson',now()+interval '2 days',now()+interval '49 hours','scheduled','virtual','Meet','${service}');
+    commit;`);
+  const reserve = (lesson, who) =>
+    `select coalesce(public.reserve_student_lesson_credit('${lesson}','${who}',null,true)::text,'no_credit');`;
+  const [, losingBooking] = await raceShared(
+    reserve(lessonA, student),
+    reserve(lessonB, second),
+  );
+  assert.equal(losingBooking.trim(), "no_credit");
+  assert.equal(
+    query(
+      `select count(*) from public.package_credit_entries where package_id='${shared}' and kind='reservation'`,
+    ),
+    "1",
+  );
+  query(
+    `select public.settle_lesson_credits('${lessonA}',false,'${student}');`,
+  );
+
+  const commands = [student, second].map((who, index) => {
+    const change = { packageId: shared, studentId: who, quantity: 1 };
+    const auth = `set request.jwt.claim.sub='${coach}';`;
+    const preview = JSON.parse(
+      query(
+        auth +
+          `select public.household_credit_access('${student}','transfer_preview','${JSON.stringify(change)}')-'status'-'canApply';`,
+      ),
+    );
+    return (
+      auth +
+      `select public.household_credit_access('${student}','transfer_apply','${JSON.stringify(
+        {
+          ...change,
+          reason: "Concurrent transfer fixture",
+          key: "shared-race-" + index,
+          preview,
+        },
+      )}')->>'status';`
+    );
+  });
+  const [winningTransfer, losingTransfer] = await raceShared(
+    commands[0],
+    commands[1],
+  );
+  assert.match(winningTransfer, /completed/);
+  assert.equal(losingTransfer.trim(), "stale");
+  assert.equal(
+    query(
+      `select count(*) from public.packages where transferred_from_package_id='${shared}'`,
+    ),
+    "1",
+  );
+  assert.equal(query(`select public.package_credit_balance('${shared}')`), "0");
+  console.log(
+    "Shared pool contention passed for household reservations and transfers.",
+  );
+} finally {
+  query(`begin;
+    delete from credit_internal.credit_command_receipts where student_id='${student}';
+    delete from credit_internal.credit_coverage_jobs where student_id in ('${student}','${second}');
+    delete from public.audit_events where studio_id='${studio}';
+    delete from credit_internal.credit_pool_members where household_id='${family}';
+    delete from public.package_credit_entries where package_id='${shared}' or package_id in
+      (select id from public.packages where transferred_from_package_id='${shared}');
+    delete from public.lessons where studio_id='${studio}';
+    delete from public.packages where transferred_from_package_id='${shared}';
+    delete from public.packages where id='${shared}';
+    delete from credit_internal.credit_household_members where household_id='${family}';
+    delete from credit_internal.credit_households where id='${family}';
+    delete from public.student_credit_accounts where student_id in ('${student}','${second}');
+    delete from public.students where studio_id='${studio}';
+    delete from public.package_definitions where studio_id='${studio}';
+    delete from public.booking_services where studio_id='${studio}';
+    delete from public.memberships where studio_id='${studio}';
+    delete from public.studios where id='${studio}';
     delete from auth.users where id='${coach}';commit;`);
 }

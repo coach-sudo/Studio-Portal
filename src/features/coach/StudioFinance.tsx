@@ -1,4 +1,5 @@
 import { BulkCreditAdjustments } from "./BulkCreditAdjustments";
+import { HouseholdCreditAdmin } from "./HouseholdCreditAdmin";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDollarSign } from "lucide-react";
@@ -222,6 +223,12 @@ export function FinanceView({
         </p>
       )}
       {!isDemo && <BulkCreditAdjustments data={data} />}
+      {!isDemo && data.students[0] && (
+        <HouseholdCreditAdmin
+          studentId={data.students[0].id}
+          timezone={data.settings.timezone}
+        />
+      )}
       <FinancialDashboard data={data} isDemo={isDemo} />
       <InvoiceWorkspace data={data} isDemo={isDemo} />
       <div className="two-section-grid">

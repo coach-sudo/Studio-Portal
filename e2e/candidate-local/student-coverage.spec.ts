@@ -9,6 +9,44 @@ for (const role of ["student", "guardian"] as const) {
       const now = new Date().toISOString();
       const shortage = "70000000-0000-4000-8000-000000000020";
       await context.route(
+        "**/rest/v1/rpc/household_credit_access",
+        async (route) => {
+          expect(route.request().postDataJSON()).toMatchObject({
+            p_action: "portal",
+            p_value: { studentIds: [ids.student] },
+          });
+          await route.fulfill({
+            json: [
+              {
+                id: "70000000-0000-4000-8000-000000000024",
+                name: "Shared scene study",
+                householdId: "70000000-0000-4000-8000-000000000025",
+                householdName: "Candidate household",
+                durationMinutes: 60,
+                services: ["Scene study"],
+                expiresAt: null,
+                available: 2,
+                unused: 3,
+                reserved: 1,
+                consumed: 1,
+                members: [{ id: ids.student, name: "E2E Candidate Student" }],
+                usage: [
+                  {
+                    studentId: ids.student,
+                    studentName: "E2E Candidate Student",
+                    lessonId: ids.lesson,
+                    topic: "Shared reservation",
+                    startsAt: "2027-01-20T18:00:00Z",
+                    reserved: 1,
+                    consumed: 0,
+                  },
+                ],
+              },
+            ],
+          });
+        },
+      );
+      await context.route(
         "**/rest/v1/rpc/student_credit_coverage",
         async (route) => {
           const input = route.request().postDataJSON();
@@ -126,6 +164,14 @@ for (const role of ["student", "guardian"] as const) {
         });
       });
       await page.goto("/portal?student=" + ids.student);
+      const shared = page.getByRole("region", {
+        name: "Shared household credits",
+      });
+      await expect(shared).toHaveCount(1);
+      await shared
+        .getByText("Shared scene study · 2 shared credits available")
+        .click();
+      await expect(shared.getByText(/Shared reservation/)).toBeVisible();
       if (role === "guardian") {
         const household = page.getByRole("region", {
           name: "Household Lesson Coverage",

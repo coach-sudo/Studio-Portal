@@ -314,18 +314,23 @@ export async function loadOperationalData(
         .enum(["reserved", "confirmed", "cancelled", "attended", "no_show"])
         .parse(row.status),
     })),
-    packages: (packages.data ?? []).map((row) => ({
-      id: row.id,
-      definitionId: row.definition_id ?? undefined,
-      studentId: row.student_id,
-      name: row.name,
-      expiresAt: row.expires_at ?? undefined,
-      priceMinor: row.price_minor,
-      currency: row.currency,
-      autoApply: row.auto_apply,
-      version: row.version,
-      updatedAt: row.updated_at,
-    })),
+    packages: (packages.data ?? [])
+      .filter(
+        (row): row is typeof row & { student_id: string } =>
+          row.student_id !== null,
+      )
+      .map((row) => ({
+        id: row.id,
+        definitionId: row.definition_id ?? undefined,
+        studentId: row.student_id,
+        name: row.name,
+        expiresAt: row.expires_at ?? undefined,
+        priceMinor: row.price_minor,
+        currency: row.currency,
+        autoApply: row.auto_apply,
+        version: row.version,
+        updatedAt: row.updated_at,
+      })),
     packageDefinitions: (definitions.data ?? []).map((row) => ({
       id: row.id,
       studioId: row.studio_id,

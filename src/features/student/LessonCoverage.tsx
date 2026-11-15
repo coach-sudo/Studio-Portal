@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Section, Status } from "../../components/Primitives";
 import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { StudentCreditHistory } from "../../components/StudentCreditHistory";
+import { PortalSharedCreditPools } from "../../components/SharedCreditPools";
 import { loadCreditCoverage } from "../../data/creditCoverage";
 import { studioCommand } from "../../data/bookingCommands";
 import type { PortalContext } from "../../data/portalContext";
@@ -183,6 +184,7 @@ export function StudentCoverageSummary({
             : "Checking credit coverage…"}
         </p>
       )}
+      <PortalSharedCreditPools studentIds={[studentId]} timezone={timezone} />
       <Link to={coverageHref(studentId)}>Credits &amp; Lessons</Link>
     </Section>
   );
@@ -292,6 +294,12 @@ export function HouseholdLessonCoverage({
 }) {
   return (
     <Section title="Household Lesson Coverage" landmark>
+      <PortalSharedCreditPools
+        studentIds={members
+          .filter((member) => member.canViewFinance)
+          .map((member) => member.id)}
+        timezone={timezone}
+      />
       {members.map((member) => (
         <HouseholdMember key={member.id} member={member} timezone={timezone} />
       ))}
@@ -482,6 +490,10 @@ export function CreditsAndLessons({
               contact={contact}
             />
           )}
+          <PortalSharedCreditPools
+            studentIds={[studentId]}
+            timezone={timezone}
+          />
           <StudentCreditHistory studentId={studentId} timezone={timezone} />
         </>
       )}

@@ -1,6 +1,6 @@
 # Stage C lesson coverage and renewals
 
-This partial Stage C draft is stacked on [Stage B #95](https://github.com/coach-sudo/Studio-Portal/pull/95) at a2bb5a46806e3c311d8556317df5e4f22ecfe6b5. The Stage B verify and migrations jobs passed. Its isolated deployed-browser job stopped before producing a test report. Protected hosted acceptance remains open.
+This Stage C draft is stacked on [Stage B #95](https://github.com/coach-sudo/Studio-Portal/pull/95) at a2bb5a46806e3c311d8556317df5e4f22ecfe6b5. The Stage B verify and migrations jobs passed. Its isolated deployed-browser job stopped before producing a test report. Protected hosted acceptance remains open.
 
 ## Portal experience
 
@@ -14,7 +14,7 @@ A lesson needing credit links to contextual renewal. The new server check uses t
 
 Migration 20261115160000_portal_lesson_renewals.sql adds an authenticated authorization and eligibility RPC. It updates no records. Roll back the application before removing the RPC through a reviewed forward migration.
 
-Shared household pools, atomic member attribution, pool administration, and transfers remain open. Existing finance access continues to govern package counts. This draft does not expand finance access for minors or schedule-only guardians. These roles do not receive the new credit view without the required permission. No Stage D notification automation is included.
+Existing finance access continues to govern package counts. This draft does not expand finance access for minors or schedule-only guardians. These roles do not receive the new credit view without the required permission. No Stage D notification automation is included.
 
 Only authorized exact-head staging can verify a real test-mode checkout and protected role access. That needs an immutable separately approved deployment, matching staging migrations, synthetic student and guardian credentials, and a test Stripe configuration. No hosted fixtures, reminders, or provider changes were made.
 
@@ -36,8 +36,6 @@ The additive migration 20261115170000_bulk_credit_adjustments_and_visibility.sql
 
 Guardians can expand each authorized student's recent package purchases using the existing payment RLS and a scoped, limited read. The area displays financial amounts separately. Renewal reminder history is unavailable. No history or delivery workflow was fabricated.
 
-Shared ownership, eligible member management, and member-level reservation and consumption still require implementation. Linked contacts establish access to students, and the current ledger ties each package to one student. Generic transfers have no explicit package rule in the current model. No existing lot was automatically converted or made transferable.
-
 [Protected staging acceptance](credit-stage-c-hosted-acceptance.md)
 
 ## Administrative and guardian screenshot evidence
@@ -54,3 +52,29 @@ Shared ownership, eligible member management, and member-level reservation and c
 - The existing 33 local candidate browser scenarios and three new bulk preview scenarios passed at desktop, tablet, and mobile sizes. The updated guardian coverage and purchase history scenario passed again at all three widths. The earlier 18 student and guardian fixture failures passed in the recorded local baseline.
 - On the predecessor head 03d4b8cf1142f7538fbb9b6c1f7f10a1f2741aa5, GitHub verify and migrations passed. The isolated deployed browser workflow and its required smoke check failed. The browser report identified the absence of a test-mode Stripe key for scenario 08. That workflow cannot establish protected hosted acceptance.
 - Build, bundle budgets, and secret scanning passed after the guardian update.
+
+## Shared household accounting
+
+Migration `20261115181801_shared_household_credits.sql` adds explicit credit households and a pool-specific eligibility list. Each existing package retains its student owner. A shared package has a household owner and no student owner. The original issuance, eligible services, duration, and expiration are retained in the existing terms snapshot. The migration adds no household records or balance entries to existing accounts.
+
+In **Payments → Household credits**, a coach can create the household roster, set rules for future package issuance, issue a shared grant, preview member eligibility changes, and transfer credits. A member removal preview names any lesson that still holds a credit. Finishing that lesson or explicitly settling the reservation permits a fresh preview. Prior usage remains attributable to the original student. Package policies default to off. Changing a catalog rule does not make previously issued lots transferable.
+
+The existing booking evaluator selects eligible individual and shared lots by earliest expiration, then favors a student-owned lot on a tie, then uses issuance time and ID. The transaction locks candidate lots in stable order and rechecks availability under the lock. Completion and chargeable cancellation append a linked settlement with the same owning pool and student. Timely cancellation releases the hold into that pool and preserves its expiration terms. The portal shows a lesson as covered only after the authoritative reservation exists. A compatible, unreserved credit suppresses contextual checkout and can be assigned through the established coverage workflow.
+
+Transfers are restricted to verified terms that explicitly allow them and a recipient within the same explicit household. Each transfer creates a new destination lot that inherits the source entitlement and expiry. The two ledger entries and their audit record are written together. The coach can preview a transfer, including existing reservations and resulting availability. The command recomputes the preview under the lot lock, declines changed outcomes and reuses the original receipt on an exact retry. A shared destination starts with an empty eligibility list so the coach can explicitly approve each student. There is no financial mutation. Household issuance is a coach grant or authorized transfer. Existing student and designated-payer checkout remains the purchase path.
+
+Guardians see each authorized pool once. Usage details and member names are limited to students whose finance access has been verified, and lesson details additionally require schedule access. Student and household views show shared quantities separately from individual package balances and renewal prices.
+
+Roll back the client first if an application rollback is necessary. Retain the compatible schema, member records, ledger entries, receipts, attribution, and privacy controls. After any shared issuance or transfer, reverting the reservation SQL would strand active coverage. Use a reviewed forward repair backed by an isolated replay. Stage C production and protected hosted staging are unchanged.
+
+### Shared-credit browser evidence
+
+| Width   | Student                                                            | Guardian                                                             | Coach transfer                                                     |
+| ------- | ------------------------------------------------------------------ | -------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Desktop | [Student](credit-stage-c-evidence/desktop/student-shared-pool.png) | [Guardian](credit-stage-c-evidence/desktop/guardian-shared-pool.png) | [Transfer](credit-stage-c-evidence/desktop/household-transfer.png) |
+| Tablet  | [Student](credit-stage-c-evidence/tablet/student-shared-pool.png)  | [Guardian](credit-stage-c-evidence/tablet/guardian-shared-pool.png)  | [Transfer](credit-stage-c-evidence/tablet/household-transfer.png)  |
+| Mobile  | [Student](credit-stage-c-evidence/mobile/student-shared-pool.png)  | [Guardian](credit-stage-c-evidence/mobile/guardian-shared-pool.png)  | [Transfer](credit-stage-c-evidence/mobile/household-transfer.png)  |
+
+The isolated database run passed 672 pgTAP assertions across 23 files, including 55 new household assertions. The two-session concurrency script observed one winner for the last shared credit and a stale result for a competing transfer. All 36 local browser baseline cases and three new household administration cases passed.
+
+Build, bundle budgets, the ESLint warning baseline, secret scanning, and generated types passed. The full local Vitest run passed 1,197 cases and timed out in the existing roster-navigation case. That case passed on its focused rerun. All 18 previously reported student and guardian fixture failures passed within the browser baseline.
