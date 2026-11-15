@@ -1,3 +1,8 @@
+import { z } from "zod";
+import {
+  coachHouseholdsSchema,
+  householdCreditCommand,
+} from "../../data/householdCredits";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "react-router-dom";
@@ -13,7 +18,22 @@ const labels = {
 };
 type Kind = keyof typeof labels;
 type Student = { id: string; fullName: string; preferredName?: string };
-type Issue = { kind: Kind; text: string; date?: string };
+type Issue = { kind: Kind; text: string; date?: string; packageId?: string };
+const caseSchema = z.array(
+  z.object({
+    id: z.string(),
+    studentId: z.string(),
+    packageId: z.string(),
+    packageName: z.string(),
+    finding: z.string(),
+    status: z.enum(["needs_review", "under_review", "reopened"]),
+  }),
+);
+const caseStatus = {
+  needs_review: "Needs review",
+  under_review: "Under review",
+  reopened: "Reopened",
+};
 
 export function CreditAttention({
   students,
@@ -25,7 +45,51 @@ export function CreditAttention({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<Kind | "">("");
+  const [household, setHousehold] = useState("");
+  const [severity, setSeverity] = useState("");
   const identity = usePrivateIdentity();
+  const anchor = students[0]?.id;
+  const related = useQuery({
+    queryKey: ["credit-attention-sources", identity, anchor],
+    enabled: open && !!identity && !!anchor,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const [households, cases] = await Promise.allSettled([
+        householdCreditCommand(anchor, "coach", {}, signal).then(
+          (value) => coachHouseholdsSchema.parse(value).households,
+        ),
+        householdCreditCommand(anchor, "attention_cases", {}, signal).then(
+          (value) => caseSchema.parse(value),
+        ),
+      ]);
+      return {
+        households: households.status === "fulfilled" ? households.value : [],
+        cases: cases.status === "fulfilled" ? cases.value : [],
+        incomplete:
+          households.status === "rejected" || cases.status === "rejected",
+      };
+    },
+  });
+  const group = related.data?.households.find((item) => item.id === household);
+  const nameMatches = (name: string) =>
+    name.toLowerCase().includes(search.trim().toLowerCase());
+  const shared = related.data?.households
+    .filter(
+      (item) =>
+        (!household || item.id === household) &&
+        (nameMatches(item.name) ||
+          item.members.some((member) => nameMatches(member.name))),
+    )
+    .flatMap((item) =>
+      item.pools.filter(
+        (pool) =>
+          pool.unused > 0 &&
+          pool.expiresAt &&
+          Date.parse(pool.expiresAt) <= Date.now() + 30 * 86400_000,
+      ),
+    );
+  const sharedShown =
+    (!kind || kind === "expiring") && severity !== "action" ? shared : [];
   const query = useQuery({
     queryKey: [
       "credit-attention",
@@ -62,6 +126,7 @@ export function CreditAttention({
                       issues.push({
                         kind: "expiring",
                         text: pool.name,
+                        packageId: pool.id,
                         date: pool.expiresAt,
                       });
                   }
@@ -78,6 +143,7 @@ export function CreditAttention({
                           ? "uncovered"
                           : "review",
                       text: item.topic,
+                      packageId: item.packageId,
                       date: item.startsAt,
                     });
                 }
@@ -96,15 +162,49 @@ export function CreditAttention({
     },
   });
   const matches = query.data
-    ?.filter(({ student }) =>
-      (student.fullName + " " + (student.preferredName ?? ""))
-        .toLowerCase()
-        .includes(search.trim().toLowerCase()),
+    ?.filter(
+      ({ student }) =>
+        (!household ||
+          group?.members.some((member) => member.id === student.id)) &&
+        nameMatches(student.fullName + " " + (student.preferredName ?? "")),
     )
-    .map((row) => ({
-      ...row,
-      issues: row.issues.filter((issue) => !kind || issue.kind === kind),
-    }))
+    .map((row) => {
+      const cases =
+        related.data?.cases.filter(
+          (item) => item.studentId === row.student.id,
+        ) ?? [];
+      const remaining = row.issues.filter(
+        (issue) =>
+          issue.kind !== "review" ||
+          !cases.some(
+            (item) =>
+              item.packageId === issue.packageId ||
+              issue.text === "Review the credit balance",
+          ),
+      );
+      const issues = [
+        ...remaining,
+        ...cases.map((item): Issue => ({
+          kind: "review",
+          packageId: item.packageId,
+          text:
+            item.packageName +
+            " � " +
+            caseStatus[item.status] +
+            " � " +
+            item.finding.replaceAll("_", " "),
+        })),
+      ];
+      return {
+        ...row,
+        issues: issues.filter(
+          (issue) =>
+            (!kind || issue.kind === kind) &&
+            (!severity ||
+              (issue.kind === "expiring" ? "upcoming" : "action") === severity),
+        ),
+      };
+    })
     .filter((row) => row.failed || row.issues.length);
   if (!identity) return null;
   return (
@@ -134,17 +234,68 @@ export function CreditAttention({
                   </option>
                 ))}
               </select>
+              <select
+                aria-label="Household"
+                value={household}
+                onChange={(event) => setHousehold(event.target.value)}
+              >
+                <option value="">All households and students</option>
+                {related.data?.households.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                aria-label="Severity"
+                value={severity}
+                onChange={(event) => setSeverity(event.target.value)}
+              >
+                <option value="">All severities</option>
+                <option value="action">Action needed</option>
+                <option value="upcoming">Upcoming expiration</option>
+              </select>
             </div>
+            {related.data?.incomplete && (
+              <p role="status">
+                Some household or reconciliation information is unavailable.
+              </p>
+            )}
+            {sharedShown?.map((pool) => (
+              <article key={pool.id}>
+                <h3>{pool.householdName}</h3>
+                <p>
+                  {pool.name} � {labels.expiring} �{" "}
+                  {formatStudioDateTime(pool.expiresAt!, timezone)}
+                </p>
+                <Link
+                  to={
+                    "/coach/finance?creditHousehold=" +
+                    pool.householdId +
+                    "&creditPool=" +
+                    pool.id
+                  }
+                  onClick={() => setOpen(false)}
+                >
+                  Manage household pool
+                </Link>
+              </article>
+            ))}
             {query.isPending && <p role="status">Checking credit coverage…</p>}
             {query.isError && (
               <p role="alert">Credit attention is unavailable.</p>
             )}
-            {matches?.length === 0 && <p>No matching credit issues.</p>}
+            {matches?.length === 0 && !sharedShown?.length && (
+              <p>No matching credit issues.</p>
+            )}
             {query.data && (
               <button
                 type="button"
                 disabled={query.isFetching}
-                onClick={() => void query.refetch()}
+                onClick={() => {
+                  void query.refetch();
+                  if (anchor) void related.refetch();
+                }}
               >
                 Refresh coverage
               </button>

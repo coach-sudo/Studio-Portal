@@ -60,6 +60,7 @@ function CreditControls({
     balance: { remaining: number; available: number; reserved: number };
   }>();
   const [reason, setReason] = useState("");
+  const [portalVisible, setPortalVisible] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   // Preserve the key across an unknown transport result; changed intent gets a new key.
@@ -116,6 +117,7 @@ function CreditControls({
           ? {
               total: reviewed?.total,
               reason: reason.trim(),
+              portalVisible,
               reviewedBalance: reviewed?.balance,
             }
           : {}),
@@ -328,6 +330,7 @@ function CreditControls({
                   setReviewed(undefined);
                   setNotice("");
                   setAdjusting(true);
+                  setPortalVisible(true);
                 }}
               >
                 Manage credits
@@ -570,6 +573,15 @@ function CreditControls({
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
                   />
+                </label>
+                <label className="full" htmlFor={formId + "-visibility"}>
+                  <input
+                    id={formId + "-visibility"}
+                    type="checkbox"
+                    checked={portalVisible}
+                    onChange={(event) => setPortalVisible(event.target.checked)}
+                  />
+                  Show adjustment in portal history
                 </label>
               </>
             )}

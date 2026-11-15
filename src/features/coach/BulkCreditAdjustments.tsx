@@ -1,5 +1,10 @@
+import {
+  coachHouseholdsSchema,
+  householdCreditCommand,
+} from "../../data/householdCredits";
+import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
 import { useId, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 import { Dialog } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
@@ -60,9 +65,42 @@ export function BulkCreditAdjustments({ data }: { data: StudioSnapshot }) {
   const students = new Map(
     data.students.map((student) => [student.id, student.fullName]),
   );
-  const selected = data.packages.filter(
-    (item) => item.id in draft && students.has(item.studentId),
-  );
+  const identity = usePrivateIdentity();
+  const anchor = data.students[0]?.id;
+  const households = useQuery({
+    queryKey: ["coach-credit-households", identity, anchor],
+    enabled: open && !!anchor && !!identity,
+    queryFn: async ({ signal }) =>
+      coachHouseholdsSchema.parse(
+        await householdCreditCommand(anchor, "coach", {}, signal),
+      ),
+    retry: false,
+  });
+  const packages = [
+    ...data.packages
+      .filter((item) => students.has(item.studentId))
+      .map((item) => ({
+        id: item.id,
+        name: item.name,
+        studentId: item.studentId,
+        owner: students.get(item.studentId),
+      })),
+    ...(households.data?.households.flatMap((item) =>
+      item.pools.flatMap((pool) =>
+        pool.members.length
+          ? [
+              {
+                id: pool.id,
+                name: pool.name,
+                studentId: pool.members[0].id,
+                owner: item.name,
+              },
+            ]
+          : [],
+      ),
+    ) ?? []),
+  ];
+  const selected = packages.filter((item) => item.id in draft);
   const rows = selected.map((item) => ({
     studentId: item.studentId,
     packageId: item.id,
@@ -108,6 +146,9 @@ export function BulkCreditAdjustments({ data }: { data: StudioSnapshot }) {
         setNotice("All selected package adjustments were recorded.");
         await Promise.all([
           client.invalidateQueries({ queryKey: ["credit-coverage"] }),
+          client.invalidateQueries({ queryKey: ["credit-attention"] }),
+          client.invalidateQueries({ queryKey: ["coach-credit-households"] }),
+          client.invalidateQueries({ queryKey: ["shared-credit-pools"] }),
           client.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
           client.invalidateQueries({ queryKey: ["invoices"] }),
           invalidateStudioDomains(client, ["finance", "lessons", "booking"]),
@@ -206,11 +247,8 @@ export function BulkCreditAdjustments({ data }: { data: StudioSnapshot }) {
                     }}
                   >
                     <option value="">Choose a package</option>
-                    {data.packages
-                      .filter(
-                        (item) =>
-                          students.has(item.studentId) && !(item.id in draft),
-                      )
+                    {packages
+                      .filter((item) => !(item.id in draft))
                       .map((item) => (
                         <option key={item.id} value={item.id}>
                           {students.get(item.studentId)} · {item.name}

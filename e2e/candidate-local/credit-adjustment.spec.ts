@@ -14,12 +14,16 @@ test("coach reviews a credit adjustment without submitting it", async ({
   await expect(manage).toBeVisible();
   await manage.click();
   const dialog = page.getByRole("dialog", { name: "Manage lesson credits" });
-  await dialog.getByLabel("Adjustment").selectOption("remove");
+  await dialog
+    .getByRole("combobox", { name: "Adjustment" })
+    .selectOption("remove");
   await dialog.getByRole("spinbutton").fill("1");
   await expect(
     dialog.getByRole("button", { name: "Review adjustment" }),
   ).toBeDisabled();
-  await dialog.getByLabel("Adjustment").selectOption("add");
+  await dialog
+    .getByRole("combobox", { name: "Adjustment" })
+    .selectOption("add");
   await dialog.getByRole("spinbutton").fill("2");
   await expect(
     dialog.getByRole("button", { name: "Review adjustment" }),

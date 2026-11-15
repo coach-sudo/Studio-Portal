@@ -46,3 +46,21 @@ Credit measures and package prices remain separate in the reviewed screens. No l
 - Mobile [Coach Credit Attention](credit-stage-c-evidence/mobile/credit-attention.png) · [Guardian coverage](credit-stage-c-evidence/mobile/guardian-attention.png)
 
 The affected browser workflows passed all nine cases on the final focused run, including the guardian's synthetic checkout handoff. The earlier broad run passed 37 cases and exposed five failures in the affected scenarios. Those scenarios passed after moving the dashboard action to the actual Today route and updating the guardian assertions. Typecheck, lint baseline, and the isolated production-prefix upgrade check passed.
+
+## Gap closure follow-up
+
+The coach Today view now has household and severity filters, shared expiration items, and unresolved persistent Stage B cases. Package links open the package review and household links open the owning pool. The list distinguishes actionable issues from upcoming expiry. Notification-delivery failures remain Stage D.
+
+In student Payments, open the package under **Packages and reconciliation**, then select **Manage expiration**. For a shared lot, open **Payments → Household credits**, expand the household, and choose the same action on the pool. Preview the change, review its effect on the named reservations, enter a reason, and confirm. Expiration history shows the prior and effective dates, date of change, and private reason. The existing audit record retains the administrator. Credit availability and allocation use the effective date. The purchase-time snapshot remains intact.
+
+The existing bulk form accepts shared pools with an eligible member. It presents a household-owned lot once, blocks duplicate IDs server-side, and applies shared and individual rows in the same transaction. Quick corrections now expose the portal-history checkbox. A hidden entry stays in staff audit and still changes the authoritative balance.
+
+The additive migration `20261115185714_legacy_adjustment_visibility.sql` updates guarded functions and reuses the existing audit and receipt tables. It performs no historical data rewrite. For rollback, revert the client and preserve existing audit, receipt, visibility, and effective expiration data. Restore or correct individual exceptions only through reviewed forward changes.
+
+| Width   | Credit Attention                                                  | Expiration preview                                                   |
+| ------- | ----------------------------------------------------------------- | -------------------------------------------------------------------- |
+| Desktop | [Attention](credit-stage-c-evidence/desktop/credit-attention.png) | [Expiration](credit-stage-c-evidence/desktop/expiration-preview.png) |
+| Tablet  | [Attention](credit-stage-c-evidence/tablet/credit-attention.png)  | [Expiration](credit-stage-c-evidence/tablet/expiration-preview.png)  |
+| Mobile  | [Attention](credit-stage-c-evidence/mobile/credit-attention.png)  | [Expiration](credit-stage-c-evidence/mobile/expiration-preview.png)  |
+
+The full accumulated browser regression passed all 42 cases across three widths. The earlier run found a selector ambiguity after adding the visibility checkbox. The selector was corrected and all cases were rerun. The original audit above records the state before this follow-up. Per-student booking exceptions, historical source configuration, lesson-alert deep links, and shared-lot restoration were not extended in this follow-up.

@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import { CreditExpiration } from "./CreditExpiration";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { z } from "zod";
@@ -147,8 +149,11 @@ export function PackageCreditReview({
 }) {
   const client = useQueryClient();
   const formId = useId();
-  const [open, setOpen] = useState(false);
-  const [packageId, setPackageId] = useState("");
+  const [params] = useSearchParams();
+  const requestedPackage =
+    z.string().uuid().safeParse(params.get("creditPackage")).data ?? "";
+  const [open, setOpen] = useState(!!requestedPackage);
+  const [packageId, setPackageId] = useState(requestedPackage);
   const [page, setPage] = useState(1);
   const [finding, setFinding] = useState<string>();
   const [caseReasons, setCaseReasons] = useState<Record<string, string>>({});
@@ -534,6 +539,13 @@ export function PackageCreditReview({
                   </ul>
                 </details>
               )}
+              <CreditExpiration
+                key={selected.id}
+                studentId={studentId}
+                packageId={selected.id}
+                expiresAt={selected.expiresAt}
+                timezone={timezone}
+              />
               {(!selected.expiresAt ||
                 Date.parse(selected.expiresAt) > Date.now()) && (
                 <div className="header-actions">

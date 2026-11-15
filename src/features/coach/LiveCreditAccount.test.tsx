@@ -132,6 +132,9 @@ it("reviews a removal before sending the confirmed total and balance", async () 
   await user.selectOptions(screen.getByLabelText("Adjustment"), "remove");
   await user.type(screen.getByRole("spinbutton"), "1");
   await user.type(screen.getByLabelText("Reason"), "Duplicate grant");
+  await user.click(
+    screen.getByRole("checkbox", { name: "Show adjustment in portal history" }),
+  );
   await user.click(screen.getByRole("button", { name: "Review adjustment" }));
   expect(
     await screen.findByText("Unused Credits change from 2 to 1."),
@@ -150,6 +153,7 @@ it("reviews a removal before sending the confirmed total and balance", async () 
         studentId: sid,
         total: 1,
         reason: "Duplicate grant",
+        portalVisible: false,
         reviewedBalance: { remaining: 2, available: 2, reserved: 0 },
       },
     }),

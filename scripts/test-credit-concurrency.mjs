@@ -289,12 +289,31 @@ try {
     "1",
   );
   assert.equal(query(`select public.package_credit_balance('${shared}')`), "0");
+  const bulkCommands = [student, second].map((who, index) => {
+    const batch = {
+      rows: [{ studentId: who, packageId: shared, delta: 1 }],
+      reason: "Concurrent shared bulk adjustment",
+    };
+    const preview = JSON.parse(
+      query(`select public.command_student_credit_settings(
+      '${who}','bulk_package_preview','${JSON.stringify(batch)}',0,'shared-bulk-preview-${index}','${coach}') -> 'rows';`),
+    );
+    return `select public.command_student_credit_settings('${who}','bulk_package_apply',
+      '${JSON.stringify({ ...batch, preview })}',0,'shared-bulk-apply-${index}','${coach}') ->> 'status';`;
+  });
+  const [winningBatch, losingBatch] = await raceShared(
+    bulkCommands[0],
+    bulkCommands[1],
+  );
+  assert.match(winningBatch, /completed/);
+  assert.equal(losingBatch.trim(), "stale");
+  assert.equal(query(`select public.package_credit_balance('${shared}')`), "1");
   console.log(
-    "Shared pool contention passed for household reservations and transfers.",
+    "Shared pool contention passed for household reservations, transfers and bulk adjustments.",
   );
 } finally {
   query(`begin;
-    delete from credit_internal.credit_command_receipts where student_id='${student}';
+    delete from credit_internal.credit_command_receipts where student_id in ('${student}','${second}');
     delete from credit_internal.credit_coverage_jobs where student_id in ('${student}','${second}');
     delete from public.audit_events where studio_id='${studio}';
     delete from credit_internal.credit_pool_members where household_id='${family}';

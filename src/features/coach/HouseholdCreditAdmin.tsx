@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import { CreditExpiration } from "./CreditExpiration";
 import { useId, useState, type FormEvent } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Dialog } from "../../components/Primitives";
@@ -27,7 +29,10 @@ export function HouseholdCreditAdmin({
   studentId: string;
   timezone: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const [params] = useSearchParams();
+  const requestedHousehold = params.get("creditHousehold");
+  const requestedPool = params.get("creditPool");
+  const [open, setOpen] = useState(!!requestedHousehold);
   const [action, setAction] = useState<Action>("create_household");
   const [householdId, setHouseholdId] = useState("");
   const [definitionId, setDefinitionId] = useState("");
@@ -177,7 +182,11 @@ export function HouseholdCreditAdmin({
             <>
               {!confirmation &&
                 data.households.map((group) => (
-                  <details key={group.id} className="disclosure-section">
+                  <details
+                    key={group.id}
+                    className="disclosure-section"
+                    open={group.id === requestedHousehold || undefined}
+                  >
                     <summary>
                       {group.name} · {group.pools.length} shared{" "}
                       {group.pools.length === 1 ? "package" : "packages"}
@@ -186,11 +195,25 @@ export function HouseholdCreditAdmin({
                       {group.members.map((member) => member.name).join(", ")}
                     </p>
                     {group.pools.map((pool) => (
-                      <SharedCreditPoolDetails
+                      <div
                         key={pool.id}
-                        pool={pool}
-                        timezone={timezone}
-                      />
+                        className={
+                          pool.id === requestedPool
+                            ? "portal-notice"
+                            : undefined
+                        }
+                      >
+                        <SharedCreditPoolDetails
+                          pool={pool}
+                          timezone={timezone}
+                        />
+                        <CreditExpiration
+                          studentId={studentId}
+                          packageId={pool.id}
+                          expiresAt={pool.expiresAt}
+                          timezone={timezone}
+                        />
+                      </div>
                     ))}
                   </details>
                 ))}

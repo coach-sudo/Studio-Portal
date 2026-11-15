@@ -50,6 +50,59 @@ test("coach finds credit attention from the dashboard", async ({
       });
     },
   );
+  await context.route(
+    "**/rest/v1/rpc/household_credit_access",
+    async (route) => {
+      const input = route.request().postDataJSON();
+      if (input.p_action === "attention_cases") {
+        return route.fulfill({
+          json: [
+            {
+              id: ids.lesson,
+              studentId: ids.student,
+              packageId: ids.lesson,
+              packageName: "Coaching package",
+              finding: "missing_issuance",
+              status: "under_review",
+            },
+          ],
+        });
+      }
+      const expiresAt = new Date(Date.now() + 2 * 86400_000).toISOString();
+      const member = { id: ids.student, name: "E2E Candidate Student" };
+      return route.fulfill({
+        json: {
+          students: [member],
+          definitions: [],
+          transferLots: [],
+          households: [
+            {
+              id: ids.lesson,
+              name: "Candidate household",
+              members: [member],
+              pools: [
+                {
+                  id: ids.lesson,
+                  householdId: ids.lesson,
+                  householdName: "Candidate household",
+                  name: "Shared coaching",
+                  durationMinutes: 60,
+                  expiresAt,
+                  services: ["Coaching"],
+                  unused: 1,
+                  reserved: 0,
+                  available: 1,
+                  consumed: 0,
+                  members: [member],
+                  usage: [],
+                },
+              ],
+            },
+          ],
+        },
+      });
+    },
+  );
   await page.goto("/coach");
   await page.getByRole("button", { name: "Credit Attention" }).click();
   const dialog = page.getByRole("dialog");
@@ -57,8 +110,14 @@ test("coach finds credit attention from the dashboard", async ({
   await dialog.getByLabel("Search students").fill("does not match");
   await expect(dialog.getByText("No matching credit issues.")).toBeVisible();
   await dialog.getByLabel("Search students").fill("");
+  await dialog.getByLabel("Household").selectOption(ids.lesson);
+  await dialog.getByLabel("Severity").selectOption("upcoming");
+  await expect(dialog.getByText(/Shared coaching/)).toBeVisible();
+  await expect(dialog.getByText(/Scene Study needs attention/)).toHaveCount(0);
+  await dialog.getByLabel("Severity").selectOption("action");
   await dialog.getByLabel("Issue type").selectOption("review");
-  await expect(dialog.getByText("No matching credit issues.")).toBeVisible();
+  await expect(dialog.getByText(/Under review/)).toBeVisible();
+  await expect(dialog.getByText(/Shared coaching/)).toHaveCount(0);
   await dialog.getByLabel("Issue type").selectOption("uncovered");
   await expect(
     dialog.getByRole("link", { name: "Manage credits" }).first(),

@@ -16,7 +16,7 @@ test("coach reviews shared credit transfers and sees reservation conflicts", asy
     householdName: "Candidate household",
     durationMinutes: 60,
     services: ["Scene Study"],
-    expiresAt: null,
+    expiresAt: "2027-01-19T18:00:00Z",
     unused: 3,
     reserved: 1,
     available: 2,
@@ -39,6 +39,30 @@ test("coach reviews shared credit transfers and sees reservation conflicts", asy
     "**/rest/v1/rpc/household_credit_access",
     async (route) => {
       const input = route.request().postDataJSON();
+      if (input.p_action === "expiration_history")
+        return route.fulfill({ json: [] });
+      if (input.p_action === "expiration_preview")
+        return route.fulfill({
+          json: {
+            packageId: id,
+            oldExpiry: pool.expiresAt,
+            newExpiry: null,
+            balance: 2,
+            reservations: [
+              {
+                lessonId: ids.lesson,
+                topic: "Scene Study next week",
+                startsAt: pool.expiresAt,
+                coveredBefore: false,
+                coveredAfter: true,
+              },
+            ],
+          },
+        });
+      if (input.p_action === "expiration_apply") {
+        expect(input.p_value.reason).toBe("Approved expiration waiver");
+        return route.fulfill({ json: { status: "completed" } });
+      }
       if (input.p_action === "coach") {
         return route.fulfill({
           json: {
@@ -150,4 +174,28 @@ test("coach reviews shared credit transfers and sees reservation conflicts", asy
     dialog.getByText("Household credit change saved."),
   ).toBeVisible();
   expect(applyCount).toBe(1);
+  await dialog
+    .locator("summary")
+    .filter({ hasText: "Candidate household" })
+    .click();
+  await dialog.getByRole("button", { name: "Manage expiration" }).click();
+  const expiry = page
+    .getByRole("dialog")
+    .filter({
+      has: page.getByRole("heading", { name: "Manage credit expiration" }),
+    })
+    .last();
+  await expiry.getByRole("combobox", { name: "Action" }).selectOption("waive");
+  await expiry
+    .getByRole("textbox", { name: "Reason" })
+    .fill("Approved expiration waiver");
+  await expiry
+    .getByRole("button", { name: "Preview expiration change" })
+    .click();
+  await expect(expiry.getByText(/Outside expiry → Valid/)).toBeVisible();
+  await expiry.screenshot({ path: info.outputPath("expiration-preview.png") });
+  await expiry
+    .getByRole("button", { name: "Confirm expiration change" })
+    .click();
+  await expect(expiry.getByText("Expiration change saved.")).toBeVisible();
 });

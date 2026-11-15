@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(55);
+select plan(77);
 
 insert into auth.users(id,email)
 select md5('shared-user-'||n)::uuid,'shared-role-'||n||'@example.test' from generate_series(1,5) n;
@@ -183,6 +183,75 @@ select is((select count(*) from packages p join credit_internal.package_credit_t
   where p.transferred_from_package_id=pg_temp.pool() and t.issuance_entry_id=original.issuance_entry_id
     and t.service_ids=original.service_ids and p.expires_at=original.original_expires_at),1::bigint,
   'The destination preserves original issuance, eligibility and expiration');
+
+
+-- Exercise the Stage C gap-closure commands through the existing coach boundary.
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+create function pg_temp.shared_bulk(p_delta integer) returns jsonb language sql as $$
+  select jsonb_build_object('rows',jsonb_build_array(jsonb_build_object('packageId',pg_temp.pool(),
+    'studentId',md5('shared-student-2')::uuid,'delta',p_delta)),'reason','Verified shared adjustment','portalVisible',false)
+$$;
+select is(command_student_credit_settings(md5('shared-student-2')::uuid,'bulk_package_preview',
+  pg_temp.shared_bulk(2),0,'shared-preview-test',md5('shared-user-1')::uuid)->>'canApply','true',
+  'Existing bulk preview accepts explicitly eligible shared lots');
+select throws_ok($$select command_student_credit_settings(md5('shared-student-2')::uuid,'bulk_package_preview',
+  pg_temp.shared_bulk(2)||jsonb_build_object('rows',(pg_temp.shared_bulk(2)->'rows')||(pg_temp.shared_bulk(2)->'rows')),
+  0,'shared-duplicate-test',md5('shared-user-1')::uuid)$$,'P0001','VALIDATION_FAILED',
+  'A shared lot cannot be selected twice');
+create function pg_temp.shared_apply() returns jsonb language sql as $$
+  select command_student_credit_settings(md5('shared-student-2')::uuid,'bulk_package_apply',
+    pg_temp.shared_bulk(2)||jsonb_build_object('preview',command_student_credit_settings(
+      md5('shared-student-2')::uuid,'bulk_package_preview',pg_temp.shared_bulk(2),
+      0,'shared-preview-test',md5('shared-user-1')::uuid)->'rows'),0,'shared-apply-test',md5('shared-user-1')::uuid)
+$$;
+select is(pg_temp.shared_apply()->>'status','completed','Shared adjustment uses the same atomic batch command');
+select is(package_credit_balance(pg_temp.pool()),2,'Shared adjustment changes the authoritative balance');
+select is((select count(*) from credit_internal.hidden_portal_credit_entries h join package_credit_entries e on e.id=h.entry_id
+  where e.package_id=pg_temp.pool()),1::bigint,'Shared adjustment is hidden from portal history independently of balance');
+select is((select count(*) from audit_events where correlation_id='shared-apply-test' and entity_id=pg_temp.pool()),1::bigint,
+  'Shared correction retains a private audit');
+select is(reserve_student_lesson_credit(md5('shared-lesson-2')::uuid,md5('shared-student-2')::uuid,pg_temp.pool(),true),
+  pg_temp.pool(),'Shared pool has a reservation to preview');
+create function pg_temp.expiry_value(op text) returns jsonb language sql as $$
+  select jsonb_build_object('packageId',pg_temp.pool(),'operation',op,'expiresAt',
+    case when op='extend' then now()+interval '60 days' end)
+$$;
+create function pg_temp.expiry_apply(op text,p_key text) returns jsonb language sql as $$
+  select pg_temp.h('expiration_apply',pg_temp.expiry_value(op)||jsonb_build_object(
+    'preview',pg_temp.h('expiration_preview',pg_temp.expiry_value(op)), 'key',p_key,'reason','Reviewed expiry exception'))
+$$;
+select is(pg_temp.h('expiration_preview',pg_temp.expiry_value('extend'))#>>'{reservations,0,topic}',
+  'Shared lesson 2','Expiration preview shows the existing reservation');
+select throws_ok($$select pg_temp.h('expiration_apply',pg_temp.expiry_value('extend'))$$,
+  'P0001','VALIDATION_FAILED: Enter a reason and confirm the expiration change.','Expiration changes require a reason');
+select is(pg_temp.expiry_apply('extend','shared-extension-test')->>'status','completed','Authorized coach extends expiration');
+select is(pg_temp.expiry_apply('waive','shared-waiver-test')->>'status','completed','Authorized coach waives expiration');
+select is((select expires_at from packages where id=pg_temp.pool()),null::timestamptz,'Waiver clears the effective expiration');
+select ok((select original_expires_at is not null from credit_internal.package_credit_terms where package_id=pg_temp.pool()),
+  'Expiration exceptions preserve original purchase terms');
+select is(jsonb_array_length(pg_temp.h('expiration_history',pg_temp.expiry_value('waive'))),2,'Both exceptions appear in private audit history');
+select set_config('request.jwt.claim.sub',md5('shared-user-3')::uuid::text,true);
+select throws_ok($$select pg_temp.h('expiration_history',pg_temp.expiry_value('waive'))$$,
+  '42501','FORBIDDEN','Guardian cannot read private expiration reasons');
+select throws_ok($$select pg_temp.h('attention_cases')$$,'42501','FORBIDDEN','Guardian cannot read coach reconciliation cases');
+
+
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+select lives_ok($$select command_student_credit_settings(md5('shared-student-3')::uuid,'set_total',
+  '{"total":2,"reason":"Private legacy correction","portalVisible":false,"reviewedBalance":{"remaining":0,"reserved":0,"available":0}}',
+  1,'private-legacy-test',md5('shared-user-1')::uuid)$$,'A legacy correction can opt out of portal history');
+select is(student_credit_summary(md5('shared-student-3')::uuid)->>'remaining','2',
+  'Hiding a legacy adjustment preserves the changed balance');
+select is((select count(*) from credit_internal.hidden_portal_credit_entries h join package_credit_entries e on e.id=h.entry_id
+  where e.idempotency_key='credit-total:private-legacy-test:add'),1::bigint,'Legacy grant entry is marked private');
+select is((select count(*) from audit_events where correlation_id='private-legacy-test' and reason='Private legacy correction'),
+  1::bigint,'Legacy visibility does not erase coach audit');
+insert into credit_internal.reconciliation_cases(student_id,package_id,finding,evidence)
+select student_id,id,'missing_issuance','{"present":true}' from packages where student_id=md5('shared-student-3')::uuid;
+select is(pg_temp.h('attention_cases')#>>'{0,status}','needs_review','Attention reads persisted Stage B case state');
+select set_config('request.jwt.claim.sub',md5('shared-user-4')::uuid::text,true);
+select is(student_credit_history(md5('shared-student-3')::uuid,1)->>'total','0',
+  'Student history omits the private legacy reason and entry');
 
 select * from finish();
 rollback;
