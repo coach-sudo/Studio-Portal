@@ -31,6 +31,8 @@ export async function handleFinanceCommands(
       "apply_upcoming",
       "package_review",
       "package_correct",
+      "bulk_package_preview",
+      "bulk_package_apply",
       "case_decide",
     ].includes(input.command)
   ) {

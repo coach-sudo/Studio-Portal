@@ -213,7 +213,12 @@ function HouseholdMember({
                 : "Checking coverage…"}
             </p>
           )}
-          <Link to={coverageHref(member.id)}>Credits &amp; Lessons</Link>
+          <div className="header-actions">
+            <Link to={coverageHref(member.id)}>Credits &amp; Lessons</Link>
+            <Link to={"/portal/payments?student=" + member.id}>
+              Purchases and receipts
+            </Link>
+          </div>
         </>
       ) : (
         <p>Credit information is restricted for this student.</p>

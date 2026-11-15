@@ -1,3 +1,4 @@
+import { BulkCreditAdjustments } from "./BulkCreditAdjustments";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDollarSign } from "lucide-react";
@@ -220,6 +221,7 @@ export function FinanceView({
           {notice}
         </p>
       )}
+      {!isDemo && <BulkCreditAdjustments data={data} />}
       <FinancialDashboard data={data} isDemo={isDemo} />
       <InvoiceWorkspace data={data} isDemo={isDemo} />
       <div className="two-section-grid">

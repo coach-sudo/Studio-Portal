@@ -160,6 +160,7 @@ export function PackageCreditReview({
   const [draft, setDraft] = useState<{ action: Operation; entry?: Entry }>();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
+  const [portalVisible, setPortalVisible] = useState(true);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [intent, setIntent] = useState<{
@@ -201,6 +202,7 @@ export function PackageCreditReview({
   function begin(action: Operation, entry?: Entry) {
     setDraft({ action, entry });
     setReason("");
+    setPortalVisible(true);
     setQuantity(action === "set" ? String(selected?.unused ?? "") : "");
     setIntent(undefined);
     setNotice("");
@@ -616,6 +618,7 @@ export function PackageCreditReview({
                     packageId: selected.id,
                     operation: draft.action,
                     reviewedLot: selected,
+                    portalVisible,
                     reason: reason.trim(),
                     ...(draft.entry
                       ? { sourceEntryId: draft.entry.id }
@@ -669,6 +672,15 @@ export function PackageCreditReview({
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
                   />
+                </label>
+                <label className="full" htmlFor={formId + "-portal-visible"}>
+                  <input
+                    id={formId + "-portal-visible"}
+                    type="checkbox"
+                    checked={portalVisible}
+                    onChange={(event) => setPortalVisible(event.target.checked)}
+                  />
+                  Show adjustment in portal history
                 </label>
                 {blocked && (
                   <div className="full" role="alert">

@@ -120,6 +120,7 @@ export async function installFixture(
   };
   const state = {
     bookingServices: [] as Record<string, unknown>[],
+    packages: [] as Record<string, unknown>[],
     imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
@@ -369,6 +370,7 @@ export async function installFixture(
           students: rows("students"),
           integrationImports: state.imports,
           bookingServices: state.bookingServices,
+          packages: state.packages,
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],
