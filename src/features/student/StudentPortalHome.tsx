@@ -1,3 +1,4 @@
+import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
 import {
   CalendarDays,
   CheckSquare,
@@ -197,6 +198,19 @@ function HomePriorities({
         data.lessonParticipants,
       )
     : undefined;
+  const creditBalances = useCreditPackageBalances(
+    student?.id,
+    !isDemo && showAccount,
+  );
+  const lots = creditBalances.isError ? undefined : creditBalances.data;
+  const singleLot = lots?.length === 1 ? lots[0] : undefined;
+  const accountTitle =
+    isDemo || lots?.length === 0
+      ? String(isDemo ? (credits?.available ?? 0) : 0) +
+        " lesson credits available"
+      : singleLot
+        ? String(singleLot.available) + " credits available · " + singleLot.name
+        : "Lesson credit packages";
   const balance = student
     ? studentBalanceMinor(student.id, data.payments, data.settings.currency)
     : 0;
@@ -284,9 +298,13 @@ function HomePriorities({
           <section className="portal-account-summary" aria-label="Account">
             <PortalRow
               icon={CircleDollarSign}
-              title={`${credits.available} lesson credits available`}
+              title={accountTitle}
               detail={[
-                credits.reserved ? `${credits.reserved} reserved` : "",
+                singleLot
+                  ? String(singleLot.reserved) + " reserved"
+                  : isDemo && credits.reserved
+                    ? String(credits.reserved) + " reserved"
+                    : "",
                 balance
                   ? `${formatMoney(Math.abs(balance), data.settings.currency)} ${balance > 0 ? "account credit" : "balance"}`
                   : "",

@@ -425,7 +425,7 @@ function CoachLessonWorkspace({
     }
   };
   const applyCredit = async () => {
-    if (actionBusy || availableCredits < 1 || paidByCredit) return;
+    if (actionBusy || (isDemo && availableCredits < 1) || paidByCredit) return;
     setActionBusy("use-credit");
     try {
       await studioCommand("credits", {
@@ -748,7 +748,11 @@ function CoachLessonWorkspace({
         >
           <div className="workflow-content lesson-command-center">
             <div className="lesson-command-summary">
-              <span>{availableCredits} credits available</span>
+              <span>
+                {isDemo
+                  ? availableCredits + " credits available"
+                  : "Package eligibility is checked for this lesson"}
+              </span>
               <span>
                 {paidByCredit
                   ? "This lesson is paid by credit"
@@ -767,12 +771,14 @@ function CoachLessonWorkspace({
             {!paidByCredit && (
               <button
                 className="primary-button"
-                disabled={Boolean(actionBusy) || availableCredits < 1}
+                disabled={
+                  Boolean(actionBusy) || (isDemo && availableCredits < 1)
+                }
                 onClick={() => void applyCredit()}
               >
                 {actionBusy === "use-credit"
                   ? "Applying…"
-                  : availableCredits
+                  : !isDemo || availableCredits
                     ? "Use 1 credit for this lesson"
                     : "No credit available"}
               </button>

@@ -179,3 +179,46 @@ it("blocks removing a reserved credit", async () => {
   expect(mocks.command).not.toHaveBeenCalled();
   client.clear();
 });
+
+it("keeps incompatible package balances separate on the shared account surface", async () => {
+  mocks.load.mockResolvedValue({
+    ...coverage(),
+    packages: [
+      {
+        id: "package-30",
+        name: "Audition package",
+        services: ["Audition"],
+        durationMinutes: 30,
+        eligibilityVerified: true,
+        expiresAt: null,
+        unused: 2,
+        reserved: 1,
+        available: 1,
+        consumed: 3,
+      },
+      {
+        id: "package-60",
+        name: "Coaching package",
+        services: ["Coaching"],
+        durationMinutes: 60,
+        eligibilityVerified: true,
+        expiresAt: null,
+        unused: 4,
+        reserved: 0,
+        available: 4,
+        consumed: 1,
+      },
+    ],
+  });
+  const client = mount(true);
+  expect(await screen.findByText("Audition · 30 min")).toBeVisible();
+  expect(screen.getByText("Coaching · 60 min")).toBeVisible();
+  expect(
+    screen.getByText("2 unused · 1 reserved · 1 available · 3 consumed"),
+  ).toBeVisible();
+  expect(
+    screen.getByText("4 unused · 0 reserved · 4 available · 1 consumed"),
+  ).toBeVisible();
+  expect(screen.queryByText("Available to Book")).not.toBeInTheDocument();
+  client.clear();
+});

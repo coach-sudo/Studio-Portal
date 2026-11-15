@@ -23,6 +23,27 @@ export type CommandInput = z.infer<typeof commandSchema>;
 const uuid = z.string().uuid();
 const dateTime = z.string().datetime();
 const commandPayloadSchemas = {
+  "credits:package_review": z.object({
+    studentId: uuid,
+    packageId: uuid.optional(),
+    page: z.number().int().min(1).max(100000).optional(),
+  }),
+  "credits:case_decide": z.object({
+    studentId: uuid,
+    caseId: uuid,
+    status: z.enum(["under_review", "resolved", "dismissed", "reopened"]),
+    reason: z.string().trim().min(3).max(500),
+    correctionId: uuid.optional(),
+  }),
+  "credits:package_correct": z.object({
+    studentId: uuid,
+    packageId: uuid,
+    operation: z.enum(["add", "remove", "set", "reverse", "restore"]),
+    sourceEntryId: uuid.optional(),
+    quantity: z.number().int().min(0).max(100000).optional(),
+    reason: z.string().trim().min(3).max(500),
+    reviewedLot: z.record(z.string(), z.unknown()),
+  }),
   "lessons:preview_bulk": lessonBulkPreviewRequest,
   "lessons:execute_bulk": lessonBulkExecutionRequest,
   "lessons:retry_bulk": lessonBulkExecutionRequest,

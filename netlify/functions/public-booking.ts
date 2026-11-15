@@ -473,6 +473,19 @@ async function createBooking(request: Request, context: Context) {
       )
         throw new Error("SLOT_UNAVAILABLE");
     }
+    const occurrenceStarts =
+        input.offeringId || input.recurrence === "none"
+          ? [input.startsAt]
+          : recurringDates(
+              input.startsAt,
+              input.recurrence,
+              occurrenceCount,
+              bookingTimezone,
+            ),
+      lastEnd = new Date(
+        new Date(occurrenceStarts.at(-1)!).getTime() +
+          Number(service.duration_minutes) * 60000,
+      ).toISOString();
     if (input.paymentPolicy === "credits") {
       const authenticated = userClient(request);
       const {
@@ -491,38 +504,23 @@ async function createBooking(request: Request, context: Context) {
         throw new Error(
           "FORBIDDEN: This sign-in is not linked to the student being booked.",
         );
-      const { data: packages } = await db
-        .from("packages")
-        .select("id")
-        .eq("student_id", student.id);
-      let available = false;
-      for (const item of packages || []) {
-        const { data: balance } = await db.rpc("package_credit_balance", {
-          target_package: item.id,
-        });
-        if (Number(balance) >= occurrenceCount) {
-          available = true;
-          break;
-        }
-      }
-      if (!available)
+      const result = await db.rpc("booking_credit_preflight", {
+        p_student: student.id,
+        p_service: service.id,
+        p_starts: occurrenceStarts,
+        ...(input.offeringId ? { p_offering: input.offeringId } : {}),
+      });
+      if (result.error) throw result.error;
+      const status = (result.data as { status?: string } | null)?.status;
+      if (status === "review_required")
         throw new Error(
-          "VALIDATION_FAILED: No sufficient lesson credit balance is available.",
+          "VALIDATION_FAILED: The studio needs to review your lesson credits before this booking. Contact the studio for help.",
+        );
+      if (status !== "eligible" && status !== "legacy_eligible")
+        throw new Error(
+          "VALIDATION_FAILED: There aren’t enough eligible credits for these lesson dates. Choose another payment option or contact the studio.",
         );
     }
-    const occurrenceStarts =
-        input.offeringId || input.recurrence === "none"
-          ? [input.startsAt]
-          : recurringDates(
-              input.startsAt,
-              input.recurrence,
-              occurrenceCount,
-              bookingTimezone,
-            ),
-      lastEnd = new Date(
-        new Date(occurrenceStarts.at(-1)!).getTime() +
-          Number(service.duration_minutes) * 60000,
-      ).toISOString();
     if (occurrenceStarts.length > 1) {
       const [
         { data: rules, error: ruleError },
