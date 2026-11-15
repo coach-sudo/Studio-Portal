@@ -1,3 +1,4 @@
+import { supabase } from "../../lib/supabase";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
@@ -187,6 +188,63 @@ export function StudentCoverageSummary({
   );
 }
 
+function HouseholdPurchases({
+  studentId,
+  timezone,
+}: {
+  studentId: string;
+  timezone: string;
+}) {
+  const identity = usePrivateIdentity();
+  const [expanded, setExpanded] = useState(false);
+  const purchases = useQuery({
+    queryKey: ["household-purchases", identity, studentId],
+    enabled: expanded && !!identity,
+    queryFn: async ({ signal }) => {
+      if (!supabase) throw new Error("Purchases unavailable.");
+      const result = await supabase
+        .from("payment_entries")
+        .select("id,created_at,amount_minor,currency")
+        .eq("student_id", studentId)
+        .eq("kind", "payment")
+        .not("package_id", "is", null)
+        .order("created_at", { ascending: false })
+        .order("id")
+        .limit(10)
+        .abortSignal(signal);
+      if (result.error) throw result.error;
+      return result.data;
+    },
+  });
+  return (
+    <details
+      className="disclosure-section"
+      onToggle={(event) => setExpanded(event.currentTarget.open)}
+    >
+      <summary>Recent package purchases</summary>
+      {purchases.isError ? (
+        <p role="alert">Purchase history is unavailable.</p>
+      ) : purchases.isPending ? (
+        <p role="status">Checking purchases…</p>
+      ) : purchases.data.length ? (
+        <ul>
+          {purchases.data.map((payment) => (
+            <li key={payment.id}>
+              {formatStudioDateTime(payment.created_at, timezone)} ·{" "}
+              {formatMoney(payment.amount_minor, payment.currency)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No package purchases recorded.</p>
+      )}
+      <Link to={"/portal/payments?student=" + studentId}>
+        All payments and receipts
+      </Link>
+    </details>
+  );
+}
+
 function HouseholdMember({
   member,
   timezone,
@@ -215,10 +273,8 @@ function HouseholdMember({
           )}
           <div className="header-actions">
             <Link to={coverageHref(member.id)}>Credits &amp; Lessons</Link>
-            <Link to={"/portal/payments?student=" + member.id}>
-              Purchases and receipts
-            </Link>
           </div>
+          <HouseholdPurchases studentId={member.id} timezone={timezone} />
         </>
       ) : (
         <p>Credit information is restricted for this student.</p>
@@ -239,6 +295,10 @@ export function HouseholdLessonCoverage({
       {members.map((member) => (
         <HouseholdMember key={member.id} member={member} timezone={timezone} />
       ))}
+      <details className="disclosure-section">
+        <summary>Renewal reminders</summary>
+        <p>Renewal reminder history is unavailable.</p>
+      </details>
     </Section>
   );
 }

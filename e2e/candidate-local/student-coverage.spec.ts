@@ -108,6 +108,23 @@ for (const role of ["student", "guardian"] as const) {
           },
         });
       });
+      await context.route("**/rest/v1/payment_entries?*", async (route) => {
+        const params = new URL(route.request().url()).searchParams;
+        if (params.get("select") !== "id,created_at,amount_minor,currency")
+          return route.fallback();
+        expect(params.get("student_id")).toBe("eq." + ids.student);
+        expect(params.get("kind")).toBe("eq.payment");
+        await route.fulfill({
+          json: [
+            {
+              id: "70000000-0000-4000-8000-000000000023",
+              created_at: now,
+              amount_minor: 20000,
+              currency: "USD",
+            },
+          ],
+        });
+      });
       await page.goto("/portal?student=" + ids.student);
       if (role === "guardian") {
         const household = page.getByRole("region", {
@@ -119,6 +136,10 @@ for (const role of ["student", "guardian"] as const) {
         await expect(
           household.getByText("Needs Credit", { exact: true }),
         ).toBeVisible();
+        await household
+          .getByText("Recent package purchases", { exact: true })
+          .click();
+        await expect(household.getByText(/\$200\.00/)).toBeVisible();
       } else {
         await expect(
           page
