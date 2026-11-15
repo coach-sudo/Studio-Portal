@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(23);
+select plan(30);
 
 insert into auth.users(id,email) values
  ('c1000000-0000-4000-8000-000000000001','e2e-stage-b-coach@example.test'),
@@ -94,6 +94,28 @@ select is((select (command_student_credit_settings(student_id,'package_correct',
 update lessons set status='cancelled' where id='c7000000-0000-4000-8000-000000000001';
 select ok((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'issues') ? 'cancelled_lesson_debit',
   'A historical cancelled hold needs reconciliation');
+select is((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'terms')->>'issuanceEntryId',
+  'c8000000-0000-4000-8000-000000000001','Original issuance source is captured');
+update package_definitions set eligible_service_ids=array['c4000000-0000-4000-8000-000000000002']::uuid[],
+  session_duration_minutes=30 where id='c5000000-0000-4000-8000-000000000001';
+select ok(credit_internal.package_lesson_matches('c6000000-0000-4000-8000-000000000001','c7000000-0000-4000-8000-000000000001'),
+  'Changing the catalog does not change issued eligibility');
+select is(pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->>'durationMinutes','60','Issued duration is preserved in coach read');
+select ok((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'issues') ? 'purchase_source_unverified',
+  'Missing purchase-event references are explicitly unverified');
+set local request.jwt.claim.sub='c1000000-0000-4000-8000-000000000001';
+select is((select e->>'available' from jsonb_array_elements(
+    student_credit_coverage('c3000000-0000-4000-8000-000000000001',1,5,false)->'packages') e
+    where e->>'id'='c6000000-0000-4000-8000-000000000001'),
+  pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->>'available',
+  'Portal and coach package views use the same available balance');
+select ok((select not (e ?| array['terms','issues','purchaseReferences']) from jsonb_array_elements(
+    student_credit_coverage('c3000000-0000-4000-8000-000000000001',1,5,false)->'packages') e
+    where e->>'id'='c6000000-0000-4000-8000-000000000001'),
+  'Shared portal projection excludes private reconciliation evidence');
+delete from credit_internal.package_credit_terms where package_id='c6000000-0000-4000-8000-000000000001';
+select ok((pg_temp.review('c6000000-0000-4000-8000-000000000001')->'selected'->'issues') ? 'legacy_terms_unverified',
+  'A legacy record without a snapshot is marked for review');
 select * from finish();
 rollback;
 

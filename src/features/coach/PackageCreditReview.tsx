@@ -16,6 +16,16 @@ const lot = z.object({
   serviceIds: z.array(id),
   services: z.array(z.string()),
   expiresAt: z.string().nullable(),
+  terms: z
+    .object({
+      originalStudentId: id,
+      originalDefinitionId: id.nullable(),
+      originalName: z.string(),
+      originalExpiresAt: z.string().nullable(),
+      issuanceEntryId: id.nullable(),
+    })
+    .nullable()
+    .optional(),
   issued: z.number(),
   purchased: z.number(),
   consumed: z.number(),
@@ -58,6 +68,14 @@ const reviewSchema = z.object({
   ),
 });
 const findings: Record<string, string> = {
+  legacy_terms_unverified:
+    "Purchase-time terms are unavailable. Current rules are shown for reference.",
+  purchase_source_unverified:
+    "A purchase entry has no recorded source reference.",
+  repeated_purchase_description:
+    "Multiple purchase entries share a reason and quantity. Compare their source references before correcting.",
+  lesson_package_mismatch:
+    "A lesson names a different package than its credit debit.",
   eligibility_unverified: "Package service or duration needs verification.",
   negative_ledger: "The ledger has a negative balance.",
   missing_issuance: "Source issuance is missing.",
@@ -93,6 +111,7 @@ export function PackageCreditReview({
   const [open, setOpen] = useState(false);
   const [packageId, setPackageId] = useState("");
   const [page, setPage] = useState(1);
+  const [finding, setFinding] = useState<string>();
   const [draft, setDraft] = useState<{ action: Operation; entry?: Entry }>();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
@@ -159,6 +178,7 @@ export function PackageCreditReview({
       await Promise.all([
         client.invalidateQueries({ queryKey: ["credit-coverage"] }),
         client.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
+        client.invalidateQueries({ queryKey: ["invoices"] }),
         invalidateStudioDomains(client, ["finance", "lessons", "booking"]),
       ]);
     } catch (error) {
@@ -221,6 +241,7 @@ export function PackageCreditReview({
               onChange={(event) => {
                 setPackageId(event.target.value);
                 setPage(1);
+                setFinding(undefined);
                 setNotice("");
               }}
             >
@@ -261,6 +282,16 @@ export function PackageCreditReview({
                 {selected.available} available
               </p>
               <p>{selected.purchased} credits from purchases</p>
+              {selected.terms?.originalExpiresAt &&
+                selected.terms.originalExpiresAt !== selected.expiresAt && (
+                  <p>
+                    Original expiration{" "}
+                    {formatStudioDateTime(
+                      selected.terms.originalExpiresAt,
+                      timezone,
+                    )}
+                  </p>
+                )}
               {selected.purchaseReferences.length > 0 && (
                 <details>
                   <summary>Purchase references</summary>
@@ -274,7 +305,28 @@ export function PackageCreditReview({
               {selected.issues.length > 0 && (
                 <ul aria-label="Reconciliation findings">
                   {selected.issues.map((issue) => (
-                    <li key={issue}>{findings[issue] ?? issue}</li>
+                    <li key={issue}>
+                      <button
+                        aria-expanded={finding === issue}
+                        onClick={() =>
+                          setFinding(finding === issue ? undefined : issue)
+                        }
+                      >
+                        {findings[issue] ?? issue}
+                      </button>
+                      {finding === issue && (
+                        <p>
+                          {issue === "repeated_purchase_description" ||
+                          issue === "purchase_source_unverified"
+                            ? "Compare purchase references with the original grants in Package history. Reverse a grant only when its source confirms it was issued in error."
+                            : issue.includes("reservation") ||
+                                issue.includes("lesson") ||
+                                issue === "orphaned_debit"
+                              ? "Review the affected reservations and lesson entries below. Restore a credit only when the recorded completed-lesson debit was incorrect."
+                              : "Review this package’s source entries before proposing a balance correction."}
+                        </p>
+                      )}
+                    </li>
                   ))}
                 </ul>
               )}

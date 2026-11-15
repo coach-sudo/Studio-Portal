@@ -495,7 +495,9 @@ export function LessonsView({
                   <span>
                     {paidByCredit
                       ? "Paid by credit"
-                      : `${availableCredits} credits available`}
+                      : isDemo
+                        ? availableCredits + " credits available"
+                        : "Package eligibility is checked for this lesson"}
                   </span>
                 )}
               </div>
@@ -641,7 +643,7 @@ export function LessonsView({
               {panel === "credits" && (
                 <section className="lesson-command-section">
                   <h3>Credits & payment</h3>
-                  <p>One credit covers one lesson.</p>
+                  <p>One eligible credit covers this lesson.</p>
                   <button
                     onClick={() =>
                       navigate(`/coach/students/${selected.studentId}/payments`)
@@ -652,12 +654,14 @@ export function LessonsView({
                   {!paidByCredit && (
                     <button
                       className="primary"
-                      disabled={Boolean(busy) || availableCredits < 1}
+                      disabled={
+                        Boolean(busy) || (isDemo && availableCredits < 1)
+                      }
                       onClick={() => void payWithCredit()}
                     >
                       {busy === "pay-credit"
                         ? "Applying…"
-                        : availableCredits > 0
+                        : !isDemo || availableCredits > 0
                           ? "Use 1 credit for this lesson"
                           : "No credit available"}
                     </button>

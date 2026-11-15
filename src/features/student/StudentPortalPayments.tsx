@@ -30,6 +30,8 @@ import { useStudioStore } from "../../state/StudioStore";
 import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
+import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
+import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { CreditAccount } from "../coach/CreditAccount";
 
 export function Payments({
@@ -45,6 +47,10 @@ export function Payments({
   );
   const packages = data.packages.filter(
     (item) => item.studentId === student?.id,
+  );
+  const creditBalances = useCreditPackageBalances(
+    student?.id,
+    !isDemo && packages.length > 0,
   );
   const paymentPage = usePagedList(payments);
   const packagePage = usePagedList(packages);
@@ -271,6 +277,9 @@ export function Payments({
           />
           <div className="table-list">
             {packagePage.visible.map((pkg) => {
+              const liveBalance = creditBalances.isError
+                ? undefined
+                : creditBalances.data?.find((item) => item.id === pkg.id);
               const expired = Boolean(
                 pkg.expiresAt && new Date(pkg.expiresAt) <= new Date(),
               );
@@ -287,14 +296,29 @@ export function Payments({
                   <div>
                     <strong>{pkg.name}</strong>
                     <small>
-                      {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                      credits available ·{" "}
-                      {formatMoney(pkg.priceMinor, pkg.currency)}
+                      Package price {formatMoney(pkg.priceMinor, pkg.currency)}
                       {pkg.expiresAt &&
                         ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
                       {subscription &&
                         ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
                     </small>
+                    {isDemo ? (
+                      <small>
+                        {
+                          packageSummary(pkg, data.creditEntries)
+                            .remainingCredits
+                        }{" "}
+                        credits available
+                      </small>
+                    ) : liveBalance ? (
+                      <CreditPackageMetrics balance={liveBalance} />
+                    ) : (
+                      <small>
+                        {creditBalances.isFetching
+                          ? "Checking credit balance…"
+                          : "Credit balance unavailable"}
+                      </small>
+                    )}
                   </div>
                   <Status tone={expired ? "danger" : "good"}>
                     {expired ? "expired" : "active"}

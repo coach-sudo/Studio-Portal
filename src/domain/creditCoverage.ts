@@ -14,6 +14,21 @@ export const creditCoverageReasonSchema = z.enum([
   "lesson_ineligible",
 ]);
 
+const packageBalanceSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  durationMinutes: z.number().int().nullable(),
+  services: z.array(z.string()),
+  expiresAt: z.string().nullable(),
+  unused: z.number().int(),
+  reserved: z.number().int().nonnegative(),
+  available: z.number().int(),
+  consumed: z.number().int().nonnegative(),
+  eligibilityVerified: z.boolean(),
+});
+
+export type CreditPackageBalance = z.infer<typeof packageBalanceSchema>;
+
 export const creditCoverageSchema = z
   .object({
     studentId: z.string().uuid(),
@@ -21,6 +36,7 @@ export const creditCoverageSchema = z
     previewEnable: z.boolean(),
     settingReasonCode: z.literal("mixed_settings_review").nullable(),
     lessonsVisible: z.boolean(),
+    packages: z.array(packageBalanceSchema).optional(),
     summary: z.object({
       available: z.number().int(),
       reserved: z.number().int().nonnegative(),

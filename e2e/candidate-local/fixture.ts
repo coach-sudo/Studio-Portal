@@ -423,6 +423,7 @@ export async function installFixture(
           previewEnable: Boolean(req.postDataJSON()?.p_preview_enable),
           settingReasonCode: null,
           lessonsVisible: true,
+          packages: [],
           summary: {
             remaining: 0,
             available: 0,

@@ -15,6 +15,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { ApiClientError } from "../../data/apiClientError";
 import "../../components/StudentFinancialSummary.css";
 import { StudentCreditHistory } from "../../components/StudentCreditHistory";
+import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { PackageCreditReview } from "./PackageCreditReview";
 
 export function LiveCreditAccount(props: {
@@ -221,18 +222,31 @@ function CreditControls({
     >
       {current ? (
         <>
-          <div className="account-metrics">
-            {[
-              ["Unused Credits", current.summary.remaining],
-              ["Available to Book", current.summary.available],
-              ["Reserved for Upcoming Lessons", current.summary.reserved],
-            ].map(([label, value]) => (
-              <div key={label}>
-                <small>{label}</small>
-                <strong>{value}</strong>
-              </div>
-            ))}
-          </div>
+          {current.packages?.length ? (
+            <div className="table-list">
+              {current.packages.map((balance) => (
+                <article key={balance.id}>
+                  <div>
+                    <strong>{balance.name}</strong>
+                    <CreditPackageMetrics balance={balance} />
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="account-metrics">
+              {[
+                ["Unused Credits", current.summary.remaining],
+                ["Available to Book", current.summary.available],
+                ["Reserved for Upcoming Lessons", current.summary.reserved],
+              ].map(([label, value]) => (
+                <div key={label}>
+                  <small>{label}</small>
+                  <strong>{value}</strong>
+                </div>
+              ))}
+            </div>
+          )}
           <div className="header-actions">
             <strong>
               Use credits automatically:{" "}
@@ -295,7 +309,14 @@ function CreditControls({
                 {busy ? "Processing…" : "Apply eligible credits now"}
               </button>
               <button
-                disabled={busy || current.summary.needsReview}
+                disabled={
+                  busy ||
+                  current.summary.needsReview ||
+                  (current.packages?.filter(
+                    (lot) =>
+                      !lot.expiresAt || Date.parse(lot.expiresAt) > Date.now(),
+                  ).length ?? 0) > 1
+                }
                 onClick={() => {
                   setAdjustment("set");
                   setQuantity(String(current.summary.remaining));
