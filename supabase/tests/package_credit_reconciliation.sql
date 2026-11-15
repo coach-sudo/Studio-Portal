@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(43);
+select plan(54);
 
 insert into auth.users(id,email) values
  ('c1000000-0000-4000-8000-000000000001','e2e-stage-b-coach@example.test'),
@@ -163,6 +163,47 @@ select is(process_stripe_checkout('evt_stage_b_separate','checkout.session.compl
   '{"data":{"object":{"id":"cs_stage_b_separate","payment_intent":"pi_stage_b_separate"}}}',
   'cs_stage_b_separate','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
   'false','A similar purchase with a different verified payment remains legitimate');
+insert into packages(id,student_id,name) values
+ ('c6000000-0000-4000-8000-000000000005','c3000000-0000-4000-8000-000000000001','First bulk package'),
+ ('c6000000-0000-4000-8000-000000000006','c3000000-0000-4000-8000-000000000002','Second bulk package');
+update credit_internal.package_credit_terms set
+ service_ids=array['c4000000-0000-4000-8000-000000000001'::uuid],duration_minutes=60
+ where package_id in ('c6000000-0000-4000-8000-000000000005','c6000000-0000-4000-8000-000000000006');
+create temporary table bulk_request as select jsonb_build_object('reason','Private bulk explanation','portalVisible',false,
+ 'rows',jsonb_build_array(
+  jsonb_build_object('studentId','c3000000-0000-4000-8000-000000000001','packageId','c6000000-0000-4000-8000-000000000005','delta',2),
+  jsonb_build_object('studentId','c3000000-0000-4000-8000-000000000002','packageId','c6000000-0000-4000-8000-000000000006','delta',1))) value;
+create function pg_temp.batch(p_command text,p_value jsonb,p_key text)
+returns jsonb language sql as $$
+select command_student_credit_settings('c3000000-0000-4000-8000-000000000001',p_command,p_value,0,p_key,'c1000000-0000-4000-8000-000000000001')
+$$;
+create temporary table bulk_preview as select pg_temp.batch('bulk_package_preview',value,'bulk-review-fixture') result from bulk_request;
+select is((select result->>'canApply' from bulk_preview),'true','Both packages have safe previews');
+insert into package_credit_entries(package_id,kind,quantity,reason)
+values('c6000000-0000-4000-8000-000000000005','adjustment',1,'Changed after preview');
+select is(pg_temp.batch('bulk_package_apply',(select value from bulk_request)||
+ jsonb_build_object('preview',(select result->'rows' from bulk_preview)),'bulk-stale-fixture')->>'status',
+ 'stale','Stale preview never reaches a write');
+select is(package_credit_balance('c6000000-0000-4000-8000-000000000006'),0,'Stale batch left the other package unapplied');
+create temporary table bulk_confirmation as select value||
+ jsonb_build_object('preview',pg_temp.batch('bulk_package_preview',value,'bulk-current-review')->'rows') value from bulk_request;
+select is(pg_temp.batch('bulk_package_apply',(select value from bulk_confirmation),'bulk-exact-fixture')->>'status',
+ 'completed','Fresh review commits all rows');
+select is(pg_temp.batch('bulk_package_apply',(select value from bulk_confirmation),'bulk-exact-fixture')->>'duplicate',
+ 'true','Exact retry returns original receipt');
+select is(package_credit_balance('c6000000-0000-4000-8000-000000000005'),3,'Hidden correction still counts in package balance');
+select is(package_credit_balance('c6000000-0000-4000-8000-000000000006'),1,'Second lot received one adjustment');
+select is((select count(*) from audit_events where action='credits.package_correct' and reason='Private bulk explanation'),
+ 2::bigint,'Private audit preserved each affected lot');
+select is((select count(*) from payment_entries where student_id in ('c3000000-0000-4000-8000-000000000001','c3000000-0000-4000-8000-000000000002')),
+ 3::bigint,'Bulk adjustments do not change the payment row count');
+set local request.jwt.claim.sub='c1000000-0000-4000-8000-000000000002';
+set local role authenticated;
+select is((select count(*) from public.package_credit_entries),0::bigint,'Student cannot read raw ledger reasons');
+select ok(not exists(select 1 from jsonb_array_elements(student_credit_history('c3000000-0000-4000-8000-000000000001',1)->'items') h
+ where h->>'reason' is not null or h->>'packageName'='First bulk package' and h->>'quantity'='2'),
+ 'Portal history excludes hidden adjustments and private reasons');
+reset role;
 select * from finish();
 rollback;
 

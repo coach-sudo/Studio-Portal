@@ -37,6 +37,7 @@ import {
 import { Dialog, Drawer, Status, Toggle } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { lessonDraft } from "../../domain/coachingContext";
+import { ManualLessonDrafts } from "./ManualLessonDrafts";
 import { uploadStudioFile } from "../../data/uploads";
 import { AddResourceFlow } from "../library/ResourceBrowser";
 import type {
@@ -968,7 +969,15 @@ export function StudentWorkspace() {
           </div>
         </Dialog>
       )}
-      {dialog === "lesson" && (
+      {dialog === "lesson" && !isDemo && (
+        <ManualLessonDrafts
+          studentId={student.id}
+          timezone={data.settings.timezone}
+          services={data.bookingServices}
+          onClose={() => setDialog(null)}
+        />
+      )}
+      {dialog === "lesson" && isDemo && (
         <LessonForm
           student={student}
           onClose={() => setDialog(null)}

@@ -1,3 +1,5 @@
+import { useSearchParams } from "react-router-dom";
+import { CreditExpiration } from "./CreditExpiration";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { z } from "zod";
@@ -147,8 +149,11 @@ export function PackageCreditReview({
 }) {
   const client = useQueryClient();
   const formId = useId();
-  const [open, setOpen] = useState(false);
-  const [packageId, setPackageId] = useState("");
+  const [params] = useSearchParams();
+  const requestedPackage =
+    z.string().uuid().safeParse(params.get("creditPackage")).data ?? "";
+  const [open, setOpen] = useState(!!requestedPackage);
+  const [packageId, setPackageId] = useState(requestedPackage);
   const [page, setPage] = useState(1);
   const [finding, setFinding] = useState<string>();
   const [caseReasons, setCaseReasons] = useState<Record<string, string>>({});
@@ -160,6 +165,7 @@ export function PackageCreditReview({
   const [draft, setDraft] = useState<{ action: Operation; entry?: Entry }>();
   const [quantity, setQuantity] = useState("");
   const [reason, setReason] = useState("");
+  const [portalVisible, setPortalVisible] = useState(true);
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
   const [intent, setIntent] = useState<{
@@ -201,6 +207,7 @@ export function PackageCreditReview({
   function begin(action: Operation, entry?: Entry) {
     setDraft({ action, entry });
     setReason("");
+    setPortalVisible(true);
     setQuantity(action === "set" ? String(selected?.unused ?? "") : "");
     setIntent(undefined);
     setNotice("");
@@ -532,6 +539,13 @@ export function PackageCreditReview({
                   </ul>
                 </details>
               )}
+              <CreditExpiration
+                key={selected.id}
+                studentId={studentId}
+                packageId={selected.id}
+                expiresAt={selected.expiresAt}
+                timezone={timezone}
+              />
               {(!selected.expiresAt ||
                 Date.parse(selected.expiresAt) > Date.now()) && (
                 <div className="header-actions">
@@ -616,6 +630,7 @@ export function PackageCreditReview({
                     packageId: selected.id,
                     operation: draft.action,
                     reviewedLot: selected,
+                    portalVisible,
                     reason: reason.trim(),
                     ...(draft.entry
                       ? { sourceEntryId: draft.entry.id }
@@ -669,6 +684,15 @@ export function PackageCreditReview({
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
                   />
+                </label>
+                <label className="full" htmlFor={formId + "-portal-visible"}>
+                  <input
+                    id={formId + "-portal-visible"}
+                    type="checkbox"
+                    checked={portalVisible}
+                    onChange={(event) => setPortalVisible(event.target.checked)}
+                  />
+                  Show adjustment in portal history
                 </label>
                 {blocked && (
                   <div className="full" role="alert">

@@ -1,3 +1,5 @@
+import { BulkCreditAdjustments } from "./BulkCreditAdjustments";
+import { HouseholdCreditAdmin } from "./HouseholdCreditAdmin";
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, CircleDollarSign } from "lucide-react";
@@ -219,6 +221,14 @@ export function FinanceView({
         <p className="portal-notice" role="status">
           {notice}
         </p>
+      )}
+      {!isDemo && <BulkCreditAdjustments data={data} />}
+      {!isDemo && data.students[0] && (
+        <HouseholdCreditAdmin
+          services={data.bookingServices}
+          studentId={data.students[0].id}
+          timezone={data.settings.timezone}
+        />
       )}
       <FinancialDashboard data={data} isDemo={isDemo} />
       <InvoiceWorkspace data={data} isDemo={isDemo} />

@@ -26,6 +26,7 @@ insert into public.students(id,studio_id,user_id,full_name,is_minor) values
 insert into public.linked_contacts(id,studio_id,student_id,user_id,full_name,email,can_view_finance,can_view_schedule,can_view_work) values
  ('74000000-0000-4000-8000-000000000001','72000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','71000000-0000-4000-8000-000000000004','Finance guardian','e2e-coverage-finance-guardian@example.test',true,false,false),
  ('74000000-0000-4000-8000-000000000002','72000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','71000000-0000-4000-8000-000000000005','Work guardian','e2e-coverage-work-guardian@example.test',false,true,true);
+insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes) values('77000000-0000-4000-8000-000000000001','72000000-0000-4000-8000-000000000001','coverage-test-service','Credit fixture service','private',60);
 insert into public.packages(id,student_id,name,expires_at) values
  ('75000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','Early expiry',now()+interval '3 days'),
  ('75000000-0000-4000-8000-000000000002','73000000-0000-4000-8000-000000000001','Lasting credits',null);
@@ -37,6 +38,8 @@ insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,statu
  ('76000000-0000-4000-8000-000000000002','72000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','Later lesson',now()+interval '5 days',now()+interval '5 days 1 hour','scheduled','virtual','Meet','due'),
  ('76000000-0000-4000-8000-000000000003','72000000-0000-4000-8000-000000000001','73000000-0000-4000-8000-000000000001','Uncovered lesson',now()+interval '6 days',now()+interval '6 days 1 hour','scheduled','virtual','Meet','due');
 
+update public.lessons set service_id='77000000-0000-4000-8000-000000000001' where studio_id='72000000-0000-4000-8000-000000000001' and service_id is null;
+update credit_internal.package_credit_terms set service_ids=array['77000000-0000-4000-8000-000000000001'::uuid],duration_minutes=60 where package_id in ('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000002');
 create temporary table coverage_baseline as select
  (select jsonb_agg(to_jsonb(e) order by e.id) from public.package_credit_entries e where e.package_id in ('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000002')) ledger,
  (select jsonb_agg(to_jsonb(l) order by l.id) from public.lessons l where l.studio_id='72000000-0000-4000-8000-000000000001') lessons,

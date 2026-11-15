@@ -69,8 +69,8 @@ assert.deepEqual(
 query(readFileSync("scripts/fixtures/wave-one-upgrade.sql", "utf8"));
 const snapshot = () =>
   query(`select jsonb_build_object(
- 'ledger',(select jsonb_agg(to_jsonb(x) order by id) from public.package_credit_entries x),
- 'packages',(select jsonb_agg(to_jsonb(x) order by id) from public.packages x),
+ 'ledger',(select jsonb_agg((to_jsonb(x) - array(select key from jsonb_each(to_jsonb(x)) where key in ('used_by_student_id','settles_entry_id') and value='null'::jsonb)) order by id) from public.package_credit_entries x),
+ 'packages',(select jsonb_agg((to_jsonb(x) - array(select key from jsonb_each(to_jsonb(x)) where key in ('household_id','transferred_from_package_id') and value='null'::jsonb)) order by id) from public.packages x),
  'lessons',(select jsonb_agg(to_jsonb(x) order by id) from public.lessons x),
  'invoices',(select jsonb_agg(to_jsonb(x) order by id) from public.studio_invoices x),
  'payments',(select jsonb_agg(to_jsonb(x) order by id) from public.payment_entries x),

@@ -153,6 +153,19 @@ export async function handleLessonsCommands(
         queuedSideEffects: ["calendar_projection"],
       });
     }
+    if (
+      !input.payload.serviceId ||
+      Number(input.payload.durationMinutes) * 60000 !==
+        Date.parse(endsAt) - Date.parse(startsAt) ||
+      !["credits", "credit_exception", "pay_later", "custom"].includes(
+        String(input.payload.billingArrangement),
+      ) ||
+      String(input.payload.reason ?? "").trim().length < 3
+    ) {
+      throw new Error(
+        "VALIDATION_FAILED: Choose a matching service, duration, and billing arrangement.",
+      );
+    }
     if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
       const token = await googleAccessToken();
       const tz = String(input.payload.timezone || "America/New_York");

@@ -3000,6 +3000,8 @@ export type Database = {
           quantity: number
           reason: string
           reverses_entry_id: string | null
+          settles_entry_id: string | null
+          used_by_student_id: string | null
         }
         Insert: {
           created_at?: string
@@ -3012,6 +3014,8 @@ export type Database = {
           quantity: number
           reason: string
           reverses_entry_id?: string | null
+          settles_entry_id?: string | null
+          used_by_student_id?: string | null
         }
         Update: {
           created_at?: string
@@ -3024,6 +3028,8 @@ export type Database = {
           quantity?: number
           reason?: string
           reverses_entry_id?: string | null
+          settles_entry_id?: string | null
+          used_by_student_id?: string | null
         }
         Relationships: [
           {
@@ -3054,11 +3060,27 @@ export type Database = {
             referencedRelation: "package_credit_entries"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "package_credit_entries_settles_entry_id_fkey"
+            columns: ["settles_entry_id"]
+            isOneToOne: true
+            referencedRelation: "package_credit_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "package_credit_entries_used_by_student_id_fkey"
+            columns: ["used_by_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
         ]
       }
       package_definitions: {
         Row: {
           active: boolean
+          allow_credit_transfer: boolean
+          allow_household_credits: boolean
           base_price_minor: number | null
           benefit_text: string | null
           created_at: string
@@ -3090,6 +3112,8 @@ export type Database = {
         }
         Insert: {
           active?: boolean
+          allow_credit_transfer?: boolean
+          allow_household_credits?: boolean
           base_price_minor?: number | null
           benefit_text?: string | null
           created_at?: string
@@ -3121,6 +3145,8 @@ export type Database = {
         }
         Update: {
           active?: boolean
+          allow_credit_transfer?: boolean
+          allow_household_credits?: boolean
           base_price_minor?: number | null
           benefit_text?: string | null
           created_at?: string
@@ -3375,11 +3401,13 @@ export type Database = {
           currency: string
           definition_id: string | null
           expires_at: string | null
+          household_id: string | null
           id: string
           name: string
           price_minor: number
           stripe_price_id: string | null
-          student_id: string
+          student_id: string | null
+          transferred_from_package_id: string | null
           updated_at: string
           version: number
         }
@@ -3390,11 +3418,13 @@ export type Database = {
           currency?: string
           definition_id?: string | null
           expires_at?: string | null
+          household_id?: string | null
           id?: string
           name: string
           price_minor?: number
           stripe_price_id?: string | null
-          student_id: string
+          student_id?: string | null
+          transferred_from_package_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -3405,11 +3435,13 @@ export type Database = {
           currency?: string
           definition_id?: string | null
           expires_at?: string | null
+          household_id?: string | null
           id?: string
           name?: string
           price_minor?: number
           stripe_price_id?: string | null
-          student_id?: string
+          student_id?: string | null
+          transferred_from_package_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -3426,6 +3458,13 @@ export type Database = {
             columns: ["student_id"]
             isOneToOne: false
             referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "packages_transferred_from_package_id_fkey"
+            columns: ["transferred_from_package_id"]
+            isOneToOne: false
+            referencedRelation: "packages"
             referencedColumns: ["id"]
           },
         ]
@@ -5468,6 +5507,10 @@ export type Database = {
       get_material_collection: { Args: { p_id: string }; Returns: Json }
       get_material_resource: { Args: { p_id: string }; Returns: Json }
       household_access_states: { Args: { p_student: string }; Returns: Json }
+      household_credit_access: {
+        Args: { p_action: string; p_student: string; p_value?: Json }
+        Returns: Json
+      }
       is_studio_coach: { Args: { target_studio: string }; Returns: boolean }
       lesson_bulk_candidates: {
         Args: {
@@ -5569,6 +5612,10 @@ export type Database = {
       package_credit_balance: {
         Args: { target_package: string }
         Returns: number
+      }
+      portal_renewal_options: {
+        Args: { p_lesson?: string; p_student: string }
+        Returns: Json
       }
       portal_student_contexts: {
         Args: { p_page?: number; p_student?: string }

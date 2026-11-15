@@ -1,3 +1,5 @@
+import { useId } from "react";
+import { CustomCreditGrant } from "./CustomCreditGrant";
 import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
 import { CreditPackageMetrics } from "../../components/CreditPackageMetrics";
 import { useQueryClient } from "@tanstack/react-query";
@@ -70,6 +72,8 @@ export function Payments({
     [balanceAmount, setBalanceAmount] = useState("0.00"),
     [balanceReason, setBalanceReason] = useState("Studio account credit"),
     [notice, setNotice] = useState("");
+  const assignmentVisibilityId = useId();
+  const [assignmentVisible, setAssignmentVisible] = useState(true);
   const assignmentIntent = useRef<{ signature: string; key: string } | null>(
     null,
   );
@@ -142,6 +146,7 @@ export function Payments({
       definitionId,
       definition.priceMinor,
       definition.currency,
+      assignmentVisible,
     ]);
     if (assignmentIntent.current?.signature !== signature)
       assignmentIntent.current = { signature, key: crypto.randomUUID() };
@@ -187,6 +192,7 @@ export function Payments({
             expectedCurrency: definition.currency,
             studentId: student.id,
             autoApply: autoApplyOnAssign,
+            ...(assignmentVisible ? {} : { portalVisible: false }),
             reason: "Coach assigned package",
           },
           reason: "Coach assigned package",
@@ -231,6 +237,12 @@ export function Payments({
       )}
       {!isDemo && <StudentFinancialSummary studentId={student.id} />}
       <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
+      {!isDemo && (
+        <CustomCreditGrant
+          studentId={student.id}
+          services={data.bookingServices}
+        />
+      )}
       <details
         className="disclosure-section"
         open={params.has("invoice") || undefined}
@@ -405,6 +417,19 @@ export function Payments({
                 ))}
               </select>
             </label>
+            {!isDemo && (
+              <label htmlFor={assignmentVisibilityId}>
+                <input
+                  id={assignmentVisibilityId}
+                  type="checkbox"
+                  checked={assignmentVisible}
+                  onChange={(event) =>
+                    setAssignmentVisible(event.target.checked)
+                  }
+                />
+                Show assignment in portal history
+              </label>
+            )}
             <p className="full">
               Automatic use follows this student’s credit setting.
             </p>

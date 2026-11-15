@@ -111,6 +111,11 @@ reset role;
 insert into public.student_credit_accounts(student_id,auto_apply) values('e7600000-0000-4000-8000-000000000011',true);
 insert into public.packages(id,student_id,name,auto_apply,expires_at) values('e7600000-0000-4000-8000-000000000018','e7600000-0000-4000-8000-000000000011','E2E correction credits',true,'2032-01-01T00:00:00Z');
 insert into public.package_credit_entries(package_id,kind,quantity,reason,idempotency_key) values('e7600000-0000-4000-8000-000000000018','purchase',2,'E2E correction purchase','e2e-correction-purchase');
+update public.lessons set service_id='e7600000-0000-4000-8000-000000000012'
+  where id='e7600000-0000-4000-8000-000000000015' and service_id is null;
+update credit_internal.package_credit_terms
+  set service_ids=array['e7600000-0000-4000-8000-000000000012'::uuid],duration_minutes=60
+  where package_id='e7600000-0000-4000-8000-000000000018';
 select lives_ok($$select public.reserve_student_upcoming_credits('e7600000-0000-4000-8000-000000000011')$$,'Ordinary coverage maintenance remains available');
 select is((select count(*) from public.package_credit_entries where lesson_id='e7600000-0000-4000-8000-000000000014'),0::bigint,'Automatic maintenance cannot allocate a new credit to the corrected lesson');
 select is((select count(*) from public.package_credit_entries where lesson_id='e7600000-0000-4000-8000-000000000015' and quantity<0),1::bigint,'Unrelated eligible lesson retains automatic coverage');

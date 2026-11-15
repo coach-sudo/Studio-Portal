@@ -15,7 +15,7 @@ insert into public.memberships(studio_id,user_id,role,display_name) values
 insert into public.students(id,studio_id,full_name,email) values('e7100000-0000-4000-8000-000000000011','e7100000-0000-4000-8000-000000000010','E2E manual learner','e2e-manual-student@example.test');
 insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes,price_minor) values('e7100000-0000-4000-8000-000000000012','e7100000-0000-4000-8000-000000000010','e2e-manual','E2E synthetic coaching','private',60,6000);
 create function pg_temp.manual_value(p_starts text default '2031-11-03T18:00:00Z',p_paid boolean default true) returns jsonb language sql as $$
- select jsonb_build_object('student_id','e7100000-0000-4000-8000-000000000011','service_id','e7100000-0000-4000-8000-000000000012','starts_at',p_starts,'mark_paid',p_paid,'reason','Synthetic manual regression');
+ select jsonb_build_object('student_id','e7100000-0000-4000-8000-000000000011','service_id','e7100000-0000-4000-8000-000000000012','starts_at',p_starts,'mark_paid',p_paid,'reason','Synthetic manual regression') || case when p_starts>'2025' then '{"billing_arrangement":"pay_later","duration_minutes":60}'::jsonb else '{}'::jsonb end;
 $$;
 select ok(not has_function_privilege('anon','public.command_create_manual_booking(text,jsonb,text)','execute'),'Anonymous cannot create manual bookings');
 select ok(not has_function_privilege('authenticated','public.claim_manual_booking_effects(integer)','execute'),'Portal roles cannot claim side effects');
@@ -28,6 +28,8 @@ select throws_ok($$select public.command_create_manual_booking('e2e-guardian-den
 select set_config('request.jwt.claim.sub','e7100000-0000-4000-8000-000000000004',true);
 select throws_ok($$select public.command_create_manual_booking('e2e-unrelated-denied',pg_temp.manual_value())$$,'42501','FORBIDDEN','Unrelated user cannot create');
 select set_config('request.jwt.claim.sub','e7100000-0000-4000-8000-000000000001',true);
+select throws_ok($$select public.command_create_manual_booking('e2e-classification-required',pg_temp.manual_value()-'billing_arrangement')$$,
+ 'P0001','VALIDATION_FAILED: Choose a billing arrangement before confirming the lesson.','A new future booking cannot bypass billing classification');
 select lives_ok($$select public.command_create_manual_booking('e2e-manual-paid',pg_temp.manual_value(),'not_configured')$$,'Coach command commits a paid booking atomically');
 select lives_ok($$select public.command_create_manual_booking('e2e-manual-paid',pg_temp.manual_value(),'checked')$$,'Lost response replay precedes fresh provider observations');
 select throws_ok($$select public.command_create_manual_booking('e2e-manual-paid',pg_temp.manual_value('2031-11-03T20:00:00Z'))$$,'P0001','IDEMPOTENCY_CONFLICT','Changed request under the same key is rejected');

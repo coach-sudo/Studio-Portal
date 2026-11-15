@@ -15,9 +15,10 @@ values('a5000000-0000-4000-8000-000000000001','a2000000-0000-4000-8000-000000000
 insert into lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,source_provider) values
  ('a6000000-0000-4000-8000-000000000001','a2000000-0000-4000-8000-000000000001','a3000000-0000-4000-8000-000000000001','First occurrence',now()+interval '2 days',now()+interval '2 days 1 hour','scheduled','in_person','Studio','studio'),
  ('a6000000-0000-4000-8000-000000000002','a2000000-0000-4000-8000-000000000001','a3000000-0000-4000-8000-000000000001','Next occurrence',now()+interval '9 days',now()+interval '9 days 1 hour','scheduled','in_person','Studio','studio');
+update public.lessons set service_id='a4000000-0000-4000-8000-000000000001' where studio_id='a2000000-0000-4000-8000-000000000001' and service_id is null;
 insert into lesson_participants(lesson_id,student_id,booking_id,display_name,email) select id,student_id,'a5000000-0000-4000-8000-000000000001','Student','e2e-occurrence-student@example.test' from lessons where studio_id='a2000000-0000-4000-8000-000000000001';
 insert into student_credit_accounts(student_id,auto_apply) values('a3000000-0000-4000-8000-000000000001',true);
-select public.command_grant_student_credits('a3000000-0000-4000-8000-000000000001','occurrence-grant','{"quantity":1,"kind":"adjustment","reason":"Occurrence regression"}','a1000000-0000-4000-8000-000000000001');
+select public.command_grant_student_credits('a3000000-0000-4000-8000-000000000001','occurrence-grant','{"quantity":1,"kind":"adjustment","reason":"Occurrence regression","customTerms":{"serviceId":"a4000000-0000-4000-8000-000000000001","durationMinutes":60}}','a1000000-0000-4000-8000-000000000001');
 create temporary table saved_next as select to_jsonb(l) value from lessons l where id='a6000000-0000-4000-8000-000000000002';
 create temporary table reviewed as select jsonb_build_object('lessonId','a6000000-0000-4000-8000-000000000001','action','cancel','scope','occurrence','reason','Reviewed cancellation','useCredit',false,'wholeClass',false) value;
 update reviewed set value=value||jsonb_build_object('reviewToken',public.preview_lesson_occurrence_change('a1000000-0000-4000-8000-000000000001',value)->>'reviewToken');

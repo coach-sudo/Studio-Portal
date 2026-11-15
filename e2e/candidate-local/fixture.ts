@@ -120,6 +120,7 @@ export async function installFixture(
   };
   const state = {
     bookingServices: [] as Record<string, unknown>[],
+    packages: [] as Record<string, unknown>[],
     imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
@@ -369,6 +370,7 @@ export async function installFixture(
           students: rows("students"),
           integrationImports: state.imports,
           bookingServices: state.bookingServices,
+          packages: state.packages,
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],
@@ -416,6 +418,31 @@ export async function installFixture(
           finance: finance(),
         });
       }
+      if (rpc === "portal_student_contexts") {
+        const permitted =
+          !state.revoked && (role === "student" || role === "guardian");
+        const member = {
+          id: ids.student,
+          fullName: student.full_name,
+          preferredName: student.preferred_name,
+          isMinor: false,
+          canViewSchedule: true,
+          canViewWork: true,
+          canViewFinance: true,
+          canManageProfile: true,
+          canManageLessons: true,
+        };
+        return reply(route, {
+          items: permitted ? [member] : [],
+          selected:
+            permitted && req.postDataJSON()?.p_student === ids.student
+              ? member
+              : null,
+          hasMore: false,
+        });
+      }
+      if (rpc === "portal_renewal_options")
+        return reply(route, { canPurchase: false, definitionIds: [] });
       if (rpc === "student_credit_coverage")
         return reply(route, {
           studentId: ids.student,
@@ -442,7 +469,13 @@ export async function installFixture(
           counts: { covered: 0, eligible: 0, uncovered: 0, reviewRequired: 0 },
         });
       if (rpc === "student_credit_history")
-        return reply(route, { items: [], total: 0, page: 1, pageSize: 25 });
+        return reply(route, {
+          studentId: ids.student,
+          items: [],
+          total: 0,
+          page: 1,
+          pageSize: 25,
+        });
       return reply(route, { message: `Unimplemented local read: ${rpc}` }, 400);
     }
     if (url.pathname.startsWith("/rest/v1/")) {

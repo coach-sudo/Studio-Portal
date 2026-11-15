@@ -12,20 +12,22 @@ insert into public.studios(id,name,slug) values('82000000-0000-4000-8000-0000000
 insert into public.memberships(studio_id,user_id,role,display_name) values('82000000-0000-4000-8000-000000000001','81000000-0000-4000-8000-000000000001','coach','Lifecycle coach');
 insert into public.students(id,studio_id,full_name) values('83000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','Lifecycle student');
 insert into public.student_credit_accounts(student_id,auto_apply) values('83000000-0000-4000-8000-000000000001',true);
+insert into public.booking_services(id,studio_id,slug,name,category,duration_minutes) values('84000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','lifecycle-test-service','Credit fixture service','private',60);
 insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label) values
  ('86000000-0000-4000-8000-000000000001','82000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001','First',now()+interval '1 day',now()+interval '1 day 1 hour','scheduled','virtual','Meet'),
  ('86000000-0000-4000-8000-000000000002','82000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001','Next',now()+interval '2 days',now()+interval '2 days 1 hour','scheduled','virtual','Meet');
+update public.lessons set service_id='84000000-0000-4000-8000-000000000001' where studio_id='82000000-0000-4000-8000-000000000001' and service_id is null;
 create temporary table lifecycle_result as select public.command_grant_student_credits(
  '83000000-0000-4000-8000-000000000001','lifecycle-grant',
- '{"quantity":1,"kind":"adjustment","reason":"Lifecycle grant"}','81000000-0000-4000-8000-000000000001') result;
+ '{"quantity":1,"kind":"adjustment","reason":"Lifecycle grant","customTerms":{"serviceId":"84000000-0000-4000-8000-000000000001","durationMinutes":60}}','81000000-0000-4000-8000-000000000001') result;
 select is((select result->'coverage'->>'applied' from lifecycle_result),'1','Grant immediately covers the first lesson');
 select is((select result->'coverage'->>'skipped' from lifecycle_result),'1','Limited credits explain the remaining lesson');
 select is((select result->'coverage'->'skipReasons'->>'no_available_credits' from lifecycle_result),'1','Skip reason is authoritative');
 select is(public.command_grant_student_credits('83000000-0000-4000-8000-000000000001','lifecycle-grant',
- '{"quantity":1,"kind":"adjustment","reason":"Lifecycle grant"}','81000000-0000-4000-8000-000000000001')->>'duplicate','true','Exact replay returns the persisted result');
+ '{"quantity":1,"kind":"adjustment","reason":"Lifecycle grant","customTerms":{"serviceId":"84000000-0000-4000-8000-000000000001","durationMinutes":60}}','81000000-0000-4000-8000-000000000001')->>'duplicate','true','Exact replay returns the persisted result');
 select is((select count(*) from public.audit_events where correlation_id='lifecycle-grant'),1::bigint,'Replay does not duplicate audit');
 select throws_ok($$select public.command_grant_student_credits('83000000-0000-4000-8000-000000000001','lifecycle-grant',
- '{"quantity":2,"kind":"adjustment","reason":"Lifecycle grant"}','81000000-0000-4000-8000-000000000001')$$,'P0001','IDEMPOTENCY_CONFLICT','Changed replay is rejected');
+ '{"quantity":2,"kind":"adjustment","reason":"Lifecycle grant","customTerms":{"serviceId":"84000000-0000-4000-8000-000000000001","durationMinutes":60}}','81000000-0000-4000-8000-000000000001')$$,'P0001','IDEMPOTENCY_CONFLICT','Changed replay is rejected');
 select is(public.reserve_student_upcoming_credits('83000000-0000-4000-8000-000000000001')->>'alreadyCovered','1','Existing coverage is reported separately');
 select is(public.reserve_student_upcoming_credits('83000000-0000-4000-8000-000000000001')->>'applied','0','Repeated scan has no new debits');
 select is(public.command_cancel_lesson_credit('86000000-0000-4000-8000-000000000001',
@@ -33,10 +35,11 @@ select is(public.command_cancel_lesson_credit('86000000-0000-4000-8000-000000000
 select is((select payment_status from public.lessons where id='86000000-0000-4000-8000-000000000002'),'paid_by_credit','Next lesson is covered');
 select is((select sum(quantity) from public.package_credit_entries where lesson_id='86000000-0000-4000-8000-000000000001'),0::bigint,'Cancelled lesson ledger nets to zero');
 select is(public.command_grant_student_credits('83000000-0000-4000-8000-000000000001','lifecycle-add',
- '{"quantity":1,"kind":"adjustment","reason":"More lesson credits"}','81000000-0000-4000-8000-000000000001')->'coverage'->>'applied','0','Adding credits does not count an existing hold as applied');
+ '{"quantity":1,"kind":"adjustment","reason":"More lesson credits","customTerms":{"serviceId":"84000000-0000-4000-8000-000000000001","durationMinutes":60}}','81000000-0000-4000-8000-000000000001')->'coverage'->>'applied','0','Adding credits does not count an existing hold as applied');
 
 insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label) values
  ('86000000-0000-4000-8000-000000000003','82000000-0000-4000-8000-000000000001','83000000-0000-4000-8000-000000000001','Recovery',now()+interval '3 days',now()+interval '3 days 1 hour','scheduled','virtual','Meet');
+update public.lessons set service_id='84000000-0000-4000-8000-000000000001' where studio_id='82000000-0000-4000-8000-000000000001' and service_id is null;
 create function pg_temp.fail_reservation() returns trigger language plpgsql as $$begin if new.quantity<0 then raise exception 'simulated sync failure';end if;return new;end$$;
 create trigger lifecycle_sync_failure after insert on public.package_credit_entries for each row execute function pg_temp.fail_reservation();
 select is(public.reserve_student_upcoming_credits('83000000-0000-4000-8000-000000000001')->>'failed','1','Failed reservation is reported independently');

@@ -260,6 +260,9 @@ export function ManualBookingDialog({
     [timezone, setTimezone] = useState(data.settings.timezone || ""),
     [fold, setFold] = useState(""),
     [mode, setMode] = useState("schedule"),
+    [billingArrangement, setBillingArrangement] = useState(
+      isDemo ? "pay_later" : "",
+    ),
     [outcome, setOutcome] = useState("scheduled"),
     [financial, setFinancial] = useState("record_only"),
     [attendanceConfirmed, setAttendanceConfirmed] = useState(false),
@@ -291,6 +294,9 @@ export function ManualBookingDialog({
   const service = data.bookingServices.find((item) => item.id === serviceId);
   const formId = useId();
   const candidates = zonedInputInstants(startsAt, timezone);
+  const usesCredits =
+    mode !== "historical" &&
+    ["credits", "credit_exception"].includes(billingArrangement);
   useEffect(() => {
     if (service && !service.locationOptions.includes(location))
       setLocation(service.defaultLocation);
@@ -346,6 +352,7 @@ export function ManualBookingDialog({
             locationLabel,
             customPrice,
             markPaid,
+            billingArrangement,
             reason,
             timezone,
             fold,
@@ -441,8 +448,10 @@ export function ManualBookingDialog({
             location,
             location_label: locationLabel,
             price_minor:
-              customPrice === "" ? null : Math.round(Number(customPrice) * 100),
-            mark_paid: markPaid,
+              usesCredits || customPrice === ""
+                ? null
+                : Math.round(Number(customPrice) * 100),
+            mark_paid: !usesCredits && markPaid,
             reason,
             timezone,
             historical,
@@ -452,7 +461,10 @@ export function ManualBookingDialog({
                   historical_financial: financial,
                   attendance_confirmed: attendanceConfirmed,
                 }
-              : {}),
+              : {
+                  billing_arrangement: billingArrangement,
+                  duration_minutes: service?.durationMinutes,
+                }),
             allow_conflict: approvedTime === timeKey,
           };
           const fingerprint = JSON.stringify(payload);
@@ -701,12 +713,34 @@ export function ManualBookingDialog({
             />
           </label>
         )}
+        {mode !== "historical" && (
+          <label htmlFor={formId + "-billing"}>
+            Billing arrangement
+            <select
+              id={formId + "-billing"}
+              required
+              value={billingArrangement}
+              onChange={(event) => setBillingArrangement(event.target.value)}
+            >
+              <option value="">Choose an arrangement</option>
+              <option value="credits">Prepaid credits</option>
+              <option value="credit_exception">
+                Approved uncovered exception
+              </option>
+              <option value="pay_later">Pay as you go</option>
+              <option value="custom">Custom billing</option>
+            </select>
+          </label>
+        )}
         <label htmlFor={`${formId}-price`}>
           Custom price (USD)
           <input
             id={`${formId}-price`}
             type="number"
-            disabled={mode === "historical" && financial === "record_only"}
+            disabled={
+              usesCredits ||
+              (mode === "historical" && financial === "record_only")
+            }
             min="0"
             step="0.01"
             value={customPrice}
@@ -723,7 +757,7 @@ export function ManualBookingDialog({
           />
           <small>Leave blank to use the current service price.</small>
         </label>
-        {mode !== "historical" && (
+        {mode !== "historical" && !usesCredits && (
           <label className="check-row" htmlFor={`${formId}-paid`}>
             <input
               id={`${formId}-paid`}
@@ -772,6 +806,7 @@ export function ManualBookingDialog({
             disabled={
               !studentId ||
               !serviceId ||
+              (mode !== "historical" && !billingArrangement) ||
               checking ||
               saving ||
               conflicts.some((item) => item.source === "studio")

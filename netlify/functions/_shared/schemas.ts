@@ -22,7 +22,35 @@ export type CommandInput = z.infer<typeof commandSchema>;
 
 const uuid = z.string().uuid();
 const dateTime = z.string().datetime();
+const bulkCreditPayload = z.object({
+  studentId: uuid,
+  rows: z
+    .array(
+      z.object({
+        studentId: uuid,
+        packageId: uuid,
+        delta: z.number().int().min(-100000).max(100000),
+      }),
+    )
+    .min(1)
+    .max(25),
+  reason: z.string().trim().min(3).max(500),
+  portalVisible: z.boolean().optional(),
+});
 const commandPayloadSchemas = {
+  "credits:bulk_package_preview": bulkCreditPayload,
+  "credits:bulk_package_apply": bulkCreditPayload.extend({
+    preview: z.array(z.record(z.string(), z.unknown())).min(1).max(25),
+  }),
+  "finance:renewal_options": z.object({ studentId: uuid, lessonId: uuid }),
+  "finance:checkout_definition": z.object({
+    studentId: uuid,
+    lessonId: uuid.optional(),
+    packageDefinitionId: uuid,
+    renewalMode: z.string().optional(),
+    expectedPriceMinor: z.number().int().optional(),
+    expectedCurrency: z.string().length(3).optional(),
+  }),
   "credits:package_review": z.object({
     studentId: uuid,
     packageId: uuid.optional(),
@@ -43,6 +71,7 @@ const commandPayloadSchemas = {
     quantity: z.number().int().min(0).max(100000).optional(),
     reason: z.string().trim().min(3).max(500),
     reviewedLot: z.record(z.string(), z.unknown()),
+    portalVisible: z.boolean().optional(),
   }),
   "lessons:preview_bulk": lessonBulkPreviewRequest,
   "lessons:execute_bulk": lessonBulkExecutionRequest,

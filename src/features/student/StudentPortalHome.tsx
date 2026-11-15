@@ -1,3 +1,4 @@
+import { StudentCoverageSummary } from "./LessonCoverage";
 import { useCreditPackageBalances } from "../../hooks/useCreditPackageBalances";
 import {
   CalendarDays,
@@ -97,8 +98,14 @@ export function StudentHome({
         data={data}
         base={base}
         isDemo={isDemo}
-        showAccount={!data.students[0]?.isMinor}
+        showAccount={isDemo && !data.students[0]?.isMinor}
       />
+      {!isDemo && data.students[0] && !data.students[0].isMinor && (
+        <StudentCoverageSummary
+          studentId={data.students[0].id}
+          timezone={data.settings.timezone}
+        />
+      )}
       <div className="student-quick-actions">
         {data.settings.showContactButtons && (
           <Link className="primary-contact-action" to={`${base}/inbox`}>

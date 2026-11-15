@@ -1,0 +1,30 @@
+.household-credit-dialog fieldset {
+  display: grid;
+  gap: 12px;
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.household-credit-dialog :is(select, input, textarea) {
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+
+.household-credit-dialog :is(.disclosure-section, .portal-notice) {
+  overflow-wrap: anywhere;
+}
+
+.household-credit-dialog form[hidden] {
+  display: none;
+}
+
+.household-credit-dialog > .header-actions {
+  padding: 0 20px 20px;
+}
+
+.household-credit-dialog > .household-credit-preview {
+  display: block;
+  margin-inline: 20px;
+}

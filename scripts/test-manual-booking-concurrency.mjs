@@ -46,6 +46,9 @@ const value = (starts) =>
     service_id: service,
     starts_at: starts,
     mark_paid: true,
+    billing_arrangement: "pay_later",
+    duration_minutes: 60,
+    reason: "Synthetic classified booking concurrency",
   });
 const command = (key, starts = "2031-11-03T18:00:00Z") =>
   `select public.command_create_manual_booking('${key}','${value(starts)}'::jsonb,'not_configured')->'resource'->>'id';`;

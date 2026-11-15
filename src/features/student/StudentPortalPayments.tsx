@@ -1,4 +1,6 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "../../lib/supabase";
+import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -42,6 +44,23 @@ export function Payments({
   isDemo: boolean;
 }) {
   const student = data.students[0];
+  const identity = usePrivateIdentity();
+  const purchaseAccess = useQuery({
+    queryKey: ["portal-purchase-access", identity, student?.id],
+    enabled: !isDemo && !!identity && !!student,
+    queryFn: async () => {
+      const response = await supabase!.rpc("portal_renewal_options", {
+        p_student: student!.id,
+      });
+      if (response.error) throw response.error;
+      return (
+        (response.data as { canPurchase?: boolean } | null)?.canPurchase ===
+        true
+      );
+    },
+  });
+  const canPurchase =
+    isDemo || (!purchaseAccess.isError && purchaseAccess.data === true);
   const payments = data.payments.filter(
     (item) => item.studentId === student?.id,
   );
@@ -107,19 +126,21 @@ export function Payments({
     const definition = data.packageDefinitions.find(
       (item) => item.id === definitionId && item.active && item.directPurchase,
     );
-    if (definition)
+    if (definition && canPurchase)
       setPurchaseDefinition(packageOffer(definition, data, student));
-  }, [data, student, params]);
+  }, [data, student, params, canPurchase]);
   const purchase = async (id: string) => {
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
       return;
     }
+    if (!student || !canPurchase) return;
     try {
       const result = await studioCommand("finance", {
         command: "checkout_definition",
         expectedVersion: 0,
         payload: {
+          studentId: student.id,
           packageDefinitionId: id,
           renewalMode,
           expectedPriceMinor: purchaseDefinition?.priceMinor,
@@ -342,12 +363,16 @@ export function Payments({
           </div>
         </Section>
       )}
-      {sourceDefinitions.length !== purchasableDefinitions.length && (
-        <p role="status" className="portal-notice">
-          Some package prices are unavailable. Try again later.
-        </p>
+      {canPurchase &&
+        sourceDefinitions.length !== purchasableDefinitions.length && (
+          <p role="status" className="portal-notice">
+            Some package prices are unavailable. Try again later.
+          </p>
+        )}
+      {!canPurchase && !purchaseAccess.isPending && (
+        <p>Package purchases are handled by the designated billing contact.</p>
       )}
-      {purchasableDefinitions.length > 0 && (
+      {canPurchase && purchasableDefinitions.length > 0 && (
         <Section title="Available packages">
           {purchasableDefinitions.length > 1 && (
             <div className="list-controls package-purchase-controls">
@@ -413,7 +438,7 @@ export function Payments({
           </div>
         </Section>
       )}
-      {purchaseDefinition && (
+      {canPurchase && purchaseDefinition && (
         <Dialog
           title={purchaseDefinition.name}
           onClose={() => setPurchaseDefinition(undefined)}

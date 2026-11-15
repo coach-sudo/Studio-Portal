@@ -61,23 +61,30 @@ function fixture(enabled = true, pricingError = false) {
     auth: {
       getUser: async () => ({ data: { user: { id: "coach" } }, error: null }),
     },
-    rpc: vi.fn(async (_name: string, args: any) => ({
-      data: {
-        package: {
-          id: "purchase",
-          price_minor: args.p_value.package.priceMinor,
-        },
-        coverage: {
-          applied: 0,
-          alreadyCovered: 0,
-          skipped: 0,
-          failed: 0,
-          autoApplyPending: false,
-        },
-        auditEventId: "atomic-audit",
-      },
-      error: null,
-    })),
+    rpc: vi.fn(async (name: string, args: any) =>
+      name === "portal_renewal_options"
+        ? {
+            data: { canPurchase: true, definitionIds: ["definition"] },
+            error: null,
+          }
+        : {
+            data: {
+              package: {
+                id: "purchase",
+                price_minor: args.p_value.package.priceMinor,
+              },
+              coverage: {
+                applied: 0,
+                alreadyCovered: 0,
+                skipped: 0,
+                failed: 0,
+                autoApplyPending: false,
+              },
+              auditEventId: "atomic-audit",
+            },
+            error: null,
+          },
+    ),
     from(table: string) {
       let inserted: Record<string, unknown> | undefined;
       const query = {
