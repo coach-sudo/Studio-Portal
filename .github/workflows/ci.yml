@@ -11,6 +11,7 @@ on:
         codex/audit-coach-historical-datetime,
         codex/audit-historical-corrections,
         codex/audit-correction-interface,
+        codex/household-lesson-coverage-stage-c,
         codex/credit-accounting-stage-b,
         codex/credit-management-overhaul,
         codex/credit-coverage-diagnostics,
