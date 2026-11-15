@@ -1,3 +1,4 @@
+import { creditRemindersEnabled } from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { TablesInsert } from "../../../src/types/database.generated";
 import {
@@ -30,6 +31,7 @@ export async function queuePackageWarning(
     legacyEnabled: boolean;
   },
 ) {
+  if (input.key === "package_low" && creditRemindersEnabled()) return [];
   const rule = await compatibleRule(client, input.studioId, input.key),
     status = compatibleQueueStatus(rule, input.legacyEnabled);
   if (!status) return [];

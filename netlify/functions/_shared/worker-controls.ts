@@ -24,6 +24,14 @@ export function workerEnabled(worker: ControlledWorker): boolean {
   return !site && ["local", "dev", "deploy-preview"].includes(context);
 }
 
+/** Release opt-in for both channels, independent of the existing workers. */
+export function creditRemindersEnabled(): boolean {
+  return (
+    workerEnabled("automations") &&
+    globalThis.Netlify?.env.get("WORKER_CREDIT_REMINDERS_ENABLED") === "true"
+  );
+}
+
 export class WorkerDisabledError extends Error {
   readonly worker: ControlledWorker;
   constructor(worker: ControlledWorker) {

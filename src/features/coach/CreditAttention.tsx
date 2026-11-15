@@ -1,3 +1,7 @@
+import {
+  CreditReminderAttention,
+  CreditReminderConfiguration,
+} from "./CreditReminderControls";
 import { z } from "zod";
 import {
   coachHouseholdsSchema,
@@ -16,6 +20,7 @@ const labels = {
   expiring: "Expiring credits",
   review: "Credit review",
   routing: "Billing recipient",
+  reminder: "Credit reminders",
 };
 type Kind = keyof typeof labels;
 type Student = { id: string; fullName: string; preferredName?: string };
@@ -283,7 +288,22 @@ export function CreditAttention({
                 <option value="upcoming">Upcoming expiration</option>
               </select>
             </div>
-            {related.data?.incomplete && (
+            {anchor && (
+              <CreditReminderConfiguration
+                studentId={anchor}
+                students={students}
+              />
+            )}
+            {kind === "reminder" && anchor && (
+              <CreditReminderAttention
+                studentId={anchor}
+                timezone={timezone}
+                search={search}
+                household={household}
+                onNavigate={() => setOpen(false)}
+              />
+            )}
+            {related.data?.incomplete && kind !== "reminder" && (
               <p role="status">
                 Some household or reconciliation information is unavailable.
               </p>
@@ -308,14 +328,16 @@ export function CreditAttention({
                 </Link>
               </article>
             ))}
-            {query.isPending && <p role="status">Checking credit coverage…</p>}
-            {query.isError && (
+            {kind !== "reminder" && query.isPending && (
+              <p role="status">Checking credit coverage…</p>
+            )}
+            {kind !== "reminder" && query.isError && (
               <p role="alert">Credit attention is unavailable.</p>
             )}
-            {matches?.length === 0 && !sharedShown?.length && (
-              <p>No matching credit issues.</p>
-            )}
-            {query.data && (
+            {kind !== "reminder" &&
+              matches?.length === 0 &&
+              !sharedShown?.length && <p>No matching credit issues.</p>}
+            {kind !== "reminder" && query.data && (
               <button
                 type="button"
                 disabled={query.isFetching}
@@ -327,27 +349,30 @@ export function CreditAttention({
                 Refresh coverage
               </button>
             )}
-            {matches?.map(({ student, issues, failed }) => (
-              <article key={student.id}>
-                <h3>{student.preferredName || student.fullName}</h3>
-                {failed && <p>Some credit information could not be checked.</p>}
-                <ul>
-                  {issues.map((issue, index) => (
-                    <li key={index}>
-                      {labels[issue.kind]} · {issue.text}
-                      {issue.date &&
-                        " · " + formatStudioDateTime(issue.date, timezone)}
-                    </li>
-                  ))}
-                </ul>
-                <Link
-                  to={"/coach/students/" + student.id + "/payments"}
-                  onClick={() => setOpen(false)}
-                >
-                  Manage credits
-                </Link>
-              </article>
-            ))}
+            {kind !== "reminder" &&
+              matches?.map(({ student, issues, failed }) => (
+                <article key={student.id}>
+                  <h3>{student.preferredName || student.fullName}</h3>
+                  {failed && (
+                    <p>Some credit information could not be checked.</p>
+                  )}
+                  <ul>
+                    {issues.map((issue, index) => (
+                      <li key={index}>
+                        {labels[issue.kind]} · {issue.text}
+                        {issue.date &&
+                          " · " + formatStudioDateTime(issue.date, timezone)}
+                      </li>
+                    ))}
+                  </ul>
+                  <Link
+                    to={"/coach/students/" + student.id + "/payments"}
+                    onClick={() => setOpen(false)}
+                  >
+                    Manage credits
+                  </Link>
+                </article>
+              ))}
           </div>
         </Dialog>
       )}

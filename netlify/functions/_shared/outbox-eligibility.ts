@@ -1,3 +1,4 @@
+import { creditRemindersEnabled } from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database, Tables } from "../../../src/types/database.generated";
 import { evaluateLessonReadiness } from "../../../src/domain/lessonReadiness";
@@ -80,6 +81,11 @@ export async function checkOutboxEligibility(
   }
   const db = client as SupabaseClient<Database>,
     intent = messageIntent(message);
+  if (
+    (intent === "package_low" || intent === "package_shortfall") &&
+    creditRemindersEnabled()
+  )
+    return { allowed: false, reason: "replaced_by_credit_reminders" };
   if (
     options.requireApproval &&
     intent &&

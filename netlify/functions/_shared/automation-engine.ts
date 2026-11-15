@@ -3,6 +3,7 @@ import {
   assertWorkerEnabled,
   disabledWorkerResult,
   WorkerDisabledError,
+  creditRemindersEnabled,
 } from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { createHash } from "node:crypto";
@@ -49,6 +50,9 @@ export async function evaluateAndQueueRule(
     return { ...disabledWorkerResult("automations"), outboxIds: [] };
   const db = client as SupabaseClient<Database>,
     rule = mapAutomationRule(row);
+  const replacedCreditRule =
+    creditRemindersEnabled() &&
+    ["package_low", "package_shortfall"].includes(rule.key);
   const data =
     options.data ??
     (rule.key === "delivery_failure"
@@ -138,7 +142,7 @@ export async function evaluateAndQueueRule(
               };
   const outboxIds: string[] = [];
   const queuedStatuses: string[] = [];
-  if (!preview && decision.eligible)
+  if (!preview && !replacedCreditRule && decision.eligible)
     for (const stage of decision.stages) {
       assertWorkerEnabled("automations");
       const recipients = stage.coachEscalation

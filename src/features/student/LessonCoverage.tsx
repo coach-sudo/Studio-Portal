@@ -1,3 +1,4 @@
+import { CreditReminderHistory } from "../../components/CreditReminderHistory";
 import { supabase } from "../../lib/supabase";
 import { useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
@@ -309,10 +310,12 @@ export function HouseholdLessonCoverage({
       {members.map((member) => (
         <HouseholdMember key={member.id} member={member} timezone={timezone} />
       ))}
-      <details className="disclosure-section">
-        <summary>Renewal reminders</summary>
-        <p>Renewal reminder history is unavailable.</p>
-      </details>
+      <CreditReminderHistory
+        studentIds={members
+          .filter((member) => member.canViewFinance)
+          .map((member) => member.id)}
+        timezone={timezone}
+      />
     </Section>
   );
 }
@@ -501,6 +504,7 @@ export function CreditsAndLessons({
             timezone={timezone}
           />
           <StudentCreditHistory studentId={studentId} timezone={timezone} />
+          <CreditReminderHistory studentIds={[studentId]} timezone={timezone} />
         </>
       )}
     </div>
