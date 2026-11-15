@@ -1,3 +1,5 @@
+import { CustomCreditGrant } from "./CustomCreditGrant";
+import type { BookingService } from "../../domain/model";
 import { useSearchParams } from "react-router-dom";
 import { CreditExpiration } from "./CreditExpiration";
 import { SharedCreditRestoration } from "./SharedCreditRestoration";
@@ -27,9 +29,11 @@ type Confirmation = { action: string; values: CommandValue; key: string };
 export function HouseholdCreditAdmin({
   studentId,
   timezone,
+  services,
 }: {
   studentId: string;
   timezone: string;
+  services: BookingService[];
 }) {
   const [params] = useSearchParams();
   const requestedHousehold = params.get("creditHousehold");
@@ -220,6 +224,16 @@ export function HouseholdCreditAdmin({
                           expiresAt={pool.expiresAt}
                           timezone={timezone}
                         />
+                        {pool.members.length > 0 &&
+                          pool.services.length === 1 && (
+                            <CustomCreditGrant
+                              studentId={pool.members[0].id}
+                              shared={pool}
+                              services={services.filter(
+                                (service) => service.name === pool.services[0],
+                              )}
+                            />
+                          )}
                         <SharedCreditRestoration
                           studentId={studentId}
                           packageId={pool.id}

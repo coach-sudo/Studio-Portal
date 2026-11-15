@@ -8,13 +8,24 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 export function CustomCreditGrant({
   studentId,
   services,
+  shared,
 }: {
   studentId: string;
   services: BookingService[];
+  shared?: {
+    id: string;
+    name: string;
+    durationMinutes: number;
+    expiresAt: string | null;
+  };
 }) {
   const [open, setOpen] = useState(false);
-  const [serviceId, setServiceId] = useState("");
-  const [minutes, setMinutes] = useState("");
+  const [serviceId, setServiceId] = useState(
+    shared && services.length === 1 ? services[0].id : "",
+  );
+  const [minutes, setMinutes] = useState(
+    shared ? String(shared.durationMinutes) : "",
+  );
   const [quantity, setQuantity] = useState("");
   const [expires, setExpires] = useState("");
   const [reason, setReason] = useState("");
@@ -45,7 +56,12 @@ export function CustomCreditGrant({
         customTerms: {
           serviceId,
           durationMinutes: Number(minutes),
-          expiresAt: expires ? new Date(expires).toISOString() : null,
+          expiresAt: shared
+            ? shared.expiresAt
+            : expires
+              ? new Date(expires).toISOString()
+              : null,
+          ...(shared ? { poolId: shared.id } : {}),
         },
       };
       const signature = JSON.stringify(payload);
@@ -116,9 +132,13 @@ export function CustomCreditGrant({
                   {quantity} credits · {selected?.name} · {minutes} minutes
                 </p>
                 <p>
-                  {expires
-                    ? "Expires " + new Date(expires).toLocaleString()
-                    : "No expiration"}
+                  {shared
+                    ? shared.expiresAt
+                      ? "Expires " + new Date(shared.expiresAt).toLocaleString()
+                      : "No expiration"
+                    : expires
+                      ? "Expires " + new Date(expires).toLocaleString()
+                      : "No expiration"}
                 </p>
                 <p>{reason}</p>
                 <button
@@ -163,6 +183,7 @@ export function CustomCreditGrant({
                     min={15}
                     max={480}
                     required
+                    readOnly={!!shared}
                     value={minutes}
                     onChange={(event) => setMinutes(event.target.value)}
                   />
@@ -179,15 +200,24 @@ export function CustomCreditGrant({
                     onChange={(event) => setQuantity(event.target.value)}
                   />
                 </label>
-                <label htmlFor={id + "-expiry"}>
-                  Expiration in your local time, if any
-                  <input
-                    id={id + "-expiry"}
-                    type="datetime-local"
-                    value={expires}
-                    onChange={(event) => setExpires(event.target.value)}
-                  />
-                </label>
+                {shared ? (
+                  <p>
+                    {shared.name} ·{" "}
+                    {shared.expiresAt
+                      ? "Expires " + new Date(shared.expiresAt).toLocaleString()
+                      : "No expiration"}
+                  </p>
+                ) : (
+                  <label htmlFor={id + "-expiry"}>
+                    Expiration in your local time, if any
+                    <input
+                      id={id + "-expiry"}
+                      type="datetime-local"
+                      value={expires}
+                      onChange={(event) => setExpires(event.target.value)}
+                    />
+                  </label>
+                )}
                 <label htmlFor={id + "-reason"}>
                   Reason
                   <textarea

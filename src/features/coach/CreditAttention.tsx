@@ -15,10 +15,20 @@ const labels = {
   uncovered: "Needs credit",
   expiring: "Expiring credits",
   review: "Credit review",
+  routing: "Billing recipient",
 };
 type Kind = keyof typeof labels;
 type Student = { id: string; fullName: string; preferredName?: string };
 type Issue = { kind: Kind; text: string; date?: string; packageId?: string };
+const routingSchema = z.array(
+  z.object({
+    lessonId: z.string(),
+    studentId: z.string(),
+    topic: z.string(),
+    startsAt: z.string(),
+    status: z.enum(["ambiguous_pool", "missing_recipient"]),
+  }),
+);
 const caseSchema = z.array(
   z.object({
     id: z.string(),
@@ -54,19 +64,25 @@ export function CreditAttention({
     enabled: open && !!identity && !!anchor,
     retry: false,
     queryFn: async ({ signal }) => {
-      const [households, cases] = await Promise.allSettled([
+      const [households, cases, routing] = await Promise.allSettled([
         householdCreditCommand(anchor, "coach", {}, signal).then(
           (value) => coachHouseholdsSchema.parse(value).households,
         ),
         householdCreditCommand(anchor, "attention_cases", {}, signal).then(
           (value) => caseSchema.parse(value),
         ),
+        householdCreditCommand(anchor, "billing_attention", {}, signal).then(
+          (value) => routingSchema.parse(value),
+        ),
       ]);
       return {
         households: households.status === "fulfilled" ? households.value : [],
         cases: cases.status === "fulfilled" ? cases.value : [],
+        routing: routing.status === "fulfilled" ? routing.value : [],
         incomplete:
-          households.status === "rejected" || cases.status === "rejected",
+          households.status === "rejected" ||
+          cases.status === "rejected" ||
+          routing.status === "rejected",
       };
     },
   });
@@ -184,6 +200,17 @@ export function CreditAttention({
       );
       const issues = [
         ...remaining,
+        ...(related.data?.routing
+          .filter((item) => item.studentId === row.student.id)
+          .map((item): Issue => ({
+            kind: "routing",
+            date: item.startsAt,
+            text:
+              item.topic +
+              (item.status === "ambiguous_pool"
+                ? " · Multiple compatible pools"
+                : " · No authorized billing recipient"),
+          })) ?? []),
         ...cases.map((item): Issue => ({
           kind: "review",
           packageId: item.packageId,

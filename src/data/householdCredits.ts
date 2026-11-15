@@ -73,9 +73,10 @@ export async function householdCreditCommand(
   });
   const result = await (signal ? request.abortSignal(signal) : request);
   if (result.error) {
-    const explanation = /^(?:INVALID_TRANSITION|VALIDATION_FAILED): (.+)$/.exec(
-      result.error.message,
-    );
+    const explanation =
+      /^(?:INVALID_TRANSITION|VALIDATION_FAILED|VERSION_CONFLICT|CREDIT_UNAVAILABLE|SLOT_UNAVAILABLE): (.+)$/.exec(
+        result.error.message,
+      );
     throw new Error(
       explanation?.[1] ??
         "This household credit action could not be completed.",

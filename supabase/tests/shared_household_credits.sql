@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set search_path=public,extensions;
-select plan(95);
+select plan(113);
 
 insert into auth.users(id,email)
 select md5('shared-user-'||n)::uuid,'shared-role-'||n||'@example.test' from generate_series(1,5) n;
@@ -328,6 +328,82 @@ select is((select item->>'coverageStatus' from jsonb_array_elements(student_cred
   md5('shared-student-3')::uuid,1,20,false)->'items') item
   where item->>'lessonId'=md5('unclassified-manual-test')::uuid::text),
   'studio_review','An unclassified manual lesson requires review without a guessed billing obligation');
+
+
+select set_config('request.jwt.claim.sub',md5('shared-user-1')::uuid::text,true);
+create function pg_temp.draft_action(p_action text,p_details jsonb default null,p_version integer default 0) returns jsonb language sql as $$
+  select household_credit_access(md5('shared-student-2')::uuid,p_action,
+    jsonb_build_object('draftId',md5('manual-draft-continued')::uuid,'version',p_version,'details',p_details))
+$$;
+select is(pg_temp.draft_action('manual_draft_save','{}')->>'version','1',
+  'Coach saves an incomplete draft without creating a lesson');
+select is(jsonb_array_length(pg_temp.draft_action('manual_draft_list')),1,'Coach can reopen saved drafts');
+select throws_ok($$select pg_temp.draft_action('manual_draft_confirm',null,1)$$,'P0001',
+  'VALIDATION_FAILED: Choose the service, duration, time, billing arrangement and reason.',
+  'Missing billing information blocks confirmation');
+select is((select count(*) from lessons where id=(select confirmed_lesson_id from credit_internal.manual_lesson_drafts
+  where id=md5('manual-draft-continued')::uuid)),0::bigint,'Incomplete drafts have no lesson or reservation');
+update booking_services set payment_policies=array['credits','pay_later'] where id=md5('shared-service-1')::uuid;
+select is(pg_temp.draft_action('manual_draft_save',jsonb_build_object(
+  'service_id',md5('shared-service-1')::uuid,'duration_minutes',60,'starts_at',now()+interval '40 days',
+  'timezone','UTC','billing_arrangement','credits','reason','Reviewed prepaid booking'),1)->>'version','2',
+  'Coach adds service, time, duration and billing classification');
+create temporary table draft_confirmation as
+select pg_temp.draft_action('manual_draft_confirm',null,2)->>'confirmed_lesson_id' as id;
+select ok(id is not null,'Confirmed draft uses the existing booking path') from draft_confirmation;
+select is(pg_temp.draft_action('manual_draft_confirm',null,2)->>'confirmed_lesson_id',(select id from draft_confirmation),
+ 'Repeated confirmation resolves to the same lesson');
+select is((select count(*) from package_credit_entries where lesson_id=(select id::uuid from draft_confirmation) and quantity=-1),
+  1::bigint,'Prepaid draft confirmation reserves exactly once');
+
+select lives_ok($$select command_grant_student_credits(md5('shared-student-2')::uuid,'typed-shared-continued',
+  jsonb_build_object('quantity',1,'kind','adjustment','reason','Typed shared grant','portalVisible',false,
+    'customTerms',jsonb_build_object('poolId',pg_temp.pool(),'serviceId',md5('shared-service-1')::uuid,'durationMinutes',60)),
+  md5('shared-user-1')::uuid)$$,'Typed grant extends the matching shared pool');
+select is((select count(*) from package_credit_entries e where e.package_id=pg_temp.pool() and e.reason='Typed shared grant'),
+  1::bigint,'Typed shared grant writes to the authoritative shared ledger');
+select throws_ok($$select command_grant_student_credits(md5('shared-student-2')::uuid,'wrong-typed-shared-continued',
+  jsonb_build_object('quantity',1,'kind','adjustment','reason','Wrong typed shared grant',
+    'customTerms',jsonb_build_object('poolId',pg_temp.pool(),'serviceId',md5('shared-service-1')::uuid,'durationMinutes',30)),
+  md5('shared-user-1')::uuid)$$,'P0001','VALIDATION_FAILED: The grant must match the shared pool service, duration and expiration.',
+  'Shared grants reject a conflicting duration');
+
+insert into packages(id,household_id,definition_id,name)
+values(md5('additional-routing-pool')::uuid,pg_temp.household(),md5('shared-definition')::uuid,'Overlapping shared pool');
+insert into credit_internal.credit_pool_members(package_id,household_id,student_id)
+values(md5('additional-routing-pool')::uuid,pg_temp.household(),md5('shared-student-2')::uuid);
+-- Consume the rest of the confirmed lots without changing the booking fixture.
+insert into package_credit_entries(package_id,kind,quantity,reason)
+select p.id,'adjustment',-public.package_credit_balance(p.id),'Isolated routing fixture'
+from packages p where credit_internal.student_may_spend_pool(p.id,md5('shared-student-2')::uuid)
+  and public.package_credit_balance(p.id)>0;
+create temporary table routing_fixture as
+select command_create_manual_booking('shared-routing-uncovered',jsonb_build_object(
+  'student_id',md5('shared-student-2')::uuid,'service_id',md5('shared-service-1')::uuid,
+  'duration_minutes',60,'starts_at',now()+interval '41 days','timezone','UTC',
+  'billing_arrangement','credit_exception','reason','Approved uncovered lesson'))->>'lessonId' as id;
+select is(credit_internal.credit_lesson_billing_route(md5('shared-student-2')::uuid,id::uuid)->>'status','ambiguous_pool',
+ 'Overlapping shared pools suppress routing rather than selecting a contact') from routing_fixture;
+select ok(exists(select 1 from jsonb_array_elements(pg_temp.h('billing_attention')) x
+ where x->>'lessonId'=(select id from routing_fixture) and x->>'status'='ambiguous_pool'),
+ 'Coach attention lists the routing ambiguity');
+select is((select count(*) from audit_events where entity_id=(select id::uuid from routing_fixture)
+ and action='credits.routing_review'),1::bigint,'Routing ambiguity is recorded in the private audit');
+
+
+delete from credit_internal.credit_pool_members where package_id=md5('additional-routing-pool')::uuid;
+update packages set expires_at=now()-interval '1 day' where student_id=md5('shared-student-2')::uuid;
+select is(credit_internal.credit_lesson_billing_route(md5('shared-student-2')::uuid,id::uuid)->>'status','authorized',
+ 'A unique established pool can use an authorized fallback') from routing_fixture;
+update linked_contacts set can_receive_notifications=false
+ where student_id=md5('shared-student-2')::uuid and is_primary_payer;
+select is(credit_internal.credit_lesson_billing_route(md5('shared-student-2')::uuid,id::uuid)->>'status','missing_recipient',
+ 'Revoked fallback permission produces no eligible recipient') from routing_fixture;
+select ok(exists(select 1 from jsonb_array_elements(pg_temp.h('billing_attention')) x
+ where x->>'lessonId'=(select id from routing_fixture) and x->>'status'='missing_recipient'),
+ 'Recipient revocation refreshes the coach routing finding');
+select is((select count(*) from audit_events where entity_id=(select id::uuid from routing_fixture)
+ and action='credits.routing_review'),2::bigint,'A material routing change retains both audit events');
 
 select * from finish();
 rollback;

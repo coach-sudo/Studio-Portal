@@ -54,6 +54,18 @@ test("coach finds credit attention from the dashboard", async ({
     "**/rest/v1/rpc/household_credit_access",
     async (route) => {
       const input = route.request().postDataJSON();
+      if (input.p_action === "billing_attention")
+        return route.fulfill({
+          json: [
+            {
+              lessonId: ids.lesson,
+              studentId: ids.student,
+              topic: "Scene Study routing",
+              startsAt: new Date().toISOString(),
+              status: "ambiguous_pool",
+            },
+          ],
+        });
       if (input.p_action === "attention_cases") {
         return route.fulfill({
           json: [
@@ -118,6 +130,8 @@ test("coach finds credit attention from the dashboard", async ({
   await dialog.getByLabel("Issue type").selectOption("review");
   await expect(dialog.getByText(/Under review/)).toBeVisible();
   await expect(dialog.getByText(/Shared coaching/)).toHaveCount(0);
+  await dialog.getByLabel("Issue type").selectOption("routing");
+  await expect(dialog.getByText(/Multiple compatible pools/)).toBeVisible();
   await dialog.getByLabel("Issue type").selectOption("uncovered");
   await expect(
     dialog.getByRole("link", { name: "Manage credits" }).first(),

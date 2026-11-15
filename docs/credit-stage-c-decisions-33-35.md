@@ -25,3 +25,19 @@ Custom household ownership, the legacy untyped-grant suppression and classificat
 The new private pool-contact table has RLS and no direct API grants. Both additional function-only migrations reuse the existing accounting ledger and guarded contracts. Reverting the client leaves audit and financial history intact. Retain the pool contact mappings, typed snapshots and grant entries during rollback. Any change to their effective behavior requires a reviewed forward migration.
 
 Continue on draft #96. Finish and verify manual draft confirmation, typed discretionary issuance across supported ownership and legacy paths, and ambiguous-pool routing. Then branch Stage D from the exact verified Stage C head. No new policy decision is requested.
+
+## Follow-up implementation
+
+- Credit Attention lists ambiguous shared pools and missing authorized recipients for upcoming credit bookings. The backend reuses the booking evaluator and exact package terms, suppresses contested or unresolved routes, and records changes to unresolved findings in private audit. A unique established pool may route through the previously approved pool override or affected-student fallback.
+- The student workspace's Add lesson action now opens a coach-scoped draft editor. An incomplete save creates only a private draft. A versioned draft can be reopened and edited. On confirmation, the existing manual booking transaction checks service, duration, billing arrangement and reason. Prepaid bookings use a verified eligible credit, and the explicit uncovered exception records a credit obligation when there is no available lot. The draft locks and stable booking key prevent duplicate confirmations. Explicit separate-payment arrangements stay outside the allocator.
+- In a verified single-service shared lot, coaches can add discretionary credits with matching duration and effective expiration, a reason, and portal-history visibility. The grant uses the existing bulk adjustment command and ledger. It does not mutate payments or the pool's original terms.
+
+### Readiness gaps
+
+The direct calendar-proposal creation path still uses the legacy unclassified command. Its existing calendar conflict and recurrence behavior must be carried into classified confirmation before replacing it. The general legacy allocator and standalone older grant paths still admit some unverified terms. The new classified booking path requires verified terms, and reminder routing suppresses an unresolved eligible balance. The studio-wide migration away from implicit legacy eligibility still needs implementation and reconciliation evidence. Custom shared grants currently add to a selected matching single-service lot. A new shared custom lot with a different expiry or service remains open.
+
+These gaps leave Stage C unready for Stage D development. No additional product decision is needed. The three new migrations reuse existing booking, ledger and audit records. Reverting the client must preserve confirmed lesson links, private drafts, shared adjustments and routing history. Leave the migrations installed and use forward corrections to reconcile any later accounting effects.
+
+## Browser evidence
+
+The synthetic coach workflow covers saving an incomplete draft, reopening it, and keeping confirmation disabled until its required fields are present. See [desktop](credit-stage-c-evidence/desktop/manual-lesson-draft.png), [tablet](credit-stage-c-evidence/tablet/manual-lesson-draft.png), and [mobile](credit-stage-c-evidence/mobile/manual-lesson-draft.png).

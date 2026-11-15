@@ -225,6 +225,7 @@ export function FinanceView({
       {!isDemo && <BulkCreditAdjustments data={data} />}
       {!isDemo && data.students[0] && (
         <HouseholdCreditAdmin
+          services={data.bookingServices}
           studentId={data.students[0].id}
           timezone={data.settings.timezone}
         />
