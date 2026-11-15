@@ -39,6 +39,24 @@ describe("payment reminder approval", () => {
     expect(db.from).not.toHaveBeenCalled();
   });
 });
+describe("credit reminder cutover", () => {
+  it.each([
+    ["package.package_low.student", "package_low"],
+    ["automation.package_shortfall.hours-24", "package_shortfall"],
+    ["automation.package_shortfall.coach", "coach"],
+    ["package.package_low.student", null],
+  ])("holds legacy %s while the new scheduler is off", async (event, intent) => {
+    const db = { from: vi.fn() } as unknown as SupabaseClient;
+    expect(
+      await checkOutboxEligibility(
+        db,
+        { ...message, event_key: event, recipient_intent: intent },
+        now,
+      ),
+    ).toEqual({ allowed: false, reason: "replaced_by_credit_reminders" });
+    expect(db.from).not.toHaveBeenCalled();
+  });
+});
 function client(rows: Record<string, unknown>) {
   return {
     from: (table: string) => {
