@@ -122,8 +122,29 @@ for (const role of ["student", "guardian"] as const) {
         },
       );
       await context.route("**/api/v2/finance", async (route) => {
-        if (route.request().postDataJSON().command !== "renewal_options")
-          return route.fallback();
+        const request = route.request().postDataJSON();
+        if (request.command === "checkout_definition") {
+          expect(role).toBe("guardian");
+          expect(request.payload).toMatchObject({
+            studentId: ids.student,
+            lessonId: shortage,
+            expectedPriceMinor: 9000,
+            expectedCurrency: "USD",
+          });
+          return route.fulfill({
+            json: {
+              resource: {
+                url:
+                  "/portal/credits?student=" +
+                  ids.student +
+                  "&lesson=" +
+                  shortage +
+                  "&checkout=processing",
+              },
+            },
+          });
+        }
+        if (request.command !== "renewal_options") return route.fallback();
         await route.fulfill({
           json: {
             resource: {
@@ -177,7 +198,8 @@ for (const role of ["student", "guardian"] as const) {
           name: "Household Lesson Coverage",
         });
         await household
-          .getByText("E2E Candidate Student", { exact: true })
+          .locator("summary")
+          .filter({ hasText: "Upcoming lesson needs credit" })
           .click();
         await expect(
           household.getByText("Needs Credit", { exact: true }),
@@ -235,13 +257,18 @@ for (const role of ["student", "guardian"] as const) {
         path: info.outputPath("coverage-renewal.png"),
         fullPage: true,
       });
-      await page.goto(
-        "/portal/credits?student=" +
-          ids.student +
-          "&lesson=" +
-          shortage +
-          "&checkout=processing",
-      );
+      if (role === "guardian") {
+        await page
+          .getByRole("button", { name: "Continue to checkout" })
+          .click();
+      } else
+        await page.goto(
+          "/portal/credits?student=" +
+            ids.student +
+            "&lesson=" +
+            shortage +
+            "&checkout=processing",
+        );
       await expect(page.getByText(/Checkout has returned/)).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Continue to checkout" }),

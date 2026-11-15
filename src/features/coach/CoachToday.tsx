@@ -3,6 +3,7 @@ import { RecordUnavailable } from "../../components/RecordRoute";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { coachSectionDomains } from "./routeDomains";
 import { TodayView } from "./StudioToday";
+import { CreditAttention } from "./CreditAttention";
 export function CoachToday() {
   const { data, isDemo, error } = useStudioRoute(
     "coach",
@@ -14,6 +15,12 @@ export function CoachToday() {
   return (
     <div className="page page-today">
       <PageHeader title="Today" />
+      {!isDemo && (
+        <CreditAttention
+          students={data.students}
+          timezone={data.settings.timezone}
+        />
+      )}
       <TodayView data={data} isDemo={isDemo} />
     </div>
   );

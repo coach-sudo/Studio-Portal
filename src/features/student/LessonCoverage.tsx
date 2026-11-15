@@ -255,16 +255,22 @@ function HouseholdMember({
   timezone: string;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const query = useCoverage(member.id, 1, expanded && member.canViewFinance);
+  const query = useCoverage(member.id, 1, member.canViewFinance);
+  const needsCredit = query.data?.items.some(
+    (item) => item.coverageStatus === "needs_credit",
+  );
   return (
     <details
       className="disclosure-section"
       onToggle={(event) => setExpanded(event.currentTarget.open)}
     >
-      <summary>{member.preferredName || member.fullName}</summary>
+      <summary>
+        {member.preferredName || member.fullName}
+        {needsCredit && <small> · Upcoming lesson needs credit</small>}
+      </summary>
       {member.canViewFinance ? (
         <>
-          {query.data && !query.isError ? (
+          {expanded && query.data && !query.isError ? (
             <CoverageRows view={query.data} timezone={timezone} compact />
           ) : (
             <p role="status">
