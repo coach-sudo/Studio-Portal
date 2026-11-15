@@ -1,7 +1,7 @@
 begin;
 create extension if not exists pgtap with schema extensions;
 set local search_path=public,extensions;
-select plan(8);
+select plan(11);
 insert into auth.users(id,email) values
  ('d1000000-0000-4000-8000-000000000001','renewal-student@example.test'),
  ('d1000000-0000-4000-8000-000000000002','renewal-payer@example.test'),
@@ -49,5 +49,19 @@ set local request.jwt.claim.sub='d1000000-0000-4000-8000-000000000001';
 update bookings set payment_policy='pay_later' where id='d6000000-0000-4000-8000-000000000001';
 select is(pg_temp.renewals()->'definitionIds','[]'::jsonb,'Separate payment gets no credit renewal recommendation');
 select ok(not has_function_privilege('anon','public.portal_renewal_options(uuid,uuid)','EXECUTE'),'Anonymous callers cannot query protected eligibility');
+update bookings set payment_policy='credits' where id='d6000000-0000-4000-8000-000000000001';
+insert into student_credit_accounts(student_id,auto_apply)
+values('d3000000-0000-4000-8000-000000000001',true)
+on conflict(student_id) do update set auto_apply=true;
+insert into packages(id,student_id,definition_id,name,credit_quantity)
+values('d8000000-0000-4000-8000-000000000001','d3000000-0000-4000-8000-000000000001',
+ 'd7000000-0000-4000-8000-000000000001','Issued renewal',1);
+select is(process_stripe_checkout('evt_stage_c_verified','checkout.session.completed',
+ '{"data":{"object":{"id":"cs_stage_c_verified","payment_intent":"pi_stage_c_verified"}}}',
+ 'cs_stage_c_verified','d3000000-0000-4000-8000-000000000001','d8000000-0000-4000-8000-000000000001',
+ 10000,'USD')->>'duplicate','false','Verified issuance records one purchase');
+select is((student_credit_coverage('d3000000-0000-4000-8000-000000000001',1,5,false)->'items'->0)->>'coverageStatus',
+ 'covered','Verified issuance reserves credit without a new booking');
+select is(pg_temp.renewals()->'definitionIds','[]'::jsonb,'Covered lesson no longer offers contextual renewal');
 select * from finish();
 rollback;

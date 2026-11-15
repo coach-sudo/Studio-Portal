@@ -32,6 +32,7 @@ for (const role of ["student", "guardian"] as const) {
                   topic: "Reserved scene study",
                   state: "covered",
                   reasonCode: "already_reserved",
+                  packageId: "70000000-0000-4000-8000-000000000021",
                   eligible: false,
                   coverageStatus: "covered",
                 },
@@ -167,6 +168,17 @@ for (const role of ["student", "guardian"] as const) {
         path: info.outputPath("coverage-renewal.png"),
         fullPage: true,
       });
+      await page.goto(
+        "/portal/credits?student=" +
+          ids.student +
+          "&lesson=" +
+          shortage +
+          "&checkout=processing",
+      );
+      await expect(page.getByText(/Checkout has returned/)).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Continue to checkout" }),
+      ).toHaveCount(0);
     },
   );
 }
