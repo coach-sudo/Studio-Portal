@@ -151,7 +151,7 @@ export function PackageCreditReview({
   const [packageId, setPackageId] = useState("");
   const [page, setPage] = useState(1);
   const [finding, setFinding] = useState<string>();
-  const [caseReason, setCaseReason] = useState("");
+  const [caseReasons, setCaseReasons] = useState<Record<string, string>>({});
   const [decisionKey, setDecisionKey] = useState<{
     intent: string;
     key: string;
@@ -246,7 +246,8 @@ export function PackageCreditReview({
     item: z.infer<typeof caseSchema>,
     status: CaseDecision,
   ) {
-    if (busy || caseReason.trim().length < 3) return;
+    const caseReason = caseReasons[item.id]?.trim() ?? "";
+    if (busy || caseReason.length < 3) return;
     const payload = {
       studentId,
       caseId: item.id,
@@ -271,7 +272,7 @@ export function PackageCreditReview({
         reason: payload.reason,
       });
       await review.refetch();
-      setCaseReason("");
+      setCaseReasons((current) => ({ ...current, [item.id]: "" }));
       setDecisionKey(undefined);
       setNotice("Review decision recorded.");
     } catch (error) {
@@ -409,9 +410,6 @@ export function PackageCreditReview({
                         key={item.id}
                         name={formId + "-case"}
                         className="disclosure-section"
-                        onToggle={(event) => {
-                          if (event.currentTarget.open) setCaseReason("");
-                        }}
                       >
                         <summary>
                           {caseStatus[item.status]} ·{" "}
@@ -456,17 +454,24 @@ export function PackageCreditReview({
                           <textarea
                             id={item.id + "-decision"}
                             maxLength={500}
-                            value={caseReason}
-                            onChange={(event) =>
-                              setCaseReason(event.target.value)
-                            }
+                            value={caseReasons[item.id] ?? ""}
+                            onChange={(event) => {
+                              const value = event.target.value;
+                              setCaseReasons((current) => ({
+                                ...current,
+                                [item.id]: value,
+                              }));
+                            }}
                           />
                         </label>
                         <div className="header-actions">
                           {options.map((status) => (
                             <button
                               key={status}
-                              disabled={busy || caseReason.trim().length < 3}
+                              disabled={
+                                busy ||
+                                (caseReasons[item.id]?.trim().length ?? 0) < 3
+                              }
                               onClick={() => void decide(item, status)}
                             >
                               {
