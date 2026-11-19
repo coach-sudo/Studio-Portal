@@ -20,9 +20,9 @@ export function portalDomains(pathname: string): readonly StudioDomain[] {
   if (route === "/portal/work" || route === "/portal/materials")
     return ["identity", "students", "work", "lessons"];
   if (route === "/portal/bookings")
-    return ["identity", "students", "lessons", "booking"];
+    return ["identity", "students", "lessons", "booking", "finance"];
   if (/^\/portal\/lessons\/[^/]+$/.test(route))
-    return ["identity", "students", "lessons", "booking", "work"];
+    return ["identity", "students", "lessons", "booking", "work", "finance"];
   if (/^\/portal\/classes\/[^/]+$/.test(route))
     return ["identity", "students", "lessons", "work", "messaging"];
   return route === "/portal"

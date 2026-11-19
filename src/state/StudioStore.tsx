@@ -35,6 +35,8 @@ const CORE_KEYS = [
   "discountCodes",
   "settings",
   "packages",
+  "packageBillingOptions",
+  "packageSubscriptions",
   "creditEntries",
   "payments",
   "bookings",

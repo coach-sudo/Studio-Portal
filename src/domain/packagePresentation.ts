@@ -1,5 +1,25 @@
 import { formatMoney } from "./finance";
-import type { PackageDefinition } from "./model";
+import type { PackageBillingOption, PackageDefinition } from "./model";
+
+export const isCalendarRenewal = (option: PackageBillingOption) =>
+  option.active &&
+  ["weekly", "biweekly", "monthly"].includes(option.renewalMode);
+
+export function hasRecurringPackageOffer(
+  definitions: readonly PackageDefinition[],
+  options: readonly PackageBillingOption[],
+) {
+  return definitions.some(
+    (definition) =>
+      definition.active &&
+      definition.visibility === "public" &&
+      definition.directPurchase &&
+      options.some(
+        (option) =>
+          option.definitionId === definition.id && isCalendarRenewal(option),
+      ),
+  );
+}
 
 type PackageBenefitDefinition = Pick<
   PackageDefinition,

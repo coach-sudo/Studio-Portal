@@ -8,6 +8,7 @@ import {
   type TrainingCheckout,
 } from "../_shared/training-checkout";
 import type { V2CommandContext } from "./types";
+import { trainingAutopayPreview } from "./training-autopay-preview";
 
 const paySelection = z
   .object({
@@ -46,6 +47,8 @@ export async function handleTrainingCheckout({
   const { data, error } = await db.auth.getUser();
   if (error || !data.user) throw new Error("FORBIDDEN");
   const actor = data.user.id;
+  if (input.command === "training_autopay_preview")
+    return trainingAutopayPreview(actor, input.payload);
   const key = testStripeKey();
 
   if (input.command === "training_payers") {
