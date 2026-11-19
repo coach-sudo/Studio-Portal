@@ -19,18 +19,8 @@ import {
   type LessonObligation,
 } from "../../domain/trainingArrangement";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
+import { useTrainingPayers } from "./useTrainingPayers";
 import "./LessonPaymentOptions.css";
-
-interface Payers {
-  ready: boolean;
-  studentIds: string[];
-  attempts: {
-    id: string;
-    studentId: string;
-    status: "reserved" | "review";
-    createdAt: string;
-  }[];
-}
 
 interface CheckoutResult {
   id: string;
@@ -101,23 +91,11 @@ export function LessonPaymentOptions({
   ]
     .sort()
     .slice(0, 50);
-  const payer = useQuery({
-    queryKey: ["training-payment-payers", identity, studentId, studentIds],
-    enabled: !isDemo && Boolean(invoices && identity),
-    queryFn: async () =>
-      (
-        await studioCommand(
-          "invoices",
-          {
-            command: "training_payers",
-            expectedVersion: 0,
-            payload: { studentIds },
-            reason: "Determine permitted lesson payments",
-          },
-          identity ?? undefined,
-        )
-      ).resource as Payers,
-  });
+  const payer = useTrainingPayers(
+    studentId,
+    studentIds,
+    !isDemo && Boolean(invoices),
+  );
   const attempt = useQuery({
     queryKey: ["training-payment-attempt", identity, attemptId, studentId],
     enabled: !isDemo && Boolean(attemptId && identity),

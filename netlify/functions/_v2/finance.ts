@@ -10,6 +10,7 @@ import {
 } from "../_shared/package-stripe-price";
 import { serviceClient } from "../_shared/supabase";
 import { portalOrigin } from "../_shared/portal-url";
+import { trainingCheckout } from "../_shared/training-checkout";
 import type { V2CommandContext } from "./types";
 
 export async function handleFinanceCommands(
@@ -20,6 +21,21 @@ export async function handleFinanceCommands(
     const { data, error } = await db.auth.getUser();
     if (error || !data.user) throw new Error("FORBIDDEN");
     return data.user.id;
+  };
+
+  const canManagePackagePayment = async (
+    actor: string,
+    studentId: string,
+    studioId: string,
+  ) => {
+    const coach = await db.rpc("is_studio_coach", { target_studio: studioId });
+    if (coach.error) throw coach.error;
+    if (coach.data) return true;
+    const payers = await trainingCheckout<{ studentIds: string[] }>("payers", {
+      actor,
+      studentIds: [studentId],
+    });
+    return payers.studentIds.includes(studentId);
   };
 
   if (
@@ -639,40 +655,25 @@ export async function handleFinanceCommands(
         db.auth.getUser(),
         service
           .from("package_subscriptions")
-          .select("*,students!inner(user_id,is_minor)")
+          .select("*")
           .eq("id", input.entityId)
           .single(),
       ]);
     if (!authData.user || subscriptionError || !before)
       throw new Error("FORBIDDEN");
-    const student = Array.isArray(before.students)
-      ? before.students[0]
-      : before.students;
-    const [{ data: coach }, { data: financeContact }] = await Promise.all([
-      service
-        .from("memberships")
-        .select("id")
-        .eq("studio_id", before.studio_id)
-        .eq("user_id", authData.user.id)
-        .eq("role", "coach")
-        .maybeSingle(),
-      service
-        .from("student_relationships")
-        .select("id")
-        .eq("student_id", before.student_id)
-        .eq("user_id", authData.user.id)
-        .eq("can_view_finance", true)
-        .maybeSingle(),
-    ]);
-    const isAdultStudent =
-      student?.user_id === authData.user.id && !student?.is_minor;
-    if (!coach && !financeContact && !isAdultStudent)
+    if (
+      !(await canManagePackagePayment(
+        authData.user.id,
+        before.student_id,
+        before.studio_id,
+      ))
+    )
       throw new Error("FORBIDDEN");
     if (
       input.expectedVersion != null &&
       Number(input.expectedVersion) !== Number(before.version)
     )
-      throw new Error(`VERSION_CONFLICT:${input.expectedVersion}`);
+      throw new Error("VERSION_CONFLICT:" + input.expectedVersion);
 
     let nextStatus = "cancelled";
     if (
@@ -781,6 +782,17 @@ export async function handleFinanceCommands(
       throw new Error(
         "VALIDATION_FAILED: This package is not available for direct purchase.",
       );
+    const { data: authData, error: actorError } = await db.auth.getUser();
+    if (
+      actorError ||
+      !authData.user ||
+      !(await canManagePackagePayment(
+        authData.user.id,
+        student.id,
+        student.studio_id,
+      ))
+    )
+      throw new Error("FORBIDDEN");
     const service = serviceClient();
     const quote = await quotePackageDefinition(service, definition, student.id);
     assertPackageQuote(quote, input.payload);

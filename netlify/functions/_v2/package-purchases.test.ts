@@ -16,7 +16,12 @@ vi.mock("stripe", () => ({
   },
 }));
 
-function fixture(enabled = true, pricingError = false, financeAccess = true) {
+function fixture(
+  enabled = true,
+  pricingError = false,
+  financeAccess = true,
+  canPay = true,
+) {
   const writes: Array<{
     table: string;
     action: string;
@@ -28,6 +33,14 @@ function fixture(enabled = true, pricingError = false, financeAccess = true) {
       id: "student",
       studio_id: "studio",
       special_pricing_enabled: enabled,
+    },
+    package_subscriptions: {
+      id: "subscription",
+      studio_id: "studio",
+      student_id: "student",
+      version: 0,
+      renewal_mode: "monthly",
+      stripe_subscription_id: "sub-original",
     },
     package_definitions: {
       id: "definition",
@@ -62,6 +75,9 @@ function fixture(enabled = true, pricingError = false, financeAccess = true) {
       getUser: async () => ({ data: { user: { id: "coach" } }, error: null }),
     },
     rpc: vi.fn(async (name: string, args: any) => {
+      if (name === "is_studio_coach") return { data: false, error: null };
+      if (name === "training_lesson_checkout")
+        return { data: { studentIds: canPay ? ["student"] : [] }, error: null };
       if (name === "can_view_student_finance")
         return {
           data: args.target_student === "student" && financeAccess,
@@ -150,6 +166,8 @@ function fixture(enabled = true, pricingError = false, financeAccess = true) {
       domain,
       input: {
         command: name,
+        entityId:
+          name === "cancel_package_subscription" ? "subscription" : undefined,
         idempotencyKey: "purchase-key",
         expectedVersion: 0,
         payload: {
@@ -297,6 +315,21 @@ describe("new package purchases and assignments", () => {
     await expect(command()).rejects.toThrow("FORBIDDEN");
     expect(writes).toEqual([]);
     expect(mocks.checkout).not.toHaveBeenCalled();
+  });
+
+  it("keeps package purchasing unavailable to a finance viewer", async () => {
+    const { command, writes } = fixture(true, false, true, false);
+    await expect(command()).rejects.toThrow("FORBIDDEN");
+    expect(writes).toEqual([]);
+    expect(mocks.checkout).not.toHaveBeenCalled();
+  });
+
+  it("keeps renewal changes unavailable to a finance viewer", async () => {
+    const { command, writes } = fixture(true, false, true, false);
+    await expect(
+      command("finance", "cancel_package_subscription"),
+    ).rejects.toThrow("FORBIDDEN");
+    expect(writes).toEqual([]);
   });
 
   it("fails closed when student pricing cannot be read", async () => {

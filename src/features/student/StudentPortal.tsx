@@ -587,6 +587,7 @@ function PortalWorkspace({
               element={
                 (role === "guardian" ? guardianFinance : !person?.isMinor) ? (
                   <Payments
+                    key={person?.id}
                     data={data}
                     isDemo={isDemo}
                     canManageLessons={

@@ -1,4 +1,7 @@
-import { LessonPaymentOptions } from "./LessonPaymentOptions";
+import {
+  LessonPaymentOptions,
+  useTrainingPayers,
+} from "./LessonPaymentOptions";
 import { LessonAutopayPreview } from "./LessonAutopayPreview";
 import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
 import { portalContextLink } from "../../domain/coachingContext";
@@ -102,16 +105,27 @@ export function Payments({
     (item) =>
       item.active && item.visibility === "public" && item.directPurchase,
   );
+  const payer = useTrainingPayers(
+    student?.id ?? "",
+    student ? [student.id] : [],
+    !isDemo &&
+      Boolean(student && (sourceDefinitions.length || packages.length)),
+  );
+  const canManagePackagePayment =
+    isDemo || Boolean(student && payer.data?.studentIds.includes(student.id));
   const purchasableDefinitions = sourceDefinitions
     .map((item) => packageOffer(item, data, student))
     .filter((item): item is Snapshot["packageDefinitions"][number] =>
       Boolean(item),
     );
-  const hasCalendarOffers = purchasableDefinitions.some((item) =>
-    data.packageBillingOptions.some(
-      (option) => option.definitionId === item.id && isCalendarRenewal(option),
-    ),
-  );
+  const hasCalendarOffers =
+    canManagePackagePayment &&
+    purchasableDefinitions.some((item) =>
+      data.packageBillingOptions.some(
+        (option) =>
+          option.definitionId === item.id && isCalendarRenewal(option),
+      ),
+    );
   const durationOptions = [
     ...new Set(
       purchasableDefinitions.map((item) => item.sessionDurationMinutes),
@@ -164,13 +178,14 @@ export function Payments({
     const definition = data.packageDefinitions.find(
       (item) => item.id === definitionId && item.active && item.directPurchase,
     );
-    if (definition) {
+    if (definition && canManagePackagePayment) {
       setPurchaseDefinition(packageOffer(definition, data, student));
       setRenewalMode(recurringOnly ? "" : "one_time");
     }
-  }, [data, student, params, recurringOnly]);
+  }, [data, student, params, recurringOnly, canManagePackagePayment]);
   const purchase = async (id: string) => {
-    if (checkoutBusy || !student || !renewalMode) return;
+    if (checkoutBusy || !student || !renewalMode || !canManagePackagePayment)
+      return;
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
       return;
@@ -205,7 +220,7 @@ export function Payments({
     subscription: Snapshot["packageSubscriptions"][number],
   ) => {
     const pendingKey = `subscription:${subscription.id}`;
-    if (packageBusy) return;
+    if (packageBusy || !canManagePackagePayment) return;
     setPackageBusy(pendingKey);
     setNotice("Turning off package renewal…");
     try {
@@ -301,17 +316,19 @@ export function Payments({
           demoLessons={isDemo ? data.lessons : undefined}
         />
       )}
-      {recurringOnly && (hasCalendarOffers || recurring === "packages") && (
-        <Section title="Recurring packages">
-          <p>
-            These packages renew on the calendar. Choose a package to review the
-            amount, frequency, and included lessons.
-          </p>
-          {!hasCalendarOffers && (
-            <p>No recurring packages are currently offered.</p>
-          )}
-        </Section>
-      )}
+      {recurringOnly &&
+        canManagePackagePayment &&
+        (hasCalendarOffers || recurring === "packages") && (
+          <Section title="Recurring packages">
+            <p>
+              These packages renew on the calendar. Choose a package to review
+              the amount, frequency, and included lessons.
+            </p>
+            {!hasCalendarOffers && (
+              <p>No recurring packages are currently offered.</p>
+            )}
+          </Section>
+        )}
       {recurringOnly &&
         student &&
         canManageLessons &&
@@ -339,7 +356,9 @@ export function Payments({
           isDemo={isDemo}
           studentId={student.id}
           lesson={lesson}
-          hasPackages={purchasableDefinitions.length > 0}
+          hasPackages={
+            canManagePackagePayment && purchasableDefinitions.length > 0
+          }
         />
       )}
       {notice && !purchaseDefinition && (
@@ -457,7 +476,7 @@ export function Payments({
                     {expired ? "expired" : "active"}
                   </Status>
 
-                  {subscription && renewalActive && (
+                  {subscription && renewalActive && canManagePackagePayment && (
                     <button
                       disabled={
                         packageBusy === `subscription:${subscription.id}`
@@ -475,12 +494,13 @@ export function Payments({
           </div>
         </Section>
       )}
-      {sourceDefinitions.length !== purchasableDefinitions.length && (
-        <p role="status" className="portal-notice">
-          Some package prices are unavailable. Try again later.
-        </p>
-      )}
-      {availableDefinitions.length > 0 && (
+      {canManagePackagePayment &&
+        sourceDefinitions.length !== purchasableDefinitions.length && (
+          <p role="status" className="portal-notice">
+            Some package prices are unavailable. Try again later.
+          </p>
+        )}
+      {canManagePackagePayment && availableDefinitions.length > 0 && (
         <div id="lesson-packages" tabIndex={-1}>
           <Section title="Available packages">
             {purchasableDefinitions.length > 1 && (
@@ -550,7 +570,7 @@ export function Payments({
           </Section>
         </div>
       )}
-      {purchaseDefinition && (
+      {purchaseDefinition && canManagePackagePayment && (
         <Dialog
           title={learnerPackageText(purchaseDefinition.name)}
           onClose={() => {
