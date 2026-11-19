@@ -176,7 +176,9 @@ export function StudentNotes({
         updatedAt: exactNote.updatedAt,
         notes: [exactNote],
       }
-    : groups.find((group) => group.lessonId === selectedLessonId);
+    : selectedLessonId
+      ? groups.find((group) => group.lessonId === selectedLessonId)
+      : undefined;
   return (
     <div>
       <h2 id="student-notes-title">Published lesson notes</h2>
@@ -211,21 +213,25 @@ export function StudentNotes({
             return (
               <button
                 type="button"
-                key={group.lessonId}
-                onClick={() => setSelectedLessonId(group.lessonId)}
+                key={group.lessonId || group.notes[0].id}
+                onClick={() => {
+                  if (group.lessonId) setSelectedLessonId(group.lessonId);
+                  else setSelectedNote(group.notes[0].id);
+                }}
               >
-                <CalendarDays />
+                <CalendarDays aria-hidden="true" />
                 <span>
-                  <strong>
+                  <strong>{group.notes[0].title}</strong>
+                  <small>
                     {lesson
                       ? formatStudioDate(
                           lesson.startsAt,
                           data.settings.timezone,
-                        )
-                      : "General note"}
-                  </strong>
-                  <small>
-                    {lesson?.topic || "General coaching"} · {group.notes.length}{" "}
+                        ) +
+                        " · " +
+                        lesson.topic
+                      : "General coaching"}{" "}
+                    · {group.notes.length}{" "}
                     {group.notes.length === 1 ? "note" : "notes"}
                   </small>
                 </span>

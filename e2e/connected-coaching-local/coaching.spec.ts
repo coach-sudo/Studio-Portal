@@ -168,9 +168,13 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
     .click();
   await expect(practice).toBeHidden();
   await page.goto("/portal/work?student=student-maya");
+  await page.getByRole("link", { name: "Lesson notes", exact: true }).click();
+  await page.getByRole("button", { name: /Coaching feedback/ }).click();
   await expect(
-    page.getByText("Coaching feedback", { exact: true }),
+    page.getByRole("dialog").getByText("Coaching feedback", { exact: true }),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: "Homework", exact: true }).click();
   await expect(
     page.getByText("Rehearse the objective", { exact: true }),
   ).toBeVisible();
@@ -280,7 +284,7 @@ test("phone, tablet and dark appearance retain visible controls and exact resour
   await checkView(page);
 });
 
-test("next lesson resets payment fields and closes the previous lesson actions", async ({
+test("next lesson updates payment links and closes the previous lesson actions", async ({
   page,
 }) => {
   await prepare(page);
@@ -318,9 +322,8 @@ test("next lesson resets payment fields and closes the previous lesson actions",
     exact: true,
   });
   await expect(
-    payment.getByLabel("Lesson price (USD)", { exact: true }),
-  ).toHaveValue("100");
-  await payment.getByLabel("Lesson price (USD)", { exact: true }).fill("999");
+    payment.getByRole("link", { name: "Email payment link" }),
+  ).toHaveAttribute("href", new RegExp("lesson=" + lessonId + "$"));
   await payment.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("link", { name: "Next lesson", exact: true }).click();
   await expect(payment).toBeHidden();
@@ -331,14 +334,11 @@ test("next lesson resets payment fields and closes the previous lesson actions",
     .getByRole("button", { name: "Credits & payment", exact: true })
     .click();
   await expect(
-    payment.getByLabel("Lesson price (USD)", { exact: true }),
-  ).toHaveValue("200");
+    payment.getByRole("link", { name: "Email payment link" }),
+  ).toHaveAttribute("href", /lesson=wave4-next$/);
   await expect(
-    payment.getByLabel("Amount paid (USD)", { exact: true }),
-  ).toHaveValue("0");
-  await expect(payment.getByRole("combobox", { name: /^Status/ })).toHaveValue(
-    "due",
-  );
+    payment.getByRole("link", { name: "Prepare lesson invoice" }),
+  ).toHaveAttribute("href", /billLesson=wave4-next$/);
 });
 
 test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({
