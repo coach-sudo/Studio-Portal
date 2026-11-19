@@ -26,6 +26,7 @@ import {
 } from "../../domain/trainingArrangement";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { portalContextLink } from "../../domain/coachingContext";
+import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -238,6 +239,21 @@ export function StudentBookings({
             Book a lesson
           </a>
         )}
+        {showFinance &&
+          hasRecurringPackageOffer(
+            data.packageDefinitions,
+            data.packageBillingOptions,
+          ) && (
+            <Link
+              className="button-link"
+              to={portalContextLink(
+                "/portal/payments?recurring=packages",
+                studentId,
+              )}
+            >
+              Make Recurring
+            </Link>
+          )}
       </header>
       {notice && (
         <div className="portal-notice" role="status">

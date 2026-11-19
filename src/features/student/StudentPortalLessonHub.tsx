@@ -1,4 +1,5 @@
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
 import { LessonFiles } from "../library/LessonFiles";
 import {
   useUrlValue,
@@ -535,6 +536,21 @@ export function LessonHub({
               Pay for my lesson
             </Link>
           )}
+          {showFinance &&
+            hasRecurringPackageOffer(
+              data.packageDefinitions,
+              data.packageBillingOptions,
+            ) && (
+              <Link
+                className="button-link"
+                to={portalContextLink(
+                  "/portal/payments?recurring=packages",
+                  student.id,
+                )}
+              >
+                Make Recurring
+              </Link>
+            )}
         </div>
       </header>
       {notice && <p className="portal-notice">{notice}</p>}

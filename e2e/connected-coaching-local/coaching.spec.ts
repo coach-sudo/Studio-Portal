@@ -682,3 +682,45 @@ test("whole-lesson payment selection stays readable across layouts and themes", 
   ).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(1);
 });
+
+test("calendar package renewal requires the user to choose a cadence", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const offers = data.packageDefinitions.filter(
+      (row) => row.active && row.directPurchase && row.visibility === "public",
+    );
+    for (const offer of offers)
+      data.packageBillingOptions.push({
+        id: `test-weekly-package-${offer.id}`,
+        studioId: data.studioId,
+        definitionId: offer.id,
+        renewalMode: "weekly",
+        active: true,
+        updatedAt: new Date().toISOString(),
+        version: 1,
+      });
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.goto("/portal/payments?student=student-maya");
+  await page.getByRole("link", { name: "Make Recurring" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Recurring packages" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Choose package" }).first().click();
+  const dialog = page.getByRole("dialog");
+  const checkout = dialog.getByRole("button", {
+    name: "Continue to secure checkout",
+  });
+  const cadence = dialog.getByRole("combobox", { name: "Purchase option" });
+  await expect(cadence).toHaveValue("");
+  await expect(checkout).toBeDisabled();
+  await cadence.selectOption("weekly");
+  await expect(
+    dialog.getByText(/The first payment is due at checkout/),
+  ).toBeVisible();
+  await expect(checkout).toBeEnabled();
+});
