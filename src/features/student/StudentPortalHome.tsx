@@ -12,6 +12,7 @@ import "../../components/IdentityActions.css";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
 import { isJoinableLesson } from "../../domain/lessonExperience";
+import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import {
   trainingArrangement,
   trainingPaymentLabel,
@@ -190,6 +191,8 @@ function HomePriorities({
     ? trainingArrangement(data, student.id).upcoming[0]
     : undefined;
   const lesson = next?.lesson;
+  const readyToPay =
+    next?.payment === "unpaid" && Boolean(next.lesson.invoiceId);
   const work = showWork ? context.scripts[0] : undefined;
   const practice = showWork ? context.practice.active[0] : undefined;
   const lessonIsJoinable = Boolean(lesson && isJoinableLesson(lesson));
@@ -284,8 +287,12 @@ function HomePriorities({
                     trainingPaymentLabel[next.payment]
                   : "Invoices and packages"
               }
-              action="View payments"
-              onClick={() => navigate(`${base}/payments`)}
+              action={readyToPay ? "Pay for this lesson" : "View payments"}
+              onClick={() =>
+                readyToPay && lesson
+                  ? open(lessonPaymentPath(student.id, lesson.id))
+                  : navigate(`${base}/payments`)
+              }
             />
           </section>
         )}
