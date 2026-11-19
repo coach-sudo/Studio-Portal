@@ -61,6 +61,12 @@ export function StudentBookings({
   const [nextStart, setNextStart] = useState<string>();
   const [scope, setScope] = useState<"occurrence" | "series">("occurrence");
   const { upcoming, history, coachScheduledCount } = arrangement;
+  const readyToPay = showFinance
+    ? upcoming.filter(
+        ({ payment, lesson }) =>
+          payment === "unpaid" && Boolean(lesson.invoiceId),
+      ).length
+    : 0;
   const service = selected
     ? data.bookingServices.find((item) => item.id === selected.serviceId)
     : undefined;
@@ -274,6 +280,20 @@ export function StudentBookings({
               coachScheduledCount < upcoming.length &&
               ` Your coach scheduled ${coachScheduledCount} of them.`}
           </p>
+        )}
+        {readyToPay > 0 && (
+          <div className="page-actions">
+            <Link
+              className="button-link"
+              to={`${lessonPaymentPath(studentId)}&upcoming=1`}
+            >
+              Review upcoming lesson payments
+            </Link>
+            <span>
+              {readyToPay} {readyToPay === 1 ? "lesson has" : "lessons have"} a
+              balance ready to pay.
+            </span>
+          </div>
         )}
         <div className="student-bookings">
           {upcoming.map(

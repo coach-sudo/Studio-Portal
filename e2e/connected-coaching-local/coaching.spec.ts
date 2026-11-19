@@ -784,3 +784,83 @@ test("a fixed weekly proposal can skip dates without moving lessons or charging 
       ),
   ).toEqual([14, 7, 14]);
 });
+
+test("home opens the exact next lesson and schedule keeps payment selection in scope", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate((id) => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const next = data.lessons.find((item) => item.id === id)!;
+    next.invoiceId = "next-lesson-invoice";
+    next.paymentStatus = "due";
+    next.priceMinor = 8500;
+    const previous = {
+      ...next,
+      id: "previous-lesson",
+      topic: "Previous rehearsal",
+      invoiceId: "previous-lesson-invoice",
+      startsAt: new Date(Date.now() - 86400000).toISOString(),
+      endsAt: new Date(Date.now() - 82800000).toISOString(),
+      status: "completed" as const,
+    };
+    data.lessons.push(previous);
+    data.invoices = [next, previous].map((lesson, index) => ({
+      id: lesson.invoiceId!,
+      student_id: next.studentId,
+      studio_id: data.studioId,
+      number:
+        index === 0
+          ? "Upcoming rehearsal invoice"
+          : "Historical rehearsal invoice",
+      status: "open",
+      currency: "USD",
+      issue_date: "2026-01-01",
+      due_date: "2031-05-15",
+      introduction: "",
+      notes: "",
+      footer: "",
+      branding: { studioName: "Coach’D" },
+      recipient: { name: "Maya" },
+      total_minor: 8500,
+      paid_minor: 0,
+      credit_minor: 0,
+      version: 1,
+      created_at: new Date().toISOString(),
+      items: [
+        {
+          id: lesson.id + "-invoice-line",
+          description: lesson.topic,
+          lessonIds: [lesson.id],
+          kind: "service",
+          referenceId: "service",
+          quantity: 1,
+          unitMinor: 8500,
+          startsOn: lesson.startsAt.slice(0, 10),
+          endsOn: lesson.startsAt.slice(0, 10),
+          creditMinor: 0,
+          paidMinor: 0,
+        },
+      ],
+    }));
+    localStorage.setItem(key, JSON.stringify(data));
+  }, lessonId);
+  await page.goto("/portal?student=student-maya");
+  await page.getByRole("button", { name: "Pay for this lesson" }).click();
+  await expect(page).toHaveURL(new RegExp("lesson=" + lessonId));
+  await expect(
+    page.getByRole("checkbox", { name: /Connected coaching/ }),
+  ).toBeChecked();
+  await page.goto("/portal/bookings?student=student-maya");
+  await page
+    .getByRole("link", { name: "Review upcoming lesson payments" })
+    .click();
+  await expect(page).toHaveURL(/upcoming=1/);
+  await expect(
+    page.getByRole("checkbox", { name: /Connected coaching/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /Previous rehearsal/ }),
+  ).toHaveCount(0);
+});
