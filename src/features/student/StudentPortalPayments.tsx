@@ -1,4 +1,7 @@
 import { LessonPaymentOptions } from "./LessonPaymentOptions";
+import { LessonAutopayPreview } from "./LessonAutopayPreview";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
+import { portalContextLink } from "../../domain/coachingContext";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, FileText } from "lucide-react";
@@ -36,15 +39,20 @@ import { StudentFinancialSummary } from "../../components/StudentFinancialSummar
 export function Payments({
   data,
   isDemo,
+  canManageLessons = false,
 }: {
   data: Snapshot;
   isDemo: boolean;
+  canManageLessons?: boolean;
 }) {
   const student = data.students[0];
   const [params] = useSearchParams();
   const lessonId = params.get("lesson");
   const paying = params.get("pay") === "lesson";
-  const recurringOnly = params.get("recurring") === "packages";
+  const recurring = params.get("recurring");
+  const recurringOnly =
+    recurring === "packages" || recurring === "arrangements";
+  const autopay = useLessonAutopayOptions(data, student?.id ?? "", isDemo);
   const lesson = data.lessons.find(
     (item) =>
       item.id === lessonId &&
@@ -235,16 +243,35 @@ export function Payments({
             Pay for my lesson
           </Link>
         )}
-        {!recurringOnly && hasCalendarOffers && student && (
+        {!recurringOnly && (hasCalendarOffers || autopay) && student && (
           <Link
             className="button-link"
-            to={`/portal/payments?recurring=packages&student=${encodeURIComponent(student.id)}`}
+            to={portalContextLink(
+              "/portal/payments?recurring=arrangements",
+              student.id,
+            )}
           >
             Make Recurring
           </Link>
         )}
       </header>
       {recurringOnly && student && (
+        <div>
+          <Link to={portalContextLink("/portal/payments", student.id)}>
+            Back to Payments
+          </Link>
+        </div>
+      )}
+      {recurringOnly && student && autopay && (
+        <LessonAutopayPreview
+          key={`${student.id}:${lessonId ?? ""}`}
+          studentId={student.id}
+          initialLessonId={lessonId ?? undefined}
+          options={autopay}
+          demoLessons={isDemo ? data.lessons : undefined}
+        />
+      )}
+      {recurringOnly && (hasCalendarOffers || recurring === "packages") && (
         <Section title="Recurring packages">
           <p>
             These packages renew on the calendar. Choose a package to review the
@@ -253,13 +280,18 @@ export function Payments({
           {!hasCalendarOffers && (
             <p>No recurring packages are currently offered.</p>
           )}
-          <Link
-            to={`/portal/payments?student=${encodeURIComponent(student.id)}`}
-          >
-            Back to Payments
-          </Link>
         </Section>
       )}
+      {recurringOnly &&
+        student &&
+        canManageLessons &&
+        data.settings.bookingDefaults.allowRecurring && (
+          <Section title="Recurring bookings">
+            <Link to={portalContextLink("/portal/bookings", student.id)}>
+              Review your schedule before booking more lessons
+            </Link>
+          </Section>
+        )}
       {params.get("checkout") === "processing" && !params.has("invoice") && (
         <p role="status" className="portal-notice">
           Checkout returned. Your package will appear after payment is

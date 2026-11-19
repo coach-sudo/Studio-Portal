@@ -31,18 +31,8 @@ const occurrence = (
   status: "scheduled",
   payment: "unpaid",
   obligation: {
-    lessonId: id,
-    studentId: "student",
-    invoiceId: "invoice",
-    invoiceVersion: 1,
-    invoiceNumber: "INV-1",
-    lineId: id,
-    description: "Coaching",
-    date: startsAt.slice(0, 10),
     amountMinor: 8500,
-    adjustmentsMinor: 0,
     currency: "USD",
-    pending: false,
     eligible: true,
   },
   ...overrides,
@@ -163,5 +153,16 @@ describe("automatic payment proposal", () => {
     expect(() =>
       previewLessonAutopay(policy, { ...selection, leadDays: 8 }, []),
     ).toThrow("automatic payment limits");
+  });
+
+  it("requires review when the configured local time does not occur", () => {
+    expect(
+      previewLessonAutopay(
+        { ...policy, chargeAtLocal: "02:30" },
+        { ...selection, leadDays: 0 },
+        [occurrence("one", "2031-03-09T20:00:00Z")],
+        current("2031-03-01T00:00:00Z"),
+      ),
+    ).toMatchObject([{ lessonId: "one", date: "2031-03-09", state: "review" }]);
   });
 });

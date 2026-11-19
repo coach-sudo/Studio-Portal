@@ -27,6 +27,7 @@ import {
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { portalContextLink } from "../../domain/coachingContext";
 import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -53,6 +54,7 @@ export function StudentBookings({
   const [notice, setNotice] = useState("");
   const [bookingId, setBookingId] = useUrlValue("booking");
   const studentId = data.students[0]?.id ?? "";
+  const autopay = useLessonAutopayOptions(data, studentId, isDemo, showFinance);
   const arrangement = trainingArrangement(data, studentId);
   const selected = data.bookings.find((b) => b.id === bookingId);
   const setSelected = (booking?: Booking) => setBookingId(booking?.id || "");
@@ -240,14 +242,15 @@ export function StudentBookings({
           </a>
         )}
         {showFinance &&
-          hasRecurringPackageOffer(
-            data.packageDefinitions,
-            data.packageBillingOptions,
-          ) && (
+          (autopay ||
+            hasRecurringPackageOffer(
+              data.packageDefinitions,
+              data.packageBillingOptions,
+            )) && (
             <Link
               className="button-link"
               to={portalContextLink(
-                "/portal/payments?recurring=packages",
+                "/portal/payments?recurring=arrangements",
                 studentId,
               )}
             >

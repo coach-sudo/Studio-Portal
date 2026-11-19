@@ -545,9 +545,7 @@ test("primary actions and focus retain contrast under pale branding in both port
   await expect(primary).toHaveCSS("outline-style", "solid");
 });
 
-test("whole-lesson payment selection stays readable across layouts and themes", async ({
-  page,
-}, testInfo) => {
+async function prepareTrainingInvoices(page: Page) {
   await prepare(page);
   await page.evaluate(() => {
     const key = "stage-story-studio-core-v2";
@@ -611,6 +609,12 @@ test("whole-lesson payment selection stays readable across layouts and themes", 
     };
     localStorage.setItem(key, JSON.stringify(data));
   });
+}
+
+test("whole-lesson payment selection stays readable across layouts and themes", async ({
+  page,
+}, testInfo) => {
+  await prepareTrainingInvoices(page);
   for (const [width, layout] of [
     [320, "phone"],
     [768, "tablet"],
@@ -681,6 +685,65 @@ test("whole-lesson payment selection stays readable across layouts and themes", 
     page.getByText("1 lesson selected · $85.00 total"),
   ).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(1);
+});
+
+test("lesson payment preview keeps its scope and offers explicit Pay now for a late lesson", async ({
+  page,
+}, testInfo) => {
+  await prepareTrainingInvoices(page);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("/portal/bookings?student=student-maya");
+  await page.getByRole("link", { name: "Make Recurring" }).click();
+  const options = page.getByRole("group", {
+    name: "Lessons to include",
+    exact: true,
+  });
+  await expect(options.getByRole("checkbox")).toHaveCount(6);
+  const lead = page.getByRole("spinbutton", {
+    name: "Days before each lesson",
+  });
+  await lead.fill("7");
+  await options.getByRole("checkbox").first().focus();
+  await page.keyboard.press("Space");
+  await options.getByRole("checkbox").nth(2).check();
+  const preview = page.getByRole("button", { name: "Preview payment dates" });
+  await preview.click();
+  await expect(
+    page.getByRole("link", { name: /Pay now · \$85/ }),
+  ).toHaveAttribute(
+    "href",
+    "/portal/payments?pay=lesson&student=student-maya&lesson=training-lesson-0",
+  );
+  await expect(page.getByText(/\$85.00 on /)).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("autopay-preview-phone.png"),
+    fullPage: true,
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.portalTheme = "dark";
+  });
+  const accessibility = await new AxeBuilder({ page })
+    .include(".training-payment-picker")
+    .analyze();
+  expect(
+    accessibility.violations.filter(
+      ({ impact }) => impact === "serious" || impact === "critical",
+    ),
+  ).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("autopay-preview-phone-dark.png"),
+    fullPage: true,
+  });
+  await page.getByRole("radio", { name: "Future lessons only" }).check();
+  await expect(options).toHaveCount(0);
+  await preview.click();
+  await expect(page.getByText(/New lessons can be evaluated/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Pay now · \$85/ })).toHaveCount(
+    0,
+  );
 });
 
 test("calendar package renewal requires the user to choose a cadence", async ({

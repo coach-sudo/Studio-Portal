@@ -584,7 +584,14 @@ function PortalWorkspace({
               path="payments"
               element={
                 (role === "guardian" ? guardianFinance : !person?.isMinor) ? (
-                  <Payments data={data} isDemo={isDemo} />
+                  <Payments
+                    data={data}
+                    isDemo={isDemo}
+                    canManageLessons={
+                      role !== "guardian" ||
+                      (guardianSchedule && guardianManageLessons)
+                    }
+                  />
                 ) : (
                   <Navigate to={base} replace />
                 )
