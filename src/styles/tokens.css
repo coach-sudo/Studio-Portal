@@ -76,6 +76,7 @@
   --app-surface-soft: #20332b;
   --app-border: #ffffff15;
   --app-border-strong: #ffffff38;
+  --app-control-border: #778a7e;
   --app-focus: var(--focus-outer);
   --focus-outer: #ffffff;
   --focus-inner: #111111;

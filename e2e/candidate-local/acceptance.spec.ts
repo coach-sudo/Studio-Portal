@@ -430,3 +430,31 @@ for (const role of ["student", "guardian"] as const)
       }),
     ).toHaveCount(0);
   });
+
+for (const role of ["student", "guardian"] as const) {
+  test(
+    role + ": dark portal actions and content retain text contrast",
+    async ({ page, context }) => {
+      await installFixture(context, role);
+      await page.emulateMedia({ reducedMotion: "reduce" });
+      for (const route of ["/portal", "/portal/bookings", "/portal/settings"]) {
+        await page.goto(route);
+        await expect(page.locator(".student-page")).toBeVisible();
+        await page.waitForLoadState("networkidle");
+        await page.evaluate(() => {
+          document.documentElement.dataset.portalTheme = "dark";
+        });
+        const search = page.getByRole("button", { name: "Search portal" });
+        await search.hover();
+        const audit = await new AxeBuilder({ page })
+          .withRules(["color-contrast"])
+          .analyze();
+        expect(
+          audit.violations.flatMap((violation) =>
+            violation.nodes.map((node) => node.target),
+          ),
+        ).toEqual([]);
+      }
+    },
+  );
+}
