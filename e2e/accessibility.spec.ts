@@ -64,9 +64,8 @@ test("@a11y focused dialog, form validation, pagination, and live-region pattern
 }) => {
   requireFixtures(runtime);
   const { context, page } = await openAs(browser, "student");
-  await page.goto("/portal/work");
-  await page.getByText("Current script upload", { exact: true }).click();
-  await page.getByRole("button", { name: "Submit material" }).click();
+  await page.goto("/portal/work?view=scripts");
+  await page.getByRole("button", { name: /^(Add|Update) script$/ }).click();
   await expectNoSeriousAxeViolations(page, '[role="dialog"]');
   await page.keyboard.press("Escape");
 
