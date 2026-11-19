@@ -29,6 +29,7 @@ import { portalContextLink } from "../../domain/coachingContext";
 import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
 import { continuationStart } from "../../domain/recurringOccurrences";
 import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
+import { useTrainingPayers } from "./useTrainingPayers";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -58,6 +59,20 @@ export function StudentBookings({
   const [bookingId, setBookingId] = useUrlValue("booking");
   const studentId = data.students[0]?.id ?? "";
   const autopay = useLessonAutopayOptions(data, studentId, isDemo, showFinance);
+  const payer = useTrainingPayers(
+    studentId,
+    studentId ? [studentId] : [],
+    !isDemo &&
+      Boolean(studentId && showFinance) &&
+      data.recurringSeries.some(
+        (series) =>
+          series.studentId === studentId &&
+          series.paymentPolicy === "subscription",
+      ),
+  );
+  const canEndSubscription =
+    (isDemo && showFinance) ||
+    Boolean(payer.data?.studentIds.includes(studentId));
   const arrangement = trainingArrangement(data, studentId);
   const selected = data.bookings.find((b) => b.id === bookingId);
   const setSelected = (booking?: Booking) => setBookingId(booking?.id || "");
@@ -199,8 +214,16 @@ export function StudentBookings({
   }
 
   async function cancelSeries(seriesId: string) {
-    const booking = data.bookings.find((item) => item.seriesId === seriesId);
-    if (!booking) return;
+    const series = data.recurringSeries.find((item) => item.id === seriesId);
+    const booking = data.bookings.find(
+      (item) => item.seriesId === seriesId && item.studentId === studentId,
+    );
+    if (
+      !booking ||
+      !series ||
+      (series.paymentPolicy === "subscription" && !canEndSubscription)
+    )
+      return;
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -226,7 +249,11 @@ export function StudentBookings({
           );
         void invalidateStudioDomains(queryClient, ["booking", "finance"]);
       }
-      setNotice("The series will end after the current paid period.");
+      setNotice(
+        series.paymentPolicy === "subscription"
+          ? "Renewal will end after the current paid period. Your booked lessons remain on the schedule."
+          : "The plan has ended. Your booked lessons remain on the schedule.",
+      );
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -575,6 +602,8 @@ export function StudentBookings({
                     </Status>
                     {series.status === "active" &&
                       series.studentCanModify &&
+                      (series.paymentPolicy !== "subscription" ||
+                        canEndSubscription) &&
                       canManageLessons &&
                       data.bookings.some(
                         (booking) =>
@@ -582,7 +611,9 @@ export function StudentBookings({
                           booking.seriesId === series.id,
                       ) && (
                         <button onClick={() => cancelSeries(series.id)}>
-                          End plan
+                          {series.paymentPolicy === "subscription"
+                            ? "End renewal after this period"
+                            : "End plan"}
                         </button>
                       )}
                   </article>
