@@ -1,7 +1,5 @@
-import {
-  LessonPaymentOptions,
-  useTrainingPayers,
-} from "./LessonPaymentOptions";
+import { LessonPaymentOptions } from "./LessonPaymentOptions";
+import { useTrainingPayers } from "./useTrainingPayers";
 import { LessonAutopayPreview } from "./LessonAutopayPreview";
 import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
 import { portalContextLink } from "../../domain/coachingContext";

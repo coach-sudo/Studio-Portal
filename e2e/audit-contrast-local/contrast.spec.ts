@@ -103,6 +103,7 @@ for (const width of [320, 390, 768, 1440])
           })
         : r.fulfill({
             json: {
+              status: "confirmed",
               reference: "E2E-CONTRAST",
               manageUrl: "/booking/e2e-synthetic",
             },
