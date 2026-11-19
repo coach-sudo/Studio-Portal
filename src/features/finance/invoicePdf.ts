@@ -117,7 +117,12 @@ export async function createInvoicePdf(
   text("INVOICE", 414, titleTop, 27, forest);
   text(invoice.number, 414, titleTop - 25, 9, muted);
   text(
-    invoice.status.replaceAll("_", " ").toUpperCase(),
+    (["draft", "void"].includes(invoice.status)
+      ? invoice.status
+      : invoiceDue(invoice)
+        ? "unpaid"
+        : "paid"
+    ).toUpperCase(),
     414,
     titleTop - 45,
     9,
@@ -162,7 +167,7 @@ export async function createInvoicePdf(
     block(item.description, 48, 350, 12);
     block(`${item.startsOn} – ${item.endsOn}`, 48, 350, 9, muted);
     block(
-      `${item.quantity} × ${formatMoney(item.unitMinor, invoice.currency)}${item.cancelled ? " · Cancelled" : item.creditMinor ? " · Lesson credit applied" : ""}`,
+      `${item.quantity} × ${formatMoney(item.unitMinor, invoice.currency)}${item.cancelled ? " · Cancelled" : ""}`,
       48,
       350,
       9,
@@ -175,7 +180,7 @@ export async function createInvoicePdf(
   ensure(136 + (invoice.waived_minor ? 21 : 0));
   for (const [label, amount] of [
     ["Total", invoice.total_minor],
-    ["Credits / adjustments", -invoice.credit_minor],
+    ["Adjustments", -invoice.credit_minor],
     ["Cancelled charges", -(invoice.waived_minor ?? 0)],
     ["Payments", -invoice.paid_minor],
   ] as const) {

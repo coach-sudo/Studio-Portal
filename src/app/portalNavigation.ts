@@ -3,6 +3,7 @@ import {
   CalendarDays,
   CircleDollarSign,
   Gift,
+  FolderOpen,
   Home,
   Settings,
   MessageSquare,
@@ -16,10 +17,10 @@ const studentNavigation: NavigationItem[] = [
   { to: "bookings", label: "Schedule", icon: CalendarDays },
   { to: "inbox", label: "Messages", icon: MessageSquare },
   { to: "payments", label: "Payments", icon: CircleDollarSign },
+  { to: "materials", label: "Materials", icon: FolderOpen },
   { to: "referrals", label: "Referrals", icon: Gift },
   { to: "actor-page", label: "Actor Page", icon: Users },
   { to: "settings", label: "Settings", icon: Settings },
-  { to: "notes", label: "Published notes", icon: BookOpen },
 ];
 
 export function portalNavigation(
@@ -50,7 +51,8 @@ export function portalNavigation(
           : !isMinor;
       if (role !== "guardian") return true;
       if (item.to === "bookings") return permissions?.canViewSchedule !== false;
-      if (item.to === "work") return permissions?.canViewWork !== false;
+      if (item.to === "work" || item.to === "materials")
+        return permissions?.canViewWork !== false;
       if (item.to === "actor-page")
         return permissions?.canManageProfile !== false;
       return true;

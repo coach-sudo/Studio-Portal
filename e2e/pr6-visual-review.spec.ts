@@ -157,15 +157,15 @@ test.describe("coach product-review evidence", () => {
     for (const [action, dialog, filename] of [
       [/^(Write note|Continue draft)$/, /^(New note|Edit note)$/, "coach-note"],
       ["Assign follow-up", "Assign practice", "coach-practice"],
-      ["Attach resource", "Add material", "coach-material"],
+      ["Add resource", "Add material", "coach-material"],
     ] as const) {
       const actions =
-        action === "Attach resource"
+        action === "Add resource"
           ? page
           : page.locator(".lesson-primary-actions");
       await actions.getByRole("button", { name: action }).click();
       const workflow = page.getByRole("dialog", { name: dialog });
-      if (action === "Attach resource") {
+      if (action === "Add resource") {
         await expect(
           workflow.getByRole("button", { name: "Choose from Library" }),
         ).toBeVisible();

@@ -247,9 +247,18 @@ export async function handleInvoiceCommands(
       : portalOrigin(ctx.context);
     let claimed = invoice;
     if (input.command === "checkout") {
+      const amount = z
+        .number()
+        .int()
+        .positive()
+        .parse(input.payload.amountMinor);
+      if (amount !== invoiceDue(invoice))
+        throw new Error(
+          "VALIDATION_FAILED: Online payment requires the full outstanding balance.",
+        );
       const claim = await service.rpc("claim_studio_invoice_checkout", {
         p_invoice: invoice.id,
-        p_amount: z.number().int().positive().parse(input.payload.amountMinor),
+        p_amount: amount,
         p_key: `${input.payload.returnTo === "coach" ? "coach" : "student"}:${input.idempotencyKey}`,
         p_version: input.expectedVersion,
       });
@@ -257,6 +266,9 @@ export async function handleInvoiceCommands(
       claimed = claim.data as Invoice;
     }
     if (!claimed.checkout_key) return json({ resource: claimed });
+    const returnStudent = claimed.checkout_key.startsWith("coach:")
+      ? ""
+      : "&student=" + encodeURIComponent(claimed.student_id);
     // Reusing the stored claim recovers safely after a provider/network interruption.
     let session = claimed.checkout_session_id
       ? await stripe.checkout.sessions.retrieve(claimed.checkout_session_id)
@@ -273,8 +285,8 @@ export async function handleInvoiceCommands(
                 quantity: 1,
               },
             ],
-            success_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}&checkout=processing`,
-            cancel_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}`,
+            success_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}${returnStudent}&checkout=processing`,
+            cancel_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}${returnStudent}`,
             metadata: {
               studio_invoice_id: claimed.id,
               invoice_checkout_key: claimed.checkout_key,

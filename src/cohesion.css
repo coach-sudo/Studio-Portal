@@ -713,7 +713,7 @@
   padding: 0 15px;
   border-radius: 8px;
   background: var(--forest);
-  color: #fff;
+  color: var(--on-forest);
   display: inline-flex;
   align-items: center;
   font-size: 11px;
@@ -1291,7 +1291,7 @@
   padding: 10px 14px;
   border-radius: 9px;
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   font-weight: 800;
   transform: translateY(-150%);
 }
@@ -1396,7 +1396,7 @@
 .timezone-options button.active,
 .timezone-options button[aria-selected="true"] {
   background: var(--wash);
-  color: var(--forest);
+  color: var(--brand-text);
 }
 
 .timezone-options p {
@@ -1772,7 +1772,7 @@
   border-radius: 50%;
   object-fit: cover;
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   display: grid;
   place-items: center;
   font:
@@ -2052,7 +2052,7 @@
 .student-quick-actions .primary-contact-action {
   border-color: var(--gold);
   background: var(--gold);
-  color: var(--forest);
+  color: var(--on-gold);
   font-weight: 850;
 }
 

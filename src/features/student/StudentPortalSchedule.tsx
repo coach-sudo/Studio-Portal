@@ -20,6 +20,7 @@ import {
 } from "../../domain/booking";
 import {
   selectLessonDelivery,
+  lessonPaymentLabel,
   splitLessons,
 } from "../../domain/lessonExperience";
 import type { Booking } from "../../domain/model";
@@ -37,15 +38,26 @@ export function StudentBookings({
   data,
   isDemo,
   canManageLessons = true,
+  showFinance = true,
 }: {
   data: Snapshot;
   isDemo: boolean;
   canManageLessons?: boolean;
+  showFinance?: boolean;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
   const [bookingId, setBookingId] = useUrlValue("booking");
+  const bookingForLesson = (lessonId: string) =>
+    data.bookings.find((booking) =>
+      data.lessonParticipants.some(
+        (part) =>
+          part.lessonId === lessonId &&
+          part.bookingId === booking.id &&
+          part.studentId === data.students[0]?.id,
+      ),
+    );
   const selected = data.bookings.find((b) => b.id === bookingId);
   const setSelected = (booking?: Booking) => setBookingId(booking?.id || "");
   const [mode, setMode] = useState<"manage" | "reschedule">("manage");
@@ -242,11 +254,10 @@ export function StudentBookings({
         <div className="student-bookings">
           {upcomingLessons.map((lesson) => {
             const delivery = selectLessonDelivery(lesson);
-            const participant = data.lessonParticipants.find(
-              (part) => part.lessonId === lesson.id && part.bookingId,
-            );
-            const booking = data.bookings.find(
-              (item) => item.id === participant?.bookingId,
+            const booking = bookingForLesson(lesson.id);
+            const payment = lessonPaymentLabel(
+              lesson.paymentStatus,
+              booking?.paymentStatus,
             );
             const itemService = data.bookingServices.find(
               (item) => item.id === (booking?.serviceId || lesson.serviceId),
@@ -295,20 +306,9 @@ export function StudentBookings({
                         Recurring
                       </>
                     )}
-                    {booking ? (
-                      <Status
-                        tone={
-                          booking.paymentStatus === "paid" ? "good" : "warn"
-                        }
-                      >
-                        {booking.paymentStatus.replaceAll("_", " ")}
-                      </Status>
-                    ) : (
-                      <Status tone="neutral">
-                        {(lesson.sourceProvider || "studio").replaceAll(
-                          "_",
-                          " ",
-                        )}
+                    {showFinance && (
+                      <Status tone={payment === "Paid" ? "good" : "warn"}>
+                        {payment}
                       </Status>
                     )}
                   </span>
@@ -428,29 +428,44 @@ export function StudentBookings({
       )}
       <Section title="Lesson history">
         <div className="table-list">
-          {lessonHistory.map((lesson) => (
-            <Link
-              key={lesson.id}
-              className="clickable-row lesson-history-row"
-              to={`/portal/lessons/${lesson.id}`}
-            >
-              <CalendarDays />
-              <div>
-                <strong>{lesson.topic}</strong>
-                <small>
-                  {formatStudioDateTime(
-                    lesson.startsAt,
-                    data.settings.timezone,
-                  )}{" "}
-                  · {lesson.locationLabel}
-                </small>
-              </div>
-              <Status tone={lesson.status === "completed" ? "good" : "neutral"}>
-                {lesson.status.replaceAll("_", " ")}
-              </Status>
-              <span className="open-label">Open</span>
-            </Link>
-          ))}
+          {lessonHistory.map((lesson) => {
+            const payment = lessonPaymentLabel(
+              lesson.paymentStatus,
+              bookingForLesson(lesson.id)?.paymentStatus,
+            );
+            return (
+              <Link
+                key={lesson.id}
+                className="clickable-row lesson-history-row"
+                to={`/portal/lessons/${lesson.id}`}
+              >
+                <CalendarDays />
+                <div>
+                  <strong>{lesson.topic}</strong>
+                  <small>
+                    {formatStudioDateTime(
+                      lesson.startsAt,
+                      data.settings.timezone,
+                    )}{" "}
+                    · {lesson.locationLabel}
+                  </small>
+                </div>
+                <span className="form-actions">
+                  <Status
+                    tone={lesson.status === "completed" ? "good" : "neutral"}
+                  >
+                    {lesson.status.replaceAll("_", " ")}
+                  </Status>
+                  {showFinance && (
+                    <Status tone={payment === "Paid" ? "good" : "warn"}>
+                      {payment}
+                    </Status>
+                  )}
+                </span>
+                <span className="open-label">Open</span>
+              </Link>
+            );
+          })}
           {!lessonHistory.length && (
             <EmptyState
               title="No lesson history yet"
@@ -527,8 +542,8 @@ export function StudentBookings({
                     selected.startsAt,
                     selected.policySnapshot.cancellationWindowHours,
                   )
-                    ? "Late cancellation: no refund. An applied lesson credit will be used; paid amounts are retained."
-                    : "On-time cancellation: an applied lesson credit returns to your balance. Any amount paid returns as dollar account credit."}
+                    ? "Late cancellation: the booking policy retains amounts already paid."
+                    : "On-time cancellation: payment adjustments follow the booking policy."}
                 </p>
               </div>
               <div className="form-actions">

@@ -116,7 +116,7 @@ function LiveOverview({
               <article key={item.assignmentId}>
                 <div>
                   <Link
-                    to={`${base}/work?resource=${item.id}&assignment=${item.assignmentId}`}
+                    to={`${base}/materials?resource=${item.id}&assignment=${item.assignmentId}`}
                   >
                     {item.title}
                   </Link>

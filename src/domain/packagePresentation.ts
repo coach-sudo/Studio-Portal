@@ -12,7 +12,16 @@ type PackageBenefitDefinition = Pick<
   | "recurringEligible"
 >;
 
-export function packageBenefitLines(definition: PackageBenefitDefinition) {
+export function learnerPackageText(text: string) {
+  return text
+    .replace(/\b(?:lesson )?credits\b/gi, "lessons")
+    .replace(/\blesson credit\b/gi, "lesson");
+}
+
+export function packageBenefitLines(
+  definition: PackageBenefitDefinition,
+  learnerView = false,
+) {
   const benefits: string[] = [];
   if (
     definition.discountType === "percent" &&
@@ -31,6 +40,10 @@ export function packageBenefitLines(definition: PackageBenefitDefinition) {
   if (definition.recurringEligible)
     benefits.push("Eligible for recurring scheduling");
   if (definition.benefitText?.trim())
-    benefits.push(definition.benefitText.trim());
+    benefits.push(
+      learnerView
+        ? learnerPackageText(definition.benefitText.trim())
+        : definition.benefitText.trim(),
+    );
   return benefits.length ? benefits : ["Multi-session bundle"];
 }

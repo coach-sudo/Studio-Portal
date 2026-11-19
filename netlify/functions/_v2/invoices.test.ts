@@ -187,6 +187,7 @@ describe("invoice Checkout return and recovery", () => {
   };
   const claim = {
     ...legacyInvoice,
+    total_minor: 100,
     checkout_key: "coach:checkout-key",
     checkout_amount: 100,
     checkout_session_id: null as string | null,
@@ -250,6 +251,16 @@ describe("invoice Checkout return and recovery", () => {
       }),
       { idempotencyKey: claim.checkout_key },
     );
+  });
+
+  it("requires the full outstanding balance before claiming an online payment", async () => {
+    const context = checkout();
+    context.input.payload.amountMinor = 50;
+    await expect(handleInvoiceCommands(context)).rejects.toThrow(
+      "full outstanding balance",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+    expect(mocks.create).not.toHaveBeenCalled();
   });
 
   it("fails before any claim or provider call if the private origin cannot be verified", async () => {

@@ -5,7 +5,13 @@ import { usePrivateIdentity } from "../hooks/usePrivateIdentity";
 import { Section } from "./Primitives";
 import "./StudentFinancialSummary.css";
 
-export function StudentFinancialSummary({ studentId }: { studentId: string }) {
+export function StudentFinancialSummary({
+  studentId,
+  learnerView = false,
+}: {
+  studentId: string;
+  learnerView?: boolean;
+}) {
   const identity = usePrivateIdentity();
   const query = useQuery({
     queryKey: ["student-financial-summary", identity, studentId],
@@ -51,16 +57,20 @@ export function StudentFinancialSummary({ studentId }: { studentId: string }) {
                 </strong>
               </div>
             )}
-            {summary.balances.map((balance) => (
-              <div key={`credit:${balance.currency}`}>
-                <small>Dollar account credit · {balance.currency}</small>
-                <strong>
-                  {balance.dollarCreditMinor < 0
-                    ? "Review required"
-                    : formatMoney(balance.dollarCreditMinor, balance.currency)}
-                </strong>
-              </div>
-            ))}
+            {!learnerView &&
+              summary.balances.map((balance) => (
+                <div key={`credit:${balance.currency}`}>
+                  <small>Dollar account credit · {balance.currency}</small>
+                  <strong>
+                    {balance.dollarCreditMinor < 0
+                      ? "Review required"
+                      : formatMoney(
+                          balance.dollarCreditMinor,
+                          balance.currency,
+                        )}
+                  </strong>
+                </div>
+              ))}
             <div>
               <small>Unpaid invoices</small>
               <strong>{summary.unpaidInvoices}</strong>
@@ -72,8 +82,9 @@ export function StudentFinancialSummary({ studentId }: { studentId: string }) {
           </div>
           {summary.pendingPayments > 0 && (
             <p>
-              Payment processing is pending. Verify checkout before recording
-              another payment.
+              {learnerView
+                ? "A payment is processing."
+                : "Payment processing is pending. Verify checkout before recording another payment."}
             </p>
           )}
           {summary.renewalExceptions > 0 && (

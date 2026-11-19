@@ -227,7 +227,7 @@ export function Payments({
       <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
       <details
         className="disclosure-section"
-        open={params.has("invoice") || undefined}
+        open={params.has("invoice") || params.has("billLesson") || undefined}
       >
         <summary>Invoices</summary>
         <InvoiceWorkspace data={data} isDemo={isDemo} studentId={student.id} />

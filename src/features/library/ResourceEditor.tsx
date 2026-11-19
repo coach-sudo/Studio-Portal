@@ -10,6 +10,7 @@ import {
 } from "../../domain/library";
 import type { StudioSnapshot } from "../../domain/model";
 import { getResourceDetail, resourceCommand } from "../../data/library";
+import { studioFileAccept, studioFileType } from "../../data/uploadFormats";
 import { uploadStudioFile } from "../../data/uploads";
 import { useStudioStore } from "../../state/StudioStore";
 import { MetadataPicker } from "./MetadataPicker";
@@ -107,6 +108,7 @@ export function ResourceEditor({
         .map((k) => k.trim())
         .filter(Boolean);
       const nextText = text;
+      const mimeType = file ? studioFileType(file) : "";
       let selected = options;
       if (
         !resource &&
@@ -115,15 +117,17 @@ export function ResourceEditor({
         !selected.some((o) => o.kind === "medium")
       ) {
         const name =
-          file.type === "application/pdf"
+          mimeType === "application/pdf"
             ? "PDF"
-            : file.type.startsWith("image/")
+            : mimeType.startsWith("image/")
               ? "Image"
-              : file.type.startsWith("audio/")
+              : mimeType.startsWith("audio/")
                 ? "Audio"
-                : file.type.startsWith("video/")
+                : mimeType.startsWith("video/")
                   ? "Video"
-                  : "Text";
+                  : mimeType.startsWith("text/")
+                    ? "Text"
+                    : "Document";
         const result = isDemo
           ? { id: crypto.randomUUID() }
           : await resourceCommand("option_create", {
@@ -389,7 +393,7 @@ export function ResourceEditor({
                 <input
                   required
                   type="file"
-                  accept="application/pdf,image/jpeg,image/png,image/webp,audio/mpeg,audio/mp4,video/mp4,text/plain"
+                  accept={studioFileAccept}
                   onChange={(e) => {
                     const next = e.target.files?.[0];
                     setFile(next);

@@ -846,8 +846,7 @@ function paymentDescription(
     return `${formatMoney(totalMinor, service.currency)} balance due after confirmation`;
   if (value === "deposit")
     return `${formatMoney(service.depositMinor, service.currency)} today, balance due later`;
-  if (value === "credits")
-    return "Use an available lesson credit after sign in";
+  if (value === "credits") return "Use an existing package after sign in";
   if (value === "installments")
     return "Split a fixed series into scheduled payments";
   return "Automatic billing for an ongoing series";

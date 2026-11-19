@@ -1,3 +1,5 @@
+import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { LessonFiles } from "../library/LessonFiles";
 import {
   useUrlValue,
   useUrlNumber,
@@ -31,8 +33,10 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { portalPageSize, shouldShowPagination } from "../../data/pagination";
 import { mapNoteRow } from "../../data/studioMappers";
-import { formatMoney } from "../../domain/finance";
-import { selectLessonDelivery } from "../../domain/lessonExperience";
+import {
+  lessonPaymentLabel,
+  selectLessonDelivery,
+} from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -174,12 +178,12 @@ export function StudentNotes({
         updatedAt: exactNote.updatedAt,
         notes: [exactNote],
       }
-    : groups.find((group) => group.lessonId === selectedLessonId);
+    : selectedLessonId
+      ? groups.find((group) => group.lessonId === selectedLessonId)
+      : undefined;
   return (
-    <div className="student-page">
-      <header className="student-header">
-        <h1 id="student-notes-title">Notes</h1>
-      </header>
+    <div>
+      <h2 id="student-notes-title">Published lesson notes</h2>
       <section className="section marked" aria-labelledby="student-notes-title">
         <div className="library-toolbar">
           <label>
@@ -211,21 +215,25 @@ export function StudentNotes({
             return (
               <button
                 type="button"
-                key={group.lessonId}
-                onClick={() => setSelectedLessonId(group.lessonId)}
+                key={group.lessonId || group.notes[0].id}
+                onClick={() => {
+                  if (group.lessonId) setSelectedLessonId(group.lessonId);
+                  else setSelectedNote(group.notes[0].id);
+                }}
               >
-                <CalendarDays />
+                <CalendarDays aria-hidden="true" />
                 <span>
-                  <strong>
+                  <strong>{group.notes[0].title}</strong>
+                  <small>
                     {lesson
                       ? formatStudioDate(
                           lesson.startsAt,
                           data.settings.timezone,
-                        )
-                      : "General note"}
-                  </strong>
-                  <small>
-                    {lesson?.topic || "General coaching"} · {group.notes.length}{" "}
+                        ) +
+                        " · " +
+                        lesson.topic
+                      : "General coaching"}{" "}
+                    · {group.notes.length}{" "}
                     {group.notes.length === 1 ? "note" : "notes"}
                   </small>
                 </span>
@@ -321,6 +329,7 @@ export function LessonHub({
   const lessonVisible = !!context?.lessons.some((item) => item.id === lessonId);
   const store = useStudioStore();
   const queryClient = useQueryClient();
+  const [attaching, setAttaching] = useState(false);
   const [assignmentBusy, setAssignmentBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [delivery, setDelivery] = useState<{
@@ -372,12 +381,6 @@ export function LessonHub({
       item.studentId === selectedStudent.id &&
       item.lessonId === lesson.id,
   );
-  const materials = data.materials.filter(
-    (item) =>
-      showWork &&
-      item.studentId === selectedStudent.id &&
-      item.lessonId === lesson.id,
-  );
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
   );
@@ -391,6 +394,23 @@ export function LessonHub({
     (item) => item.id === participant?.bookingId,
   );
   const student = selectedStudent;
+  const payment = lessonPaymentLabel(
+    lesson.paymentStatus,
+    booking?.paymentStatus,
+  );
+  const canPay =
+    showFinance &&
+    ["scheduled", "completed"].includes(lesson.status) &&
+    payment === "Unpaid" &&
+    lesson.paymentStatus !== "refunded" &&
+    (lesson.invoiceId ||
+      lesson.paymentStatus === "due" ||
+      lesson.paymentStatus === "partially_paid" ||
+      (booking &&
+        booking.totalMinor > booking.paidMinor &&
+        ["due", "partially_paid", "past_due", "processing"].includes(
+          booking.paymentStatus,
+        )));
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
@@ -489,6 +509,11 @@ export function LessonHub({
             ‹ Back
           </button>
           <h1>{lesson.topic}</h1>
+          {showFinance && (
+            <Status tone={payment === "Paid" ? "good" : "warn"}>
+              {payment}
+            </Status>
+          )}
           <p>
             {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}
             {lesson.locationLabel}
@@ -513,6 +538,14 @@ export function LessonHub({
             <CalendarDays />
             Manage schedule
           </Link>
+          {canPay && (
+            <Link
+              className="button-link primary"
+              to={lessonPaymentPath(student.id, lesson.id)}
+            >
+              Pay for my lesson
+            </Link>
+          )}
         </div>
       </header>
       {notice && <p className="portal-notice">{notice}</p>}
@@ -616,7 +649,21 @@ export function LessonHub({
                 )}
               </div>
             </Section>
-            <Section title="Practice & assignments">
+            <Section
+              title="Homework"
+              aside={
+                <Link
+                  className="button-link"
+                  to={portalContextLink(
+                    "/portal/work?view=scripts&fromLesson=" +
+                      encodeURIComponent(lesson.id),
+                    student.id,
+                  )}
+                >
+                  Current script
+                </Link>
+              }
+            >
               <div className="table-list">
                 {assignments.map((item) => (
                   <article key={item.id} className="assignment-card">
@@ -663,8 +710,29 @@ export function LessonHub({
               lessonId={lesson.id}
               catalog={false}
               showActions={false}
-              title="Attachments & resources"
+              excludeScripts
+              title="Lesson files"
+              primaryAction={
+                data.role === "student" && (
+                  <button
+                    className="primary"
+                    type="button"
+                    onClick={() => setAttaching(true)}
+                  >
+                    Attach files
+                  </button>
+                )
+              }
             />
+            {attaching && (
+              <LessonFiles
+                data={data}
+                isDemo={isDemo}
+                studentId={student.id}
+                lessonId={lesson.id}
+                onClose={() => setAttaching(false)}
+              />
+            )}
             <Section title="Conversation" marked>
               <Link
                 className="button-link primary"
@@ -692,18 +760,6 @@ export function LessonHub({
             <dt>Recurrence</dt>
             <dd>{lesson.seriesId ? "Recurring lesson" : "One-time lesson"}</dd>
           </div>
-          {showFinance && booking && (
-            <>
-              <div>
-                <dt>Payment</dt>
-                <dd>{booking.paymentStatus.replaceAll("_", " ")}</dd>
-              </div>
-              <div>
-                <dt>Lesson price</dt>
-                <dd>{formatMoney(booking.totalMinor, booking.currency)}</dd>
-              </div>
-            </>
-          )}
         </dl>
       </details>
     </div>

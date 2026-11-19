@@ -480,7 +480,7 @@ async function createBooking(request: Request, context: Context) {
         error: userError,
       } = await authenticated.auth.getUser();
       if (userError || !user)
-        throw new Error("FORBIDDEN: Sign in to use lesson credits.");
+        throw new Error("FORBIDDEN: Sign in to use an existing package.");
       const { data: student } = await authenticated
         .from("students")
         .select("id,email")
@@ -507,7 +507,7 @@ async function createBooking(request: Request, context: Context) {
       }
       if (!available)
         throw new Error(
-          "VALIDATION_FAILED: No sufficient lesson credit balance is available.",
+          "VALIDATION_FAILED: Your package does not have enough lessons available.",
         );
     }
     const occurrenceStarts =

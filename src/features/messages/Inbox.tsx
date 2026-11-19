@@ -1,3 +1,5 @@
+import { lessonPaymentEmail } from "../../domain/lessonPaymentLink";
+import { invoiceBilling } from "../../domain/invoiceBilling";
 import { useUrlValue, useUrlChoice } from "../../hooks/useWorkspaceLocation";
 import { WritingArea } from "../../components/WritingArea";
 import {
@@ -51,6 +53,8 @@ export function CoachInbox() {
     "identity",
     "students",
     "messaging",
+    "households",
+    "lessons",
   ]);
   if (isLoading || !data) return <div className="loading">Opening inbox…</div>;
   return <Inbox data={data} isDemo={isDemo} role="coach" />;
@@ -174,6 +178,7 @@ const emailTemplates = {
     subject: "New lesson work in Coach'D",
     body: "New notes or materials are ready in your portal.",
   },
+  lesson_payment: { label: "Pay for my lesson", subject: "", body: "" },
   package: {
     label: "Package reminder",
     subject: "Your Coach'D lesson package",
@@ -260,17 +265,47 @@ function Inbox({
   }>();
   const [undoEmail, setUndoEmail] = useState<{ id: string; until: number }>();
   const [clock, setClock] = useState(Date.now());
-  const [emailOpen, setEmailOpen] = useState(params.get("email") === "1");
-  const [emailTemplate, setEmailTemplate] =
-    useState<keyof typeof emailTemplates>("custom");
+  const [emailOpen, setEmailOpen] = useState(
+    role === "coach" && params.get("email") === "1",
+  );
+  const [emailTemplate, setEmailTemplate] = useState<
+    keyof typeof emailTemplates
+  >(params.get("template") === "lesson_payment" ? "lesson_payment" : "custom");
   const selectedStudent = data.students.find(
     (item) => item.id === selected?.studentId,
   );
-  const [email, setEmail] = useState({
-    recipient: params.get("recipient") || selectedStudent?.email || "",
-    subject: "",
-    body: "",
-  });
+  const paymentStudent =
+    selectedStudent ||
+    data.students.find((item) => item.id === requestedStudent);
+  const paymentLesson = data.lessons.find(
+    (item) =>
+      item.id === params.get("lesson") &&
+      (item.studentId === paymentStudent?.id ||
+        data.lessonParticipants.some(
+          (participant) =>
+            participant.lessonId === item.id &&
+            participant.studentId === paymentStudent?.id &&
+            participant.status !== "cancelled",
+        )),
+  );
+  const payerEmail =
+    paymentStudent &&
+    invoiceBilling(paymentStudent, data.linkedContacts).recipient.email;
+  const [email, setEmail] = useState(() => ({
+    recipient:
+      params.get("recipient") ||
+      (emailTemplate === "lesson_payment"
+        ? payerEmail
+        : selectedStudent?.email) ||
+      "",
+    ...(emailTemplate === "lesson_payment"
+      ? lessonPaymentEmail(
+          window.location.origin,
+          paymentStudent?.id,
+          paymentLesson?.id,
+        )
+      : { subject: "", body: "" }),
+  }));
   const visibleThreads = useMemo(() => {
     const recentCutoff = Date.now() - 60 * 24 * 60 * 60 * 1000;
     return threads
@@ -636,9 +671,20 @@ function Inbox({
 
   const chooseEmailTemplate = (key: keyof typeof emailTemplates) => {
     setEmailTemplate(key);
-    const template = emailTemplates[key];
+    const template =
+      key === "lesson_payment"
+        ? lessonPaymentEmail(
+            window.location.origin,
+            paymentStudent?.id,
+            paymentLesson?.id,
+          )
+        : emailTemplates[key];
     setEmail((current) => ({
       ...current,
+      recipient:
+        key === "lesson_payment"
+          ? payerEmail || current.recipient
+          : current.recipient,
       subject: template.subject,
       body: template.body,
     }));
@@ -648,13 +694,16 @@ function Inbox({
     event.preventDefault();
     if (busy) return;
     setBusy(true);
+    const emailStudentId = (
+      emailTemplate === "lesson_payment" ? paymentStudent : selectedStudent
+    )?.id;
     try {
       if (isDemo) {
         const id = `outbox-${crypto.randomUUID()}`;
         store.transact((draft) =>
           draft.outbox.push({
             id,
-            studentId: selectedStudent?.id,
+            studentId: emailStudentId,
             channel: "email",
             recipient: email.recipient,
             subject: email.subject,
@@ -672,7 +721,7 @@ function Inbox({
         const response = await studioCommand("outbox", {
           command: "manual_send",
           expectedVersion: 0,
-          payload: { ...email, studentId: selectedStudent?.id },
+          payload: { ...email, studentId: emailStudentId },
           reason: `Manually sent ${emailTemplate.replaceAll("_", " ")} email`,
         });
         setUndoEmail({

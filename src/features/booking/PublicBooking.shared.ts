@@ -190,7 +190,7 @@ export function createDemoBooking(
     );
     if (!available)
       throw new Error(
-        "This demo student does not have enough lesson credits. Use maya@example.com or choose another payment option.",
+        "This demo student has no package lessons available. Use maya@example.com or choose another payment option.",
       );
     creditEntry = {
       id: uid("credit"),

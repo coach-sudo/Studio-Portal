@@ -64,7 +64,7 @@
 }
 .material-bucket-grid > button.selected b {
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
 }
 .material-library-toolbar {
   padding-top: 18px;
@@ -148,6 +148,7 @@
 .material-approve {
   border-color: var(--gold);
   background: var(--gold);
+  color: var(--on-gold);
 }
 .material-action-menu {
   position: relative;

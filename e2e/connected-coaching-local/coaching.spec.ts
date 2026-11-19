@@ -168,9 +168,13 @@ test("prepare, reuse draft, complete independently, publish, assign and finish p
     .click();
   await expect(practice).toBeHidden();
   await page.goto("/portal/work?student=student-maya");
+  await page.getByRole("link", { name: "Lesson notes", exact: true }).click();
+  await page.getByRole("button", { name: /Coaching feedback/ }).click();
   await expect(
-    page.getByText("Coaching feedback", { exact: true }),
+    page.getByRole("dialog").getByText("Coaching feedback", { exact: true }),
   ).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByRole("link", { name: "Homework", exact: true }).click();
   await expect(
     page.getByText("Rehearse the objective", { exact: true }),
   ).toBeVisible();
@@ -257,7 +261,7 @@ test("phone, tablet and dark appearance retain visible controls and exact resour
   page,
 }) => {
   await prepare(page);
-  await page.goto("/portal/work?student=student-maya");
+  await page.goto("/portal/materials?student=student-maya");
   const resource = page
     .locator(".resource-results article")
     .filter({ hasText: "Canonical rehearsal text" });
@@ -280,7 +284,7 @@ test("phone, tablet and dark appearance retain visible controls and exact resour
   await checkView(page);
 });
 
-test("next lesson resets payment fields and closes the previous lesson actions", async ({
+test("next lesson updates payment links and closes the previous lesson actions", async ({
   page,
 }) => {
   await prepare(page);
@@ -318,9 +322,11 @@ test("next lesson resets payment fields and closes the previous lesson actions",
     exact: true,
   });
   await expect(
-    payment.getByLabel("Lesson price (USD)", { exact: true }),
-  ).toHaveValue("100");
-  await payment.getByLabel("Lesson price (USD)", { exact: true }).fill("999");
+    payment.getByRole("link", { name: "Email payment link" }),
+  ).toHaveAttribute("href", new RegExp("lesson=" + lessonId + "$"));
+  await expect(
+    payment.getByRole("link", { name: "Prepare lesson invoice" }),
+  ).toHaveCount(0);
   await payment.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("link", { name: "Next lesson", exact: true }).click();
   await expect(payment).toBeHidden();
@@ -331,12 +337,210 @@ test("next lesson resets payment fields and closes the previous lesson actions",
     .getByRole("button", { name: "Credits & payment", exact: true })
     .click();
   await expect(
-    payment.getByLabel("Lesson price (USD)", { exact: true }),
-  ).toHaveValue("200");
+    payment.getByRole("link", { name: "Email payment link" }),
+  ).toHaveAttribute("href", /lesson=wave4-next$/);
   await expect(
-    payment.getByLabel("Amount paid (USD)", { exact: true }),
-  ).toHaveValue("0");
-  await expect(payment.getByRole("combobox", { name: /^Status/ })).toHaveValue(
-    "due",
+    payment.getByRole("link", { name: "Prepare lesson invoice" }),
+  ).toHaveAttribute("href", /billLesson=wave4-next$/);
+});
+
+test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.goto(`/coach/students/student-maya/lessons/${lessonId}`);
+  await page.getByRole("button", { name: "Attach files", exact: true }).click();
+  const drawer = page.getByRole("dialog", { name: "Attach files to lesson" });
+  await drawer.getByLabel("Choose files").setInputFiles([
+    {
+      name: "Rehearsal.docx",
+      mimeType: "application/octet-stream",
+      buffer: Buffer.from("Document fixture"),
+    },
+    {
+      name: "Performance.mov",
+      mimeType: "video/quicktime",
+      buffer: Buffer.from("Media fixture"),
+    },
+  ]);
+  await drawer
+    .getByRole("button", { name: "Attach files", exact: true })
+    .click();
+  await expect(drawer.getByRole("status")).toHaveText("2 of 2 files attached.");
+  await drawer.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByText("Rehearsal.docx", { exact: true })).toBeVisible();
+  await page.goto("/portal/work?student=student-maya");
+  await expect(
+    page.getByRole("heading", { name: "Active assignments" }),
+  ).toBeVisible();
+  await expect(page.getByText("Rehearsal.docx", { exact: true })).toHaveCount(
+    0,
   );
+  await page.getByRole("link", { name: "Lesson notes", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Published lesson notes" }),
+  ).toBeVisible();
+  await page.getByRole("link", { name: "Scripts", exact: true }).click();
+  await page.getByRole("button", { name: "Add script" }).click();
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
+  await page.getByLabel("Script link").fill("https://example.test/current");
+  await page
+    .getByLabel("Title", { exact: true })
+    .fill("First rehearsal script");
+  await page.getByRole("button", { name: "Save current script" }).click();
+  await page.getByRole("button", { name: "Update script" }).click();
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
+  await page.getByLabel("Script link").fill("https://example.test/revision");
+  await page
+    .getByLabel("Title", { exact: true })
+    .fill("Revised rehearsal script");
+  await page.getByRole("button", { name: "Save current script" }).click();
+  await expect(
+    page.getByText("Revised rehearsal script", { exact: true }),
+  ).toBeVisible();
+  await page.getByText("Script history", { exact: true }).click();
+  await expect(
+    page.getByText("First rehearsal script", { exact: true }),
+  ).toBeVisible();
+  await page.goto("/portal/materials?student=student-maya");
+  await expect(
+    page.getByText("Performance.mov", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Revised rehearsal script", { exact: true }),
+  ).toHaveCount(0);
+});
+
+test("lesson payment email opens the same authorized choices on desktop and phone", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate((id) => {
+    const key = "stage-story-studio-core-v2";
+    const data = JSON.parse(localStorage.getItem(key)!);
+    const lesson = data.lessons.find((item: { id: string }) => item.id === id);
+    lesson.paymentStatus = "due";
+    lesson.priceMinor = 8500;
+    data.invoices = [
+      {
+        id: "invoice-my-work",
+        student_id: "student-maya",
+        studio_id: data.studioId,
+        number: "INV-PAY-LESSON",
+        status: "open",
+        currency: "USD",
+        issue_date: "2026-01-01",
+        due_date: "2029-01-14",
+        introduction: "",
+        notes: "",
+        footer: "",
+        branding: { studioName: "Coach’D" },
+        recipient: { name: "Maya" },
+        total_minor: 8500,
+        paid_minor: 0,
+        credit_minor: 0,
+        version: 1,
+        created_at: new Date().toISOString(),
+        items: [
+          {
+            id: "payment-line",
+            description: "Rehearsal",
+            lessonIds: [id],
+            kind: "service",
+            referenceId: "service",
+            quantity: 1,
+            unitMinor: 8500,
+            startsOn: "2028-01-10",
+            endsOn: "2028-01-10",
+            creditMinor: 0,
+            paidMinor: 0,
+          },
+        ],
+      },
+    ];
+    localStorage.setItem(key, JSON.stringify(data));
+  }, lessonId);
+  await page.goto(
+    `/coach/inbox?email=1&template=lesson_payment&student=student-maya&lesson=${lessonId}`,
+  );
+  const email = page.getByRole("dialog", { name: "Send email" });
+  await expect(email.getByLabel("Template")).toHaveValue("lesson_payment");
+  const body = await email.getByLabel("Message").inputValue();
+  const link = body.split("\n").find((line) => line.startsWith("http"));
+  expect(link).toContain(`student=student-maya&lesson=${lessonId}`);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await page.goto(link!);
+    await expect(
+      page.getByRole("heading", { name: "Pay for my lesson" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Compare packages" }),
+    ).toBeVisible();
+    await page.getByRole("link", { name: "Pay invoice", exact: true }).click();
+    await expect(
+      page
+        .getByRole("dialog")
+        .getByText("INV-PAY-LESSON", { exact: false })
+        .first(),
+    ).toBeVisible();
+  }
+});
+
+test("primary actions and focus retain contrast under pale branding in both portal themes", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data = JSON.parse(localStorage.getItem(key)!);
+    Object.assign(data.settings.branding, {
+      primaryColor: "#f6f0ac",
+      secondaryColor: "#f9f2bb",
+      surfaceColor: "#4e636c",
+    });
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.goto("/portal/work?student=student-maya&view=scripts");
+  const primary = page.getByRole("button", { name: "Add script", exact: true });
+  const contrast = () =>
+    primary.evaluate((button) => {
+      const context = document.createElement("canvas").getContext("2d")!;
+      const channelValues = (color: string) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)].map(
+          (channel) => {
+            const value = channel / 255;
+            return value <= 0.04045
+              ? value / 12.92
+              : ((value + 0.055) / 1.055) ** 2.4;
+          },
+        );
+      };
+      const luminance = (color: string) => {
+        const [red, green, blue] = channelValues(color);
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      };
+      const style = getComputedStyle(button);
+      const text = luminance(style.color);
+      const fill = luminance(style.backgroundColor);
+      return (Math.max(text, fill) + 0.05) / (Math.min(text, fill) + 0.05);
+    });
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await primary.hover();
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await page.evaluate(() => {
+    document.documentElement.dataset.portalTheme = "dark";
+  });
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await page.keyboard.press("Tab");
+  await primary.focus();
+  await expect(primary).toHaveCSS("outline-color", "rgb(255, 255, 255)");
+  await expect(primary).toHaveCSS("outline-style", "solid");
 });

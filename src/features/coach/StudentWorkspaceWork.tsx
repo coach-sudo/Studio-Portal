@@ -1,8 +1,12 @@
+import { ScriptWorkspace } from "../../components/ScriptWorkspace";
+import { WorkViews } from "../../components/WorkViews";
+import { useWorkView } from "../../hooks/useWorkView";
+import { Notes } from "./StudentWorkspaceNotes";
 import { useSearchParams } from "react-router-dom";
 import { useEffect } from "react";
-import { CheckSquare, FolderOpen, Plus, Trash2 } from "lucide-react";
+import { CheckSquare, Plus } from "lucide-react";
 import { EmptyState, Section, Status } from "../../components/Primitives";
-import type { Material, Student } from "../../domain/model";
+import type { Note, Student } from "../../domain/model";
 import { formatStudioDate } from "../../domain/presentation";
 
 import { type Data } from "./StudentWorkspace.shared";
@@ -20,17 +24,116 @@ export function Work({
   student,
   isDemo,
   onAddAssignment,
-  onAddMaterial,
-  onArchiveMaterial,
-  onDeleteMaterial,
+  onAddNote,
+  onEditNote,
+  onDeleteNote,
 }: {
   data: Data;
   student: Student;
   isDemo: boolean;
   onAddAssignment: () => void;
-  onAddMaterial: () => void;
-  onArchiveMaterial: (material: Material) => void;
-  onDeleteMaterial: (material: Material) => void;
+  onAddNote: () => void;
+  onEditNote: (note: Note) => void;
+  onDeleteNote: (note: Note) => void;
+}) {
+  const [params, setParams] = useSearchParams();
+  const view = useWorkView();
+  useEffect(() => {
+    const target = params.get("practice");
+    if (target)
+      document
+        .getElementById(`practice-${target}`)
+        ?.scrollIntoView({ block: "center" });
+  }, [params]);
+  const helpOnly = params.get("help") === "1";
+  const assignments = data.assignments.filter(
+    (i) =>
+      i.studentId === student.id &&
+      (!helpOnly || (i.helpRequested && i.status !== "completed")),
+  );
+  return (
+    <div className="resource-workspace">
+      <WorkViews />
+      {view === "notes" && (
+        <Notes
+          data={data}
+          student={student}
+          onAdd={onAddNote}
+          onEdit={onEditNote}
+          onDelete={onDeleteNote}
+        />
+      )}
+      {view === "scripts" && (
+        <ScriptWorkspace data={data} studentId={student.id} isDemo={isDemo} />
+      )}
+      {view === "homework" && (
+        <Section
+          title={helpOnly ? "Practice help requests" : "Homework"}
+          aside={
+            <button onClick={onAddAssignment}>
+              <Plus />
+              Assign homework
+            </button>
+          }
+        >
+          {helpOnly && (
+            <button
+              onClick={() =>
+                setParams((current) => {
+                  const next = new URLSearchParams(current);
+                  next.delete("help");
+                  return next;
+                })
+              }
+            >
+              Show all practice
+            </button>
+          )}
+          <div className="table-list">
+            {assignments.map((item) => (
+              <article key={item.id} id={`practice-${item.id}`}>
+                <CheckSquare />
+                <div>
+                  <strong>{item.title}</strong>
+                  <small>
+                    {item.details}
+                    {item.dueAt
+                      ? ` · due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
+                      : ""}
+                  </small>
+                </div>
+                <Status tone={item.status === "completed" ? "good" : "neutral"}>
+                  {item.status.replaceAll("_", " ")}
+                </Status>
+              </article>
+            ))}
+            {!assignments.length && (
+              <EmptyState
+                title={
+                  helpOnly ? "No pending help requests" : "No practice assigned"
+                }
+                detail={
+                  helpOnly
+                    ? "Practice with a help request will appear here."
+                    : "Add one focused next step."
+                }
+              />
+            )}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+export function StudentMaterials({
+  data,
+  isDemo,
+  student,
+}: {
+  data: Data;
+  isDemo: boolean;
+  student: Student;
 }) {
   const [params, setParams] = useSearchParams();
   const identity = usePrivateIdentity();
@@ -48,22 +151,6 @@ export function Work({
     queryFn: ({ signal }) =>
       loadWorkspaceResource(student.id, resourceId!, assignmentId!, signal),
   });
-  useEffect(() => {
-    const target = params.get("practice");
-    if (target)
-      document
-        .getElementById(`practice-${target}`)
-        ?.scrollIntoView({ block: "center" });
-  }, [params]);
-  const helpOnly = params.get("help") === "1";
-  const assignments = data.assignments.filter(
-      (i) =>
-        i.studentId === student.id &&
-        (!helpOnly || (i.helpRequested && i.status !== "completed")),
-    ),
-    materials = data.materials.filter(
-      (i) => i.studentId === student.id && i.role !== "actor_material",
-    );
   return (
     <div className="resource-workspace">
       {resourceId && assignmentId && !isDemo && (
@@ -91,118 +178,14 @@ export function Work({
           )}
         </Dialog>
       )}
-      <Section
-        title={helpOnly ? "Practice help requests" : "Practice"}
-        aside={
-          <button onClick={onAddAssignment}>
-            <Plus />
-            Assign
-          </button>
-        }
-      >
-        {helpOnly && (
-          <button
-            onClick={() =>
-              setParams((current) => {
-                const next = new URLSearchParams(current);
-                next.delete("help");
-                return next;
-              })
-            }
-          >
-            Show all practice
-          </button>
-        )}
-        <div className="table-list">
-          {assignments.map((item) => (
-            <article key={item.id} id={`practice-${item.id}`}>
-              <CheckSquare />
-              <div>
-                <strong>{item.title}</strong>
-                <small>
-                  {item.details}
-                  {item.dueAt
-                    ? ` · due ${formatStudioDate(item.dueAt, data.settings.timezone)}`
-                    : ""}
-                </small>
-              </div>
-              <Status tone={item.status === "completed" ? "good" : "neutral"}>
-                {item.status.replaceAll("_", " ")}
-              </Status>
-            </article>
-          ))}
-          {!assignments.length && (
-            <EmptyState
-              title={
-                helpOnly ? "No pending help requests" : "No practice assigned"
-              }
-              detail={
-                helpOnly
-                  ? "Practice with a help request will appear here."
-                  : "Add one focused next step."
-              }
-            />
-          )}
-        </div>
-      </Section>
       <ResourceBrowser
         data={data}
         isDemo={isDemo}
         studentId={student.id}
         catalog={false}
+        excludeScripts
         title="Student materials"
       />
-      <details className="disclosure-section">
-        <summary>Current script tools</summary>
-        <Section
-          title="Scripts & lesson materials"
-          aside={
-            <button onClick={onAddMaterial}>
-              <Plus />
-              Add
-            </button>
-          }
-        >
-          <div className="table-list">
-            {materials.map((item) => (
-              <article key={item.id}>
-                <FolderOpen />
-                <div>
-                  <strong>{item.title}</strong>
-                  <small>
-                    {item.category} · {item.role.replaceAll("_", " ")}
-                  </small>
-                </div>
-                <Status tone={item.status === "active" ? "good" : "neutral"}>
-                  {item.status}
-                </Status>
-                {item.externalUrl && (
-                  <a href={item.externalUrl} target="_blank" rel="noreferrer">
-                    Open
-                  </a>
-                )}
-                <button type="button" onClick={() => onArchiveMaterial(item)}>
-                  {item.status === "active" ? "Archive" : "Restore"}
-                </button>
-                <button
-                  type="button"
-                  className="danger-button"
-                  onClick={() => onDeleteMaterial(item)}
-                >
-                  <Trash2 />
-                  Delete
-                </button>
-              </article>
-            ))}
-            {!materials.length && (
-              <EmptyState
-                title="No materials yet"
-                detail="Add a script, worksheet, or reference."
-              />
-            )}
-          </div>
-        </Section>
-      </details>
     </div>
   );
 }

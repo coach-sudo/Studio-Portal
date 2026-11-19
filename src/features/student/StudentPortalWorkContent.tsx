@@ -159,7 +159,7 @@ export function Practice({
           {notice}
         </p>
       )}
-      <Section title="Next practice" marked>
+      <Section title={compact ? "Active assignments" : "Next practice"} marked>
         <ListControls
           page={assignmentPage.page}
           pageCount={assignmentPage.pageCount}
@@ -282,19 +282,18 @@ export function Materials(props: {
 }) {
   if (props.actorOnly) return <LegacyMaterials {...props} />;
   return (
-    <>
+    <div className="student-page">
+      <header className="student-header">
+        <h1>Materials</h1>
+      </header>
       <ResourceBrowser
         data={props.data}
         isDemo={props.isDemo}
         studentId={props.data.students[0]?.id}
         catalog={false}
-        excludeScripts={props.embedded}
+        excludeScripts
       />
-      <details className="disclosure-section">
-        <summary>Current script upload</summary>
-        <LegacyMaterials {...props} />
-      </details>
-    </>
+    </div>
   );
 }
 

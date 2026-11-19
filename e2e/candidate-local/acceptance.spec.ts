@@ -56,7 +56,7 @@ for (const long of [false, true])
     }
   });
 for (const role of ["student", "guardian"] as const)
-  test(`${role}: account credit summary wraps without truncation`, async ({
+  test(`${role}: lesson payments summary wraps without truncation`, async ({
     page,
     context,
   }) => {
@@ -64,7 +64,7 @@ for (const role of ["student", "guardian"] as const)
     await page.goto("/portal");
     const account = page.getByRole("region", { name: "Account", exact: true });
     await expect(
-      account.getByText("0 lesson credits available", { exact: true }),
+      account.getByText("Lesson payments", { exact: true }),
     ).toBeVisible();
     for (const text of await account.locator("strong,small").all()) {
       expect(
@@ -82,10 +82,10 @@ for (const role of ["student", "guardian"] as const)
     ).toBeVisible();
     await expect(
       page.getByText("Dollar account credit · USD", { exact: true }),
-    ).toBeVisible();
+    ).toHaveCount(0);
     await expect(
       page.getByText("Lesson credits", { exact: true }).first(),
-    ).toBeVisible();
+    ).toHaveCount(0);
   });
 for (const role of ["coach", "student", "guardian"] as const) {
   test(`${role}: real query transport, navigation, refresh, financial labels and responsive axe`, async ({
@@ -155,10 +155,10 @@ for (const role of ["coach", "student", "guardian"] as const) {
         ).toBeVisible();
         await expect(
           page.getByText("Dollar account credit · USD", { exact: true }),
-        ).toBeVisible();
+        ).toHaveCount(role === "coach" ? 1 : 0);
         await expect(
-          page.getByText("Lesson credits", { exact: true }).first(),
-        ).toBeVisible();
+          page.getByRole("heading", { name: "Lesson credits", exact: true }),
+        ).toHaveCount(role === "coach" ? 1 : 0);
         await expect(
           page.getByText("Credit coverage unavailable.", { exact: false }),
         ).toHaveCount(0);
@@ -422,8 +422,8 @@ for (const role of ["student", "guardian"] as const)
     ).toBeVisible();
     await page.goto("/portal/payments");
     await expect(
-      page.getByText("Lesson credits", { exact: true }).first(),
-    ).toBeVisible();
+      page.getByRole("heading", { name: "Lesson credits", exact: true }),
+    ).toHaveCount(0);
     await expect(
       page.getByRole("button", {
         name: /Adjust lesson credits|Apply eligible credits now|Review and enable/,

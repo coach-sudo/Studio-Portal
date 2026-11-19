@@ -67,9 +67,13 @@
 :root[data-portal-theme="dark"] .student-header {
   background: transparent;
 }
-:root[data-portal-theme="dark"] .student-quick-actions a,
 :root[data-portal-theme="dark"] .search-button,
-:root[data-portal-theme="dark"] .button-link {
+:root[data-portal-theme="dark"]
+  :is(.student-quick-actions a, .button-link):not(
+    .primary,
+    .primary-button,
+    .primary-contact-action
+  ) {
   background: var(--app-surface);
   color: var(--ink);
   border-color: var(--app-border-strong);

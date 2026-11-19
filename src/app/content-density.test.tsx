@@ -47,7 +47,7 @@ function seedNote() {
 }
 
 describe("content disclosure and decision context", () => {
-  it("summarizes credits across packages without repeating zero dollar balances", () => {
+  it("keeps the home payment summary focused on lessons, invoices and packages", () => {
     const data = structuredClone(demoSnapshot);
     const student = data.students[0];
     student.isMinor = false;
@@ -78,13 +78,14 @@ describe("content disclosure and decision context", () => {
       </MemoryRouter>,
     );
     const account = screen.getByRole("region", { name: "Account" });
-    expect(account).toHaveTextContent("4 lesson credits available");
+    expect(account).toHaveTextContent("Invoices and packages");
+    expect(account).not.toHaveTextContent(/credit/i);
     expect(account).not.toHaveTextContent("$0.00");
     expect(
       within(account).getByRole("button", { name: /View payments/ }),
     ).toBeVisible();
   });
-  it("keeps the complete payment history accessible on request", async () => {
+  it("keeps learner payment and refund receipts accessible on request", async () => {
     const user = userEvent.setup();
     const data = structuredClone(demoSnapshot);
     render(
@@ -96,15 +97,23 @@ describe("content disclosure and decision context", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
+    const receipts = data.payments.filter(
+      (item) =>
+        item.studentId === data.students[0].id &&
+        !item.accountCredit &&
+        (item.kind === "payment" || item.kind === "refund"),
+    );
     const summary = screen.getByText(
-      `Receipts & adjustments (${data.payments.length})`,
+      `Receipts & adjustments (${receipts.length})`,
     );
     const details = summary.closest("details")!;
     expect(details).not.toHaveAttribute("open");
     await user.click(summary);
     expect(details).toHaveAttribute("open");
-    for (const entry of data.payments)
-      expect(details).toHaveTextContent(entry.reason);
+    expect(details.querySelectorAll(".payment-history-row")).toHaveLength(
+      receipts.length,
+    );
+    expect(details).not.toHaveTextContent(/credit/i);
   });
   it("consolidates coach readiness and queued communications in Today at a glance", async () => {
     renderApp("/coach");

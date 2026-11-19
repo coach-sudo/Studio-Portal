@@ -5,11 +5,13 @@ export function InvoiceDocument({
   logoUrl,
   onPay,
   paymentBusy = false,
+  learnerView = false,
 }: {
   invoice: Invoice;
   logoUrl?: string;
   onPay?: () => void;
   paymentBusy?: boolean;
+  learnerView?: boolean;
 }) {
   return (
     <article className="invoice-paper" aria-label={`Invoice ${invoice.number}`}>
@@ -30,7 +32,11 @@ export function InvoiceDocument({
           <h2>Invoice</h2>
           <strong>{invoice.number}</strong>
           <span className={`invoice-badge ${invoice.status}`}>
-            {invoice.status.replaceAll("_", " ")}
+            {learnerView && !["draft", "void"].includes(invoice.status)
+              ? invoiceDue(invoice)
+                ? "Unpaid"
+                : "Paid"
+              : invoice.status.replaceAll("_", " ")}
           </span>
         </div>
       </header>
@@ -82,7 +88,9 @@ export function InvoiceDocument({
               <small>
                 {line.quantity} ×{" "}
                 {formatMoney(line.unitMinor, invoice.currency)}
-                {line.creditMinor > 0 ? " · Lesson credit applied" : ""}
+                {!learnerView && line.creditMinor > 0
+                  ? " · Lesson credit applied"
+                  : ""}
                 {line.cancelled ? " · Cancelled" : ""}
               </small>
             </div>
@@ -106,10 +114,12 @@ export function InvoiceDocument({
             <dt>Total</dt>
             <dd>{formatMoney(invoice.total_minor, invoice.currency)}</dd>
           </div>
-          <div>
-            <dt>Credits / adjustments</dt>
-            <dd>−{formatMoney(invoice.credit_minor, invoice.currency)}</dd>
-          </div>
+          {(!learnerView || invoice.credit_minor > 0) && (
+            <div>
+              <dt>{learnerView ? "Adjustments" : "Credits / adjustments"}</dt>
+              <dd>−{formatMoney(invoice.credit_minor, invoice.currency)}</dd>
+            </div>
+          )}
           {!!invoice.waived_minor && (
             <div>
               <dt>Cancelled charges</dt>

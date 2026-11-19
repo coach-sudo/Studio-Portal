@@ -1,9 +1,17 @@
-/* Semantic aliases intentionally follow studio branding and portal appearance. */
+/* Pair each brand fill with its --on-* text token. Keep body and control labels at 4.5:1 or higher. */
 :root {
   --on-forest: #ffffff;
   --on-gold: #000000;
   --on-coral: #000000;
   --on-surface: #17211d;
+  --brand-text: var(--brand-text-on-light, var(--forest));
+  --primary-hover: color-mix(
+    in srgb,
+    var(--forest),
+    var(--primary-hover-tint, #000) 12%
+  );
+  --focus-outer: #111111;
+  --focus-inner: #ffffff;
   --muted: #526258;
   --space-1: 4px;
   --space-2: 8px;
@@ -46,12 +54,12 @@
   --surface-warning: #faf2e2;
   --surface-danger: #faeef0;
   --surface-info: #edf3f3;
-  --app-canvas: var(--surface, #f3f5f2);
+  --app-canvas: var(--accessible-canvas, #f3f5f2);
   --app-surface: #ffffff;
   --app-surface-soft: #f3f6f1;
   --app-border: color-mix(in srgb, var(--forest), transparent 85%);
   --app-border-strong: color-mix(in srgb, var(--forest), transparent 76%);
-  --app-focus: color-mix(in srgb, var(--forest), white 35%);
+  --app-focus: var(--focus-outer);
   --app-radius-control: var(--radius-control);
   --app-radius-card: var(--radius-card);
   --app-radius-panel: var(--radius-feature);
@@ -68,7 +76,10 @@
   --app-surface-soft: #20332b;
   --app-border: #ffffff15;
   --app-border-strong: #ffffff38;
-  --app-focus: #b8cda1;
+  --app-focus: var(--focus-outer);
+  --focus-outer: #ffffff;
+  --focus-inner: #111111;
+  --brand-text: #bfd4bc;
   --color-success: #b5d8bc;
   --color-warning: #e4c388;
   --color-danger: #f1b6be;

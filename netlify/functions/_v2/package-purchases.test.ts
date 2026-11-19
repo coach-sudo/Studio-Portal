@@ -16,7 +16,7 @@ vi.mock("stripe", () => ({
   },
 }));
 
-function fixture(enabled = true, pricingError = false) {
+function fixture(enabled = true, pricingError = false, financeAccess = true) {
   const writes: Array<{
     table: string;
     action: string;
@@ -61,23 +61,30 @@ function fixture(enabled = true, pricingError = false) {
     auth: {
       getUser: async () => ({ data: { user: { id: "coach" } }, error: null }),
     },
-    rpc: vi.fn(async (_name: string, args: any) => ({
-      data: {
-        package: {
-          id: "purchase",
-          price_minor: args.p_value.package.priceMinor,
+    rpc: vi.fn(async (name: string, args: any) => {
+      if (name === "can_view_student_finance")
+        return {
+          data: args.target_student === "student" && financeAccess,
+          error: null,
+        };
+      return {
+        data: {
+          package: {
+            id: "purchase",
+            price_minor: args.p_value.package.priceMinor,
+          },
+          coverage: {
+            applied: 0,
+            alreadyCovered: 0,
+            skipped: 0,
+            failed: 0,
+            autoApplyPending: false,
+          },
+          auditEventId: "atomic-audit",
         },
-        coverage: {
-          applied: 0,
-          alreadyCovered: 0,
-          skipped: 0,
-          failed: 0,
-          autoApplyPending: false,
-        },
-        auditEventId: "atomic-audit",
-      },
-      error: null,
-    })),
+        error: null,
+      };
+    }),
     from(table: string) {
       let inserted: Record<string, unknown> | undefined;
       const query = {
@@ -285,6 +292,13 @@ describe("new package purchases and assignments", () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.checkout).not.toHaveBeenCalled();
   });
+  it("rejects purchasing a package for a student without financial access", async () => {
+    const { command, writes } = fixture(true, false, false);
+    await expect(command()).rejects.toThrow("FORBIDDEN");
+    expect(writes).toEqual([]);
+    expect(mocks.checkout).not.toHaveBeenCalled();
+  });
+
   it("fails closed when student pricing cannot be read", async () => {
     const { command, writes } = fixture(true, true);
     await expect(command()).rejects.toThrow("Pricing unavailable");

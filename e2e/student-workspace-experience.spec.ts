@@ -340,8 +340,8 @@ test("@journey @mobile @a11y finance-only guardian sees account totals without l
     ).toBeVisible({ timeout: 15000 });
     await expect(page.getByText("$80.00", { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Your coach manages this setting."),
-    ).toBeVisible();
+      page.getByRole("heading", { name: "Account credit activity" }),
+    ).toHaveCount(0);
     await expect(page.getByText(/Upcoming coverage/)).toHaveCount(0);
     await expect(page.getByText(f.rows[0].topic!, { exact: true })).toHaveCount(
       0,

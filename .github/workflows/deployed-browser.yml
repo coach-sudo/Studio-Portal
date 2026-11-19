@@ -114,6 +114,8 @@ jobs:
         run: npx playwright test --config e2e/audit-reschedule-local/playwright.config.ts
       - name: Check actual received-payment receipt editors and reload recovery
         run: npx playwright test --config e2e/audit-payments-local/playwright.config.ts
+      - name: Check My Work, lesson payments, and portal contrast
+        run: npx playwright test --config e2e/connected-coaching-local/playwright.config.ts
       - name: Check branded public booking in its isolated local browser harness
         run: npx playwright test --config e2e/audit-contrast-local/playwright.config.ts
       - name: Start free ephemeral Supabase

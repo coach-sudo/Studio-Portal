@@ -42,14 +42,12 @@ test("@journey Journey 13: booking, messaging, settings, payments, dialogs, and 
   await timezone.press("ArrowDown");
   await timezone.press("Enter");
   await expect(timezone).toHaveValue(/Asia\/Tokyo/);
-  await student.page.goto("/portal/work");
-  await student.page
-    .getByText("Current script upload", { exact: true })
-    .click();
-  const opener = student.page.getByRole("button", { name: "Submit material" });
+  await student.page.goto("/portal/work?view=scripts");
+  const scriptAction = /^(Add|Update) script$/;
+  const opener = student.page.getByRole("button", { name: scriptAction });
   await opener.focus();
   await student.page.keyboard.press("Enter");
-  const dialog = student.page.getByRole("dialog", { name: "Submit material" });
+  const dialog = student.page.getByRole("dialog", { name: scriptAction });
   await expect(dialog).toBeVisible();
   await student.page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();

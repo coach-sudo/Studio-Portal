@@ -1,3 +1,4 @@
+import { workSectionSearch } from "../../hooks/useWorkView";
 import {
   usePortalContexts,
   type PortalContext,
@@ -63,9 +64,9 @@ const LessonHub = lazy(() =>
     default: module.LessonHub,
   })),
 );
-const StudentNotes = lazy(() =>
-  import("./StudentPortalLessonHub").then((module) => ({
-    default: module.StudentNotes,
+const Materials = lazy(() =>
+  import("./StudentPortalWorkContent").then((module) => ({
+    default: module.Materials,
   })),
 );
 const Payments = lazy(() =>
@@ -331,7 +332,14 @@ function PortalWorkspace({
         <nav aria-label="Portal navigation">
           {tabs
             .filter((t) =>
-              ["", "work", "bookings", "inbox", "payments"].includes(t.to),
+              [
+                "",
+                "work",
+                "materials",
+                "bookings",
+                "inbox",
+                "payments",
+              ].includes(t.to),
             )
             .map(({ to, label, icon: Icon }) => (
               <NavLink key={to} to={portalPath(to)} end={!to}>
@@ -484,6 +492,9 @@ function PortalWorkspace({
                     canManageLessons={
                       role !== "guardian" || guardianManageLessons
                     }
+                    showFinance={
+                      role === "guardian" ? guardianFinance : !person?.isMinor
+                    }
                   />
                 )
               }
@@ -518,7 +529,14 @@ function PortalWorkspace({
                 role === "guardian" && !guardianWork ? (
                   <RecordUnavailable fallback={portalPath("")} />
                 ) : (
-                  <StudentNotes data={data} isDemo={isDemo} />
+                  <Navigate
+                    to={{
+                      pathname: base + "/work",
+                      search: workSectionSearch(location.search, "notes"),
+                    }}
+                    state={location.state}
+                    replace
+                  />
                 )
               }
             />
@@ -554,7 +572,13 @@ function PortalWorkspace({
             />
             <Route
               path="materials"
-              element={<Navigate to={`${base}/work`} replace />}
+              element={
+                role === "guardian" && !guardianWork ? (
+                  <Navigate to={base} replace />
+                ) : (
+                  <Materials data={data} isDemo={isDemo} />
+                )
+              }
             />
             <Route
               path="payments"

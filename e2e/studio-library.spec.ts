@@ -135,7 +135,7 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
   ).toBeVisible();
   await expect(unrelated.page.getByText(title, { exact: true })).toHaveCount(0);
   // Reuse through the existing student workflow; no second upload.
-  await page.goto(`/coach/students/${runtime.ids?.unrelatedStudent}/work`);
+  await page.goto(`/coach/students/${runtime.ids?.unrelatedStudent}/materials`);
   await page
     .getByRole("button", { name: "Add material", exact: true })
     .first()
@@ -144,6 +144,9 @@ test("@journey @a11y Studio Library uploads once, assigns repeatedly, and preser
     name: "Add material",
     exact: true,
   });
+  await choose
+    .getByRole("button", { name: "Choose from Library", exact: true })
+    .click();
   await choose.getByRole("searchbox", { name: "Search resources" }).fill(title);
   await choose
     .locator(".resource-results article")
