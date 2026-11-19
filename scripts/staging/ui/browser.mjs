@@ -481,23 +481,12 @@ export class UiBrowserDriver {
           await expect(
             page.getByRole("button", { name: "Adjust credits", exact: true }),
           ).toHaveCount(0);
-          await expect(page.getByRole("main")).toContainText(/Lesson credits/);
-          if (phase === "funded") {
-            await page
-              .getByRole("button", { name: "Refresh coverage", exact: true })
-              .click();
-            for (const [label, value] of [
-              ["Remaining", "4"],
-              ["Available", "0"],
-              ["Reserved", "4"],
-            ])
-              await expect(
-                page
-                  .locator(".account-metrics > div")
-                  .filter({ has: page.getByText(label, { exact: true }) })
-                  .locator("strong"),
-              ).toHaveText(value);
-          }
+          await expect(
+            page.getByRole("heading", { name: "Account summary", exact: true }),
+          ).toBeVisible();
+          await expect(
+            page.getByRole("heading", { name: "Lesson credits", exact: true }),
+          ).toHaveCount(0);
           const lesson = ids["lesson-credit"];
           await this.goto(`/portal/lessons/${lesson}`, role);
           await expect(page.getByRole("main")).toContainText(

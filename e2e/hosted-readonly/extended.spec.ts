@@ -122,50 +122,51 @@ for (const role of ["coach", "student", "guardian"] as const) {
           })
           .last();
         await expect(account).toBeVisible();
-        await expect(
-          credits.getByText("Remaining", { exact: true }),
-        ).toBeVisible();
         for (const balance of finance.balances) {
-          for (const [label, amount] of [
-            [`Amount due · ${balance.currency}`, balance.dueMinor],
-            [
-              `Dollar account credit · ${balance.currency}`,
-              balance.dollarCreditMinor,
-            ],
-          ] as const) {
-            const metric = account
-              .locator(".account-metrics > div")
-              .filter({ has: page.getByText(label, { exact: true }) });
-            await expect(metric.locator("strong")).toHaveText(
-              formatMoney(amount, balance.currency),
-            );
-          }
-        }
-        for (const [label, amount] of [
-          ["Remaining", credit.summary.remaining],
-          ["Available", credit.summary.available],
-          ["Reserved", credit.summary.reserved],
-        ] as const) {
-          const metric = credits
-            .locator(".account-metrics > div")
-            .filter({ has: page.getByText(label, { exact: true }) });
-          await expect(metric.locator("strong")).toHaveText(String(amount));
-        }
-        if (role !== "coach") {
-          await expect(
-            credits.getByText("Your coach manages this setting.", {
+          const amount = account.locator(".account-metrics > div").filter({
+            has: page.getByText(`Amount due · ${balance.currency}`, {
               exact: true,
             }),
-          ).toBeVisible();
+          });
+          await expect(amount.locator("strong")).toHaveText(
+            formatMoney(balance.dueMinor, balance.currency),
+          );
+          const ledgerBalance = account.getByText(
+            `Dollar account credit · ${balance.currency}`,
+            { exact: true },
+          );
+          if (role !== "coach") {
+            await expect(ledgerBalance).toHaveCount(0);
+            continue;
+          }
           await expect(
-            credits.getByRole("button", {
-              name: /Adjust credits|Review and enable|Turn off|Apply eligible credits now/,
-            }),
+            ledgerBalance.locator("..").locator("strong"),
+          ).toHaveText(
+            formatMoney(balance.dollarCreditMinor, balance.currency),
+          );
+        }
+        if (role === "coach") {
+          for (const [label, amount] of [
+            ["Remaining", credit.summary.remaining],
+            ["Available", credit.summary.available],
+            ["Reserved", credit.summary.reserved],
+          ] as const) {
+            const metric = credits.locator(".account-metrics > div").filter({
+              has: page.getByText(label, { exact: true }),
+            });
+            await expect(metric.locator("strong")).toHaveText(String(amount));
+          }
+        } else {
+          await expect(
+            page.getByRole("heading", { name: "Lesson credits", exact: true }),
           ).toHaveCount(0);
         }
         return {
           account: await account.locator(".account-metrics").innerText(),
-          credit: await credits.locator(".account-metrics").innerText(),
+          credit:
+            role === "coach"
+              ? await credits.locator(".account-metrics").innerText()
+              : undefined,
         };
       };
       await settled(page, path);
