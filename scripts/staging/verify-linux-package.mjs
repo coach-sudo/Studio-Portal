@@ -274,7 +274,7 @@ async function main() {
         await import(pathToFileURL(join(workerDir, workerEntry)).href)
       ).default;
       const response = await handler(
-        new Request("https://packaging.invalid"),
+        new globalThis.Request("https://packaging.invalid"),
         {},
       );
       assert.deepEqual(await response.json(), { status: "disabled" });
