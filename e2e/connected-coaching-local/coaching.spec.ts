@@ -864,3 +864,54 @@ test("home opens the exact next lesson and schedule keeps payment selection in s
     page.getByRole("checkbox", { name: /Previous rehearsal/ }),
   ).toHaveCount(0);
 });
+
+test.describe("portal notification accessibility", () => {
+  test.use({ hasTouch: true, viewport: { width: 320, height: 860 } });
+
+  test("notification actions stay readable and reachable in either theme", async ({
+    page,
+  }) => {
+    await prepare(page);
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((appearance) => {
+        const key = "stage-story-studio-core-v2";
+        const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+        const student = data.students.find(
+          (item) => item.id === "student-maya",
+        )!;
+        student.portalPreferences = {
+          ...student.portalPreferences,
+          appearance,
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+      }, theme);
+      await page.goto("/portal/payments?pay=lesson&student=student-maya");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-portal-theme",
+        theme,
+      );
+      const skip = page.getByRole("link", { name: "Skip to main content" });
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await skip.focus();
+      await expect(skip).toHaveCSS("clip-path", "none");
+      await page.keyboard.press("Tab");
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await page.getByRole("button", { name: /unread notifications/ }).tap();
+      await expect(
+        page.getByRole("region", { name: "Recent activity" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Clear all" }),
+      ).toBeVisible();
+      const audit = await new AxeBuilder({ page })
+        .include(".activity-center")
+        .analyze();
+      expect(
+        audit.violations.filter((issue) =>
+          ["serious", "critical"].includes(issue.impact ?? ""),
+        ),
+      ).toEqual([]);
+      await page.getByRole("button", { name: "Close notifications" }).tap();
+    }
+  });
+});
