@@ -6,7 +6,7 @@ export function portalDomains(pathname: string): readonly StudioDomain[] {
   const route = pathname.replace(/\/+$/, "") || "/";
   if (route === "/portal/inbox") return ["identity", "students", "messaging"];
   if (route === "/portal/payments")
-    return ["identity", "students", "finance", "lessons"];
+    return ["identity", "students", "finance", "lessons", "booking"];
   if (route === "/portal/settings")
     return ["identity", "students", "households"];
   if (route === "/portal/actor-page")
@@ -26,7 +26,7 @@ export function portalDomains(pathname: string): readonly StudioDomain[] {
   if (/^\/portal\/classes\/[^/]+$/.test(route))
     return ["identity", "students", "lessons", "work", "messaging"];
   return route === "/portal"
-    ? ["identity", "students", "lessons", "work", "finance"]
+    ? ["identity", "students", "lessons", "work", "finance", "booking"]
     : ["identity", "students"];
 }
 

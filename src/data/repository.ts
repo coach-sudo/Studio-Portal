@@ -549,6 +549,7 @@ export async function loadStudioSnapshot(
       importedAt: r.imported_at,
       paymentStatus: r.payment_status,
       invoicePaymentPending: r.invoice_payment_pending,
+      paymentNeedsReview: r.payment_needs_review,
       invoiceId: r.invoice_id,
       priceMinor: r.price_minor == null ? undefined : Number(r.price_minor),
       paidMinor: Number(r.paid_minor || 0),

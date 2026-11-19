@@ -121,6 +121,7 @@ export interface Student extends Versioned {
 }
 export interface Lesson extends Versioned {
   invoicePaymentPending?: boolean;
+  paymentNeedsReview?: boolean;
   invoiceId?: string;
   studioId: UUID;
   studentId: UUID;

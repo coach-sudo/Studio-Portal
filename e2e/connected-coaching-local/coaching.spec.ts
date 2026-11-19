@@ -544,3 +544,141 @@ test("primary actions and focus retain contrast under pale branding in both port
   await expect(primary).toHaveCSS("outline-color", "rgb(255, 255, 255)");
   await expect(primary).toHaveCSS("outline-style", "solid");
 });
+
+test("whole-lesson payment selection stays readable across layouts and themes", async ({
+  page,
+}, testInfo) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const base = data.lessons[0];
+    const invoiceId = "training-invoice";
+    data.lessons = Array.from({ length: 6 }, (_, index) => ({
+      ...base,
+      id: `training-lesson-${index}`,
+      sourceProvider: "studio",
+      topic: `Rehearsal ${index + 1}`,
+      startsAt: new Date(
+        Date.parse(base.startsAt) + index * 7 * 86400000,
+      ).toISOString(),
+      endsAt: new Date(
+        Date.parse(base.endsAt) + index * 7 * 86400000,
+      ).toISOString(),
+      invoiceId,
+      paymentStatus: "due",
+      priceMinor: 8500,
+      paidMinor: 0,
+    }));
+    data.invoices = [
+      {
+        id: invoiceId,
+        student_id: "student-maya",
+        studio_id: data.studioId,
+        number: "INV-TRAINING",
+        status: "open",
+        currency: "USD",
+        issue_date: "2026-01-01",
+        due_date: "2031-05-15",
+        introduction: "",
+        notes: "",
+        footer: "",
+        branding: { studioName: "Coach’D" },
+        recipient: { name: "Maya" },
+        total_minor: 51000,
+        paid_minor: 0,
+        credit_minor: 0,
+        version: 1,
+        created_at: new Date().toISOString(),
+        items: data.lessons.map((lesson, index) => ({
+          id: `training-line-${index}`,
+          description: lesson.topic,
+          lessonIds: [lesson.id],
+          kind: "service",
+          referenceId: "service",
+          quantity: 1,
+          unitMinor: 8500,
+          startsOn: lesson.startsAt.slice(0, 10),
+          endsOn: lesson.startsAt.slice(0, 10),
+          creditMinor: 0,
+          paidMinor: 0,
+        })),
+      },
+    ];
+    data.settings.branding = {
+      ...data.settings.branding,
+      primaryColor: "#f0ebd3",
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  for (const [width, layout] of [
+    [320, "phone"],
+    [768, "tablet"],
+    [1440, "desktop"],
+  ] as const) {
+    await page.setViewportSize({ width, height: 920 });
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((appearance) => {
+        const key = "stage-story-studio-core-v2";
+        const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+        const maya = data.students.find(
+          (student) => student.id === "student-maya",
+        )!;
+        maya.portalPreferences = { ...maya.portalPreferences, appearance };
+        localStorage.setItem(key, JSON.stringify(data));
+      }, theme);
+      await page.goto("/portal/bookings?student=student-maya");
+      await expect(
+        page.getByText(
+          "Your coach has scheduled 6 confirmed upcoming lessons.",
+        ),
+      ).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-portal-theme",
+        theme,
+      );
+      await checkView(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`schedule-${layout}-${theme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await page.goto("/portal/payments?pay=lesson&student=student-maya");
+      const group = page.getByRole("group", {
+        name: "Choose lessons to pay for",
+      });
+      await expect(group.getByRole("checkbox")).toHaveCount(6);
+      await group.getByRole("checkbox", { name: /Rehearsal 2/ }).check();
+      await group.getByRole("checkbox", { name: /Rehearsal 5/ }).focus();
+      await page.keyboard.press("Space");
+      await expect(
+        page.getByText("2 lessons selected · $170.00 total"),
+      ).toBeVisible();
+      await checkView(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`payment-${layout}-${theme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await group
+        .getByRole("button", { name: "Select all eligible lessons" })
+        .click();
+      await expect(
+        page.getByText("6 lessons selected · $510.00 total"),
+      ).toBeVisible();
+    }
+  }
+  await page
+    .getByRole("button", { name: "Continue to secure checkout" })
+    .click();
+  await expect(
+    page.getByText("Demo mode does not open a payment provider."),
+  ).toBeVisible();
+  await page.goto(
+    "/portal/payments?pay=lesson&student=student-maya&lesson=training-lesson-2",
+  );
+  await expect(
+    page.getByText("1 lesson selected · $85.00 total"),
+  ).toBeVisible();
+  await expect(page.getByRole("checkbox")).toHaveCount(1);
+});

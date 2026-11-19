@@ -11,10 +11,11 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
+import { isJoinableLesson } from "../../domain/lessonExperience";
 import {
-  isJoinableLesson,
-  lessonPaymentLabel,
-} from "../../domain/lessonExperience";
+  trainingArrangement,
+  trainingPaymentLabel,
+} from "../../domain/trainingArrangement";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -185,17 +186,12 @@ function HomePriorities({
   const open = useNavigate();
   const navigate = (path: string) => open(portalContextLink(path, student.id));
   const context = coachingContext(data, student.id)!;
-  const lesson = showSchedule ? context.nextLesson : undefined;
+  const next = showSchedule
+    ? trainingArrangement(data, student.id).upcoming[0]
+    : undefined;
+  const lesson = next?.lesson;
   const work = showWork ? context.scripts[0] : undefined;
   const practice = showWork ? context.practice.active[0] : undefined;
-  const booking = data.bookings.find((item) =>
-    data.lessonParticipants.some(
-      (part) =>
-        part.lessonId === lesson?.id &&
-        part.bookingId === item.id &&
-        part.studentId === student.id,
-    ),
-  );
   const lessonIsJoinable = Boolean(lesson && isJoinableLesson(lesson));
   const actions = [
     !lessonIsJoinable && lesson
@@ -282,13 +278,10 @@ function HomePriorities({
               icon={CircleDollarSign}
               title="Lesson payments"
               detail={
-                lesson
-                  ? lesson.topic +
+                next
+                  ? next.lesson.topic +
                     " · " +
-                    lessonPaymentLabel(
-                      lesson.paymentStatus,
-                      booking?.paymentStatus,
-                    )
+                    trainingPaymentLabel[next.payment]
                   : "Invoices and packages"
               }
               action="View payments"

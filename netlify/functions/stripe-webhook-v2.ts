@@ -11,6 +11,10 @@ import {
 } from "./_shared/booking-email";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { processStripeInstallmentEffects } from "./_shared/stripe-installment-effects";
+import {
+  reconcileTrainingCheckout,
+  trainingCheckout,
+} from "./_shared/training-checkout";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -79,6 +83,40 @@ export default async (request: Request, context: Context) => {
       if (completed.error) throw completed.error;
       return json({ ok: true, ...payload });
     };
+
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded" ||
+      event.type === "checkout.session.async_payment_failed" ||
+      event.type === "checkout.session.expired"
+    ) {
+      const session = event.data.object;
+      if (session.metadata?.training_checkout_id) {
+        const checkout = await reconcileTrainingCheckout(
+          session,
+          event.type === "checkout.session.async_payment_failed",
+        );
+        return await done({ trainingCheckoutStatus: checkout.status });
+      }
+    }
+    if (
+      !event.livemode &&
+      (event.type === "charge.refunded" ||
+        event.type === "refund.updated" ||
+        event.type === "charge.dispute.created" ||
+        event.type === "charge.dispute.closed")
+    ) {
+      const payment = event.data.object.payment_intent;
+      const intent = typeof payment === "string" ? payment : payment?.id;
+      if (intent) {
+        const attempt = await trainingCheckout<{ status: string } | null>(
+          "review",
+          { intent, eventId: event.id },
+        );
+        if (attempt)
+          return await done({ trainingCheckoutStatus: attempt.status });
+      }
+    }
 
     if (
       event.type === "checkout.session.completed" ||

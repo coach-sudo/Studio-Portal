@@ -33,10 +33,11 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { portalPageSize, shouldShowPagination } from "../../data/pagination";
 import { mapNoteRow } from "../../data/studioMappers";
+import { selectLessonDelivery } from "../../domain/lessonExperience";
 import {
-  lessonPaymentLabel,
-  selectLessonDelivery,
-} from "../../domain/lessonExperience";
+  trainingArrangement,
+  trainingPaymentLabel,
+} from "../../domain/trainingArrangement";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -384,33 +385,16 @@ export function LessonHub({
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
   );
-  const participant = data.lessonParticipants.find(
-    (item) =>
-      item.lessonId === lesson.id &&
-      item.studentId === selectedStudent.id &&
-      item.bookingId,
-  );
-  const booking = data.bookings.find(
-    (item) => item.id === participant?.bookingId,
-  );
   const student = selectedStudent;
-  const payment = lessonPaymentLabel(
-    lesson.paymentStatus,
-    booking?.paymentStatus,
+  const occurrence = trainingArrangement(data, student.id).occurrences.find(
+    (item) => item.lesson.id === lesson.id,
   );
+  const payment = occurrence?.payment ?? "review";
   const canPay =
     showFinance &&
     ["scheduled", "completed"].includes(lesson.status) &&
-    payment === "Unpaid" &&
-    lesson.paymentStatus !== "refunded" &&
-    (lesson.invoiceId ||
-      lesson.paymentStatus === "due" ||
-      lesson.paymentStatus === "partially_paid" ||
-      (booking &&
-        booking.totalMinor > booking.paidMinor &&
-        ["due", "partially_paid", "past_due", "processing"].includes(
-          booking.paymentStatus,
-        )));
+    payment === "unpaid" &&
+    Boolean(lesson.invoiceId);
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
@@ -510,8 +494,8 @@ export function LessonHub({
           </button>
           <h1>{lesson.topic}</h1>
           {showFinance && (
-            <Status tone={payment === "Paid" ? "good" : "warn"}>
-              {payment}
+            <Status tone={payment === "paid" ? "good" : "warn"}>
+              {trainingPaymentLabel[payment]}
             </Status>
           )}
           <p>
