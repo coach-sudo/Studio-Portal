@@ -433,5 +433,12 @@
   ],
   "proofLimit": "Hosted list_migrations verifies versions/names only, not hosted SQL contents. File hashes below prove exact Git source bytes at audited commit fb2fcb63f7ac6f06dc8ee9d954e519bdde5773cb, not a hosted SQL content hash.",
   "fileHashEncoding": "SHA-256 of original Git blob bytes; working-tree CRLF normalized to LF for Windows checks.",
-  "expectedAddedOriginalTableColumns": []
+  "expectedAddedOriginalTableColumns": [
+    {
+      "table": "public.lessons",
+      "name": "payment_needs_review",
+      "type": "boolean",
+      "default": "false"
+    }
+  ]
 }
