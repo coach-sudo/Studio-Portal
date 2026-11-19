@@ -12,6 +12,13 @@ export interface AutopayPolicy {
   maximumLeadDays: number;
 }
 
+export interface AutopayPreviewOptions {
+  policy: AutopayPolicy & { maximumLessonMinor: number };
+  currency: string;
+  lessons: { id: string; date: string; amountMinor: number }[];
+  hasMore: boolean;
+}
+
 export interface AutopaySelection {
   scope: "existing" | "future" | "existing_and_future";
   leadDays: number;
@@ -27,27 +34,26 @@ export interface AutopayOccurrence {
   startsAt: string;
   createdAt: string;
   payment: TrainingPaymentState;
-  obligation?: LessonObligation;
+  obligation?: Pick<LessonObligation, "eligible" | "currency" | "amountMinor">;
   // The previous approved plan can execute on time. A new or moved lesson
   // inside the lead window requires a deliberate Pay now action.
   approvedPaymentAt?: string;
 }
 
-export type AutopayProposal =
+export type AutopayProposal = { lessonId: string; date: string } & (
   | {
-      lessonId: string;
       state: "scheduled" | "ready";
       payAt: string;
       amountMinor: number;
       currency: string;
     }
   | {
-      lessonId: string;
       state: "pay_now";
       amountMinor: number;
       currency: string;
     }
-  | { lessonId: string; state: "review"; reason: string };
+  | { state: "review"; reason: string }
+);
 
 function localChargeTime(
   lessonStart: string,
@@ -123,6 +129,10 @@ export function previewLessonAutopay(
       continue;
 
     const { obligation } = lesson;
+    const occurrence = {
+      lessonId: lesson.id,
+      date: studioDateKey(lesson.startsAt, policy.timeZone),
+    };
     if (
       lesson.payment === "review" ||
       !obligation?.eligible ||
@@ -130,7 +140,7 @@ export function previewLessonAutopay(
       obligation.amountMinor > selection.maximumLessonMinor
     ) {
       proposals.push({
-        lessonId: lesson.id,
+        ...occurrence,
         state: "review",
         reason:
           "Review the lesson amount or payment terms before scheduling a charge.",
@@ -142,9 +152,17 @@ export function previewLessonAutopay(
       policy,
       selection.leadDays,
     );
-    if (!chargeAt || Date.parse(chargeAt) > Date.parse(lesson.startsAt)) {
+    if (!chargeAt) {
       proposals.push({
-        lessonId: lesson.id,
+        ...occurrence,
+        state: "review",
+        reason: "The configured payment time is unavailable on this date.",
+      });
+      continue;
+    }
+    if (Date.parse(chargeAt) > Date.parse(lesson.startsAt)) {
+      proposals.push({
+        ...occurrence,
         state: "pay_now",
         amountMinor: obligation.amountMinor,
         currency: obligation.currency,
@@ -152,7 +170,7 @@ export function previewLessonAutopay(
       continue;
     }
     const details = {
-      lessonId: lesson.id,
+      ...occurrence,
       amountMinor: obligation.amountMinor,
       currency: obligation.currency,
     };
