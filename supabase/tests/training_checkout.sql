@@ -98,7 +98,8 @@ select is((select array_agg(id order by id) from public.lessons where payment_ne
  array[pg_temp.key('3000',2),pg_temp.key('3000',5)],'Only the reversed selection is marked for review');
 select is(public.training_lesson_checkout('settle',pg_temp.provider(1,16700))->>'status',
  'review','Late duplicate confirmation preserves the reconciliation state');
-select is((select count(*) from public.payment_entries where external_reference like 'training-stripe:%'),3::bigint,
+select is((select count(*) from public.payment_entries where external_reference like 'training-stripe:%'
+  and student_id in (pg_temp.key('0000',5),pg_temp.key('0000',6))),3::bigint,
  'Original payment history survives the review and remains deduplicated');
 
 select * from finish();

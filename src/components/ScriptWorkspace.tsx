@@ -342,14 +342,17 @@ function ScriptEditor({
             id={formId + "-source"}
             value={type}
             disabled={busy}
-            onChange={(event) => setType(event.target.value)}
+            onChange={(event) => {
+              setType(event.target.value);
+              setFile(undefined);
+            }}
           >
             <option value="file">Upload file</option>
             <option value="link">Share link</option>
           </select>
         </label>
         {type === "file" ? (
-          <label className="full" htmlFor={formId + "-file"}>
+          <label key="script-file" className="full" htmlFor={formId + "-file"}>
             Script file
             <input
               id={formId + "-file"}
@@ -370,7 +373,7 @@ function ScriptEditor({
             </small>
           </label>
         ) : (
-          <label className="full" htmlFor={formId + "-link"}>
+          <label key="script-link" className="full" htmlFor={formId + "-link"}>
             Script link
             <input
               id={formId + "-link"}
