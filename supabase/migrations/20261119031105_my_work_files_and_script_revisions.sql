@@ -155,3 +155,23 @@ begin
   return result;
 end;
 $$;
+
+-- New online checkouts charge the full balance under the existing invoice lock.
+create or replace function public.claim_studio_invoice_checkout(p_invoice uuid,p_amount bigint,p_key text,p_version integer) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare inv public.studio_invoices;
+begin
+  select * into inv from public.studio_invoices where id=p_invoice;
+  perform 1 from public.students where id=inv.student_id for update;
+  select * into inv from public.studio_invoices where id=p_invoice for update;
+  if inv.checkout_key=p_key then return to_jsonb(inv); end if;
+  if inv.version<>p_version then raise exception 'VERSION_CONFLICT'; end if;
+  if inv.checkout_key is not null then raise exception 'INVALID_TRANSITION: An online payment is already pending.'; end if;
+  if inv.status not in ('open','partially_paid') or p_amount<=0
+    or p_amount is distinct from inv.total_minor-inv.paid_minor-inv.credit_minor-inv.waived_minor then
+    raise exception 'VALIDATION_FAILED: Online payment requires the full outstanding balance.';
+  end if;
+  update public.studio_invoices set checkout_key=p_key,checkout_amount=p_amount,version=version+1,updated_at=now() where id=inv.id returning * into inv;
+  update public.lessons l set invoice_payment_pending=true where exists(select 1 from jsonb_array_elements(inv.items) x where x->'lessonIds' @> to_jsonb(array[l.id::text]));
+  return to_jsonb(inv);
+end $$;

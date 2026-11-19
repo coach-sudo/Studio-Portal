@@ -247,9 +247,18 @@ export async function handleInvoiceCommands(
       : portalOrigin(ctx.context);
     let claimed = invoice;
     if (input.command === "checkout") {
+      const amount = z
+        .number()
+        .int()
+        .positive()
+        .parse(input.payload.amountMinor);
+      if (amount !== invoiceDue(invoice))
+        throw new Error(
+          "VALIDATION_FAILED: Online payment requires the full outstanding balance.",
+        );
       const claim = await service.rpc("claim_studio_invoice_checkout", {
         p_invoice: invoice.id,
-        p_amount: z.number().int().positive().parse(input.payload.amountMinor),
+        p_amount: amount,
         p_key: `${input.payload.returnTo === "coach" ? "coach" : "student"}:${input.idempotencyKey}`,
         p_version: input.expectedVersion,
       });

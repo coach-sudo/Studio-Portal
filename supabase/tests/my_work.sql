@@ -33,5 +33,12 @@ select set_config('request.jwt.claim.sub','5b000000-0000-4000-8000-000000000002'
 select throws_ok($$select public.manage_material_resources('replace_current_script',current_setting('test.my_work.first_script')::jsonb)$$,'42501','FORBIDDEN','Other students cannot replace scripts');
 select throws_ok($$select public.manage_material_resources('resource_attach_file',current_setting('test.my_work.attachment')::jsonb)$$,'42501','FORBIDDEN','Other students cannot access or attach private files');
 reset role;
+insert into public.studio_invoices(id,studio_id,student_id,number,status,currency,issue_date,due_date,branding,recipient,items,total_minor,credit_minor) values
+  ('5b000000-0000-4000-8000-000000000011','5b000000-0000-4000-8000-000000000003','5b000000-0000-4000-8000-000000000004','INV-MY-WORK-TEST','open','USD','2030-02-01','2030-02-15','{}','{}','[]',10000,2000);
+set local role service_role;
+select throws_ok($$select public.claim_studio_invoice_checkout('5b000000-0000-4000-8000-000000000011',4000,'partial',1)$$,'P0001','VALIDATION_FAILED: Online payment requires the full outstanding balance.','Partial online payment is rejected under the invoice lock');
+select is((select checkout_key from public.studio_invoices where id='5b000000-0000-4000-8000-000000000011'),null::text,'Rejected amount leaves the invoice available');
+select is(public.claim_studio_invoice_checkout('5b000000-0000-4000-8000-000000000011',8000,'full-balance',1)->>'checkout_amount','8000','Checkout accepts the full outstanding balance after existing credits');
+reset role;
 select * from finish();
 rollback;
