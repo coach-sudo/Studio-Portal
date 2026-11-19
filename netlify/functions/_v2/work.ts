@@ -311,31 +311,25 @@ export async function handleWorkCommands(
     }
     const materialRole = String(input.payload.role || "library");
     if (materialRole === "current_script") {
-      const { data: currentLinks } = await serviceClient()
-        .from("material_links")
-        .select("material_id")
-        .eq("student_id", student.id)
-        .eq("role", "current_script");
-      const currentIds = (currentLinks || []).map((item) => item.material_id);
-      if (currentIds.length)
-        await serviceClient()
-          .from("materials")
-          .update({
-            status: "archived",
-            updated_at: new Date().toISOString(),
-          })
-          .in("id", currentIds)
-          .eq("in_library", false)
-          .eq("status", "active");
-      if (currentIds.length) {
-        const { error: linkError } = await serviceClient()
-          .from("material_links")
-          .update({ status: "archived", updated_at: new Date().toISOString() })
-          .eq("student_id", student.id)
-          .eq("role", "current_script")
-          .eq("status", "active");
-        if (linkError) throw linkError;
-      }
+      const { data: script, error } = await db.rpc(
+        "manage_material_resources",
+        {
+          p_command: "replace_current_script",
+          p_payload: { ...input.payload, studentId: student.id },
+          p_expected_version: input.expectedVersion,
+        },
+      );
+      if (error?.code === "42501") throw AppError.forbidden(error);
+      if (error)
+        throw new AppError("VALIDATION_FAILED", {
+          status: 422,
+          message: error.message,
+        });
+      return json({
+        resource: script,
+        recommendations: [],
+        queuedSideEffects: [],
+      });
     }
     const { data, error } = await serviceClient()
       .from("materials")

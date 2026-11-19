@@ -66,7 +66,7 @@ export function resolvedRecordLink(role: Role, record: RecordTarget) {
       p.set("booking", record.id);
       break;
     case "resource":
-      path = coach ? "/coach/materials" : "/portal/work";
+      path = coach ? "/coach/materials" : "/portal/materials";
       p.set("resource", record.id);
       if (record.assignmentId) p.set("assignment", record.assignmentId);
       break;

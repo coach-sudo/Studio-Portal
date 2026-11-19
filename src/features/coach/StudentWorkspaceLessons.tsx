@@ -189,6 +189,7 @@ type CoachLessonHubProps = {
   onEditNote: (note: Note) => void;
   onAddAssignment: (lessonId: string) => void;
   onAddMaterial: (lessonId: string) => void;
+  onAttachFiles: (lessonId: string) => void;
 };
 
 function CoachLessonWorkspace({
@@ -199,6 +200,7 @@ function CoachLessonWorkspace({
   onEditNote,
   onAddAssignment,
   onAddMaterial,
+  onAttachFiles,
 }: CoachLessonHubProps) {
   const { lessonId = "" } = useParams();
   const queryClient = useQueryClient();
@@ -464,6 +466,17 @@ function CoachLessonWorkspace({
           <button onClick={() => onAddAssignment(lesson.id)}>
             Assign follow-up
           </button>
+          <Link
+            className="button-link"
+            to={
+              "/coach/students/" +
+              student.id +
+              "/work?view=scripts&fromLesson=" +
+              encodeURIComponent(lesson.id)
+            }
+          >
+            Current script
+          </Link>
           {lesson.status === "scheduled" && !sharedLesson && (
             <button
               disabled={!!actionBusy}
@@ -779,6 +792,37 @@ function CoachLessonWorkspace({
             )}
             <section className="lesson-command-section">
               <h3>Payment status</h3>
+              {["scheduled", "completed"].includes(lesson.status) &&
+                !["paid", "paid_by_credit", "waived", "refunded"].includes(
+                  lesson.paymentStatus || "",
+                ) && (
+                  <div className="page-actions">
+                    {!lesson.invoiceId && (
+                      <Link
+                        className="button-link"
+                        to={
+                          "/coach/students/" +
+                          student.id +
+                          "/payments?billLesson=" +
+                          encodeURIComponent(lesson.id)
+                        }
+                      >
+                        Prepare lesson invoice
+                      </Link>
+                    )}
+                    <Link
+                      className="button-link"
+                      to={
+                        "/coach/inbox?email=1&template=lesson_payment&student=" +
+                        encodeURIComponent(student.id) +
+                        "&lesson=" +
+                        encodeURIComponent(lesson.id)
+                      }
+                    >
+                      Email payment link
+                    </Link>
+                  </div>
+                )}
               {lesson.invoiceId ? (
                 <button
                   onClick={() =>
@@ -894,7 +938,23 @@ function CoachLessonWorkspace({
           studentId={student.id}
           lessonId={lesson.id}
           catalog={false}
-          title="Attachments"
+          title="Lesson files"
+          excludeScripts
+          showActions={false}
+          primaryAction={
+            <div className="page-actions">
+              <button
+                className="primary"
+                type="button"
+                onClick={() => onAttachFiles(lesson.id)}
+              >
+                Attach files
+              </button>
+              <button type="button" onClick={() => onAddMaterial(lesson.id)}>
+                Add resource
+              </button>
+            </div>
+          }
         />
         <Section title="Conversation">
           <Link

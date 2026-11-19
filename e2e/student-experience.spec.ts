@@ -88,15 +88,15 @@ test("@journey PR6 coach lesson workspace opens linked work in context", async (
   for (const [button, dialog] of [
     [/^(Write note|Continue draft)$/, /^(New note|Edit note)$/],
     ["Assign follow-up", "Assign practice"],
-    ["Attach resource", "Add material"],
+    ["Add resource", "Add material"],
   ] as const) {
     const actions =
-      button === "Attach resource"
+      button === "Add resource"
         ? page
         : page.locator(".lesson-primary-actions");
     await actions.getByRole("button", { name: button }).click();
     const workflow = page.getByRole("dialog", { name: dialog });
-    if (button === "Attach resource") {
+    if (button === "Add resource") {
       await expect(
         workflow.getByRole("button", { name: "Choose from Library" }),
       ).toBeVisible();
@@ -144,6 +144,7 @@ test("@journey Journey 06: current work exposes allowed assignment/material only
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/work");
   await expect(page.getByText(`${runtime.runId} Current work`)).toBeVisible();
+  await page.goto("/portal/materials");
   await expect(
     page.locator(".resource-results article").filter({
       has: page.getByText(`${runtime.runId} Fixture material`, { exact: true }),
@@ -162,23 +163,23 @@ test("@journey Journey 07: student uploads and removes a namespaced safe fixture
   requireFixtures(runtime);
   const { context, page } = await openAs(browser, "student");
   await page.goto("/portal/work");
-  await page.getByText("Current script upload", { exact: true }).click();
-  await page.getByRole("button", { name: "Submit material" }).click();
+  await page.getByRole("link", { name: "Scripts", exact: true }).click();
+  await page.getByRole("button", { name: /^(Update|Add) script$/ }).click();
   await page
-    .getByRole("dialog", { name: "Submit material" })
+    .getByRole("dialog", { name: /^(Update|Add) script$/ })
     .getByLabel("Title", { exact: true })
     .fill(`${runtime.runId} uploaded material`);
-  await page.getByLabel("Upload file").setInputFiles({
+  await page.getByLabel("Script file").setInputFiles({
     name: `${runtime.runId}-safe.txt`,
     mimeType: "text/plain",
     buffer: Buffer.from(
       "Deterministic Coach'D E2E fixture. No private student data.",
     ),
   });
-  await page.getByRole("button", { name: "Set as current script" }).click();
-  await expect(page.getByRole("status")).toContainText(
-    "Current script updated",
-  );
+  await page.getByRole("button", { name: "Save current script" }).click();
+  await expect(
+    page.getByText(/^(Current script added\.|Script updated\.)/),
+  ).toBeVisible();
   // Global teardown verifies the uploaded object and row are removed without
   // relying on the current page's already-loaded pagination snapshot.
   await context.close();

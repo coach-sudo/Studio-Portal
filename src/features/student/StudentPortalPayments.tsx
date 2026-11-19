@@ -1,3 +1,5 @@
+import { LessonPaymentOptions } from "./LessonPaymentOptions";
+import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, FileText } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
@@ -40,6 +42,20 @@ export function Payments({
   isDemo: boolean;
 }) {
   const student = data.students[0];
+  const [params] = useSearchParams();
+  const lessonId = params.get("lesson");
+  const paying = params.get("pay") === "lesson";
+  const lesson = data.lessons.find(
+    (item) =>
+      item.id === lessonId &&
+      (item.studentId === student?.id ||
+        data.lessonParticipants.some(
+          (participant) =>
+            participant.lessonId === item.id &&
+            participant.studentId === student?.id &&
+            participant.status !== "cancelled",
+        )),
+  );
   const payments = data.payments.filter(
     (item) => item.studentId === student?.id,
   );
@@ -48,9 +64,13 @@ export function Payments({
   );
   const paymentPage = usePagedList(payments);
   const packagePage = usePagedList(packages);
-  const preferredDuration = student
-    ? recentLessonDuration(data.lessons, student.id)
-    : undefined;
+  const preferredDuration = lesson
+    ? Math.round(
+        (Date.parse(lesson.endsAt) - Date.parse(lesson.startsAt)) / 60_000,
+      )
+    : student
+      ? recentLessonDuration(data.lessons, student.id)
+      : undefined;
   const sourceDefinitions = data.packageDefinitions.filter(
     (item) =>
       item.active && item.visibility === "public" && item.directPurchase,
@@ -88,7 +108,7 @@ export function Payments({
           a.name.localeCompare(b.name),
     );
   }, [durationFilter, packageSort, preferredDuration, purchasableDefinitions]);
-  const [params] = useSearchParams();
+  const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
   const [purchaseDefinition, setPurchaseDefinition] =
@@ -105,16 +125,21 @@ export function Payments({
       setPurchaseDefinition(packageOffer(definition, data, student));
   }, [data, student, params]);
   const purchase = async (id: string) => {
+    if (checkoutBusy || !student) return;
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
       return;
     }
+    setCheckoutBusy(true);
+    setNotice("");
     try {
       const result = await studioCommand("finance", {
         command: "checkout_definition",
         expectedVersion: 0,
         payload: {
           packageDefinitionId: id,
+          studentId: student.id,
+          lessonId: lesson?.id,
           renewalMode,
           expectedPriceMinor: purchaseDefinition?.priceMinor,
           expectedCurrency: purchaseDefinition?.currency,
@@ -128,6 +153,7 @@ export function Payments({
           ? reason.message
           : "Checkout could not be opened.",
       );
+      setCheckoutBusy(false);
     }
   };
   const cancelRenewal = async (
@@ -180,7 +206,35 @@ export function Payments({
     <div className="student-page">
       <header className="student-header">
         <h1>Payments</h1>
+        {!paying && student && (
+          <Link
+            className="button-link primary"
+            to={lessonPaymentPath(student.id)}
+          >
+            Pay for my lesson
+          </Link>
+        )}
       </header>
+      {params.get("checkout") === "processing" && !params.has("invoice") && (
+        <p role="status" className="portal-notice">
+          Checkout returned. Your package will appear after payment is
+          confirmed.
+        </p>
+      )}
+      {params.get("checkout") === "cancelled" && !params.has("invoice") && (
+        <p role="status" className="portal-notice">
+          Checkout was canceled. You can choose a package again below.
+        </p>
+      )}
+      {paying && student && (
+        <LessonPaymentOptions
+          data={data}
+          isDemo={isDemo}
+          studentId={student.id}
+          lesson={lesson}
+          hasPackages={purchasableDefinitions.length > 0}
+        />
+      )}
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
@@ -188,13 +242,17 @@ export function Payments({
       )}
       {student && (
         <>
-          {!isDemo && <StudentFinancialSummary studentId={student.id} />}
-          <CreditAccount
-            data={data}
-            studentId={student.id}
-            isDemo={isDemo}
-            readOnly
-          />
+          {!paying && !isDemo && (
+            <StudentFinancialSummary studentId={student.id} />
+          )}
+          {!paying && (
+            <CreditAccount
+              data={data}
+              studentId={student.id}
+              isDemo={isDemo}
+              readOnly
+            />
+          )}
           <details
             className="disclosure-section"
             open={params.has("invoice") || undefined}
@@ -209,7 +267,7 @@ export function Payments({
           </details>
         </>
       )}
-      {student && isDemo && (
+      {!paying && student && isDemo && (
         <Section title="Dollar account credit" marked>
           <div
             className="account-balance-card"
@@ -224,43 +282,48 @@ export function Payments({
           </div>
         </Section>
       )}
-      <details className="disclosure-section">
-        <summary>Receipts & adjustments ({payments.length})</summary>
-        <Section title="Receipts & adjustments">
-          <ListControls
-            {...paymentPage}
-            total={payments.length}
-            onPage={paymentPage.setPage}
-            onPageSize={paymentPage.setPageSize}
-            label="payments"
-          />
-          <div className="table-list">
-            {paymentPage.visible.map((entry) => (
-              <article key={entry.id} className="payment-history-row">
-                <FileText />
-                <div>
-                  <strong>{entry.reason}</strong>
-                  <small>
-                    {formatStudioDate(entry.createdAt, data.settings.timezone)}{" "}
-                    · {entry.externalReference ?? "Studio ledger"}
-                  </small>
-                </div>
-                <strong className="payment-history-amount">
-                  {entry.kind === "refund" ? "+" : "−"}
-                  {formatMoney(entry.amountMinor, entry.currency)}
-                </strong>
-              </article>
-            ))}
-            {!payments.length && (
-              <EmptyState
-                title="No payment history"
-                detail="Receipts, refunds, and adjustments will appear here."
-              />
-            )}
-          </div>
-        </Section>
-      </details>
-      {packages.length > 0 && (
+      {!paying && (
+        <details className="disclosure-section">
+          <summary>Receipts & adjustments ({payments.length})</summary>
+          <Section title="Receipts & adjustments">
+            <ListControls
+              {...paymentPage}
+              total={payments.length}
+              onPage={paymentPage.setPage}
+              onPageSize={paymentPage.setPageSize}
+              label="payments"
+            />
+            <div className="table-list">
+              {paymentPage.visible.map((entry) => (
+                <article key={entry.id} className="payment-history-row">
+                  <FileText />
+                  <div>
+                    <strong>{entry.reason}</strong>
+                    <small>
+                      {formatStudioDate(
+                        entry.createdAt,
+                        data.settings.timezone,
+                      )}{" "}
+                      · {entry.externalReference ?? "Studio ledger"}
+                    </small>
+                  </div>
+                  <strong className="payment-history-amount">
+                    {entry.kind === "refund" ? "+" : "−"}
+                    {formatMoney(entry.amountMinor, entry.currency)}
+                  </strong>
+                </article>
+              ))}
+              {!payments.length && (
+                <EmptyState
+                  title="No payment history"
+                  detail="Receipts, refunds, and adjustments will appear here."
+                />
+              )}
+            </div>
+          </Section>
+        </details>
+      )}
+      {!paying && packages.length > 0 && (
         <Section title="Your packages">
           <ListControls
             {...packagePage}
@@ -324,75 +387,81 @@ export function Payments({
         </p>
       )}
       {purchasableDefinitions.length > 0 && (
-        <Section title="Available packages">
-          {purchasableDefinitions.length > 1 && (
-            <div className="list-controls package-purchase-controls">
-              <label>
-                Lesson length
-                <select
-                  value={durationFilter}
-                  onChange={(event) => setDurationFilter(event.target.value)}
-                >
-                  <option value="all">All lesson lengths</option>
-                  {durationOptions.map((duration) => (
-                    <option key={duration} value={duration}>
-                      {duration} minutes
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Sort packages
-                <select
-                  value={packageSort}
-                  onChange={(event) =>
-                    setPackageSort(event.target.value as typeof packageSort)
-                  }
-                >
-                  <option value="recommended">Recommended first</option>
-                  <option value="shortest">Shortest lessons first</option>
-                  <option value="longest">Longest lessons first</option>
-                </select>
-              </label>
-            </div>
-          )}
-          <div className="table-list package-offer-list">
-            {availableDefinitions.map((definition) => (
-              <article key={definition.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{definition.name}</strong>
-                  <small>
-                    {definition.sessionDurationMinutes === preferredDuration
-                      ? "Matches your latest lesson · "
-                      : ""}
-                    {definition.sessionCount} sessions ·{" "}
-                    {definition.sessionDurationMinutes} minutes each ·{" "}
-                    {formatMoney(definition.priceMinor, definition.currency)}
-                  </small>
-                  <ul className="package-benefits">
-                    {packageBenefitLines(definition).map((benefit) => (
-                      <li key={benefit}>{benefit}</li>
+        <div id="lesson-packages" tabIndex={-1}>
+          <Section title="Available packages">
+            {purchasableDefinitions.length > 1 && (
+              <div className="list-controls package-purchase-controls">
+                <label>
+                  Lesson length
+                  <select
+                    value={durationFilter}
+                    onChange={(event) => setDurationFilter(event.target.value)}
+                  >
+                    <option value="all">All lesson lengths</option>
+                    {durationOptions.map((duration) => (
+                      <option key={duration} value={duration}>
+                        {duration} minutes
+                      </option>
                     ))}
-                  </ul>
-                </div>
-                <button
-                  onClick={() => {
-                    setPurchaseDefinition(definition);
-                    setRenewalMode("one_time");
-                  }}
-                >
-                  Choose package
-                </button>
-              </article>
-            ))}
-          </div>
-        </Section>
+                  </select>
+                </label>
+                <label>
+                  Sort packages
+                  <select
+                    value={packageSort}
+                    onChange={(event) =>
+                      setPackageSort(event.target.value as typeof packageSort)
+                    }
+                  >
+                    <option value="recommended">Recommended first</option>
+                    <option value="shortest">Shortest lessons first</option>
+                    <option value="longest">Longest lessons first</option>
+                  </select>
+                </label>
+              </div>
+            )}
+            <div className="table-list package-offer-list">
+              {availableDefinitions.map((definition) => (
+                <article key={definition.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{definition.name}</strong>
+                    <small>
+                      {definition.sessionDurationMinutes === preferredDuration
+                        ? lesson
+                          ? "Matches this lesson’s length · "
+                          : "Matches your latest lesson · "
+                        : ""}
+                      {definition.sessionCount} sessions ·{" "}
+                      {definition.sessionDurationMinutes} minutes each ·{" "}
+                      {formatMoney(definition.priceMinor, definition.currency)}
+                    </small>
+                    <ul className="package-benefits">
+                      {packageBenefitLines(definition).map((benefit) => (
+                        <li key={benefit}>{benefit}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <button
+                    onClick={() => {
+                      setPurchaseDefinition(definition);
+                      setRenewalMode("one_time");
+                    }}
+                  >
+                    Choose package
+                  </button>
+                </article>
+              ))}
+            </div>
+          </Section>
+        </div>
       )}
       {purchaseDefinition && (
         <Dialog
           title={purchaseDefinition.name}
-          onClose={() => setPurchaseDefinition(undefined)}
+          onClose={() => {
+            if (!checkoutBusy) setPurchaseDefinition(undefined);
+          }}
         >
           <div className="package-purchase-summary">
             <strong>
@@ -407,6 +476,7 @@ export function Payments({
             Purchase option
             <select
               value={renewalMode}
+              disabled={checkoutBusy}
               onChange={(event) => setRenewalMode(event.target.value)}
             >
               {data.packageBillingOptions
@@ -432,6 +502,12 @@ export function Payments({
             One credit covers one lesson of any service or duration. Your
             account’s automatic-use preference applies.
           </p>
+          {paying && (
+            <p>
+              Check the lesson balance after checkout to see whether a credit
+              was applied.
+            </p>
+          )}
           {renewalMode === "balance_threshold" && (
             <p className="portal-notice">
               By continuing, you authorize Coach’D to charge the saved payment
@@ -440,14 +516,20 @@ export function Payments({
             </p>
           )}
           <div className="form-actions">
-            <button onClick={() => setPurchaseDefinition(undefined)}>
+            <button
+              disabled={checkoutBusy}
+              onClick={() => setPurchaseDefinition(undefined)}
+            >
               Cancel
             </button>
             <button
               className="primary"
+              disabled={checkoutBusy}
               onClick={() => void purchase(purchaseDefinition.id)}
             >
-              Continue to secure checkout
+              {checkoutBusy
+                ? "Opening checkout…"
+                : "Continue to secure checkout"}
             </button>
           </div>
           {purchaseDefinition.giftable && (

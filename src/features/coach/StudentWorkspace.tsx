@@ -1,3 +1,4 @@
+import { workSectionSearch } from "../../hooks/useWorkView";
 import {
   useUnsavedWorkspaceChanges,
   useWorkspaceNavigation,
@@ -84,11 +85,7 @@ const Lessons = lazy(() =>
     default: module.Lessons,
   })),
 );
-const Notes = lazy(() =>
-  import("./StudentWorkspaceNotes").then((module) => ({
-    default: module.Notes,
-  })),
-);
+
 const Overview = lazy(() =>
   import("./StudentWorkspaceOverview").then((module) => ({
     default: module.Overview,
@@ -97,6 +94,11 @@ const Overview = lazy(() =>
 const Payments = lazy(() =>
   import("./StudentWorkspacePayments").then((module) => ({
     default: module.Payments,
+  })),
+);
+const StudentMaterials = lazy(() =>
+  import("./StudentWorkspaceWork").then((module) => ({
+    default: module.StudentMaterials,
   })),
 );
 const Work = lazy(() =>
@@ -132,7 +134,7 @@ export function StudentWorkspace() {
     | "lesson"
     | "assignment"
     | "material"
-    | "script-material"
+    | "lesson-files"
     | "note-resource"
     | "actor-material"
     | "note"
@@ -201,7 +203,7 @@ export function StudentWorkspace() {
     ["", "Overview"],
     ["lessons", "Lessons"],
     ["work", "My Work"],
-    ["notes", "Notes"],
+    ["materials", "Materials"],
     ["household", "Household"],
     ["payments", "Payments"],
   ] as const;
@@ -493,74 +495,6 @@ export function StudentWorkspace() {
       );
     }
   };
-  const updateMaterialStatus = async (material: Material) => {
-    try {
-      const status = material.status === "active" ? "archived" : "active";
-      if (isDemo)
-        store.transact((draft) => {
-          const current = draft.materials.find(
-            (item) => item.id === material.id,
-          );
-          if (current) {
-            current.status = status;
-            current.version += 1;
-          }
-        });
-      else {
-        await studioCommand("materials", {
-          command: "update_status",
-          entityId: material.id,
-          expectedVersion: material.version,
-          payload: { status },
-          reason: "Coach updated student material status",
-        });
-        await invalidateStudioDomains(queryClient, ["work"]);
-      }
-      setNotice(
-        status === "archived"
-          ? "Material archived."
-          : "Material restored to current work.",
-      );
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Material could not be updated.",
-      );
-    }
-  };
-  const deleteMaterial = async (material: Material) => {
-    if (
-      !window.confirm(
-        `Permanently delete “${material.title}”? The material record is removed. Uploaded files are retained for safe cleanup.`,
-      )
-    )
-      return;
-    try {
-      if (isDemo)
-        store.transact((draft) => {
-          draft.materials = draft.materials.filter(
-            (item) => item.id !== material.id,
-          );
-        });
-      else {
-        await studioCommand("materials", {
-          command: "delete",
-          entityId: material.id,
-          expectedVersion: material.version,
-          reason: "Coach permanently deleted student material",
-        });
-        await invalidateStudioDomains(queryClient, ["work"]);
-      }
-      setNotice("Material removed. Uploaded files retained for safe cleanup.");
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Material could not be deleted.",
-      );
-    }
-  };
   const removeStudent = async () => {
     if (removingStudent) return;
     setRemovingStudent(true);
@@ -766,6 +700,10 @@ export function StudentWorkspace() {
                   setWorkflowLessonId(lessonId);
                   setDialog("assignment");
                 }}
+                onAttachFiles={(lessonId) => {
+                  setWorkflowLessonId(lessonId);
+                  setDialog("lesson-files");
+                }}
                 onAddMaterial={(lessonId) => {
                   setWorkflowLessonId(lessonId);
                   setDialog("material");
@@ -781,25 +719,32 @@ export function StudentWorkspace() {
                 student={student}
                 isDemo={isDemo}
                 onAddAssignment={() => setDialog("assignment")}
-                onAddMaterial={() => setDialog("script-material")}
-                onArchiveMaterial={updateMaterialStatus}
-                onDeleteMaterial={deleteMaterial}
+                onAddNote={() => setDialog("note")}
+                onEditNote={(note) => {
+                  setEditingNote(note);
+                  setDialog("note");
+                }}
+                onDeleteNote={deleteNote}
               />
             }
           />
           <Route
             path="notes"
             element={
-              <Notes
-                data={data}
-                student={student}
-                onAdd={() => setDialog("note")}
-                onEdit={(note) => {
-                  setEditingNote(note);
-                  setDialog("note");
+              <Navigate
+                to={{
+                  pathname: base + "/work",
+                  search: workSectionSearch(location.search, "notes"),
                 }}
-                onDelete={deleteNote}
+                state={location.state}
+                replace
               />
+            }
+          />
+          <Route
+            path="materials"
+            element={
+              <StudentMaterials data={data} student={student} isDemo={isDemo} />
             }
           />
           <Route
@@ -988,12 +933,13 @@ export function StudentWorkspace() {
           onSave={addAssignment}
         />
       )}
-      {dialog === "material" && (
+      {(dialog === "material" || dialog === "lesson-files") && (
         <AddResourceFlow
           data={data}
           isDemo={isDemo}
           studentId={student.id}
           lessonId={workflowLessonId}
+          initialMode={dialog === "lesson-files" ? "upload" : "options"}
           onClose={() => {
             setDialog(null);
             setWorkflowLessonId(undefined);
@@ -1008,21 +954,6 @@ export function StudentWorkspace() {
           lessonId={editingNote.lessonId}
           noteId={editingNote.id}
           onClose={() => setDialog("note")}
-        />
-      )}
-      {dialog === "script-material" && (
-        <MaterialForm
-          student={student}
-          lessons={studentLessons}
-          timezone={data.settings.timezone}
-          isDemo={isDemo}
-          fixedRole="current_script"
-          initialLessonId={workflowLessonId}
-          onClose={() => {
-            setDialog(null);
-            setWorkflowLessonId(undefined);
-          }}
-          onSave={addMaterial}
         />
       )}
       {dialog === "actor-material" && (

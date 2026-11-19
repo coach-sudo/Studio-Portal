@@ -257,6 +257,9 @@ export async function handleInvoiceCommands(
       claimed = claim.data as Invoice;
     }
     if (!claimed.checkout_key) return json({ resource: claimed });
+    const returnStudent = claimed.checkout_key.startsWith("coach:")
+      ? ""
+      : "&student=" + encodeURIComponent(claimed.student_id);
     // Reusing the stored claim recovers safely after a provider/network interruption.
     let session = claimed.checkout_session_id
       ? await stripe.checkout.sessions.retrieve(claimed.checkout_session_id)
@@ -273,8 +276,8 @@ export async function handleInvoiceCommands(
                 quantity: 1,
               },
             ],
-            success_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}&checkout=processing`,
-            cancel_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}`,
+            success_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}${returnStudent}&checkout=processing`,
+            cancel_url: `${returnOrigin ?? portalOrigin(ctx.context)}${claimed.checkout_key.startsWith("coach:") ? "/coach/finance" : "/portal/payments"}?invoice=${claimed.id}${returnStudent}`,
             metadata: {
               studio_invoice_id: claimed.id,
               invoice_checkout_key: claimed.checkout_key,

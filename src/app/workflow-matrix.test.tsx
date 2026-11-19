@@ -217,7 +217,7 @@ describe("50 start-to-finish studio workflows", () => {
       await user.click(
         within(dialog).getByRole("button", { name: "Add resource" }),
       );
-      await user.click(screen.getByRole("link", { name: "My Work" }));
+      await user.click(screen.getByRole("link", { name: "Materials" }));
       expect(await screen.findByText("Hamlet sides")).toBeInTheDocument();
     });
     it("09 saves a private coach note", async () => {
@@ -392,7 +392,8 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("link", { name: "Scripts" }));
+      expect(await screen.findByText("The Seagull — Nina")).toBeInTheDocument();
     });
     it("18 keeps current work focused on assigned studio work", async () => {
       renderApp("/portal/work");
@@ -527,9 +528,11 @@ describe("50 start-to-finish studio workflows", () => {
     it("28 browses published notes by lesson", async () => {
       renderApp("/portal/notes");
       expect(
-        await screen.findByRole("heading", { name: "Notes" }),
+        await screen.findByRole("heading", { name: "Published lesson notes" }),
       ).toBeInTheDocument();
-      expect(screen.getByRole("region", { name: "Notes" })).toBeInTheDocument();
+      expect(
+        screen.getByRole("region", { name: "Published lesson notes" }),
+      ).toBeInTheDocument();
       expect(screen.getByLabelText("Search notes")).toBeInTheDocument();
     });
     it("29 updates portal timezone without losing the form", async () => {
@@ -706,7 +709,8 @@ describe("50 start-to-finish studio workflows", () => {
       expect(
         await screen.findByRole("heading", { name: "My Work" }),
       ).toBeInTheDocument();
-      expect(screen.getByText("The Seagull — Nina")).toBeInTheDocument();
+      await userEvent.click(screen.getByRole("link", { name: "Scripts" }));
+      expect(await screen.findByText("The Seagull — Nina")).toBeInTheDocument();
     });
   });
 

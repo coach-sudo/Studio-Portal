@@ -731,16 +731,28 @@ export async function handleFinanceCommands(
   if (domain === "finance" && input.command === "checkout_definition") {
     const definitionId = String(input.payload.packageDefinitionId || "");
     const requestedMode = String(input.payload.renewalMode || "one_time");
+    const selectedStudent =
+      typeof input.payload.studentId === "string"
+        ? input.payload.studentId
+        : undefined;
+    const studentQuery = db
+      .from("students")
+      .select("id,studio_id,stripe_customer_id");
+    if (selectedStudent) {
+      const access = await db.rpc("can_view_student_finance", {
+        target_student: selectedStudent,
+      });
+      if (access.error || !access.data) throw new Error("FORBIDDEN");
+    }
     const [
       { data: student, error: studentError },
       { data: definition, error: definitionError },
       { data: billingOption, error: optionError },
     ] = await Promise.all([
-      db
-        .from("students")
-        .select("id,studio_id,stripe_customer_id")
-        .limit(1)
-        .single(),
+      (selectedStudent
+        ? studentQuery.eq("id", selectedStudent)
+        : studentQuery.limit(1)
+      ).single(),
       db
         .from("package_definitions")
         .select("*")
@@ -811,7 +823,13 @@ export async function handleFinanceCommands(
     if (packageError) throw packageError;
     let packageSubscriptionId: string | undefined;
     try {
-      const origin = portalOrigin();
+      const origin = portalOrigin(ctx.context);
+      const returnParams = new URLSearchParams({ student: student.id });
+      const lessonId = input.payload.lessonId;
+      if (typeof lessonId === "string" && /^[a-f0-9-]{36}$/i.test(lessonId)) {
+        returnParams.set("pay", "lesson");
+        returnParams.set("lesson", lessonId);
+      }
       const scheduled = ["weekly", "biweekly", "monthly"].includes(
         requestedMode,
       );
@@ -845,8 +863,8 @@ export async function handleFinanceCommands(
           integration_identifier: integrationIdentifier,
           line_items: [{ price: stripePriceId, quantity: 1 }],
           client_reference_id: `${student.id}:${pkg.id}`,
-          success_url: `${origin}/portal/payments?checkout=processing`,
-          cancel_url: `${origin}/portal/payments?checkout=cancelled`,
+          success_url: `${origin}/portal/payments?${returnParams}&checkout=processing`,
+          cancel_url: `${origin}/portal/payments?${returnParams}&checkout=cancelled`,
           ...(student.stripe_customer_id
             ? { customer: student.stripe_customer_id }
             : {}),

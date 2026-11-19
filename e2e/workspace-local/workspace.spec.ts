@@ -109,6 +109,7 @@ test("student linked resource and lesson retain return context", async ({
     page.getByRole("heading", { name: "My Work", exact: true }),
   ).toBeVisible();
   await auditPage(page, "student-work-a11y");
+  await page.goto("/portal/materials?student=student-maya");
   await page
     .getByRole("button", { name: "Details", exact: true })
     .first()
@@ -122,7 +123,7 @@ test("student linked resource and lesson retain return context", async ({
     await expect(page).toHaveURL(/\/records\/resource\//);
   }
   await page.getByRole("button", { name: "Back", exact: true }).click();
-  await expect(page).toHaveURL(/\/portal\/work\?student=student-maya/);
+  await expect(page).toHaveURL(/\/portal\/materials\?student=student-maya/);
 });
 
 test("guardian authorized context survives refresh and history; forged context denies", async ({

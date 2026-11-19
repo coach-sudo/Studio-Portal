@@ -1,3 +1,4 @@
+import { studioDownloadName } from "../../data/uploadFormats";
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import type { ResourceDetail, StudyAnchor } from "../../domain/library";
 import {
@@ -296,6 +297,12 @@ export default function ResourceViewer({
   };
   const external = safeResourceUrl(resource.externalUrl),
     embed = embeddedResourceUrl(resource.externalUrl);
+  const download = url && new URL(url);
+  if (download)
+    download.searchParams.set(
+      "download",
+      studioDownloadName(resource.title, resource.mimeType),
+    );
   const fullscreen = async () => {
     try {
       await container.current?.requestFullscreen();
@@ -326,7 +333,10 @@ export default function ResourceViewer({
           </>
         )}
         <button onClick={() => void fullscreen()}>Fullscreen</button>
-        {(url || external) && (
+        {download && kind === "unsupported" && (
+          <a href={download.href}>Download file</a>
+        )}
+        {(url || external) && kind !== "unsupported" && (
           <a href={url || external!} target="_blank" rel="noopener noreferrer">
             {resource.storagePath ? "Open original" : "Open source"}
           </a>

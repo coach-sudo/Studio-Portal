@@ -56,6 +56,28 @@ export function InvoiceWorkspace({
       (!readOnly || i.status !== "draft"),
   );
   const selected = invoices.find((i) => i.id === params.get("invoice"));
+  const requestedLesson =
+    !readOnly &&
+    studentId &&
+    data.lessons.find(
+      (lesson) =>
+        lesson.id === params.get("billLesson") &&
+        lesson.studentId === studentId &&
+        ["scheduled", "completed"].includes(lesson.status) &&
+        !["paid", "paid_by_credit", "waived", "refunded"].includes(
+          lesson.paymentStatus || "",
+        ),
+    );
+  const existingLessonInvoice =
+    requestedLesson &&
+    invoices.find(
+      (invoice) =>
+        invoice.status !== "void" &&
+        invoice.items.some(
+          (line) =>
+            !line.cancelled && line.lessonIds.includes(requestedLesson.id),
+        ),
+    );
   const deliveryLabels = {
     not_sent: "Email not sent yet",
     queued: "Email queued",
@@ -403,6 +425,30 @@ export function InvoiceWorkspace({
           )
         }
       >
+        {requestedLesson && (
+          <div className="portal-notice">
+            <p>
+              <strong>{requestedLesson.topic}</strong> ·{" "}
+              {studioDateKey(requestedLesson.startsAt, data.settings.timezone)}
+            </p>
+            {existingLessonInvoice ? (
+              <button
+                type="button"
+                onClick={() => open(existingLessonInvoice.id)}
+              >
+                View linked invoice
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditing("new")}
+                disabled={query.isLoading || !!query.error}
+              >
+                Prepare lesson invoice
+              </button>
+            )}
+          </div>
+        )}
         {query.isLoading && <p role="status">Loading invoices…</p>}
         {query.error && <p role="alert">{query.error.message}</p>}
         <div className="table-list">
@@ -457,6 +503,11 @@ export function InvoiceWorkspace({
           data={data}
           studentId={studentId}
           initial={editing === "new" ? undefined : editing}
+          lessonId={
+            editing === "new" && requestedLesson && !existingLessonInvoice
+              ? requestedLesson.id
+              : undefined
+          }
           onClose={() => setEditing(undefined)}
           onSave={async (value, status, idempotencyKey) => {
             if (isDemo) {
@@ -817,12 +868,14 @@ function InvoiceEditor({
   data,
   studentId,
   initial,
+  lessonId,
   onClose,
   onSave,
 }: {
   data: StudioSnapshot;
   studentId?: string;
   initial?: Invoice;
+  lessonId?: string;
   onClose: () => void;
   onSave: (
     invoice: Invoice,
@@ -855,7 +908,30 @@ function InvoiceEditor({
     [footer, setFooter] = useState(
       initial?.footer ?? "We look forward to working with you.",
     ),
-    [items, setItems] = useState<InvoiceLine[]>(initial?.items ?? []),
+    [items, setItems] = useState<InvoiceLine[]>(() => {
+      if (initial) return initial.items;
+      const lesson = data.lessons.find((item) => item.id === lessonId);
+      const service =
+        lesson &&
+        data.bookingServices.find((item) => item.id === lesson.serviceId);
+      if (!lesson || !service) return [];
+      const date = studioDateKey(lesson.startsAt, data.settings.timezone);
+      return [
+        {
+          id: crypto.randomUUID(),
+          kind: "service",
+          referenceId: service.id,
+          description: lesson.topic || service.name,
+          quantity: 1,
+          unitMinor: lesson.priceMinor ?? service.priceMinor,
+          startsOn: date,
+          endsOn: date,
+          lessonIds: [lesson.id],
+          creditMinor: 0,
+          paidMinor: 0,
+        },
+      ];
+    }),
     [preview, setPreview] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");

@@ -17,7 +17,7 @@ export function portalDomains(pathname: string): readonly StudioDomain[] {
     return queryLayerV2Enabled
       ? ["identity", "students", "lessons"]
       : ["identity", "students", "work"];
-  if (route === "/portal/work")
+  if (route === "/portal/work" || route === "/portal/materials")
     return ["identity", "students", "work", "lessons"];
   if (route === "/portal/bookings")
     return ["identity", "students", "lessons", "booking"];

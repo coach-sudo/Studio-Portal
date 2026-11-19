@@ -1,15 +1,5 @@
 import { isSupabaseConfigured, supabase } from "../lib/supabase";
-const MAX_FILE_BYTES = 50 * 1024 * 1024;
-const ALLOWED = new Set([
-  "application/pdf",
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "video/mp4",
-  "audio/mpeg",
-  "audio/mp4",
-  "text/plain",
-]);
+import { studioFileType } from "./uploadFormats";
 
 export async function uploadStudioFile(input: {
   studioId: string;
@@ -28,10 +18,7 @@ export async function uploadStudioFile(input: {
 }) {
   if (!isSupabaseConfigured || !supabase)
     throw new Error("Production file storage is not configured.");
-  if (input.file.size < 1 || input.file.size > MAX_FILE_BYTES)
-    throw new Error("Choose a file smaller than 50 MB.");
-  if (!ALLOWED.has(input.file.type))
-    throw new Error("That file type is not supported.");
+  const mimeType = studioFileType(input.file);
   const {
     data: { user },
   } = await supabase.auth.getUser();
@@ -76,8 +63,8 @@ export async function uploadStudioFile(input: {
   const path = `${input.studioId}/${owner}/${input.visibility || "private"}/sha256-${contentHash}`;
   const { error: uploadError } = await supabase.storage
     .from("studio-materials")
-    .upload(path, input.file, {
-      contentType: input.file.type,
+    .upload(path, new Blob([input.file], { type: mimeType }), {
+      contentType: mimeType,
       upsert: false,
       cacheControl: "3600",
     });
@@ -97,7 +84,7 @@ export async function uploadStudioFile(input: {
       bucket_id: "studio-materials",
       storage_path: path,
       original_name: input.file.name,
-      mime_type: input.file.type,
+      mime_type: mimeType,
       file_size_bytes: input.file.size,
       visibility: input.visibility || "private",
       content_sha256: contentHash,
@@ -128,7 +115,7 @@ export async function uploadStudioFile(input: {
     id: data.id,
     storagePath: path,
     signedUrl: signed?.signedUrl,
-    mimeType: input.file.type,
+    mimeType: mimeType,
     fileSizeBytes: input.file.size,
     deduplicated: !!uploadError,
   };

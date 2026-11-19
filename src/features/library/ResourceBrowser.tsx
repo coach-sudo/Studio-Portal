@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { LessonFiles } from "./LessonFiles";
 import { useSearchIdentity } from "../../data/globalSearch";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { recordLink } from "../../app/recordLinks";
@@ -380,6 +382,7 @@ export function ResourceBrowser({
   showActions = true,
   title,
   excludeScripts = false,
+  primaryAction,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
@@ -391,6 +394,7 @@ export function ResourceBrowser({
   showActions?: boolean;
   title?: string;
   excludeScripts?: boolean;
+  primaryAction?: ReactNode;
 }) {
   const store = useStudioStore(),
     queryClient = useQueryClient(),
@@ -403,7 +407,7 @@ export function ResourceBrowser({
       (contact) => contact.id === data.currentLinkedContactId,
     )?.canManageProfile;
   const workspace = useWorkspaceNavigation(
-    data.role === "coach" ? "/coach/materials" : "/portal/work",
+    data.role === "coach" ? "/coach/materials" : "/portal/materials",
   );
   const [search, setSearch] = useUrlValue("q"),
     [collectionId, setCollectionId] = useUrlValue("collection"),
@@ -541,8 +545,8 @@ export function ResourceBrowser({
     <Section
       title={title || (catalog ? "Studio Library" : "My Materials")}
       aside={
-        showActions &&
-        canManage && (
+        primaryAction ||
+        (showActions && canManage && (
           <div className="page-actions">
             <button
               className="primary"
@@ -562,7 +566,7 @@ export function ResourceBrowser({
               </button>
             )}
           </div>
-        )
+        ))
       }
     >
       <div className="resource-search">
@@ -895,6 +899,7 @@ export function AddResourceFlow({
   lessonId,
   noteId,
   onClose,
+  initialMode = "options",
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
@@ -902,9 +907,23 @@ export function AddResourceFlow({
   lessonId?: string;
   noteId?: string;
   onClose: () => void;
+  initialMode?: "options" | "upload";
 }) {
-  const [mode, setMode] = useState("choose"),
+  const [mode, setMode] = useState<"options" | "choose" | "upload" | "new">(
+      initialMode,
+    ),
     [chosen, setChosen] = useState<LibraryResource>();
+  if (mode === "upload" && studentId)
+    return (
+      <LessonFiles
+        data={data}
+        isDemo={isDemo}
+        studentId={studentId}
+        lessonId={lessonId}
+        noteId={noteId}
+        onClose={onClose}
+      />
+    );
   if (mode === "new")
     return (
       <ResourceEditor
@@ -923,6 +942,15 @@ export function AddResourceFlow({
       onClose={onClose}
     >
       <div className="page-actions resource-flow-choices">
+        {studentId && (
+          <button
+            className="primary"
+            type="button"
+            onClick={() => setMode("upload")}
+          >
+            Upload files
+          </button>
+        )}
         <button
           type="button"
           aria-pressed={mode === "choose"}
@@ -949,16 +977,18 @@ export function AddResourceFlow({
           onSaved={onClose}
         />
       )}
-      <div hidden={!!chosen}>
-        <ResourceBrowser
-          data={data}
-          isDemo={isDemo}
-          studentId={studentId}
-          catalog
-          onChoose={setChosen}
-          showActions={false}
-        />
-      </div>
+      {mode === "choose" && (
+        <div hidden={!!chosen}>
+          <ResourceBrowser
+            data={data}
+            isDemo={isDemo}
+            studentId={studentId}
+            catalog
+            onChoose={setChosen}
+            showActions={false}
+          />
+        </div>
+      )}
     </Drawer>
   );
 }
