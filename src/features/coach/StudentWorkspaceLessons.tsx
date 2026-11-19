@@ -1,3 +1,4 @@
+import { canPrepareLessonInvoice } from "../../domain/invoices";
 import { LessonPaymentReceipt } from "../../components/LessonPaymentReceipt";
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
@@ -797,7 +798,7 @@ function CoachLessonWorkspace({
                   lesson.paymentStatus || "",
                 ) && (
                   <div className="page-actions">
-                    {!lesson.invoiceId && (
+                    {canPrepareLessonInvoice(data, lesson, student.id) && (
                       <Link
                         className="button-link"
                         to={

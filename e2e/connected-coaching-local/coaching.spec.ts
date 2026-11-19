@@ -324,6 +324,9 @@ test("next lesson updates payment links and closes the previous lesson actions",
   await expect(
     payment.getByRole("link", { name: "Email payment link" }),
   ).toHaveAttribute("href", new RegExp("lesson=" + lessonId + "$"));
+  await expect(
+    payment.getByRole("link", { name: "Prepare lesson invoice" }),
+  ).toHaveCount(0);
   await payment.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("link", { name: "Next lesson", exact: true }).click();
   await expect(payment).toBeHidden();

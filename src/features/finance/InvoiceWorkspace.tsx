@@ -16,6 +16,7 @@ import { lessonCreditDebit, reserveDemoCredits } from "../../domain/credits";
 import { packageOffer } from "../../domain/packagePricing";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import {
+  canPrepareLessonInvoice,
   invoiceDue,
   invoiceLineTotal,
   type Invoice,
@@ -57,17 +58,16 @@ export function InvoiceWorkspace({
   );
   const selected = invoices.find((i) => i.id === params.get("invoice"));
   const requestedLesson =
-    !readOnly &&
-    studentId &&
-    data.lessons.find(
-      (lesson) =>
-        lesson.id === params.get("billLesson") &&
-        lesson.studentId === studentId &&
-        ["scheduled", "completed"].includes(lesson.status) &&
-        !["paid", "paid_by_credit", "waived", "refunded"].includes(
-          lesson.paymentStatus || "",
-        ),
-    );
+    !readOnly && studentId
+      ? data.lessons.find(
+          (lesson) =>
+            lesson.id === params.get("billLesson") &&
+            lesson.studentId === studentId,
+        )
+      : undefined;
+  const canPrepare =
+    !!requestedLesson &&
+    canPrepareLessonInvoice(data, requestedLesson, requestedLesson.studentId);
   const existingLessonInvoice =
     requestedLesson &&
     invoices.find(
@@ -438,7 +438,7 @@ export function InvoiceWorkspace({
               >
                 View linked invoice
               </button>
-            ) : (
+            ) : canPrepare ? (
               <button
                 type="button"
                 onClick={() => setEditing("new")}
@@ -446,6 +446,8 @@ export function InvoiceWorkspace({
               >
                 Prepare lesson invoice
               </button>
+            ) : (
+              <p>Review this lesson’s payment history before billing.</p>
             )}
           </div>
         )}
@@ -504,7 +506,10 @@ export function InvoiceWorkspace({
           studentId={studentId}
           initial={editing === "new" ? undefined : editing}
           lessonId={
-            editing === "new" && requestedLesson && !existingLessonInvoice
+            editing === "new" &&
+            requestedLesson &&
+            canPrepare &&
+            !existingLessonInvoice
               ? requestedLesson.id
               : undefined
           }

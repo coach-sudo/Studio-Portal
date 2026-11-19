@@ -1,3 +1,5 @@
+import type { Lesson, StudioSnapshot } from "./model";
+
 export interface InvoiceLine {
   id: string;
   kind: "service" | "package";
@@ -75,6 +77,39 @@ export const invoiceDue = (invoice: Invoice) =>
           invoice.credit_minor -
           (invoice.waived_minor ?? 0),
       );
+/** Mirror the invoice command's ownership and payment-coverage checks. */
+export function canPrepareLessonInvoice(
+  data: Pick<StudioSnapshot, "lessonParticipants" | "bookings">,
+  lesson: Lesson,
+  studentId: string,
+) {
+  if (
+    lesson.studentId !== studentId ||
+    !["scheduled", "completed"].includes(lesson.status) ||
+    (lesson.paidMinor ?? 0) !== 0 ||
+    !["untracked", "due"].includes(lesson.paymentStatus ?? "untracked") ||
+    lesson.invoiceId ||
+    lesson.invoicePaymentPending
+  )
+    return false;
+
+  return !data.lessonParticipants.some(
+    (participant) =>
+      participant.lessonId === lesson.id &&
+      participant.bookingId &&
+      data.bookings.some(
+        (booking) =>
+          booking.id === participant.bookingId &&
+          booking.studentId === studentId &&
+          booking.paymentPolicy !== "credits" &&
+          (booking.paidMinor > 0 ||
+            ["paid", "partially_paid", "processing", "not_required"].includes(
+              booking.paymentStatus,
+            )),
+      ),
+  );
+}
+
 export function invoiceLineTotal(
   line: Pick<InvoiceLine, "quantity" | "unitMinor">,
 ) {
