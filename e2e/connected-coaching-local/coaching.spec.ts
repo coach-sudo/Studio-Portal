@@ -347,6 +347,11 @@ test("next lesson updates payment links and closes the previous lesson actions",
 test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({
   page,
 }) => {
+  const scriptInputWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /controlled input/.test(message.text()))
+      scriptInputWarnings.push(message.text());
+  });
   await prepare(page);
   await page.goto(`/coach/students/student-maya/lessons/${lessonId}`);
   await page.getByRole("button", { name: "Attach files", exact: true }).click();
@@ -387,6 +392,16 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
     .selectOption("link");
   await page.getByLabel("Script link").fill("https://example.test/current");
   await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("file");
+  await expect(page.getByLabel("Script file")).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
+  await expect(page.getByLabel("Script link")).toHaveValue(
+    "https://example.test/current",
+  );
+  await page
     .getByLabel("Title", { exact: true })
     .fill("First rehearsal script");
   await page.getByRole("button", { name: "Save current script" }).click();
@@ -413,6 +428,7 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
   await expect(
     page.getByText("Revised rehearsal script", { exact: true }),
   ).toHaveCount(0);
+  expect(scriptInputWarnings).toEqual([]);
 });
 
 test("lesson payment email opens the same authorized choices on desktop and phone", async ({
@@ -681,4 +697,55 @@ test("whole-lesson payment selection stays readable across layouts and themes", 
     page.getByText("1 lesson selected · $85.00 total"),
   ).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(1);
+});
+
+test.describe("portal notification accessibility", () => {
+  test.use({ hasTouch: true, viewport: { width: 320, height: 860 } });
+
+  test("notification actions stay readable and reachable in either theme", async ({
+    page,
+  }) => {
+    await prepare(page);
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((appearance) => {
+        const key = "stage-story-studio-core-v2";
+        const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+        const student = data.students.find(
+          (item) => item.id === "student-maya",
+        )!;
+        student.portalPreferences = {
+          ...student.portalPreferences,
+          appearance,
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+      }, theme);
+      await page.goto("/portal/payments?pay=lesson&student=student-maya");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-portal-theme",
+        theme,
+      );
+      const skip = page.getByRole("link", { name: "Skip to main content" });
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await skip.focus();
+      await expect(skip).toHaveCSS("clip-path", "none");
+      await page.keyboard.press("Tab");
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await page.getByRole("button", { name: /unread notifications/ }).tap();
+      await expect(
+        page.getByRole("region", { name: "Recent activity" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Clear all" }),
+      ).toBeVisible();
+      const audit = await new AxeBuilder({ page })
+        .include(".activity-center")
+        .analyze();
+      expect(
+        audit.violations.filter((issue) =>
+          ["serious", "critical"].includes(issue.impact ?? ""),
+        ),
+      ).toEqual([]);
+      await page.getByRole("button", { name: "Close notifications" }).tap();
+    }
+  });
 });

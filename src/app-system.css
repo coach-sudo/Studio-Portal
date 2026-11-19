@@ -75,7 +75,14 @@
 
 .activity-menu > header { gap: 10px; }
 .activity-menu > header > span { display: flex; align-items: center; gap: 3px; }
-.activity-clear { min-height: 38px; padding: 0 8px; color: var(--sage); font-size: 11px; font-weight: 800; }
+.activity-menu .activity-clear {
+  width: auto;
+  min-height: var(--control-md);
+  padding-inline: 8px;
+  color: var(--ink);
+  font-size: 0.875rem;
+  font-weight: 700;
+}
 
 button, .button-link, .booking-primary, input, select, textarea, [contenteditable="true"] { border-radius: var(--app-radius-control); }
 button, .button-link, .booking-primary { transition: transform 120ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease; }
