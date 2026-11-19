@@ -26,6 +26,7 @@ import {
 } from "../../domain/trainingArrangement";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { portalContextLink } from "../../domain/coachingContext";
+import { continuationStart } from "../../domain/recurringOccurrences";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -436,44 +437,112 @@ export function StudentBookings({
           <div className="series-portal">
             {data.recurringSeries
               .filter((series) => series.studentId === studentId)
-              .map((series) => (
-                <article key={series.id}>
-                  <Repeat2 />
-                  <div>
-                    <strong>
-                      {
-                        data.bookingServices.find(
-                          (item) => item.id === series.serviceId,
-                        )?.name
-                      }
-                    </strong>
-                    <small>
-                      {series.cadence} ·{" "}
-                      {
-                        arrangement.upcoming.filter(
-                          (item) => item.series?.id === series.id,
-                        ).length
-                      }{" "}
-                      confirmed upcoming
-                    </small>
-                  </div>
-                  <Status tone={series.status === "active" ? "good" : "warn"}>
-                    {series.status.replaceAll("_", " ")}
-                  </Status>
-                  {series.status === "active" &&
-                    series.studentCanModify &&
-                    canManageLessons &&
-                    data.bookings.some(
-                      (booking) =>
-                        booking.studentId === studentId &&
-                        booking.seriesId === series.id,
-                    ) && (
-                      <button onClick={() => cancelSeries(series.id)}>
-                        End plan
-                      </button>
+              .map((series) => {
+                const service = data.bookingServices.find(
+                  (item) => item.id === series.serviceId,
+                );
+                const occurrences = arrangement.occurrences.filter(
+                  (item) => item.series?.id === series.id,
+                );
+                const upcomingCount = occurrences.filter((item) =>
+                  upcoming.includes(item),
+                ).length;
+                const last = occurrences.at(-1)?.lesson;
+                const latestStart =
+                  service &&
+                  continuationStart(
+                    series,
+                    occurrences.map((item) => item.lesson),
+                    data.settings.timezone,
+                    service.durationMinutes,
+                  );
+                const allowContinuation =
+                  canManageLessons &&
+                  latestStart &&
+                  service?.published &&
+                  service.category === "private" &&
+                  service.paymentPolicies.includes("pay_later") &&
+                  service.recurrenceOptions.includes(series.cadence) &&
+                  !data.recurringSeries.some(
+                    (child) =>
+                      child.studentId === studentId &&
+                      child.status !== "cancelled" &&
+                      child.recurrenceRule?.sourceSeriesId === series.id,
+                  ) &&
+                  data.settings.bookingDefaults.allowPayLater &&
+                  data.settings.bookingDefaults.allowRecurring;
+                const params = allowContinuation
+                  ? new URLSearchParams({
+                      continueSeries: series.id,
+                      student: studentId,
+                      start: latestStart,
+                      cadence: series.cadence,
+                    })
+                  : null;
+                return (
+                  <article key={series.id}>
+                    <Repeat2 aria-hidden="true" />
+                    <div>
+                      <strong>{service?.name ?? "Recurring lessons"}</strong>
+                      <small>
+                        {series.cadence === "weekly"
+                          ? "Weekly"
+                          : "Every other week"}{" "}
+                        · {upcomingCount} confirmed upcoming
+                      </small>
+                      {last && (
+                        <small>
+                          {["scheduled", "completed"].includes(last.status)
+                            ? "Last recorded lesson"
+                            : "Last date changed"}{" "}
+                          ·{" "}
+                          {formatStudioDateTime(
+                            last.startsAt,
+                            data.settings.timezone,
+                          )}
+                        </small>
+                      )}
+                      {allowContinuation && (
+                        <small>
+                          Continue from{" "}
+                          {formatStudioDateTime(
+                            latestStart,
+                            data.settings.timezone,
+                          )}
+                        </small>
+                      )}
+                      {series.kind === "fixed" && last && !latestStart && (
+                        <small>
+                          This series needs review before adding dates.
+                        </small>
+                      )}
+                    </div>
+                    {params && service && (
+                      <Link
+                        className="button-link"
+                        to={`/book/${service.slug}?${params}`}
+                      >
+                        Continue this schedule
+                      </Link>
                     )}
-                </article>
-              ))}
+                    <Status tone={series.status === "active" ? "good" : "warn"}>
+                      {series.status.replaceAll("_", " ")}
+                    </Status>
+                    {series.status === "active" &&
+                      series.studentCanModify &&
+                      canManageLessons &&
+                      data.bookings.some(
+                        (booking) =>
+                          booking.studentId === studentId &&
+                          booking.seriesId === series.id,
+                      ) && (
+                        <button onClick={() => cancelSeries(series.id)}>
+                          End plan
+                        </button>
+                      )}
+                  </article>
+                );
+              })}
           </div>
         </Section>
       )}

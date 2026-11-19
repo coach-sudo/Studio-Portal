@@ -27,6 +27,8 @@
     "src/domain/packageRecommendations.ts",
     "src/domain/actorLayout.ts",
     "src/domain/booking.ts",
+    "src/domain/recurringOccurrences.ts",
+    "src/domain/presentation.ts",
     "src/domain/zonedInput.ts",
     "src/domain/studentSetup.ts",
     "src/domain/settingsPatch.ts",

@@ -1,4 +1,5 @@
 import { seriesDates } from "../../domain/booking";
+import { selectRecurringOccurrences } from "../../domain/recurringOccurrences";
 import type {
   Booking,
   BookingService,
@@ -37,6 +38,7 @@ export const locationLabel = (value: MeetingProvider) =>
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export type PublicStudio = {
   name: string;
+  timezone?: string;
   coachName?: string;
   branding: StudioSnapshot["settings"]["branding"];
   bookingCopy: StudioSnapshot["settings"]["bookingCopy"];
@@ -115,6 +117,8 @@ export interface DemoBookingInput {
   endsAt: string;
   location: MeetingProvider;
   recurrence: RecurrenceCadence;
+  skippedOccurrenceStarts?: string[];
+  proposedOccurrenceCount?: number;
   paymentPolicy: PaymentPolicy;
   guestName: string;
   guestEmail: string;
@@ -152,13 +156,28 @@ export function createDemoBooking(
     draft.students.push(student);
   }
   if (input.createPortalProfile) student.portalEnabled = true;
-  const occurrenceCount = input.offering
+  const proposedCount = input.offering
     ? Math.max(1, input.offering.lessonIds.length)
     : input.recurrence === "none"
       ? 1
       : input.paymentPolicy === "subscription"
         ? 12
-        : 6;
+        : (input.proposedOccurrenceCount ?? 6);
+  const proposedStarts = input.offering
+    ? seriesDates(input.startsAt, "weekly", proposedCount, input.timezone)
+    : input.recurrence === "none"
+      ? [input.startsAt]
+      : seriesDates(
+          input.startsAt,
+          input.recurrence,
+          proposedCount,
+          input.timezone,
+        );
+  const occurrenceStarts = selectRecurringOccurrences(
+    proposedStarts,
+    input.skippedOccurrenceStarts ?? [],
+  );
+  const occurrenceCount = occurrenceStarts.length;
   const totalMinor =
     input.service.category === "private" &&
     input.recurrence !== "none" &&
@@ -262,8 +281,10 @@ export function createDemoBooking(
     guardianName: input.guardianName,
     guardianEmail: input.guardianEmail,
     forMinor: input.forMinor,
-    startsAt: input.startsAt,
-    endsAt: input.endsAt,
+    startsAt: occurrenceStarts[0],
+    endsAt: new Date(
+      Date.parse(occurrenceStarts[0]) + input.service.durationMinutes * 60000,
+    ).toISOString(),
     timezone: input.timezone,
     location: input.location,
     status: "confirmed",
@@ -286,21 +307,6 @@ export function createDemoBooking(
   };
   draft.bookings.push(booking);
 
-  const occurrenceStarts = input.offering
-    ? seriesDates(
-        input.startsAt,
-        "weekly",
-        Math.max(1, input.offering.lessonIds.length),
-        input.timezone,
-      )
-    : input.recurrence === "none"
-      ? [input.startsAt]
-      : seriesDates(
-          input.startsAt,
-          input.recurrence as "weekly" | "biweekly",
-          occurrenceCount,
-          input.timezone,
-        );
   occurrenceStarts.forEach((startsAt, index) => {
     const lessonId = input.offering?.lessonIds[index] ?? uid("lesson");
     const endsAt = new Date(
