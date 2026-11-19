@@ -303,6 +303,8 @@ export interface RecurringSeries extends Versioned {
   recurrenceRule: {
     intervalWeeks: number;
     slots: { weekday: number; time: string }[];
+    sourceSeriesId?: UUID;
+    skippedOccurrenceStarts?: string[];
   };
   studentCanModify: boolean;
   priceMinor?: number;
