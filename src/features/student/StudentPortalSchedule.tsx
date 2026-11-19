@@ -356,7 +356,11 @@ export function StudentBookings({
                     </Link>
                     {showFinance &&
                       payment === "unpaid" &&
-                      lesson.invoiceId && (
+                      (lesson.invoiceId ||
+                        (data.settings.bookingDefaults
+                          .allowLearnerLessonInvoices &&
+                          lesson.serviceId &&
+                          lesson.priceMinor)) && (
                         <Link
                           className="button-link"
                           to={lessonPaymentPath(studentId, lesson.id)}

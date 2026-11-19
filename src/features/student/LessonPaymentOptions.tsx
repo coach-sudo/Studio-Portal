@@ -38,6 +38,14 @@ interface CheckoutResult {
   url?: string;
 }
 
+type VerifiedLessonQuote = {
+  description: string;
+  date: string;
+  currency: string;
+  version: number;
+  amountMinor: number;
+};
+
 const lineKey = (item: LessonObligation) => `${item.invoiceId}:${item.lineId}`;
 
 const paymentNotice: Record<
@@ -140,6 +148,34 @@ export function LessonPaymentOptions({
     studentId,
     arrangement,
   ).filter((item) => !selectedLesson || item.lessonId === selectedLesson);
+  const unbilled = useQuery({
+    queryKey: ["training-verified-lesson", identity, studentId, selectedLesson],
+    enabled: Boolean(
+      identity &&
+      selectedLesson &&
+      !attemptId &&
+      payer.data?.ready &&
+      payableStudents.includes(studentId) &&
+      !currentObligations.length &&
+      data.settings.bookingDefaults.allowLearnerLessonInvoices,
+    ),
+    retry: false,
+    queryFn: async () => {
+      const { resource } = await studioCommand(
+        "invoices",
+        {
+          command: "training_invoice_quote",
+          expectedVersion: 0,
+          payload: { studentId, lessonId: selectedLesson },
+          reason: "Review an existing lesson price",
+        },
+        identity ?? undefined,
+      );
+      return resource?.version !== undefined
+        ? (resource as VerifiedLessonQuote)
+        : null;
+    },
+  });
   const householdObligations = selectedLesson
     ? []
     : payableStudents
@@ -271,6 +307,44 @@ export function LessonPaymentOptions({
       setCheckoutBusy(false);
     }
   }
+  async function prepareInvoice(quote: VerifiedLessonQuote) {
+    if (!selectedLesson || checkoutBusy) return;
+    setCheckoutBusy(true);
+    setNotice("");
+    try {
+      const { resource } = await studioCommand(
+        "invoices",
+        {
+          command: "training_invoice_issue",
+          expectedVersion: quote.version,
+          payload: {
+            studentId,
+            lessonId: selectedLesson,
+            version: quote.version,
+            amountMinor: quote.amountMinor,
+          },
+          reason:
+            "Payer approved creating the invoice at the verified lesson price",
+        },
+        identity ?? undefined,
+      );
+      if (!resource?.invoiceId)
+        throw new Error(
+          "The studio needs to review this lesson before you can pay.",
+        );
+      await refetch();
+      void invalidateStudioDomains(queryClient, ["lessons", "finance"]);
+    } catch (error) {
+      setNotice(
+        error instanceof Error
+          ? error.message
+          : "The invoice could not be prepared.",
+      );
+      await unbilled.refetch();
+    } finally {
+      setCheckoutBusy(false);
+    }
+  }
   const makeLink = (change: Record<string, string>) => {
     const next = new URLSearchParams(params);
     for (const [key, value] of Object.entries(change)) next.set(key, value);
@@ -286,7 +360,9 @@ export function LessonPaymentOptions({
     !payer.isLoading &&
     !attemptId &&
     !obligations.length &&
-    !invoicesAvailable;
+    !invoicesAvailable &&
+    !unbilled.isLoading &&
+    !unbilled.data;
   const showSelection =
     canUseSelection && Boolean(obligations.length) && !attemptId;
   const canPickAll =
@@ -325,6 +401,27 @@ export function LessonPaymentOptions({
         <p className="portal-notice" role="status">
           {notice}
         </p>
+      )}
+      {unbilled.isLoading && (
+        <p role="status">Checking the saved lesson price…</p>
+      )}
+      {!obligations.length && unbilled.data && !attemptId && (
+        <div className="training-payment-review">
+          <p>
+            <strong>{unbilled.data.description}</strong> ·{" "}
+            {formatCalendarDateKey(unbilled.data.date)} ·{" "}
+            {formatMoney(unbilled.data.amountMinor, unbilled.data.currency)}
+          </p>
+          <p>Prepare the invoice to review the full balance before payment.</p>
+          <button
+            type="button"
+            className="primary"
+            disabled={checkoutBusy}
+            onClick={() => unbilled.data && void prepareInvoice(unbilled.data)}
+          >
+            Prepare invoice
+          </button>
+        </div>
       )}
       {!attemptId &&
         payer.data?.attempts.map((saved) => (
