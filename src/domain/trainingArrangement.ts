@@ -24,8 +24,11 @@ const confirmedBooking = new Set(["confirmed", "completed"]);
 const cancelledLesson = new Set(["cancelled", "late_cancelled"]);
 
 export function lessonPaymentState(
-  lesson: Lesson,
-  booking?: Booking,
+  lesson: Pick<Lesson, "paymentNeedsReview" | "invoicePaymentPending"> & {
+    paymentStatus?: string;
+    status: string;
+  },
+  booking?: { paymentStatus: string; status: string },
   ownsLesson = true,
 ): TrainingPaymentState {
   if (ownsLesson && lesson.paymentNeedsReview) return "review";

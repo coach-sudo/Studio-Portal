@@ -1,4 +1,6 @@
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
 import { LessonFiles } from "../library/LessonFiles";
 import {
   useUrlValue,
@@ -326,6 +328,12 @@ export function LessonHub({
   );
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const selectedStudent = data.students[0];
+  const autopay = useLessonAutopayOptions(
+    data,
+    selectedStudent?.id ?? "",
+    isDemo,
+    showFinance,
+  );
   const context = selectedStudent && coachingContext(data, selectedStudent.id);
   const lessonVisible = !!context?.lessons.some((item) => item.id === lessonId);
   const store = useStudioStore();
@@ -530,6 +538,22 @@ export function LessonHub({
               Pay for my lesson
             </Link>
           )}
+          {showFinance &&
+            (autopay ||
+              hasRecurringPackageOffer(
+                data.packageDefinitions,
+                data.packageBillingOptions,
+              )) && (
+              <Link
+                className="button-link"
+                to={portalContextLink(
+                  `/portal/payments?recurring=arrangements&lesson=${encodeURIComponent(lesson.id)}`,
+                  student.id,
+                )}
+              >
+                Make Recurring
+              </Link>
+            )}
         </div>
       </header>
       {notice && <p className="portal-notice">{notice}</p>}

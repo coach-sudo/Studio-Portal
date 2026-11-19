@@ -50,6 +50,17 @@
   margin-block: 1rem;
 }
 
+.training-autopay-scope {
+  min-inline-size: 0;
+  margin: 0 0 1rem;
+  border: 0;
+  padding: 0;
+}
+
+.training-autopay-scope > legend {
+  padding-inline: 0;
+}
+
 @media (max-width: 400px) {
   .training-payment-line {
     grid-template-columns: auto minmax(0, 1fr);

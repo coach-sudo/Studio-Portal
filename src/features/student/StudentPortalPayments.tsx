@@ -1,4 +1,7 @@
 import { LessonPaymentOptions } from "./LessonPaymentOptions";
+import { LessonAutopayPreview } from "./LessonAutopayPreview";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
+import { portalContextLink } from "../../domain/coachingContext";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { useQueryClient } from "@tanstack/react-query";
 import { CircleDollarSign, FileText } from "lucide-react";
@@ -23,6 +26,7 @@ import { packageOffer } from "../../domain/packagePricing";
 import {
   learnerPackageText,
   packageBenefitLines,
+  isCalendarRenewal,
 } from "../../domain/packagePresentation";
 import { formatStudioDate } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
@@ -35,14 +39,20 @@ import { StudentFinancialSummary } from "../../components/StudentFinancialSummar
 export function Payments({
   data,
   isDemo,
+  canManageLessons = false,
 }: {
   data: Snapshot;
   isDemo: boolean;
+  canManageLessons?: boolean;
 }) {
   const student = data.students[0];
   const [params] = useSearchParams();
   const lessonId = params.get("lesson");
   const paying = params.get("pay") === "lesson";
+  const recurring = params.get("recurring");
+  const recurringOnly =
+    recurring === "packages" || recurring === "arrangements";
+  const autopay = useLessonAutopayOptions(data, student?.id ?? "", isDemo);
   const lesson = data.lessons.find(
     (item) =>
       item.id === lessonId &&
@@ -81,6 +91,11 @@ export function Payments({
     .filter((item): item is Snapshot["packageDefinitions"][number] =>
       Boolean(item),
     );
+  const hasCalendarOffers = purchasableDefinitions.some((item) =>
+    data.packageBillingOptions.some(
+      (option) => option.definitionId === item.id && isCalendarRenewal(option),
+    ),
+  );
   const durationOptions = [
     ...new Set(
       purchasableDefinitions.map((item) => item.sessionDurationMinutes),
@@ -91,12 +106,16 @@ export function Payments({
     "recommended" | "shortest" | "longest"
   >("recommended");
   const availableDefinitions = useMemo(() => {
-    const filtered =
-      durationFilter === "all"
-        ? purchasableDefinitions
-        : purchasableDefinitions.filter(
-            (item) => item.sessionDurationMinutes === Number(durationFilter),
-          );
+    const filtered = purchasableDefinitions.filter(
+      (item) =>
+        (durationFilter === "all" ||
+          item.sessionDurationMinutes === Number(durationFilter)) &&
+        (!recurringOnly ||
+          data.packageBillingOptions.some(
+            (option) =>
+              option.definitionId === item.id && isCalendarRenewal(option),
+          )),
+    );
     if (packageSort === "recommended")
       return sortPackageDefinitions(filtered, preferredDuration);
     return [...filtered].sort((a, b) =>
@@ -108,7 +127,14 @@ export function Payments({
           a.sessionCount - b.sessionCount ||
           a.name.localeCompare(b.name),
     );
-  }, [durationFilter, packageSort, preferredDuration, purchasableDefinitions]);
+  }, [
+    durationFilter,
+    packageSort,
+    preferredDuration,
+    purchasableDefinitions,
+    recurringOnly,
+    data.packageBillingOptions,
+  ]);
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [packageBusy, setPackageBusy] = useState("");
@@ -122,11 +148,13 @@ export function Payments({
     const definition = data.packageDefinitions.find(
       (item) => item.id === definitionId && item.active && item.directPurchase,
     );
-    if (definition)
+    if (definition) {
       setPurchaseDefinition(packageOffer(definition, data, student));
-  }, [data, student, params]);
+      setRenewalMode(recurringOnly ? "" : "one_time");
+    }
+  }, [data, student, params, recurringOnly]);
   const purchase = async (id: string) => {
-    if (checkoutBusy || !student) return;
+    if (checkoutBusy || !student || !renewalMode) return;
     if (isDemo) {
       setNotice("Demo mode does not open a real checkout.");
       return;
@@ -207,7 +235,7 @@ export function Payments({
     <div className="student-page">
       <header className="student-header">
         <h1>Payments</h1>
-        {!paying && student && (
+        {!paying && !recurringOnly && student && (
           <Link
             className="button-link primary"
             to={lessonPaymentPath(student.id)}
@@ -215,7 +243,55 @@ export function Payments({
             Pay for my lesson
           </Link>
         )}
+        {!recurringOnly && (hasCalendarOffers || autopay) && student && (
+          <Link
+            className="button-link"
+            to={portalContextLink(
+              "/portal/payments?recurring=arrangements",
+              student.id,
+            )}
+          >
+            Make Recurring
+          </Link>
+        )}
       </header>
+      {recurringOnly && student && (
+        <div>
+          <Link to={portalContextLink("/portal/payments", student.id)}>
+            Back to Payments
+          </Link>
+        </div>
+      )}
+      {recurringOnly && student && autopay && (
+        <LessonAutopayPreview
+          key={`${student.id}:${lessonId ?? ""}`}
+          studentId={student.id}
+          initialLessonId={lessonId ?? undefined}
+          options={autopay}
+          demoLessons={isDemo ? data.lessons : undefined}
+        />
+      )}
+      {recurringOnly && (hasCalendarOffers || recurring === "packages") && (
+        <Section title="Recurring packages">
+          <p>
+            These packages renew on the calendar. Choose a package to review the
+            amount, frequency, and included lessons.
+          </p>
+          {!hasCalendarOffers && (
+            <p>No recurring packages are currently offered.</p>
+          )}
+        </Section>
+      )}
+      {recurringOnly &&
+        student &&
+        canManageLessons &&
+        data.settings.bookingDefaults.allowRecurring && (
+          <Section title="Recurring bookings">
+            <Link to={portalContextLink("/portal/bookings", student.id)}>
+              Review your schedule before booking more lessons
+            </Link>
+          </Section>
+        )}
       {params.get("checkout") === "processing" && !params.has("invoice") && (
         <p role="status" className="portal-notice">
           Checkout returned. Your package will appear after payment is
@@ -243,7 +319,7 @@ export function Payments({
       )}
       {student && (
         <>
-          {!paying && !isDemo && (
+          {!paying && !recurringOnly && !isDemo && (
             <StudentFinancialSummary studentId={student.id} learnerView />
           )}
           <details
@@ -260,7 +336,7 @@ export function Payments({
           </details>
         </>
       )}
-      {!paying && (
+      {!paying && !recurringOnly && (
         <details className="disclosure-section">
           <summary>Receipts & adjustments ({payments.length})</summary>
           <Section title="Receipts & adjustments">
@@ -311,7 +387,7 @@ export function Payments({
           </Section>
         </details>
       )}
-      {!paying && packages.length > 0 && (
+      {!paying && !recurringOnly && packages.length > 0 && (
         <Section title="Your packages">
           <ListControls
             {...packagePage}
@@ -374,7 +450,7 @@ export function Payments({
           Some package prices are unavailable. Try again later.
         </p>
       )}
-      {purchasableDefinitions.length > 0 && (
+      {availableDefinitions.length > 0 && (
         <div id="lesson-packages" tabIndex={-1}>
           <Section title="Available packages">
             {purchasableDefinitions.length > 1 && (
@@ -433,7 +509,7 @@ export function Payments({
                   <button
                     onClick={() => {
                       setPurchaseDefinition(definition);
-                      setRenewalMode("one_time");
+                      setRenewalMode(recurringOnly ? "" : "one_time");
                     }}
                   >
                     Choose package
@@ -467,11 +543,15 @@ export function Payments({
               disabled={checkoutBusy}
               onChange={(event) => setRenewalMode(event.target.value)}
             >
+              {recurringOnly && (
+                <option value="">Choose a renewal schedule</option>
+              )}
               {data.packageBillingOptions
                 .filter(
                   (option) =>
                     option.definitionId === purchaseDefinition.id &&
-                    option.active,
+                    option.active &&
+                    (!recurringOnly || isCalendarRenewal(option)),
                 )
                 .map((option) => (
                   <option key={option.id} value={option.renewalMode}>
@@ -486,7 +566,24 @@ export function Payments({
                 ))}
             </select>
           </label>
-          <p>Package lessons can be used for any service or duration.</p>
+          <p>
+            Includes {purchaseDefinition.sessionCount} lessons of{" "}
+            {purchaseDefinition.sessionDurationMinutes} minutes each.
+          </p>
+          {["weekly", "biweekly", "monthly"].includes(renewalMode) && (
+            <p className="portal-notice">
+              The first payment is due at checkout. You’ll pay{" "}
+              {formatMoney(
+                purchaseDefinition.priceMinor,
+                purchaseDefinition.currency,
+              )}{" "}
+              {renewalMode === "biweekly" ? "every two weeks" : renewalMode}{" "}
+              until you turn off renewal in Payments.
+              {purchaseDefinition.expirationDays
+                ? ` Each package can be used for ${purchaseDefinition.expirationDays} days.`
+                : ""}
+            </p>
+          )}
           {paying && (
             <p>After checkout, check whether this lesson is marked Paid.</p>
           )}
@@ -511,7 +608,7 @@ export function Payments({
             </button>
             <button
               className="primary"
-              disabled={checkoutBusy}
+              disabled={checkoutBusy || !renewalMode}
               onClick={() => void purchase(purchaseDefinition.id)}
             >
               {checkoutBusy
