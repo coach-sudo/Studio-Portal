@@ -93,7 +93,7 @@
   }
   .actor-builder-mobile-tabs button[aria-pressed="true"] {
     background: var(--forest);
-    color: white;
+    color: var(--on-forest);
   }
   .actor-builder-layout[data-editor-view="edit"] > .actor-builder-preview,
   .actor-builder-layout[data-editor-view="preview"] > form {

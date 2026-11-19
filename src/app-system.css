@@ -48,7 +48,7 @@
 .subnav button[aria-current="page"], .subnav button.active, .record-tabs .active, .record-tabs [aria-current="page"], .settings-nav .active, .settings-nav [aria-current="page"] {
   border-color: transparent;
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   box-shadow: 0 7px 18px color-mix(in srgb, var(--forest), transparent 76%);
 }
 
@@ -80,7 +80,6 @@
 button, .button-link, .booking-primary, input, select, textarea, [contenteditable="true"] { border-radius: var(--app-radius-control); }
 button, .button-link, .booking-primary { transition: transform 120ms ease, box-shadow 160ms ease, background-color 160ms ease, border-color 160ms ease; }
 button:not(:disabled):active, .button-link:active, .booking-primary:active { transform: translateY(1px); }
-button:focus-visible, .button-link:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [contenteditable="true"]:focus-visible { outline: 3px solid var(--app-focus); outline-offset: 2px; }
 input, select, textarea, [contenteditable="true"] { border-color: var(--app-border-strong); background: white; }
 input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { border-color: color-mix(in srgb, var(--sage), var(--forest) 22%); }
 
@@ -189,8 +188,8 @@ input:hover, select:hover, textarea:hover, [contenteditable="true"]:hover { bord
 .permission-summary > div { min-width: 0; min-height: 46px; padding: 9px 11px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--app-border); }
 .permission-summary > div:last-child { border-bottom: 0; }
 .permission-summary > div > span:first-child { min-width: 0; overflow-wrap: anywhere; }
-.undo-send { position: fixed; z-index: 90; right: 24px; bottom: 24px; min-width: 270px; padding: 12px 14px; border: 1px solid var(--gold); border-radius: 14px; background: var(--forest); color: white; box-shadow: var(--app-shadow-dialog); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
-.undo-send button { min-height: 38px; border-color: var(--gold); background: var(--gold); color: var(--forest); }
+.undo-send { position: fixed; z-index: 90; right: 24px; bottom: 24px; min-width: 270px; padding: 12px 14px; border: 1px solid var(--gold); border-radius: 14px; background: var(--forest); color: var(--on-forest); box-shadow: var(--app-shadow-dialog); display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.undo-send button { min-height: 38px; border-color: var(--gold); background: var(--gold); color: var(--on-gold); }
 .recipient-picker { padding: 18px 22px 22px; }
 .recipient-picker > label { min-height: 48px; padding: 0 12px; border: 1px solid var(--app-border-strong); border-radius: 11px; background: var(--app-surface); display: grid; grid-template-columns: 20px minmax(0, 1fr); align-items: center; gap: 9px; color: var(--muted); font-size: 0; }
 .recipient-picker > label svg { width: 18px; }

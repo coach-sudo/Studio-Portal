@@ -10,7 +10,7 @@
   margin: 0;
   padding: 10px 16px;
   background: var(--forest);
-  color: white !important;
+  color: var(--on-forest) !important;
   font-size: 10px !important;
   font-weight: 800;
   letter-spacing: 0.04em;

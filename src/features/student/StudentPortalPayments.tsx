@@ -235,7 +235,7 @@ export function Payments({
           hasPackages={purchasableDefinitions.length > 0}
         />
       )}
-      {notice && (
+      {notice && !purchaseDefinition && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
@@ -513,6 +513,11 @@ export function Payments({
               By continuing, you authorize Coach’D to charge the saved payment
               method only when your balance reaches the displayed threshold. You
               can turn this off later.
+            </p>
+          )}
+          {notice && (
+            <p className="portal-notice" role="status">
+              {notice}
             </p>
           )}
           <div className="form-actions">

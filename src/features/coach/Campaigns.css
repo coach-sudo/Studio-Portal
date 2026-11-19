@@ -12,7 +12,7 @@
 }
 .campaign-steps button[aria-current="step"] {
   background: var(--forest);
-  color: #fff;
+  color: var(--on-forest);
 }
 .campaign-block-list {
   display: grid;

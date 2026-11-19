@@ -487,3 +487,57 @@ test("lesson payment email opens the same authorized choices on desktop and phon
     ).toBeVisible();
   }
 });
+
+test("primary actions and focus retain contrast under pale branding in both portal themes", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data = JSON.parse(localStorage.getItem(key)!);
+    Object.assign(data.settings.branding, {
+      primaryColor: "#f6f0ac",
+      secondaryColor: "#f9f2bb",
+      surfaceColor: "#4e636c",
+    });
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.goto("/portal/work?student=student-maya&view=scripts");
+  const primary = page.getByRole("button", { name: "Add script", exact: true });
+  const contrast = () =>
+    primary.evaluate((button) => {
+      const context = document.createElement("canvas").getContext("2d")!;
+      const channelValues = (color: string) => {
+        context.clearRect(0, 0, 1, 1);
+        context.fillStyle = color;
+        context.fillRect(0, 0, 1, 1);
+        return [...context.getImageData(0, 0, 1, 1).data.slice(0, 3)].map(
+          (channel) => {
+            const value = channel / 255;
+            return value <= 0.04045
+              ? value / 12.92
+              : ((value + 0.055) / 1.055) ** 2.4;
+          },
+        );
+      };
+      const luminance = (color: string) => {
+        const [red, green, blue] = channelValues(color);
+        return 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      };
+      const style = getComputedStyle(button);
+      const text = luminance(style.color);
+      const fill = luminance(style.backgroundColor);
+      return (Math.max(text, fill) + 0.05) / (Math.min(text, fill) + 0.05);
+    });
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await primary.hover();
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await page.evaluate(() => {
+    document.documentElement.dataset.portalTheme = "dark";
+  });
+  await expect.poll(contrast).toBeGreaterThanOrEqual(4.5);
+  await page.keyboard.press("Tab");
+  await primary.focus();
+  await expect(primary).toHaveCSS("outline-color", "rgb(255, 255, 255)");
+  await expect(primary).toHaveCSS("outline-style", "solid");
+});

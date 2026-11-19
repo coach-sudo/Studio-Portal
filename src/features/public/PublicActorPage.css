@@ -83,7 +83,7 @@
   display: grid;
   place-items: center;
   background: var(--forest);
-  color: #fff;
+  color: var(--on-forest);
   font:
     600 70px Oswald,
     sans-serif;
@@ -248,7 +248,7 @@
 }
 .actor-website {
   font-weight: 800;
-  color: var(--forest);
+  color: var(--brand-text);
 }
 .actor-footer {
   margin-top: 70px;
@@ -264,7 +264,7 @@
 .actor-footer a {
   font-size: 11px;
   font-weight: 700;
-  color: var(--forest);
+  color: var(--brand-text);
 }
 @media (max-width: 700px) {
   .actor-headshot {
@@ -605,7 +605,7 @@
   padding: 0 16px;
   border-radius: 999px;
   background: var(--gold);
-  color: var(--forest);
+  color: var(--on-gold);
   display: inline-flex;
   align-items: center;
   font-weight: 850;

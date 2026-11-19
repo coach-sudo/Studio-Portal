@@ -16,7 +16,7 @@
 .reschedule-preview svg {
   width: 21px;
   flex: 0 0 auto;
-  color: var(--forest);
+  color: var(--brand-text);
 }
 .reschedule-current div,
 .reschedule-preview span {

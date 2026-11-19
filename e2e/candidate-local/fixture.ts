@@ -379,6 +379,8 @@ export async function installFixture(
             : [],
         });
       }
+      if (rpc === "search_material_options")
+        return reply(route, { items: [], total: 0, page: 1, pageSize: 25 });
       if (rpc === "search_material_resources")
         return reply(route, {
           items: [],

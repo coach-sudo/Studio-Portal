@@ -248,7 +248,7 @@
   place-items: center;
   border-radius: 8px;
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
 }
 .booking-date span {
   font-size: 9px;

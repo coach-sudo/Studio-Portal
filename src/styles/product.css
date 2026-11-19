@@ -21,14 +21,18 @@ select,
 textarea {
   -webkit-tap-highlight-color: transparent;
 }
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible,
-summary:focus-visible {
-  outline: 3px solid var(--app-focus);
+:is(
+  button,
+  a,
+  input,
+  select,
+  textarea,
+  summary,
+  [contenteditable="true"]
+):focus-visible {
+  outline: 2px solid var(--focus-outer);
   outline-offset: 3px;
+  box-shadow: 0 0 0 3px var(--focus-inner);
 }
 
 /* Shell: quiet forest navigation with an independent identity area. */
@@ -74,7 +78,7 @@ summary:focus-visible {
   flex-basis: 38px;
   border-color: var(--app-border);
   background: var(--app-surface-soft);
-  color: var(--forest);
+  color: var(--brand-text);
   border-radius: 12px;
   font-size: 14px;
 }
@@ -95,7 +99,7 @@ summary:focus-visible {
 .student-shell > aside nav a.active {
   background: var(--app-surface-soft);
   box-shadow: none;
-  color: var(--forest);
+  color: var(--brand-text);
   font-weight: 600;
 }
 .sidebar nav a:hover,
@@ -299,7 +303,7 @@ summary:focus-visible {
 /* Legacy header/section rules must not hide primary action labels. */
 :is(.app-shell, .student-shell, .workflow-dialog) button.primary-button {
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   font-size: 14px;
 }
 :is(.app-shell, .student-shell, .workflow-dialog) button.primary-button svg {
@@ -342,7 +346,7 @@ button.primary,
 .home-page .section:first-of-type .action-row > button {
   background: var(--forest);
   border: 1px solid var(--forest);
-  color: white;
+  color: var(--on-forest);
   border-radius: var(--radius-control);
   min-height: 44px;
   padding: 10px 16px;
@@ -350,17 +354,18 @@ button.primary,
   font-weight: 600;
   box-shadow: none;
 }
-.primary-button:hover,
-.small-primary:hover,
-button.primary:hover,
+.primary-button:hover:not(:disabled),
+.small-primary:hover:not(:disabled),
+button.primary:hover:not(:disabled),
 .button-link.primary:hover,
-.booking-primary:hover {
-  background: color-mix(in srgb, var(--forest), black 12%);
+.booking-primary:hover:not(:disabled) {
+  background: var(--primary-hover);
+  color: var(--on-forest);
 }
 .search-button,
 .button-link,
 .creative-welcome .header-actions .search-button,
-.form-actions > button:not(.primary),
+.form-actions > button:not(.primary, .primary-button),
 .row-actions > button:not(:last-child) {
   background: var(--app-surface);
   border: 1px solid var(--app-border-strong);
@@ -372,7 +377,7 @@ button.primary:hover,
   font-weight: 500;
 }
 .text-button {
-  color: var(--forest);
+  color: var(--brand-text);
   font-size: 13px;
   min-height: 44px;
 }
@@ -508,7 +513,7 @@ input[type="radio"] {
 .subnav button[aria-current="page"],
 .record-tabs .active {
   background: var(--app-surface);
-  color: var(--forest);
+  color: var(--brand-text);
   box-shadow: 0 2px 8px #153a2710;
 }
 .settings-layout > aside {
@@ -530,7 +535,7 @@ input[type="radio"] {
 }
 .settings-nav .active,
 .settings-nav [aria-current="page"] {
-  color: var(--forest);
+  color: var(--brand-text);
   background: var(--app-surface-soft);
   box-shadow: none;
 }
@@ -584,21 +589,21 @@ input[type="radio"] {
   border: 0;
   border-radius: var(--radius-panel);
   background: var(--forest);
-  color: white;
+  color: var(--on-forest);
   margin: 20px 0 28px;
   padding: 22px 26px;
 }
 .home-today-link small {
-  color: #d2ddd4;
+  color: var(--on-forest);
   font-size: 13px;
 }
 .home-today-link b {
-  color: white;
+  color: var(--on-forest);
   font-size: 13px;
   font-weight: 500;
 }
 .home-today-link > svg {
-  color: #c9d6bc;
+  color: var(--on-forest);
 }
 .home-dashboard-grid > .section {
   margin: 0;
@@ -1108,7 +1113,7 @@ input[type="radio"] {
 .student-page .student-quick-actions a.primary-contact-action {
   background: var(--forest);
   border-color: var(--forest);
-  color: white;
+  color: var(--on-forest);
   font-size: 14px;
   font-weight: 500;
 }
@@ -1160,13 +1165,13 @@ input[type="radio"] {
 :is(.page, .student-page, .workflow-dialog, .booking-public) button.primary,
 .coach-panel > header .small-primary,
 .referral-share .primary-button {
-  color: white;
+  color: var(--on-forest);
   background: var(--forest);
   border-color: var(--forest);
   font-size: 14px;
 }
 .login-page > .wordmark {
-  color: var(--forest);
+  color: var(--brand-text);
 }
 .calendar-day.muted {
   opacity: 1;
@@ -1184,7 +1189,7 @@ input[type="radio"] {
   opacity: 1;
 }
 .coach-panel > header > .small-primary {
-  color: white;
+  color: var(--on-forest);
 }
 .stepper li {
   color: var(--muted);
@@ -1377,7 +1382,7 @@ input[type="radio"] {
     color: var(--muted);
   }
   .mobile-nav .active {
-    color: var(--forest);
+    color: var(--brand-text);
   }
   .page-skeleton {
     padding: 24px 18px;
@@ -1689,8 +1694,33 @@ input[type="radio"] {
     white-space: nowrap !important;
   }
 }
-.setup-entry-choices { display:grid; gap:14px; }
-.setup-entry-choices button { display:grid; gap:8px; padding:24px; border:1px solid var(--line); border-radius:16px; text-align:left; background:var(--wash); color:var(--ink); }
-.setup-entry-choices button strong { font-size:20px; }
-.setup-entry-choices button span { color:var(--muted); }
-.duplicate-choice { display:grid; gap:5px; width:100%; padding:14px; margin-bottom:8px; border:1px solid var(--line); border-radius:10px; text-align:left; }
+.setup-entry-choices {
+  display: grid;
+  gap: 14px;
+}
+.setup-entry-choices button {
+  display: grid;
+  gap: 8px;
+  padding: 24px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  text-align: left;
+  background: var(--wash);
+  color: var(--ink);
+}
+.setup-entry-choices button strong {
+  font-size: 20px;
+}
+.setup-entry-choices button span {
+  color: var(--muted);
+}
+.duplicate-choice {
+  display: grid;
+  gap: 5px;
+  width: 100%;
+  padding: 14px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  text-align: left;
+}

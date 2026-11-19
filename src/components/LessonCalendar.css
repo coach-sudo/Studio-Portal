@@ -57,7 +57,7 @@
 }
 .calendar-view-switcher button.selected {
   background: var(--forest);
-  color: #fff;
+  color: var(--on-forest);
 }
 .calendar-search-results {
   padding: 12px;
@@ -166,6 +166,7 @@
 }
 .calendar-day.today .calendar-date {
   background: var(--gold);
+  color: var(--on-gold);
 }
 .calendar-events {
   display: grid;
