@@ -193,10 +193,17 @@ jobs:
         shell: bash
         env:
           BROWSER: none
+          STRIPE_SECRET_KEY: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && secrets.CI_STRIPE_RESTRICTED_TEST_KEY || '' }}
+          CI_STRIPE_SMOKE_PRICE_ID: ${{ vars.CI_STRIPE_SMOKE_PRICE_ID }}
         run: |
           set -euo pipefail
           export STAGING_BASE_URL=http://127.0.0.1:8888
-          npm run build
+          # Build without provider credentials. Only the disposable Functions runtime gets the sandbox key.
+          env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npm run build
+          if [[ -n "$STRIPE_SECRET_KEY" && "$STRIPE_SECRET_KEY" != rk_test_* ]]; then
+            echo 'CI requires a restricted Stripe sandbox key.' >&2
+            exit 1
+          fi
           # CLI 27.8.0 retries custom Function 403s as .html paths, hiding API denials.
           # Patch only the disposable CLI proxy, never the application or production.
           # otel 7.0.6 metadata exists but its npm tarball is unavailable (404).
@@ -205,9 +212,9 @@ jobs:
           cli_dir="$RUNNER_TEMP/netlify-cli"
           mkdir -p "$cli_dir"
           printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4"}}' > "$cli_dir/package.json"
-          npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
+          env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
           export PATH="$cli_dir/node_modules/.bin:$PATH"
-          npx tsx scripts/patch-netlify-dev-api-errors.ts
+          env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npx tsx scripts/patch-netlify-dev-api-errors.ts
           nohup netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions \
             > "$RUNNER_TEMP/netlify-serve.log" 2>&1 &
           echo $! > "$RUNNER_TEMP/netlify-serve.pid"

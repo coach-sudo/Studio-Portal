@@ -17,6 +17,8 @@ import {
 } from "./_shared/training-checkout";
 import {
   autopay,
+  isLiveTrainingDeployment,
+  trainingSandbox,
   reconcileAutopayIntent,
   reconcileAutopaySetup,
 } from "./_shared/training-autopay";
@@ -45,6 +47,10 @@ export default async (request: Request, context: Context) => {
       request.headers.get("stripe-signature") || "",
       secret,
     );
+    const liveTraining = isLiveTrainingDeployment(context);
+    const acceptsTrainingMode =
+      event.livemode === liveTraining &&
+      (liveTraining || Boolean(trainingSandbox(context)));
     const db = serviceClient();
     eventId = event.id;
     const { data: existing, error: receiptError } = await db
@@ -97,14 +103,22 @@ export default async (request: Request, context: Context) => {
     ) {
       const session = event.data.object;
       if (session.metadata?.training_autopay_mandate) {
-        if (event.livemode) return await done({ ignored: true });
-        const plan = await reconcileAutopaySetup(stripe, session);
+        if (!acceptsTrainingMode)
+          throw new Error(
+            "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+          );
+        const plan = await reconcileAutopaySetup(stripe, session, liveTraining);
         return await done({ autopayStatus: plan?.status ?? "pending_setup" });
       }
       if (session.metadata?.training_checkout_id) {
+        if (!acceptsTrainingMode)
+          throw new Error(
+            "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+          );
         const checkout = await reconcileTrainingCheckout(
           session,
           event.type === "checkout.session.async_payment_failed",
+          liveTraining,
         );
         return await done({ trainingCheckoutStatus: checkout.status });
       }
@@ -113,12 +127,15 @@ export default async (request: Request, context: Context) => {
       event.type === "setup_intent.succeeded" &&
       event.data.object.metadata?.training_autopay_mandate
     ) {
-      if (event.livemode) return await done({ ignored: true });
+      if (!acceptsTrainingMode)
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+        );
       const intent = event.data.object;
       const setup = await autopay<{ session: string | null }>(
         "setup_reference",
         {
-        id: intent.metadata?.training_autopay_mandate,
+          id: intent.metadata?.training_autopay_mandate,
         },
       );
       if (!setup.session) return await done({ ignored: true });
@@ -127,7 +144,7 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "PROVIDER_UNAVAILABLE: Stripe Checkout is recording the payment setup.",
         );
-      const plan = await reconcileAutopaySetup(stripe, session);
+      const plan = await reconcileAutopaySetup(stripe, session, liveTraining);
       return await done({ autopayStatus: plan?.status ?? "pending_setup" });
     }
     if (
@@ -137,12 +154,18 @@ export default async (request: Request, context: Context) => {
         event.type === "payment_intent.payment_failed") &&
       event.data.object.metadata.training_autopay_attempt
     ) {
-      if (event.livemode) return await done({ ignored: true });
-      const attempt = await reconcileAutopayIntent(event.data.object);
+      if (!acceptsTrainingMode)
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+        );
+      const attempt = await reconcileAutopayIntent(
+        event.data.object,
+        liveTraining,
+      );
       return await done({ autopayStatus: attempt.status });
     }
     if (
-      !event.livemode &&
+      acceptsTrainingMode &&
       (event.type === "charge.refunded" ||
         event.type === "refund.updated" ||
         event.type === "charge.dispute.created" ||

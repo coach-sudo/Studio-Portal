@@ -71,38 +71,74 @@ async function job<T>(
   return result.data as T;
 }
 
-export function testAutopayStripe(
+type TrainingDeployment = Pick<Context, "deploy" | "site">;
+
+export function isLiveTrainingDeployment(context: TrainingDeployment) {
+  return (
+    context.site?.id === "93829451-dbcf-4863-a07f-fa448cb17494" &&
+    context.deploy?.context === "production" &&
+    context.deploy.published === true &&
+    Netlify.env.get("E2E_EPHEMERAL") !== "true" &&
+    Netlify.env.get("SUPABASE_URL") ===
+      "https://htwthzshhilrjtqwprlo.supabase.co" &&
+    /^(sk|rk)_live_/.test(Netlify.env.get("STRIPE_SECRET_KEY") ?? "")
+  );
+}
+
+export function trainingSandbox(context: TrainingDeployment) {
+  const key = Netlify.env.get("STRIPE_SECRET_KEY") ?? "";
+  const disposable =
+    !context.site?.id &&
+    !Netlify.env.get("SITE_ID") &&
+    Netlify.env.get("E2E_EPHEMERAL") === "true";
+  if (disposable && /^(sk|rk|rkcs)_test_/.test(key)) return "disposable";
+  if (
+    context.site?.id === "d83ff6cb-f57b-4741-8c3c-3eaae7adab19" &&
+    context.deploy?.context === "deploy-preview" &&
+    context.deploy.published === false &&
+    Netlify.env.get("SUPABASE_URL") ===
+      "https://lrxrivfqjpkvygozphoz.supabase.co" &&
+    /^(sk|rk)_test_/.test(key)
+  )
+    return "staging";
+  return null;
+}
+
+export function trainingStripe(
   context: Pick<Context, "deploy" | "site">,
   feature:
     | "TRAINING_AUTOPAY_TEST_MODE"
     | "TRAINING_CHECKOUT_TEST_MODE" = "TRAINING_AUTOPAY_TEST_MODE",
 ) {
   const key = Netlify.env.get("STRIPE_SECRET_KEY");
-  const site = "d83ff6cb-f57b-4741-8c3c-3eaae7adab19";
-  const disposable =
-    !context.site?.id &&
-    !Netlify.env.get("SITE_ID") &&
-    Netlify.env.get("E2E_EPHEMERAL") === "true";
-  const stagingPreview =
-    context.site?.id === site &&
-    context.deploy?.context === "deploy-preview" &&
-    context.deploy.published === false;
-  if (
-    Netlify.env.get(feature) !== "true" ||
-    !key ||
-    !(/^(sk|rk)_test_/.test(key) || (disposable && /^rkcs_test_/.test(key))) ||
-    (!disposable && !stagingPreview)
-  )
-    return null;
+  if (key && isLiveTrainingDeployment(context)) {
+    if (!Netlify.env.get("STRIPE_WEBHOOK_SECRET")) return null;
+    const liveFlag =
+      feature === "TRAINING_CHECKOUT_TEST_MODE"
+        ? "TRAINING_CHECKOUT_LIVE"
+        : "TRAINING_AUTOPAY_LIVE";
+    if (Netlify.env.get(liveFlag) !== "true") return null;
+    return {
+      stripe: new Stripe(key, {
+        apiVersion: "2026-07-29.dahlia",
+        timeout: 8000,
+      }),
+      origin: portalOrigin(context),
+      live: true,
+    };
+  }
+  const sandbox = trainingSandbox(context);
+  if (Netlify.env.get(feature) !== "true" || !key || !sandbox) return null;
   const origin = portalOrigin(context);
   if (
-    disposable &&
+    sandbox === "disposable" &&
     !["127.0.0.1", "localhost", "[::1]"].includes(new URL(origin).hostname)
   )
     return null;
   return {
     stripe: new Stripe(key, { apiVersion: "2026-07-29.dahlia", timeout: 8000 }),
     origin,
+    live: false,
   };
 }
 
@@ -114,11 +150,14 @@ export async function openAutopaySetup(
   stripe: Stripe,
   origin: string,
   plan: PendingSetup,
+  live = false,
 ) {
   if (plan.stripe_session) {
     const session = await stripe.checkout.sessions.retrieve(
       plan.stripe_session,
     );
+    if (session.livemode !== live)
+      throw new Error("VERSION_CONFLICT: Stripe setup mode mismatch.");
     if (session.status === "complete") return { status: "processing" };
     return {
       status: session.status,
@@ -155,7 +194,7 @@ export async function openAutopaySetup(
     { idempotencyKey: `lesson-autopay-setup:${plan.id}` },
   );
   if (
-    session.livemode ||
+    session.livemode !== live ||
     session.mode !== "setup" ||
     stripeId(session.customer) !== customer.id
   )
@@ -173,11 +212,12 @@ export async function openAutopaySetup(
 export async function reconcileAutopaySetup(
   stripe: Stripe,
   session: Stripe.Checkout.Session,
+  live = false,
 ) {
   const id = session.metadata?.training_autopay_mandate;
   if (
     !id ||
-    session.livemode ||
+    session.livemode !== live ||
     session.mode !== "setup" ||
     session.client_reference_id !== id
   )
@@ -199,13 +239,13 @@ export async function reconcileAutopaySetup(
   const method = intent.payment_method;
   if (
     !customer ||
-    intent.livemode ||
+    intent.livemode !== live ||
     intent.usage !== "off_session" ||
     intent.metadata?.training_autopay_mandate !== id ||
     stripeId(intent.customer) !== customer ||
     !method ||
     typeof method === "string" ||
-    method.livemode ||
+    method.livemode !== live ||
     stripeId(method.customer) !== customer
   )
     throw new Error(
@@ -223,9 +263,12 @@ export async function reconcileAutopaySetup(
   });
 }
 
-export async function reconcileAutopayIntent(intent: Stripe.PaymentIntent) {
+export async function reconcileAutopayIntent(
+  intent: Stripe.PaymentIntent,
+  live = false,
+) {
   const id = intent.metadata.training_autopay_attempt;
-  if (!id || intent.livemode)
+  if (!id || intent.livemode !== live)
     throw new Error("VALIDATION_FAILED: Stripe lesson payment does not match.");
   return job<{ status: string }>("reconcile", {
     id,
@@ -239,7 +282,7 @@ export async function reconcileAutopayIntent(intent: Stripe.PaymentIntent) {
   });
 }
 
-async function executeAttempt(stripe: Stripe, attempt: Attempt) {
+async function executeAttempt(stripe: Stripe, attempt: Attempt, live: boolean) {
   if (!attempt.intent && !attempt.eligible)
     return job("abandon", { id: attempt.id });
   let intent = attempt.intent
@@ -259,7 +302,7 @@ async function executeAttempt(stripe: Stripe, attempt: Attempt) {
         { idempotencyKey: `lesson-autopay-intent:${attempt.id}` },
       );
   if (
-    intent.livemode ||
+    intent.livemode !== live ||
     intent.metadata.training_autopay_attempt !== attempt.id
   )
     throw new Error(
@@ -314,10 +357,10 @@ async function executeAttempt(stripe: Stripe, attempt: Attempt) {
       { idempotencyKey: `lesson-autopay-cancel:${attempt.id}` },
     );
   }
-  return reconcileAutopayIntent(intent);
+  return reconcileAutopayIntent(intent, live);
 }
 
-export async function runLessonAutopay(stripe: Stripe) {
+export async function runLessonAutopay(stripe: Stripe, live = false) {
   await job("refresh");
   let processed = 0;
   let pending = 0;
@@ -326,7 +369,7 @@ export async function runLessonAutopay(stripe: Stripe) {
     const attempt = await job<Attempt | null>("claim");
     if (!attempt) break;
     try {
-      await executeAttempt(stripe, attempt);
+      await executeAttempt(stripe, attempt, live);
       processed++;
     } catch {
       // The attempt lease is durable. Subsequent runs recover the same intent.

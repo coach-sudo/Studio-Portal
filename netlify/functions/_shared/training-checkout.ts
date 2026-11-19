@@ -44,16 +44,17 @@ export async function trainingCheckout<T>(
 export async function reconcileTrainingCheckout(
   session: Stripe.Checkout.Session,
   failed = false,
+  live = false,
 ) {
   const id = session.metadata?.training_checkout_id;
   if (
     !id ||
     session.mode !== "payment" ||
-    session.livemode ||
+    session.livemode !== live ||
     session.client_reference_id !== id
   ) {
     throw new Error(
-      "VALIDATION_FAILED: The test checkout does not match a lesson payment.",
+      "VALIDATION_FAILED: The checkout does not match a lesson payment.",
     );
   }
   return trainingCheckout<TrainingCheckout>(

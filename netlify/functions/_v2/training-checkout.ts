@@ -2,7 +2,7 @@ import { z } from "zod";
 import type Stripe from "stripe";
 import { json } from "../_shared/http";
 import { serviceClient } from "../_shared/supabase";
-import { testAutopayStripe } from "../_shared/training-autopay";
+import { trainingStripe } from "../_shared/training-autopay";
 import {
   reconcileTrainingCheckout,
   trainingCheckout,
@@ -48,7 +48,7 @@ export async function handleTrainingCheckout(
     return trainingAutopayPreview(actor, input.payload);
   if (input.command.startsWith("training_autopay_"))
     return handleLessonAutopayCommand(commandContext, actor, data.user.email);
-  const provider = testAutopayStripe(context, "TRAINING_CHECKOUT_TEST_MODE");
+  const provider = trainingStripe(context, "TRAINING_CHECKOUT_TEST_MODE");
 
   if (input.command === "training_payers") {
     const { studentIds } = z
@@ -160,9 +160,15 @@ export async function handleTrainingCheckout(
       { idempotencyKey: `training:${id}` },
     );
   }
+  if (session.livemode !== provider.live)
+    throw new Error("VERSION_CONFLICT: Stripe checkout mode mismatch.");
   if (cancel && session.status === "open")
     session = await stripe.checkout.sessions.expire(session.id);
-  const reconciled = await reconcileTrainingCheckout(session);
+  const reconciled = await reconcileTrainingCheckout(
+    session,
+    false,
+    provider.live,
+  );
   return json({
     resource: {
       status:

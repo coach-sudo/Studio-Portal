@@ -3,7 +3,7 @@ import { AppError, json } from "../_shared/http";
 import {
   autopay,
   openAutopaySetup,
-  testAutopayStripe,
+  trainingStripe,
   type PendingSetup,
 } from "../_shared/training-autopay";
 import {
@@ -48,7 +48,7 @@ export async function handleLessonAutopayCommand(
   payerEmail?: string,
 ) {
   const command = input.command.replace(/^training_autopay_/, "");
-  const provider = testAutopayStripe(context);
+  const provider = trainingStripe(context);
   if (command === "list") {
     const { studentId } = target.parse(input.payload);
     if (Netlify.env.get("TRAINING_AUTOPAY_PREVIEW") !== "true")
@@ -95,7 +95,12 @@ export async function handleLessonAutopayCommand(
     return json({
       resource:
         "stripe_session" in plan
-          ? await openAutopaySetup(provider.stripe, provider.origin, plan)
+          ? await openAutopaySetup(
+              provider.stripe,
+              provider.origin,
+              plan,
+              provider.live,
+            )
           : { status: plan.status },
     });
   }
@@ -118,7 +123,12 @@ export async function handleLessonAutopayCommand(
       expectedVersion: input.expectedVersion,
     });
     return json({
-      resource: await openAutopaySetup(provider.stripe, provider.origin, plan),
+      resource: await openAutopaySetup(
+        provider.stripe,
+        provider.origin,
+        plan,
+        provider.live,
+      ),
     });
   }
   const reviewed = await autopay<ReviewSnapshot>("review", {
