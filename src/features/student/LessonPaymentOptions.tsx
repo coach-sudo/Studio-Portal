@@ -49,12 +49,12 @@ export function LessonPaymentOptions({
     <Section title="Pay for my lesson" marked>
       {lesson && (
         <p>
-          <strong>{lesson.topic}</strong> Â·{" "}
+          <strong>{lesson.topic}</strong> ·{" "}
           {formatStudioDateTime(lesson.startsAt, data.settings.timezone)}
         </p>
       )}
       {isLoading ? (
-        <p role="status">Checking lesson invoicesâ€¦</p>
+        <p role="status">Checking lesson invoices…</p>
       ) : error ? (
         <p role="alert">
           Invoices are unavailable.{" "}

@@ -178,7 +178,7 @@ export function ScriptWorkspace({
               <button onClick={() => void history.refetch()}>Retry</button>
             </p>
           ) : !isDemo && history.isPending ? (
-            <p role="status">Loading script historyâ€¦</p>
+            <p role="status">Loading script history…</p>
           ) : (
             !archived.length && (
               <EmptyState
@@ -403,7 +403,7 @@ function ScriptEditor({
             Cancel
           </button>
           <button className="primary" disabled={busy}>
-            {busy ? "Savingâ€¦" : "Save current script"}
+            {busy ? "Saving…" : "Save current script"}
           </button>
         </div>
       </form>

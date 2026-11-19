@@ -218,7 +218,7 @@ export function LessonFiles({
         )}
         <p role="status">
           {busy
-            ? `Attaching ${uploading}â€¦`
+            ? `Attaching ${uploading}…`
             : queue.length
               ? `${queue.length - pending.length} of ${queue.length} files attached.`
               : ""}

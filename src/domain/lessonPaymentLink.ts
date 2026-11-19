@@ -12,7 +12,7 @@ export function lessonPaymentEmail(
 ) {
   const url = new URL(lessonPaymentPath(studentId, lessonId), origin);
   return {
-    subject: "Pay for your Coachâ€™D lesson",
-    body: `Hi,\n\nUse the link below to sign in and pay your lesson invoice or choose a lesson package. You can open it on your phone or computer.\n\n${url.href}\n\nPlease reply if you have a question about your balance or which package to choose.\n\nCoachâ€™D`,
+    subject: "Pay for your Coach’D lesson",
+    body: `Hi,\n\nUse the link below to sign in and pay your lesson invoice or choose a lesson package. You can open it on your phone or computer.\n\n${url.href}\n\nPlease reply if you have a question about your balance or which package to choose.\n\nCoach’D`,
   };
 }

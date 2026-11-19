@@ -379,14 +379,18 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
   ).toBeVisible();
   await page.getByRole("link", { name: "Scripts", exact: true }).click();
   await page.getByRole("button", { name: "Add script" }).click();
-  await page.getByLabel("Source", { exact: true }).selectOption("link");
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
   await page.getByLabel("Script link").fill("https://example.test/current");
   await page
     .getByLabel("Title", { exact: true })
     .fill("First rehearsal script");
   await page.getByRole("button", { name: "Save current script" }).click();
   await page.getByRole("button", { name: "Update script" }).click();
-  await page.getByLabel("Source", { exact: true }).selectOption("link");
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
   await page.getByLabel("Script link").fill("https://example.test/revision");
   await page
     .getByLabel("Title", { exact: true })
