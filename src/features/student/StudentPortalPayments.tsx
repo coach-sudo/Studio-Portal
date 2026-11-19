@@ -277,14 +277,22 @@ export function Payments({
                   <FileText />
                   <div>
                     <strong>
-                      {entry.kind === "refund" ? "Refund" : "Payment"}
+                      {entry.reason && !/\bcredits?\b/i.test(entry.reason)
+                        ? entry.reason
+                        : entry.kind === "refund"
+                          ? "Refund"
+                          : "Payment"}
                     </strong>
                     <small>
                       {formatStudioDate(
                         entry.createdAt,
                         data.settings.timezone,
                       )}{" "}
-                      · {entry.externalReference ?? "Studio ledger"}
+                      ·{" "}
+                      {entry.externalReference &&
+                      !/\bcredits?\b/i.test(entry.externalReference)
+                        ? entry.externalReference
+                        : "Studio ledger"}
                     </small>
                   </div>
                   <strong className="payment-history-amount">
