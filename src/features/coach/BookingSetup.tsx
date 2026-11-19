@@ -214,6 +214,14 @@ export function BookingSetup({
             checked={form.bookingDefaults.allowPayLater}
             onChange={(allowPayLater) => updateDefaults({ allowPayLater })}
           />
+          <Toggle
+            label="Let payers create invoices for verified lessons"
+            detail="The payer can use the saved lesson price when checkout is available. The studio reviews lessons with missing or changed terms."
+            checked={Boolean(form.bookingDefaults.allowLearnerLessonInvoices)}
+            onChange={(allowLearnerLessonInvoices) =>
+              updateDefaults({ allowLearnerLessonInvoices })
+            }
+          />
         </div>
 
         <h3 className="full">Default timing and price rules</h3>

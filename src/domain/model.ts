@@ -707,6 +707,7 @@ export interface StudioSettings {
     requirePhone: boolean;
     allowRecurring: boolean;
     allowPayLater: boolean;
+    allowLearnerLessonInvoices?: boolean;
     showPrices: boolean;
     confirmationMessage: string;
     bookingButtonLabel: string;

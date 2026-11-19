@@ -2,6 +2,7 @@ import Stripe from "stripe";
 import { z } from "zod";
 import { json } from "../_shared/http";
 import { portalOrigin } from "../_shared/portal-url";
+import { serviceClient } from "../_shared/supabase";
 import {
   reconcileTrainingCheckout,
   trainingCheckout,
@@ -64,6 +65,35 @@ export async function handleTrainingCheckout({
       }[];
     }>("payers", { actor, studentIds: [...new Set(studentIds)] });
     return json({ resource: { ...payer, ready: Boolean(key) } });
+  }
+  if (
+    input.command === "training_invoice_quote" ||
+    input.command === "training_invoice_issue"
+  ) {
+    if (!key)
+      throw new Error(
+        "PROVIDER_UNAVAILABLE: Test lesson checkout is unavailable.",
+      );
+    const payload = z
+      .object({
+        studentId: z.uuid(),
+        lessonId: z.uuid(),
+        version: z.number().int().nonnegative().optional(),
+        amountMinor: z.number().int().positive().optional(),
+      })
+      .strict()
+      .parse(input.payload);
+    const action =
+      input.command === "training_invoice_quote" ? "quote" : "issue";
+    const result = await serviceClient().rpc(
+      "training_prepare_lesson_invoice",
+      {
+        p_action: action,
+        p_value: { ...payload, actor },
+      },
+    );
+    if (result.error) throw result.error;
+    return json({ resource: result.data });
   }
 
   const creating = input.command === "training_start";

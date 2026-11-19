@@ -5916,6 +5916,10 @@ export type Database = {
         Args: { p_action: string; p_value: Json }
         Returns: Json
       }
+      training_prepare_lesson_invoice: {
+        Args: { p_action: string; p_value: Json }
+        Returns: Json
+      }
       void_studio_invoice: {
         Args: { p_invoice: string; p_version: number }
         Returns: Json

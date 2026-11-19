@@ -394,7 +394,12 @@ export function LessonHub({
     showFinance &&
     ["scheduled", "completed"].includes(lesson.status) &&
     payment === "unpaid" &&
-    Boolean(lesson.invoiceId);
+    Boolean(
+      lesson.invoiceId ||
+      (data.settings.bookingDefaults.allowLearnerLessonInvoices &&
+        lesson.serviceId &&
+        lesson.priceMinor),
+    );
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
