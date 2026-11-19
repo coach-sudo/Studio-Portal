@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { testAutopayStripe } from "./training-autopay";
+import { autopay, testAutopayStripe } from "./training-autopay";
 
 vi.mock("./release", () => ({ releaseMetadata: () => ({ context: "local" }) }));
+
+const { rpc } = vi.hoisted(() => ({ rpc: vi.fn() }));
+vi.mock("./supabase", () => ({ serviceClient: () => ({ rpc }) }));
 
 const local = { site: {}, deploy: {} } as never;
 const settings = {
@@ -49,5 +52,20 @@ describe("test-only lesson billing", () => {
   it("keeps approval for one-time checkout independent", () => {
     install();
     expect(testAutopayStripe(local, "TRAINING_CHECKOUT_TEST_MODE")).toBeNull();
+  });
+});
+
+it("returns the existing setup action when enrollment is already pending", async () => {
+  rpc.mockResolvedValueOnce({
+    error: {
+      code: "P0001",
+      message:
+        "INVALID_TRANSITION: Finish or cancel the pending payment setup first.",
+    },
+  });
+  await expect(autopay("begin", {})).rejects.toMatchObject({
+    code: "VERSION_CONFLICT",
+    status: 409,
+    message: "Continue or cancel the pending automatic payment setup first.",
   });
 });

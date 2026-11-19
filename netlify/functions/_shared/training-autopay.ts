@@ -1,5 +1,6 @@
 import type { Context } from "@netlify/functions";
 import Stripe from "stripe";
+import { AppError } from "./http";
 import { portalOrigin } from "./portal-url";
 import { serviceClient } from "./supabase";
 import type { LessonAutopayPlan } from "../../../src/domain/lessonAutopay";
@@ -45,6 +46,15 @@ export async function autopay<T>(
     p_action: action,
     p_value: value,
   });
+  if (
+    result.error?.message ===
+    "INVALID_TRANSITION: Finish or cancel the pending payment setup first."
+  )
+    throw new AppError("VERSION_CONFLICT", {
+      status: 409,
+      message: "Continue or cancel the pending automatic payment setup first.",
+      cause: result.error,
+    });
   if (result.error) throw result.error;
   return result.data as T;
 }
@@ -117,9 +127,11 @@ export async function openAutopaySetup(
   }
   const expires = Math.floor(Date.parse(plan.setup_expires_at) / 1000);
   if (expires - Date.now() / 1000 < 31 * 60)
-    throw new Error(
-      "INVALID_TRANSITION: Payment setup expired. Cancel it and review a new arrangement.",
-    );
+    throw new AppError("VERSION_CONFLICT", {
+      status: 409,
+      message:
+        "Automatic payment setup expired. Cancel it and review a new arrangement.",
+    });
   const customer = await stripe.customers.create(
     { metadata: { training_autopay_mandate: plan.id } },
     { idempotencyKey: `lesson-autopay-customer:${plan.id}` },
