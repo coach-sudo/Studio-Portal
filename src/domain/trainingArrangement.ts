@@ -1,6 +1,6 @@
 import type { Invoice, InvoiceLine } from "./invoices";
 import { invoiceDue } from "./invoices";
-import type { Booking, Lesson, StudioSnapshot } from "./model";
+import type { Lesson, StudioSnapshot } from "./model";
 
 type TrainingRecords = Pick<
   StudioSnapshot,
