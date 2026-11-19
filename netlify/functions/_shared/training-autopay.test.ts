@@ -38,10 +38,12 @@ describe("test-only lesson billing", () => {
 
   it("rejects the production site with test credentials", () => {
     install({ SITE_ID: "93829451-dbcf-4863-a07f-fa448cb17494" });
-    expect(testAutopayStripe({
-      site: { id: "93829451-dbcf-4863-a07f-fa448cb17494" },
-      deploy: { context: "production", published: true },
-    } as never)).toBeNull();
+    expect(
+      testAutopayStripe({
+        site: { id: "93829451-dbcf-4863-a07f-fa448cb17494" },
+        deploy: { context: "production", published: true },
+      } as never),
+    ).toBeNull();
   });
 
   it("keeps approval for one-time checkout independent", () => {

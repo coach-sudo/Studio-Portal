@@ -4,14 +4,14 @@
 
 ## Integration
 
-| Draft | Responsibility | Order and overlap |
-| --- | --- | --- |
-| [#101](https://github.com/coach-sudo/Studio-Portal/pull/101) | Lesson payment state, exact selection, invoice reservations and settlement | Base for the other drafts. Automatic charges use the same reservation and ledger. |
-| [#103](https://github.com/coach-sudo/Studio-Portal/pull/103) | Coach-controlled invoice preparation from verified terms | Follows #101. Linked pay-later bookings use the same studio policy and invoice ledger. |
-| [#102](https://github.com/coach-sudo/Studio-Portal/pull/102) | Payment timing preview and calendar billing distinction | Follows #101. The integrated arrangement reuses the page and distinguishes preview, pending setup, active, paused and ended states. |
-| [#104](https://github.com/coach-sudo/Studio-Portal/pull/104) | Verified series continuation | Follows #101. Retains the exact held dates and adds a read-only review before confirmation. |
-| [#106](https://github.com/coach-sudo/Studio-Portal/pull/106) | Learner dashboard and payment handoffs | Retains the exact next-lesson and upcoming-only filters alongside verified invoice preparation. |
-| [#105](https://github.com/coach-sudo/Studio-Portal/pull/105) | Rendered accessibility and script source switching | Retains input stability and readable activity controls. The integrated tests also cover the payment-consent form. |
+| Draft                                                        | Responsibility                                                             | Order and overlap                                                                                                                   |
+| ------------------------------------------------------------ | -------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| [#101](https://github.com/coach-sudo/Studio-Portal/pull/101) | Lesson payment state, exact selection, invoice reservations and settlement | Base for the other drafts. Automatic charges use the same reservation and ledger.                                                   |
+| [#103](https://github.com/coach-sudo/Studio-Portal/pull/103) | Coach-controlled invoice preparation from verified terms                   | Follows #101. Linked pay-later bookings use the same studio policy and invoice ledger.                                              |
+| [#102](https://github.com/coach-sudo/Studio-Portal/pull/102) | Payment timing preview and calendar billing distinction                    | Follows #101. The integrated arrangement reuses the page and distinguishes preview, pending setup, active, paused and ended states. |
+| [#104](https://github.com/coach-sudo/Studio-Portal/pull/104) | Verified series continuation                                               | Follows #101. Retains the exact held dates and adds a read-only review before confirmation.                                         |
+| [#106](https://github.com/coach-sudo/Studio-Portal/pull/106) | Learner dashboard and payment handoffs                                     | Retains the exact next-lesson and upcoming-only filters alongside verified invoice preparation.                                     |
+| [#105](https://github.com/coach-sudo/Studio-Portal/pull/105) | Rendered accessibility and script source switching                         | Retains input stability and readable activity controls. The integrated tests also cover the payment-consent form.                   |
 
 The combined checkout first integrated #103, #102 and #104 over #101, followed by #106 and #105. The merge points were the Schedule actions, invoice selection filters, TypeScript project inputs, and shared browser tests. The original six drafts remain independently reviewable.
 
