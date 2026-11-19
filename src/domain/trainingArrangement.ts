@@ -120,8 +120,10 @@ export function trainingArrangement(
         confirmed,
         series: verifiedSeries,
         seriesNeedsReview: Boolean(seriesId && !verifiedSeries),
-        // Public and imported events cannot establish that the coach scheduled a lesson.
-        coachScheduled: lesson.sourceProvider === "studio" && !ambiguousBooking,
+        // The booking confirmation path also writes source_provider=studio.
+        // Count a studio-sourced lesson only when it has no separate booking.
+        coachScheduled:
+          lesson.sourceProvider === "studio" && !booking && !ambiguousBooking,
       };
     })
     .sort((a, b) => a.lesson.startsAt.localeCompare(b.lesson.startsAt));

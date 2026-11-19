@@ -183,6 +183,37 @@ describe("training arrangement", () => {
     );
     expect(result.upcoming[0].seriesNeedsReview).toBe(true);
   });
+
+  it("does not attribute a separately booked lesson to the coach", () => {
+    const booking = {
+      id: "booking",
+      studentId: "student",
+      status: "confirmed",
+      paymentStatus: "due",
+    } as Booking;
+    const result = trainingArrangement(
+      {
+        ...data,
+        lessons: [lesson()],
+        bookings: [booking],
+        lessonParticipants: [
+          {
+            id: "part",
+            bookingId: "booking",
+            lessonId: "lesson",
+            studentId: "student",
+            status: "confirmed",
+            displayName: "",
+            email: "",
+          },
+        ],
+      },
+      "student",
+      now,
+    );
+    expect(result.upcoming).toHaveLength(1);
+    expect(result.coachScheduledCount).toBe(0);
+  });
 });
 
 describe("full lesson obligations", () => {
