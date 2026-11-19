@@ -70,6 +70,7 @@ export function LessonPaymentOptions({
   const queryClient = useQueryClient();
   const identity = useSearchIdentity();
   const selectedLesson = params.get("lesson");
+  const upcomingOnly = params.get("upcoming") === "1";
   const attemptId = params.get("attempt");
   const {
     data: invoices,
@@ -135,16 +136,24 @@ export function LessonPaymentOptions({
     (invoice) => invoice.student_id === studentId,
   );
   const arrangement = trainingArrangement(data, studentId);
+  const upcomingIds = new Set(
+    arrangement.upcoming.map(({ lesson }) => lesson.id),
+  );
   const currentObligations = trainingObligations(
     studentInvoices,
     studentId,
     arrangement,
-  ).filter((item) => !selectedLesson || item.lessonId === selectedLesson);
-  const householdObligations = selectedLesson
-    ? []
-    : payableStudents
-        .filter((id) => id !== studentId)
-        .flatMap((id) => trainingObligations(studioInvoices, id));
+  ).filter(
+    (item) =>
+      (!selectedLesson || item.lessonId === selectedLesson) &&
+      (!upcomingOnly || upcomingIds.has(item.lessonId)),
+  );
+  const householdObligations =
+    selectedLesson || upcomingOnly
+      ? []
+      : payableStudents
+          .filter((id) => id !== studentId)
+          .flatMap((id) => trainingObligations(studioInvoices, id));
   const obligations = [...currentObligations, ...householdObligations];
   const eligible = obligations.filter(
     (item) => item.eligible && payableStudents.includes(item.studentId),
@@ -153,7 +162,7 @@ export function LessonPaymentOptions({
     scope: string;
     keys: string[];
   }>();
-  const scope = `${identity}:${studentId}:${selectedLesson ?? ""}:${attemptId ?? ""}`;
+  const scope = `${identity}:${studentId}:${selectedLesson ?? ""}:${upcomingOnly}:${attemptId ?? ""}`;
   const keys =
     editedSelection?.scope === scope
       ? editedSelection.keys
@@ -184,6 +193,14 @@ export function LessonPaymentOptions({
     (invoice) =>
       !invoice.checkout_key?.startsWith("training:") &&
       invoiceDue(invoice) > 0 &&
+      (!upcomingOnly ||
+        invoice.items.every(
+          (line) =>
+            line.cancelled ||
+            (line.kind === "service" &&
+              line.lessonIds.length === 1 &&
+              upcomingIds.has(line.lessonIds[0])),
+        )) &&
       (!selectedLesson ||
         (invoice.items.filter((line) => !line.cancelled).length === 1 &&
           invoice.items.some(
