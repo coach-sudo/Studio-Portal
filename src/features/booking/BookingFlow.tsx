@@ -40,6 +40,7 @@ import {
   type PublicStudio,
 } from "./PublicBooking.shared";
 import { exactBookingPriceLabel } from "./pricePresentation";
+import type { BookingContinuation } from "../../domain/recurringOccurrences";
 
 type Step = "format" | "time" | "details" | "payment" | "done";
 export function BookingFlow({
@@ -49,6 +50,7 @@ export function BookingFlow({
   live,
   studio,
   booker,
+  continuation,
   initialReferralCode,
   initialDiscountCode,
 }: {
@@ -58,6 +60,7 @@ export function BookingFlow({
   live: boolean;
   studio: PublicStudio;
   booker?: AuthenticatedBooker;
+  continuation?: BookingContinuation;
   initialReferralCode: string;
   initialDiscountCode: string;
 }) {
@@ -68,7 +71,9 @@ export function BookingFlow({
       item.serviceId === service.id &&
       item.published,
   );
-  const [step, setStep] = useState<Step>(initialOffering ? "time" : "format");
+  const [step, setStep] = useState<Step>(
+    initialOffering || continuation ? "time" : "format",
+  );
   const [location, setLocation] = useState<MeetingProvider>(
     service.defaultLocation,
   );
@@ -77,7 +82,23 @@ export function BookingFlow({
   );
   const displayedPrice = service.priceMinor + locationUpcharge;
   const [recurrence, setRecurrence] = useState<RecurrenceCadence>(
-    service.category === "course" ? "weekly" : "none",
+    continuation?.cadence ??
+      (service.category === "course" ? "weekly" : "none"),
+  );
+  const [skippedStarts, setSkippedStarts] = useState<string[]>([]);
+  const bookingTimezone = visitorTimezone();
+  const recurrenceTimezone = studio.timezone || bookingTimezone;
+  const horizon = Date.now() + service.bookingHorizonDays * 86400000;
+  const maximumCount = continuation
+    ? seriesDates(
+        continuation.startsAt,
+        continuation.cadence,
+        52,
+        recurrenceTimezone,
+      ).filter((date) => Date.parse(date) <= horizon).length
+    : 6;
+  const [proposedCount, setProposedCount] = useState(
+    Math.max(2, Math.min(6, maximumCount)),
   );
   const recurrenceOptions =
     service.category === "private" && !studio.bookingDefaults.allowRecurring
@@ -87,15 +108,24 @@ export function BookingFlow({
     () =>
       service.paymentPolicies.filter(
         (item) =>
+          (!continuation || item === "pay_later") &&
           (studio.bookingDefaults.allowPayLater || item !== "pay_later") &&
+          (!skippedStarts.length ||
+            !["subscription", "deposit"].includes(item)) &&
           (recurrence !== "none" ||
             !["installments", "subscription"].includes(item)),
       ),
-    [recurrence, service.paymentPolicies, studio.bookingDefaults.allowPayLater],
+    [
+      continuation,
+      recurrence,
+      service.paymentPolicies,
+      studio.bookingDefaults.allowPayLater,
+      skippedStarts.length,
+    ],
   );
   const [payment, setPayment] = useState<PaymentPolicy>(validPayments[0]);
   const [slot, setSlot] = useState<string | undefined>(
-    initialOffering?.startsAt,
+    continuation?.startsAt ?? initialOffering?.startsAt,
   );
   const [name, setName] = useState(booker?.name || "");
   const [email, setEmail] = useState(booker?.email || "");
@@ -166,13 +196,13 @@ export function BookingFlow({
       store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
     ],
   );
-  const [slots, setSlots] = useState(demoSlots);
+  const [slots, setSlots] = useState(continuation ? [] : demoSlots);
   useEffect(() => {
-    setSlots(demoSlots);
+    setSlots(continuation ? [] : demoSlots);
     if (!live || service.category !== "private") return;
-    fetch(
-      `/api/v2/public/booking/availability?serviceId=${encodeURIComponent(service.id)}`,
-    )
+    const request = new URLSearchParams({ serviceId: service.id });
+    if (continuation) request.set("from", continuation.startsAt);
+    fetch(`/api/v2/public/booking/availability?${request}`)
       .then((response) =>
         response.ok
           ? response.json()
@@ -182,10 +212,16 @@ export function BookingFlow({
       )
       .then((payload: { slots: { startsAt: string; endsAt: string }[] }) =>
         setSlots(
-          payload.slots.map((item) => ({
-            ...item,
-            label: formatStudioTime(item.startsAt, visitorTimezone()),
-          })),
+          payload.slots
+            .filter(
+              (item) =>
+                !continuation ||
+                Date.parse(item.startsAt) === Date.parse(continuation.startsAt),
+            )
+            .map((item) => ({
+              ...item,
+              label: formatStudioTime(item.startsAt, visitorTimezone()),
+            })),
         ),
       )
       .catch((reason) =>
@@ -193,8 +229,23 @@ export function BookingFlow({
           reason.message || "Live availability is temporarily unavailable.",
         ),
       );
-  }, [demoSlots, live, service.category, service.id]);
-  const bookingTimezone = visitorTimezone();
+  }, [continuation, demoSlots, live, service.category, service.id]);
+  const canSkipDates =
+    service.category === "private" &&
+    service.paymentPolicies.some(
+      (policy) =>
+        policy === "pay_now" ||
+        policy === "credits" ||
+        (policy === "pay_later" && studio.bookingDefaults.allowPayLater),
+    );
+  const proposedStarts =
+    recurrence !== "none" && slot && service.category === "private"
+      ? seriesDates(slot, recurrence, proposedCount, recurrenceTimezone)
+      : [];
+  const selectedDates = proposedStarts.filter(
+    (date) => !skippedStarts.includes(date),
+  );
+  useEffect(() => setSkippedStarts([]), [slot, recurrence, proposedCount]);
   const dayKey = (value: string | Date) =>
     studioDateKey(value, bookingTimezone);
   const [selectedDay, setSelectedDay] = useState("");
@@ -208,12 +259,14 @@ export function BookingFlow({
   const calendarDays = useMemo(
     () =>
       Array.from({ length: 45 }, (_, index) => {
-        const value = new Date();
+        const value = continuation
+          ? new Date(continuation.startsAt)
+          : new Date();
         value.setHours(12, 0, 0, 0);
         value.setDate(value.getDate() + index);
         return value;
       }),
-    [],
+    [continuation],
   );
   const daySlots = slots.filter(
     (item) => dayKey(item.startsAt) === selectedDay,
@@ -226,10 +279,10 @@ export function BookingFlow({
   const steps: Step[] = ["format", "time", "details", "payment"];
 
   async function confirm() {
-    if (!chosen) return;
+    if (!chosen || (proposedStarts.length > 0 && !selectedDates.length)) return;
     setError("");
     setStatus("saving");
-    const timezone = bookingTimezone;
+    const timezone = recurrenceTimezone;
     try {
       if (!live) {
         const booking = store.transact((draft) =>
@@ -240,6 +293,8 @@ export function BookingFlow({
             endsAt: chosen.endsAt,
             location,
             recurrence,
+            proposedOccurrenceCount: proposedCount,
+            skippedOccurrenceStarts: skippedStarts,
             paymentPolicy: payment,
             guestName: name,
             guestEmail: email,
@@ -255,7 +310,7 @@ export function BookingFlow({
           reference: booking.reference,
           manageUrl: `/booking/${booking.manageToken}`,
           demo: true,
-          startsAt: chosen.startsAt,
+          startsAt: booking.startsAt,
           portalRequested: createPortalProfile,
         });
         setStep("done");
@@ -265,9 +320,9 @@ export function BookingFlow({
         ? await supabase?.auth.getSession()
         : undefined;
       const accessToken = session?.data.session?.access_token;
-      if (payment === "credits" && !accessToken) {
+      if ((payment === "credits" || continuation) && !accessToken) {
         window.location.assign(
-          `/login?returnTo=${encodeURIComponent(window.location.pathname)}`,
+          `/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
         );
         return;
       }
@@ -294,7 +349,14 @@ export function BookingFlow({
           guardianEmail: guardianEmail || undefined,
           createPortalProfile,
           timezone,
-          occurrenceCount: recurrence === "none" ? undefined : 6,
+          occurrenceCount: recurrence === "none" ? undefined : proposedCount,
+          skippedOccurrenceStarts: skippedStarts.length
+            ? skippedStarts
+            : undefined,
+          continuation: continuation && {
+            sourceSeriesId: continuation.sourceSeriesId,
+            studentId: continuation.studentId,
+          },
           termsAccepted: true,
           termsVersion: "2026-08-20",
           discountCode: discountCode.trim() || undefined,
@@ -316,7 +378,7 @@ export function BookingFlow({
         reference: result.reference,
         manageUrl: result.manageUrl,
         demo: false,
-        startsAt: chosen.startsAt,
+        startsAt: selectedDates[0] ?? chosen.startsAt,
         portalRequested: createPortalProfile,
       });
       setStep("done");
@@ -448,7 +510,11 @@ export function BookingFlow({
                       className={recurrence === item ? "selected" : ""}
                       onClick={() => setRecurrence(item)}
                     >
-                      {item === "none" ? "One time" : item}
+                      {item === "none"
+                        ? "One time"
+                        : item === "weekly"
+                          ? "Weekly"
+                          : "Every other week"}
                     </button>
                   ))}
                 </div>
@@ -469,9 +535,12 @@ export function BookingFlow({
               Times shown in {bookingTimezone.replaceAll("_", " ")}.
             </p>
             {error && (
-              <p role="alert" className="inline-error">
-                {error}
-              </p>
+              <div className="inline-error">
+                <p role="alert">{error}</p>
+                {proposedStarts.length > 0 && (
+                  <button type="button" onClick={() => setStep("time")}>Review dates</button>
+                )}
+              </div>
             )}
             <div className="booking-calendar" aria-label="Available dates">
               <div className="booking-calendar-weekdays" aria-hidden="true">
@@ -552,27 +621,95 @@ export function BookingFlow({
                 fully booked or weekly hours may not be published yet.
               </p>
             )}
-            {recurrence !== "none" && slot && (
+            {proposedStarts.length > 0 && (
               <div className="series-preview">
-                <CalendarDays />
+                <CalendarDays aria-hidden="true" />
                 <div>
                   <strong>
                     {recurrence === "weekly" ? "Weekly" : "Every other week"}{" "}
                     preview
                   </strong>
-                  <small>
-                    {seriesDates(slot, recurrence, 6)
-                      .map((date) => formatDate(date))
-                      .join(" · ")}
-                  </small>
+                  {canSkipDates ? (
+                    <fieldset className="series-date-picker">
+                      <legend>Dates to book</legend>
+                      {continuation && (
+                        <label htmlFor="continuation-proposed-count">
+                          Number of proposed lessons
+                          <select
+                            id="continuation-proposed-count"
+                            value={proposedCount}
+                            onChange={(event) =>
+                              setProposedCount(Number(event.target.value))
+                            }
+                          >
+                            {Array.from(
+                              { length: Math.max(1, maximumCount - 1) },
+                              (_, index) => index + 2,
+                            ).map((count) => (
+                              <option key={count} value={count}>
+                                {count}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {proposedStarts.map((date, index) => (
+                        <label
+                          className="check-row"
+                          key={date}
+                          htmlFor={`series-date-${index}`}
+                        >
+                          <input
+                            id={`series-date-${index}`}
+                            type="checkbox"
+                            checked={!skippedStarts.includes(date)}
+                            onChange={(event) =>
+                              setSkippedStarts((current) =>
+                                event.target.checked
+                                  ? current.filter((item) => item !== date)
+                                  : [...current, date],
+                              )
+                            }
+                          />
+                          <span>
+                            {formatDate(date, {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </label>
+                      ))}
+                      <small aria-live="polite">
+                        {selectedDates.length} to book · {skippedStarts.length}{" "}
+                        skipped
+                      </small>
+                    </fieldset>
+                  ) : (
+                    <small>
+                      {proposedStarts
+                        .map((date) => formatDate(date))
+                        .join(" · ")}
+                    </small>
+                  )}
                 </div>
               </div>
             )}
             <div className="step-actions">
-              <button onClick={() => setStep("format")}>Back</button>
+              {continuation ? (
+                <Link
+                  className="button-link"
+                  to={`/portal/bookings?student=${encodeURIComponent(continuation.studentId)}`}
+                >
+                  Keep my existing schedule
+                </Link>
+              ) : (
+                <button onClick={() => setStep("format")}>Back</button>
+              )}
               <button
                 className="booking-primary"
-                disabled={!slot}
+                disabled={
+                  !slot || (proposedStarts.length > 0 && !selectedDates.length)
+                }
                 onClick={() => setStep("details")}
               >
                 Continue <ChevronRight />
@@ -728,6 +865,32 @@ export function BookingFlow({
                 </button>
               ))}
             </div>
+            {skippedStarts.length > 0 && (
+              <div className="policy-box">
+                <strong>
+                  {selectedDates.length} lessons to book ·{" "}
+                  {skippedStarts.length} dates skipped
+                </strong>
+                <p>
+                  {selectedDates.map((date) => formatDate(date)).join(" · ")}
+                </p>
+                {payment !== "credits" && (
+                  <p>
+                    {formatMoney(
+                      displayedPrice * selectedDates.length,
+                      service.currency,
+                    )}{" "}
+                    before any applied discounts.
+                  </p>
+                )}
+                <p>Skipped dates will have no booking or payment.</p>
+              </div>
+            )}
+            {continuation && (
+              <p>
+                This extends your schedule. No automatic payment is authorized.
+              </p>
+            )}
             {booker && (
               <p className="booking-referral">
                 If you have an unused $15 referral reward, it will apply

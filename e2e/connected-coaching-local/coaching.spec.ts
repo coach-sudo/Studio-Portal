@@ -724,3 +724,63 @@ test("calendar package renewal requires the user to choose a cadence", async ({
   ).toBeVisible();
   await expect(checkout).toBeEnabled();
 });
+
+test("a fixed weekly proposal can skip dates without moving lessons or charging for them", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 920 });
+  await page.goto("/book/private-acting-coaching");
+  await page.getByRole("button", { name: /^Weekly$/ }).click();
+  await page.getByRole("button", { name: "Choose a time" }).click();
+  await page.locator(".booking-time-list button").first().click();
+  const dates = page.getByRole("group", { name: "Dates to book" });
+  const choices = dates.getByRole("checkbox");
+  await expect(choices).toHaveCount(6);
+  await choices.nth(1).uncheck();
+  await choices.nth(4).uncheck();
+  await expect(dates.getByText("4 to book · 2 skipped")).toBeVisible();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Student name" })
+    .fill("Synthetic Schedule");
+  await page
+    .getByRole("textbox", { name: "Student email" })
+    .fill("synthetic-schedule@example.test");
+  await page.getByRole("button", { name: "Review payment" }).click();
+  await page.getByRole("button", { name: /Pay later/i }).click();
+  await expect(
+    page.getByText("4 lessons to book · 2 dates skipped"),
+  ).toBeVisible();
+  await page.getByRole("checkbox", { name: /Terms and Conditions/ }).check();
+  await page.getByRole("button", { name: "Confirm booking" }).click();
+  const result = await page.evaluate(() => {
+    const data: StudioSnapshot = JSON.parse(
+      localStorage.getItem("stage-story-studio-core-v2")!,
+    );
+    const booking = data.bookings.find(
+      (item) => item.guestEmail === "synthetic-schedule@example.test",
+    )!;
+    const ids = data.lessonParticipants
+      .filter((item) => item.bookingId === booking.id)
+      .map((item) => item.lessonId);
+    return {
+      count: ids.length,
+      total: booking.totalMinor,
+      status: booking.paymentStatus,
+      dates: data.lessons
+        .filter((item) => ids.includes(item.id))
+        .map((item) => item.startsAt.slice(0, 10))
+        .sort(),
+    };
+  });
+  expect(result).toMatchObject({ count: 4, total: 50000, status: "due" });
+  expect(
+    result.dates
+      .slice(1)
+      .map(
+        (date, index) =>
+          (Date.parse(date) - Date.parse(result.dates[index])) / 86400000,
+      ),
+  ).toEqual([14, 7, 14]);
+});

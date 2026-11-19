@@ -30,6 +30,7 @@
     "src/domain/presentation.ts",
     "src/domain/lessonAutopay.ts",
     "src/domain/trainingArrangement.ts",
+    "src/domain/recurringOccurrences.ts",
     "src/domain/zonedInput.ts",
     "src/domain/studentSetup.ts",
     "src/domain/settingsPatch.ts",
