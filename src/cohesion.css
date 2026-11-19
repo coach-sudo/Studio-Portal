@@ -1293,11 +1293,11 @@
   background: var(--forest);
   color: var(--on-forest);
   font-weight: 800;
-  transform: translateY(-150%);
+  clip-path: inset(100%);
 }
 
 .skip-link:focus {
-  transform: translateY(0);
+  clip-path: none;
 }
 
 .portal-home-prioritized {

@@ -1,0 +1,14 @@
+{
+  "environment": "isolated Stripe sandbox, loopback signed CLI relay, disposable local Supabase",
+  "stripeSessionCreatedVia": "Stripe CLI's paid test checkout fixture",
+  "completionReceivedBy": "actual Netlify webhook handler",
+  "testMode": true,
+  "syntheticDesignatedPayerAuthenticated": true,
+  "financeOnlyScheduleHidden": true,
+  "checkoutTotalMinor": 17000,
+  "lessonsPaid": 2,
+  "remainingUnpaid": 4,
+  "duplicateWebhookReturned": true,
+  "settlementRecords": 1,
+  "allocations": 2
+}
