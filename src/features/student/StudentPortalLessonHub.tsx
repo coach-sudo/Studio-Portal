@@ -312,12 +312,14 @@ export function LessonHub({
   data,
   isDemo,
   showFinance,
+  showPaymentStatus = showFinance,
   showWork = true,
   showSchedule = true,
 }: {
   data: Snapshot;
   isDemo: boolean;
   showFinance: boolean;
+  showPaymentStatus?: boolean;
   showWork?: boolean;
   showSchedule?: boolean;
 }) {
@@ -506,7 +508,7 @@ export function LessonHub({
             ‹ Back
           </button>
           <h1>{lesson.topic}</h1>
-          {showFinance && (
+          {showPaymentStatus && (
             <Status tone={payment === "paid" ? "good" : "warn"}>
               {trainingPaymentLabel[payment]}
             </Status>

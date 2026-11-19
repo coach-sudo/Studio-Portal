@@ -206,6 +206,8 @@ export const publicBookingSchema = z
     timezone: z.string().min(3).max(80),
     occurrenceCount: z.number().int().min(2).max(52).optional(),
     skippedOccurrenceStarts: z.array(dateTime).max(51).optional(),
+    reviewOnly: z.literal(true).optional(),
+    reviewUnitMinor: z.number().int().nonnegative().max(99999999).optional(),
     continuation: z
       .object({ sourceSeriesId: uuid, studentId: uuid })
       .strict()
@@ -221,6 +223,15 @@ export const publicBookingSchema = z
     termsVersion: z.literal("2026-08-20"),
   })
   .superRefine((value, ctx) => {
+    if (
+      (value.reviewOnly || value.reviewUnitMinor !== undefined) &&
+      !value.continuation
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["reviewOnly"],
+        message: "Review is available for a schedule extension.",
+      });
     if (
       value.continuation &&
       (value.recurrence === "none" ||

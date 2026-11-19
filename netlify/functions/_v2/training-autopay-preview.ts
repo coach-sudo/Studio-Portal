@@ -14,7 +14,7 @@ import {
 import type { Invoice } from "../../../src/domain/invoices";
 import { studioDateKey } from "../../../src/domain/presentation";
 
-const selectionSchema = z
+export const autopaySelectionObject = z
   .object({
     studentId: z.uuid(),
     scope: z.enum(["existing", "future", "existing_and_future"]),
@@ -22,14 +22,15 @@ const selectionSchema = z
     existingLessonIds: z.array(z.uuid()).max(50),
     maximumLessonMinor: z.number().int().positive(),
   })
-  .strict()
-  .refine(
-    ({ scope, existingLessonIds }) =>
-      scope === "future"
-        ? existingLessonIds.length === 0
-        : existingLessonIds.length > 0,
-    "Choose the existing lessons to include, or choose future lessons only.",
-  );
+  .strict();
+
+const selectionSchema = autopaySelectionObject.refine(
+  ({ scope, existingLessonIds }) =>
+    scope === "future"
+      ? existingLessonIds.length === 0
+      : existingLessonIds.length > 0,
+  "Choose the existing lessons to include, or choose future lessons only.",
+);
 
 const policySchema = z.object({
   chargeAtLocal: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/),
@@ -46,7 +47,7 @@ const settingsSchema = z.object({
     .default("USD"),
 });
 
-async function loadPreview(
+export async function loadPreview(
   actor: string,
   studentId: string,
   now: Date,

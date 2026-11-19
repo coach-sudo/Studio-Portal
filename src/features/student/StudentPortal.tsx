@@ -495,6 +495,7 @@ function PortalWorkspace({
                     showFinance={
                       role === "guardian" ? guardianFinance : !person?.isMinor
                     }
+                    showPaymentStatus={role === "student" || guardianFinance}
                   />
                 )
               }
@@ -518,6 +519,7 @@ function PortalWorkspace({
                   showFinance={
                     role === "guardian" ? guardianFinance : !person?.isMinor
                   }
+                  showPaymentStatus={role === "student" || guardianFinance}
                   showWork={role !== "guardian" || guardianWork}
                   showSchedule={role !== "guardian" || guardianSchedule}
                 />

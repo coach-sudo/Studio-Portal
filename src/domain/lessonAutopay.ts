@@ -19,6 +19,45 @@ export interface AutopayPreviewOptions {
   hasMore: boolean;
 }
 
+export interface LessonAutopayPlan {
+  id: string;
+  version: number;
+  status: "pending_setup" | "active" | "paused" | "cancelled" | "replaced";
+  scope: AutopaySelection["scope"];
+  leadDays: number;
+  currency: string;
+  maximumLessonMinor: number;
+  timeZone: string;
+  methodLabel: string | null;
+  authorizedAt: string | null;
+  setupExpiresAt: string;
+  needsReauthorization: boolean;
+  lessons: {
+    lessonId: string;
+    payAt: string;
+    date: string;
+    amountMinor: number;
+    status:
+      | "planned"
+      | "pay_now"
+      | "review"
+      | "in_flight"
+      | "succeeded"
+      | "failed"
+      | "skipped";
+    reason: string | null;
+  }[];
+}
+
+export interface LessonAutopayAccount {
+  arrangement: LessonAutopayPlan | null;
+  pending: LessonAutopayPlan | null;
+  canSetUp: boolean;
+  payerEmail?: string;
+}
+
+export const lessonAutopayConsentVersion = "lesson-autopay-v1";
+
 export interface AutopaySelection {
   scope: "existing" | "future" | "existing_and_future";
   leadDays: number;

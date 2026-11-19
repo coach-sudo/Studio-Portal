@@ -23,6 +23,7 @@ import {
 } from "../../domain/presentation";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import { useLessonAutopayAccount } from "./useLessonAutopayOptions";
 import {
   AssignedWorkSummary,
   PublishedFeedback,
@@ -191,6 +192,15 @@ function HomePriorities({
     ? trainingArrangement(data, student.id).upcoming[0]
     : undefined;
   const lesson = next?.lesson;
+  const automatic = useLessonAutopayAccount(student.id, showAccount && !isDemo)
+    .data?.arrangement;
+  const failed = automatic?.lessons.find((item) => item.status === "failed");
+  const nextAutomatic =
+    automatic?.status === "active" && !automatic.needsReauthorization
+      ? automatic.lessons.find(
+          (item) => item.lessonId === lesson?.id && item.status === "planned",
+        )
+      : undefined;
   const readyToPay =
     next?.payment === "unpaid" && Boolean(next.lesson.invoiceId);
   const work = showWork ? context.scripts[0] : undefined;
@@ -277,6 +287,19 @@ function HomePriorities({
         )}
         {showAccount && student && (
           <section className="portal-account-summary" aria-label="Account">
+            {failed && (
+              <p className="portal-notice" role="status">
+                A lesson payment needs attention.{" "}
+                <Link
+                  to={portalContextLink(
+                    "/portal/payments?recurring=arrangements",
+                    student.id,
+                  )}
+                >
+                  Review automatic payments
+                </Link>
+              </p>
+            )}
             <PortalRow
               icon={CircleDollarSign}
               title="Lesson payments"
@@ -284,7 +307,9 @@ function HomePriorities({
                 next
                   ? next.lesson.topic +
                     " · " +
-                    trainingPaymentLabel[next.payment]
+                    (nextAutomatic
+                      ? `Automatic payment ${formatStudioDateTime(nextAutomatic.payAt, automatic?.timeZone)}`
+                      : trainingPaymentLabel[next.payment])
                   : "Invoices and packages"
               }
               action={readyToPay ? "Pay for this lesson" : "View payments"}

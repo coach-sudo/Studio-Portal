@@ -1,13 +1,39 @@
 import { useQuery } from "@tanstack/react-query";
 import { studioCommand } from "../../data/bookingCommands";
 import { useSearchIdentity } from "../../data/globalSearch";
-import type { AutopayPreviewOptions } from "../../domain/lessonAutopay";
+import type {
+  AutopayPreviewOptions,
+  LessonAutopayAccount,
+} from "../../domain/lessonAutopay";
 import type { StudioSnapshot } from "../../domain/model";
 import { studioDateKey } from "../../domain/presentation";
 import {
   trainingArrangement,
   trainingObligations,
 } from "../../domain/trainingArrangement";
+
+export function useLessonAutopayAccount(studentId: string, enabled: boolean) {
+  const actor = useSearchIdentity();
+  return useQuery({
+    queryKey: ["lesson-autopay-account", actor, studentId],
+    enabled: enabled && Boolean(actor && studentId),
+    retry: false,
+    refetchInterval: (query) => (query.state.data?.pending ? 4000 : false),
+    queryFn: async (): Promise<LessonAutopayAccount | null> =>
+      (
+        await studioCommand(
+          "invoices",
+          {
+            command: "training_autopay_list",
+            expectedVersion: 0,
+            payload: { studentId },
+            reason: "View automatic lesson payment arrangements",
+          },
+          actor ?? undefined,
+        )
+      ).resource,
+  });
+}
 
 export function useLessonAutopayOptions(
   data: StudioSnapshot,

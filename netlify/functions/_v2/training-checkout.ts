@@ -1,14 +1,15 @@
-import Stripe from "stripe";
 import { z } from "zod";
+import type Stripe from "stripe";
 import { json } from "../_shared/http";
-import { portalOrigin } from "../_shared/portal-url";
 import { serviceClient } from "../_shared/supabase";
+import { testAutopayStripe } from "../_shared/training-autopay";
 import {
   reconcileTrainingCheckout,
   trainingCheckout,
   type TrainingCheckout,
 } from "../_shared/training-checkout";
 import type { V2CommandContext } from "./types";
+import { handleLessonAutopayCommand } from "./training-autopay";
 import {
   trainingAutopayOptions,
   trainingAutopayPreview,
@@ -34,20 +35,10 @@ const paySelection = z
   })
   .strict();
 
-function testStripeKey() {
-  const key = Netlify.env.get("STRIPE_SECRET_KEY");
-  return Netlify.env.get("TRAINING_CHECKOUT_TEST_MODE") === "true" &&
-    key &&
-    /^(sk|rk)_test_/.test(key)
-    ? key
-    : null;
-}
-
-export async function handleTrainingCheckout({
-  input,
-  db,
-  context,
-}: V2CommandContext): Promise<Response> {
+export async function handleTrainingCheckout(
+  commandContext: V2CommandContext,
+): Promise<Response> {
+  const { input, db, context } = commandContext;
   const { data, error } = await db.auth.getUser();
   if (error || !data.user) throw new Error("FORBIDDEN");
   const actor = data.user.id;
@@ -55,7 +46,9 @@ export async function handleTrainingCheckout({
     return trainingAutopayOptions(actor, input.payload);
   if (input.command === "training_autopay_preview")
     return trainingAutopayPreview(actor, input.payload);
-  const key = testStripeKey();
+  if (input.command.startsWith("training_autopay_"))
+    return handleLessonAutopayCommand(commandContext, actor, data.user.email);
+  const provider = testAutopayStripe(context, "TRAINING_CHECKOUT_TEST_MODE");
 
   if (input.command === "training_payers") {
     const { studentIds } = z
@@ -72,13 +65,13 @@ export async function handleTrainingCheckout({
         createdAt: string;
       }[];
     }>("payers", { actor, studentIds: [...new Set(studentIds)] });
-    return json({ resource: { ...payer, ready: Boolean(key) } });
+    return json({ resource: { ...payer, ready: Boolean(provider) } });
   }
   if (
     input.command === "training_invoice_quote" ||
     input.command === "training_invoice_issue"
   ) {
-    if (!key)
+    if (!provider)
       throw new Error(
         "PROVIDER_UNAVAILABLE: Test lesson checkout is unavailable.",
       );
@@ -109,13 +102,11 @@ export async function handleTrainingCheckout({
   const cancel = input.command === "training_cancel";
   if (!creating && !status && !cancel) throw new Error("NOT_FOUND");
   const id = z.uuid().parse(creating ? input.idempotencyKey : input.entityId);
-  if (!key)
+  if (!provider)
     throw new Error(
       "PROVIDER_UNAVAILABLE: Test lesson checkout is unavailable.",
     );
-  const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });
-  // Resolve the trusted private deploy before reserving invoices.
-  const origin = creating ? portalOrigin(context) : undefined;
+  const { stripe, origin } = provider;
   const attempt = creating
     ? await trainingCheckout<TrainingCheckout>("reserve", {
         ...paySelection.parse(input.payload),
@@ -139,7 +130,7 @@ export async function handleTrainingCheckout({
       throw new Error(
         "INVALID_TRANSITION: The payment attempt needs studio review.",
       );
-    const back = new URL("/portal/payments", origin ?? portalOrigin(context));
+    const back = new URL("/portal/payments", origin);
     back.searchParams.set("pay", "lesson");
     back.searchParams.set("student", attempt.return_student_id);
     back.searchParams.set("attempt", id);

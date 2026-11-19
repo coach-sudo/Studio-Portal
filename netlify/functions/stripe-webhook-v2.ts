@@ -15,6 +15,11 @@ import {
   reconcileTrainingCheckout,
   trainingCheckout,
 } from "./_shared/training-checkout";
+import {
+  autopay,
+  reconcileAutopayIntent,
+  reconcileAutopaySetup,
+} from "./_shared/training-autopay";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -91,6 +96,11 @@ export default async (request: Request, context: Context) => {
       event.type === "checkout.session.expired"
     ) {
       const session = event.data.object;
+      if (session.metadata?.training_autopay_mandate) {
+        if (event.livemode) return await done({ ignored: true });
+        const plan = await reconcileAutopaySetup(stripe, session);
+        return await done({ autopayStatus: plan?.status ?? "pending_setup" });
+      }
       if (session.metadata?.training_checkout_id) {
         const checkout = await reconcileTrainingCheckout(
           session,
@@ -98,6 +108,38 @@ export default async (request: Request, context: Context) => {
         );
         return await done({ trainingCheckoutStatus: checkout.status });
       }
+    }
+    if (
+      event.type === "setup_intent.succeeded" &&
+      event.data.object.metadata?.training_autopay_mandate
+    ) {
+      if (event.livemode) return await done({ ignored: true });
+      const intent = event.data.object;
+      const setup = await autopay<{ session: string | null }>(
+        "setup_reference",
+        {
+        id: intent.metadata?.training_autopay_mandate,
+        },
+      );
+      if (!setup.session) return await done({ ignored: true });
+      const session = await stripe.checkout.sessions.retrieve(setup.session);
+      if (session.status !== "complete")
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe Checkout is recording the payment setup.",
+        );
+      const plan = await reconcileAutopaySetup(stripe, session);
+      return await done({ autopayStatus: plan?.status ?? "pending_setup" });
+    }
+    if (
+      (event.type === "payment_intent.succeeded" ||
+        event.type === "payment_intent.canceled" ||
+        event.type === "payment_intent.processing" ||
+        event.type === "payment_intent.payment_failed") &&
+      event.data.object.metadata.training_autopay_attempt
+    ) {
+      if (event.livemode) return await done({ ignored: true });
+      const attempt = await reconcileAutopayIntent(event.data.object);
+      return await done({ autopayStatus: attempt.status });
     }
     if (
       !event.livemode &&

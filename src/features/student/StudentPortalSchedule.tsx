@@ -44,11 +44,13 @@ export function StudentBookings({
   isDemo,
   canManageLessons = true,
   showFinance = true,
+  showPaymentStatus = showFinance,
 }: {
   data: Snapshot;
   isDemo: boolean;
   canManageLessons?: boolean;
   showFinance?: boolean;
+  showPaymentStatus?: boolean;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
@@ -366,7 +368,7 @@ export function StudentBookings({
                       {seriesNeedsReview && (
                         <Status tone="warn">Series under review</Status>
                       )}
-                      {showFinance && (
+                      {showPaymentStatus && (
                         <Status tone={payment === "paid" ? "good" : "warn"}>
                           {trainingPaymentLabel[payment]}
                         </Status>
@@ -618,7 +620,7 @@ export function StudentBookings({
                   >
                     {lesson.status.replaceAll("_", " ")}
                   </Status>
-                  {showFinance && (
+                  {showPaymentStatus && (
                     <Status tone={payment === "paid" ? "good" : "warn"}>
                       {trainingPaymentLabel[payment]}
                     </Status>

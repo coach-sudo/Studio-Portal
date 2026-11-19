@@ -52,6 +52,22 @@ export function Payments({
   const recurring = params.get("recurring");
   const recurringOnly =
     recurring === "packages" || recurring === "arrangements";
+  const booked = data.bookings.find(
+    (item) =>
+      item.id === params.get("booked") &&
+      item.studentId === student?.id &&
+      item.status === "confirmed",
+  );
+  const bookedLessonIds = booked
+    ? data.lessonParticipants
+        .filter(
+          (item) =>
+            item.bookingId === booked.id &&
+            item.studentId === student?.id &&
+            item.status !== "cancelled",
+        )
+        .map((item) => item.lessonId)
+    : [];
   const autopay = useLessonAutopayOptions(data, student?.id ?? "", isDemo);
   const lesson = data.lessons.find(
     (item) =>
@@ -255,6 +271,13 @@ export function Payments({
           </Link>
         )}
       </header>
+      {recurringOnly && booked && (
+        <p role="status" className="portal-notice">
+          Booking {booked.reference} is confirmed. Review payment timing for the
+          new lessons below. Your booking stays confirmed if you leave payment
+          setup or Stripe needs another attempt.
+        </p>
+      )}
       {recurringOnly && student && (
         <div>
           <Link to={portalContextLink("/portal/payments", student.id)}>
@@ -264,9 +287,16 @@ export function Payments({
       )}
       {recurringOnly && student && autopay && (
         <LessonAutopayPreview
-          key={`${student.id}:${lessonId ?? ""}`}
+          key={`${student.id}:${lessonId ?? ""}:${booked?.id ?? ""}`}
           studentId={student.id}
+          studentName={student.preferredName || student.fullName}
           initialLessonId={lessonId ?? undefined}
+          bookedLessonIds={bookedLessonIds}
+          initialLeadDays={
+            booked && params.has("lead")
+              ? Number(params.get("lead"))
+              : undefined
+          }
           options={autopay}
           demoLessons={isDemo ? data.lessons : undefined}
         />

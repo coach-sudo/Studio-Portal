@@ -14,9 +14,22 @@ import {
 import { ensureBookingPortalAccess } from "./_shared/portal-access";
 import { queueBookingEmails } from "./_shared/booking-email";
 import { cancelConfirmedBooking } from "./_shared/booking-cancellation";
-import { slotIsVisible, visibleSlotsPercent } from "../../src/domain/availabilityVisibility";
-import { continuationStart, selectRecurringOccurrences } from "../../src/domain/recurringOccurrences";
-import { formatStudioDateTime, studioDateKey } from "../../src/domain/presentation";
+import {
+  slotIsVisible,
+  visibleSlotsPercent,
+} from "../../src/domain/availabilityVisibility";
+import {
+  continuationStart,
+  selectRecurringOccurrences,
+} from "../../src/domain/recurringOccurrences";
+import {
+  formatStudioDateTime,
+  studioDateKey,
+} from "../../src/domain/presentation";
+import {
+  lessonPaymentState,
+  trainingObligations,
+} from "../../src/domain/trainingArrangement";
 
 const hash = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -301,35 +314,35 @@ async function createBooking(request: Request, context: Context) {
     db = serviceClient(),
     idempotencyKey = `public-booking:${idempotency}`,
     requestHash = hash(JSON.stringify(raw));
-  const { data: existing } = await db
-    .from("idempotency_keys")
-    .select("request_hash,response")
-    .eq("key", idempotencyKey)
-    .maybeSingle();
-  if (existing) {
-    if (existing.request_hash !== requestHash)
-      throw new Error(
-        "VALIDATION_FAILED: Idempotency key was reused with different booking details.",
-      );
-    if (existing.response) return existing.response;
-    throw new Error("BOOKING_PROCESSING");
-  }
-  const { error: claimError } = await db
-    .from("idempotency_keys")
-    .insert({
+  if (!input.reviewOnly) {
+    const { data: existing } = await db
+      .from("idempotency_keys")
+      .select("request_hash,response")
+      .eq("key", idempotencyKey)
+      .maybeSingle();
+    if (existing) {
+      if (existing.request_hash !== requestHash)
+        throw new Error(
+          "VALIDATION_FAILED: Idempotency key was reused with different booking details.",
+        );
+      if (existing.response) return existing.response;
+      throw new Error("BOOKING_PROCESSING");
+    }
+    const { error: claimError } = await db.from("idempotency_keys").insert({
       key: idempotencyKey,
       command: "public_booking",
       request_hash: requestHash,
       response: null,
     });
-  if (claimError) {
-    const { data: claimed } = await db
-      .from("idempotency_keys")
-      .select("response")
-      .eq("key", idempotencyKey)
-      .maybeSingle();
-    if (claimed?.response) return claimed.response;
-    throw new Error("BOOKING_PROCESSING");
+    if (claimError) {
+      const { data: claimed } = await db
+        .from("idempotency_keys")
+        .select("response")
+        .eq("key", idempotencyKey)
+        .maybeSingle();
+      if (claimed?.response) return claimed.response;
+      throw new Error("BOOKING_PROCESSING");
+    }
   }
   const finish = async (result: Record<string, unknown>) => {
     await db
@@ -377,14 +390,23 @@ async function createBooking(request: Request, context: Context) {
     if (studioError || !studio)
       throw studioError || new Error("SERVICE_NOT_FOUND");
     const bookingTimezone = studio.timezone || "America/New_York";
-    let authenticatedStudent: any = null, pricingRule: any = null;
+    let authenticatedStudent: any = null,
+      pricingRule: any = null;
+    let authenticatedActor: string | undefined;
     try {
-      const userDb = userClient(request), { data: auth } = await userDb.auth.getUser();
+      const userDb = userClient(request),
+        { data: auth } = await userDb.auth.getUser();
+      authenticatedActor = auth.user?.id;
       if (input.continuation) {
         const { sourceSeriesId, studentId } = input.continuation;
         const permission = await userDb.rpc("can_manage_student_lessons",{ target_student: studentId });
         if (!auth.user || permission.error || !permission.data)
           throw new Error("FORBIDDEN: Sign in with scheduling access for this student.");
+        if (input.reviewOnly) {
+          const viewer = await userDb.rpc("can_view_student_schedule", { target_student: studentId });
+          if (viewer.error || !viewer.data)
+            throw new Error("FORBIDDEN: Schedule viewing is required for this review.");
+        }
         const [source, lessons, student, extension] = await Promise.all([
           db.from("recurring_series").select("kind,status,cadence,ends_on,recurrence_rule").eq("id",sourceSeriesId)
             .eq("student_id",studentId).eq("studio_id",studioId).eq("service_id",service.id).maybeSingle(),
@@ -496,13 +518,45 @@ async function createBooking(request: Request, context: Context) {
         : recurringDates(input.startsAt, input.recurrence, proposedCount, bookingTimezone);
     const skippedStarts = input.skippedOccurrenceStarts ?? [];
     if (skippedStarts.length && service.category !== "private")
-      throw new Error("VALIDATION_FAILED: Only private series support skipped dates.");
-    const occurrenceStarts = selectRecurringOccurrences(proposedStarts, skippedStarts);
-    if ((skippedStarts.length || input.continuation) &&
-      occurrenceStarts.some((date) => Date.parse(date) >
-        Date.now() + Number(service.booking_horizon_days) * 86400000))
-      throw new Error("VALIDATION_FAILED: One or more dates are beyond the booking window. Change the number of lessons or skip those dates.");
-    const occurrenceCount = input.offeringId ? proposedCount : occurrenceStarts.length;
+      throw new Error(
+        "VALIDATION_FAILED: Only private series support skipped dates.",
+      );
+    const occurrenceStarts = selectRecurringOccurrences(
+      proposedStarts,
+      skippedStarts,
+    );
+    if (
+      (skippedStarts.length || input.continuation) &&
+      occurrenceStarts.some(
+        (date) =>
+          Date.parse(date) >
+          Date.now() + Number(service.booking_horizon_days) * 86400000,
+      )
+    )
+      throw new Error(
+        "VALIDATION_FAILED: One or more dates are beyond the booking window. Change the number of lessons or skip those dates.",
+      );
+    const occurrenceCount = input.offeringId
+      ? proposedCount
+      : occurrenceStarts.length;
+    const locationUpcharge = Number(
+      pricingRule?.location_price_adjustments?.[input.location] ??
+        service.location_price_adjustments?.[input.location] ??
+        (input.location === "in_person"
+          ? studio.settings?.bookingDefaults?.inPersonUpchargeMinor
+          : 0) ??
+        0,
+    );
+    const unitPrice =
+      Number(pricingRule?.price_minor ?? service.price_minor) +
+      locationUpcharge;
+    if (
+      input.reviewUnitMinor !== undefined &&
+      input.reviewUnitMinor !== unitPrice
+    )
+      throw new Error(
+        "VERSION_CONFLICT: The lesson price changed. Review the schedule again.",
+      );
     const firstOccurrenceAt = occurrenceStarts[0];
     const firstOccurrenceEndsAt = new Date(Date.parse(firstOccurrenceAt) +
       Number(service.duration_minutes) * 60000).toISOString();
@@ -617,22 +671,121 @@ async function createBooking(request: Request, context: Context) {
     if (!input.offeringId) {
       const googleToken = await googleAccessToken(),
         busy = await googleFreeBusy(googleToken, start.toISOString(), lastEnd);
-      if (
-        occurrenceStarts.some((value) => {
-          const occurrenceStart = new Date(value).getTime(),
-            occurrenceEnd =
-              occurrenceStart + Number(service.duration_minutes) * 60000;
-          return busy.some((block) =>
-            overlaps(
-              occurrenceStart,
-              occurrenceEnd,
-              new Date(block.start).getTime(),
-              new Date(block.end).getTime(),
-            ),
-          );
-        })
-      )
-        throw new Error("SLOT_UNAVAILABLE");
+      const conflict = occurrenceStarts.find((value) => {
+        const occurrenceStart = new Date(value).getTime(),
+          occurrenceEnd =
+            occurrenceStart + Number(service.duration_minutes) * 60000;
+        return busy.some((block) =>
+          overlaps(
+            occurrenceStart,
+            occurrenceEnd,
+            new Date(block.start).getTime(),
+            new Date(block.end).getTime(),
+          ),
+        );
+      });
+      if (conflict)
+        throw new Error(
+          `SLOT_UNAVAILABLE: ${formatStudioDateTime(conflict, bookingTimezone)} is unavailable. Review the proposed dates.`,
+        );
+    }
+    if (input.reviewOnly && input.continuation && authenticatedActor) {
+      const { studentId } = input.continuation;
+      const [scheduled, payer] = await Promise.all([
+        db
+          .from("lessons")
+          .select(
+            "id,starts_at,topic,payment_status,invoice_payment_pending,payment_needs_review",
+          )
+          .eq("studio_id", studioId)
+          .eq("student_id", studentId)
+          .eq("status", "scheduled")
+          .gte("starts_at", new Date().toISOString())
+          .order("starts_at")
+          .limit(100),
+        db.rpc("training_lesson_checkout", {
+          p_action: "payers",
+          p_value: { actor: authenticatedActor, studentIds: [studentId] },
+        }),
+      ]);
+      if (scheduled.error || payer.error) throw scheduled.error || payer.error;
+      const canPay = payer.data.studentIds.includes(studentId);
+      const invoices = canPay
+        ? await db
+            .from("studio_invoices")
+            .select("*")
+            .eq("studio_id", studioId)
+            .eq("student_id", studentId)
+            .in("status", ["open", "partially_paid"])
+        : null;
+      if (invoices?.error) throw invoices.error;
+      const amounts = new Map(
+        trainingObligations(invoices?.data ?? [], studentId)
+          .filter(({ eligible }) => eligible)
+          .map(({ lessonId, amountMinor, currency }) => [lessonId, { amountMinor, currency }]),
+      );
+      const local = await db
+        .from("lessons")
+        .select("starts_at,ends_at")
+        .eq("studio_id", studioId)
+        .eq("status", "scheduled")
+        .lt("starts_at", lastEnd)
+        .gt(
+          "ends_at",
+          new Date(
+            Date.parse(firstOccurrenceAt) -
+              Number(service.buffer_before_minutes) * 60000,
+          ).toISOString(),
+        );
+      if (local.error) throw local.error;
+      const conflicts = occurrenceStarts.filter((instant) =>
+        local.data.some((existing) =>
+          overlaps(
+            Date.parse(instant) - Number(service.buffer_before_minutes) * 60000,
+            Date.parse(instant) +
+              (Number(service.duration_minutes) +
+                Number(service.buffer_after_minutes)) *
+                60000,
+            Date.parse(existing.starts_at),
+            Date.parse(existing.ends_at),
+          ),
+        ),
+      );
+      const timing = studio.settings?.trainingAutopay;
+      const automaticPayment = canPay && preferences.allowLearnerLessonInvoices === true
+        && Netlify.env.get("TRAINING_AUTOPAY_PREVIEW") === "true" && timing
+        ? {
+            chargeAtLocal: timing.chargeAtLocal,
+            minimumLeadDays: timing.minimumLeadDays,
+            maximumLeadDays: timing.maximumLeadDays,
+            maximumLessonMinor: timing.maximumLessonMinor,
+          }
+        : undefined;
+      return {
+        status: "review",
+        starts: occurrenceStarts,
+        skipped: skippedStarts,
+        conflicts,
+        timeZone: bookingTimezone,
+        currency: service.currency,
+        unitMinor: unitPrice,
+        canPay,
+        invoicesEnabled: preferences.allowLearnerLessonInvoices === true,
+        automaticPayment,
+        existing: scheduled.data.map((lesson) => ({
+          startsAt: lesson.starts_at,
+          topic: lesson.topic,
+          payment: canPay
+            ? lessonPaymentState({
+                status: "scheduled",
+                paymentStatus: lesson.payment_status,
+                invoicePaymentPending: lesson.invoice_payment_pending,
+                paymentNeedsReview: lesson.payment_needs_review,
+              })
+            : undefined,
+          balance: canPay ? amounts.get(lesson.id) : undefined,
+        })),
+      };
     }
     let hold: { id: string; expires_at?: string };
     if (occurrenceStarts.length > 1) {
@@ -700,20 +853,12 @@ async function createBooking(request: Request, context: Context) {
       seriesId = series.id;
       createdSeriesId = series.id;
     }
-    const locationUpcharge = Number(
-        pricingRule?.location_price_adjustments?.[input.location] ?? service.location_price_adjustments?.[input.location] ??
-          (input.location === "in_person"
-            ? studio.settings?.bookingDefaults?.inPersonUpchargeMinor
-            : 0) ??
-          0,
-      ),
-      unitPrice = Number(pricingRule?.price_minor ?? service.price_minor) + locationUpcharge,
-      subtotalMinor =
-        service.category === "private" &&
-        input.recurrence !== "none" &&
-        input.paymentPolicy !== "subscription"
-          ? unitPrice * occurrenceCount
-          : unitPrice;
+    const subtotalMinor =
+      service.category === "private" &&
+      input.recurrence !== "none" &&
+      input.paymentPolicy !== "subscription"
+        ? unitPrice * occurrenceCount
+        : unitPrice;
     let discountMinor = 0;
     let appliedDiscountCode = input.discountCode;
     if (!appliedDiscountCode && authenticatedStudent && input.paymentPolicy !== "credits" && subtotalMinor > 0) {
@@ -886,18 +1031,40 @@ async function createBooking(request: Request, context: Context) {
       });
     if (termsError) throw termsError;
     if (immediate) {
-      const { error } = await db.rpc("confirm_booking", {
-        target_booking: booking.id,
-        target_hold: hold.id,
-        amount_paid: 0,
-        provider_reference: `invoice:${booking.id}`,
-      });
+      const { data: confirmation, error } =
+        input.paymentPolicy === "pay_later" && authenticatedStudent
+          ? await db.rpc("training_confirm_pay_later", {
+              p_booking: booking.id,
+              p_hold: hold.id,
+            })
+          : await db.rpc("confirm_booking", {
+              target_booking: booking.id,
+              target_hold: hold.id,
+              amount_paid: 0,
+              provider_reference: `invoice:${booking.id}`,
+            });
       if (error) throw error;
-      await queueBookingEmails(
-        db,
-        booking.id,
-        manageToken,
-      );
+      // The booking is committed. A failed confirmation message must not
+      // delete the lessons, release their discount, or reopen the hold.
+      createdBookingId = undefined;
+      createdSeriesId = undefined;
+      createdHoldIds = [];
+      claimedDiscountId = undefined;
+      const result = await finish({
+        bookingId: booking.id,
+        reference: booking.reference,
+        status: "confirmed",
+        manageUrl: `/booking/${manageToken}`,
+        invoicePrepared: Boolean(confirmation?.financial?.invoiceId),
+      });
+      try {
+        await queueBookingEmails(db, booking.id, manageToken);
+      } catch {
+        console.error(
+          "Could not queue committed booking confirmation",
+          booking.id,
+        );
+      }
       try {
         await ensureBookingPortalAccess(
           db,
@@ -925,12 +1092,7 @@ async function createBooking(request: Request, context: Context) {
             { onConflict: "dedupe_key" },
           );
       }
-      return await finish({
-        bookingId: booking.id,
-        reference: booking.reference,
-        status: "confirmed",
-        manageUrl: `/booking/${manageToken}`,
-      });
+      return result;
     }
     const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("Stripe is not configured.");
@@ -1012,6 +1174,24 @@ async function createBooking(request: Request, context: Context) {
       expiresAt: hold.expires_at,
     });
   } catch (error) {
+    if (input.reviewOnly) throw error;
+    if (createdBookingId) {
+      const committed = await db
+        .from("bookings")
+        .select("id,reference,status")
+        .eq("id", createdBookingId)
+        .maybeSingle();
+      // When the confirm request times out, keep its receipts and recover any
+      // committed booking before the failure path is allowed to clean up.
+      if (committed.error) throw error;
+      if (committed.data?.status === "confirmed")
+        return await finish({
+          bookingId: committed.data.id,
+          reference: committed.data.reference,
+          status: "confirmed",
+          followUpRequired: true,
+        });
+    }
     if (createdCheckoutId) {
       try {
         const stripeKey = Netlify.env.get("STRIPE_SECRET_KEY");
