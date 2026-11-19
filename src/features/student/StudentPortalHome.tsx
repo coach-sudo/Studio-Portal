@@ -11,9 +11,10 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
-import { formatMoney, studentBalanceMinor } from "../../domain/finance";
-import { creditTotals } from "../../domain/credits";
-import { isJoinableLesson } from "../../domain/lessonExperience";
+import {
+  isJoinableLesson,
+  lessonPaymentLabel,
+} from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -187,19 +188,14 @@ function HomePriorities({
   const lesson = showSchedule ? context.nextLesson : undefined;
   const work = showWork ? context.scripts[0] : undefined;
   const practice = showWork ? context.practice.active[0] : undefined;
-  const credits = student
-    ? creditTotals(
-        data.packages,
-        data.creditEntries,
-        data.lessons,
-        student.id,
-        Date.now(),
-        data.lessonParticipants,
-      )
-    : undefined;
-  const balance = student
-    ? studentBalanceMinor(student.id, data.payments, data.settings.currency)
-    : 0;
+  const booking = data.bookings.find((item) =>
+    data.lessonParticipants.some(
+      (part) =>
+        part.lessonId === lesson?.id &&
+        part.bookingId === item.id &&
+        part.studentId === student.id,
+    ),
+  );
   const lessonIsJoinable = Boolean(lesson && isJoinableLesson(lesson));
   const actions = [
     !lessonIsJoinable && lesson
@@ -228,8 +224,8 @@ function HomePriorities({
           icon: FileText,
           title: work.title,
           detail: "Current script",
-          action: "Open work",
-          route: `${base}/work`,
+          action: "Open script",
+          route: `${base}/work?view=scripts`,
         }
       : undefined,
   ].filter(Boolean) as Array<{
@@ -280,19 +276,21 @@ function HomePriorities({
             </div>
           </Section>
         )}
-        {showAccount && student && credits && (
+        {showAccount && student && (
           <section className="portal-account-summary" aria-label="Account">
             <PortalRow
               icon={CircleDollarSign}
-              title={`${credits.available} lesson credits available`}
-              detail={[
-                credits.reserved ? `${credits.reserved} reserved` : "",
-                balance
-                  ? `${formatMoney(Math.abs(balance), data.settings.currency)} ${balance > 0 ? "account credit" : "balance"}`
-                  : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
+              title="Lesson payments"
+              detail={
+                lesson
+                  ? lesson.topic +
+                    " · " +
+                    lessonPaymentLabel(
+                      lesson.paymentStatus,
+                      booking?.paymentStatus,
+                    )
+                  : "Invoices and packages"
+              }
               action="View payments"
               onClick={() => navigate(`${base}/payments`)}
             />

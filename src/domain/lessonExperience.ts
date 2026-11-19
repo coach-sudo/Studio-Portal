@@ -1,4 +1,4 @@
-import type { Assignment, Lesson } from "./model";
+import type { Assignment, BookingPaymentStatus, Lesson } from "./model";
 
 export type LessonTimingState =
   "past" | "recent" | "joinable" | "today" | "upcoming";
@@ -144,4 +144,18 @@ export function lessonDateLabel(lesson: Pick<Lesson, "startsAt">) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+/** Present settlement in the learner portal without exposing its accounting method. */
+export function lessonPaymentLabel(
+  lessonStatus?: Lesson["paymentStatus"],
+  bookingStatus?: BookingPaymentStatus,
+) {
+  if (lessonStatus && lessonStatus !== "untracked")
+    return ["paid", "paid_by_credit", "waived"].includes(lessonStatus)
+      ? "Paid"
+      : "Unpaid";
+  return bookingStatus === "paid" || bookingStatus === "not_required"
+    ? "Paid"
+    : "Unpaid";
 }

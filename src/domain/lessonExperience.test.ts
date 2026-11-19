@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Lesson } from "./model";
-import { selectLessonDelivery } from "./lessonExperience";
+import { lessonPaymentLabel, selectLessonDelivery } from "./lessonExperience";
 
 const lesson = (overrides: Partial<Lesson> = {}) =>
   ({
@@ -45,4 +45,13 @@ describe("selectLessonDelivery", () => {
       ).state,
     ).toBe("ready");
   });
+});
+
+it("shows only Paid or Unpaid to learners regardless of accounting method", () => {
+  expect(lessonPaymentLabel("paid_by_credit")).toBe("Paid");
+  expect(lessonPaymentLabel("waived")).toBe("Paid");
+  expect(lessonPaymentLabel("untracked", "paid")).toBe("Paid");
+  expect(lessonPaymentLabel("untracked", "not_required")).toBe("Paid");
+  expect(lessonPaymentLabel("partially_paid")).toBe("Unpaid");
+  expect(lessonPaymentLabel("due")).toBe("Unpaid");
 });

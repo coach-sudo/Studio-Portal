@@ -492,6 +492,9 @@ function PortalWorkspace({
                     canManageLessons={
                       role !== "guardian" || guardianManageLessons
                     }
+                    showFinance={
+                      role === "guardian" ? guardianFinance : !person?.isMinor
+                    }
                   />
                 )
               }

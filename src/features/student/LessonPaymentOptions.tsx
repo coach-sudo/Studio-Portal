@@ -120,7 +120,7 @@ export function LessonPaymentOptions({
           }
           detail={
             selectedLesson
-              ? "The studio can issue a lesson invoice or help apply any eligible credits."
+              ? "Message the studio to ask about payment for this lesson."
               : "Choose a package or return to Payments to view past invoices."
           }
         />

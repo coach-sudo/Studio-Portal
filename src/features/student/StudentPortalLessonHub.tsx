@@ -33,8 +33,10 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { portalPageSize, shouldShowPagination } from "../../data/pagination";
 import { mapNoteRow } from "../../data/studioMappers";
-import { formatMoney } from "../../domain/finance";
-import { selectLessonDelivery } from "../../domain/lessonExperience";
+import {
+  lessonPaymentLabel,
+  selectLessonDelivery,
+} from "../../domain/lessonExperience";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -392,12 +394,15 @@ export function LessonHub({
     (item) => item.id === participant?.bookingId,
   );
   const student = selectedStudent;
+  const payment = lessonPaymentLabel(
+    lesson.paymentStatus,
+    booking?.paymentStatus,
+  );
   const canPay =
     showFinance &&
     ["scheduled", "completed"].includes(lesson.status) &&
-    !["paid", "paid_by_credit", "waived", "refunded"].includes(
-      lesson.paymentStatus || "",
-    ) &&
+    payment === "Unpaid" &&
+    lesson.paymentStatus !== "refunded" &&
     (lesson.invoiceId ||
       lesson.paymentStatus === "due" ||
       lesson.paymentStatus === "partially_paid" ||
@@ -504,6 +509,11 @@ export function LessonHub({
             ‹ Back
           </button>
           <h1>{lesson.topic}</h1>
+          {showFinance && (
+            <Status tone={payment === "Paid" ? "good" : "warn"}>
+              {payment}
+            </Status>
+          )}
           <p>
             {formatStudioDateTime(lesson.startsAt, data.settings.timezone)} ·{" "}
             {lesson.locationLabel}
@@ -750,18 +760,6 @@ export function LessonHub({
             <dt>Recurrence</dt>
             <dd>{lesson.seriesId ? "Recurring lesson" : "One-time lesson"}</dd>
           </div>
-          {showFinance && booking && (
-            <>
-              <div>
-                <dt>Payment</dt>
-                <dd>{booking.paymentStatus.replaceAll("_", " ")}</dd>
-              </div>
-              <div>
-                <dt>Lesson price</dt>
-                <dd>{formatMoney(booking.totalMinor, booking.currency)}</dd>
-              </div>
-            </>
-          )}
         </dl>
       </details>
     </div>

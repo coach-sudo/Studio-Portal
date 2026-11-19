@@ -501,8 +501,8 @@ describe("50 start-to-finish studio workflows", () => {
         screen.getByRole("heading", { name: "Your packages" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Dollar account credit" }),
-      ).toBeInTheDocument();
+        screen.queryByRole("heading", { name: "Dollar account credit" }),
+      ).not.toBeInTheDocument();
     });
     it("26 sees one primary action and related workspace actions on Home", async () => {
       renderApp("/portal");
@@ -740,8 +740,8 @@ describe("50 start-to-finish studio workflows", () => {
         await screen.findByRole("heading", { name: "Payments" }),
       ).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Dollar account credit" }),
-      ).toBeInTheDocument();
+        screen.queryByRole("heading", { name: "Dollar account credit" }),
+      ).not.toBeInTheDocument();
     });
     it("G4 can open the linked actor-page workspace", async () => {
       renderGuardian("/portal/actor-page");

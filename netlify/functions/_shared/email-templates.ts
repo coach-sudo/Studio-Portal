@@ -40,7 +40,7 @@ export const emailDefaults: Required<AutomationSettings> = {
     "Hi {{studentName}},\n\nYour {{serviceName}} lesson scheduled for {{startsAt}} has been cancelled. Your calendar invitation and studio schedule are being updated automatically.",
   packageExpirySubject: "{{packageName}} expires in {{days}} days",
   packageExpiryBody:
-    "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} credits remaining and expires on {{expiresAt}}. You can book or review your package from your studio portal.",
+    "Hi {{studentName}},\n\nYour {{packageName}} has {{credits}} lessons remaining and expires on {{expiresAt}}. You can book or review your package from your studio portal.",
   paymentFailedSubject: "Payment needs attention for {{studioName}}",
   paymentFailedBody:
     "We could not collect your scheduled payment. Please update your payment method within seven days.",

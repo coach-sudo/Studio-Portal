@@ -1,3 +1,4 @@
+import { lessonPaymentLabel } from "../../domain/lessonExperience";
 import { ShieldCheck, TriangleAlert } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
@@ -315,7 +316,7 @@ export function ManageBooking({
             </div>
             <div>
               <dt>Payment</dt>
-              <dd>{booking.paymentStatus.replaceAll("_", " ")}</dd>
+              <dd>{lessonPaymentLabel(undefined, booking.paymentStatus)}</dd>
             </div>
             <div>
               <dt>Policy</dt>

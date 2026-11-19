@@ -100,7 +100,7 @@ export default function PackageGift() {
           <ShieldCheck />
           <h1>Your gift is ready</h1>
           <p>
-            The lesson credits are in your account. If you requested a portal,
+            The gift package is in your account. If you requested a portal,
             login instructions are sending now.
           </p>
           <Link className="button-link primary" to="/login">
@@ -134,8 +134,7 @@ export default function PackageGift() {
               <input name="email" type="email" required />
             </label>
             <p className="full">
-              Your coach manages automatic credit use. Gift credits follow that
-              setting.
+              Your coach can help you use this package for lessons.
             </p>
             <label className="check-row full">
               <input

@@ -14,17 +14,16 @@ import {
   Status,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
-import {
-  formatMoney,
-  packageSummary,
-  studentBalanceMinor,
-} from "../../domain/finance";
+import { formatMoney, packageSummary } from "../../domain/finance";
 import {
   recentLessonDuration,
   sortPackageDefinitions,
 } from "../../domain/packageSelection";
 import { packageOffer } from "../../domain/packagePricing";
-import { packageBenefitLines } from "../../domain/packagePresentation";
+import {
+  learnerPackageText,
+  packageBenefitLines,
+} from "../../domain/packagePresentation";
 import { formatStudioDate } from "../../domain/presentation";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
@@ -32,7 +31,6 @@ import { useStudioStore } from "../../state/StudioStore";
 import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
-import { CreditAccount } from "../coach/CreditAccount";
 
 export function Payments({
   data,
@@ -57,7 +55,10 @@ export function Payments({
         )),
   );
   const payments = data.payments.filter(
-    (item) => item.studentId === student?.id,
+    (item) =>
+      item.studentId === student?.id &&
+      !item.accountCredit &&
+      (item.kind === "payment" || item.kind === "refund"),
   );
   const packages = data.packages.filter(
     (item) => item.studentId === student?.id,
@@ -243,15 +244,7 @@ export function Payments({
       {student && (
         <>
           {!paying && !isDemo && (
-            <StudentFinancialSummary studentId={student.id} />
-          )}
-          {!paying && (
-            <CreditAccount
-              data={data}
-              studentId={student.id}
-              isDemo={isDemo}
-              readOnly
-            />
+            <StudentFinancialSummary studentId={student.id} learnerView />
           )}
           <details
             className="disclosure-section"
@@ -266,21 +259,6 @@ export function Payments({
             />
           </details>
         </>
-      )}
-      {!paying && student && isDemo && (
-        <Section title="Dollar account credit" marked>
-          <div
-            className="account-balance-card"
-            role="status"
-            aria-label="Available dollar account credit"
-          >
-            <strong>
-              {formatMoney(
-                Math.max(0, studentBalanceMinor(student.id, data.payments)),
-              )}
-            </strong>
-          </div>
-        </Section>
       )}
       {!paying && (
         <details className="disclosure-section">
@@ -298,7 +276,9 @@ export function Payments({
                 <article key={entry.id} className="payment-history-row">
                   <FileText />
                   <div>
-                    <strong>{entry.reason}</strong>
+                    <strong>
+                      {entry.kind === "refund" ? "Refund" : "Payment"}
+                    </strong>
                     <small>
                       {formatStudioDate(
                         entry.createdAt,
@@ -348,15 +328,15 @@ export function Payments({
                 <article key={pkg.id}>
                   <CircleDollarSign />
                   <div>
-                    <strong>{pkg.name}</strong>
+                    <strong>{learnerPackageText(pkg.name)}</strong>
                     <small>
                       {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                      credits available ·{" "}
+                      lessons remaining ·{" "}
                       {formatMoney(pkg.priceMinor, pkg.currency)}
                       {pkg.expiresAt &&
                         ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
                       {subscription &&
-                        ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} credit` : `renews ${subscription.renewalMode}`}`}
+                        ` · ${subscription.status === "cancel_at_period_end" ? "renewal ends after this period" : subscription.status === "cancelled" ? "renewal off" : subscription.renewalMode === "balance_threshold" ? `renews at ${subscription.balanceThreshold ?? 1} lessons remaining` : `renews ${subscription.renewalMode}`}`}
                     </small>
                   </div>
                   <Status tone={expired ? "danger" : "good"}>
@@ -425,7 +405,7 @@ export function Payments({
                 <article key={definition.id}>
                   <CircleDollarSign />
                   <div>
-                    <strong>{definition.name}</strong>
+                    <strong>{learnerPackageText(definition.name)}</strong>
                     <small>
                       {definition.sessionDurationMinutes === preferredDuration
                         ? lesson
@@ -437,7 +417,7 @@ export function Payments({
                       {formatMoney(definition.priceMinor, definition.currency)}
                     </small>
                     <ul className="package-benefits">
-                      {packageBenefitLines(definition).map((benefit) => (
+                      {packageBenefitLines(definition, true).map((benefit) => (
                         <li key={benefit}>{benefit}</li>
                       ))}
                     </ul>
@@ -458,7 +438,7 @@ export function Payments({
       )}
       {purchaseDefinition && (
         <Dialog
-          title={purchaseDefinition.name}
+          title={learnerPackageText(purchaseDefinition.name)}
           onClose={() => {
             if (!checkoutBusy) setPurchaseDefinition(undefined);
           }}
@@ -470,7 +450,7 @@ export function Payments({
                 purchaseDefinition.currency,
               )}
             </strong>
-            <span>{purchaseDefinition.sessionCount} lesson credits</span>
+            <span>{purchaseDefinition.sessionCount} lessons included</span>
           </div>
           <label>
             Purchase option
@@ -492,27 +472,21 @@ export function Payments({
                       : option.renewalMode === "biweekly"
                         ? "Renew every two weeks"
                         : option.renewalMode === "balance_threshold"
-                          ? `Renew when ${option.balanceThreshold ?? 1} credit remains`
+                          ? `Renew when ${option.balanceThreshold ?? 1} ${(option.balanceThreshold ?? 1) === 1 ? "lesson remains" : "lessons remain"}`
                           : `Renew ${option.renewalMode}`}
                   </option>
                 ))}
             </select>
           </label>
-          <p>
-            One credit covers one lesson of any service or duration. Your
-            account’s automatic-use preference applies.
-          </p>
+          <p>Package lessons can be used for any service or duration.</p>
           {paying && (
-            <p>
-              Check the lesson balance after checkout to see whether a credit
-              was applied.
-            </p>
+            <p>After checkout, check whether this lesson is marked Paid.</p>
           )}
           {renewalMode === "balance_threshold" && (
             <p className="portal-notice">
               By continuing, you authorize Coach’D to charge the saved payment
-              method only when your balance reaches the displayed threshold. You
-              can turn this off later.
+              method when the package reaches the selected number of lessons
+              remaining. You can turn this off later.
             </p>
           )}
           {notice && (

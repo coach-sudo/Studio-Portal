@@ -477,7 +477,11 @@ export function InvoiceWorkspace({
                       : "warn"
                 }
               >
-                {inv.status.replaceAll("_", " ")}
+                {readOnly && inv.status !== "void"
+                  ? invoiceDue(inv)
+                    ? "Unpaid"
+                    : "Paid"
+                  : inv.status.replaceAll("_", " ")}
               </Status>
               <strong>{formatMoney(invoiceDue(inv), inv.currency)}</strong>
               <button onClick={() => open(inv.id)}>View invoice</button>
@@ -682,6 +686,7 @@ export function InvoiceWorkspace({
             invoice={selected}
             logoUrl={logoUrl}
             paymentBusy={busy || Boolean(selected.checkout_key)}
+            learnerView={readOnly}
             onPay={() =>
               void command("checkout", { amountMinor: invoiceDue(selected) })
             }
@@ -695,9 +700,9 @@ export function InvoiceWorkspace({
           {selected.checkout_key && (
             <Section title="Online payment pending">
               <p>
-                This payment is reserved while checkout is open or processing.
-                Check its status, or cancel an open checkout before recording
-                another payment or applying credits.
+                {readOnly
+                  ? "This payment is processing. You can check its status here."
+                  : "This payment is reserved while checkout is open or processing. Check its status before recording another payment or applying credits."}
               </p>
               <div className="header-actions">
                 <button
