@@ -18,6 +18,16 @@ export const financialOverviewSchema = z.object({
   unpaidInvoices: z.number().int().nonnegative(),
   activePackages: z.number().int().nonnegative(),
   expiringPackages: z.number().int().nonnegative(),
+  autopayStatus: z
+    .enum([
+      "off",
+      "pending_setup",
+      "active",
+      "paused",
+      "cancelled",
+      "needs_review",
+    ])
+    .optional(),
   renewalExceptions: z.number().int().nonnegative(),
 });
 export const workspaceSummarySchema = z.object({

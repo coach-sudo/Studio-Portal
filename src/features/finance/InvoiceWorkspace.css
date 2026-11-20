@@ -7,6 +7,179 @@
 .invoice-workspace {
   margin-block: 20px;
 }
+.invoice-workspace:empty {
+  display: none;
+}
+.invoice-payer-setup {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.invoice-payer-access {
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.invoice-payer-access input {
+  width: auto;
+}
+.billing-contact-details {
+  margin: 0 0 16px;
+}
+.billing-contact-details > div {
+  display: flex;
+  justify-content: space-between;
+  align-items: start;
+  gap: 8px;
+  border-bottom: 1px solid var(--line);
+  padding-block: 9px;
+}
+.billing-contact-details dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.coach-account-billing {
+  grid-column: 1 / -1;
+}
+.student-billing-controls input[type="search"] {
+  width: 100%;
+}
+.workflow-dialog.lesson-invoice-dialog {
+  width: min(100%, 960px);
+  max-width: 960px;
+}
+.lesson-invoice-grid,
+.student-billing-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+.lesson-invoice-summary,
+.student-billing-sidebar,
+.lesson-invoice-payer {
+  display: grid;
+  gap: 12px;
+}
+.lesson-invoice-summary .section {
+  background: light-dark(#e5efe1, #19372d);
+}
+.coach-billing-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.coach-billing-metrics > div {
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  padding: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+}
+.coach-billing-metrics > div:first-child {
+  background: light-dark(#e5efe1, #19372d);
+}
+.coach-billing-metrics strong {
+  font-size: clamp(1.15rem, 3vw, 1.8rem);
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+}
+.student-billing-controls {
+  align-items: end;
+}
+.student-billing-controls label {
+  display: grid;
+  gap: 5px;
+}
+.student-billing-workspace .lesson-invoice-rows li {
+  align-items: start;
+}
+.billing-lesson-actions {
+  display: grid;
+  gap: 4px;
+  justify-items: end;
+  text-align: right;
+}
+.billing-lesson-actions .status {
+  white-space: normal;
+}
+.lesson-invoice-total {
+  display: block;
+  font-size: 1.7rem;
+  color: var(--ink, #193b31);
+  font-variant-numeric: tabular-nums;
+}
+.lesson-invoice-actions {
+  margin-top: 16px;
+}
+.lesson-invoice-field {
+  display: grid;
+  gap: 6px;
+  margin-block: 12px;
+}
+.lesson-invoice-rows {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+}
+.lesson-invoice-rows li,
+.lesson-invoice-rows li > label {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
+}
+.lesson-invoice-rows li {
+  border-top: 1px solid var(--line);
+  padding-block: 12px;
+}
+.lesson-invoice-rows li > label {
+  width: 100%;
+  cursor: pointer;
+}
+.lesson-invoice-rows li > label span {
+  flex: 1;
+}
+.lesson-invoice-rows .lesson-invoice-amount {
+  display: grid;
+  justify-items: end;
+  gap: 3px;
+  flex: 0 1 auto;
+}
+.lesson-invoice-rows small {
+  display: block;
+}
+.lesson-invoice-rows input[type="checkbox"] {
+  inline-size: 18px;
+  block-size: 18px;
+  flex: 0 0 auto;
+}
+.student-billing-workspace .student-billing-grid .section {
+  margin-block: 0;
+}
+@media (max-width: 740px) {
+  .lesson-invoice-grid,
+  .student-billing-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 450px) {
+  .coach-billing-metrics {
+    gap: 6px;
+  }
+  .coach-billing-metrics > div {
+    padding: 9px 7px;
+  }
+  .coach-billing-metrics small {
+    font-size: 0.725rem;
+  }
+}
 .invoice-editor {
   display: grid;
   gap: 20px;

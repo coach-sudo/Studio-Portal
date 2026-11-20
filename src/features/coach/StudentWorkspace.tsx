@@ -205,7 +205,8 @@ export function StudentWorkspace() {
     ["work", "My Work"],
     ["materials", "Materials"],
     ["household", "Household"],
-    ["payments", "Payments"],
+    ["payments", "Billing"],
+    ["account", "Account"],
   ] as const;
   const saveStudent = async (updates: Partial<Student>) => {
     if (studentMutation.isPending()) return;

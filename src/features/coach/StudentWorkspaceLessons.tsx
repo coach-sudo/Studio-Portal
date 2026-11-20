@@ -1,5 +1,5 @@
-import { canPrepareLessonInvoice } from "../../domain/invoices";
-import { LessonPaymentReceipt } from "../../components/LessonPaymentReceipt";
+import { CoachLessonBilling } from "../finance/CoachLessonBilling";
+import { lessonBillingStatus } from "../../domain/lessonPayment";
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { RecordUnavailable } from "../../components/RecordRoute";
@@ -792,65 +792,14 @@ function CoachLessonWorkspace({
               </button>
             )}
             <section className="lesson-command-section">
-              <h3>Payment status</h3>
-              {["scheduled", "completed"].includes(lesson.status) &&
-                !["paid", "paid_by_credit", "waived", "refunded"].includes(
-                  lesson.paymentStatus || "",
-                ) && (
-                  <div className="page-actions">
-                    {canPrepareLessonInvoice(data, lesson, student.id) && (
-                      <Link
-                        className="button-link"
-                        to={
-                          "/coach/students/" +
-                          student.id +
-                          "/payments?billLesson=" +
-                          encodeURIComponent(lesson.id)
-                        }
-                      >
-                        Prepare lesson invoice
-                      </Link>
-                    )}
-                    <Link
-                      className="button-link"
-                      to={
-                        "/coach/inbox?email=1&template=lesson_payment&student=" +
-                        encodeURIComponent(student.id) +
-                        "&lesson=" +
-                        encodeURIComponent(lesson.id)
-                      }
-                    >
-                      Email payment link
-                    </Link>
-                  </div>
-                )}
-              {lesson.invoiceId ? (
-                <button
-                  onClick={() =>
-                    navigate(`/coach/finance?invoice=${lesson.invoiceId}`)
-                  }
-                >
-                  Manage invoice payment
-                </button>
-              ) : paidByCredit ? (
-                <p>
-                  A lesson credit is attached. Cancellation lets you return or
-                  use it.
-                </p>
-              ) : (
-                <LessonPaymentReceipt
-                  key={lesson.id}
-                  lessonId={lesson.id}
-                  isDemo={isDemo}
-                  onSaved={() =>
-                    invalidateStudioDomains(queryClient, [
-                      "lessons",
-                      "finance",
-                      "booking",
-                    ])
-                  }
-                />
-              )}
+              <h3>Billing</h3>
+              <p>{lessonBillingStatus(lesson)}</p>
+              <CoachLessonBilling
+                key={lesson.id}
+                data={data}
+                lesson={lesson}
+                isDemo={isDemo}
+              />
             </section>
           </div>
         </Dialog>

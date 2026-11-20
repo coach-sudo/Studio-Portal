@@ -1,3 +1,5 @@
+import { CoachBillingContact } from "../finance/CoachBillingContact";
+import { CoachBillingSummary } from "../finance/CoachBillingSummary";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { loadHouseholdAccess } from "../../data/studioOperations";
 import { usePrivateIdentity } from "../../hooks/usePrivateIdentity";
@@ -850,12 +852,20 @@ export function Account({
   };
   return (
     <div className="two-section-grid">
-      <Link
-        className="button-link"
-        to={`/coach/students/${student.id}/payments`}
-      >
-        Payments, packages and financial configuration
-      </Link>
+      <div className="coach-account-billing">
+        <CoachBillingSummary
+          data={data}
+          studentId={student.id}
+          isDemo={isDemo}
+        />
+        <CoachBillingContact data={data} student={student} isDemo={isDemo} />
+        <Link
+          className="button-link"
+          to={`/coach/students/${student.id}/payments`}
+        >
+          Open billing, invoices and payment history
+        </Link>
+      </div>
       <StudentCommunication
         data={data}
         studentId={student.id}

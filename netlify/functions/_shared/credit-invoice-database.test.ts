@@ -143,6 +143,231 @@ beforeAll(async () => {
     ),
   );
 }, 30000);
+it("locks verified lesson terms inside the invoice transaction and reuses a reviewed draft", async () => {
+  const service = "41000000-0000-4000-8000-000000000001";
+  const ids = [
+    "41000000-0000-4000-8000-000000000011",
+    "41000000-0000-4000-8000-000000000012",
+  ];
+  await db.exec("begin");
+  try {
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/20261120163131_coach_invoice_exact_lessons.sql",
+        "utf8",
+      ),
+    );
+    await db.exec(`alter table lessons add column payment_needs_review boolean not null default false;
+      alter table students add column version integer not null default 1;
+      create table linked_contacts(id uuid primary key,student_id uuid,version integer);`);
+    await db.query(
+      "insert into booking_services(id,studio_id,name) values($1,$2,'Verified service')",
+      [service, studio],
+    );
+    for (const id of ids) {
+      await db.query(
+        "insert into lessons(id,studio_id,student_id,source_provider,service_id,price_minor,payment_status) values($1,$2,$3,'studio',$4,8000,'due')",
+        [id, studio, student, service],
+      );
+    }
+    const items = ids.map((id) => ({
+      id,
+      kind: "service",
+      referenceId: service,
+      description: "Verified lesson",
+      quantity: 1,
+      unitMinor: 8000,
+      lessonIds: [id],
+      lessonVersion: 1,
+      paidMinor: 0,
+      creditMinor: 0,
+    }));
+    const value = {
+      exactLessons: true,
+      status: "draft",
+      studio_id: studio,
+      student_id: student,
+      issue_date: "2026-11-20",
+      due_date: "2026-12-04",
+      currency: "USD",
+      introduction: "",
+      notes: "",
+      footer: "",
+      branding: { studioName: "Synthetic studio" },
+      recipient: { name: "Synthetic student" },
+      payerReview: { studentVersion: 1, contacts: {} },
+      items,
+    };
+    async function save(
+      payload: typeof value & { id?: string },
+      key: string,
+      version = 0,
+    ) {
+      await db.exec("savepoint invoice_attempt");
+      try {
+        return (
+          await db.query<{
+            invoice: {
+              id: string;
+              total_minor: number;
+              items: Record<string, unknown>[];
+              status: string;
+            };
+          }>("select save_studio_invoice($1,$2,$3) as invoice", [
+            payload,
+            key,
+            version,
+          ])
+        ).rows[0].invoice;
+      } catch (error) {
+        await db.exec("rollback to savepoint invoice_attempt");
+        throw error;
+      } finally {
+        await db.exec("release savepoint invoice_attempt");
+      }
+    }
+    await expect(
+      save(
+        { ...value, items: [items[0], { ...items[1], unitMinor: 1 }] },
+        "test-stale-price",
+      ),
+    ).rejects.toThrow("VERSION_CONFLICT");
+    await expect(
+      save(
+        { ...value, status: "open", items: [items[0], items[0]] },
+        "test-repeat-line",
+      ),
+    ).rejects.toThrow("Each lesson can appear only once");
+    const draft = await save(value, "test-draft");
+    await expect(save(value, "test-duplicate-draft")).rejects.toThrow(
+      "VERSION_CONFLICT",
+    );
+    const issue = { ...value, id: draft.id, status: "open" };
+    await expect(
+      save(
+        { ...issue, payerReview: { studentVersion: 2, contacts: {} } },
+        "test-stale-payer",
+        1,
+      ),
+    ).rejects.toThrow("Review the current payer");
+    await db.query(
+      "update lessons set paid_minor=8000,payment_status='paid' where id=$1",
+      [ids[1]],
+    );
+    await expect(save(issue, "test-paid-lesson", 1)).rejects.toThrow(
+      "VERSION_CONFLICT",
+    );
+    await db.query(
+      "update lessons set paid_minor=0,payment_status='due' where id=$1",
+      [ids[1]],
+    );
+    const pkg = "41000000-0000-4000-8000-000000000050";
+    await db.query(
+      "insert into packages(id,student_id,name) values($1,$2,'Coverage')",
+      [pkg, student],
+    );
+    await db.query(
+      "insert into package_credit_entries(package_id,lesson_id,kind,quantity) values($1,$2,'reservation',-1)",
+      [pkg, ids[1]],
+    );
+    await expect(save(issue, "test-package-covered", 1)).rejects.toThrow(
+      "VERSION_CONFLICT",
+    );
+    await db.query("delete from package_credit_entries where package_id=$1", [
+      pkg,
+    ]);
+    const issued = await save(issue, "test-issue", 1);
+    expect(issued).toMatchObject({
+      id: draft.id,
+      total_minor: 16000,
+      status: "open",
+    });
+    expect(issued.items[0]).toMatchObject({ verifiedLesson: true });
+    expect(issued.items[0]).not.toHaveProperty("lessonVersion");
+    expect(await save(issue, "test-issue", 1)).toEqual(issued);
+    await expect(
+      save({ ...value, status: "open" }, "test-duplicate-issued"),
+    ).rejects.toThrow("VERSION_CONFLICT");
+    expect(
+      await scalar(
+        "select count(*)::int as linked from lessons where invoice_id=$1",
+        [issued.id],
+      ),
+    ).toEqual({ linked: 2 });
+    expect(
+      await scalar(
+        "select has_function_privilege('authenticated','public.save_studio_invoice(jsonb,text,integer)','execute') as allowed",
+      ),
+    ).toEqual({ allowed: false });
+  } finally {
+    await db.exec("rollback");
+  }
+});
+it("discloses only an authorization status, and only to the student's coach", async () => {
+  await db.exec("begin");
+  try {
+    await db.exec(`
+      create schema training_internal;
+      create table training_internal.lesson_autopay_mandates(
+        id uuid,student_id uuid,studio_id uuid,payer_id uuid,status text,
+        consented_at timestamptz,setup_expires_at timestamptz,stripe_method text, policy_allowed boolean
+      );
+      create function training_internal.is_lesson_payer(uuid,uuid) returns boolean
+        language sql stable as $$select $1=$2$$;
+      create function training_internal.autopay_studio_allows(training_internal.lesson_autopay_mandates)
+        returns boolean language sql stable as $$select $1.policy_allowed$$;
+    `);
+    await db.exec(
+      readFileSync(
+        "supabase/migrations/20261120164555_coach_billing_autopay_summary.sql",
+        "utf8",
+      ),
+    );
+    await db.query("select set_config('app.uid',$1,true)", [coach]);
+    expect(
+      await scalar(
+        "select student_financial_overview($1)->>'autopayStatus' as status",
+        [student],
+      ),
+    ).toEqual({ status: "off" });
+    await db.query(
+      `insert into training_internal.lesson_autopay_mandates
+      values(gen_random_uuid(),$1,$2,$1,'active',now(),now(), 'pm_private',true)`,
+      [student, studio],
+    );
+    const result = await scalar(
+      "select student_financial_overview($1) as summary",
+      [student],
+    );
+    expect(result?.summary).toMatchObject({ autopayStatus: "active" });
+    expect(JSON.stringify(result)).not.toContain("pm_private");
+    await db.exec(
+      "update training_internal.lesson_autopay_mandates set policy_allowed=false",
+    );
+    expect(
+      await scalar(
+        "select student_financial_overview($1)->>'autopayStatus' as status",
+        [student],
+      ),
+    ).toEqual({ status: "needs_review" });
+    await db.query("select set_config('app.uid',$1,true)", [student]);
+    expect(
+      await scalar(
+        "select student_financial_overview($1) ? 'autopayStatus' as visible",
+        [student],
+      ),
+    ).toEqual({ visible: false });
+    await db.query("select set_config('app.uid',$1,true)", [other]);
+    expect(
+      await scalar(
+        "select credit_internal.coach_lesson_autopay_status($1) as status",
+        [student],
+      ),
+    ).toEqual({ status: null });
+  } finally {
+    await db.exec("rollback");
+  }
+});
 afterAll(async () => {
   await db?.close();
 });

@@ -1,7 +1,7 @@
 import { WritingArea } from "../../components/WritingArea";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Plus } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router-dom";
 import {
   Dialog,
@@ -9,6 +9,8 @@ import {
   EmptyState,
   Section,
   Status,
+  ListControls,
+  usePagedList,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { useInvoices } from "../../data/invoices";
@@ -16,7 +18,8 @@ import { lessonCreditDebit, reserveDemoCredits } from "../../domain/credits";
 import { packageOffer } from "../../domain/packagePricing";
 import { formatMoney, studentBalanceMinor } from "../../domain/finance";
 import {
-  canPrepareLessonInvoice,
+  lessonInvoiceFor,
+  verifiedInvoiceLesson,
   invoiceDue,
   invoiceLineTotal,
   type Invoice,
@@ -28,6 +31,8 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 import { InvoiceDocument } from "./InvoiceDocument";
 import { invoiceBilling } from "../../domain/invoiceBilling";
+import { LessonInvoiceComposer } from "./LessonInvoiceComposer";
+import { InvoicePayerSetup } from "./InvoicePayerSetup";
 import "./InvoiceWorkspace.css";
 
 export function InvoiceWorkspace({
@@ -35,49 +40,97 @@ export function InvoiceWorkspace({
   isDemo,
   studentId,
   readOnly = false,
+  lessonId,
+  openComposer,
+  onComposerDismiss,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
   studentId?: string;
   readOnly?: boolean;
+  lessonId?: string;
+  openComposer?: boolean;
+  onComposerDismiss?: () => void;
 }) {
+  const fields = useId();
   const query = useInvoices(isDemo, data.invoices, readOnly),
     client = useQueryClient(),
     store = useStudioStore();
   const [params, setParams] = useSearchParams(),
-    [editing, setEditing] = useState<Invoice | "new">(),
+    [internalEditor, setEditing] = useState<Invoice | "new" | "lessons">(),
+    [contextInvoice, setContextInvoice] = useState<string>(),
     [busy, setBusy] = useState(false),
     [notice, setNotice] = useState(""),
     [payment, setPayment] = useState(""),
     [method, setMethod] = useState<"cash" | "bank">("cash"),
-    [review, setReview] = useState<string[]>();
+    [review, setReview] = useState<{
+      recipients: string[];
+      issueError?: string;
+    }>(),
+    [search, setSearch] = useState(""),
+    [statusFilter, setStatusFilter] = useState(""),
+    [deliveryFilter, setDeliveryFilter] = useState(""),
+    [sort, setSort] = useState("newest");
+  const editing =
+    internalEditor ??
+    (openComposer && !query.isLoading && !query.error ? "lessons" : undefined);
+  function dismissEditor() {
+    setEditing(undefined);
+    if (openComposer) onComposerDismiss?.();
+  }
   const invoices = (query.data ?? []).filter(
     (i) =>
       (!studentId || i.student_id === studentId) &&
       (!readOnly || i.status !== "draft"),
   );
-  const selected = invoices.find((i) => i.id === params.get("invoice"));
+  const visibleInvoices = readOnly
+    ? invoices
+    : invoices
+        .filter(
+          (invoice) =>
+            (!statusFilter || invoice.status === statusFilter) &&
+            (!deliveryFilter ||
+              (invoice.delivery?.status ?? "not_sent") === deliveryFilter) &&
+            [
+              invoice.number,
+              invoice.recipient.name,
+              invoice.recipient.studentName,
+            ].some((value) =>
+              value?.toLowerCase().includes(search.trim().toLowerCase()),
+            ),
+        )
+        .sort((a, b) =>
+          sort === "due"
+            ? a.due_date.localeCompare(b.due_date)
+            : b.created_at.localeCompare(a.created_at),
+        );
+  const invoicePage = usePagedList(visibleInvoices);
+  const selected = invoices.find(
+    (i) => i.id === (lessonId ? contextInvoice : params.get("invoice")),
+  );
   const requestedLesson =
     !readOnly && studentId
       ? data.lessons.find(
           (lesson) =>
-            lesson.id === params.get("billLesson") &&
+            lesson.id === (lessonId ?? params.get("billLesson")) &&
             lesson.studentId === studentId,
         )
       : undefined;
   const canPrepare =
     !!requestedLesson &&
-    canPrepareLessonInvoice(data, requestedLesson, requestedLesson.studentId);
+    verifiedInvoiceLesson(data, requestedLesson, requestedLesson.studentId);
   const existingLessonInvoice =
     requestedLesson &&
-    invoices.find(
+    (invoices.find(
       (invoice) =>
-        invoice.status !== "void" &&
-        invoice.items.some(
-          (line) =>
-            !line.cancelled && line.lessonIds.includes(requestedLesson.id),
-        ),
-    );
+        invoice.id === requestedLesson.invoiceId && invoice.status !== "void",
+    ) ??
+      lessonInvoiceFor(invoices, requestedLesson.id));
+  const initial = typeof editing === "object" ? editing : undefined;
+  const exactLessons =
+    editing === "lessons" ||
+    (!!initial?.items.length &&
+      initial.items.every((line) => line.verifiedLesson));
   const deliveryLabels = {
     not_sent: "Email not sent yet",
     queued: "Email queued",
@@ -106,14 +159,25 @@ export function InvoiceWorkspace({
       : logo.data
     : selected?.branding.logoUrl;
   function open(id: string) {
+    setNotice("");
     setPayment("");
     setReview(undefined);
+    if (lessonId) {
+      setContextInvoice(id);
+      return;
+    }
     setParams((p) => {
       p.set("invoice", id);
       return p;
     });
   }
   function close() {
+    setNotice("");
+    if (lessonId) {
+      setContextInvoice(undefined);
+      setReview(undefined);
+      return;
+    }
     setParams((p) => {
       p.delete("invoice");
       return p;
@@ -152,7 +216,15 @@ export function InvoiceWorkspace({
             "Online payment is available on live invoices. No demo payment was created.",
           );
         if (action === "preview_recipients") {
-          setReview(selected.recipient.email ? [selected.recipient.email] : []);
+          const student = data.students.find(
+            (entry) => entry.id === selected.student_id,
+          );
+          const billing =
+            student && invoiceBilling(student, data.linkedContacts);
+          setReview({
+            recipients: billing?.recipients ?? [],
+            issueError: billing?.deliveryError,
+          });
           return;
         }
         if (action === "send") {
@@ -381,7 +453,7 @@ export function InvoiceWorkspace({
           return;
         }
         if (action === "preview_recipients") {
-          setReview(result.resource.recipients);
+          setReview(result.resource);
           return;
         }
         await refresh();
@@ -403,6 +475,106 @@ export function InvoiceWorkspace({
       setBusy(false);
     }
   }
+  async function saveInvoice(
+    value: Invoice,
+    status: "draft" | "open",
+    idempotencyKey: string,
+  ) {
+    if (isDemo) {
+      const existing = initial;
+      const now = new Date().toISOString();
+      for (const line of value.items) {
+        if (line.kind === "package") {
+          const def = data.packageDefinitions.find(
+            (p) => p.id === line.referenceId,
+          );
+          if (!def) throw new Error("Package not found.");
+          line.creditQuantity = line.quantity * def.sessionCount;
+          line.expirationDays = def.expirationDays ?? null;
+        }
+        if (line.lessonIds.length) {
+          const lesson = data.lessons.find((l) => l.id === line.lessonIds[0]);
+          if (!lesson) throw new Error("Lesson not found.");
+          if (
+            status !== "draft" &&
+            (data.invoices ?? []).some(
+              (i) =>
+                !["draft", "void"].includes(i.status) &&
+                i.items.some((l) => l.lessonIds.includes(lesson.id)),
+            )
+          )
+            throw new Error("This lesson is already invoiced.");
+          line.originalLesson = {
+            priceMinor: lesson.priceMinor,
+            paymentStatus: lesson.paymentStatus,
+            serviceId: lesson.serviceId,
+          };
+        }
+      }
+      const invoice = {
+        ...value,
+        id: existing?.id ?? crypto.randomUUID(),
+        number:
+          existing?.number ??
+          `INV-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
+        studio_id: data.studioId,
+        status:
+          status === "draft"
+            ? "draft"
+            : value.total_minor === 0
+              ? "paid"
+              : "open",
+        version: (existing?.version ?? 0) + 1,
+        created_at: existing?.created_at ?? now,
+      } as Invoice;
+      storeDemo(invoice);
+      store.transact((draft) => {
+        if (status !== "draft")
+          for (const line of invoice.items)
+            for (const id of line.lessonIds) {
+              const l = draft.lessons.find((l) => l.id === id);
+              if (l) {
+                l.invoiceId = invoice.id;
+                l.priceMinor = line.unitMinor;
+                if (l.paymentStatus !== "paid_by_credit")
+                  l.paymentStatus = line.unitMinor === 0 ? "waived" : "due";
+              }
+            }
+      });
+      dismissEditor();
+      open(invoice.id);
+      setNotice(
+        status === "draft"
+          ? "Draft saved. No email was sent."
+          : `Demo invoice issued for ${invoice.recipient.name}. No email was sent.`,
+      );
+    } else {
+      const result = await studioCommand("invoices", {
+        command: "save",
+        entityId: initial?.id,
+        expectedVersion: initial?.version ?? 0,
+        payload: {
+          ...value,
+          status,
+          exactLessons,
+          emailOnIssue: false,
+          ...(exactLessons && { reviewedRecipient: value.recipient }),
+        },
+        reason: "Coach saved invoice",
+        idempotencyKey,
+      });
+      await refresh();
+      dismissEditor();
+      open(result.resource.id);
+      setNotice(
+        result.delivery?.status === "failed"
+          ? result.delivery.message
+          : status === "draft"
+            ? "Draft saved. No email was sent."
+            : "Invoice issued. You can review and send it from the invoice.",
+      );
+    }
+  }
   const accountMinor = selected
     ? Math.max(
         0,
@@ -415,208 +587,259 @@ export function InvoiceWorkspace({
     : 0;
   return (
     <div className="invoice-workspace">
-      <Section
-        title="Invoices"
-        aside={
-          !readOnly && (
-            <button className="primary" onClick={() => setEditing("new")}>
-              <Plus size={16} /> Create invoice
-            </button>
-          )
-        }
-      >
-        {requestedLesson && (
-          <div className="portal-notice">
-            <p>
-              <strong>{requestedLesson.topic}</strong> ·{" "}
-              {studioDateKey(requestedLesson.startsAt, data.settings.timezone)}
-            </p>
-            {existingLessonInvoice ? (
-              <button
-                type="button"
-                onClick={() => open(existingLessonInvoice.id)}
-              >
-                View linked invoice
-              </button>
-            ) : canPrepare ? (
-              <button
-                type="button"
-                onClick={() => setEditing("new")}
-                disabled={query.isLoading || !!query.error}
-              >
-                Prepare lesson invoice
-              </button>
-            ) : (
-              <p>Review this lesson’s payment history before billing.</p>
-            )}
-          </div>
-        )}
-        {query.isLoading && <p role="status">Loading invoices…</p>}
-        {query.error && <p role="alert">{query.error.message}</p>}
-        <div className="table-list">
-          {invoices.map((inv) => (
-            <article key={inv.id}>
-              <FileText />
-              <div>
-                <strong>
-                  {inv.number} · {inv.recipient.name}
-                </strong>
-                <small>
-                  Due {inv.due_date} · {inv.items.length} item(s)
-                </small>
-                {!isDemo && inv.delivery && (
-                  <small>{deliveryLabels[inv.delivery.status]}</small>
+      {!lessonId && (
+        <Section
+          title="Invoices"
+          aside={
+            !readOnly && (
+              <div className="header-actions">
+                {!onComposerDismiss && (
+                  <button
+                    className="primary"
+                    disabled={query.isLoading || !!query.error}
+                    onClick={() => setEditing("lessons")}
+                  >
+                    <Plus size={16} />{" "}
+                    {studentId ? "Send invoice" : "Create invoice"}
+                  </button>
                 )}
+                <button onClick={() => setEditing("new")}>
+                  Invoice services or packages
+                </button>
               </div>
-              <Status
-                tone={
-                  inv.status === "paid"
-                    ? "good"
-                    : inv.status === "void"
-                      ? "neutral"
-                      : "warn"
-                }
-              >
-                {readOnly && inv.status !== "void"
-                  ? invoiceDue(inv)
-                    ? "Unpaid"
-                    : "Paid"
-                  : inv.status.replaceAll("_", " ")}
-              </Status>
-              <strong>{formatMoney(invoiceDue(inv), inv.currency)}</strong>
-              <button onClick={() => open(inv.id)}>View invoice</button>
-            </article>
-          ))}
-        </div>
-        {!query.isLoading && !query.error && !invoices.length && (
-          <EmptyState
-            title="No invoices yet"
-            detail={
-              readOnly
-                ? "Your studio’s invoices will appear here."
-                : "Choose a student and services or packages to create your first invoice."
-            }
-          />
-        )}
-        {notice && (
-          <p className="portal-notice" role="status">
-            {notice}
-          </p>
-        )}
-      </Section>
-      {editing && (
-        <InvoiceEditor
-          data={data}
-          studentId={studentId}
-          initial={editing === "new" ? undefined : editing}
-          lessonId={
-            editing === "new" &&
-            requestedLesson &&
-            canPrepare &&
-            !existingLessonInvoice
-              ? requestedLesson.id
-              : undefined
+            )
           }
-          onClose={() => setEditing(undefined)}
-          onSave={async (value, status, idempotencyKey) => {
-            if (isDemo) {
-              const existing = editing === "new" ? undefined : editing;
-              const now = new Date().toISOString();
-              for (const line of value.items) {
-                if (line.kind === "package") {
-                  const def = data.packageDefinitions.find(
-                    (p) => p.id === line.referenceId,
-                  );
-                  if (!def) throw new Error("Package not found.");
-                  line.creditQuantity = line.quantity * def.sessionCount;
-                  line.expirationDays = def.expirationDays ?? null;
-                }
-                if (line.lessonIds.length) {
-                  const lesson = data.lessons.find(
-                    (l) => l.id === line.lessonIds[0],
-                  );
-                  if (!lesson) throw new Error("Lesson not found.");
-                  if (
-                    status !== "draft" &&
-                    (data.invoices ?? []).some(
-                      (i) =>
-                        !["draft", "void"].includes(i.status) &&
-                        i.items.some((l) => l.lessonIds.includes(lesson.id)),
-                    )
-                  )
-                    throw new Error("This lesson is already invoiced.");
-                  line.originalLesson = {
-                    priceMinor: lesson.priceMinor,
-                    paymentStatus: lesson.paymentStatus,
-                    serviceId: lesson.serviceId,
-                  };
-                }
+        >
+          {requestedLesson && (
+            <div className="portal-notice">
+              <p>
+                <strong>{requestedLesson.topic}</strong> ·{" "}
+                {studioDateKey(
+                  requestedLesson.startsAt,
+                  data.settings.timezone,
+                )}
+              </p>
+              {existingLessonInvoice ? (
+                <button
+                  type="button"
+                  onClick={() => open(existingLessonInvoice.id)}
+                >
+                  View linked invoice
+                </button>
+              ) : canPrepare ? (
+                <button
+                  type="button"
+                  onClick={() => setEditing("lessons")}
+                  disabled={query.isLoading || !!query.error}
+                >
+                  Prepare lesson invoice
+                </button>
+              ) : (
+                <p>Review this lesson’s payment history before billing.</p>
+              )}
+            </div>
+          )}
+          {query.isLoading && <p role="status">Loading invoices…</p>}
+          {query.error && (
+            <div role="alert">
+              <p>{query.error.message}</p>
+              <button onClick={() => void query.refetch()}>
+                Retry loading invoices
+              </button>
+            </div>
+          )}
+          {!readOnly && invoices.length > 0 && (
+            <div className="header-actions student-billing-controls">
+              <label htmlFor={`${fields}-invoice-search`}>
+                Search invoices
+                <input
+                  id={`${fields}-invoice-search`}
+                  type="search"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    invoicePage.setPage(1);
+                  }}
+                />
+              </label>
+              <label htmlFor={`${fields}-invoice-status`}>
+                Status
+                <select
+                  id={`${fields}-invoice-status`}
+                  value={statusFilter}
+                  onChange={(event) => {
+                    setStatusFilter(event.target.value);
+                    invoicePage.setPage(1);
+                  }}
+                >
+                  <option value="">All statuses</option>
+                  <option value="draft">Draft</option>
+                  <option value="open">Issued</option>
+                  <option value="partially_paid">Partially paid</option>
+                  <option value="paid">Paid</option>
+                  <option value="void">Void</option>
+                </select>
+              </label>
+              <label htmlFor={`${fields}-invoice-delivery`}>
+                Delivery
+                <select
+                  id={`${fields}-invoice-delivery`}
+                  value={deliveryFilter}
+                  onChange={(event) => {
+                    setDeliveryFilter(event.target.value);
+                    invoicePage.setPage(1);
+                  }}
+                >
+                  <option value="">All delivery statuses</option>
+                  {Object.entries(deliveryLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label htmlFor={`${fields}-invoice-sort`}>
+                Sort by
+                <select
+                  id={`${fields}-invoice-sort`}
+                  value={sort}
+                  onChange={(event) => {
+                    setSort(event.target.value);
+                    invoicePage.setPage(1);
+                  }}
+                >
+                  <option value="newest">Newest first</option>
+                  <option value="due">Due date</option>
+                </select>
+              </label>
+            </div>
+          )}
+          <div className="table-list">
+            {(readOnly ? invoices : invoicePage.visible).map((inv) => (
+              <article key={inv.id}>
+                <FileText />
+                <div>
+                  <strong>
+                    {inv.number} · {inv.recipient.name}
+                  </strong>
+                  <small>
+                    Due {inv.due_date} · {inv.items.length} item(s)
+                  </small>
+                  {!isDemo && inv.delivery && (
+                    <small>{deliveryLabels[inv.delivery.status]}</small>
+                  )}
+                </div>
+                <Status
+                  tone={
+                    inv.status === "paid"
+                      ? "good"
+                      : inv.status === "void"
+                        ? "neutral"
+                        : "warn"
+                  }
+                >
+                  {readOnly && inv.status !== "void"
+                    ? invoiceDue(inv)
+                      ? "Unpaid"
+                      : "Paid"
+                    : inv.status === "open"
+                      ? "Issued"
+                      : inv.status.replaceAll("_", " ")}
+                </Status>
+                <strong>{formatMoney(invoiceDue(inv), inv.currency)}</strong>
+                <button onClick={() => open(inv.id)}>View invoice</button>
+              </article>
+            ))}
+          </div>
+          {!readOnly && (
+            <ListControls
+              page={invoicePage.page}
+              pageCount={invoicePage.pageCount}
+              pageSize={invoicePage.pageSize}
+              total={invoicePage.total}
+              onPage={invoicePage.setPage}
+              onPageSize={invoicePage.setPageSize}
+              label="invoices"
+            />
+          )}
+          {invoices.length > 0 && !visibleInvoices.length && (
+            <EmptyState
+              title="No matching invoices"
+              detail="Change or clear the invoice filters."
+            />
+          )}
+          {!query.isLoading && !query.error && !invoices.length && (
+            <EmptyState
+              title="No invoices yet"
+              detail={
+                readOnly
+                  ? "Your studio’s invoices will appear here."
+                  : "Choose a student and services or packages to create your first invoice."
               }
-              const invoice = {
-                ...value,
-                id: existing?.id ?? crypto.randomUUID(),
-                number:
-                  existing?.number ??
-                  `INV-${new Date().getFullYear()}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`,
-                studio_id: data.studioId,
-                status:
-                  status === "draft"
-                    ? "draft"
-                    : value.total_minor === 0
-                      ? "paid"
-                      : "open",
-                version: (existing?.version ?? 0) + 1,
-                created_at: existing?.created_at ?? now,
-              } as Invoice;
-              storeDemo(invoice);
-              store.transact((draft) => {
-                if (status !== "draft")
-                  for (const line of invoice.items)
-                    for (const id of line.lessonIds) {
-                      const l = draft.lessons.find((l) => l.id === id);
-                      if (l) {
-                        l.invoiceId = invoice.id;
-                        l.priceMinor = line.unitMinor;
-                        if (l.paymentStatus !== "paid_by_credit")
-                          l.paymentStatus =
-                            line.unitMinor === 0 ? "waived" : "due";
-                      }
-                    }
-              });
-              setEditing(undefined);
-              open(invoice.id);
-              setNotice(
-                status === "draft"
-                  ? "Draft saved. No email was sent."
-                  : `Demo invoice issued for ${invoice.recipient.name}. No email was sent.`,
-              );
-            } else {
-              const result = await studioCommand("invoices", {
-                command: "save",
-                entityId: editing === "new" ? undefined : editing.id,
-                expectedVersion: editing === "new" ? 0 : editing.version,
-                payload: { ...value, status },
-                reason: "Coach saved invoice",
-                idempotencyKey,
-              });
-              await refresh();
-              setEditing(undefined);
-              open(result.resource.id);
-              setNotice(
-                result.delivery?.status === "failed"
-                  ? result.delivery.message
-                  : status === "draft"
-                    ? "Draft saved. No email was sent."
-                    : `Invoice issued and queued for ${result.resource.recipient.name} (${result.resource.recipient.email}).`,
-              );
-            }
-          }}
-        />
+            />
+          )}
+          {notice && (
+            <p className="portal-notice" role="status">
+              {notice}
+            </p>
+          )}
+        </Section>
       )}
+      {lessonId && existingLessonInvoice && (
+        <button onClick={() => open(existingLessonInvoice.id)}>
+          {existingLessonInvoice.status === "draft"
+            ? "Open draft invoice"
+            : "View linked invoice"}
+        </button>
+      )}
+      {lessonId && canPrepare && !existingLessonInvoice && (
+        <button
+          className="primary"
+          disabled={query.isLoading || !!query.error}
+          onClick={() => setEditing("lessons")}
+        >
+          Send invoice
+        </button>
+      )}
+      {lessonId && query.error && (
+        <button onClick={() => void query.refetch()}>
+          Retry loading invoices
+        </button>
+      )}
+      {editing &&
+        (exactLessons ? (
+          <LessonInvoiceComposer
+            data={data}
+            isDemo={isDemo}
+            invoices={invoices}
+            studentId={studentId}
+            lessonId={
+              canPrepare && !existingLessonInvoice
+                ? requestedLesson?.id
+                : undefined
+            }
+            initial={initial}
+            onClose={dismissEditor}
+            onSave={saveInvoice}
+            onOpen={(invoice) => {
+              dismissEditor();
+              open(invoice.id);
+            }}
+          />
+        ) : (
+          <InvoiceEditor
+            data={data}
+            isDemo={isDemo}
+            studentId={studentId}
+            initial={initial}
+            onClose={dismissEditor}
+            onSave={saveInvoice}
+          />
+        ))}
       {selected && !editing && !review && (
         <Drawer
           title={selected.number}
-          description={`${selected.recipient.name} · ${selected.status.replaceAll("_", " ")}`}
+          description={`${selected.recipient.name} · ${selected.status === "open" ? "Issued" : selected.status.replaceAll("_", " ")}`}
           onClose={() => !busy && close()}
         >
           <div className="header-actions">
@@ -829,7 +1052,13 @@ export function InvoiceWorkspace({
           )}
           <div className="form-actions">
             <button className="primary" disabled={busy} onClick={close}>
-              Done
+              {readOnly
+                ? "Done"
+                : lessonId
+                  ? "Return to lesson"
+                  : studentId
+                    ? "Return to billing"
+                    : "Return to invoices"}
             </button>
           </div>
         </Drawer>
@@ -837,7 +1066,7 @@ export function InvoiceWorkspace({
       {review && (
         <Dialog
           title="Review invoice email"
-          description="This invoice will be addressed to the current household payer and emailed with a Pay invoice button."
+          description="Review the authorized recipients before sending the invoice link."
           onClose={() => !busy && setReview(undefined)}
         >
           <p>
@@ -846,14 +1075,19 @@ export function InvoiceWorkspace({
             due
           </p>
           <ul>
-            {review.map((email) => (
+            {review.recipients.map((email) => (
               <li key={email}>{email}</li>
             ))}
           </ul>
-          {!review.length && (
+          {!review.recipients.length && (
             <p>
-              No permitted recipients. Update the student’s payer/contact
-              settings.
+              {review.issueError ??
+                "There are no permitted invoice email recipients."}
+            </p>
+          )}
+          {notice && (
+            <p className="inline-error" role="alert">
+              {notice}
             </p>
           )}
           <div className="form-actions">
@@ -862,8 +1096,10 @@ export function InvoiceWorkspace({
             </button>
             <button
               className="primary"
-              disabled={busy || !review.length}
-              onClick={() => void command("send", { recipients: review })}
+              disabled={busy || !review.recipients.length}
+              onClick={() =>
+                void command("send", { recipients: review.recipients })
+              }
             >
               Approve and send
             </button>
@@ -876,16 +1112,16 @@ export function InvoiceWorkspace({
 
 function InvoiceEditor({
   data,
+  isDemo,
   studentId,
   initial,
-  lessonId,
   onClose,
   onSave,
 }: {
   data: StudioSnapshot;
+  isDemo: boolean;
   studentId?: string;
   initial?: Invoice;
-  lessonId?: string;
   onClose: () => void;
   onSave: (
     invoice: Invoice,
@@ -918,30 +1154,7 @@ function InvoiceEditor({
     [footer, setFooter] = useState(
       initial?.footer ?? "We look forward to working with you.",
     ),
-    [items, setItems] = useState<InvoiceLine[]>(() => {
-      if (initial) return initial.items;
-      const lesson = data.lessons.find((item) => item.id === lessonId);
-      const service =
-        lesson &&
-        data.bookingServices.find((item) => item.id === lesson.serviceId);
-      if (!lesson || !service) return [];
-      const date = studioDateKey(lesson.startsAt, data.settings.timezone);
-      return [
-        {
-          id: crypto.randomUUID(),
-          kind: "service",
-          referenceId: service.id,
-          description: lesson.topic || service.name,
-          quantity: 1,
-          unitMinor: lesson.priceMinor ?? service.priceMinor,
-          startsOn: date,
-          endsOn: date,
-          lessonIds: [lesson.id],
-          creditMinor: 0,
-          paidMinor: 0,
-        },
-      ];
-    }),
+    [items, setItems] = useState<InvoiceLine[]>(initial?.items ?? []),
     [preview, setPreview] = useState(false),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -1061,7 +1274,7 @@ function InvoiceEditor({
   return (
     <Drawer
       title={initial ? "Edit draft invoice" : "Create invoice"}
-      description="Save a draft, or issue and email the invoice to the household’s primary payer. It stays on this student’s payment record."
+      description="Save a draft or issue the invoice to the authorized payer."
       onClose={() => !busy && onClose()}
     >
       <div className="invoice-editor">
@@ -1069,14 +1282,21 @@ function InvoiceEditor({
           <div className="portal-notice">
             <strong>Bill to: {billing.recipient.name}</strong>
             {billing.recipient.email && <p>{billing.recipient.email}</p>}
-            {billing.issueError ? (
-              <p>
-                {billing.issueError} Update the household’s primary payer and
-                payment notification settings before sending. You can still save
-                a draft.
-              </p>
+            {billing.issueError && recipient ? (
+              <>
+                <p>{billing.issueError}</p>
+                <InvoicePayerSetup
+                  key={recipient.id}
+                  student={recipient}
+                  contacts={data.linkedContacts}
+                  isDemo={isDemo}
+                />
+              </>
             ) : (
-              <p>Issuing this invoice automatically emails the payer above.</p>
+              <p>
+                {billing.deliveryError ??
+                  "Email delivery is available after issuance."}
+              </p>
             )}
           </div>
         )}
@@ -1361,7 +1581,7 @@ function InvoiceEditor({
             disabled={busy || Boolean(billing?.issueError)}
             onClick={() => void save("open")}
           >
-            {busy ? "Saving…" : "Issue and send invoice"}
+            {busy ? "Saving…" : "Issue invoice"}
           </button>
         </div>
       </div>

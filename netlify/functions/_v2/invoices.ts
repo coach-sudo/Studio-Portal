@@ -81,6 +81,7 @@ const lineSchema = z
     startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     endsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
     lessonIds: z.array(z.string().uuid()).max(1),
+    lessonVersion: z.number().int().positive().optional(),
   })
   .refine((l) => l.endsOn >= l.startsOn, "Coverage end must follow its start.");
 const saveSchema = z
@@ -92,11 +93,32 @@ const saveSchema = z
     introduction: z.string().max(3000),
     notes: z.string().max(5000),
     footer: z.string().max(2000),
+    emailOnIssue: z.boolean().optional(),
+    exactLessons: z.boolean().optional(),
+    reviewedRecipient: z
+      .object({
+        name: z.string(),
+        email: z.string().optional(),
+        studentName: z.string().optional(),
+      })
+      .optional(),
     items: z.array(lineSchema).min(1).max(50),
   })
   .refine(
     (v) => v.due_date >= v.issue_date,
     "Due date must follow the issue date.",
+  )
+  .refine(
+    (v) =>
+      !v.exactLessons ||
+      v.items.every(
+        (line) =>
+          line.kind === "service" &&
+          line.quantity === 1 &&
+          line.lessonIds.length === 1 &&
+          line.lessonVersion !== undefined,
+      ),
+    "Choose one verified lesson per line.",
   );
 
 export async function handleInvoiceCommands(
@@ -129,9 +151,21 @@ export async function handleInvoiceCommands(
       billingContext.student,
       billingContext.contacts,
     );
-    if (value.status === "open" && billing.issueError)
+    const issueError =
+      value.emailOnIssue === false ? billing.issueError : billing.deliveryError;
+    if (value.status === "open" && issueError)
       throw new Error(
-        `VALIDATION_FAILED: ${billing.issueError} Save a draft or update the household payer settings.`,
+        `VALIDATION_FAILED: ${issueError} Save a draft or update the household payer settings.`,
+      );
+    if (
+      value.exactLessons &&
+      value.status === "open" &&
+      (value.reviewedRecipient?.name !== billing.recipient.name ||
+        value.reviewedRecipient?.email !== billing.recipient.email ||
+        value.reviewedRecipient?.studentName !== billing.recipient.studentName)
+    )
+      throw new Error(
+        "VERSION_CONFLICT: Review the current payer before issuing.",
       );
     const settings = studio.data.settings ?? {};
     const items = [];
@@ -154,8 +188,10 @@ export async function handleInvoiceCommands(
         throw new Error(
           "VALIDATION_FAILED: Package invoices need a positive price. Use Set remaining credits for complimentary credits.",
         );
+      const { lessonVersion, ...details } = line;
       items.push({
-        ...line,
+        ...details,
+        ...(value.exactLessons && { lessonVersion }),
         creditMinor: 0,
         paidMinor: 0,
         creditQuantity:
@@ -181,6 +217,15 @@ export async function handleInvoiceCommands(
             : settings.branding?.logoUrl,
         },
         recipient: billing.recipient,
+        ...(value.exactLessons &&
+          value.status === "open" && {
+            payerReview: {
+              studentVersion: billingContext.student.version,
+              contacts: Object.fromEntries(
+                billingContext.contacts.map(({ id, version }) => [id, version]),
+              ),
+            },
+          }),
       },
       p_key: `invoice:${input.idempotencyKey}`,
       p_version: input.expectedVersion,
@@ -189,6 +234,8 @@ export async function handleInvoiceCommands(
     const saved = result.data as Invoice;
     if (saved.status === "draft")
       return json({ resource: saved, delivery: { status: "draft" } });
+    if (value.emailOnIssue === false)
+      return json({ resource: saved, delivery: { status: "not_sent" } });
     try {
       if (
         saved.status === "void" ||
@@ -419,7 +466,7 @@ export async function handleInvoiceCommands(
         resource: {
           recipients,
           payer: billing.recipient,
-          issueError: billing.issueError,
+          issueError: billing.deliveryError,
         },
       });
     const approved = z
@@ -435,7 +482,7 @@ export async function handleInvoiceCommands(
       );
     if (!recipients.length)
       throw new Error(
-        `VALIDATION_FAILED: ${billing.issueError || "No permitted invoice recipient."}`,
+        `VALIDATION_FAILED: ${billing.deliveryError || "No permitted invoice recipient."}`,
       );
     let addressed = invoice;
     if (

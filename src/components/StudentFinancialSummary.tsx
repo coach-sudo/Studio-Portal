@@ -1,7 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
-import { loadFinancialOverview } from "../data/studentWorkspace";
+import { useStudentFinancialOverview } from "../hooks/useStudentFinancialOverview";
 import { formatMoney } from "../domain/finance";
-import { usePrivateIdentity } from "../hooks/usePrivateIdentity";
 import { Section } from "./Primitives";
 import "./StudentFinancialSummary.css";
 
@@ -12,13 +10,7 @@ export function StudentFinancialSummary({
   studentId: string;
   learnerView?: boolean;
 }) {
-  const identity = usePrivateIdentity();
-  const query = useQuery({
-    queryKey: ["student-financial-summary", identity, studentId],
-    enabled: !!identity,
-    queryFn: ({ signal }) => loadFinancialOverview(studentId, signal),
-    refetchInterval: 30000,
-  });
+  const query = useStudentFinancialOverview(studentId);
   const summary = query.isError ? undefined : query.data;
   return (
     <Section title="Account summary">

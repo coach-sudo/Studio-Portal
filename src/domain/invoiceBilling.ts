@@ -12,20 +12,22 @@ export function invoiceBilling(
     contacts,
     "payment_due",
   );
-  const issueError = payer.needsConfiguration
-    ? payer.reason
-    : !delivery.recipients.some((recipient) => recipient.email === payer.email)
+  const issueError = payer.needsConfiguration ? payer.reason : undefined;
+  const deliveryError =
+    issueError ??
+    (!delivery.recipients.some((recipient) => recipient.email === payer.email)
       ? "The payer cannot receive invoice emails. Check their financial access and payment notification settings."
-      : undefined;
+      : undefined);
   return {
     recipient: {
       name: payer.name ?? "Payer not configured",
       email: payer.email,
       ...(payer.contactId ? { studentName: student.fullName } : {}),
     },
-    recipients: issueError
+    recipients: deliveryError
       ? []
       : delivery.recipients.map((recipient) => recipient.email),
     issueError,
+    deliveryError,
   };
 }

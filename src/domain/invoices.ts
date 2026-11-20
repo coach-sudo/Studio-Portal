@@ -1,4 +1,5 @@
 import type { Lesson, StudioSnapshot } from "./model";
+import { lessonCreditDebit } from "./credits";
 
 export interface InvoiceLine {
   id: string;
@@ -16,6 +17,8 @@ export interface InvoiceLine {
   creditQuantity?: number;
   expirationDays?: number | null;
   cancelled?: boolean;
+  verifiedLesson?: boolean;
+  lessonVersion?: number;
   waivedMinor?: number;
   returnedMinor?: number;
   originalLesson?: {
@@ -77,6 +80,54 @@ export const invoiceDue = (invoice: Invoice) =>
           invoice.credit_minor -
           (invoice.waived_minor ?? 0),
       );
+
+export function lessonInvoiceFor(
+  invoices: readonly Invoice[],
+  lessonId: string,
+) {
+  const matches = (invoice: Invoice) =>
+    invoice.status !== "void" &&
+    invoice.items.some(
+      (line) => !line.cancelled && line.lessonIds.includes(lessonId),
+    );
+  return (
+    invoices.find(
+      (invoice) => invoice.status !== "draft" && matches(invoice),
+    ) ?? invoices.find(matches)
+  );
+}
+
+export function verifiedInvoiceLesson(
+  data: StudioSnapshot,
+  lesson: Lesson,
+  studentId: string,
+) {
+  return (
+    canPrepareLessonInvoice(data, lesson, studentId) &&
+    (lesson.sourceProvider ?? "studio") === "studio" &&
+    lesson.paymentStatus === "due" &&
+    !lesson.paymentNeedsReview &&
+    !lesson.packageId &&
+    !data.packages.some(
+      (pkg) =>
+        pkg.studentId === studentId &&
+        lessonCreditDebit(data.creditEntries, lesson.id, pkg.id) > 0,
+    ) &&
+    Number.isSafeInteger(lesson.priceMinor) &&
+    (lesson.priceMinor ?? 0) > 0 &&
+    !data.lessonParticipants.some(
+      (participant) =>
+        participant.lessonId === lesson.id &&
+        participant.studentId === studentId &&
+        participant.bookingId,
+    ) &&
+    data.bookingServices.some(
+      (service) =>
+        service.id === lesson.serviceId &&
+        service.currency === data.settings.currency,
+    )
+  );
+}
 /** Mirror the invoice command's ownership and payment-coverage checks. */
 export function canPrepareLessonInvoice(
   data: Pick<StudioSnapshot, "lessonParticipants" | "bookings">,
