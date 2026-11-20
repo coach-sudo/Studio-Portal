@@ -206,13 +206,12 @@ jobs:
           fi
           # CLI 27.8.0 retries custom Function 403s as .html paths, hiding API denials.
           # Patch only the disposable CLI proxy, never the application or production.
-          # otel 7.0.6 metadata exists but its npm tarball is unavailable (404).
-          # Keep the established CLI and its previously verified otel 7.0.4,
-          # scoped to this disposable CI runtime; application dependencies stay unchanged.
+          # Install the locked CLI tree outside the application. Resolving fresh
+          # ranges here can pick up partially published dependency releases.
           cli_dir="$RUNNER_TEMP/netlify-cli"
           mkdir -p "$cli_dir"
-          printf '%s\n' '{"private":true,"dependencies":{"netlify-cli":"27.8.0"},"overrides":{"@netlify/otel@>=7.0.0 <8":"7.0.4"}}' > "$cli_dir/package.json"
-          env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npm install --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
+          cp .github/tools/netlify-cli/package{,-lock}.json "$cli_dir/"
+          env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npm ci --prefix "$cli_dir" --ignore-scripts --no-audit --no-fund
           export PATH="$cli_dir/node_modules/.bin:$PATH"
           env -u STRIPE_SECRET_KEY -u CI_STRIPE_SMOKE_PRICE_ID npx tsx scripts/patch-netlify-dev-api-errors.ts
           nohup netlify dev --offline --no-open --context deploy-preview --framework '#static' --port 8888 --dir dist --functions netlify/functions \
