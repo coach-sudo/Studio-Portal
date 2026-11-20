@@ -785,12 +785,16 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
       await expect(payerName).toHaveText("E2E Primary payer");
       expect((await payerName.boundingBox())?.width).toBeGreaterThan(100);
     }
-    if (name === "account")
-      await expect(
-        page.getByRole("link", {
-          name: "Payments, packages and financial configuration",
-        }),
-      ).toBeVisible();
+    if (name === "account") {
+      const billing = page.getByRole("link", {
+        name: "Open billing, invoices and payment history",
+      });
+      await expect(billing).toBeVisible();
+      await expect(billing).toHaveAttribute(
+        "href",
+        `/coach/students/${runtime.ids!.operationalStudent}/payments`,
+      );
+    }
     if (name === "payments") {
       await page
         .locator("summary")
