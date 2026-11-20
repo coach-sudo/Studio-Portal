@@ -72,14 +72,17 @@ function parseGooglePayload<T extends z.ZodType>(schema: T, value: unknown) {
   return parsed.data as z.infer<T>;
 }
 
-export async function googleAccessToken() {
+export async function googleAccessToken(
+  refreshTokenKey: "GOOGLE_REFRESH_TOKEN" | "GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN" =
+    "GOOGLE_REFRESH_TOKEN",
+) {
   const clientId =
       Netlify.env.get("GOOGLE_CLIENT_ID") ||
       Netlify.env.get("GOOGLE_OAUTH_CLIENT_ID"),
     clientSecret =
       Netlify.env.get("GOOGLE_CLIENT_SECRET") ||
       Netlify.env.get("GOOGLE_OAUTH_CLIENT_SECRET"),
-    refreshToken = Netlify.env.get("GOOGLE_REFRESH_TOKEN");
+    refreshToken = Netlify.env.get(refreshTokenKey);
   if (!clientId || !clientSecret || !refreshToken)
     throw new Error("Google OAuth requires reconnecting in Settings.");
   const response = await fetch("https://oauth2.googleapis.com/token", {
