@@ -112,6 +112,7 @@ jobs:
       - run: node scripts/test-datetime-correction-concurrency.mjs
       - run: node scripts/test-stripe-installment-concurrency.mjs
       - run: node scripts/test-lesson-payment-concurrency.mjs
+      - run: node scripts/test-training-direct-concurrency.mjs
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()

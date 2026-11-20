@@ -5,6 +5,7 @@ import { Section } from "../../components/Primitives";
 import { useInvoices } from "../../data/invoices";
 import type { PortalContext } from "../../data/portalContext";
 import { portalContextLink } from "../../domain/coachingContext";
+import { directLessonReceipt } from "../../domain/directLessonReceipt";
 import { formatMoney } from "../../domain/finance";
 import { invoiceDue } from "../../domain/invoices";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
@@ -44,7 +45,7 @@ export function HouseholdInvoiceSummary({
       const { data: entries, error } = await supabase
         .from("payment_entries")
         .select(
-          "id,student_id,kind,amount_minor,currency,created_at,students!inner(studio_id)",
+          "id,student_id,kind,amount_minor,currency,created_at,external_reference,students!inner(studio_id)",
         )
         .in("student_id", studentIds)
         .eq("students.studio_id", data.studioId)
@@ -146,6 +147,7 @@ export function HouseholdInvoiceSummary({
                 ({ id }) => id === entry.student_id,
               );
               if (!student) return null;
+              const receipt = directLessonReceipt(entry.external_reference);
               return (
                 <article key={entry.id}>
                   <div>
@@ -157,6 +159,16 @@ export function HouseholdInvoiceSummary({
                         data.settings.timezone,
                       )}
                     </small>
+                    {receipt && (
+                      <Link
+                        to={portalContextLink(
+                          `/portal/lessons/${receipt.lessonId}`,
+                          student.id,
+                        )}
+                      >
+                        View paid lesson
+                      </Link>
+                    )}
                   </div>
                   <strong>
                     {formatMoney(entry.amount_minor, entry.currency)}

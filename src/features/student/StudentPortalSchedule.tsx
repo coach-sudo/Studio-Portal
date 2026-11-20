@@ -25,6 +25,7 @@ import {
   trainingPaymentLabel,
 } from "../../domain/trainingArrangement";
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { useDirectLessonOptions } from "./useDirectLessonOptions";
 import { portalContextLink } from "../../domain/coachingContext";
 import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
 import { continuationStart } from "../../domain/recurringOccurrences";
@@ -58,6 +59,16 @@ export function StudentBookings({
   const [notice, setNotice] = useState("");
   const [bookingId, setBookingId] = useUrlValue("booking");
   const studentId = data.students[0]?.id ?? "";
+  const direct = useDirectLessonOptions(
+    studentId,
+    [],
+    !isDemo && showFinance,
+    undefined,
+    true,
+  );
+  const directLessonIds = new Set(
+    direct.data?.items.map((item) => item.lessonId),
+  );
   const autopay = useLessonAutopayOptions(data, studentId, isDemo, showFinance);
   const payer = useTrainingPayers(
     studentId,
@@ -83,7 +94,8 @@ export function StudentBookings({
   const readyToPay = showFinance
     ? upcoming.filter(
         ({ payment, lesson }) =>
-          payment === "unpaid" && Boolean(lesson.invoiceId),
+          payment === "unpaid" &&
+          (Boolean(lesson.invoiceId) || directLessonIds.has(lesson.id)),
       ).length
     : 0;
   const service = selected
@@ -426,15 +438,19 @@ export function StudentBookings({
                     {showFinance &&
                       payment === "unpaid" &&
                       (lesson.invoiceId ||
-                        (data.settings.bookingDefaults
-                          .allowLearnerLessonInvoices &&
+                        directLessonIds.has(lesson.id) ||
+                        (direct.data?.enabled !== true &&
+                          data.settings.bookingDefaults
+                            .allowLearnerLessonInvoices &&
                           lesson.serviceId &&
                           lesson.priceMinor)) && (
                         <Link
                           className="button-link"
                           to={lessonPaymentPath(studentId, lesson.id)}
                         >
-                          Pay for this lesson
+                          {directLessonIds.has(lesson.id)
+                            ? "Pay now"
+                            : "Pay for this lesson"}
                         </Link>
                       )}
                     {(lesson.meetingProvider === "google_meet" ||

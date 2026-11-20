@@ -1736,6 +1736,7 @@ export type Database = {
         Row: {
           capacity: number
           created_at: string
+          direct_checkout_id: string | null
           ends_at: string
           id: string
           imported_at: string | null
@@ -1768,6 +1769,7 @@ export type Database = {
         Insert: {
           capacity?: number
           created_at?: string
+          direct_checkout_id?: string | null
           ends_at: string
           id?: string
           imported_at?: string | null
@@ -1800,6 +1802,7 @@ export type Database = {
         Update: {
           capacity?: number
           created_at?: string
+          direct_checkout_id?: string | null
           ends_at?: string
           id?: string
           imported_at?: string | null
@@ -5279,6 +5282,7 @@ export type Database = {
         Returns: {
           capacity: number
           created_at: string
+          direct_checkout_id: string | null
           ends_at: string
           id: string
           imported_at: string | null

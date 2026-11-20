@@ -4,6 +4,10 @@ import { serviceClient } from "./supabase";
 type CheckoutOperation =
   | "payers"
   | "reserve"
+  | "reserve_direct"
+  | "direct_options"
+  | "begin_direct_provider"
+  | "cancel_unstarted"
   | "read"
   | "attach"
   | "settle"
@@ -18,9 +22,11 @@ export interface TrainingCheckout {
   currency: string;
   return_student_id: string;
   stripe_session_id?: string;
+  provider_started_at?: string | null;
   created_at: string;
   allocations: {
-    invoiceNumber: string;
+    kind?: "direct";
+    invoiceNumber?: string;
     description: string;
     date: string;
     lessonId: string;
@@ -76,4 +82,29 @@ export async function reconcileTrainingCheckout(
           : session.payment_intent?.id,
     },
   );
+}
+
+export async function reconcileTrainingCheckoutEvent(
+  stripe: Stripe,
+  snapshot: Stripe.Checkout.Session,
+  eventType: string,
+  live: boolean,
+) {
+  const session = await stripe.checkout.sessions.retrieve(snapshot.id, {
+    expand: ["payment_intent"],
+  });
+  if (
+    session.id !== snapshot.id ||
+    session.metadata?.training_checkout_id !==
+      snapshot.metadata?.training_checkout_id
+  )
+    throw new Error("VERSION_CONFLICT: Stripe checkout identity changed.");
+  const intent = session.payment_intent;
+  const failed =
+    eventType === "checkout.session.async_payment_failed" &&
+    session.status === "complete" &&
+    intent !== null &&
+    typeof intent === "object" &&
+    ["canceled", "requires_payment_method"].includes(intent.status);
+  return reconcileTrainingCheckout(session, failed, live);
 }

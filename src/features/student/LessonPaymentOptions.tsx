@@ -21,6 +21,7 @@ import {
 } from "../../domain/trainingArrangement";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useTrainingPayers } from "./useTrainingPayers";
+import { useDirectLessonOptions } from "./useDirectLessonOptions";
 import "./LessonPaymentOptions.css";
 
 interface CheckoutResult {
@@ -37,7 +38,14 @@ type VerifiedLessonQuote = {
   amountMinor: number;
 };
 
-const lineKey = (item: LessonObligation) => `${item.invoiceId}:${item.lineId}`;
+type PayableLesson = LessonObligation & {
+  directTerms?: string;
+  paidMinor?: number;
+};
+const lineKey = (item: PayableLesson) =>
+  item.directTerms
+    ? `direct:${item.lessonId}`
+    : `${item.invoiceId}:${item.lineId}`;
 
 const paymentNotice: Record<
   Exclude<CheckoutResult["status"], "open">,
@@ -58,12 +66,14 @@ export function LessonPaymentOptions({
   studentId,
   lesson,
   hasPackages,
+  householdStudentIds = [],
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
   studentId: string;
   lesson?: Lesson;
   hasPackages: boolean;
+  householdStudentIds?: readonly string[];
 }) {
   const [params, setParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -87,6 +97,7 @@ export function LessonPaymentOptions({
   const studentIds = [
     ...new Set([
       studentId,
+      ...householdStudentIds,
       ...studioInvoices.flatMap((invoice) =>
         ["open", "partially_paid"].includes(invoice.status)
           ? [invoice.student_id]
@@ -100,6 +111,13 @@ export function LessonPaymentOptions({
     studentId,
     studentIds,
     !isDemo && Boolean(invoices),
+  );
+  const direct = useDirectLessonOptions(
+    studentId,
+    selectedLesson || upcomingOnly ? [studentId] : studentIds,
+    !isDemo && !attemptId && Boolean(payer.data?.ready),
+    selectedLesson ?? undefined,
+    upcomingOnly,
   );
   const attempt = useQuery({
     queryKey: ["training-payment-attempt", identity, attemptId, studentId],
@@ -148,7 +166,10 @@ export function LessonPaymentOptions({
       payer.data?.ready &&
       payableStudents.includes(studentId) &&
       !currentObligations.length &&
-      data.settings.bookingDefaults.allowLearnerLessonInvoices,
+      data.settings.bookingDefaults.allowLearnerLessonInvoices &&
+      !direct.data?.enabled &&
+      !direct.isLoading &&
+      !direct.isError,
     ),
     retry: false,
     queryFn: async () => {
@@ -173,7 +194,22 @@ export function LessonPaymentOptions({
       : payableStudents
           .filter((id) => id !== studentId)
           .flatMap((id) => trainingObligations(studioInvoices, id));
-  const obligations = [...currentObligations, ...householdObligations];
+  const obligations: PayableLesson[] = [
+    ...currentObligations,
+    ...householdObligations,
+    ...(direct.data?.items ?? []).map((item): PayableLesson => ({
+      ...item,
+      invoiceId: "",
+      invoiceVersion: 0,
+      invoiceNumber: "",
+      lineId: item.lessonId,
+      directTerms: item.terms,
+      amountMinor: item.remainingMinor,
+      adjustmentsMinor: 0,
+      eligible: true,
+      pending: false,
+    })),
+  ];
   const eligible = obligations.filter(
     (item) => item.eligible && payableStudents.includes(item.studentId),
   );
@@ -190,11 +226,13 @@ export function LessonPaymentOptions({
         : [];
   const selected = eligible.filter((item) => keys.includes(lineKey(item)));
   const currencies = new Set(selected.map((item) => item.currency));
+  const mixed =
+    new Set(selected.map((item) => Boolean(item.directTerms))).size > 1;
   const total = selected.reduce((sum, item) => sum + item.amountMinor, 0);
   const [review, setReview] = useState<{
     scope: string;
     signature: string;
-    rows: LessonObligation[];
+    rows: PayableLesson[];
   }>();
   const signature = JSON.stringify(
     selected.map((item) => [
@@ -202,6 +240,7 @@ export function LessonPaymentOptions({
       item.invoiceVersion,
       item.amountMinor,
       item.currency,
+      item.directTerms,
     ]),
   );
   const reviewing = review?.scope === scope ? review : undefined;
@@ -217,6 +256,9 @@ export function LessonPaymentOptions({
     });
     void queryClient.invalidateQueries({
       queryKey: ["household-payment-history"],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["training-direct-options"],
     });
     void invalidateStudioDomains(queryClient, [
       "finance",
@@ -263,6 +305,7 @@ export function LessonPaymentOptions({
       reviewing?.signature !== signature ||
       !selected.length ||
       currencies.size !== 1 ||
+      mixed ||
       checkoutBusy
     )
       return;
@@ -276,19 +319,29 @@ export function LessonPaymentOptions({
     setCheckoutBusy(true);
     try {
       const { resource } = await studioCommand("invoices", {
-        command: "training_start",
+        command: selected[0].directTerms
+          ? "training_start_direct"
+          : "training_start",
         expectedVersion: 0,
         idempotencyKey: id,
         payload: {
           studentId,
-          items: selected.map(
-            ({ invoiceId, invoiceVersion, lineId, lessonId, amountMinor }) => ({
-              invoiceId,
-              invoiceVersion,
-              lineId,
-              lessonId,
-              amountMinor,
-            }),
+          items: selected.map((item) =>
+            item.directTerms
+              ? {
+                  studentId: item.studentId,
+                  lessonId: item.lessonId,
+                  amountMinor: item.amountMinor,
+                  currency: item.currency,
+                  terms: item.directTerms,
+                }
+              : {
+                  invoiceId: item.invoiceId,
+                  invoiceVersion: item.invoiceVersion,
+                  lineId: item.lineId,
+                  lessonId: item.lessonId,
+                  amountMinor: item.amountMinor,
+                },
           ),
         },
         reason: "Payer confirmed selected lesson balances",
@@ -303,6 +356,9 @@ export function LessonPaymentOptions({
       // A provider session may have been created despite a lost response. The
       // available-attempt list will recover the same reservation.
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["training-direct-options"],
+      });
       void queryClient.invalidateQueries({
         queryKey: ["training-payment-payers"],
       });
@@ -387,12 +443,14 @@ export function LessonPaymentOptions({
     !obligations.length &&
     !invoicesAvailable &&
     !unbilled.isLoading &&
+    !direct.isLoading &&
     !unbilled.data;
   const showSelection =
     canUseSelection && Boolean(obligations.length) && !attemptId;
   const canPickAll =
     eligible.length > 1 &&
     eligible.length <= 50 &&
+    new Set(eligible.map((item) => Boolean(item.directTerms))).size === 1 &&
     new Set(eligible.map((item) => item.currency)).size === 1;
 
   return (
@@ -420,6 +478,20 @@ export function LessonPaymentOptions({
           <button type="button" onClick={() => void payer.refetch()}>
             Retry
           </button>
+        </p>
+      )}
+      {direct.isError && (
+        <p role="alert">
+          Direct lesson balances could not be checked.{" "}
+          <button type="button" onClick={() => void direct.refetch()}>
+            Retry
+          </button>
+        </p>
+      )}
+      {direct.data?.hasMore && (
+        <p>
+          Showing the first 50 payable lessons. Open a lesson from your schedule
+          to review it individually.
         </p>
       )}
       {notice && (
@@ -522,8 +594,10 @@ export function LessonPaymentOptions({
             {obligations.map((item) => {
               const invoice = invoiceById.get(item.invoiceId);
               const paid =
+                item.paidMinor ??
                 invoice?.items.find((line) => line.id === item.lineId)
-                  ?.paidMinor ?? 0;
+                  ?.paidMinor ??
+                0;
               const status = item.pending
                 ? "Payment processing"
                 : !item.eligible
@@ -563,7 +637,8 @@ export function LessonPaymentOptions({
                   <span>
                     <strong>{item.description}</strong>
                     <small>
-                      {formatCalendarDateKey(item.date)} · {item.invoiceNumber}
+                      {formatCalendarDateKey(item.date)}
+                      {item.invoiceNumber && ` · ${item.invoiceNumber}`}
                       {item.studentId !== studentId
                         ? ` · ${item.studentName ?? "Household lesson"}`
                         : ""}
@@ -585,7 +660,12 @@ export function LessonPaymentOptions({
           </fieldset>
           {selected.length > 0 && (
             <div className="training-payment-review">
-              {currencies.size > 1 ? (
+              {mixed ? (
+                <p role="alert">
+                  Review invoiced lessons and direct lesson balances as separate
+                  payments.
+                </p>
+              ) : currencies.size > 1 ? (
                 <p role="alert">Choose one currency for each payment.</p>
               ) : (
                 <p aria-live="polite">
@@ -600,7 +680,10 @@ export function LessonPaymentOptions({
                 type="button"
                 className="primary"
                 disabled={
-                  checkoutBusy || currencies.size !== 1 || selected.length > 50
+                  checkoutBusy ||
+                  mixed ||
+                  currencies.size !== 1 ||
+                  selected.length > 50
                 }
                 onClick={() => setReview({ scope, signature, rows: selected })}
               >
@@ -638,7 +721,8 @@ export function LessonPaymentOptions({
                   <div>
                     <strong>{row.description}</strong>
                     <small>
-                      {formatCalendarDateKey(row.date)} · {row.invoiceNumber}
+                      {formatCalendarDateKey(row.date)}
+                      {row.invoiceNumber && ` · ${row.invoiceNumber}`}
                       {row.studentName ? ` · ${row.studentName}` : ""}
                     </small>
                   </div>
