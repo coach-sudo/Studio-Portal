@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { autopay, trainingStripe } from "./training-autopay";
+import { autopay, trainingSandbox, trainingStripe } from "./training-autopay";
 
 vi.mock("./release", () => ({
   releaseMetadata: () => ({
@@ -98,6 +98,32 @@ describe("lesson billing environment restrictions", () => {
   it("keeps approval for one-time checkout independent", () => {
     install();
     expect(trainingStripe(local, "TRAINING_CHECKOUT_TEST_MODE")).toBeNull();
+  });
+
+  it("pins a protected preview to its isolated branch and refuses production", () => {
+    const preview = {
+      site: { id: "d83ff6cb-f57b-4741-8c3c-3eaae7adab19" },
+      deploy: { context: "deploy-preview", published: false },
+    } as never;
+    const branch = "abcdefghijklmnopqrst";
+    const env = {
+      E2E_EPHEMERAL: "false",
+      TRAINING_SANDBOX_SUPABASE_REF: branch,
+      SUPABASE_URL: `https://${branch}.supabase.co`,
+    };
+    install(env);
+    expect(trainingSandbox(preview)).toBe("staging");
+    install({
+      ...env,
+      SUPABASE_URL: "https://lrxrivfqjpkvygozphoz.supabase.co",
+    });
+    expect(trainingSandbox(preview)).toBeNull();
+    install({
+      ...env,
+      TRAINING_SANDBOX_SUPABASE_REF: "htwthzshhilrjtqwprlo",
+      SUPABASE_URL: "https://htwthzshhilrjtqwprlo.supabase.co",
+    });
+    expect(trainingSandbox(preview)).toBeNull();
   });
 });
 

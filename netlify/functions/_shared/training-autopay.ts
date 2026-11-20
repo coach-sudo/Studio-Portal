@@ -92,12 +92,15 @@ export function trainingSandbox(context: TrainingDeployment) {
     !Netlify.env.get("SITE_ID") &&
     Netlify.env.get("E2E_EPHEMERAL") === "true";
   if (disposable && /^(sk|rk|rkcs)_test_/.test(key)) return "disposable";
+  const stagingRef =
+    Netlify.env.get("TRAINING_SANDBOX_SUPABASE_REF") ?? "lrxrivfqjpkvygozphoz";
   if (
     context.site?.id === "d83ff6cb-f57b-4741-8c3c-3eaae7adab19" &&
     context.deploy?.context === "deploy-preview" &&
     context.deploy.published === false &&
-    Netlify.env.get("SUPABASE_URL") ===
-      "https://lrxrivfqjpkvygozphoz.supabase.co" &&
+    /^[a-z]{20}$/.test(stagingRef) &&
+    stagingRef !== "htwthzshhilrjtqwprlo" &&
+    Netlify.env.get("SUPABASE_URL") === `https://${stagingRef}.supabase.co` &&
     /^(sk|rk)_test_/.test(key)
   )
     return "staging";
