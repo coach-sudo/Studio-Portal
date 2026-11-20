@@ -1,3 +1,4 @@
+import type { Lesson } from "./model";
 import { z } from "zod";
 export const lessonPaymentContextSchema = z
   .object({
@@ -69,3 +70,35 @@ export const paymentReviewMessage = (code: string | null) =>
     student_unavailable: "The original student record is unavailable.",
   })[code ?? ""] ??
   "Review this lesson's financial records before recording a payment.";
+
+export function lessonBillingStatus(lesson: Lesson) {
+  if (lesson.paymentNeedsReview) return "Needs studio review";
+  if (lesson.status === "cancelled" || lesson.status === "late_cancelled")
+    return "Canceled";
+  if (lesson.invoicePaymentPending) return "Processing";
+  switch (lesson.paymentStatus) {
+    case "waived":
+      return "No payment required";
+    case "paid":
+      return "Paid";
+    case "paid_by_credit":
+      return "Covered by package";
+    case "refunded":
+      return "Refunded";
+    case "due":
+    case "partially_paid":
+      return "Payment needed";
+    default:
+      return "Needs studio review";
+  }
+}
+
+export function canRecordDirectLessonPayment(lesson: Lesson) {
+  return (
+    lessonBillingStatus(lesson) === "Payment needed" &&
+    ["scheduled", "completed"].includes(lesson.status) &&
+    !lesson.invoiceId &&
+    !lesson.packageId &&
+    (lesson.priceMinor ?? 0) > (lesson.paidMinor ?? 0)
+  );
+}

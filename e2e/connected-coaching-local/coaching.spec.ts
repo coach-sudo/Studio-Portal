@@ -301,6 +301,8 @@ test("next lesson updates payment links and closes the previous lesson actions",
       ...data.lessons[0],
       id: "wave4-next",
       topic: "Next coaching lesson",
+      serviceId: "service-private-60",
+      sourceProvider: "studio",
       startsAt: new Date(Date.now() + 172800000).toISOString(),
       endsAt: new Date(Date.now() + 176400000).toISOString(),
       priceMinor: 20000,
@@ -325,7 +327,7 @@ test("next lesson updates payment links and closes the previous lesson actions",
     payment.getByRole("link", { name: "Email payment link" }),
   ).toHaveAttribute("href", new RegExp("lesson=" + lessonId + "$"));
   await expect(
-    payment.getByRole("link", { name: "Prepare lesson invoice" }),
+    payment.getByRole("button", { name: "Send invoice", exact: true }),
   ).toHaveCount(0);
   await payment.getByRole("button", { name: "Close", exact: true }).click();
   await page.getByRole("link", { name: "Next lesson", exact: true }).click();
@@ -339,9 +341,19 @@ test("next lesson updates payment links and closes the previous lesson actions",
   await expect(
     payment.getByRole("link", { name: "Email payment link" }),
   ).toHaveAttribute("href", /lesson=wave4-next$/);
+  await payment
+    .getByRole("button", { name: "Send invoice", exact: true })
+    .click();
+  const composer = page.getByRole("dialog", {
+    name: "Create invoice",
+    exact: true,
+  });
   await expect(
-    payment.getByRole("link", { name: "Prepare lesson invoice" }),
-  ).toHaveAttribute("href", /billLesson=wave4-next$/);
+    composer.getByRole("checkbox", { name: /Next coaching lesson/ }),
+  ).toBeChecked();
+  await expect(composer.locator(".lesson-invoice-total")).toHaveText("$200.00");
+  await composer.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(payment).toBeVisible();
 });
 
 test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({

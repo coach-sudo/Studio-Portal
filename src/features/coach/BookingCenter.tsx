@@ -1,3 +1,5 @@
+import { CoachLessonBilling } from "../finance/CoachLessonBilling";
+import { lessonBillingStatus } from "../../domain/lessonPayment";
 import { useUrlChoice } from "../../hooks/useWorkspaceLocation";
 import { WritingArea } from "../../components/WritingArea";
 import { CreditCancellationChoice } from "../../components/CreditCancellationChoice";
@@ -654,8 +656,12 @@ export function BookingCenter() {
       )}
       {dialog?.type === "lesson" && (
         <CalendarLessonDrawer
-          lesson={dialog.item}
+          lesson={
+            data.lessons.find((lesson) => lesson.id === dialog.item.id) ??
+            dialog.item
+          }
           data={data}
+          isDemo={isDemo}
           onClose={closeAppointment}
           onBooking={(booking) =>
             setDialog({
@@ -1808,11 +1814,13 @@ function BookingDialog({
 function CalendarLessonDrawer({
   lesson,
   data,
+  isDemo,
   onClose,
   onBooking,
 }: {
   lesson: Lesson;
   data: StudioSnapshot;
+  isDemo: boolean;
   onClose: () => void;
   onBooking: (booking: Booking) => void;
 }) {
@@ -1857,7 +1865,7 @@ function CalendarLessonDrawer({
           {lesson.paymentStatus && (
             <div>
               <dt>Payment status</dt>
-              <dd>{lesson.paymentStatus.replaceAll("_", " ")}</dd>
+              <dd>{lessonBillingStatus(lesson)}</dd>
             </div>
           )}
           {lesson.priceMinor != null && (
@@ -1870,6 +1878,16 @@ function CalendarLessonDrawer({
             </div>
           )}
         </dl>
+        {student && (
+          <Section title="Billing">
+            <CoachLessonBilling
+              key={lesson.id}
+              data={data}
+              lesson={lesson}
+              isDemo={isDemo}
+            />
+          </Section>
+        )}
         {student && <LessonReadinessPanel lesson={lesson} data={data} />}
         {bookings.length > 1 && (
           <Section title="Participant bookings">

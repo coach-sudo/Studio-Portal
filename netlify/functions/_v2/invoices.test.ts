@@ -484,6 +484,62 @@ describe("invoices bill and email the responsible payer", () => {
     expect(body.delivery.status).toBe("draft");
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
+  it("issues to the authorized payer with email disabled and keeps delivery blocked", async () => {
+    billingContext.contacts[0].canReceiveNotifications = false;
+    const ctx = fixture();
+    ctx.input.payload.emailOnIssue = false;
+    const body = await (await handleInvoiceCommands(ctx))!.json();
+    expect(body.resource.recipient.name).toBe("Paying Parent");
+    expect(body.delivery.status).toBe("not_sent");
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    ctx.input.command = "send";
+    ctx.input.entityId = legacyInvoice.id;
+    ctx.input.expectedVersion = legacyInvoice.version;
+    ctx.input.payload = { recipients: [] };
+    await expect(handleInvoiceCommands(ctx)).rejects.toThrow(
+      "cannot receive invoice emails",
+    );
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+  it("blocks issuing without an authorized payer even when no email is requested", async () => {
+    billingContext.contacts = [];
+    const ctx = fixture();
+    ctx.input.payload.emailOnIssue = false;
+    await expect(handleInvoiceCommands(ctx)).rejects.toThrow(
+      "A minor needs a linked payer",
+    );
+    expect(mocks.rpc).not.toHaveBeenCalled();
+  });
+  it("issues verified lessons to an adult self-payer with no saved card or automatic authorization", async () => {
+    billingContext.student.isMinor = false;
+    billingContext.student.version = 1;
+    billingContext.contacts = [];
+    const ctx = fixture();
+    const items = ctx.input.payload.items as Record<string, unknown>[];
+    ctx.input.payload = {
+      ...ctx.input.payload,
+      emailOnIssue: false,
+      exactLessons: true,
+      reviewedRecipient: { name: "Student", email: "student@example.test" },
+      items: [{ ...items[0], lessonIds: [serviceId], lessonVersion: 1 }],
+    };
+    const response = await handleInvoiceCommands(ctx);
+    expect(await response!.json()).toMatchObject({
+      resource: {
+        recipient: { name: "Student", email: "student@example.test" },
+      },
+      delivery: { status: "not_sent" },
+    });
+    expect(mocks.upsert).not.toHaveBeenCalled();
+    ctx.input.payload.reviewedRecipient = {
+      name: "Previous payer",
+      email: "previous@example.test",
+    };
+    await expect(handleInvoiceCommands(ctx)).rejects.toThrow(
+      "Review the current payer",
+    );
+    expect(mocks.rpc).toHaveBeenCalledTimes(1);
+  });
   it.each(["missing", "disabled", "opted-out", "ambiguous", "not-designated"])(
     "blocks issuing when payer configuration is %s",
     async (condition) => {

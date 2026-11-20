@@ -1,0 +1,10 @@
+{
+  "name": "studio-portal-ci-netlify",
+  "private": true,
+  "dependencies": {
+    "netlify-cli": "27.8.0"
+  },
+  "overrides": {
+    "@netlify/otel@>=7.0.0 <8": "7.0.4"
+  }
+}

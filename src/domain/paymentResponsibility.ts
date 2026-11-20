@@ -24,18 +24,18 @@ export function paymentResponsibility(
     };
   if (primary[0]) {
     const contact = primary[0];
-    if (
-      !contact.portalEnabled ||
-      !contact.canViewFinance ||
-      !contact.email?.trim()
-    ) {
+    const missing = [
+      !contact.portalEnabled && "portal access",
+      !contact.canViewFinance && "permission to view billing",
+      !contact.email?.trim() && "an email address",
+    ].filter((detail): detail is string => typeof detail === "string");
+    if (missing.length) {
       return {
         contactId: contact.id,
         name: contact.fullName,
         source: "unresolved",
         needsConfiguration: true,
-        reason:
-          "The primary payer needs active financial access and an email address.",
+        reason: `The primary payer needs ${new Intl.ListFormat("en", { type: "conjunction" }).format(missing)}.`,
       };
     }
     return {

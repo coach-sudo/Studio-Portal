@@ -199,6 +199,7 @@ export async function handleStudentsCommands(
       updated_at: new Date().toISOString(),
     };
     let contactId = String(input.payload.contactId || "");
+    const billingSetup = input.payload.billingSetup === true;
     let before: any = null;
     if (contactId) {
       const found = await service
@@ -209,6 +210,10 @@ export async function handleStudentsCommands(
         .maybeSingle();
       if (found.error || !found.data) throw new Error("FORBIDDEN");
       before = found.data;
+      if (billingSetup && before.version !== input.expectedVersion)
+        throw new Error(
+          "VERSION_CONFLICT: Review the current household contact before saving.",
+        );
       const duplicate = await service
         .from("linked_contacts")
         .select("id")
@@ -229,6 +234,10 @@ export async function handleStudentsCommands(
         .maybeSingle();
       if (found.error) throw found.error;
       if (found.data) {
+        if (billingSetup)
+          throw new Error(
+            "VERSION_CONFLICT: This email is already linked. Select the existing household contact.",
+          );
         before = found.data;
         contactId = found.data.id;
       }

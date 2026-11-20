@@ -1,4 +1,5 @@
-import { LessonPaymentReceipt } from "../../components/LessonPaymentReceipt";
+import { CoachLessonBilling } from "../finance/CoachLessonBilling";
+import { lessonBillingStatus } from "../../domain/lessonPayment";
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { LessonChangeReview } from "../../components/LessonChangeReview";
 import { LessonBulkList } from "../../components/LessonBulkList";
@@ -521,7 +522,7 @@ export function LessonsView({
                     className="text-button"
                     onClick={() => setPanel("credits")}
                   >
-                    Credits & payments
+                    Billing
                   </button>
                 )}
                 <button
@@ -580,12 +581,7 @@ export function LessonsView({
                   <div>
                     <small>Payment</small>
                     <strong>
-                      {paidByCredit
-                        ? "Paid with lesson credit"
-                        : (selected.paymentStatus || "untracked").replaceAll(
-                            "_",
-                            " ",
-                          )}
+                      {lessonBillingStatus(selected)}
                       {selected.priceMinor != null
                         ? ` · ${formatMoney(selected.priceMinor)}`
                         : ""}
@@ -640,7 +636,7 @@ export function LessonsView({
                 )}
               {panel === "credits" && (
                 <section className="lesson-command-section">
-                  <h3>Credits & payment</h3>
+                  <h3>Billing</h3>
                   <p>One credit covers one lesson.</p>
                   <button
                     onClick={() =>
@@ -662,33 +658,17 @@ export function LessonsView({
                           : "No credit available"}
                     </button>
                   )}
-                  {selected.invoiceId ? (
-                    <button
-                      onClick={() =>
-                        navigate(`/coach/finance?invoice=${selected.invoiceId}`)
-                      }
-                    >
-                      Manage invoice payment
-                    </button>
-                  ) : paidByCredit ? (
-                    <p>
-                      A lesson credit is attached. Cancellation lets you return
-                      or use it.
-                    </p>
-                  ) : (
-                    <LessonPaymentReceipt
-                      key={selected.id}
-                      lessonId={selected.id}
-                      isDemo={isDemo}
-                      onSaved={() =>
-                        invalidateStudioDomains(queryClient, [
-                          "lessons",
-                          "finance",
-                          "booking",
-                        ])
-                      }
-                    />
-                  )}
+                  <CoachLessonBilling
+                    key={selected.id}
+                    data={data}
+                    lesson={
+                      data.lessons.find(
+                        (lesson) => lesson.id === selected.id,
+                      ) ?? selected
+                    }
+                    isDemo={isDemo}
+                    inlineReceipt={!paidByCredit}
+                  />
                 </section>
               )}
               {panel === "details" && selected.status === "scheduled" && (

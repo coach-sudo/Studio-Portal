@@ -1,7 +1,7 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { CircleDollarSign } from "lucide-react";
-import { useRef, useState, type FormEvent } from "react";
+import { useId, useRef, useState, type FormEvent } from "react";
 import {
   Dialog,
   ListControls,
@@ -11,12 +11,14 @@ import {
   Status,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
+import { useInvoices } from "../../data/invoices";
 import {
   formatMoney,
   packageSummary,
   studentBalanceMinor,
 } from "../../domain/finance";
-import type { Student } from "../../domain/model";
+import type { Lesson, Student } from "../../domain/model";
+import { invoiceDue } from "../../domain/invoices";
 import {
   recentLessonDuration,
   sortPackageDefinitions,
@@ -30,9 +32,15 @@ import { StudentFinancialSetup } from "./StudentFinancialSetup";
 import { PaymentReminderSteps } from "./PaymentReminderSteps";
 import { CreditAccount } from "./CreditAccount";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
+import { CoachLessonPaymentDialog } from "../finance/CoachLessonBilling";
+import {
+  canRecordDirectLessonPayment,
+  lessonBillingStatus,
+} from "../../domain/lessonPayment";
+import { CoachBillingContact } from "../finance/CoachBillingContact";
 import { creditApplicationResultSchema } from "../../domain/creditCoverage";
 import { creditApplicationMessage } from "../../domain/creditCoveragePresentation";
-import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
+import { CoachBillingSummary } from "../finance/CoachBillingSummary";
 import { packageOffer } from "../../domain/packagePricing";
 import { reserveDemoCredits } from "../../domain/credits";
 
@@ -45,7 +53,61 @@ export function Payments({
   student: Student;
   isDemo: boolean;
 }) {
-  const [params] = useSearchParams();
+  const fields = useId();
+  const [params, setParams] = useSearchParams();
+  const creditsDisclosure = useRef<HTMLDetailsElement>(null);
+  const [openComposer, setOpenComposer] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [paymentLessonId, setPaymentLessonId] = useState("");
+  const [lessonSearch, setLessonSearch] = useState("");
+  const [lessonStatus, setLessonStatus] = useState("");
+  const [paymentSearch, setPaymentSearch] = useState("");
+  const [latestFirst, setLatestFirst] = useState(false);
+  const invoices = useInvoices(isDemo, data.invoices);
+  const lessons = data.lessons
+    .filter(
+      (lesson) => lesson.studentId === student.id && lesson.status !== "draft",
+    )
+    .sort((a, b) =>
+      latestFirst
+        ? b.startsAt.localeCompare(a.startsAt)
+        : a.startsAt.localeCompare(b.startsAt),
+    );
+  const lessonPage = usePagedList(
+    lessons.filter(
+      (lesson) =>
+        lesson.topic
+          .toLowerCase()
+          .includes(lessonSearch.trim().toLowerCase()) &&
+        (!lessonStatus || lessonBillingStatus(lesson) === lessonStatus),
+    ),
+  );
+  const payableInvoices = (invoices.error ? [] : (invoices.data ?? [])).filter(
+    (invoice) =>
+      invoice.student_id === student.id &&
+      !invoice.checkout_key &&
+      invoiceDue(invoice) > 0,
+  );
+  const recordable = lessons.filter(
+    (lesson) =>
+      canRecordDirectLessonPayment(lesson) ||
+      (lessonBillingStatus(lesson) === "Payment needed" &&
+        payableInvoices.some((invoice) => invoice.id === lesson.invoiceId)),
+  );
+  const paymentLesson = lessons.find((lesson) => lesson.id === paymentLessonId);
+  function startPayment(lesson: Lesson) {
+    if (payableInvoices.some((invoice) => invoice.id === lesson.invoiceId)) {
+      setRecording(false);
+      setParams((current) => {
+        current.set("invoice", lesson.invoiceId!);
+        return current;
+      });
+      return;
+    }
+    setPaymentLessonId(lesson.id);
+    setRecording(true);
+  }
+
   const pkgs = data.packages.filter((i) => i.studentId === student.id),
     payments = data.payments.filter((i) => i.studentId === student.id),
     preferredDuration = recentLessonDuration(data.lessons, student.id),
@@ -73,7 +135,15 @@ export function Payments({
   );
   const assigningNow = useRef(false);
   const [assignBusy, setAssignBusy] = useState(false);
-  const paymentPage = usePagedList(payments);
+  const paymentPage = usePagedList(
+    payments
+      .filter((entry) =>
+        [entry.reason, entry.externalReference, entry.kind].some((value) =>
+          value?.toLowerCase().includes(paymentSearch.trim().toLowerCase()),
+        ),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+  );
   const packagePage = usePagedList(pkgs);
   const autoApplyOnAssign = pkgs.length > 0 && pkgs.every((p) => p.autoApply);
   const adjustBalance = async (event: FormEvent) => {
@@ -217,21 +287,269 @@ export function Payments({
     }
   };
   return (
-    <div>
+    <div className="student-billing-workspace">
       {notice && (
         <p className="portal-notice" role="status">
           {notice}
         </p>
       )}
-      {!isDemo && <StudentFinancialSummary studentId={student.id} />}
-      <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
+      <CoachBillingSummary data={data} studentId={student.id} isDemo={isDemo} />
+      <div className="student-billing-grid">
+        <Section title="Lessons">
+          <div className="header-actions student-billing-controls">
+            <label htmlFor={`${fields}-lesson-search`}>
+              Search lessons
+              <input
+                id={`${fields}-lesson-search`}
+                type="search"
+                value={lessonSearch}
+                onChange={(event) => {
+                  setLessonSearch(event.target.value);
+                  lessonPage.setPage(1);
+                }}
+              />
+            </label>
+            <label htmlFor={`${fields}-lesson-status`}>
+              Status
+              <select
+                id={`${fields}-lesson-status`}
+                value={lessonStatus}
+                onChange={(event) => {
+                  setLessonStatus(event.target.value);
+                  lessonPage.setPage(1);
+                }}
+              >
+                <option value="">All statuses</option>
+                {[...new Set(lessons.map(lessonBillingStatus))]
+                  .sort()
+                  .map((status) => (
+                    <option key={status}>{status}</option>
+                  ))}
+              </select>
+            </label>
+            <label htmlFor={`${fields}-lesson-sort`}>
+              Sort by
+              <select
+                id={`${fields}-lesson-sort`}
+                value={latestFirst ? "latest" : "earliest"}
+                onChange={(event) => {
+                  setLatestFirst(event.target.value === "latest");
+                  lessonPage.setPage(1);
+                }}
+              >
+                <option value="earliest">Earliest first</option>
+                <option value="latest">Latest first</option>
+              </select>
+            </label>
+          </div>
+          <ul className="lesson-invoice-rows">
+            {lessonPage.visible.map((lesson) => {
+              const status = lessonBillingStatus(lesson);
+              return (
+                <li key={lesson.id}>
+                  <span>
+                    <strong>{lesson.topic}</strong>
+                    <small>
+                      {formatStudioDate(
+                        lesson.startsAt,
+                        data.settings.timezone,
+                      )}
+                    </small>
+                  </span>
+                  <div className="billing-lesson-actions">
+                    <Status
+                      tone={status === "Payment needed" ? "warn" : "neutral"}
+                    >
+                      {status}
+                    </Status>
+                    {canRecordDirectLessonPayment(lesson) &&
+                      lesson.priceMinor !== undefined && (
+                        <strong>
+                          {formatMoney(
+                            lesson.priceMinor - (lesson.paidMinor ?? 0),
+                            data.settings.currency,
+                          )}
+                        </strong>
+                      )}
+                    <Link
+                      className="button-link"
+                      to={`/coach/students/${student.id}/lessons/${lesson.id}`}
+                    >
+                      Open lesson
+                    </Link>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          {!lessonPage.total && (
+            <EmptyState
+              title="No matching lessons"
+              detail="Change the search or status to see more lessons."
+            />
+          )}
+          <ListControls
+            page={lessonPage.page}
+            pageCount={lessonPage.pageCount}
+            pageSize={lessonPage.pageSize}
+            total={lessonPage.total}
+            onPage={lessonPage.setPage}
+            onPageSize={lessonPage.setPageSize}
+            label="lessons"
+          />
+          <div className="header-actions">
+            <button className="primary" onClick={() => setOpenComposer(true)}>
+              Send invoice
+            </button>
+            <button
+              disabled={!recordable.length}
+              onClick={() => {
+                if (recordable.length === 1) {
+                  startPayment(recordable[0]);
+                  return;
+                }
+                setPaymentLessonId("");
+                setRecording(true);
+              }}
+            >
+              Record payment
+            </button>
+            <button
+              onClick={() => {
+                if (!creditsDisclosure.current) return;
+                creditsDisclosure.current.open = true;
+                creditsDisclosure.current.querySelector("summary")?.focus();
+              }}
+            >
+              Manage credits
+            </button>
+          </div>
+        </Section>
+        <div className="student-billing-sidebar">
+          <CoachBillingContact data={data} student={student} isDemo={isDemo} />
+          <Section title="Payment history">
+            <label
+              className="lesson-invoice-field"
+              htmlFor={`${fields}-payment-search`}
+            >
+              Search billing history
+              <input
+                id={`${fields}-payment-search`}
+                type="search"
+                value={paymentSearch}
+                onChange={(event) => {
+                  setPaymentSearch(event.target.value);
+                  paymentPage.setPage(1);
+                }}
+              />
+            </label>
+            <ListControls
+              page={paymentPage.page}
+              pageCount={paymentPage.pageCount}
+              pageSize={paymentPage.pageSize}
+              total={paymentPage.total}
+              onPage={paymentPage.setPage}
+              onPageSize={paymentPage.setPageSize}
+              label="payments"
+            />
+            <div className="table-list">
+              {paymentPage.visible.map((p) => (
+                <article key={p.id}>
+                  <CircleDollarSign />
+                  <div>
+                    <strong>{p.reason}</strong>
+                    <small>
+                      {formatStudioDate(p.createdAt, data.settings.timezone)}
+                    </small>
+                    {p.externalReference?.startsWith("lesson-payment:") && (
+                      <small>
+                        Receipt{" "}
+                        {p.externalReference.slice("lesson-payment:".length)}
+                      </small>
+                    )}
+                  </div>
+                  <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
+                </article>
+              ))}
+              {!paymentPage.total && (
+                <EmptyState
+                  title={
+                    payments.length
+                      ? "No matching entries"
+                      : "No ledger entries"
+                  }
+                  detail={
+                    payments.length
+                      ? "Change the search to see more entries."
+                      : "Payments and adjustments will appear here."
+                  }
+                />
+              )}
+            </div>
+          </Section>
+        </div>
+      </div>
       <details
         className="disclosure-section"
-        open={params.has("invoice") || params.has("billLesson") || undefined}
+        open={
+          params.has("invoice") ||
+          params.has("billLesson") ||
+          openComposer ||
+          undefined
+        }
       >
         <summary>Invoices</summary>
-        <InvoiceWorkspace data={data} isDemo={isDemo} studentId={student.id} />
+        <InvoiceWorkspace
+          data={data}
+          isDemo={isDemo}
+          studentId={student.id}
+          openComposer={openComposer}
+          onComposerDismiss={() => setOpenComposer(false)}
+        />
       </details>
+      <details className="disclosure-section" ref={creditsDisclosure}>
+        <summary>Manage credits</summary>
+        <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
+      </details>
+      {recording &&
+        (paymentLesson ? (
+          <CoachLessonPaymentDialog
+            lesson={paymentLesson}
+            isDemo={isDemo}
+            onClose={() => setRecording(false)}
+          />
+        ) : (
+          <Dialog
+            title="Record payment"
+            description="Choose the lesson the payment applies to."
+            onClose={() => setRecording(false)}
+          >
+            <label
+              className="lesson-invoice-field"
+              htmlFor={`${fields}-record-lesson`}
+            >
+              Lesson
+              <select
+                id={`${fields}-record-lesson`}
+                value={paymentLessonId}
+                onChange={(event) => {
+                  const lesson = recordable.find(
+                    (entry) => entry.id === event.target.value,
+                  );
+                  if (lesson) startPayment(lesson);
+                }}
+              >
+                <option value="">Choose a lesson</option>
+                {recordable.map((lesson) => (
+                  <option key={lesson.id} value={lesson.id}>
+                    {formatStudioDate(lesson.startsAt, data.settings.timezone)}{" "}
+                    · {lesson.topic}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Dialog>
+        ))}
       <details className="disclosure-section">
         <summary>Financial configuration and forecasts</summary>
         <StudentFinancialSetup data={data} student={student} />
@@ -241,7 +559,7 @@ export function Payments({
         <PaymentReminderSteps data={data} student={student} isDemo={isDemo} />
       </details>
       <details className="disclosure-section" id="payment-arrangements">
-        <summary>Packages, payment history and adjustments</summary>
+        <summary>Packages and account adjustments</summary>
         <div className="two-section-grid">
           <Section
             title="Packages"
@@ -316,38 +634,6 @@ export function Payments({
                 </strong>
               </div>
             </div>
-            <details className="disclosure-section">
-              <summary>Payment history ({payments.length})</summary>
-              <ListControls
-                page={paymentPage.page}
-                pageCount={paymentPage.pageCount}
-                pageSize={paymentPage.pageSize}
-                total={payments.length}
-                onPage={paymentPage.setPage}
-                onPageSize={paymentPage.setPageSize}
-                label="payments"
-              />
-              <div className="table-list">
-                {paymentPage.visible.map((p) => (
-                  <article key={p.id}>
-                    <CircleDollarSign />
-                    <div>
-                      <strong>{p.reason}</strong>
-                      <small>
-                        {formatStudioDate(p.createdAt, data.settings.timezone)}
-                      </small>
-                    </div>
-                    <strong>{formatMoney(p.amountMinor, p.currency)}</strong>
-                  </article>
-                ))}
-                {!payments.length && (
-                  <EmptyState
-                    title="No ledger entries"
-                    detail="Payments and adjustments will appear here."
-                  />
-                )}
-              </div>
-            </details>
           </Section>
         </div>
       </details>

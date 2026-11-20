@@ -20,7 +20,10 @@ test.describe("Unified invoice acceptance", () => {
     try {
       await coach.page.goto("/coach/finance");
       await coach.page
-        .getByRole("button", { name: "Create invoice", exact: true })
+        .getByRole("button", {
+          name: "Invoice services or packages",
+          exact: true,
+        })
         .click();
       let drawer = coach.page.getByRole("dialog");
       await drawer
@@ -58,7 +61,7 @@ test.describe("Unified invoice acceptance", () => {
         .click();
       await coach.page
         .getByRole("dialog")
-        .getByRole("button", { name: "Issue and send invoice", exact: true })
+        .getByRole("button", { name: "Issue invoice", exact: true })
         .click();
       drawer = coach.page.getByRole("dialog");
       await expect(

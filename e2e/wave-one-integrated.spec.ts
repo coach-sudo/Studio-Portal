@@ -33,6 +33,12 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
   const page = await context.newPage();
   page.setDefaultTimeout(15000);
   const base = `/coach/students/${f.studentId}`;
+  const openPayments = async (studentId: string) => {
+    await page.goto(`/coach/students/${studentId}/payments`);
+    await page
+      .getByRole("button", { name: "Manage credits", exact: true })
+      .click();
+  };
   const metric = (label: string) =>
     page
       .locator(".account-metrics > div")
@@ -40,6 +46,11 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
         has: page.locator("small", { hasText: new RegExp(`^${label}$`) }),
       })
       .locator("strong");
+  const outstanding = page
+    .getByLabel("Billing summary")
+    .getByText("Outstanding", { exact: true })
+    .locator("..")
+    .locator("strong");
   const verifyTotals = async (due: string) => {
     const credit = await f.db.rpc("student_credit_summary", {
       p_student: f.studentId,
@@ -70,9 +81,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       reviewRequired: false,
       balances: [{ currency: "USD", dueMinor: Number(due) * 100 }],
     });
-    await expect(metric("Amount due · USD")).toHaveText(
-      `$${Number(due).toFixed(2)}`,
-    );
+    await expect(outstanding).toHaveText(`$${Number(due).toFixed(2)}`);
     expect(
       f.sql(
         `select -coalesce(sum(quantity),0) from package_credit_entries where package_id='${pkg}' and lesson_id is not null`,
@@ -88,7 +97,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       insert into packages(id,student_id,name) values('${pkg}','${f.studentId}','Integrated study credits');
       insert into package_credit_entries(package_id,kind,quantity,reason) values('${pkg}','purchase',2,'Isolated integrated purchase');
       insert into student_credit_accounts(student_id,auto_apply) values('${f.studentId}',false) on conflict(student_id) do update set auto_apply=false;`);
-    await page.goto(`${base}/payments`);
+    await openPayments(f.studentId);
     await page
       .getByRole("button", { name: "Apply eligible credits now" })
       .click();
@@ -166,7 +175,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
         `select count(*) from audit_events where entity_id='${f.lessonIds[0]}' and action='lesson.bulk_cancel'`,
       ),
     ).toBe("1");
-    await page.goto(`${base}/payments`);
+    await openPayments(f.studentId);
     await verifyTotals("30");
     await expectNoHorizontalOverflow(page);
     await expectNoSeriousAxeViolations(page, "main");
@@ -174,8 +183,8 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       path: info.outputPath("integrated-payment-ledger.png"),
       fullPage: true,
     });
-    await page.goto(`/coach/students/${f.secondStudent}/payments`);
-    await expect(metric("Amount due · USD")).toHaveText("$0.00");
+    await openPayments(f.secondStudent);
+    await expect(outstanding).toHaveText("$0.00");
     await expect(metric("Remaining")).toHaveText("0");
     await expect(page.getByText(f.rows[0].topic!, { exact: true })).toHaveCount(
       0,
@@ -218,7 +227,7 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
         `select count(*) from lesson_ops.lesson_deletion_snapshots where lesson_id='${f.lessonIds[4]}'`,
       ),
     ).toBe("1");
-    await page.goto(`${base}/payments`);
+    await openPayments(f.studentId);
     await verifyTotals("30");
   } finally {
     try {

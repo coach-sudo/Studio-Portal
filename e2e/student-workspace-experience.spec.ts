@@ -145,12 +145,13 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     await expectNoSeriousAxeViolations(page, '[role="dialog"]');
     await page.keyboard.press("Escape");
     await page.goto(`${base}/payments`);
+    await page
+      .getByRole("button", { name: "Manage credits", exact: true })
+      .click();
     await expect(
       page.getByText("Use credits automatically: Off", { exact: true }),
     ).toBeVisible();
-    await expect(
-      page.getByRole("heading", { name: "Account summary" }),
-    ).toBeVisible();
+    await expect(page.getByLabel("Billing summary")).toBeVisible();
     await expect(
       page.getByRole("heading", { name: "Invoices", exact: true }),
     ).toHaveCount(0);
@@ -223,6 +224,9 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
       ),
     ).toBe("3");
     await page.goto(`/coach/students/${f.secondStudent}/payments`);
+    await page
+      .getByRole("button", { name: "Manage credits", exact: true })
+      .click();
     await expect(
       page
         .getByText("Remaining", { exact: true })
@@ -233,6 +237,9 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     f.sql(`insert into packages(id,student_id,name,auto_apply) values('${packages[2]}','${f.secondStudent}','Legacy automatic package',true),('${packages[3]}','${f.secondStudent}','Legacy manual package',false);
       insert into package_credit_entries(package_id,kind,quantity,reason) values('${packages[2]}','purchase',1,'Mixed preference fixture'),('${packages[3]}','purchase',1,'Mixed preference fixture');`);
     await page.reload();
+    await page
+      .getByRole("button", { name: "Manage credits", exact: true })
+      .click();
     await expect(
       page.getByText("Use credits automatically: Needs review", {
         exact: true,
