@@ -159,6 +159,8 @@ it("locks verified lesson terms inside the invoice transaction and reuses a revi
     );
     await db.exec(`alter table lessons add column payment_needs_review boolean not null default false;
       alter table students add column version integer not null default 1;
+      alter table bookings add column admin_override jsonb, add column auto_charge_balance boolean default false,
+        add column stripe_checkout_session_id text, add column stripe_subscription_id text;
       create table linked_contacts(id uuid primary key,student_id uuid,version integer);`);
     await db.query(
       "insert into booking_services(id,studio_id,name) values($1,$2,'Verified service')",
@@ -182,6 +184,16 @@ it("locks verified lesson terms inside the invoice transaction and reuses a revi
       paidMinor: 0,
       creditMinor: 0,
     }));
+    const booking = "41000000-0000-4000-8000-000000000060";
+    await db.query(
+      `insert into bookings(id,studio_id,student_id,service_id,status,payment_policy,payment_status,total_minor,admin_override)
+       values($1,$2,$3,$4,'confirmed','pay_later','due',8000,'{"createdByCoach":true}')`,
+      [booking, studio, student, service],
+    );
+    await db.query(
+      "insert into lesson_participants(id,lesson_id,booking_id,student_id,status) values(gen_random_uuid(),$1,$2,$3,'confirmed')",
+      [ids[1], booking, student],
+    );
     const value = {
       exactLessons: true,
       status: "draft",
@@ -238,6 +250,28 @@ it("locks verified lesson terms inside the invoice transaction and reuses a revi
         "test-repeat-line",
       ),
     ).rejects.toThrow("Each lesson can appear only once");
+    await db.query(
+      "update bookings set stripe_checkout_session_id='cs_test_held' where id=$1",
+      [booking],
+    );
+    await expect(save(value, "test-provider-managed")).rejects.toThrow(
+      "Review the booking balance",
+    );
+    await db.query(
+      "update bookings set stripe_checkout_session_id=null where id=$1",
+      [booking],
+    );
+    await db.query(
+      "insert into lesson_participants(id,lesson_id,booking_id,student_id,status) values(gen_random_uuid(),$1,$2,$3,'confirmed')",
+      [ids[0], booking, student],
+    );
+    await expect(save(value, "test-multi-lesson-booking")).rejects.toThrow(
+      "Review the booking balance",
+    );
+    await db.query(
+      "delete from lesson_participants where lesson_id=$1 and booking_id=$2",
+      [ids[0], booking],
+    );
     const draft = await save(value, "test-draft");
     await expect(save(value, "test-duplicate-draft")).rejects.toThrow(
       "VERSION_CONFLICT",
@@ -294,6 +328,16 @@ it("locks verified lesson terms inside the invoice transaction and reuses a revi
         [issued.id],
       ),
     ).toEqual({ linked: 2 });
+    await db.query(
+      "select settle_studio_invoice($1,16000,'cash','test-booked-invoice-receipt',null)",
+      [issued.id],
+    );
+    expect(
+      await scalar(
+        "select i.status as invoice_status,b.payment_status,b.paid_minor::int as paid from studio_invoices i join bookings b on b.id=$2 where i.id=$1",
+        [issued.id, booking],
+      ),
+    ).toEqual({ invoice_status: "paid", payment_status: "paid", paid: 8000 });
     expect(
       await scalar(
         "select has_function_privilege('authenticated','public.save_studio_invoice(jsonb,text,integer)','execute') as allowed",

@@ -8,6 +8,7 @@ declare inv public.studio_invoices; sid uuid:=(p_value->>'student_id')::uuid; st
   student_version integer;
   current_contacts jsonb;
   seen_lessons uuid[]:='{}';
+  booking_links integer;
 begin
   perform 1 from public.students where id=sid and studio_id=studio and deleted_at is null for update;
   if not found then raise exception 'FORBIDDEN'; end if;
@@ -60,12 +61,31 @@ begin
           or reviewed_lesson.invoice_payment_pending or reviewed_lesson.payment_needs_review
           or exists(select 1 from public.package_credit_entries e join public.packages p on p.id=e.package_id
             where e.lesson_id=lid and p.student_id=sid group by e.package_id having sum(e.quantity)<0)
-          or exists(select 1 from public.lesson_participants p
-            where p.lesson_id=lid and p.student_id=sid and p.booking_id is not null)
           or exists(select 1 from public.studio_invoices i cross join lateral jsonb_array_elements(i.items) x
             where i.student_id=sid and i.status<>'void' and i.id is distinct from old.id
               and not coalesce((x->>'cancelled')::boolean,false) and x->'lessonIds' ? lid::text)
         then raise exception 'VERSION_CONFLICT: Review the current lesson and linked invoices before continuing.';
+        end if;
+        select count(*) into booking_links from public.lesson_participants
+          where lesson_id=lid and booking_id is not null;
+        if booking_links>0 then
+          if booking_links<>1 then raise exception 'VERSION_CONFLICT: This lesson has multiple booking obligations.'; end if;
+          perform 1 from public.lesson_participants p
+          join public.bookings b on b.id=p.booking_id
+          where p.lesson_id=lid and p.student_id=sid and p.status in ('confirmed','attended')
+            and b.student_id=sid and b.studio_id=studio and b.service_id=reviewed_lesson.service_id
+            and b.admin_override->'createdByCoach'='true'::jsonb
+            and b.currency=p_value->>'currency' and b.total_minor=reviewed_lesson.price_minor
+            and b.paid_minor=0 and b.payment_policy='pay_later' and b.payment_status='due'
+            and b.status in ('confirmed','completed') and b.offering_id is null and b.series_id is null
+            and not coalesce(b.auto_charge_balance,false)
+            and b.stripe_checkout_session_id is null and b.stripe_subscription_id is null
+          for update of b,p;
+          if not found or exists (select 1 from public.lesson_participants p
+            join public.lesson_participants another on another.booking_id=p.booking_id and another.id<>p.id
+            where p.lesson_id=lid)
+          then raise exception 'VERSION_CONFLICT: Review the booking balance before invoicing this lesson.';
+          end if;
         end if;
         item:=(item-'lessonVersion')||jsonb_build_object('verifiedLesson',true);
       end if;

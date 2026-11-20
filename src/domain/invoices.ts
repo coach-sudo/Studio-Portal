@@ -102,6 +102,34 @@ export function verifiedInvoiceLesson(
   lesson: Lesson,
   studentId: string,
 ) {
+  const links = data.lessonParticipants.filter(
+    (participant) =>
+      participant.lessonId === lesson.id && participant.bookingId,
+  );
+  const link = links[0];
+  const booking =
+    link && data.bookings.find((entry) => entry.id === link.bookingId);
+  // Invoicing can reuse the booking balance when it belongs to one occurrence.
+  const verifiedBooking =
+    links.length === 1 &&
+    link.studentId === studentId &&
+    ["confirmed", "attended"].includes(link.status) &&
+    booking?.adminOverride?.createdByCoach === true &&
+    booking.studentId === studentId &&
+    booking.serviceId === lesson.serviceId &&
+    booking.currency === data.settings.currency &&
+    booking.totalMinor === lesson.priceMinor &&
+    booking.paidMinor === 0 &&
+    booking.paymentPolicy === "pay_later" &&
+    booking.paymentStatus === "due" &&
+    ["confirmed", "completed"].includes(booking.status) &&
+    !booking.autoChargeBalance &&
+    !booking.offeringId &&
+    !booking.seriesId &&
+    !data.lessonParticipants.some(
+      (participant) =>
+        participant.bookingId === booking.id && participant.id !== link.id,
+    );
   return (
     canPrepareLessonInvoice(data, lesson, studentId) &&
     (lesson.sourceProvider ?? "studio") === "studio" &&
@@ -115,12 +143,7 @@ export function verifiedInvoiceLesson(
     ) &&
     Number.isSafeInteger(lesson.priceMinor) &&
     (lesson.priceMinor ?? 0) > 0 &&
-    !data.lessonParticipants.some(
-      (participant) =>
-        participant.lessonId === lesson.id &&
-        participant.studentId === studentId &&
-        participant.bookingId,
-    ) &&
+    (!links.length || verifiedBooking) &&
     data.bookingServices.some(
       (service) =>
         service.id === lesson.serviceId &&
