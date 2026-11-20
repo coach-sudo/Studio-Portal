@@ -626,13 +626,12 @@ export function LessonPaymentOptions({
             </p>
           )}
           <div className="training-payment-confirmation-grid">
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- The scrollable payment review needs keyboard focus. */}
             <div
               className="training-payment-review-list"
               role="region"
               aria-label="Lessons in this payment"
-              tabIndex={
-                0 /* eslint-disable-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the review list. */
-              }
+              tabIndex={0}
             >
               {reviewing.rows.map((row) => (
                 <div className="training-payment-review-row" key={lineKey(row)}>
@@ -647,6 +646,7 @@ export function LessonPaymentOptions({
                 </div>
               ))}
             </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
             <div className="training-payment-total">
               <p>
                 <strong>
