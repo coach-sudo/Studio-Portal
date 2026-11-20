@@ -1,6 +1,8 @@
 // Direct checkout races on a local disposable Supabase database.
 import assert from "node:assert/strict";
 import { execFileSync, spawn } from "node:child_process";
+import console from "node:console";
+import process from "node:process";
 
 const executable = process.platform === "win32" ? "wsl" : "docker";
 const prefix = process.platform === "win32" ? ["--exec", "docker"] : [];
