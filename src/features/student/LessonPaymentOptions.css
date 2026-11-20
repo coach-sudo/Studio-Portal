@@ -75,9 +75,23 @@
   margin-top: 0.4rem;
 }
 
-.training-payment-confirmation-grid .table-list {
+.training-payment-review-list {
   max-block-size: min(46dvh, 25rem);
   overflow-y: auto;
+}
+
+.training-payment-review-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 0.7rem;
+  padding: 0.8rem 0.25rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.training-payment-review-row small {
+  display: block;
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 699px) {

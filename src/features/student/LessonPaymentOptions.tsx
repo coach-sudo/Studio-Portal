@@ -215,6 +215,9 @@ export function LessonPaymentOptions({
     void queryClient.invalidateQueries({
       queryKey: ["training-payment-payers"],
     });
+    void queryClient.invalidateQueries({
+      queryKey: ["household-payment-history"],
+    });
     void invalidateStudioDomains(queryClient, [
       "finance",
       "lessons",
@@ -624,13 +627,15 @@ export function LessonPaymentOptions({
           )}
           <div className="training-payment-confirmation-grid">
             <div
-              className="table-list"
+              className="training-payment-review-list"
               role="region"
               aria-label="Lessons in this payment"
-              tabIndex={0}
+              tabIndex={
+                0 /* eslint-disable-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users must be able to scroll the review list. */
+              }
             >
               {reviewing.rows.map((row) => (
-                <article key={lineKey(row)}>
+                <div className="training-payment-review-row" key={lineKey(row)}>
                   <div>
                     <strong>{row.description}</strong>
                     <small>
@@ -639,7 +644,7 @@ export function LessonPaymentOptions({
                     </small>
                   </div>
                   <strong>{formatMoney(row.amountMinor, row.currency)}</strong>
-                </article>
+                </div>
               ))}
             </div>
             <div className="training-payment-total">

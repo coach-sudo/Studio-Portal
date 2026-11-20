@@ -151,7 +151,7 @@ export function StudentPaymentSettings({
                           : methods.data.hasSavedMethod
                             ? "Payment method saved"
                             : params.get("payment") === "returned"
-                            ? "Stripe hasn’t confirmed a saved method yet."
+                              ? "Stripe hasn’t confirmed a saved method yet."
                               : "No saved payment method"}
                   </small>
                   <small>
