@@ -7,7 +7,7 @@ import {
   test,
 } from "./support/fixtures";
 
-test("@journey Journey 08: package and payment context is usable without a provider", async ({
+test("@journey Journey 08: a student can review receipts while their designated payer sees package offers", async ({
   browser,
   runtime,
 }) => {
@@ -25,9 +25,18 @@ test("@journey Journey 08: package and payment context is usable without a provi
     page.getByText(`${runtime.runId} fixture payment`),
   ).toBeVisible();
   await expect(
-    page.getByText("Includes a coach-authored E2E package benefit."),
-  ).toBeVisible();
+    page.getByRole("button", { name: "Choose package" }),
+  ).toHaveCount(0);
   await context.close();
+
+  const studentId = runtime.ids?.student;
+  if (!studentId) throw new Error("The payment fixture has no student ID.");
+  const guardian = await openAs(browser, "guardian");
+  await guardian.page.goto(`/portal/payments?student=${studentId}`);
+  await expect(
+    guardian.page.getByText("Includes a coach-authored E2E package benefit."),
+  ).toBeVisible();
+  await guardian.context.close();
 });
 
 test("@journey Journey 08: Stripe test checkout hands off only to test-mode infrastructure", async ({
@@ -39,11 +48,13 @@ test("@journey Journey 08: Stripe test checkout hands off only to test-mode infr
     "stripeTest",
     "staging STRIPE_SECRET_KEY is absent or is not a Stripe test-mode key",
   );
-  const { context, page } = await openAs(browser, "student");
-  await page.goto("/portal/payments");
+  const studentId = runtime.ids?.student;
+  if (!studentId) throw new Error("The payment fixture has no student ID.");
+  const { context, page } = await openAs(browser, "guardian");
+  await page.goto(`/portal/payments?student=${studentId}`);
   const packageRow = page
     .locator("article", { hasText: `${runtime.runId} Four-session package` })
-    .first();
+    .filter({ has: page.getByRole("button", { name: "Choose package" }) });
   await packageRow.getByRole("button", { name: "Choose package" }).click();
   await Promise.all([
     page.waitForURL(/https:\/\/checkout\.stripe\.com\//, { timeout: 30_000 }),

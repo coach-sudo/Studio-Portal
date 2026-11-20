@@ -921,24 +921,22 @@ async function setup(
     [fixture.bulkDeleteLesson, 62000, "scheduled"],
     [fixture.bulkArchiveLesson, 62200, "cancelled"],
   ] as const) {
-    const row = await db
-      .from("lessons")
-      .upsert({
-        id,
-        studio_id: studioId,
-        student_id: fixture.occurrenceStudent,
-        topic: `${runId} Bulk ${status}`,
-        starts_at: iso(minutes),
-        ends_at: iso(minutes + 60),
-        status,
-        source_provider: "studio",
-        location_type: "in_person",
-        location_label: "Studio",
-        meeting_provider: null,
-        payment_status: "untracked",
-        price_minor: 0,
-        paid_minor: 0,
-      });
+    const row = await db.from("lessons").upsert({
+      id,
+      studio_id: studioId,
+      student_id: fixture.occurrenceStudent,
+      topic: `${runId} Bulk ${status}`,
+      starts_at: iso(minutes),
+      ends_at: iso(minutes + 60),
+      status,
+      source_provider: "studio",
+      location_type: "in_person",
+      location_label: "Studio",
+      meeting_provider: null,
+      payment_status: "untracked",
+      price_minor: 0,
+      paid_minor: 0,
+    });
     if (row.error) throwFixtureError("bulk_lesson", row.error);
   }
   for (const [id, minutes] of [
@@ -1035,6 +1033,27 @@ async function setup(
     });
   if (packageDefinitionError)
     throwFixtureError("package_definition", packageDefinitionError);
+  const stripeTest = /^(sk|rk)_test_/.test(
+    Netlify.env.get("STRIPE_SECRET_KEY") ?? "",
+  );
+  const smokePrice = Netlify.env.get("CI_STRIPE_SMOKE_PRICE_ID");
+  if (stripeTest && Netlify.env.get("E2E_EPHEMERAL") === "true" && smokePrice) {
+    if (!/^price_[A-Za-z0-9]+$/.test(smokePrice))
+      throw new Error("CI Stripe smoke price ID is invalid.");
+    const { error: billingOptionError } = await db
+      .from("package_billing_options")
+      .upsert(
+        {
+          studio_id: studioId,
+          definition_id: fixture.packageDefinition,
+          renewal_mode: "one_time",
+          stripe_price_id: smokePrice,
+        },
+        { onConflict: "definition_id,renewal_mode" },
+      );
+    if (billingOptionError)
+      throwFixtureError("stripe_smoke_price", billingOptionError);
+  }
   const { error: packageError } = await db.from("packages").upsert({
     id: fixture.package,
     student_id: fixture.student,
@@ -1401,9 +1420,7 @@ async function setup(
     actorSlug: `${runId}-actor`,
     capabilities: {
       google: Boolean(Netlify.env.get("GOOGLE_REFRESH_TOKEN")),
-      stripeTest: (Netlify.env.get("STRIPE_SECRET_KEY") || "").startsWith(
-        "sk_test_",
-      ),
+      stripeTest,
     },
   };
 }

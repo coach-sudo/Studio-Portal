@@ -208,7 +208,7 @@ describe("V2 domain query behavior", () => {
     target.unmount();
   });
 
-  it("refetches the active booking query after a portal recurring-series mutation", async () => {
+  it("refetches the active booking and finance queries after a portal recurring-series mutation", async () => {
     const [
       { useStudioRoute, invalidateStudioDomains, countActiveDomainRefetches },
       { StudioStoreProvider },
@@ -231,14 +231,14 @@ describe("V2 domain query behavior", () => {
     await waitFor(() => expect(route.result.current.data).toBeDefined());
     expect(
       countActiveDomainRefetches(queryClient, ["booking", "finance"]),
-    ).toBe(1);
+    ).toBe(2);
     loadStudioSnapshot.mockClear();
     await act(async () => {
       await invalidateStudioDomains(queryClient, ["booking", "finance"]);
     });
-    expect(loadStudioSnapshot.mock.calls.map((call) => call[2][0])).toEqual([
-      "booking",
-    ]);
+    expect(
+      loadStudioSnapshot.mock.calls.map((call) => call[2][0]).sort(),
+    ).toEqual(["booking", "finance"]);
     route.unmount();
   });
 

@@ -12,6 +12,7 @@ import {
   type Invoice,
 } from "../../../src/domain/invoices";
 import type { V2CommandContext } from "./types";
+import { handleTrainingCheckout } from "./training-checkout";
 
 async function queueInvoiceEmail(
   service: ReturnType<typeof serviceClient>,
@@ -102,6 +103,8 @@ export async function handleInvoiceCommands(
   ctx: V2CommandContext,
 ): Promise<Response | null> {
   if (ctx.domain !== "invoices") return null;
+  if (ctx.input.command.startsWith("training_"))
+    return handleTrainingCheckout(ctx);
   const { input, db, requireCoach, audit } = ctx,
     service = serviceClient();
   if (input.command === "save") {
@@ -236,6 +239,10 @@ export async function handleInvoiceCommands(
   if (
     ["checkout", "check_checkout", "cancel_checkout"].includes(input.command)
   ) {
+    if (invoice.checkout_key?.startsWith("training:"))
+      throw new Error(
+        "INVALID_TRANSITION: A selected lesson payment is in progress. Return to lesson payments to manage it.",
+      );
     const key = Netlify.env.get("STRIPE_SECRET_KEY");
     if (!key) throw new Error("Stripe is not configured.");
     const stripe = new Stripe(key, { apiVersion: "2026-07-29.dahlia" });

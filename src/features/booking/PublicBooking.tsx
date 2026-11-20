@@ -2,7 +2,8 @@ import "../../styles/booking.css";
 import "../../styles/public.css";
 import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import type { BookingContinuation } from "../../domain/recurringOccurrences";
 import { applyStudioBranding } from "../../lib/branding";
 import { isDemoMode, supabase } from "../../lib/supabase";
 import { useStudioStore } from "../../state/StudioStore";
@@ -21,6 +22,23 @@ import {
 export function PublicBooking() {
   const { slug, token } = useParams();
   const [searchParams] = useSearchParams();
+  const sourceSeriesId = searchParams.get("continueSeries");
+  const continuationStudentId = searchParams.get("student");
+  const continuationStart = searchParams.get("start");
+  const continuationCadence = searchParams.get("cadence");
+  const continuation: BookingContinuation | undefined =
+    sourceSeriesId &&
+    continuationStudentId &&
+    continuationStart &&
+    Number.isFinite(Date.parse(continuationStart)) &&
+    (continuationCadence === "weekly" || continuationCadence === "biweekly")
+      ? {
+          sourceSeriesId,
+          studentId: continuationStudentId,
+          startsAt: continuationStart,
+          cadence: continuationCadence,
+        }
+      : undefined;
   const initialOfferingId = searchParams.get("offering") || undefined;
   const incomingReferralCode = searchParams.get("ref")?.trim().toUpperCase();
   const referralCode =
@@ -63,6 +81,7 @@ export function PublicBooking() {
   const [booker, setBooker] = useState<AuthenticatedBooker>();
   const [studio, setStudio] = useState<PublicStudio>({
     name: isDemoMode ? store.snapshot.settings.studioName : "Studio Portal",
+    timezone: isDemoMode ? store.snapshot.settings.timezone : undefined,
     coachName: isDemoMode ? store.snapshot.settings.coachName : "",
     branding: store.snapshot.settings.branding,
     bookingCopy: store.snapshot.settings.bookingCopy,
@@ -73,21 +92,30 @@ export function PublicBooking() {
   useEffect(() => {
     let active = true;
     const load = async () => {
+      setBooker(undefined);
       if (!supabase) return;
       const {
         data: { session },
       } = await supabase.auth.getSession();
       if (!session) return;
-      const { data: owned } = await supabase
+      const students = supabase
         .from("students")
         .select(
           "id,full_name,preferred_name,email,is_minor,guardian_name,guardian_email",
-        )
-        .eq("user_id", session.user.id)
-        .limit(1)
-        .maybeSingle();
+        );
+      if (continuationStudentId && sourceSeriesId) {
+        const access = await supabase.rpc("can_manage_student_lessons", {
+          target_student: continuationStudentId,
+        });
+        if (access.error || !access.data) return;
+      }
+      const { data: owned } = await (
+        continuationStudentId && sourceSeriesId
+          ? students.eq("id", continuationStudentId)
+          : students.eq("user_id", session.user.id).limit(1)
+      ).maybeSingle();
       let student = owned;
-      if (!student) {
+      if (!student && !sourceSeriesId) {
         const { data: relation } = await supabase
           .from("student_relationships")
           .select("student_id")
@@ -121,7 +149,7 @@ export function PublicBooking() {
     return () => {
       active = false;
     };
-  }, []);
+  }, [continuationStudentId, sourceSeriesId]);
   useEffect(() => {
     let active = true;
     const controller = new AbortController(),
@@ -244,14 +272,31 @@ export function PublicBooking() {
           </div>
         </section>
       )}
-      {!catalogLoading && selected ? (
+      {!catalogLoading &&
+      sourceSeriesId &&
+      (!selected ||
+        !continuation ||
+        booker?.studentId !== continuation.studentId) ? (
+        <section className="catalog-error">
+          <h1>Open your lesson schedule</h1>
+          <p>Sign in with scheduling access to continue this series.</p>
+          <Link
+            className="button-link"
+            to={`/portal/bookings?student=${encodeURIComponent(continuationStudentId ?? "")}`}
+          >
+            Back to schedule
+          </Link>
+        </section>
+      ) : !catalogLoading && selected ? (
         <BookingFlow
+          key={continuation?.sourceSeriesId ?? selected.id}
           service={selected}
           offerings={offerings}
           initialOfferingId={initialOfferingId}
           live={liveCatalog}
           studio={studio}
           booker={booker}
+          continuation={continuation}
           initialReferralCode={referralCode}
           initialDiscountCode={rewardDiscountCode}
         />

@@ -205,6 +205,13 @@ export const publicBookingSchema = z
     createPortalProfile: z.boolean().default(false),
     timezone: z.string().min(3).max(80),
     occurrenceCount: z.number().int().min(2).max(52).optional(),
+    skippedOccurrenceStarts: z.array(dateTime).max(51).optional(),
+    reviewOnly: z.literal(true).optional(),
+    reviewUnitMinor: z.number().int().nonnegative().max(99999999).optional(),
+    continuation: z
+      .object({ sourceSeriesId: uuid, studentId: uuid })
+      .strict()
+      .optional(),
     discountCode: z.string().trim().min(3).max(40).optional(),
     referralCode: z
       .string()
@@ -216,6 +223,39 @@ export const publicBookingSchema = z
     termsVersion: z.literal("2026-08-20"),
   })
   .superRefine((value, ctx) => {
+    if (
+      (value.reviewOnly || value.reviewUnitMinor !== undefined) &&
+      !value.continuation
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["reviewOnly"],
+        message: "Review is available for a schedule extension.",
+      });
+    if (
+      value.continuation &&
+      (value.recurrence === "none" ||
+        value.offeringId ||
+        value.paymentPolicy !== "pay_later")
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["continuation"],
+        message: "A schedule extension uses the studio's pay-later option.",
+      });
+    if (
+      value.skippedOccurrenceStarts?.length &&
+      (value.recurrence === "none" ||
+        value.offeringId ||
+        value.paymentPolicy === "subscription" ||
+        value.paymentPolicy === "deposit")
+    )
+      ctx.addIssue({
+        code: "custom",
+        path: ["skippedOccurrenceStarts"],
+        message:
+          "Choose a fixed private booking and a compatible payment option to skip dates.",
+      });
     if (value.forMinor && !value.guardianName)
       ctx.addIssue({
         code: "custom",

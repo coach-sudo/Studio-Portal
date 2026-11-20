@@ -1748,6 +1748,7 @@ export type Database = {
           offering_id: string | null
           package_id: string | null
           paid_minor: number
+          payment_needs_review: boolean
           payment_status: string
           preparation: Json
           price_minor: number | null
@@ -1779,6 +1780,7 @@ export type Database = {
           offering_id?: string | null
           package_id?: string | null
           paid_minor?: number
+          payment_needs_review?: boolean
           payment_status?: string
           preparation?: Json
           price_minor?: number | null
@@ -1810,6 +1812,7 @@ export type Database = {
           offering_id?: string | null
           package_id?: string | null
           paid_minor?: number
+          payment_needs_review?: boolean
           payment_status?: string
           preparation?: Json
           price_minor?: number | null
@@ -5288,6 +5291,7 @@ export type Database = {
           offering_id: string | null
           package_id: string | null
           paid_minor: number
+          payment_needs_review: boolean
           payment_status: string
           preparation: Json
           price_minor: number | null
@@ -5907,6 +5911,26 @@ export type Database = {
       sync_invoice_lesson_credit: {
         Args: { p_lesson: string; p_student: string }
         Returns: undefined
+      }
+      training_confirm_pay_later: {
+        Args: { p_booking: string; p_hold: string }
+        Returns: Json
+      }
+      training_lesson_autopay: {
+        Args: { p_action: string; p_value: Json }
+        Returns: Json
+      }
+      training_lesson_autopay_job: {
+        Args: { p_action: string; p_value: Json }
+        Returns: Json
+      }
+      training_lesson_checkout: {
+        Args: { p_action: string; p_value: Json }
+        Returns: Json
+      }
+      training_prepare_lesson_invoice: {
+        Args: { p_action: string; p_value: Json }
+        Returns: Json
       }
       void_studio_invoice: {
         Args: { p_invoice: string; p_version: number }

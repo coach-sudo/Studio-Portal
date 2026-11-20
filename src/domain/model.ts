@@ -121,6 +121,7 @@ export interface Student extends Versioned {
 }
 export interface Lesson extends Versioned {
   invoicePaymentPending?: boolean;
+  paymentNeedsReview?: boolean;
   invoiceId?: string;
   studioId: UUID;
   studentId: UUID;
@@ -302,6 +303,8 @@ export interface RecurringSeries extends Versioned {
   recurrenceRule: {
     intervalWeeks: number;
     slots: { weekday: number; time: string }[];
+    sourceSeriesId?: UUID;
+    skippedOccurrenceStarts?: string[];
   };
   studentCanModify: boolean;
   priceMinor?: number;
@@ -706,6 +709,7 @@ export interface StudioSettings {
     requirePhone: boolean;
     allowRecurring: boolean;
     allowPayLater: boolean;
+    allowLearnerLessonInvoices?: boolean;
     showPrices: boolean;
     confirmationMessage: string;
     bookingButtonLabel: string;

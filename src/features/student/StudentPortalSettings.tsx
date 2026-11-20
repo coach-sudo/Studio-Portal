@@ -19,6 +19,8 @@ import {
   type Snapshot,
 } from "./StudentPortal.shared";
 
+import { useTrainingPayers } from "./useTrainingPayers";
+
 export function StudentSettings({
   data,
   isDemo,
@@ -37,6 +39,20 @@ export function StudentSettings({
         : undefined,
     store = useStudioStore(),
     queryClient = useQueryClient();
+  const payer = useTrainingPayers(
+    student?.id ?? "",
+    student ? [student.id] : [],
+    !isDemo &&
+      Boolean(student) &&
+      (role === "guardian"
+        ? Boolean(linkedContact?.canViewFinance)
+        : !student?.isMinor),
+  );
+  const canManageBilling = isDemo
+    ? role === "guardian"
+      ? (linkedContact?.canViewFinance ?? student?.isMinor)
+      : !student?.isMinor
+    : Boolean(student && payer.data?.studentIds.includes(student.id));
   const settingsMutation = useStudioMutation();
   const [form, setForm] = useState({
       preferredName:
@@ -219,6 +235,7 @@ export function StudentSettings({
     }
   };
   const stripeAction = async (action: "payment-method" | "billing") => {
+    if (!canManageBilling) return;
     if (stripeBusy) return;
     setStripeBusy(action);
     setNotice(
@@ -322,9 +339,7 @@ export function StudentSettings({
         <a href="#profile-timezone">Profile &amp; timezone</a>
         <a href="#preferences-notifications">Preferences &amp; notifications</a>
         <a href="#security">Security</a>
-        {(role === "guardian"
-          ? (linkedContact?.canViewFinance ?? student.isMinor)
-          : !student.isMinor) && <a href="#billing">Billing</a>}
+        {canManageBilling && <a href="#billing">Billing</a>}
       </nav>
       <div id="profile-timezone" className="settings-anchor">
         <Section title="Profile & timezone" marked>
@@ -540,9 +555,7 @@ export function StudentSettings({
           </form>
         </Section>
       </div>
-      {(role === "guardian"
-        ? (linkedContact?.canViewFinance ?? student.isMinor)
-        : !student.isMinor) && (
+      {canManageBilling && (
         <div id="billing" className="settings-anchor">
           <Section title="Payment method">
             <div className="data-summary">

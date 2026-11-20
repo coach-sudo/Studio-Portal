@@ -18,12 +18,18 @@ import {
   cancelDemoBooking,
   isLateChange,
 } from "../../domain/booking";
-import {
-  selectLessonDelivery,
-  lessonPaymentLabel,
-  splitLessons,
-} from "../../domain/lessonExperience";
+import { selectLessonDelivery } from "../../domain/lessonExperience";
 import type { Booking } from "../../domain/model";
+import {
+  trainingArrangement,
+  trainingPaymentLabel,
+} from "../../domain/trainingArrangement";
+import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { portalContextLink } from "../../domain/coachingContext";
+import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
+import { continuationStart } from "../../domain/recurringOccurrences";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
+import { useTrainingPayers } from "./useTrainingPayers";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -39,33 +45,47 @@ export function StudentBookings({
   isDemo,
   canManageLessons = true,
   showFinance = true,
+  showPaymentStatus = showFinance,
 }: {
   data: Snapshot;
   isDemo: boolean;
   canManageLessons?: boolean;
   showFinance?: boolean;
+  showPaymentStatus?: boolean;
 }) {
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [notice, setNotice] = useState("");
   const [bookingId, setBookingId] = useUrlValue("booking");
-  const bookingForLesson = (lessonId: string) =>
-    data.bookings.find((booking) =>
-      data.lessonParticipants.some(
-        (part) =>
-          part.lessonId === lessonId &&
-          part.bookingId === booking.id &&
-          part.studentId === data.students[0]?.id,
+  const studentId = data.students[0]?.id ?? "";
+  const autopay = useLessonAutopayOptions(data, studentId, isDemo, showFinance);
+  const payer = useTrainingPayers(
+    studentId,
+    studentId ? [studentId] : [],
+    !isDemo &&
+      Boolean(studentId && showFinance) &&
+      data.recurringSeries.some(
+        (series) =>
+          series.studentId === studentId &&
+          series.paymentPolicy === "subscription",
       ),
-    );
+  );
+  const canEndSubscription =
+    (isDemo && showFinance) ||
+    Boolean(payer.data?.studentIds.includes(studentId));
+  const arrangement = trainingArrangement(data, studentId);
   const selected = data.bookings.find((b) => b.id === bookingId);
   const setSelected = (booking?: Booking) => setBookingId(booking?.id || "");
   const [mode, setMode] = useState<"manage" | "reschedule">("manage");
   const [nextStart, setNextStart] = useState<string>();
   const [scope, setScope] = useState<"occurrence" | "series">("occurrence");
-  const { active: upcomingLessons, history: lessonHistory } = splitLessons(
-    data.lessons,
-  );
+  const { upcoming, history, coachScheduledCount } = arrangement;
+  const readyToPay = showFinance
+    ? upcoming.filter(
+        ({ payment, lesson }) =>
+          payment === "unpaid" && Boolean(lesson.invoiceId),
+      ).length
+    : 0;
   const service = selected
     ? data.bookingServices.find((item) => item.id === selected.serviceId)
     : undefined;
@@ -194,8 +214,16 @@ export function StudentBookings({
   }
 
   async function cancelSeries(seriesId: string) {
-    const booking = data.bookings.find((item) => item.seriesId === seriesId);
-    if (!booking) return;
+    const series = data.recurringSeries.find((item) => item.id === seriesId);
+    const booking = data.bookings.find(
+      (item) => item.seriesId === seriesId && item.studentId === studentId,
+    );
+    if (
+      !booking ||
+      !series ||
+      (series.paymentPolicy === "subscription" && !canEndSubscription)
+    )
+      return;
     try {
       if (isDemo)
         store.transact((draft) => {
@@ -221,7 +249,11 @@ export function StudentBookings({
           );
         void invalidateStudioDomains(queryClient, ["booking", "finance"]);
       }
-      setNotice("The series will end after the current paid period.");
+      setNotice(
+        series.paymentPolicy === "subscription"
+          ? "Renewal will end after the current paid period. Your booked lessons remain on the schedule."
+          : "The plan has ended. Your booked lessons remain on the schedule.",
+      );
     } catch (reason) {
       setNotice(
         reason instanceof Error
@@ -239,10 +271,28 @@ export function StudentBookings({
         <div>
           <h1>Schedule</h1>
         </div>
-        <a className="button-link primary" href="/book">
-          <CalendarDays />
-          Book a lesson
-        </a>
+        {canManageLessons && (
+          <a className="button-link primary" href="/book">
+            <CalendarDays />
+            Book a lesson
+          </a>
+        )}
+        {showFinance &&
+          (autopay ||
+            hasRecurringPackageOffer(
+              data.packageDefinitions,
+              data.packageBillingOptions,
+            )) && (
+            <Link
+              className="button-link"
+              to={portalContextLink(
+                "/portal/payments?recurring=arrangements",
+                studentId,
+              )}
+            >
+              Make Recurring
+            </Link>
+          )}
       </header>
       {notice && (
         <div className="portal-notice" role="status">
@@ -251,140 +301,200 @@ export function StudentBookings({
         </div>
       )}
       <Section title="Upcoming" marked>
+        {upcoming.length > 0 && (
+          <p>
+            {upcoming.length === coachScheduledCount
+              ? "Your coach has scheduled "
+              : "You have "}
+            {upcoming.length} confirmed upcoming{" "}
+            {upcoming.length === 1 ? "lesson" : "lessons"}.
+            {coachScheduledCount > 0 &&
+              coachScheduledCount < upcoming.length &&
+              ` Your coach scheduled ${coachScheduledCount} of them.`}
+          </p>
+        )}
+        {readyToPay > 0 && (
+          <div className="page-actions">
+            <Link
+              className="button-link"
+              to={`${lessonPaymentPath(studentId)}&upcoming=1`}
+            >
+              Review upcoming lesson payments
+            </Link>
+            <span>
+              {readyToPay} {readyToPay === 1 ? "lesson has" : "lessons have"} a
+              balance ready to pay.
+            </span>
+          </div>
+        )}
         <div className="student-bookings">
-          {upcomingLessons.map((lesson) => {
-            const delivery = selectLessonDelivery(lesson);
-            const booking = bookingForLesson(lesson.id);
-            const payment = lessonPaymentLabel(
-              lesson.paymentStatus,
-              booking?.paymentStatus,
-            );
-            const itemService = data.bookingServices.find(
-              (item) => item.id === (booking?.serviceId || lesson.serviceId),
-            );
-            return (
-              <article key={lesson.id}>
-                <div className="booking-date">
-                  <span>
-                    {formatStudioDate(lesson.startsAt, data.settings.timezone, {
-                      month: "short",
-                      day: undefined,
-                      year: undefined,
-                    })}
-                  </span>
-                  <strong>
-                    {formatStudioDate(lesson.startsAt, data.settings.timezone, {
-                      day: "numeric",
-                      month: undefined,
-                      year: undefined,
-                    })}
-                  </strong>
-                </div>
-                <div>
-                  <strong>{itemService?.name || lesson.topic}</strong>
-                  <small>
-                    {formatStudioDateTime(
-                      lesson.startsAt,
-                      data.settings.timezone,
-                      {
-                        weekday: "long",
-                        month: undefined,
-                        day: undefined,
-                        year: undefined,
-                      },
-                    )}{" "}
-                    ·{" "}
-                    {lesson.meetingProvider === "google_meet" ||
-                    lesson.locationType === "virtual"
-                      ? "Google Meet"
-                      : "In person"}
-                  </small>
-                  <span>
-                    {lesson.seriesId && (
-                      <>
-                        <Repeat2 />
-                        Recurring
-                      </>
+          {upcoming.map(
+            ({ lesson, booking, payment, series, seriesNeedsReview }) => {
+              const delivery = selectLessonDelivery(lesson);
+              const itemService = data.bookingServices.find(
+                (item) => item.id === (booking?.serviceId || lesson.serviceId),
+              );
+              return (
+                <article key={lesson.id}>
+                  <div className="booking-date">
+                    <span>
+                      {formatStudioDate(
+                        lesson.startsAt,
+                        data.settings.timezone,
+                        {
+                          month: "short",
+                          day: undefined,
+                          year: undefined,
+                        },
+                      )}
+                    </span>
+                    <strong>
+                      {formatStudioDate(
+                        lesson.startsAt,
+                        data.settings.timezone,
+                        {
+                          day: "numeric",
+                          month: undefined,
+                          year: undefined,
+                        },
+                      )}
+                    </strong>
+                  </div>
+                  <div>
+                    <strong>{itemService?.name || lesson.topic}</strong>
+                    <small>
+                      {formatStudioDateTime(
+                        lesson.startsAt,
+                        data.settings.timezone,
+                        {
+                          weekday: "long",
+                          month: undefined,
+                          day: undefined,
+                          year: undefined,
+                        },
+                      )}{" "}
+                      ·{" "}
+                      {Math.round(
+                        (Date.parse(lesson.endsAt) -
+                          Date.parse(lesson.startsAt)) /
+                          60000,
+                      )}{" "}
+                      min ·{" "}
+                      {lesson.meetingProvider === "google_meet" ||
+                      lesson.locationType === "virtual"
+                        ? "Google Meet"
+                        : "In person"}
+                    </small>
+                    <span>
+                      {series && (
+                        <>
+                          <Repeat2 aria-hidden="true" />
+                          Recurring
+                        </>
+                      )}
+                      {seriesNeedsReview && (
+                        <Status tone="warn">Series under review</Status>
+                      )}
+                      {showPaymentStatus && (
+                        <Status tone={payment === "paid" ? "good" : "warn"}>
+                          {trainingPaymentLabel[payment]}
+                        </Status>
+                      )}
+                    </span>
+                  </div>
+                  <div className="student-booking-actions">
+                    {lesson.offeringId && (
+                      <Link
+                        className="button-link"
+                        to={portalContextLink(
+                          `/portal/classes/${lesson.offeringId}`,
+                          studentId,
+                        )}
+                      >
+                        Class page
+                      </Link>
                     )}
-                    {showFinance && (
-                      <Status tone={payment === "Paid" ? "good" : "warn"}>
-                        {payment}
-                      </Status>
-                    )}
-                  </span>
-                </div>
-                <div className="student-booking-actions">
-                  {lesson.offeringId && (
                     <Link
                       className="button-link"
-                      to={`/portal/classes/${lesson.offeringId}`}
-                    >
-                      Class page
-                    </Link>
-                  )}
-                  <Link
-                    className="button-link"
-                    to={`/portal/lessons/${lesson.id}`}
-                  >
-                    Details
-                  </Link>
-                  {(lesson.meetingProvider === "google_meet" ||
-                    lesson.locationType === "virtual") &&
-                    (delivery.state === "available" && lesson.joinUrl ? (
-                      <a
-                        className="join-button"
-                        href={lesson.joinUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        <Video />
-                        {delivery.actionLabel}
-                      </a>
-                    ) : delivery.state === "ready" ? (
-                      <span className="open-label">{delivery.label}</span>
-                    ) : (
-                      <span className="lesson-delivery-status" role="status">
-                        <Video />
-                        {delivery.label}
-                      </span>
-                    ))}
-                  {canManageLessons && booking?.status === "confirmed" && (
-                    <button
-                      disabled={isLateChange(
-                        booking.startsAt,
-                        booking.policySnapshot.cancellationWindowHours,
+                      to={portalContextLink(
+                        `/portal/lessons/${lesson.id}`,
+                        studentId,
                       )}
-                      title={
-                        isLateChange(
+                    >
+                      Details
+                    </Link>
+                    {showFinance &&
+                      payment === "unpaid" &&
+                      (lesson.invoiceId ||
+                        (data.settings.bookingDefaults
+                          .allowLearnerLessonInvoices &&
+                          lesson.serviceId &&
+                          lesson.priceMinor)) && (
+                        <Link
+                          className="button-link"
+                          to={lessonPaymentPath(studentId, lesson.id)}
+                        >
+                          Pay for this lesson
+                        </Link>
+                      )}
+                    {(lesson.meetingProvider === "google_meet" ||
+                      lesson.locationType === "virtual") &&
+                      (delivery.state === "available" && lesson.joinUrl ? (
+                        <a
+                          className="join-button"
+                          href={lesson.joinUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <Video />
+                          {delivery.actionLabel}
+                        </a>
+                      ) : delivery.state === "ready" ? (
+                        <span className="open-label">{delivery.label}</span>
+                      ) : (
+                        <span className="lesson-delivery-status" role="status">
+                          <Video />
+                          {delivery.label}
+                        </span>
+                      ))}
+                    {canManageLessons && booking?.status === "confirmed" && (
+                      <button
+                        disabled={isLateChange(
                           booking.startsAt,
                           booking.policySnapshot.cancellationWindowHours,
-                        )
-                          ? "Contact the studio to reschedule inside the notice window."
-                          : undefined
-                      }
-                      onClick={() => {
-                        setSelected(booking);
-                        setMode("reschedule");
-                      }}
-                    >
-                      Reschedule
-                    </button>
-                  )}
-                  {canManageLessons && booking && (
-                    <button
-                      onClick={() => {
-                        setSelected(booking);
-                        setMode("manage");
-                      }}
-                    >
-                      Manage
-                    </button>
-                  )}
-                </div>
-              </article>
-            );
-          })}
-          {!upcomingLessons.length && (
+                        )}
+                        title={
+                          isLateChange(
+                            booking.startsAt,
+                            booking.policySnapshot.cancellationWindowHours,
+                          )
+                            ? "Contact the studio to reschedule inside the notice window."
+                            : undefined
+                        }
+                        onClick={() => {
+                          setSelected(booking);
+                          setMode("reschedule");
+                        }}
+                      >
+                        Reschedule
+                      </button>
+                    )}
+                    {canManageLessons && booking && (
+                      <button
+                        onClick={() => {
+                          setSelected(booking);
+                          setMode("manage");
+                        }}
+                      >
+                        Manage
+                      </button>
+                    )}
+                  </div>
+                </article>
+              );
+            },
+          )}
+          {!upcoming.length && (
             <EmptyState
               title="No bookings yet"
               detail="Book a service when you are ready for the next step."
@@ -392,52 +502,137 @@ export function StudentBookings({
           )}
         </div>
       </Section>
-      {data.recurringSeries.length > 0 && (
+      {data.recurringSeries.some(
+        (series) => series.studentId === studentId,
+      ) && (
         <Section title="Recurring plans">
           <div className="series-portal">
-            {data.recurringSeries.map((series) => (
-              <article key={series.id}>
-                <Repeat2 />
-                <div>
-                  <strong>
-                    {
-                      data.bookingServices.find(
-                        (item) => item.id === series.serviceId,
-                      )?.name
-                    }
-                  </strong>
-                  <small>
-                    {series.cadence} ·{" "}
-                    {series.kind === "ongoing"
-                      ? "rolling 12-week schedule"
-                      : `${series.occurrenceCount ?? 0} occurrences`}
-                  </small>
-                </div>
-                <Status tone={series.status === "active" ? "good" : "warn"}>
-                  {series.status.replaceAll("_", " ")}
-                </Status>
-                {series.status === "active" && canManageLessons && (
-                  <button onClick={() => cancelSeries(series.id)}>
-                    End plan
-                  </button>
-                )}
-              </article>
-            ))}
+            {data.recurringSeries
+              .filter((series) => series.studentId === studentId)
+              .map((series) => {
+                const service = data.bookingServices.find(
+                  (item) => item.id === series.serviceId,
+                );
+                const occurrences = arrangement.occurrences.filter(
+                  (item) => item.series?.id === series.id,
+                );
+                const upcomingCount = occurrences.filter((item) =>
+                  upcoming.includes(item),
+                ).length;
+                const last = occurrences.at(-1)?.lesson;
+                const latestStart =
+                  service &&
+                  continuationStart(
+                    series,
+                    occurrences.map((item) => item.lesson),
+                    data.settings.timezone,
+                    service.durationMinutes,
+                  );
+                const allowContinuation =
+                  canManageLessons &&
+                  latestStart &&
+                  service?.published &&
+                  service.category === "private" &&
+                  service.paymentPolicies.includes("pay_later") &&
+                  service.recurrenceOptions.includes(series.cadence) &&
+                  !data.recurringSeries.some(
+                    (child) =>
+                      child.studentId === studentId &&
+                      child.status !== "cancelled" &&
+                      child.recurrenceRule?.sourceSeriesId === series.id,
+                  ) &&
+                  data.settings.bookingDefaults.allowPayLater &&
+                  data.settings.bookingDefaults.allowRecurring;
+                const params = allowContinuation
+                  ? new URLSearchParams({
+                      continueSeries: series.id,
+                      student: studentId,
+                      start: latestStart,
+                      cadence: series.cadence,
+                    })
+                  : null;
+                return (
+                  <article key={series.id}>
+                    <Repeat2 aria-hidden="true" />
+                    <div>
+                      <strong>{service?.name ?? "Recurring lessons"}</strong>
+                      <small>
+                        {series.cadence === "weekly"
+                          ? "Weekly"
+                          : "Every other week"}{" "}
+                        · {upcomingCount} confirmed upcoming
+                      </small>
+                      {last && (
+                        <small>
+                          {["scheduled", "completed"].includes(last.status)
+                            ? "Last recorded lesson"
+                            : "Last date changed"}{" "}
+                          ·{" "}
+                          {formatStudioDateTime(
+                            last.startsAt,
+                            data.settings.timezone,
+                          )}
+                        </small>
+                      )}
+                      {allowContinuation && (
+                        <small>
+                          Continue from{" "}
+                          {formatStudioDateTime(
+                            latestStart,
+                            data.settings.timezone,
+                          )}
+                        </small>
+                      )}
+                      {series.kind === "fixed" && last && !latestStart && (
+                        <small>
+                          This series needs review before adding dates.
+                        </small>
+                      )}
+                    </div>
+                    {params && service && (
+                      <Link
+                        className="button-link"
+                        to={`/book/${service.slug}?${params}`}
+                      >
+                        Continue this schedule
+                      </Link>
+                    )}
+                    <Status tone={series.status === "active" ? "good" : "warn"}>
+                      {series.status.replaceAll("_", " ")}
+                    </Status>
+                    {series.status === "active" &&
+                      series.studentCanModify &&
+                      (series.paymentPolicy !== "subscription" ||
+                        canEndSubscription) &&
+                      canManageLessons &&
+                      data.bookings.some(
+                        (booking) =>
+                          booking.studentId === studentId &&
+                          booking.seriesId === series.id,
+                      ) && (
+                        <button onClick={() => cancelSeries(series.id)}>
+                          {series.paymentPolicy === "subscription"
+                            ? "End renewal after this period"
+                            : "End plan"}
+                        </button>
+                      )}
+                  </article>
+                );
+              })}
           </div>
         </Section>
       )}
       <Section title="Lesson history">
         <div className="table-list">
-          {lessonHistory.map((lesson) => {
-            const payment = lessonPaymentLabel(
-              lesson.paymentStatus,
-              bookingForLesson(lesson.id)?.paymentStatus,
-            );
+          {history.map(({ lesson, payment }) => {
             return (
               <Link
                 key={lesson.id}
                 className="clickable-row lesson-history-row"
-                to={`/portal/lessons/${lesson.id}`}
+                to={portalContextLink(
+                  `/portal/lessons/${lesson.id}`,
+                  studentId,
+                )}
               >
                 <CalendarDays />
                 <div>
@@ -456,9 +651,9 @@ export function StudentBookings({
                   >
                     {lesson.status.replaceAll("_", " ")}
                   </Status>
-                  {showFinance && (
-                    <Status tone={payment === "Paid" ? "good" : "warn"}>
-                      {payment}
+                  {showPaymentStatus && (
+                    <Status tone={payment === "paid" ? "good" : "warn"}>
+                      {trainingPaymentLabel[payment]}
                     </Status>
                   )}
                 </span>
@@ -466,7 +661,7 @@ export function StudentBookings({
               </Link>
             );
           })}
-          {!lessonHistory.length && (
+          {!history.length && (
             <EmptyState
               title="No lesson history yet"
               detail="Completed lessons will remain here with their published notes and materials."

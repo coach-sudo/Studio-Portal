@@ -135,7 +135,19 @@ async function main() {
     "calendar-worker": "*/5 * * * *",
     "outbox-worker": "*/5 * * * *",
   };
-  assert.equal(functions.filter((f) => f.schedule).length, 4);
+  const autopayName = "training-lesson-autopay";
+  const hasAutopay = Boolean(
+    run(
+      "git",
+      ["ls-files", "--", "netlify/functions/" + autopayName + ".ts"],
+      root,
+    ).trim(),
+  );
+  if (hasAutopay) schedules[autopayName] = "*/2 * * * *";
+  assert.equal(
+    functions.filter((f) => f.schedule).length,
+    Object.keys(schedules).length,
+  );
   for (const [name, schedule] of Object.entries(schedules)) {
     const fn = functions.find((f) => f.name === name);
     assert.ok(fn, `Missing scheduled bundle ${name}`);
@@ -238,6 +250,38 @@ async function main() {
     assert.equal(response.status, 405);
   } finally {
     globalThis.fetch = originalFetch;
+  }
+  if (hasAutopay) {
+    const worker = functions.find((fn) => fn.name === autopayName);
+    assert.equal(worker.runtimeVersion, "nodejs22.x");
+    const workerDir = join(evidence, "training-worker-unpacked");
+    await mkdir(workerDir);
+    run("unzip", ["-q", worker.path, "-d", workerDir], root);
+    const workerEntry = run("unzip", ["-Z1", worker.path], root)
+      .trim()
+      .split("\n")
+      .find((name) =>
+        /netlify\/functions\/training-lesson-autopay\.m?js$/.test(name),
+      );
+    assert.ok(workerEntry);
+    const originalNetlify = globalThis.Netlify;
+    globalThis.Netlify = { env: { get: () => undefined } };
+    globalThis.fetch = async () => {
+      throw Error("The disabled worker must not use the network.");
+    };
+    try {
+      const handler = (
+        await import(pathToFileURL(join(workerDir, workerEntry)).href)
+      ).default;
+      const response = await handler(
+        new globalThis.Request("https://packaging.invalid"),
+        {},
+      );
+      assert.deepEqual(await response.json(), { status: "disabled" });
+    } finally {
+      globalThis.Netlify = originalNetlify;
+      globalThis.fetch = originalFetch;
+    }
   }
   const client = [];
   let clientText = "";

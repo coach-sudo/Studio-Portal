@@ -11,6 +11,17 @@ import {
 } from "./_shared/booking-email";
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { processStripeInstallmentEffects } from "./_shared/stripe-installment-effects";
+import {
+  reconcileTrainingCheckout,
+  trainingCheckout,
+} from "./_shared/training-checkout";
+import {
+  autopay,
+  isLiveTrainingDeployment,
+  trainingSandbox,
+  reconcileAutopayIntent,
+  reconcileAutopaySetup,
+} from "./_shared/training-autopay";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -36,6 +47,10 @@ export default async (request: Request, context: Context) => {
       request.headers.get("stripe-signature") || "",
       secret,
     );
+    const liveTraining = isLiveTrainingDeployment(context);
+    const acceptsTrainingMode =
+      event.livemode === liveTraining &&
+      (liveTraining || Boolean(trainingSandbox(context)));
     const db = serviceClient();
     eventId = event.id;
     const { data: existing, error: receiptError } = await db
@@ -79,6 +94,94 @@ export default async (request: Request, context: Context) => {
       if (completed.error) throw completed.error;
       return json({ ok: true, ...payload });
     };
+
+    if (
+      event.type === "checkout.session.completed" ||
+      event.type === "checkout.session.async_payment_succeeded" ||
+      event.type === "checkout.session.async_payment_failed" ||
+      event.type === "checkout.session.expired"
+    ) {
+      const session = event.data.object;
+      if (session.metadata?.training_autopay_mandate) {
+        if (!acceptsTrainingMode)
+          throw new Error(
+            "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+          );
+        const plan = await reconcileAutopaySetup(stripe, session, liveTraining);
+        return await done({ autopayStatus: plan?.status ?? "pending_setup" });
+      }
+      if (session.metadata?.training_checkout_id) {
+        if (!acceptsTrainingMode)
+          throw new Error(
+            "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+          );
+        const checkout = await reconcileTrainingCheckout(
+          session,
+          event.type === "checkout.session.async_payment_failed",
+          liveTraining,
+        );
+        return await done({ trainingCheckoutStatus: checkout.status });
+      }
+    }
+    if (
+      event.type === "setup_intent.succeeded" &&
+      event.data.object.metadata?.training_autopay_mandate
+    ) {
+      if (!acceptsTrainingMode)
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+        );
+      const intent = event.data.object;
+      const setup = await autopay<{ session: string | null }>(
+        "setup_reference",
+        {
+          id: intent.metadata?.training_autopay_mandate,
+        },
+      );
+      if (!setup.session) return await done({ ignored: true });
+      const session = await stripe.checkout.sessions.retrieve(setup.session);
+      if (session.status !== "complete")
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe Checkout is recording the payment setup.",
+        );
+      const plan = await reconcileAutopaySetup(stripe, session, liveTraining);
+      return await done({ autopayStatus: plan?.status ?? "pending_setup" });
+    }
+    if (
+      (event.type === "payment_intent.succeeded" ||
+        event.type === "payment_intent.canceled" ||
+        event.type === "payment_intent.processing" ||
+        event.type === "payment_intent.payment_failed") &&
+      event.data.object.metadata.training_autopay_attempt
+    ) {
+      if (!acceptsTrainingMode)
+        throw new Error(
+          "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
+        );
+      const attempt = await reconcileAutopayIntent(
+        event.data.object,
+        liveTraining,
+      );
+      return await done({ autopayStatus: attempt.status });
+    }
+    if (
+      acceptsTrainingMode &&
+      (event.type === "charge.refunded" ||
+        event.type === "refund.updated" ||
+        event.type === "charge.dispute.created" ||
+        event.type === "charge.dispute.closed")
+    ) {
+      const payment = event.data.object.payment_intent;
+      const intent = typeof payment === "string" ? payment : payment?.id;
+      if (intent) {
+        const attempt = await trainingCheckout<{ status: string } | null>(
+          "review",
+          { intent, eventId: event.id },
+        );
+        if (attempt)
+          return await done({ trainingCheckoutStatus: attempt.status });
+      }
+    }
 
     if (
       event.type === "checkout.session.completed" ||

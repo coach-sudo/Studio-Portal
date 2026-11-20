@@ -495,6 +495,7 @@ function PortalWorkspace({
                     showFinance={
                       role === "guardian" ? guardianFinance : !person?.isMinor
                     }
+                    showPaymentStatus={role === "student" || guardianFinance}
                   />
                 )
               }
@@ -518,6 +519,7 @@ function PortalWorkspace({
                   showFinance={
                     role === "guardian" ? guardianFinance : !person?.isMinor
                   }
+                  showPaymentStatus={role === "student" || guardianFinance}
                   showWork={role !== "guardian" || guardianWork}
                   showSchedule={role !== "guardian" || guardianSchedule}
                 />
@@ -584,7 +586,15 @@ function PortalWorkspace({
               path="payments"
               element={
                 (role === "guardian" ? guardianFinance : !person?.isMinor) ? (
-                  <Payments data={data} isDemo={isDemo} />
+                  <Payments
+                    key={person?.id}
+                    data={data}
+                    isDemo={isDemo}
+                    canManageLessons={
+                      role !== "guardian" ||
+                      (guardianSchedule && guardianManageLessons)
+                    }
+                  />
                 ) : (
                   <Navigate to={base} replace />
                 )

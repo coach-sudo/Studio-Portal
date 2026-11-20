@@ -109,3 +109,53 @@
 :root[data-portal-theme="dark"] .data-summary small {
   color: var(--muted);
 }
+
+/* Pair neutral portal actions with the same surface tokens as their text.
+   These selectors also cover controls built on the older white-filled styles. */
+:root[data-portal-theme="dark"]
+  .student-shell
+  :is(
+    .workspace-student-context > button,
+    .portal-row > button,
+    .setting-toggle.toggle-button,
+    .form-actions > button
+  ):not(.primary, .primary-button, .danger, .danger-button) {
+  background: var(--app-surface);
+  color: var(--ink);
+  border-color: var(--app-control-border);
+}
+
+:root[data-portal-theme="dark"]
+  .student-shell
+  :is(
+    .workspace-student-context > button,
+    .portal-row > button,
+    .setting-toggle.toggle-button,
+    .form-actions > button
+  ):not(.primary, .primary-button, .danger, .danger-button):hover:not(
+    :disabled
+  ) {
+  background: var(--app-surface-soft);
+  border-color: var(--app-control-border);
+}
+
+:root[data-portal-theme="dark"]
+  .student-shell
+  :is(.student-bookings > article, .portal-row) {
+  background: var(--app-surface);
+  color: var(--ink);
+}
+
+:root[data-portal-theme="dark"] .student-shell .student-welcome .eyebrow {
+  color: var(--color-danger);
+}
+
+:root[data-portal-theme="dark"] .student-shell .toggle-button > i {
+  background: var(--app-control-border);
+  border: 1px solid var(--app-control-border);
+  padding: 2px;
+}
+
+:root[data-portal-theme="dark"] .student-shell .toggle-button.on > i {
+  background: var(--app-surface-soft);
+}

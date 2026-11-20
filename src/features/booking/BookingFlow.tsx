@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   Video,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { readApiClientError } from "../../data/apiClientError";
 import {
@@ -25,6 +25,7 @@ import type {
 } from "../../domain/model";
 import {
   formatCalendarDateKey,
+  formatStudioDateTime,
   formatStudioTime,
   studioDateKey,
 } from "../../domain/presentation";
@@ -40,8 +41,34 @@ import {
   type PublicStudio,
 } from "./PublicBooking.shared";
 import { exactBookingPriceLabel } from "./pricePresentation";
+import {
+  previewLessonAutopay,
+  type AutopayPreviewOptions,
+} from "../../domain/lessonAutopay";
+import type { BookingContinuation } from "../../domain/recurringOccurrences";
+import {
+  trainingPaymentLabel,
+  type TrainingPaymentState,
+} from "../../domain/trainingArrangement";
 
 type Step = "format" | "time" | "details" | "payment" | "done";
+type ContinuationReview = {
+  starts: string[];
+  skipped: string[];
+  conflicts: string[];
+  timeZone: string;
+  currency: string;
+  unitMinor: number;
+  canPay: boolean;
+  invoicesEnabled: boolean;
+  automaticPayment?: Omit<AutopayPreviewOptions["policy"], "timeZone">;
+  existing: {
+    startsAt: string;
+    topic: string;
+    payment?: TrainingPaymentState;
+    balance?: { amountMinor: number; currency: string };
+  }[];
+};
 export function BookingFlow({
   service,
   offerings,
@@ -49,6 +76,7 @@ export function BookingFlow({
   live,
   studio,
   booker,
+  continuation,
   initialReferralCode,
   initialDiscountCode,
 }: {
@@ -58,6 +86,7 @@ export function BookingFlow({
   live: boolean;
   studio: PublicStudio;
   booker?: AuthenticatedBooker;
+  continuation?: BookingContinuation;
   initialReferralCode: string;
   initialDiscountCode: string;
 }) {
@@ -68,7 +97,9 @@ export function BookingFlow({
       item.serviceId === service.id &&
       item.published,
   );
-  const [step, setStep] = useState<Step>(initialOffering ? "time" : "format");
+  const [step, setStep] = useState<Step>(
+    initialOffering || continuation ? "time" : "format",
+  );
   const [location, setLocation] = useState<MeetingProvider>(
     service.defaultLocation,
   );
@@ -77,7 +108,23 @@ export function BookingFlow({
   );
   const displayedPrice = service.priceMinor + locationUpcharge;
   const [recurrence, setRecurrence] = useState<RecurrenceCadence>(
-    service.category === "course" ? "weekly" : "none",
+    continuation?.cadence ??
+      (service.category === "course" ? "weekly" : "none"),
+  );
+  const [skippedStarts, setSkippedStarts] = useState<string[]>([]);
+  const bookingTimezone = visitorTimezone();
+  const recurrenceTimezone = studio.timezone || bookingTimezone;
+  const horizon = Date.now() + service.bookingHorizonDays * 86400000;
+  const maximumCount = continuation
+    ? seriesDates(
+        continuation.startsAt,
+        continuation.cadence,
+        52,
+        recurrenceTimezone,
+      ).filter((date) => Date.parse(date) <= horizon).length
+    : 6;
+  const [proposedCount, setProposedCount] = useState(
+    Math.max(2, Math.min(6, maximumCount)),
   );
   const recurrenceOptions =
     service.category === "private" && !studio.bookingDefaults.allowRecurring
@@ -87,15 +134,24 @@ export function BookingFlow({
     () =>
       service.paymentPolicies.filter(
         (item) =>
+          (!continuation || item === "pay_later") &&
           (studio.bookingDefaults.allowPayLater || item !== "pay_later") &&
+          (!skippedStarts.length ||
+            !["subscription", "deposit"].includes(item)) &&
           (recurrence !== "none" ||
             !["installments", "subscription"].includes(item)),
       ),
-    [recurrence, service.paymentPolicies, studio.bookingDefaults.allowPayLater],
+    [
+      continuation,
+      recurrence,
+      service.paymentPolicies,
+      studio.bookingDefaults.allowPayLater,
+      skippedStarts.length,
+    ],
   );
   const [payment, setPayment] = useState<PaymentPolicy>(validPayments[0]);
   const [slot, setSlot] = useState<string | undefined>(
-    initialOffering?.startsAt,
+    continuation?.startsAt ?? initialOffering?.startsAt,
   );
   const [name, setName] = useState(booker?.name || "");
   const [email, setEmail] = useState(booker?.email || "");
@@ -111,12 +167,17 @@ export function BookingFlow({
   const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [error, setError] = useState("");
+  const [scheduleReview, setScheduleReview] = useState<ContinuationReview>();
+  const [proposedLead, setProposedLead] = useState<number>();
+  const bookingRequest = useRef<{ body: string; key: string }>(undefined);
   const [confirmed, setConfirmed] = useState<{
     reference: string;
     manageUrl?: string;
     demo: boolean;
     startsAt: string;
     portalRequested: boolean;
+    paymentReviewUrl?: string;
+    followUpRequired?: boolean;
   }>();
   useEffect(() => {
     if (!validPayments.includes(payment)) setPayment(validPayments[0]);
@@ -166,13 +227,13 @@ export function BookingFlow({
       store.snapshot.settings.bookingDefaults.visibleSlotsPercent,
     ],
   );
-  const [slots, setSlots] = useState(demoSlots);
+  const [slots, setSlots] = useState(continuation ? [] : demoSlots);
   useEffect(() => {
-    setSlots(demoSlots);
+    setSlots(continuation ? [] : demoSlots);
     if (!live || service.category !== "private") return;
-    fetch(
-      `/api/v2/public/booking/availability?serviceId=${encodeURIComponent(service.id)}`,
-    )
+    const request = new URLSearchParams({ serviceId: service.id });
+    if (continuation) request.set("from", continuation.startsAt);
+    fetch(`/api/v2/public/booking/availability?${request}`)
       .then((response) =>
         response.ok
           ? response.json()
@@ -182,10 +243,16 @@ export function BookingFlow({
       )
       .then((payload: { slots: { startsAt: string; endsAt: string }[] }) =>
         setSlots(
-          payload.slots.map((item) => ({
-            ...item,
-            label: formatStudioTime(item.startsAt, visitorTimezone()),
-          })),
+          payload.slots
+            .filter(
+              (item) =>
+                !continuation ||
+                Date.parse(item.startsAt) === Date.parse(continuation.startsAt),
+            )
+            .map((item) => ({
+              ...item,
+              label: formatStudioTime(item.startsAt, visitorTimezone()),
+            })),
         ),
       )
       .catch((reason) =>
@@ -193,8 +260,23 @@ export function BookingFlow({
           reason.message || "Live availability is temporarily unavailable.",
         ),
       );
-  }, [demoSlots, live, service.category, service.id]);
-  const bookingTimezone = visitorTimezone();
+  }, [continuation, demoSlots, live, service.category, service.id]);
+  const canSkipDates =
+    service.category === "private" &&
+    service.paymentPolicies.some(
+      (policy) =>
+        policy === "pay_now" ||
+        policy === "credits" ||
+        (policy === "pay_later" && studio.bookingDefaults.allowPayLater),
+    );
+  const proposedStarts =
+    recurrence !== "none" && slot && service.category === "private"
+      ? seriesDates(slot, recurrence, proposedCount, recurrenceTimezone)
+      : [];
+  const selectedDates = proposedStarts.filter(
+    (date) => !skippedStarts.includes(date),
+  );
+  useEffect(() => setSkippedStarts([]), [slot, recurrence, proposedCount]);
   const dayKey = (value: string | Date) =>
     studioDateKey(value, bookingTimezone);
   const [selectedDay, setSelectedDay] = useState("");
@@ -208,12 +290,14 @@ export function BookingFlow({
   const calendarDays = useMemo(
     () =>
       Array.from({ length: 45 }, (_, index) => {
-        const value = new Date();
+        const value = continuation
+          ? new Date(continuation.startsAt)
+          : new Date();
         value.setHours(12, 0, 0, 0);
         value.setDate(value.getDate() + index);
         return value;
       }),
-    [],
+    [continuation],
   );
   const daySlots = slots.filter(
     (item) => dayKey(item.startsAt) === selectedDay,
@@ -225,11 +309,18 @@ export function BookingFlow({
   );
   const steps: Step[] = ["format", "time", "details", "payment"];
 
-  async function confirm() {
-    if (!chosen) return;
+  async function confirm(reviewOnly = false) {
+    if (!chosen || (proposedStarts.length > 0 && !selectedDates.length)) return;
+    if (
+      live &&
+      continuation &&
+      !reviewOnly &&
+      (!scheduleReview || scheduleReview.conflicts.length)
+    )
+      return;
     setError("");
     setStatus("saving");
-    const timezone = bookingTimezone;
+    const timezone = recurrenceTimezone;
     try {
       if (!live) {
         const booking = store.transact((draft) =>
@@ -240,6 +331,8 @@ export function BookingFlow({
             endsAt: chosen.endsAt,
             location,
             recurrence,
+            proposedOccurrenceCount: proposedCount,
+            skippedOccurrenceStarts: skippedStarts,
             paymentPolicy: payment,
             guestName: name,
             guestEmail: email,
@@ -255,7 +348,7 @@ export function BookingFlow({
           reference: booking.reference,
           manageUrl: `/booking/${booking.manageToken}`,
           demo: true,
-          startsAt: chosen.startsAt,
+          startsAt: booking.startsAt,
           portalRequested: createPortalProfile,
         });
         setStep("done");
@@ -265,41 +358,55 @@ export function BookingFlow({
         ? await supabase?.auth.getSession()
         : undefined;
       const accessToken = session?.data.session?.access_token;
-      if (payment === "credits" && !accessToken) {
+      if ((payment === "credits" || continuation) && !accessToken) {
         window.location.assign(
-          `/login?returnTo=${encodeURIComponent(window.location.pathname)}`,
+          `/login?returnTo=${encodeURIComponent(window.location.pathname + window.location.search)}`,
         );
         return;
       }
+      const body = JSON.stringify({
+        serviceId: service.id,
+        offeringId: chosenOffering?.id,
+        startsAt: chosen.startsAt,
+        endsAt: chosen.endsAt,
+        location,
+        recurrence,
+        paymentPolicy: payment,
+        guestName: name,
+        guestEmail: email,
+        guestPhone: phone || undefined,
+        forMinor,
+        guardianName: guardian || undefined,
+        guardianEmail: guardianEmail || undefined,
+        createPortalProfile,
+        timezone,
+        occurrenceCount: recurrence === "none" ? undefined : proposedCount,
+        skippedOccurrenceStarts: skippedStarts.length
+          ? skippedStarts
+          : undefined,
+        continuation: continuation && {
+          sourceSeriesId: continuation.sourceSeriesId,
+          studentId: continuation.studentId,
+        },
+        reviewOnly: reviewOnly || undefined,
+        reviewUnitMinor: !reviewOnly ? scheduleReview?.unitMinor : undefined,
+        termsAccepted: true,
+        termsVersion: "2026-08-20",
+        discountCode: discountCode.trim() || undefined,
+        referralCode: referralCode || undefined,
+      });
+      if (!reviewOnly && bookingRequest.current?.body !== body)
+        bookingRequest.current = { body, key: crypto.randomUUID() };
       const response = await fetch("/api/v2/public/booking/holds", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Idempotency-Key": crypto.randomUUID(),
+          "Idempotency-Key": reviewOnly
+            ? crypto.randomUUID()
+            : bookingRequest.current!.key,
           ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
-        body: JSON.stringify({
-          serviceId: service.id,
-          offeringId: chosenOffering?.id,
-          startsAt: chosen.startsAt,
-          endsAt: chosen.endsAt,
-          location,
-          recurrence,
-          paymentPolicy: payment,
-          guestName: name,
-          guestEmail: email,
-          guestPhone: phone || undefined,
-          forMinor,
-          guardianName: guardian || undefined,
-          guardianEmail: guardianEmail || undefined,
-          createPortalProfile,
-          timezone,
-          occurrenceCount: recurrence === "none" ? undefined : 6,
-          termsAccepted: true,
-          termsVersion: "2026-08-20",
-          discountCode: discountCode.trim() || undefined,
-          referralCode: referralCode || undefined,
-        }),
+        body,
       });
       if (!response.ok)
         throw await readApiClientError(
@@ -307,17 +414,43 @@ export function BookingFlow({
           "The booking could not be confirmed.",
         );
       const result = await response.json();
+      if (reviewOnly) {
+        if (result.status !== "review")
+          throw new Error("The proposed dates could not be reviewed.");
+        setScheduleReview(result);
+        setProposedLead(undefined);
+        return;
+      }
       window.sessionStorage.removeItem("studio-reward-code");
       if (result.checkoutUrl) {
         window.location.assign(result.checkoutUrl);
         return;
       }
+      if (result.status !== "confirmed")
+        throw new Error(
+          "The booking is still processing. Check your schedule before trying again.",
+        );
+      const paymentReview =
+        continuation && scheduleReview?.canPay && result.invoicePrepared
+          ? new URLSearchParams({
+              recurring: "arrangements",
+              student: continuation.studentId,
+              booked: result.bookingId,
+              ...(proposedLead === undefined
+                ? {}
+                : { lead: String(proposedLead) }),
+            })
+          : undefined;
       setConfirmed({
         reference: result.reference,
         manageUrl: result.manageUrl,
         demo: false,
-        startsAt: chosen.startsAt,
+        startsAt: selectedDates[0] ?? chosen.startsAt,
         portalRequested: createPortalProfile,
+        paymentReviewUrl: paymentReview
+          ? `/portal/payments?${paymentReview}`
+          : undefined,
+        followUpRequired: result.followUpRequired,
       });
       setStep("done");
     } catch (reason) {
@@ -448,7 +581,11 @@ export function BookingFlow({
                       className={recurrence === item ? "selected" : ""}
                       onClick={() => setRecurrence(item)}
                     >
-                      {item === "none" ? "One time" : item}
+                      {item === "none"
+                        ? "One time"
+                        : item === "weekly"
+                          ? "Weekly"
+                          : "Every other week"}
                     </button>
                   ))}
                 </div>
@@ -469,9 +606,14 @@ export function BookingFlow({
               Times shown in {bookingTimezone.replaceAll("_", " ")}.
             </p>
             {error && (
-              <p role="alert" className="inline-error">
-                {error}
-              </p>
+              <div className="inline-error">
+                <p role="alert">{error}</p>
+                {proposedStarts.length > 0 && (
+                  <button type="button" onClick={() => setStep("time")}>
+                    Review dates
+                  </button>
+                )}
+              </div>
             )}
             <div className="booking-calendar" aria-label="Available dates">
               <div className="booking-calendar-weekdays" aria-hidden="true">
@@ -552,27 +694,95 @@ export function BookingFlow({
                 fully booked or weekly hours may not be published yet.
               </p>
             )}
-            {recurrence !== "none" && slot && (
+            {proposedStarts.length > 0 && (
               <div className="series-preview">
-                <CalendarDays />
+                <CalendarDays aria-hidden="true" />
                 <div>
                   <strong>
                     {recurrence === "weekly" ? "Weekly" : "Every other week"}{" "}
                     preview
                   </strong>
-                  <small>
-                    {seriesDates(slot, recurrence, 6)
-                      .map((date) => formatDate(date))
-                      .join(" · ")}
-                  </small>
+                  {canSkipDates ? (
+                    <fieldset className="series-date-picker">
+                      <legend>Dates to book</legend>
+                      {continuation && (
+                        <label htmlFor="continuation-proposed-count">
+                          Number of proposed lessons
+                          <select
+                            id="continuation-proposed-count"
+                            value={proposedCount}
+                            onChange={(event) =>
+                              setProposedCount(Number(event.target.value))
+                            }
+                          >
+                            {Array.from(
+                              { length: Math.max(1, maximumCount - 1) },
+                              (_, index) => index + 2,
+                            ).map((count) => (
+                              <option key={count} value={count}>
+                                {count}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      )}
+                      {proposedStarts.map((date, index) => (
+                        <label
+                          className="check-row"
+                          key={date}
+                          htmlFor={`series-date-${index}`}
+                        >
+                          <input
+                            id={`series-date-${index}`}
+                            type="checkbox"
+                            checked={!skippedStarts.includes(date)}
+                            onChange={(event) =>
+                              setSkippedStarts((current) =>
+                                event.target.checked
+                                  ? current.filter((item) => item !== date)
+                                  : [...current, date],
+                              )
+                            }
+                          />
+                          <span>
+                            {formatDate(date, {
+                              hour: "numeric",
+                              minute: "2-digit",
+                            })}
+                          </span>
+                        </label>
+                      ))}
+                      <small aria-live="polite">
+                        {selectedDates.length} to book · {skippedStarts.length}{" "}
+                        skipped
+                      </small>
+                    </fieldset>
+                  ) : (
+                    <small>
+                      {proposedStarts
+                        .map((date) => formatDate(date))
+                        .join(" · ")}
+                    </small>
+                  )}
                 </div>
               </div>
             )}
             <div className="step-actions">
-              <button onClick={() => setStep("format")}>Back</button>
+              {continuation ? (
+                <Link
+                  className="button-link"
+                  to={`/portal/bookings?student=${encodeURIComponent(continuation.studentId)}`}
+                >
+                  Keep my existing schedule
+                </Link>
+              ) : (
+                <button onClick={() => setStep("format")}>Back</button>
+              )}
               <button
                 className="booking-primary"
-                disabled={!slot}
+                disabled={
+                  !slot || (proposedStarts.length > 0 && !selectedDates.length)
+                }
                 onClick={() => setStep("details")}
               >
                 Continue <ChevronRight />
@@ -709,7 +919,11 @@ export function BookingFlow({
         {step === "payment" && (
           <div className="step-panel">
             <span className="eyebrow">Payment &amp; policy</span>
-            <h2>Choose how to confirm</h2>
+            <h2>
+              {continuation
+                ? "Review lessons and payments"
+                : "Choose how to confirm"}
+            </h2>
             <div className="payment-list">
               {validPayments.map((item) => (
                 <button
@@ -728,6 +942,40 @@ export function BookingFlow({
                 </button>
               ))}
             </div>
+            {skippedStarts.length > 0 && !scheduleReview && (
+              <div className="policy-box">
+                <strong>
+                  {selectedDates.length} lessons to book ·{" "}
+                  {skippedStarts.length} dates skipped
+                </strong>
+                <p>
+                  {selectedDates.map((date) => formatDate(date)).join(" · ")}
+                </p>
+                {payment !== "credits" && (
+                  <p>
+                    {formatMoney(
+                      displayedPrice * selectedDates.length,
+                      service.currency,
+                    )}{" "}
+                    before any applied discounts.
+                  </p>
+                )}
+                <p>Skipped dates will have no booking or payment.</p>
+              </div>
+            )}
+            {continuation && (
+              <p>
+                Confirm the new dates first. An authorized payer can review and
+                authorize automatic payments separately after booking.
+              </p>
+            )}
+            {scheduleReview && (
+              <ContinuationReviewDetails
+                review={scheduleReview}
+                leadDays={proposedLead}
+                selectLeadDays={setProposedLead}
+              />
+            )}
             {booker && (
               <p className="booking-referral">
                 If you have an unused $15 referral reward, it will apply
@@ -817,21 +1065,204 @@ export function BookingFlow({
               </p>
             )}
             <div className="step-actions">
-              <button onClick={() => setStep("details")}>Back</button>
               <button
-                className="booking-primary"
-                disabled={status === "saving" || !termsAccepted}
-                onClick={confirm}
+                onClick={() => {
+                  setScheduleReview(undefined);
+                  setStep("details");
+                }}
               >
-                {status === "saving"
-                  ? "Reserving your time…"
-                  : "Confirm booking"}
+                Back
               </button>
+              {live && continuation && !scheduleReview && (
+                <button
+                  className="booking-primary"
+                  disabled={status === "saving"}
+                  onClick={() => void confirm(true)}
+                >
+                  {status === "saving"
+                    ? "Checking dates…"
+                    : "Check proposed dates"}
+                </button>
+              )}
+              {(!live || !continuation || scheduleReview) && (
+                <button
+                  className="booking-primary"
+                  disabled={
+                    status === "saving" ||
+                    !termsAccepted ||
+                    Boolean(scheduleReview?.conflicts.length)
+                  }
+                  onClick={() => void confirm()}
+                >
+                  {status === "saving"
+                    ? "Reserving your time…"
+                    : "Confirm booking"}
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
     </section>
+  );
+}
+
+function ContinuationReviewDetails({
+  review,
+  leadDays,
+  selectLeadDays,
+}: {
+  review: ContinuationReview;
+  leadDays?: number;
+  selectLeadDays: (value: number | undefined) => void;
+}) {
+  const date = (value: string) => formatStudioDateTime(value, review.timeZone);
+  const leadField = useId();
+  const timing = review.automaticPayment;
+  const automatic =
+    timing &&
+    Number.isInteger(timing.minimumLeadDays) &&
+    Number.isInteger(timing.maximumLeadDays) &&
+    timing.minimumLeadDays >= 0 &&
+    timing.maximumLeadDays >= timing.minimumLeadDays &&
+    /^([01]\d|2[0-3]):[0-5]\d$/.test(timing.chargeAtLocal) &&
+    Number.isSafeInteger(timing.maximumLessonMinor) &&
+    timing.maximumLessonMinor > 0
+      ? timing
+      : undefined;
+  const forecast =
+    automatic && leadDays !== undefined
+      ? previewLessonAutopay(
+          { ...automatic, timeZone: review.timeZone },
+          {
+            scope: "existing",
+            leadDays,
+            existingLessonIds: review.starts,
+            effectiveAt: new Date().toISOString(),
+            currency: review.currency,
+            maximumLessonMinor: automatic.maximumLessonMinor,
+          },
+          review.starts.map((startsAt) => ({
+            id: startsAt,
+            startsAt,
+            createdAt: new Date().toISOString(),
+            status: "scheduled",
+            payment: "unpaid",
+            obligation: {
+              currency: review.currency,
+              amountMinor: review.unitMinor,
+              eligible: review.unitMinor > 0,
+            },
+          })),
+        )
+      : [];
+  return (
+    <div className="policy-box">
+      <h3>Already scheduled</h3>
+      {review.existing.length ? (
+        <ul>
+          {review.existing.map((item, index) => (
+            <li key={`${item.startsAt}-${index}`}>
+              {date(item.startsAt)} · {item.topic}
+              {item.payment && ` · ${trainingPaymentLabel[item.payment]}`}
+              {item.payment === "unpaid" &&
+                item.balance &&
+                ` · ${formatMoney(item.balance.amountMinor, item.balance.currency)}`}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>No upcoming lessons to keep.</p>
+      )}
+      <h3>Dates to add</h3>
+      <ul>
+        {review.starts.map((item) => (
+          <li key={item}>{date(item)}</li>
+        ))}
+      </ul>
+      {review.skipped.length > 0 && (
+        <>
+          <h3>Dates you skipped</h3>
+          <ul>
+            {review.skipped.map((item) => (
+              <li key={item}>{date(item)}</li>
+            ))}
+          </ul>
+        </>
+      )}
+      {review.conflicts.length > 0 && (
+        <div role="alert">
+          <h3>Dates with conflicts</h3>
+          <ul>
+            {review.conflicts.map((item) => (
+              <li key={item}>{date(item)}</li>
+            ))}
+          </ul>
+          <p>Go back and skip those dates before confirming.</p>
+        </div>
+      )}
+      <h3>Payment review</h3>
+      <p>
+        {formatMoney(review.unitMinor, review.currency)} per lesson ·{" "}
+        {formatMoney(review.unitMinor * review.starts.length, review.currency)}{" "}
+        before discounts or coverage.
+      </p>
+      <p>
+        {review.canPay
+          ? "You are the designated payer."
+          : "The designated payer manages lesson payments."}
+      </p>
+      <p>
+        {review.canPay && review.invoicesEnabled
+          ? "After confirming the booking, you can review the exact balances and payment dates before authorizing automatic payments."
+          : "The booking is confirmed under the studio’s pay-later policy."}
+      </p>
+      {automatic && (
+        <details>
+          <summary>Preview automatic payment timing</summary>
+          <label htmlFor={leadField}>
+            Days before each eligible lesson
+            <input
+              id={leadField}
+              type="number"
+              min={automatic.minimumLeadDays}
+              max={automatic.maximumLeadDays}
+              value={leadDays ?? ""}
+              inputMode="numeric"
+              onChange={(event) => {
+                const value = event.target.valueAsNumber;
+                selectLeadDays(
+                  Number.isInteger(value) &&
+                    value >= automatic.minimumLeadDays &&
+                    value <= automatic.maximumLeadDays
+                    ? value
+                    : undefined,
+                );
+              }}
+            />
+          </label>
+          <p>
+            These estimates use the proposed dates and the full lesson price.
+            You’ll review the final amounts and authorize payments after
+            booking.
+          </p>
+          {forecast.length > 0 && (
+            <ul>
+              {forecast.map((item) => (
+                <li key={item.lessonId}>
+                  {date(item.lessonId)} ·{" "}
+                  {item.state === "review"
+                    ? item.reason
+                    : item.state === "pay_now"
+                      ? "Pay now separately"
+                      : date(item.payAt)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </details>
+      )}
+    </div>
   );
 }
 
@@ -868,6 +1299,8 @@ function Confirmation({
     manageUrl?: string;
     demo: boolean;
     portalRequested: boolean;
+    paymentReviewUrl?: string;
+    followUpRequired?: boolean;
   };
   message?: string;
 }) {
@@ -893,6 +1326,17 @@ function Confirmation({
             : "Your portal invitation is being prepared separately. It includes a generated username, a one-time password, and clear first-login instructions."}
         </p>
       )}
+      {result.followUpRequired && (
+        <p role="status">
+          Your booking was confirmed. Open your schedule for current details.
+        </p>
+      )}
+      {result.paymentReviewUrl && (
+        <p>
+          Your booking is complete. Review any eligible amounts before
+          authorizing automatic payments.
+        </p>
+      )}
       <article>
         <strong>{service.name}</strong>
         <span>{formatDate(slot, { hour: "numeric", minute: "2-digit" })}</span>
@@ -902,6 +1346,11 @@ function Confirmation({
         {result.manageUrl && (
           <Link className="booking-primary" to={result.manageUrl}>
             Manage booking
+          </Link>
+        )}
+        {result.paymentReviewUrl && (
+          <Link className="booking-primary" to={result.paymentReviewUrl}>
+            Review automatic payments
           </Link>
         )}
         <Link to="/book">Book another session</Link>

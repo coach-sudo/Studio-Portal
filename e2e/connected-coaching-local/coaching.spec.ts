@@ -347,6 +347,11 @@ test("next lesson updates payment links and closes the previous lesson actions",
 test("My Work keeps homework, notes and scripts apart from uploaded lesson files", async ({
   page,
 }) => {
+  const scriptInputWarnings: string[] = [];
+  page.on("console", (message) => {
+    if (message.type() === "error" && /controlled input/.test(message.text()))
+      scriptInputWarnings.push(message.text());
+  });
   await prepare(page);
   await page.goto(`/coach/students/student-maya/lessons/${lessonId}`);
   await page.getByRole("button", { name: "Attach files", exact: true }).click();
@@ -387,6 +392,16 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
     .selectOption("link");
   await page.getByLabel("Script link").fill("https://example.test/current");
   await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("file");
+  await expect(page.getByLabel("Script file")).toBeVisible();
+  await page
+    .getByRole("combobox", { name: "Source", exact: true })
+    .selectOption("link");
+  await expect(page.getByLabel("Script link")).toHaveValue(
+    "https://example.test/current",
+  );
+  await page
     .getByLabel("Title", { exact: true })
     .fill("First rehearsal script");
   await page.getByRole("button", { name: "Save current script" }).click();
@@ -413,6 +428,7 @@ test("My Work keeps homework, notes and scripts apart from uploaded lesson files
   await expect(
     page.getByText("Revised rehearsal script", { exact: true }),
   ).toHaveCount(0);
+  expect(scriptInputWarnings).toEqual([]);
 });
 
 test("lesson payment email opens the same authorized choices on desktop and phone", async ({
@@ -543,4 +559,438 @@ test("primary actions and focus retain contrast under pale branding in both port
   await primary.focus();
   await expect(primary).toHaveCSS("outline-color", "rgb(255, 255, 255)");
   await expect(primary).toHaveCSS("outline-style", "solid");
+});
+
+async function prepareTrainingInvoices(page: Page) {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const base = data.lessons[0];
+    const invoiceId = "training-invoice";
+    data.lessons = Array.from({ length: 6 }, (_, index) => ({
+      ...base,
+      id: `training-lesson-${index}`,
+      sourceProvider: "studio",
+      topic: `Rehearsal ${index + 1}`,
+      startsAt: new Date(
+        Date.parse(base.startsAt) + index * 7 * 86400000,
+      ).toISOString(),
+      endsAt: new Date(
+        Date.parse(base.endsAt) + index * 7 * 86400000,
+      ).toISOString(),
+      invoiceId,
+      paymentStatus: "due",
+      priceMinor: 8500,
+      paidMinor: 0,
+    }));
+    data.invoices = [
+      {
+        id: invoiceId,
+        student_id: "student-maya",
+        studio_id: data.studioId,
+        number: "INV-TRAINING",
+        status: "open",
+        currency: "USD",
+        issue_date: "2026-01-01",
+        due_date: "2031-05-15",
+        introduction: "",
+        notes: "",
+        footer: "",
+        branding: { studioName: "Coach’D" },
+        recipient: { name: "Maya" },
+        total_minor: 51000,
+        paid_minor: 0,
+        credit_minor: 0,
+        version: 1,
+        created_at: new Date().toISOString(),
+        items: data.lessons.map((lesson, index) => ({
+          id: `training-line-${index}`,
+          description: lesson.topic,
+          lessonIds: [lesson.id],
+          kind: "service",
+          referenceId: "service",
+          quantity: 1,
+          unitMinor: 8500,
+          startsOn: lesson.startsAt.slice(0, 10),
+          endsOn: lesson.startsAt.slice(0, 10),
+          creditMinor: 0,
+          paidMinor: 0,
+        })),
+      },
+    ];
+    data.settings.branding = {
+      ...data.settings.branding,
+      primaryColor: "#f0ebd3",
+    };
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+}
+
+test("whole-lesson payment selection stays readable across layouts and themes", async ({
+  page,
+}, testInfo) => {
+  await prepareTrainingInvoices(page);
+  for (const [width, layout] of [
+    [320, "phone"],
+    [768, "tablet"],
+    [1440, "desktop"],
+  ] as const) {
+    await page.setViewportSize({ width, height: 920 });
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((appearance) => {
+        const key = "stage-story-studio-core-v2";
+        const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+        const maya = data.students.find(
+          (student) => student.id === "student-maya",
+        )!;
+        maya.portalPreferences = { ...maya.portalPreferences, appearance };
+        localStorage.setItem(key, JSON.stringify(data));
+      }, theme);
+      await page.goto("/portal/bookings?student=student-maya");
+      await expect(
+        page.getByText(
+          "Your coach has scheduled 6 confirmed upcoming lessons.",
+        ),
+      ).toBeVisible();
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-portal-theme",
+        theme,
+      );
+      await checkView(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`schedule-${layout}-${theme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await page.goto("/portal/payments?pay=lesson&student=student-maya");
+      const group = page.getByRole("group", {
+        name: "Choose lessons to pay for",
+      });
+      await expect(group.getByRole("checkbox")).toHaveCount(6);
+      await group.getByRole("checkbox", { name: /Rehearsal 2/ }).check();
+      await group.getByRole("checkbox", { name: /Rehearsal 5/ }).focus();
+      await page.keyboard.press("Space");
+      await expect(
+        page.getByText("2 lessons selected · $170.00 total"),
+      ).toBeVisible();
+      await checkView(page);
+      await page.screenshot({
+        path: testInfo.outputPath(`payment-${layout}-${theme}.png`),
+        fullPage: true,
+        animations: "disabled",
+      });
+      await group
+        .getByRole("button", { name: "Select all eligible lessons" })
+        .click();
+      await expect(
+        page.getByText("6 lessons selected · $510.00 total"),
+      ).toBeVisible();
+    }
+  }
+  await page
+    .getByRole("button", { name: "Continue to secure checkout" })
+    .click();
+  await expect(
+    page.getByText("Demo mode does not open a payment provider."),
+  ).toBeVisible();
+  await page.goto(
+    "/portal/payments?pay=lesson&student=student-maya&lesson=training-lesson-2",
+  );
+  await expect(
+    page.getByText("1 lesson selected · $85.00 total"),
+  ).toBeVisible();
+  await expect(page.getByRole("checkbox")).toHaveCount(1);
+});
+
+test("lesson payment preview keeps its scope and offers explicit Pay now for a late lesson", async ({
+  page,
+}, testInfo) => {
+  await prepareTrainingInvoices(page);
+  await page.setViewportSize({ width: 320, height: 900 });
+  await page.goto("/portal/bookings?student=student-maya");
+  await page.getByRole("link", { name: "Make Recurring" }).click();
+  const options = page.getByRole("group", {
+    name: "Lessons to include",
+    exact: true,
+  });
+  await expect(options.getByRole("checkbox")).toHaveCount(6);
+  const lead = page.getByRole("spinbutton", {
+    name: "Days before each lesson",
+  });
+  await lead.fill("7");
+  await options.getByRole("checkbox").first().focus();
+  await page.keyboard.press("Space");
+  await options.getByRole("checkbox").nth(2).check();
+  const preview = page.getByRole("button", { name: "Preview payment dates" });
+  await preview.click();
+  await expect(
+    page.getByRole("link", { name: /Pay now · \$85/ }),
+  ).toHaveAttribute(
+    "href",
+    "/portal/payments?pay=lesson&student=student-maya&lesson=training-lesson-0",
+  );
+  await expect(page.getByText(/\$85.00 on /)).toHaveCount(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBe(
+    320,
+  );
+  await page.screenshot({
+    path: testInfo.outputPath("autopay-preview-phone.png"),
+    fullPage: true,
+  });
+  await page.evaluate(() => {
+    document.documentElement.dataset.portalTheme = "dark";
+  });
+  const accessibility = await new AxeBuilder({ page })
+    .include(".training-payment-picker")
+    .analyze();
+  expect(
+    accessibility.violations.filter(
+      ({ impact }) => impact === "serious" || impact === "critical",
+    ),
+  ).toEqual([]);
+  await page.screenshot({
+    path: testInfo.outputPath("autopay-preview-phone-dark.png"),
+    fullPage: true,
+  });
+  await page.getByRole("radio", { name: "Future lessons only" }).check();
+  await expect(options).toHaveCount(0);
+  await preview.click();
+  await expect(page.getByText(/New lessons can be evaluated/)).toBeVisible();
+  await expect(page.getByRole("link", { name: /Pay now · \$85/ })).toHaveCount(
+    0,
+  );
+});
+
+test("calendar package renewal requires the user to choose a cadence", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate(() => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const offers = data.packageDefinitions.filter(
+      (row) => row.active && row.directPurchase && row.visibility === "public",
+    );
+    for (const offer of offers)
+      data.packageBillingOptions.push({
+        id: `test-weekly-package-${offer.id}`,
+        studioId: data.studioId,
+        definitionId: offer.id,
+        renewalMode: "weekly",
+        active: true,
+        updatedAt: new Date().toISOString(),
+        version: 1,
+      });
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.goto("/portal/payments?student=student-maya");
+  await page.getByRole("link", { name: "Make Recurring" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Recurring packages" }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Choose package" }).first().click();
+  const dialog = page.getByRole("dialog");
+  const checkout = dialog.getByRole("button", {
+    name: "Continue to secure checkout",
+  });
+  const cadence = dialog.getByRole("combobox", { name: "Purchase option" });
+  await expect(cadence).toHaveValue("");
+  await expect(checkout).toBeDisabled();
+  await cadence.selectOption("weekly");
+  await expect(
+    dialog.getByText(/The first payment is due at checkout/),
+  ).toBeVisible();
+  await expect(checkout).toBeEnabled();
+});
+
+test("a fixed weekly proposal can skip dates without moving lessons or charging for them", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.setViewportSize({ width: 390, height: 920 });
+  await page.goto("/book/private-acting-coaching");
+  await page.getByRole("button", { name: /^Weekly$/ }).click();
+  await page.getByRole("button", { name: "Choose a time" }).click();
+  await page.locator(".booking-time-list button").first().click();
+  const dates = page.getByRole("group", { name: "Dates to book" });
+  const choices = dates.getByRole("checkbox");
+  await expect(choices).toHaveCount(6);
+  await choices.nth(1).uncheck();
+  await choices.nth(4).uncheck();
+  await expect(dates.getByText("4 to book · 2 skipped")).toBeVisible();
+  await page.getByRole("button", { name: "Continue", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Student name" })
+    .fill("Synthetic Schedule");
+  await page
+    .getByRole("textbox", { name: "Student email" })
+    .fill("synthetic-schedule@example.test");
+  await page.getByRole("button", { name: "Review payment" }).click();
+  await page.getByRole("button", { name: /Pay later/i }).click();
+  await expect(
+    page.getByText("4 lessons to book · 2 dates skipped"),
+  ).toBeVisible();
+  await page.getByRole("checkbox", { name: /Terms and Conditions/ }).check();
+  await page.getByRole("button", { name: "Confirm booking" }).click();
+  const result = await page.evaluate(() => {
+    const data: StudioSnapshot = JSON.parse(
+      localStorage.getItem("stage-story-studio-core-v2")!,
+    );
+    const booking = data.bookings.find(
+      (item) => item.guestEmail === "synthetic-schedule@example.test",
+    )!;
+    const ids = data.lessonParticipants
+      .filter((item) => item.bookingId === booking.id)
+      .map((item) => item.lessonId);
+    return {
+      count: ids.length,
+      total: booking.totalMinor,
+      status: booking.paymentStatus,
+      dates: data.lessons
+        .filter((item) => ids.includes(item.id))
+        .map((item) => item.startsAt.slice(0, 10))
+        .sort(),
+    };
+  });
+  expect(result).toMatchObject({ count: 4, total: 50000, status: "due" });
+  expect(
+    result.dates
+      .slice(1)
+      .map(
+        (date, index) =>
+          (Date.parse(date) - Date.parse(result.dates[index])) / 86400000,
+      ),
+  ).toEqual([14, 7, 14]);
+});
+
+test("home opens the exact next lesson and schedule keeps payment selection in scope", async ({
+  page,
+}) => {
+  await prepare(page);
+  await page.evaluate((id) => {
+    const key = "stage-story-studio-core-v2";
+    const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+    const next = data.lessons.find((item) => item.id === id)!;
+    next.invoiceId = "next-lesson-invoice";
+    next.paymentStatus = "due";
+    next.priceMinor = 8500;
+    const previous = {
+      ...next,
+      id: "previous-lesson",
+      topic: "Previous rehearsal",
+      invoiceId: "previous-lesson-invoice",
+      startsAt: new Date(Date.now() - 86400000).toISOString(),
+      endsAt: new Date(Date.now() - 82800000).toISOString(),
+      status: "completed" as const,
+    };
+    data.lessons.push(previous);
+    data.invoices = [next, previous].map((lesson, index) => ({
+      id: lesson.invoiceId!,
+      student_id: next.studentId,
+      studio_id: data.studioId,
+      number:
+        index === 0
+          ? "Upcoming rehearsal invoice"
+          : "Historical rehearsal invoice",
+      status: "open",
+      currency: "USD",
+      issue_date: "2026-01-01",
+      due_date: "2031-05-15",
+      introduction: "",
+      notes: "",
+      footer: "",
+      branding: { studioName: "Coach’D" },
+      recipient: { name: "Maya" },
+      total_minor: 8500,
+      paid_minor: 0,
+      credit_minor: 0,
+      version: 1,
+      created_at: new Date().toISOString(),
+      items: [
+        {
+          id: lesson.id + "-invoice-line",
+          description: lesson.topic,
+          lessonIds: [lesson.id],
+          kind: "service",
+          referenceId: "service",
+          quantity: 1,
+          unitMinor: 8500,
+          startsOn: lesson.startsAt.slice(0, 10),
+          endsOn: lesson.startsAt.slice(0, 10),
+          creditMinor: 0,
+          paidMinor: 0,
+        },
+      ],
+    }));
+    localStorage.setItem(key, JSON.stringify(data));
+  }, lessonId);
+  await page.goto("/portal?student=student-maya");
+  await page.getByRole("button", { name: "Pay for this lesson" }).click();
+  await expect(page).toHaveURL(new RegExp("lesson=" + lessonId));
+  await expect(
+    page.getByRole("checkbox", { name: /Connected coaching/ }),
+  ).toBeChecked();
+  await page.goto("/portal/bookings?student=student-maya");
+  await page
+    .getByRole("link", { name: "Review upcoming lesson payments" })
+    .click();
+  await expect(page).toHaveURL(/upcoming=1/);
+  await expect(
+    page.getByRole("checkbox", { name: /Connected coaching/ }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("checkbox", { name: /Previous rehearsal/ }),
+  ).toHaveCount(0);
+});
+
+test.describe("portal notification accessibility", () => {
+  test.use({ hasTouch: true, viewport: { width: 320, height: 860 } });
+
+  test("notification actions stay readable and reachable in either theme", async ({
+    page,
+  }) => {
+    await prepare(page);
+    for (const theme of ["light", "dark"] as const) {
+      await page.evaluate((appearance) => {
+        const key = "stage-story-studio-core-v2";
+        const data: StudioSnapshot = JSON.parse(localStorage.getItem(key)!);
+        const student = data.students.find(
+          (item) => item.id === "student-maya",
+        )!;
+        student.portalPreferences = {
+          ...student.portalPreferences,
+          appearance,
+        };
+        localStorage.setItem(key, JSON.stringify(data));
+      }, theme);
+      await page.goto("/portal/payments?pay=lesson&student=student-maya");
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-portal-theme",
+        theme,
+      );
+      const skip = page.getByRole("link", { name: "Skip to main content" });
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await skip.focus();
+      await expect(skip).toHaveCSS("clip-path", "none");
+      await page.keyboard.press("Tab");
+      await expect(skip).toHaveCSS("clip-path", "inset(100%)");
+      await page.getByRole("button", { name: /unread notifications/ }).tap();
+      await expect(
+        page.getByRole("region", { name: "Recent activity" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Clear all" }),
+      ).toBeVisible();
+      const audit = await new AxeBuilder({ page })
+        .include(".activity-center")
+        .analyze();
+      expect(
+        audit.violations.filter((issue) =>
+          ["serious", "critical"].includes(issue.impact ?? ""),
+        ),
+      ).toEqual([]);
+      await page.getByRole("button", { name: "Close notifications" }).tap();
+    }
+  });
 });

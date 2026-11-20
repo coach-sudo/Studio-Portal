@@ -1,4 +1,6 @@
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
+import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
+import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
 import { LessonFiles } from "../library/LessonFiles";
 import {
   useUrlValue,
@@ -33,10 +35,11 @@ import {
 import { studioCommand } from "../../data/bookingCommands";
 import { portalPageSize, shouldShowPagination } from "../../data/pagination";
 import { mapNoteRow } from "../../data/studioMappers";
+import { selectLessonDelivery } from "../../domain/lessonExperience";
 import {
-  lessonPaymentLabel,
-  selectLessonDelivery,
-} from "../../domain/lessonExperience";
+  trainingArrangement,
+  trainingPaymentLabel,
+} from "../../domain/trainingArrangement";
 import {
   formatStudioDate,
   formatStudioDateTime,
@@ -309,12 +312,14 @@ export function LessonHub({
   data,
   isDemo,
   showFinance,
+  showPaymentStatus = showFinance,
   showWork = true,
   showSchedule = true,
 }: {
   data: Snapshot;
   isDemo: boolean;
   showFinance: boolean;
+  showPaymentStatus?: boolean;
   showWork?: boolean;
   showSchedule?: boolean;
 }) {
@@ -325,6 +330,12 @@ export function LessonHub({
   );
   const lesson = data.lessons.find((item) => item.id === lessonId);
   const selectedStudent = data.students[0];
+  const autopay = useLessonAutopayOptions(
+    data,
+    selectedStudent?.id ?? "",
+    isDemo,
+    showFinance,
+  );
   const context = selectedStudent && coachingContext(data, selectedStudent.id);
   const lessonVisible = !!context?.lessons.some((item) => item.id === lessonId);
   const store = useStudioStore();
@@ -384,33 +395,21 @@ export function LessonHub({
   const offering = data.serviceOfferings.find(
     (item) => item.id === lesson.offeringId,
   );
-  const participant = data.lessonParticipants.find(
-    (item) =>
-      item.lessonId === lesson.id &&
-      item.studentId === selectedStudent.id &&
-      item.bookingId,
-  );
-  const booking = data.bookings.find(
-    (item) => item.id === participant?.bookingId,
-  );
   const student = selectedStudent;
-  const payment = lessonPaymentLabel(
-    lesson.paymentStatus,
-    booking?.paymentStatus,
+  const occurrence = trainingArrangement(data, student.id).occurrences.find(
+    (item) => item.lesson.id === lesson.id,
   );
+  const payment = occurrence?.payment ?? "review";
   const canPay =
     showFinance &&
     ["scheduled", "completed"].includes(lesson.status) &&
-    payment === "Unpaid" &&
-    lesson.paymentStatus !== "refunded" &&
-    (lesson.invoiceId ||
-      lesson.paymentStatus === "due" ||
-      lesson.paymentStatus === "partially_paid" ||
-      (booking &&
-        booking.totalMinor > booking.paidMinor &&
-        ["due", "partially_paid", "past_due", "processing"].includes(
-          booking.paymentStatus,
-        )));
+    payment === "unpaid" &&
+    Boolean(
+      lesson.invoiceId ||
+      (data.settings.bookingDefaults.allowLearnerLessonInvoices &&
+        lesson.serviceId &&
+        lesson.priceMinor),
+    );
   const updateAssignment = async (
     assignment: Snapshot["assignments"][number],
     command: "complete" | "help",
@@ -509,9 +508,9 @@ export function LessonHub({
             ‹ Back
           </button>
           <h1>{lesson.topic}</h1>
-          {showFinance && (
-            <Status tone={payment === "Paid" ? "good" : "warn"}>
-              {payment}
+          {showPaymentStatus && (
+            <Status tone={payment === "paid" ? "good" : "warn"}>
+              {trainingPaymentLabel[payment]}
             </Status>
           )}
           <p>
@@ -546,6 +545,22 @@ export function LessonHub({
               Pay for my lesson
             </Link>
           )}
+          {showFinance &&
+            (autopay ||
+              hasRecurringPackageOffer(
+                data.packageDefinitions,
+                data.packageBillingOptions,
+              )) && (
+              <Link
+                className="button-link"
+                to={portalContextLink(
+                  `/portal/payments?recurring=arrangements&lesson=${encodeURIComponent(lesson.id)}`,
+                  student.id,
+                )}
+              >
+                Make Recurring
+              </Link>
+            )}
         </div>
       </header>
       {notice && <p className="portal-notice">{notice}</p>}

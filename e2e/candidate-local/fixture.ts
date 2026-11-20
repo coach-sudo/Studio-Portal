@@ -360,6 +360,26 @@ export async function installFixture(
     if (url.pathname === "/auth/v1/user") return reply(route, user);
     if (url.pathname.startsWith("/rest/v1/rpc/")) {
       const rpc = url.pathname.split("/").pop();
+      if (rpc === "portal_student_contexts") {
+        const requested = req.postDataJSON()?.p_student;
+        const permitted = ["student", "guardian"].includes(role) && !state.revoked;
+        const access = {
+          id: student.id,
+          fullName: student.full_name,
+          preferredName: student.preferred_name,
+          isMinor: false,
+          canViewSchedule: true,
+          canViewWork: true,
+          canViewFinance: true,
+          canManageProfile: true,
+          canManageLessons: true,
+        };
+        return reply(route, {
+          items: permitted ? [access] : [],
+          selected: permitted && (!requested || requested === student.id) ? access : null,
+          hasMore: false,
+        });
+      }
       if (rpc === "studio_route_snapshot") {
         const domains: string[] = req.postDataJSON()?.requested_domains || [];
         return reply(route, {

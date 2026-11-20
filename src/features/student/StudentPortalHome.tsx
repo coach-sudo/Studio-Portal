@@ -11,16 +11,19 @@ import { Link, useNavigate } from "react-router-dom";
 import "../../components/IdentityActions.css";
 import { JoinLessonBanner } from "../../components/JoinLessonBanner";
 import { EmptyState, Section } from "../../components/Primitives";
+import { isJoinableLesson } from "../../domain/lessonExperience";
+import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import {
-  isJoinableLesson,
-  lessonPaymentLabel,
-} from "../../domain/lessonExperience";
+  trainingArrangement,
+  trainingPaymentLabel,
+} from "../../domain/trainingArrangement";
 import {
   formatStudioDate,
   formatStudioDateTime,
 } from "../../domain/presentation";
 
 import { type Snapshot } from "./StudentPortal.shared";
+import { useLessonAutopayAccount } from "./useLessonAutopayOptions";
 import {
   AssignedWorkSummary,
   PublishedFeedback,
@@ -185,17 +188,23 @@ function HomePriorities({
   const open = useNavigate();
   const navigate = (path: string) => open(portalContextLink(path, student.id));
   const context = coachingContext(data, student.id)!;
-  const lesson = showSchedule ? context.nextLesson : undefined;
+  const next = showSchedule
+    ? trainingArrangement(data, student.id).upcoming[0]
+    : undefined;
+  const lesson = next?.lesson;
+  const automatic = useLessonAutopayAccount(student.id, showAccount && !isDemo)
+    .data?.arrangement;
+  const failed = automatic?.lessons.find((item) => item.status === "failed");
+  const nextAutomatic =
+    automatic?.status === "active" && !automatic.needsReauthorization
+      ? automatic.lessons.find(
+          (item) => item.lessonId === lesson?.id && item.status === "planned",
+        )
+      : undefined;
+  const readyToPay =
+    next?.payment === "unpaid" && Boolean(next.lesson.invoiceId);
   const work = showWork ? context.scripts[0] : undefined;
   const practice = showWork ? context.practice.active[0] : undefined;
-  const booking = data.bookings.find((item) =>
-    data.lessonParticipants.some(
-      (part) =>
-        part.lessonId === lesson?.id &&
-        part.bookingId === item.id &&
-        part.studentId === student.id,
-    ),
-  );
   const lessonIsJoinable = Boolean(lesson && isJoinableLesson(lesson));
   const actions = [
     !lessonIsJoinable && lesson
@@ -278,21 +287,37 @@ function HomePriorities({
         )}
         {showAccount && student && (
           <section className="portal-account-summary" aria-label="Account">
+            {failed && (
+              <p className="portal-notice" role="status">
+                A lesson payment needs attention.{" "}
+                <Link
+                  to={portalContextLink(
+                    "/portal/payments?recurring=arrangements",
+                    student.id,
+                  )}
+                >
+                  Review automatic payments
+                </Link>
+              </p>
+            )}
             <PortalRow
               icon={CircleDollarSign}
               title="Lesson payments"
               detail={
-                lesson
-                  ? lesson.topic +
+                next
+                  ? next.lesson.topic +
                     " · " +
-                    lessonPaymentLabel(
-                      lesson.paymentStatus,
-                      booking?.paymentStatus,
-                    )
+                    (nextAutomatic
+                      ? `Automatic payment ${formatStudioDateTime(nextAutomatic.payAt, automatic?.timeZone)}`
+                      : trainingPaymentLabel[next.payment])
                   : "Invoices and packages"
               }
-              action="View payments"
-              onClick={() => navigate(`${base}/payments`)}
+              action={readyToPay ? "Pay for this lesson" : "View payments"}
+              onClick={() =>
+                readyToPay && lesson
+                  ? open(lessonPaymentPath(student.id, lesson.id))
+                  : navigate(`${base}/payments`)
+              }
             />
           </section>
         )}
