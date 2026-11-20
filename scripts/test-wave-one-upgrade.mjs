@@ -71,7 +71,7 @@ const snapshot = () =>
   query(`select jsonb_build_object(
  'ledger',(select jsonb_agg(to_jsonb(x) order by id) from public.package_credit_entries x),
  'packages',(select jsonb_agg(to_jsonb(x) order by id) from public.packages x),
- 'lessons',(select jsonb_agg(to_jsonb(x)-'payment_needs_review' order by id) from public.lessons x),
+ 'lessons',(select jsonb_agg(to_jsonb(x)-'payment_needs_review'-'direct_checkout_id' order by id) from public.lessons x),
  'invoices',(select jsonb_agg(to_jsonb(x) order by id) from public.studio_invoices x),
  'payments',(select jsonb_agg(to_jsonb(x) order by id) from public.payment_entries x),
  'notes',(select jsonb_agg(to_jsonb(x) order by id) from public.notes x),
@@ -84,6 +84,13 @@ assert.equal(
   ),
   "0",
   "The additive payment review flag must be clear on existing lessons",
+);
+assert.equal(
+  query(
+    "select count(*) from public.lessons where direct_checkout_id is not null",
+  ),
+  "0",
+  "Existing lessons must not acquire a direct checkout reservation on upgrade",
 );
 assert.equal(
   snapshot(),
