@@ -36,15 +36,19 @@ import { useStudioStore } from "../../state/StudioStore";
 import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
+import { HouseholdInvoiceSummary } from "./HouseholdInvoiceSummary";
+import type { PortalContext } from "../../data/portalContext";
 
 export function Payments({
   data,
   isDemo,
   canManageLessons = false,
+  household,
 }: {
   data: Snapshot;
   isDemo: boolean;
   canManageLessons?: boolean;
+  household?: Pick<PortalContext, "id" | "fullName" | "preferredName">[];
 }) {
   const student = data.students[0];
   const [params] = useSearchParams();
@@ -266,6 +270,14 @@ export function Payments({
         <h1>Payments</h1>
         {!paying && !recurringOnly && student && (
           <Link
+            className="button-link"
+            to={portalContextLink("/portal/settings#billing", student.id)}
+          >
+            Payment settings
+          </Link>
+        )}
+        {!paying && !recurringOnly && student && (
+          <Link
             className="button-link primary"
             to={lessonPaymentPath(student.id)}
           >
@@ -364,6 +376,18 @@ export function Payments({
           {notice}
         </p>
       )}
+      {!paying &&
+        !recurringOnly &&
+        student &&
+        household &&
+        household.length > 1 && (
+          <HouseholdInvoiceSummary
+            students={household}
+            data={data}
+            studentId={student.id}
+            isDemo={isDemo}
+          />
+        )}
       {student && (
         <>
           {!paying && !recurringOnly && !isDemo && (
@@ -412,9 +436,8 @@ export function Payments({
                         data.settings.timezone,
                       )}{" "}
                       ·{" "}
-                      {entry.externalReference &&
-                      !/\bcredits?\b/i.test(entry.externalReference)
-                        ? entry.externalReference
+                      {entry.externalReference?.startsWith("lesson-payment:")
+                        ? `Receipt ${entry.externalReference.slice("lesson-payment:".length)}`
                         : "Studio ledger"}
                     </small>
                   </div>

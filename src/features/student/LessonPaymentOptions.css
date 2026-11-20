@@ -50,6 +50,48 @@
   margin-block: 1rem;
 }
 
+.training-payment-confirmation-grid {
+  display: grid;
+  gap: 1rem;
+}
+
+.workflow-dialog.training-payment-confirmation {
+  width: min(48rem, 100%);
+}
+
+.training-payment-total {
+  align-self: start;
+  padding: 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+  background: var(--surface-success);
+}
+
+.training-payment-total p {
+  margin: 0;
+}
+
+.training-payment-total p + p {
+  margin-top: 0.4rem;
+}
+
+.training-payment-confirmation-grid .table-list {
+  max-block-size: min(46dvh, 25rem);
+  overflow-y: auto;
+}
+
+@media (max-width: 699px) {
+  .training-payment-total {
+    grid-row: 1;
+  }
+}
+
+@media (min-width: 700px) {
+  .training-payment-confirmation-grid {
+    grid-template-columns: minmax(0, 1fr) minmax(10rem, 0.55fr);
+  }
+}
+
 .training-autopay-scope {
   min-inline-size: 0;
   margin: 0 0 1rem;

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { EmptyState, Section } from "../../components/Primitives";
+import { Dialog, EmptyState, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { useInvoices } from "../../data/invoices";
 import { useSearchIdentity } from "../../data/globalSearch";
@@ -10,6 +10,7 @@ import { invoiceDue } from "../../domain/invoices";
 import {
   formatCalendarDateKey,
   formatStudioDateTime,
+  studioDateKey,
 } from "../../domain/presentation";
 import type { Lesson, StudioSnapshot } from "../../domain/model";
 import { portalContextLink } from "../../domain/coachingContext";
@@ -79,6 +80,10 @@ export function LessonPaymentOptions({
   const studioInvoices = (invoices ?? []).filter(
     (invoice) => invoice.studio_id === data.studioId,
   );
+  const invoiceById = new Map(
+    studioInvoices.map((invoice) => [invoice.id, invoice]),
+  );
+  const today = studioDateKey(new Date(), data.settings.timezone);
   const studentIds = [
     ...new Set([
       studentId,
@@ -186,6 +191,20 @@ export function LessonPaymentOptions({
   const selected = eligible.filter((item) => keys.includes(lineKey(item)));
   const currencies = new Set(selected.map((item) => item.currency));
   const total = selected.reduce((sum, item) => sum + item.amountMinor, 0);
+  const [review, setReview] = useState<{
+    scope: string;
+    signature: string;
+    rows: LessonObligation[];
+  }>();
+  const signature = JSON.stringify(
+    selected.map((item) => [
+      lineKey(item),
+      item.invoiceVersion,
+      item.amountMinor,
+      item.currency,
+    ]),
+  );
+  const reviewing = review?.scope === scope ? review : undefined;
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const settlement = attempt.data?.status;
@@ -237,8 +256,15 @@ export function LessonPaymentOptions({
     setParams(next, { replace: true });
   }
   async function startPayment() {
-    if (!selected.length || currencies.size !== 1 || checkoutBusy) return;
+    if (
+      reviewing?.signature !== signature ||
+      !selected.length ||
+      currencies.size !== 1 ||
+      checkoutBusy
+    )
+      return;
     if (isDemo) {
+      setReview(undefined);
       setNotice("Demo mode does not open a payment provider.");
       return;
     }
@@ -267,6 +293,7 @@ export function LessonPaymentOptions({
       showAttempt(id);
       if (resource.url) window.location.assign(resource.url);
     } catch (error) {
+      setReview(undefined);
       setNotice(
         error instanceof Error ? error.message : "Unable to start payment.",
       );
@@ -489,54 +516,69 @@ export function LessonPaymentOptions({
                   : "Select all eligible lessons"}
               </button>
             )}
-            {obligations.map((item) => (
-              <label
-                className="training-payment-line"
-                key={lineKey(item)}
-                htmlFor={`obligation-${lineKey(item)}`}
-              >
-                <input
-                  id={`obligation-${lineKey(item)}`}
-                  type="checkbox"
-                  checked={selected.some(
-                    (row) => lineKey(row) === lineKey(item),
-                  )}
-                  disabled={
-                    checkoutBusy ||
-                    !item.eligible ||
-                    !payableStudents.includes(item.studentId)
-                  }
-                  onChange={(event) =>
-                    select(
-                      event.target.checked
-                        ? [...keys, lineKey(item)]
-                        : keys.filter((key) => key !== lineKey(item)),
-                    )
-                  }
-                />
-                <span>
-                  <strong>{item.description}</strong>
-                  <small>
-                    {formatCalendarDateKey(item.date)} · {item.invoiceNumber}
-                    {item.studentId !== studentId
-                      ? ` · ${item.studentName ?? "Household lesson"}`
-                      : ""}
-                  </small>
-                  <small>
-                    {item.pending
-                      ? "Payment processing"
-                      : !item.eligible
-                        ? "Payment under review"
-                        : !payableStudents.includes(item.studentId)
-                          ? "Your designated payer manages this payment"
-                          : item.adjustmentsMinor > 0
-                            ? `Adjusted by ${formatMoney(item.adjustmentsMinor, item.currency)}`
-                            : ""}
-                  </small>
-                </span>
-                <strong>{formatMoney(item.amountMinor, item.currency)}</strong>
-              </label>
-            ))}
+            {obligations.map((item) => {
+              const invoice = invoiceById.get(item.invoiceId);
+              const paid =
+                invoice?.items.find((line) => line.id === item.lineId)
+                  ?.paidMinor ?? 0;
+              const status = item.pending
+                ? "Payment processing"
+                : !item.eligible
+                  ? "Needs billing review"
+                  : !payableStudents.includes(item.studentId)
+                    ? "Your designated payer manages this payment"
+                    : invoice && invoice.due_date < today
+                      ? "Payment overdue"
+                      : paid > 0
+                        ? "Balance remaining"
+                        : "Payment needed";
+              return (
+                <label
+                  className="training-payment-line"
+                  key={lineKey(item)}
+                  htmlFor={`obligation-${lineKey(item)}`}
+                >
+                  <input
+                    id={`obligation-${lineKey(item)}`}
+                    type="checkbox"
+                    checked={selected.some(
+                      (row) => lineKey(row) === lineKey(item),
+                    )}
+                    disabled={
+                      checkoutBusy ||
+                      !item.eligible ||
+                      !payableStudents.includes(item.studentId)
+                    }
+                    onChange={(event) =>
+                      select(
+                        event.target.checked
+                          ? [...keys, lineKey(item)]
+                          : keys.filter((key) => key !== lineKey(item)),
+                      )
+                    }
+                  />
+                  <span>
+                    <strong>{item.description}</strong>
+                    <small>
+                      {formatCalendarDateKey(item.date)} · {item.invoiceNumber}
+                      {item.studentId !== studentId
+                        ? ` · ${item.studentName ?? "Household lesson"}`
+                        : ""}
+                    </small>
+                    <small>{status}</small>
+                    {item.adjustmentsMinor > 0 && (
+                      <small>
+                        Adjusted by{" "}
+                        {formatMoney(item.adjustmentsMinor, item.currency)}
+                      </small>
+                    )}
+                  </span>
+                  <strong>
+                    {formatMoney(item.amountMinor, item.currency)}
+                  </strong>
+                </label>
+              );
+            })}
           </fieldset>
           {selected.length > 0 && (
             <div className="training-payment-review">
@@ -557,15 +599,85 @@ export function LessonPaymentOptions({
                 disabled={
                   checkoutBusy || currencies.size !== 1 || selected.length > 50
                 }
-                onClick={() => void startPayment()}
+                onClick={() => setReview({ scope, signature, rows: selected })}
               >
-                {checkoutBusy
-                  ? "Opening checkout…"
-                  : "Continue to secure checkout"}
+                Review payment
               </button>
             </div>
           )}
         </>
+      )}
+      {reviewing && (
+        <Dialog
+          title="Review selected lessons"
+          className="training-payment-confirmation"
+          description="Confirm the lesson balances before continuing to Stripe."
+          onClose={() => {
+            if (!checkoutBusy) setReview(undefined);
+          }}
+        >
+          {reviewing.signature !== signature && (
+            <p role="alert">
+              The balance changed. Return to the selection and review the
+              updated amount.
+            </p>
+          )}
+          <div className="training-payment-confirmation-grid">
+            <div
+              className="table-list"
+              role="region"
+              aria-label="Lessons in this payment"
+              tabIndex={0}
+            >
+              {reviewing.rows.map((row) => (
+                <article key={lineKey(row)}>
+                  <div>
+                    <strong>{row.description}</strong>
+                    <small>
+                      {formatCalendarDateKey(row.date)} · {row.invoiceNumber}
+                      {row.studentName ? ` · ${row.studentName}` : ""}
+                    </small>
+                  </div>
+                  <strong>{formatMoney(row.amountMinor, row.currency)}</strong>
+                </article>
+              ))}
+            </div>
+            <div className="training-payment-total">
+              <p>
+                <strong>
+                  Total{" "}
+                  {formatMoney(
+                    reviewing.rows.reduce(
+                      (sum, row) => sum + row.amountMinor,
+                      0,
+                    ),
+                    reviewing.rows[0].currency,
+                  )}
+                </strong>
+              </p>
+              <p>One-time payment. You can pay without saving a card.</p>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              disabled={checkoutBusy}
+              onClick={() => setReview(undefined)}
+            >
+              Back to selection
+            </button>
+            <button
+              type="button"
+              className="primary"
+              disabled={checkoutBusy || reviewing.signature !== signature}
+              onClick={() => void startPayment()}
+            >
+              {checkoutBusy
+                ? "Opening checkout…"
+                : "Continue to secure checkout"}
+            </button>
+          </div>
+        </Dialog>
       )}
       {!attemptId && invoicesAvailable && (
         <div className="page-actions">
