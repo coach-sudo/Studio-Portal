@@ -205,6 +205,7 @@ export async function openAutopaySetup(
     id: plan.id,
     session: session.id,
     customer: customer.id,
+    livemode: live,
   });
   return { status: session.status, url: session.url };
 }
@@ -255,6 +256,7 @@ export async function reconcileAutopaySetup(
     id,
     session: session.id,
     customer,
+    livemode: live,
     intent: intentId,
     method: method.id,
     methodLabel: method.card

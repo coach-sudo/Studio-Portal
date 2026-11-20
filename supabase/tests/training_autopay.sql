@@ -89,8 +89,29 @@ select is((select state from training_internal.lesson_autopay_attempts where man
 update training_internal.lesson_autopay_mandates set planning_since=now()-interval '2 minutes' where id=pg_temp.ap(80);
 update training_internal.lesson_autopay_attempts set pay_at=now()-interval '1 minute'
  where mandate_id=pg_temp.ap(80) and lesson_id=pg_temp.ap(41);
+insert into public.students(id,studio_id,full_name,email,is_minor,portal_enabled)
+values(pg_temp.ap(6),pg_temp.ap(4),'Former dependent','former-dependent@example.test',true,true);
+insert into public.lessons(id,studio_id,student_id,topic,starts_at,ends_at,status,location_type,location_label,price_minor,payment_status)
+values(pg_temp.ap(47),pg_temp.ap(4),pg_temp.ap(6),'Former dependent lesson',now()+interval '1 day',
+ now()+interval '1 day 1 hour','scheduled','virtual','Synthetic studio',8500,'due');
+insert into training_internal.lesson_autopay_mandates(id,studio_id,student_id,payer_id,scope,lead_days,currency,
+ maximum_minor,timezone,charge_time,existing_terms,consent_version,planning_since,status)
+values(pg_temp.ap(82),pg_temp.ap(4),pg_temp.ap(6),pg_temp.ap(2),'existing',2,'USD',9000,
+ 'America/New_York','09:00','{}','lesson-autopay-v1',now()-interval '3 minutes','active');
+insert into training_internal.lesson_autopay_attempts(id,mandate_id,lesson_id,starts_at,pay_at,amount_minor,terms,state)
+select pg_temp.ap(83),pg_temp.ap(82),id,starts_at,now()-interval '90 seconds',8500,'{}','planned'
+from public.lessons where id=pg_temp.ap(47);
 select set_config('test.autopay_job',public.training_lesson_autopay_job('claim','{}')->>'id',true);
-select ok(length(current_setting('test.autopay_job'))=36,'A due lesson claims the canonical full-balance reservation');
+select is(current_setting('test.autopay_job'),
+ (select id::text from training_internal.lesson_autopay_attempts where mandate_id=pg_temp.ap(80) and lesson_id=pg_temp.ap(41)),
+ 'An earlier attempt whose payer lost authority cannot block the next eligible lesson');
+select is(public.training_lesson_checkout('payers',jsonb_build_object('actor',pg_temp.ap(2),
+ 'studentIds',jsonb_build_array(pg_temp.ap(5))))->'attempts','[]'::jsonb,
+ 'An automatic reservation is hidden from manual recovery before the intent is attached');
+select throws_ok($$select public.training_lesson_checkout('read',jsonb_build_object('actor',pg_temp.ap(2),
+ 'id',current_setting('test.autopay_job')))$$,'P0001','NOT_FOUND','An automatic reservation cannot be opened as manual Checkout');
+select throws_ok($$select public.training_lesson_checkout('reserve',jsonb_build_object('actor',pg_temp.ap(2),
+ 'id',current_setting('test.autopay_job')))$$,'P0001','NOT_FOUND','A reused id cannot create competing manual Checkout');
 select is(public.training_lesson_autopay_job('claim','{}'),null::jsonb,'A concurrent scheduler cannot claim the leased payment');
 select is((select checkout_amount from public.studio_invoices where id=pg_temp.ap(21)),8500::bigint,'Automatic payment shares the checkout lock');
 create function pg_temp.provider(status text default 'succeeded') returns jsonb language sql stable as $$
@@ -119,11 +140,15 @@ select is(public.training_lesson_autopay('begin',pg_temp.future()||jsonb_build_o
   'consented',true,'consentVersion','lesson-autopay-v1','reviewDigest',current_setting('test.autopay_future_review')
 ))->>'status','pending_setup','Future scope has its own consent receipt');
 create function pg_temp.future_setup() returns jsonb language sql immutable as $$
-  select jsonb_build_object('id',pg_temp.ap(81),'session','cs_test_autopay_future','customer','cus_autopay_future',
+  select jsonb_build_object('id',pg_temp.ap(81),'session','cs_live_autopay_future','customer','cus_autopay_future','livemode',true,
     'intent','seti_autopay_future','method','pm_autopay_future','methodLabel','Card ending in 4242')
 $$;
+select throws_ok($$select public.training_lesson_autopay('setup_attach',pg_temp.future_setup()-'livemode')$$,
+ 'P0001','VERSION_CONFLICT: Stripe setup does not match the authorization.','A live session requires verified live mode');
+select throws_ok($$select public.training_lesson_autopay('setup_attach',pg_temp.future_setup()||jsonb_build_object('session','cs_test_wrong_mode'))$$,
+ 'P0001','VERSION_CONFLICT: Stripe setup does not match the authorization.','Verified live mode rejects a sandbox session');
 select public.training_lesson_autopay('setup_attach',pg_temp.future_setup());
-select is(public.training_lesson_autopay('setup_complete',pg_temp.future_setup())->>'status','active','Future scope activates after setup');
+select is(public.training_lesson_autopay('setup_complete',pg_temp.future_setup())->>'status','active','Verified live setup activates future scope');
 select is((select count(*) from training_internal.lesson_autopay_attempts where mandate_id=pg_temp.ap(81)),0::bigint,
  'Future-only authorization leaves all existing obligations untouched');
 insert into public.studio_invoices(id,studio_id,student_id,number,status,currency,issue_date,due_date,branding,recipient,items,total_minor)
