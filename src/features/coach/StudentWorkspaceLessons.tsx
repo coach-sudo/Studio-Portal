@@ -799,6 +799,7 @@ function CoachLessonWorkspace({
                 data={data}
                 lesson={lesson}
                 isDemo={isDemo}
+                inlineReceipt={!paidByCredit}
               />
             </section>
           </div>

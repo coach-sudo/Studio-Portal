@@ -667,6 +667,7 @@ export function LessonsView({
                       ) ?? selected
                     }
                     isDemo={isDemo}
+                    inlineReceipt={!paidByCredit}
                   />
                 </section>
               )}

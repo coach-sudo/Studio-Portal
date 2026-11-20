@@ -12,10 +12,12 @@ export function CoachLessonBilling({
   data,
   lesson,
   isDemo,
+  inlineReceipt,
 }: {
   data: StudioSnapshot;
   lesson: Lesson;
   isDemo: boolean;
+  inlineReceipt?: boolean;
 }) {
   const [recording, setRecording] = useState(false);
   return (
@@ -27,14 +29,15 @@ export function CoachLessonBilling({
           studentId={lesson.studentId}
           lessonId={lesson.id}
         />
-        {(canRecordDirectLessonPayment(lesson) ||
-          (!lesson.invoiceId && (lesson.paidMinor ?? 0) > 0)) && (
-          <button onClick={() => setRecording(true)}>
-            {canRecordDirectLessonPayment(lesson)
-              ? "Record payment"
-              : "Review recorded payment"}
-          </button>
-        )}
+        {inlineReceipt === undefined &&
+          (canRecordDirectLessonPayment(lesson) ||
+            (!lesson.invoiceId && (lesson.paidMinor ?? 0) > 0)) && (
+            <button onClick={() => setRecording(true)}>
+              {canRecordDirectLessonPayment(lesson)
+                ? "Record payment"
+                : "Review recorded payment"}
+            </button>
+          )}
         {["scheduled", "completed"].includes(lesson.status) &&
           !["paid", "paid_by_credit", "waived", "refunded"].includes(
             lesson.paymentStatus ?? "",
@@ -47,6 +50,9 @@ export function CoachLessonBilling({
             </Link>
           )}
       </div>
+      {inlineReceipt && !lesson.invoiceId && (
+        <CoachLessonPayment lesson={lesson} isDemo={isDemo} />
+      )}
       {recording && (
         <CoachLessonPaymentDialog
           lesson={lesson}
@@ -67,24 +73,32 @@ export function CoachLessonPaymentDialog({
   isDemo: boolean;
   onClose: () => void;
 }) {
-  const queryClient = useQueryClient();
   return (
     <Dialog
       title="Record lesson payment"
       description={lesson.topic}
       onClose={onClose}
     >
-      <LessonPaymentReceipt
-        lessonId={lesson.id}
-        isDemo={isDemo}
-        onSaved={() =>
-          invalidateStudioDomains(queryClient, [
-            "lessons",
-            "finance",
-            "booking",
-          ])
-        }
-      />
+      <CoachLessonPayment lesson={lesson} isDemo={isDemo} />
     </Dialog>
+  );
+}
+
+function CoachLessonPayment({
+  lesson,
+  isDemo,
+}: {
+  lesson: Lesson;
+  isDemo: boolean;
+}) {
+  const queryClient = useQueryClient();
+  return (
+    <LessonPaymentReceipt
+      lessonId={lesson.id}
+      isDemo={isDemo}
+      onSaved={() =>
+        invalidateStudioDomains(queryClient, ["lessons", "finance", "booking"])
+      }
+    />
   );
 }
