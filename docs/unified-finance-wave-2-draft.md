@@ -1,0 +1,31 @@
+# Unified Finance Wave 2 draft
+
+This review branch starts at the published Wave 1 merge `9129154804e3314c26379ed031e6e287fc61398f` and its 88-migration baseline. The approved local finance design package is the reference for the selection, review, household breakdown, and automatic-payment controls. The draft is **NO-GO for hosted Wave 2 acceptance**.
+
+## Implemented
+
+- Payment settings links to the authorized payer’s existing profile editor, ledger history, and automatic-payment arrangement. Saved-method status and secure Stripe setup use payer and studio ownership. Card details stay with Stripe. Previously stored customer associations without payer ownership are not reused for this screen. Legacy package and mandate processing uses its existing records.
+- Existing invoice-backed lesson selection has a separate review step with a fresh total, keyboard-accessible review rows, and a stale-selection check. The server still validates the request and reconciles signed provider results. The UI describes processing, remaining balance, overdue invoices, and payment needed separately.
+- Household payments shows authorized students' open invoice balances, with per-currency totals and ledger entries. Each student’s existing invoice, receipt, and package pages remain available. Shared package availability is excluded until its ownership and reservations can be calculated authoritatively.
+- Pause, resume, and end prompt for confirmation and submit the existing mandate ID and version. The existing consent review, setup, and failure recovery remain. The published `maximumLessonMinor` policy is a studio ceiling for one scheduled automatic lesson payment, set to 8,500 cents in production. It is separate from the lesson price, one-time payments, and the cap accepted on a particular mandate.
+
+## Invoice-free checkout blocker
+
+`training_internal.reserve_lesson_checkout` and `public.training_lesson_checkout` reserve and settle issued invoice lines. They use the invoice checkout key as part of the lock and release contract. A direct attempt that sets only `lessons.invoice_payment_pending` would still be invisible to the automatic credit evaluator: the effective `credit_internal.evaluate_student_lesson_credit` checks invoice checkout keys and booking status. Credits could be reserved after a card session opens and before Stripe settles it. The existing atomic lesson receipt command is coach-only and accepts cash and bank methods; it cannot authenticate or settle a provider event.
+
+The next database increment must extend the existing checkout allocation and signed settlement contract to hold an exact lesson without an invoice. It must make the same claim visible to credit reservations, invoice issuance, lesson changes, and manual receipt writers, including during retry and cancellation. For supported single-student obligations, the server must check the exact lesson or booking version, current balance, existing allocations, and payer under shared locks. Anything split across participants, disputed, or dependent on unmerged shared-credit rules needs an explicit review state. A UI label or an invoice issued at checkout cannot establish this boundary.
+
+No migration is included. The existing #107 checkout and autopay paths remain invoice-backed. No draft credit PR is a prerequisite for the code in this draft.
+
+## Acceptance status
+
+| Scenarios | Evidence or remaining gate |
+| --- | --- |
+| 1–8, 13, 17 | Invoice-free collection, partial-balance settlement, and the required cash, invoice, credit, and signed-webhook race tests remain blocked on the shared transaction work above. |
+| 9–12 | Existing financial access boundaries are reused. Local tests cover pre-provider payer denial and mismatched Stripe ownership. Hosted guardian payment, revocation, and Stripe add, replace, and remove still need proof. Stripe Search visibility can lag after setup, and the Customer Portal must be configured to allow saved-method management in the sandbox. |
+| 14–16 | Existing consent previews and recovery are preserved. Local component tests cover versioned pause/resume and canceling a confirmation. Actual provider enrollment and failure recovery still need protected verification. |
+| 18 | A focused local synthetic browser review passed at 320, 768, and 1440 pixels with keyboard and axe checks. Design fidelity for the invoice-free lesson journey and shared-package household view remains open. |
+| 19 | On SSO-protected Wave 1 deploy `6b00861fe6d3dc3452106d72`, the synthetic coach signed in and saw the same $480 in Account and Billing. The composer offered six links to the existing invoice and zero selectable billed lessons. The linked invoice opened at $480. No financial command was submitted. |
+| 20 | Local tests used demo data or provider mocks and made no live transactions. |
+
+Before hosted acceptance, replay the exact 88-version production baseline plus reviewed candidate migrations on a clean Supabase development branch with no production data. Scope the unpublished SSO preview to that branch and set `TRAINING_SANDBOX_SUPABASE_REF` to its project ref. Verify public and server keys, sandbox-only Stripe and webhook settings, synthetic role fixtures, and disabled delivery and workers before browser tests. The historical shared staging database is outside the candidate validation path.
