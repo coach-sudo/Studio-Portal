@@ -15,6 +15,7 @@ export function presentOutboxMessage(
     body: string;
     event_key?: string | null;
     lesson_id?: string | null;
+    student_id?: string | null;
     entity_snapshot?: unknown;
   },
   studio: EmailStudio,
@@ -108,7 +109,7 @@ export function presentOutboxMessage(
     (typeof invoiceId === "string"
       ? {
           label: "Pay invoice",
-          url: `${origin}/portal/payments?invoice=${encodeURIComponent(invoiceId)}`,
+          url: `${origin}/portal/payments?invoice=${encodeURIComponent(invoiceId)}${input.student_id ? `&student=${encodeURIComponent(input.student_id)}` : ""}`,
         }
       : undefined) ??
     (bookingLink

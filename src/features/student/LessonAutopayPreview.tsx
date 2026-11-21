@@ -1,6 +1,6 @@
 import { useId, useRef, useState, type FormEvent } from "react";
 import { Link } from "react-router-dom";
-import { Section } from "../../components/Primitives";
+import { Dialog, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { useSearchIdentity } from "../../data/globalSearch";
 import { formatMoney } from "../../domain/finance";
@@ -27,6 +27,23 @@ const scopes: Record<AutopaySelection["scope"], string> = {
   future: "Future lessons only",
   existing_and_future: "Selected existing and future lessons",
 };
+const managementCopy = {
+  pause: {
+    title: "Pause automatic payments",
+    detail:
+      "New automatic charges stop while this arrangement is paused. A payment already processing may still finish.",
+  },
+  resume: {
+    title: "Resume automatic payments",
+    detail:
+      "Eligible future lessons can be charged under the existing authorization. A past or ineligible lesson still needs a separate payment.",
+  },
+  cancel: {
+    title: "End automatic payments",
+    detail:
+      "New automatic charges under this arrangement stop. A payment already processing may still finish.",
+  },
+} as const;
 
 export function LessonAutopayPreview({
   studentId,
@@ -76,6 +93,10 @@ export function LessonAutopayPreview({
   }>();
   const [consented, setConsented] = useState(false);
   const [changing, setChanging] = useState(false);
+  const [management, setManagement] = useState<{
+    action: keyof typeof managementCopy;
+    plan: LessonAutopayPlan;
+  }>();
   const [busy, setBusy] = useState(false);
   const locked = useRef(false);
   const [error, setError] = useState("");
@@ -221,6 +242,7 @@ export function LessonAutopayPreview({
         if (resource.url) window.location.assign(resource.url);
         else setNotice("Stripe is verifying your payment method.");
       } else {
+        setManagement(undefined);
         clearReview();
         setChanging(false);
         setNotice(
@@ -296,12 +318,13 @@ export function LessonAutopayPreview({
                 (arrangement.status === "paused" &&
                   arrangement.needsReauthorization)
               }
-              onClick={() =>
-                void manage(
-                  arrangement.status === "paused" ? "resume" : "pause",
-                  arrangement,
-                )
-              }
+              onClick={() => {
+                setError("");
+                setManagement({
+                  action: arrangement.status === "paused" ? "resume" : "pause",
+                  plan: arrangement,
+                });
+              }}
             >
               {arrangement.status === "paused" ? "Resume" : "Pause"}
             </button>
@@ -320,7 +343,10 @@ export function LessonAutopayPreview({
             <button
               type="button"
               disabled={busy}
-              onClick={() => void manage("cancel", arrangement)}
+              onClick={() => {
+                setError("");
+                setManagement({ action: "cancel", plan: arrangement });
+              }}
             >
               End automatic payments
             </button>
@@ -367,6 +393,35 @@ export function LessonAutopayPreview({
             </details>
           )}
         </div>
+      )}
+      {management && (
+        <Dialog
+          title={managementCopy[management.action].title}
+          description={managementCopy[management.action].detail}
+          onClose={() => {
+            if (!busy) setManagement(undefined);
+          }}
+        >
+          <p>Past payments stay on your account.</p>
+          {error && <p role="alert">{error}</p>}
+          <div className="form-actions">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setManagement(undefined)}
+            >
+              Keep current setting
+            </button>
+            <button
+              type="button"
+              className="primary"
+              disabled={busy}
+              onClick={() => void manage(management.action, management.plan)}
+            >
+              {busy ? "Saving…" : managementCopy[management.action].title}
+            </button>
+          </div>
+        </Dialog>
       )}
       {(!arrangement || changing) && !pending && (
         <div>
@@ -571,7 +626,7 @@ export function LessonAutopayPreview({
           )}
         </div>
       )}
-      {error && <p role="alert">{error}</p>}
+      {error && !management && <p role="alert">{error}</p>}
     </Section>
   );
 }

@@ -81,7 +81,7 @@ export function InvoicePayerSetup({
           canViewWork: contact?.canViewWork ?? false,
           canManageProfile: contact?.canManageProfile ?? false,
           canViewFinance: true,
-          canReceiveNotifications: contact?.canReceiveNotifications ?? false,
+          canReceiveNotifications: values.get("allowContactEmail") === "on",
           isPrimaryPayer: true,
           isPrimarySchedulingContact:
             contact?.isPrimarySchedulingContact ?? false,
@@ -227,6 +227,22 @@ export function InvoicePayerSetup({
               disabled={busy}
             />
             Grant this payer portal access and permission to view billing.
+          </label>
+        )}
+        {choice !== "self" && (
+          <label
+            className="invoice-payer-access"
+            htmlFor={`${fields}-allow-email`}
+          >
+            <input
+              id={`${fields}-allow-email`}
+              type="checkbox"
+              name="allowContactEmail"
+              defaultChecked={contact?.canReceiveNotifications ?? false}
+              disabled={busy}
+            />
+            Allow email to this payer. Their optional notification preferences
+            still apply to reminders.
           </label>
         )}
       </div>

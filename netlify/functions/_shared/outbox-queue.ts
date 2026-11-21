@@ -34,6 +34,27 @@ export function compatibleQueueStatus(
         : "queued";
   return legacyEnabled ? "queued" : undefined;
 }
+export async function insertOutboxMessage(
+  client: SupabaseClient,
+  message: TablesInsert<"outbox_messages">,
+) {
+  // The existing partial unique index cannot be inferred by a PostgREST upsert.
+  const inserted = await (client as SupabaseClient<Database>)
+    .from("outbox_messages")
+    .insert(message)
+    .select("id,status,event_key,dedupe_key")
+    .single();
+  if (inserted.error) {
+    if (
+      inserted.error.code === "23505" &&
+      inserted.error.message.includes("outbox_messages_dedupe_idx")
+    )
+      return null;
+    throw inserted.error;
+  }
+  return inserted.data;
+}
+
 export async function queuePresentedMessages(
   client: SupabaseClient,
   messages: TablesInsert<"outbox_messages">[],
@@ -101,20 +122,8 @@ export async function queuePresentedMessages(
     dedupe_key: string | null;
   }[] = [];
   for (const message of decorated) {
-    const inserted = await db
-      .from("outbox_messages")
-      .insert(message)
-      .select("id,status,event_key,dedupe_key")
-      .single();
-    if (inserted.error) {
-      if (
-        inserted.error.code === "23505" &&
-        inserted.error.message.includes("outbox_messages_dedupe_idx")
-      )
-        continue;
-      throw inserted.error;
-    }
-    queuedRows.push(inserted.data);
+    const inserted = await insertOutboxMessage(db, message);
+    if (inserted) queuedRows.push(inserted);
   }
   for (const message of messages)
     if (message.automation_rule_id) {

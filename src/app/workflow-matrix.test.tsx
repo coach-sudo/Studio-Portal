@@ -756,7 +756,7 @@ describe("50 start-to-finish studio workflows", () => {
       ).toBeInTheDocument();
       expect(screen.getByLabelText("Timezone")).toBeInTheDocument();
       expect(
-        screen.getByRole("heading", { name: "Payment method" }),
+        screen.getByRole("heading", { name: "Payment settings" }),
       ).toBeInTheDocument();
     });
   });

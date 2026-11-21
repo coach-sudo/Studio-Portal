@@ -1,4 +1,3 @@
-import { portalOrigin } from "./_shared/portal-url";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { apiError, correlationId, json } from "./_shared/http";
@@ -7,20 +6,7 @@ import { googleAccessToken, googleFreeBusy } from "./_shared/google";
 import { serviceClient, userClient } from "./_shared/supabase";
 import { queueLessonChangeEmails } from "./_shared/booking-email";
 import { cancelConfirmedBooking } from "./_shared/booking-cancellation";
-import { trainingCheckout } from "./_shared/training-checkout";
-
-async function requireBillingPayer(
-  db: ReturnType<typeof userClient>,
-  studentId: string,
-) {
-  const { data, error } = await db.auth.getUser();
-  if (error || !data.user) throw new Error("FORBIDDEN");
-  const { studentIds } = await trainingCheckout<{ studentIds: string[] }>("payers", {
-    actor: data.user.id,
-    studentIds: [studentId],
-  });
-  if (!studentIds.includes(studentId)) throw new Error("FORBIDDEN");
-}
+import { payerPaymentSettings, requireBillingPayer } from "./_shared/payer-payment-settings";
 
 export default async (request: Request, context: Context) => {
   const id = correlationId(request, context.requestId);
@@ -29,34 +15,9 @@ export default async (request: Request, context: Context) => {
     const action = context.params.action;
     const body = bookingPortalCommandSchema.parse(await request.json());
     const userDb = userClient(request);
-    if(action==="payment-method"||action==="billing"){
-      if(!body.studentId)throw new Error("VALIDATION_FAILED: studentId is required.");
-      await requireBillingPayer(userDb, body.studentId);
-      const {data:student,error:studentError}=await userDb.from("students").select("id,studio_id,email,guardian_email,stripe_customer_id").eq("id",body.studentId).single();if(studentError||!student)throw new Error("FORBIDDEN");const stripeKey=Netlify.env.get("STRIPE_SECRET_KEY");if(!stripeKey)throw new Error("Stripe is not configured.");const stripe=new Stripe(stripeKey,{apiVersion:"2026-07-29.dahlia"});let customerId=student.stripe_customer_id as string|undefined;
-      if(!customerId){const customer=await stripe.customers.create({email:student.guardian_email||student.email||undefined,metadata:{student_id:student.id,studio_id:student.studio_id}},{idempotencyKey:`student-customer:${student.id}`});customerId=customer.id;const {error:updateError}=await serviceClient().from("students").update({stripe_customer_id:customerId,updated_at:new Date().toISOString()}).eq("id",student.id);if(updateError)throw updateError;}
-      const origin = portalOrigin(context);
-      if (action === "payment-method") {
-        const { data: studio, error: studioError } = await serviceClient()
-          .from("studios").select("settings").eq("id", student.studio_id).single();
-        if (studioError) throw studioError;
-        const settings = studio?.settings as { currency?: string } | null;
-        const session = await stripe.checkout.sessions.create({
-          mode: "setup",
-          integration_identifier: "coachd-portal-saved-method",
-          currency: (settings?.currency || "USD").toLowerCase(),
-          customer: customerId,
-          client_reference_id: student.id,
-          success_url: origin + "/portal/settings?payment=updated",
-          cancel_url: origin + "/portal/settings?payment=cancelled",
-          metadata: { student_id: student.id, studio_id: student.studio_id },
-        }, {
-          idempotencyKey: request.headers.get("idempotency-key") ||
-            ["setup", student.id, Math.floor(Date.now() / 30000)].join(":"),
-        });
-        if (!session.url) throw new Error("Stripe did not return a setup URL.");
-        return json({ url: session.url });
-      }
-      const session=await stripe.billingPortal.sessions.create({customer:customerId,return_url:`${origin}/portal/settings`});return json({url:session.url});
+    if (action === "payment-settings" || action === "payment-method" || action === "billing") {
+      if (!body.studentId) throw new Error("VALIDATION_FAILED: studentId is required.");
+      return await payerPaymentSettings(request, context, action, body.studentId, userDb);
     }
     if (!body.bookingId) throw new Error("VALIDATION_FAILED: bookingId is required.");
     const { data: booking, error: accessError } = await userDb.from("bookings").select("*").eq("id", body.bookingId).single();

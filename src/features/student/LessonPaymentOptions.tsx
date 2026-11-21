@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { EmptyState, Section } from "../../components/Primitives";
+import { Dialog, EmptyState, Section } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { useInvoices } from "../../data/invoices";
 import { useSearchIdentity } from "../../data/globalSearch";
@@ -10,6 +10,7 @@ import { invoiceDue } from "../../domain/invoices";
 import {
   formatCalendarDateKey,
   formatStudioDateTime,
+  studioDateKey,
 } from "../../domain/presentation";
 import type { Lesson, StudioSnapshot } from "../../domain/model";
 import { portalContextLink } from "../../domain/coachingContext";
@@ -20,6 +21,7 @@ import {
 } from "../../domain/trainingArrangement";
 import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useTrainingPayers } from "./useTrainingPayers";
+import { useDirectLessonOptions } from "./useDirectLessonOptions";
 import "./LessonPaymentOptions.css";
 
 interface CheckoutResult {
@@ -36,7 +38,14 @@ type VerifiedLessonQuote = {
   amountMinor: number;
 };
 
-const lineKey = (item: LessonObligation) => `${item.invoiceId}:${item.lineId}`;
+type PayableLesson = LessonObligation & {
+  directTerms?: string;
+  paidMinor?: number;
+};
+const lineKey = (item: PayableLesson) =>
+  item.directTerms
+    ? `direct:${item.lessonId}`
+    : `${item.invoiceId}:${item.lineId}`;
 
 const paymentNotice: Record<
   Exclude<CheckoutResult["status"], "open">,
@@ -57,12 +66,14 @@ export function LessonPaymentOptions({
   studentId,
   lesson,
   hasPackages,
+  householdStudentIds = [],
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
   studentId: string;
   lesson?: Lesson;
   hasPackages: boolean;
+  householdStudentIds?: readonly string[];
 }) {
   const [params, setParams] = useSearchParams();
   const queryClient = useQueryClient();
@@ -79,9 +90,14 @@ export function LessonPaymentOptions({
   const studioInvoices = (invoices ?? []).filter(
     (invoice) => invoice.studio_id === data.studioId,
   );
+  const invoiceById = new Map(
+    studioInvoices.map((invoice) => [invoice.id, invoice]),
+  );
+  const today = studioDateKey(new Date(), data.settings.timezone);
   const studentIds = [
     ...new Set([
       studentId,
+      ...householdStudentIds,
       ...studioInvoices.flatMap((invoice) =>
         ["open", "partially_paid"].includes(invoice.status)
           ? [invoice.student_id]
@@ -95,6 +111,13 @@ export function LessonPaymentOptions({
     studentId,
     studentIds,
     !isDemo && Boolean(invoices),
+  );
+  const direct = useDirectLessonOptions(
+    studentId,
+    selectedLesson || upcomingOnly ? [studentId] : studentIds,
+    !isDemo && !attemptId && Boolean(payer.data?.ready),
+    selectedLesson ?? undefined,
+    upcomingOnly,
   );
   const attempt = useQuery({
     queryKey: ["training-payment-attempt", identity, attemptId, studentId],
@@ -143,7 +166,10 @@ export function LessonPaymentOptions({
       payer.data?.ready &&
       payableStudents.includes(studentId) &&
       !currentObligations.length &&
-      data.settings.bookingDefaults.allowLearnerLessonInvoices,
+      data.settings.bookingDefaults.allowLearnerLessonInvoices &&
+      !direct.data?.enabled &&
+      !direct.isLoading &&
+      !direct.isError,
     ),
     retry: false,
     queryFn: async () => {
@@ -168,7 +194,22 @@ export function LessonPaymentOptions({
       : payableStudents
           .filter((id) => id !== studentId)
           .flatMap((id) => trainingObligations(studioInvoices, id));
-  const obligations = [...currentObligations, ...householdObligations];
+  const obligations: PayableLesson[] = [
+    ...currentObligations,
+    ...householdObligations,
+    ...(direct.data?.items ?? []).map((item): PayableLesson => ({
+      ...item,
+      invoiceId: "",
+      invoiceVersion: 0,
+      invoiceNumber: "",
+      lineId: item.lessonId,
+      directTerms: item.terms,
+      amountMinor: item.remainingMinor,
+      adjustmentsMinor: 0,
+      eligible: true,
+      pending: false,
+    })),
+  ];
   const eligible = obligations.filter(
     (item) => item.eligible && payableStudents.includes(item.studentId),
   );
@@ -185,7 +226,24 @@ export function LessonPaymentOptions({
         : [];
   const selected = eligible.filter((item) => keys.includes(lineKey(item)));
   const currencies = new Set(selected.map((item) => item.currency));
+  const mixed =
+    new Set(selected.map((item) => Boolean(item.directTerms))).size > 1;
   const total = selected.reduce((sum, item) => sum + item.amountMinor, 0);
+  const [review, setReview] = useState<{
+    scope: string;
+    signature: string;
+    rows: PayableLesson[];
+  }>();
+  const signature = JSON.stringify(
+    selected.map((item) => [
+      lineKey(item),
+      item.invoiceVersion,
+      item.amountMinor,
+      item.currency,
+      item.directTerms,
+    ]),
+  );
+  const reviewing = review?.scope === scope ? review : undefined;
   const [checkoutBusy, setCheckoutBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const settlement = attempt.data?.status;
@@ -195,6 +253,12 @@ export function LessonPaymentOptions({
     void queryClient.invalidateQueries({ queryKey: ["invoices"] });
     void queryClient.invalidateQueries({
       queryKey: ["training-payment-payers"],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["household-payment-history"],
+    });
+    void queryClient.invalidateQueries({
+      queryKey: ["training-direct-options"],
     });
     void invalidateStudioDomains(queryClient, [
       "finance",
@@ -237,8 +301,16 @@ export function LessonPaymentOptions({
     setParams(next, { replace: true });
   }
   async function startPayment() {
-    if (!selected.length || currencies.size !== 1 || checkoutBusy) return;
+    if (
+      reviewing?.signature !== signature ||
+      !selected.length ||
+      currencies.size !== 1 ||
+      mixed ||
+      checkoutBusy
+    )
+      return;
     if (isDemo) {
+      setReview(undefined);
       setNotice("Demo mode does not open a payment provider.");
       return;
     }
@@ -247,19 +319,29 @@ export function LessonPaymentOptions({
     setCheckoutBusy(true);
     try {
       const { resource } = await studioCommand("invoices", {
-        command: "training_start",
+        command: selected[0].directTerms
+          ? "training_start_direct"
+          : "training_start",
         expectedVersion: 0,
         idempotencyKey: id,
         payload: {
           studentId,
-          items: selected.map(
-            ({ invoiceId, invoiceVersion, lineId, lessonId, amountMinor }) => ({
-              invoiceId,
-              invoiceVersion,
-              lineId,
-              lessonId,
-              amountMinor,
-            }),
+          items: selected.map((item) =>
+            item.directTerms
+              ? {
+                  studentId: item.studentId,
+                  lessonId: item.lessonId,
+                  amountMinor: item.amountMinor,
+                  currency: item.currency,
+                  terms: item.directTerms,
+                }
+              : {
+                  invoiceId: item.invoiceId,
+                  invoiceVersion: item.invoiceVersion,
+                  lineId: item.lineId,
+                  lessonId: item.lessonId,
+                  amountMinor: item.amountMinor,
+                },
           ),
         },
         reason: "Payer confirmed selected lesson balances",
@@ -267,12 +349,16 @@ export function LessonPaymentOptions({
       showAttempt(id);
       if (resource.url) window.location.assign(resource.url);
     } catch (error) {
+      setReview(undefined);
       setNotice(
         error instanceof Error ? error.message : "Unable to start payment.",
       );
       // A provider session may have been created despite a lost response. The
       // available-attempt list will recover the same reservation.
       void queryClient.invalidateQueries({ queryKey: ["invoices"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["training-direct-options"],
+      });
       void queryClient.invalidateQueries({
         queryKey: ["training-payment-payers"],
       });
@@ -357,12 +443,14 @@ export function LessonPaymentOptions({
     !obligations.length &&
     !invoicesAvailable &&
     !unbilled.isLoading &&
+    !direct.isLoading &&
     !unbilled.data;
   const showSelection =
     canUseSelection && Boolean(obligations.length) && !attemptId;
   const canPickAll =
     eligible.length > 1 &&
     eligible.length <= 50 &&
+    new Set(eligible.map((item) => Boolean(item.directTerms))).size === 1 &&
     new Set(eligible.map((item) => item.currency)).size === 1;
 
   return (
@@ -390,6 +478,20 @@ export function LessonPaymentOptions({
           <button type="button" onClick={() => void payer.refetch()}>
             Retry
           </button>
+        </p>
+      )}
+      {direct.isError && (
+        <p role="alert">
+          Direct lesson balances could not be checked.{" "}
+          <button type="button" onClick={() => void direct.refetch()}>
+            Retry
+          </button>
+        </p>
+      )}
+      {direct.data?.hasMore && (
+        <p>
+          Showing the first 50 payable lessons. Open a lesson from your schedule
+          to review it individually.
         </p>
       )}
       {notice && (
@@ -489,58 +591,81 @@ export function LessonPaymentOptions({
                   : "Select all eligible lessons"}
               </button>
             )}
-            {obligations.map((item) => (
-              <label
-                className="training-payment-line"
-                key={lineKey(item)}
-                htmlFor={`obligation-${lineKey(item)}`}
-              >
-                <input
-                  id={`obligation-${lineKey(item)}`}
-                  type="checkbox"
-                  checked={selected.some(
-                    (row) => lineKey(row) === lineKey(item),
-                  )}
-                  disabled={
-                    checkoutBusy ||
-                    !item.eligible ||
-                    !payableStudents.includes(item.studentId)
-                  }
-                  onChange={(event) =>
-                    select(
-                      event.target.checked
-                        ? [...keys, lineKey(item)]
-                        : keys.filter((key) => key !== lineKey(item)),
-                    )
-                  }
-                />
-                <span>
-                  <strong>{item.description}</strong>
-                  <small>
-                    {formatCalendarDateKey(item.date)} · {item.invoiceNumber}
-                    {item.studentId !== studentId
-                      ? ` · ${item.studentName ?? "Household lesson"}`
-                      : ""}
-                  </small>
-                  <small>
-                    {item.pending
-                      ? "Payment processing"
-                      : !item.eligible
-                        ? "Payment under review"
-                        : !payableStudents.includes(item.studentId)
-                          ? "Your designated payer manages this payment"
-                          : item.adjustmentsMinor > 0
-                            ? `Adjusted by ${formatMoney(item.adjustmentsMinor, item.currency)}`
-                            : ""}
-                  </small>
-                </span>
-                <strong>{formatMoney(item.amountMinor, item.currency)}</strong>
-              </label>
-            ))}
+            {obligations.map((item) => {
+              const invoice = invoiceById.get(item.invoiceId);
+              const paid =
+                item.paidMinor ??
+                invoice?.items.find((line) => line.id === item.lineId)
+                  ?.paidMinor ??
+                0;
+              const status = item.pending
+                ? "Payment processing"
+                : !item.eligible
+                  ? "Needs billing review"
+                  : !payableStudents.includes(item.studentId)
+                    ? "Your designated payer manages this payment"
+                    : invoice && invoice.due_date < today
+                      ? "Payment overdue"
+                      : paid > 0
+                        ? "Balance remaining"
+                        : "Payment needed";
+              return (
+                <label
+                  className="training-payment-line"
+                  key={lineKey(item)}
+                  htmlFor={`obligation-${lineKey(item)}`}
+                >
+                  <input
+                    id={`obligation-${lineKey(item)}`}
+                    type="checkbox"
+                    checked={selected.some(
+                      (row) => lineKey(row) === lineKey(item),
+                    )}
+                    disabled={
+                      checkoutBusy ||
+                      !item.eligible ||
+                      !payableStudents.includes(item.studentId)
+                    }
+                    onChange={(event) =>
+                      select(
+                        event.target.checked
+                          ? [...keys, lineKey(item)]
+                          : keys.filter((key) => key !== lineKey(item)),
+                      )
+                    }
+                  />
+                  <span>
+                    <strong>{item.description}</strong>
+                    <small>
+                      {formatCalendarDateKey(item.date)}
+                      {item.invoiceNumber && ` · ${item.invoiceNumber}`}
+                      {item.studentId !== studentId
+                        ? ` · ${item.studentName ?? "Household lesson"}`
+                        : ""}
+                    </small>
+                    <small>{status}</small>
+                    {item.adjustmentsMinor > 0 && (
+                      <small>
+                        Adjusted by{" "}
+                        {formatMoney(item.adjustmentsMinor, item.currency)}
+                      </small>
+                    )}
+                  </span>
+                  <strong>
+                    {formatMoney(item.amountMinor, item.currency)}
+                  </strong>
+                </label>
+              );
+            })}
           </fieldset>
           {selected.length > 0 && (
             <div className="training-payment-review">
-              {currencies.size > 1 ? (
+              {mixed ? (
+                <p role="alert">
+                  Review invoiced lessons and direct lesson balances as separate
+                  payments.
+                </p>
+              ) : currencies.size > 1 ? (
                 <p role="alert">Choose one currency for each payment.</p>
               ) : (
                 <p aria-live="polite">
@@ -555,17 +680,93 @@ export function LessonPaymentOptions({
                 type="button"
                 className="primary"
                 disabled={
-                  checkoutBusy || currencies.size !== 1 || selected.length > 50
+                  checkoutBusy ||
+                  mixed ||
+                  currencies.size !== 1 ||
+                  selected.length > 50
                 }
-                onClick={() => void startPayment()}
+                onClick={() => setReview({ scope, signature, rows: selected })}
               >
-                {checkoutBusy
-                  ? "Opening checkout…"
-                  : "Continue to secure checkout"}
+                Review payment
               </button>
             </div>
           )}
         </>
+      )}
+      {reviewing && (
+        <Dialog
+          title="Review selected lessons"
+          className="training-payment-confirmation"
+          description="Confirm the lesson balances before continuing to Stripe."
+          onClose={() => {
+            if (!checkoutBusy) setReview(undefined);
+          }}
+        >
+          {reviewing.signature !== signature && (
+            <p role="alert">
+              The balance changed. Return to the selection and review the
+              updated amount.
+            </p>
+          )}
+          <div className="training-payment-confirmation-grid">
+            {/* eslint-disable jsx-a11y/no-noninteractive-tabindex -- The scrollable payment review needs keyboard focus. */}
+            <div
+              className="training-payment-review-list"
+              role="region"
+              aria-label="Lessons in this payment"
+              tabIndex={0}
+            >
+              {reviewing.rows.map((row) => (
+                <div className="training-payment-review-row" key={lineKey(row)}>
+                  <div>
+                    <strong>{row.description}</strong>
+                    <small>
+                      {formatCalendarDateKey(row.date)}
+                      {row.invoiceNumber && ` · ${row.invoiceNumber}`}
+                      {row.studentName ? ` · ${row.studentName}` : ""}
+                    </small>
+                  </div>
+                  <strong>{formatMoney(row.amountMinor, row.currency)}</strong>
+                </div>
+              ))}
+            </div>
+            {/* eslint-enable jsx-a11y/no-noninteractive-tabindex */}
+            <div className="training-payment-total">
+              <p>
+                <strong>
+                  Total{" "}
+                  {formatMoney(
+                    reviewing.rows.reduce(
+                      (sum, row) => sum + row.amountMinor,
+                      0,
+                    ),
+                    reviewing.rows[0].currency,
+                  )}
+                </strong>
+              </p>
+              <p>One-time payment. You can pay without saving a card.</p>
+            </div>
+          </div>
+          <div className="form-actions">
+            <button
+              type="button"
+              disabled={checkoutBusy}
+              onClick={() => setReview(undefined)}
+            >
+              Back to selection
+            </button>
+            <button
+              type="button"
+              className="primary"
+              disabled={checkoutBusy || reviewing.signature !== signature}
+              onClick={() => void startPayment()}
+            >
+              {checkoutBusy
+                ? "Opening checkout…"
+                : "Continue to secure checkout"}
+            </button>
+          </div>
+        </Dialog>
       )}
       {!attemptId && invoicesAvailable && (
         <div className="page-actions">

@@ -12,7 +12,7 @@ import {
 import { dispatchOutbox } from "./_shared/outbox-dispatch";
 import { processStripeInstallmentEffects } from "./_shared/stripe-installment-effects";
 import {
-  reconcileTrainingCheckout,
+  reconcileTrainingCheckoutEvent,
   trainingCheckout,
 } from "./_shared/training-checkout";
 import {
@@ -115,9 +115,12 @@ export default async (request: Request, context: Context) => {
           throw new Error(
             "PROVIDER_UNAVAILABLE: Stripe training webhook mode mismatch.",
           );
-        const checkout = await reconcileTrainingCheckout(
+        // A delayed event can contain an earlier unpaid snapshot. Read Stripe's
+        // current state before releasing a checkout hold or applying payment.
+        const checkout = await reconcileTrainingCheckoutEvent(
+          stripe,
           session,
-          event.type === "checkout.session.async_payment_failed",
+          event.type,
           liveTraining,
         );
         return await done({ trainingCheckoutStatus: checkout.status });

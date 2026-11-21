@@ -8,10 +8,14 @@ test("@journey Journey 01: sign-in persists across a protected nested refresh an
   requireFixtures(runtime);
   const { context, page } = await openAs(browser, "signout");
   await page.goto("/portal/settings");
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
   await page.reload();
   await expect(page).toHaveURL(/\/portal\/settings/);
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
   await page.getByRole("button", { name: "Log out" }).click();
   await expect(page).toHaveURL(/\/login/);
   await context.close();

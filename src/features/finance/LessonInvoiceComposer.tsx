@@ -359,19 +359,24 @@ export function LessonInvoiceComposer({
                     <p>{billing.issueError ?? billing.deliveryError}</p>
                   </>
                 )}
-                {student && (billing.issueError || canChooseHouseholdPayer) && (
-                  <InvoicePayerSetup
-                    key={student.id}
-                    student={student}
-                    contacts={accountContacts}
-                    isDemo={isDemo}
-                    label={
-                      billing.issueError
-                        ? "Set up payer"
-                        : "Change designated payer"
-                    }
-                  />
-                )}
+                {student &&
+                  (billing.issueError ||
+                    billing.deliveryError ||
+                    canChooseHouseholdPayer) && (
+                    <InvoicePayerSetup
+                      key={student.id}
+                      student={student}
+                      contacts={accountContacts}
+                      isDemo={isDemo}
+                      label={
+                        billing.issueError
+                          ? "Set up payer"
+                          : billing.deliveryError
+                            ? "Review payer email"
+                            : "Change designated payer"
+                      }
+                    />
+                  )}
                 {review && !billing.deliveryError && (
                   <p>Review and send email after issuance.</p>
                 )}

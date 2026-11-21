@@ -1,6 +1,7 @@
 import { lessonPaymentPath } from "../../domain/lessonPaymentLink";
 import { hasRecurringPackageOffer } from "../../domain/packagePresentation";
 import { useLessonAutopayOptions } from "./useLessonAutopayOptions";
+import { useDirectLessonOptions } from "./useDirectLessonOptions";
 import { LessonFiles } from "../library/LessonFiles";
 import {
   useUrlValue,
@@ -338,6 +339,17 @@ export function LessonHub({
   );
   const context = selectedStudent && coachingContext(data, selectedStudent.id);
   const lessonVisible = !!context?.lessons.some((item) => item.id === lessonId);
+  const direct = useDirectLessonOptions(
+    selectedStudent?.id ?? "",
+    [],
+    !isDemo &&
+      showFinance &&
+      lessonVisible &&
+      !!lesson &&
+      !lesson.invoiceId &&
+      ["due", "partially_paid"].includes(lesson.paymentStatus ?? ""),
+    lessonId,
+  );
   const store = useStudioStore();
   const queryClient = useQueryClient();
   const [attaching, setAttaching] = useState(false);
@@ -400,13 +412,18 @@ export function LessonHub({
     (item) => item.lesson.id === lesson.id,
   );
   const payment = occurrence?.payment ?? "review";
+  const directBalance = direct.data?.items.find(
+    (item) => item.lessonId === lesson.id,
+  );
   const canPay =
     showFinance &&
     ["scheduled", "completed"].includes(lesson.status) &&
     payment === "unpaid" &&
     Boolean(
       lesson.invoiceId ||
-      (data.settings.bookingDefaults.allowLearnerLessonInvoices &&
+      directBalance ||
+      (direct.data?.enabled !== true &&
+        data.settings.bookingDefaults.allowLearnerLessonInvoices &&
         lesson.serviceId &&
         lesson.priceMinor),
     );
@@ -542,7 +559,7 @@ export function LessonHub({
               className="button-link primary"
               to={lessonPaymentPath(student.id, lesson.id)}
             >
-              Pay for my lesson
+              {directBalance ? "Pay now" : "Pay for my lesson"}
             </Link>
           )}
           {showFinance &&

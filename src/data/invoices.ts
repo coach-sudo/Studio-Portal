@@ -2,18 +2,21 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../lib/supabase";
 import { readApiClientError } from "./apiClientError";
 import type { Invoice } from "../domain/invoices";
+import { usePrivateIdentity } from "../hooks/usePrivateIdentity";
 export function useInvoices(
   isDemo: boolean,
   demoInvoices: Invoice[] = [],
   readOnly = false,
 ) {
+  const identity = usePrivateIdentity();
   const query = useQuery({
     queryKey: [
       "invoices",
       isDemo ? "demo" : "live",
       readOnly ? "student" : "coach",
+      identity,
     ],
-    enabled: !isDemo,
+    enabled: !isDemo && !!identity,
     refetchInterval: (query) =>
       query.state.data?.some((invoice) =>
         ["queued", "sending"].includes(invoice.delivery?.status ?? ""),
@@ -22,7 +25,8 @@ export function useInvoices(
         : false,
     queryFn: async () => {
       const auth = await supabase?.auth.getSession();
-      if (!auth?.data.session) throw new Error("Sign in to view invoices.");
+      if (!auth?.data.session || auth.data.session.user.id !== identity)
+        throw new Error("Sign in to view invoices.");
       const response = await fetch("/api/invoices", {
         headers: { Authorization: `Bearer ${auth.data.session.access_token}` },
       });

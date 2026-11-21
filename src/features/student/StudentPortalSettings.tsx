@@ -1,11 +1,9 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { CreditCard } from "lucide-react";
 import { useEffect, useState, useRef, type FormEvent } from "react";
 import { useUnsavedWorkspaceChanges } from "../../hooks/useWorkspaceLocation";
 import "../../components/IdentityActions.css";
 import { Section, Toggle } from "../../components/Primitives";
 import { TimezoneSelect } from "../../components/TimezoneSelect";
-import { readApiClientError } from "../../data/apiClientError";
 import { studioCommand } from "../../data/bookingCommands";
 import { uploadStudioFile } from "../../data/uploads";
 import type { Role } from "../../domain/model";
@@ -20,6 +18,7 @@ import {
 } from "./StudentPortal.shared";
 
 import { useTrainingPayers } from "./useTrainingPayers";
+import { StudentPaymentSettings } from "./StudentPaymentSettings";
 
 export function StudentSettings({
   data,
@@ -39,14 +38,15 @@ export function StudentSettings({
         : undefined,
     store = useStudioStore(),
     queryClient = useQueryClient();
+  const showBilling =
+    Boolean(student) &&
+    (role === "guardian"
+      ? (linkedContact?.canViewFinance ?? (isDemo && !!student?.isMinor))
+      : !student?.isMinor);
   const payer = useTrainingPayers(
     student?.id ?? "",
     student ? [student.id] : [],
-    !isDemo &&
-      Boolean(student) &&
-      (role === "guardian"
-        ? Boolean(linkedContact?.canViewFinance)
-        : !student?.isMinor),
+    !isDemo && showBilling,
   );
   const canManageBilling = isDemo
     ? role === "guardian"
@@ -100,9 +100,6 @@ export function StudentSettings({
     [notice, setNotice] = useState(""),
     [loginPassword, setLoginPassword] = useState(""),
     [loginBusy, setLoginBusy] = useState(false),
-    [stripeBusy, setStripeBusy] = useState<"payment-method" | "billing" | "">(
-      "",
-    ),
     [profilePhoto, setProfilePhoto] = useState<File>(),
     [removePhoto, setRemovePhoto] = useState(false);
   useEffect(() => {
@@ -234,43 +231,6 @@ export function StudentSettings({
       );
     }
   };
-  const stripeAction = async (action: "payment-method" | "billing") => {
-    if (!canManageBilling) return;
-    if (stripeBusy) return;
-    setStripeBusy(action);
-    setNotice(
-      action === "payment-method"
-        ? "Opening Stripe’s secure card setup…"
-        : "Opening secure billing…",
-    );
-    try {
-      const { supabase } = await import("../../lib/supabase"),
-        token = (await supabase?.auth.getSession())?.data.session?.access_token,
-        response = await fetch(`/api/v2/portal/bookings/${action}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token || ""}`,
-            "Idempotency-Key": crypto.randomUUID(),
-          },
-          body: JSON.stringify({ studentId: student.id }),
-        });
-      if (!response.ok)
-        throw await readApiClientError(
-          response,
-          "Payment settings could not be opened.",
-        );
-      const result = await response.json();
-      window.location.assign(result.url);
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Stripe could not be opened.",
-      );
-      setStripeBusy("");
-    }
-  };
   const saveLogin = async (event: FormEvent) => {
     event.preventDefault();
     if (loginBusy) return;
@@ -339,7 +299,7 @@ export function StudentSettings({
         <a href="#profile-timezone">Profile &amp; timezone</a>
         <a href="#preferences-notifications">Preferences &amp; notifications</a>
         <a href="#security">Security</a>
-        {canManageBilling && <a href="#billing">Billing</a>}
+        {showBilling && <a href="#billing">Payment settings</a>}
       </nav>
       <div id="profile-timezone" className="settings-anchor">
         <Section title="Profile & timezone" marked>
@@ -474,8 +434,8 @@ export function StudentSettings({
       <div id="preferences-notifications" className="settings-anchor">
         <Section title="Preferences & notifications">
           <p className="section-intro">
-            Security, login, receipt, cancellation, and critical payment
-            messages are always sent to the responsible recipient.
+            These preferences control optional updates. Issued invoices can be
+            emailed to the responsible payer when email delivery is permitted.
           </p>
           <div className="settings-list">
             {Object.entries(portalNotificationLabels).map(([key, label]) => (
@@ -555,43 +515,18 @@ export function StudentSettings({
           </form>
         </Section>
       </div>
-      {canManageBilling && (
-        <div id="billing" className="settings-anchor">
-          <Section title="Payment method">
-            <div className="data-summary">
-              <CreditCard />
-              <div>
-                <strong>
-                  {student.paymentMethodSummary || "No saved payment method"}
-                </strong>
-                <small>
-                  Card details are stored by Stripe, never by this studio
-                  portal.
-                </small>
-              </div>
-            </div>
-            <div className="form-actions">
-              <button
-                disabled={Boolean(stripeBusy)}
-                onClick={() => void stripeAction("payment-method")}
-              >
-                {stripeBusy === "payment-method"
-                  ? "Opening Stripe…"
-                  : student.stripeCustomerId
-                    ? "Add another payment method"
-                    : "Add payment method"}
-              </button>
-              {student.stripeCustomerId && (
-                <button
-                  disabled={Boolean(stripeBusy)}
-                  onClick={() => void stripeAction("billing")}
-                >
-                  {stripeBusy === "billing" ? "Opening…" : "Manage billing"}
-                </button>
-              )}
-            </div>
-          </Section>
-        </div>
+      {showBilling && (
+        <StudentPaymentSettings
+          studentId={student.id}
+          studentName={student.preferredName || student.fullName}
+          billingEmail={
+            role === "guardian" ? linkedContact?.email : student.email
+          }
+          guardian={role === "guardian"}
+          permitted={canManageBilling}
+          checking={payer.isLoading}
+          isDemo={isDemo}
+        />
       )}
     </div>
   );

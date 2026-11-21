@@ -19,6 +19,7 @@ import {
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
 import { formatMoney, packageSummary } from "../../domain/finance";
+import { directLessonReceipt } from "../../domain/directLessonReceipt";
 import {
   recentLessonDuration,
   sortPackageDefinitions,
@@ -36,15 +37,19 @@ import { useStudioStore } from "../../state/StudioStore";
 import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
+import { HouseholdInvoiceSummary } from "./HouseholdInvoiceSummary";
+import type { PortalContext } from "../../data/portalContext";
 
 export function Payments({
   data,
   isDemo,
   canManageLessons = false,
+  household,
 }: {
   data: Snapshot;
   isDemo: boolean;
   canManageLessons?: boolean;
+  household?: Pick<PortalContext, "id" | "fullName" | "preferredName">[];
 }) {
   const student = data.students[0];
   const [params] = useSearchParams();
@@ -266,6 +271,14 @@ export function Payments({
         <h1>Payments</h1>
         {!paying && !recurringOnly && student && (
           <Link
+            className="button-link"
+            to={portalContextLink("/portal/settings#billing", student.id)}
+          >
+            Payment settings
+          </Link>
+        )}
+        {!paying && !recurringOnly && student && (
+          <Link
             className="button-link primary"
             to={lessonPaymentPath(student.id)}
           >
@@ -354,6 +367,7 @@ export function Payments({
           isDemo={isDemo}
           studentId={student.id}
           lesson={lesson}
+          householdStudentIds={household?.map(({ id }) => id)}
           hasPackages={
             canManagePackagePayment && purchasableDefinitions.length > 0
           }
@@ -364,6 +378,18 @@ export function Payments({
           {notice}
         </p>
       )}
+      {!paying &&
+        !recurringOnly &&
+        student &&
+        household &&
+        household.length > 1 && (
+          <HouseholdInvoiceSummary
+            students={household}
+            data={data}
+            studentId={student.id}
+            isDemo={isDemo}
+          />
+        )}
       {student && (
         <>
           {!paying && !recurringOnly && !isDemo && (
@@ -395,35 +421,53 @@ export function Payments({
               label="payments"
             />
             <div className="table-list">
-              {paymentPage.visible.map((entry) => (
-                <article key={entry.id} className="payment-history-row">
-                  <FileText />
-                  <div>
-                    <strong>
-                      {entry.reason && !/\bcredits?\b/i.test(entry.reason)
-                        ? entry.reason
-                        : entry.kind === "refund"
-                          ? "Refund"
-                          : "Payment"}
+              {paymentPage.visible.map((entry) => {
+                const directReceipt = directLessonReceipt(
+                  entry.externalReference,
+                );
+                return (
+                  <article key={entry.id} className="payment-history-row">
+                    <FileText />
+                    <div>
+                      <strong>
+                        {entry.reason && !/\bcredits?\b/i.test(entry.reason)
+                          ? entry.reason
+                          : entry.kind === "refund"
+                            ? "Refund"
+                            : "Payment"}
+                      </strong>
+                      <small>
+                        {formatStudioDate(
+                          entry.createdAt,
+                          data.settings.timezone,
+                        )}{" "}
+                        ·{" "}
+                        {directReceipt
+                          ? `Receipt ${entry.id}`
+                          : entry.externalReference?.startsWith(
+                                "lesson-payment:",
+                              )
+                            ? `Receipt ${entry.externalReference.slice("lesson-payment:".length)}`
+                            : "Studio ledger"}
+                      </small>
+                      {directReceipt && student && (
+                        <Link
+                          to={portalContextLink(
+                            `/portal/lessons/${directReceipt.lessonId}`,
+                            student.id,
+                          )}
+                        >
+                          View paid lesson
+                        </Link>
+                      )}
+                    </div>
+                    <strong className="payment-history-amount">
+                      {entry.kind === "refund" ? "+" : "−"}
+                      {formatMoney(entry.amountMinor, entry.currency)}
                     </strong>
-                    <small>
-                      {formatStudioDate(
-                        entry.createdAt,
-                        data.settings.timezone,
-                      )}{" "}
-                      ·{" "}
-                      {entry.externalReference &&
-                      !/\bcredits?\b/i.test(entry.externalReference)
-                        ? entry.externalReference
-                        : "Studio ledger"}
-                    </small>
-                  </div>
-                  <strong className="payment-history-amount">
-                    {entry.kind === "refund" ? "+" : "−"}
-                    {formatMoney(entry.amountMinor, entry.currency)}
-                  </strong>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
               {!payments.length && (
                 <EmptyState
                   title="No payment history"

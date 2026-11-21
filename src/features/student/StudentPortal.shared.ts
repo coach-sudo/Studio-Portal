@@ -36,7 +36,7 @@ export const portalNotificationLabels = {
   lessonContent: "Notes and lesson materials",
   assignments: "Assignments and practice",
   packageBalance: "Package balance and expiration",
-  payments: "Payments and receipts",
+  payments: "Payment updates and reminders",
   accountAccess: "Account access",
 } as const;
 
