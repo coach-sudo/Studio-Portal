@@ -434,8 +434,8 @@ export function StudentSettings({
       <div id="preferences-notifications" className="settings-anchor">
         <Section title="Preferences & notifications">
           <p className="section-intro">
-            Security, login, receipt, cancellation, and critical payment
-            messages are always sent to the responsible recipient.
+            These preferences control optional updates. Issued invoices can be
+            emailed to the responsible payer when email delivery is permitted.
           </p>
           <div className="settings-list">
             {Object.entries(portalNotificationLabels).map(([key, label]) => (

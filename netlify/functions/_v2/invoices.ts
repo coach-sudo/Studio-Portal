@@ -13,6 +13,17 @@ import {
 } from "../../../src/domain/invoices";
 import type { V2CommandContext } from "./types";
 import { handleTrainingCheckout } from "./training-checkout";
+import { trainingCheckout } from "../_shared/training-checkout";
+import { workerEnabled } from "../_shared/worker-controls";
+
+function invoiceEmailHold(billing: ReturnType<typeof invoiceBilling>) {
+  return (
+    billing.deliveryError ??
+    (workerEnabled("automations")
+      ? undefined
+      : "Invoice email delivery is paused for this studio.")
+  );
+}
 
 async function queueInvoiceEmail(
   service: ReturnType<typeof serviceClient>,
@@ -32,12 +43,12 @@ async function queueInvoiceEmail(
           channel: "email",
           recipient,
           subject: `${invoice.branding.studioName} · Invoice ${invoice.number}`,
-          body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}\n\n${invoice.footer}`,
+          body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}&student=${invoice.student_id}\n\n${invoice.footer}`,
           status: "queued",
           send_at: new Date().toISOString(),
           event_key: "invoice.issued",
           dedupe_key: `${key}:${recipient}`,
-          recipient_intent: "payment_due",
+          recipient_intent: "invoice_issued",
           entity_snapshot: {
             invoiceId: invoice.id,
             invoiceVersion: invoice.version,
@@ -151,11 +162,9 @@ export async function handleInvoiceCommands(
       billingContext.student,
       billingContext.contacts,
     );
-    const issueError =
-      value.emailOnIssue === false ? billing.issueError : billing.deliveryError;
-    if (value.status === "open" && issueError)
+    if (value.status === "open" && billing.issueError)
       throw new Error(
-        `VALIDATION_FAILED: ${issueError} Save a draft or update the household payer settings.`,
+        `VALIDATION_FAILED: ${billing.issueError} Save a draft or set up the payer here.`,
       );
     if (
       value.exactLessons &&
@@ -234,8 +243,15 @@ export async function handleInvoiceCommands(
     const saved = result.data as Invoice;
     if (saved.status === "draft")
       return json({ resource: saved, delivery: { status: "draft" } });
-    if (value.emailOnIssue === false)
-      return json({ resource: saved, delivery: { status: "not_sent" } });
+    const emailHold = invoiceEmailHold(billing);
+    if (value.emailOnIssue === false || emailHold)
+      return json({
+        resource: saved,
+        delivery: {
+          status: "not_sent",
+          message: emailHold ? `Invoice issued. ${emailHold}` : undefined,
+        },
+      });
     try {
       if (
         saved.status === "void" ||
@@ -286,6 +302,23 @@ export async function handleInvoiceCommands(
   if (
     ["checkout", "check_checkout", "cancel_checkout"].includes(input.command)
   ) {
+    if (["draft", "void"].includes(invoice.status))
+      throw new Error(
+        "INVALID_TRANSITION: This invoice is unavailable for payment.",
+      );
+    if (input.payload.returnTo === "coach") {
+      if ((await requireCoach()) !== invoice.studio_id)
+        throw new Error("FORBIDDEN");
+    } else {
+      const { data: auth, error: authError } = await db.auth.getUser();
+      if (authError || !auth.user) throw new Error("FORBIDDEN");
+      const { studentIds } = await trainingCheckout<{ studentIds: string[] }>(
+        "payers",
+        { actor: auth.user.id, studentIds: [invoice.student_id] },
+      );
+      if (!studentIds.includes(invoice.student_id))
+        throw new Error("FORBIDDEN");
+    }
     if (invoice.checkout_key?.startsWith("training:"))
       throw new Error(
         "INVALID_TRANSITION: A selected lesson payment is in progress. Return to lesson payments to manage it.",
@@ -460,29 +493,27 @@ export async function handleInvoiceCommands(
       invoice.student_id,
     );
     const billing = invoiceBilling(context.student, context.contacts);
-    const recipients = billing.recipients;
+    const emailHold = invoiceEmailHold(billing);
+    const recipients = emailHold ? [] : billing.recipients;
     if (input.command === "preview_recipients")
       return json({
         resource: {
           recipients,
           payer: billing.recipient,
-          issueError: billing.deliveryError,
+          issueError: emailHold,
         },
       });
     const approved = z
       .array(z.string().email())
       .parse(input.payload.recipients)
       .sort();
+    if (emailHold) throw new Error(`VALIDATION_FAILED: ${emailHold}`);
     if (
       invoice.version !== input.expectedVersion ||
       JSON.stringify(approved) !== JSON.stringify([...recipients].sort())
     )
       throw new Error(
         "VERSION_CONFLICT: Review the invoice and recipients again.",
-      );
-    if (!recipients.length)
-      throw new Error(
-        `VALIDATION_FAILED: ${billing.deliveryError || "No permitted invoice recipient."}`,
       );
     let addressed = invoice;
     if (

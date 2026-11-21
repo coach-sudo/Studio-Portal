@@ -10,13 +10,15 @@ export function invoiceBilling(
   const delivery = resolveNotificationRecipients(
     student,
     contacts,
-    "payment_due",
+    "invoice_issued",
   );
   const issueError = payer.needsConfiguration ? payer.reason : undefined;
   const deliveryError =
     issueError ??
     (!delivery.recipients.some((recipient) => recipient.email === payer.email)
-      ? "The payer cannot receive invoice emails. Check their financial access and payment notification settings."
+      ? (delivery.suppressed.find(
+          (entry) => entry.linkedContactId === payer.contactId,
+        )?.reason ?? "Invoice email is unavailable for this payer.")
       : undefined);
   return {
     recipient: {

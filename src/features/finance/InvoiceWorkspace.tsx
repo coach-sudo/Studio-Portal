@@ -13,6 +13,7 @@ import {
   usePagedList,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
+import { useSearchIdentity } from "../../data/globalSearch";
 import { useInvoices } from "../../data/invoices";
 import { lessonCreditDebit, reserveDemoCredits } from "../../domain/credits";
 import { packageOffer } from "../../domain/packagePricing";
@@ -108,6 +109,28 @@ export function InvoiceWorkspace({
   const selected = invoices.find(
     (i) => i.id === (lessonId ? contextInvoice : params.get("invoice")),
   );
+  const identity = useSearchIdentity();
+  const selectedStudent = selected?.student_id;
+  const payer = useQuery({
+    queryKey: ["training-payment-payers", identity, selectedStudent],
+    enabled: !isDemo && readOnly && !!identity && !!selectedStudent,
+    queryFn: async () => {
+      const { resource } = await studioCommand(
+        "invoices",
+        {
+          command: "training_payers",
+          expectedVersion: 0,
+          payload: { studentIds: [selectedStudent] },
+          reason: "Check invoice payment authority",
+        },
+        identity ?? undefined,
+      );
+      return (resource.studentIds as string[]).includes(selectedStudent ?? "");
+    },
+  });
+  const canPayInvoice = !readOnly || isDemo || payer.data === true;
+  const canSettleInvoice =
+    canPayInvoice && !!selected && invoiceDue(selected) > 0;
   const requestedLesson =
     !readOnly && studentId
       ? data.lessons.find(
@@ -567,7 +590,7 @@ export function InvoiceWorkspace({
       dismissEditor();
       open(result.resource.id);
       setNotice(
-        result.delivery?.status === "failed"
+        result.delivery?.message
           ? result.delivery.message
           : status === "draft"
             ? "Draft saved. No email was sent."
@@ -910,8 +933,13 @@ export function InvoiceWorkspace({
             logoUrl={logoUrl}
             paymentBusy={busy || Boolean(selected.checkout_key)}
             learnerView={readOnly}
-            onPay={() =>
-              void command("checkout", { amountMinor: invoiceDue(selected) })
+            onPay={
+              canPayInvoice
+                ? () =>
+                    void command("checkout", {
+                      amountMinor: invoiceDue(selected),
+                    })
+                : undefined
             }
           />
           {!isDemo && selected.delivery && (
@@ -920,7 +948,12 @@ export function InvoiceWorkspace({
               {selected.delivery.error ? `. ${selected.delivery.error}` : ""}
             </p>
           )}
-          {selected.checkout_key && (
+          {readOnly && invoiceDue(selected) > 0 && payer.data === false && (
+            <p className="portal-notice">
+              The designated payer can pay this invoice.
+            </p>
+          )}
+          {canPayInvoice && selected.checkout_key && (
             <Section title="Online payment pending">
               <p>
                 {readOnly
@@ -943,7 +976,7 @@ export function InvoiceWorkspace({
               </div>
             </Section>
           )}
-          {invoiceDue(selected) > 0 && !selected.checkout_key && (
+          {canSettleInvoice && !selected.checkout_key && (
             <Section title="Settle this invoice">
               <form
                 className="invoice-payment-form"

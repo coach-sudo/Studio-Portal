@@ -8,6 +8,7 @@ export const recipientIntents = [
   "cancellation",
   "lesson_content",
   "assignment",
+  "invoice_issued",
   "payment_due",
   "payment_failed",
   "payment_past_due",
@@ -40,6 +41,7 @@ const category: Record<RecipientIntent, keyof NotificationPreferences> = {
   cancellation: "scheduleChanges",
   lesson_content: "lessonContent",
   assignment: "assignments",
+  invoice_issued: "payments",
   payment_due: "payments",
   payment_failed: "payments",
   payment_past_due: "payments",
@@ -77,7 +79,10 @@ export function resolveNotificationRecipients(
     "cancellation",
   ].includes(intent);
   const payer = finance ? paymentResponsibility(student, linked) : undefined;
-  if (payer?.needsConfiguration) result.unresolved.push(payer.reason);
+  if (payer?.needsConfiguration) {
+    result.unresolved.push(payer.reason);
+    return result;
+  }
   const primaryScheduling = linked.some(
     (contact) => contact.isPrimarySchedulingContact,
   );
@@ -91,15 +96,21 @@ export function resolveNotificationRecipients(
     const suppress = (reason: string) =>
       result.suppressed.push({ ...metadata, reason });
     if (!email?.trim()) return suppress("Email address missing.");
-    if (contact && (!contact.portalEnabled || !contact.canReceiveNotifications))
-      return suppress("Contact access or notifications disabled.");
+    if (contact && !contact.portalEnabled)
+      return suppress("The contact's portal access is disabled.");
+    if (contact && !contact.canReceiveNotifications)
+      return suppress("Delivery is disabled for this contact.");
     if (contact && finance && !contact.canViewFinance)
       return suppress("Financial access not permitted.");
     if (contact && work && !contact.canViewWork)
       return suppress("Work access not permitted.");
     if (contact && scheduling && !contact.canViewSchedule)
       return suppress("Schedule access not permitted.");
-    if (!options.mandatory && preferences?.[key] === false)
+    if (
+      intent !== "invoice_issued" &&
+      !options.mandatory &&
+      preferences?.[key] === false
+    )
       return suppress(`Notification preference disabled: ${key}.`);
     const normalized = email.trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized))

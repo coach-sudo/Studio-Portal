@@ -108,6 +108,7 @@ function fixture(status = "open") {
     requireCoach: vi.fn().mockResolvedValue(studioId),
     audit: vi.fn().mockResolvedValue("audit"),
     db: {
+      auth: { getUser: async () => ({ data: { user: { id: studentId } } }) },
       from: (table: string) => {
         const query = {
           select: () => query,
@@ -420,6 +421,27 @@ describe("invoice Checkout return and recovery", () => {
     expect(mocks.create).not.toHaveBeenCalled();
     expect(mocks.retrieve).not.toHaveBeenCalled();
   });
+
+  it("requires the responsible payer before a portal viewer can reserve an invoice payment", async () => {
+    const ctx = checkout();
+    ctx.input.payload.returnTo = "student";
+    mocks.rpc.mockResolvedValueOnce({ data: { studentIds: [] } });
+    await expect(handleInvoiceCommands(ctx)).rejects.toThrow("FORBIDDEN");
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "training_lesson_checkout",
+    ]);
+    expect(mocks.create).not.toHaveBeenCalled();
+  });
+
+  it("lets the authorized payer open an invoice checkout without card or autopay checks", async () => {
+    const ctx = checkout();
+    ctx.input.payload.returnTo = "student";
+    mocks.rpc.mockResolvedValueOnce({ data: { studentIds: [studentId] } });
+    await expect(handleInvoiceCommands(ctx)).resolves.toMatchObject({
+      status: 200,
+    });
+    expect(mocks.create).toHaveBeenCalledTimes(1);
+  });
 });
 describe("invoices bill and email the responsible payer", () => {
   it("corrects an older invoice's addressee to the current payer when the coach sends it", async () => {
@@ -463,7 +485,7 @@ describe("invoices bill and email the responsible payer", () => {
         recipient: "payer@example.test",
         student_id: studentId,
         status: "queued",
-        recipient_intent: "payment_due",
+        recipient_intent: "invoice_issued",
         body: expect.stringContaining("Hello Paying Parent,"),
         entity_snapshot: expect.objectContaining({
           invoiceId: "invoice-id",
@@ -497,7 +519,7 @@ describe("invoices bill and email the responsible payer", () => {
     ctx.input.expectedVersion = legacyInvoice.version;
     ctx.input.payload = { recipients: [] };
     await expect(handleInvoiceCommands(ctx)).rejects.toThrow(
-      "cannot receive invoice emails",
+      "Delivery is disabled for this contact.",
     );
     expect(mocks.upsert).not.toHaveBeenCalled();
   });
@@ -540,7 +562,7 @@ describe("invoices bill and email the responsible payer", () => {
     );
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
   });
-  it.each(["missing", "disabled", "opted-out", "ambiguous", "not-designated"])(
+  it.each(["missing", "disabled", "ambiguous", "not-designated"])(
     "blocks issuing when payer configuration is %s",
     async (condition) => {
       if (condition === "missing") billingContext.contacts = [];
@@ -548,11 +570,6 @@ describe("invoices bill and email the responsible payer", () => {
         billingContext.contacts[0].canViewFinance = false;
       if (condition === "not-designated")
         billingContext.contacts[0].isPrimaryPayer = false;
-      if (condition === "opted-out")
-        billingContext.contacts[0].notificationPreferences = {
-          ...billingContext.contacts[0].notificationPreferences,
-          payments: false,
-        };
       if (condition === "ambiguous")
         billingContext.contacts.push({
           ...billingContext.contacts[0],
@@ -565,17 +582,79 @@ describe("invoices bill and email the responsible payer", () => {
       expect(mocks.upsert).not.toHaveBeenCalled();
     },
   );
-  it("uses the adult student's email when they pay for themselves", async () => {
-    billingContext.student.isMinor = false;
-    billingContext.contacts = [];
-    const body = await (await handleInvoiceCommands(fixture()))!.json();
-    expect(body.resource.recipient).toEqual({
-      name: "Student",
-      email: "student@example.test",
+  it.each([false, true])(
+    "uses the adult self-payer when optional payment notices are %s",
+    async (payments) => {
+      billingContext.student.isMinor = false;
+      billingContext.contacts = [];
+      billingContext.student.notificationPreferences = {
+        lessonReminders: false,
+        scheduleChanges: false,
+        lessonContent: false,
+        assignments: false,
+        packageBalance: false,
+        payments,
+        accountAccess: false,
+      };
+      const body = await (await handleInvoiceCommands(fixture()))!.json();
+      expect(body.resource.recipient).toEqual({
+        name: "Student",
+        email: "student@example.test",
+      });
+      expect(mocks.upsert.mock.calls[0][0].recipient).toBe(
+        "student@example.test",
+      );
+    },
+  );
+  it.each([false, true])(
+    "only emails the designated payer when the student is a minor: %s",
+    async (isMinor) => {
+      billingContext.student.isMinor = isMinor;
+      billingContext.contacts[0].notificationPreferences = {
+        ...billingContext.contacts[0].notificationPreferences,
+        payments: false,
+      };
+      const response = await handleInvoiceCommands(fixture());
+      expect((await response!.json()).delivery.recipients).toEqual([
+        "payer@example.test",
+      ]);
+      expect(mocks.upsert).toHaveBeenCalledTimes(1);
+    },
+  );
+  it("issues the invoice even if explicitly requested email is restricted", async () => {
+    billingContext.contacts[0].canReceiveNotifications = false;
+    const response = await handleInvoiceCommands(fixture());
+    expect(await response!.json()).toMatchObject({
+      resource: { status: "open" },
+      delivery: {
+        status: "not_sent",
+        message: "Invoice issued. Delivery is disabled for this contact.",
+      },
     });
-    expect(mocks.upsert.mock.calls[0][0].recipient).toBe(
-      "student@example.test",
-    );
+    expect(mocks.upsert).not.toHaveBeenCalled();
+  });
+  it("preserves invoice issuance during a worker hold and explains why email is unavailable", async () => {
+    vi.stubGlobal("Netlify", {
+      env: {
+        get: (key: string) =>
+          key === "WORKER_AUTOMATIONS_ENABLED" ? "false" : undefined,
+      },
+    });
+    try {
+      const response = await handleInvoiceCommands(fixture());
+      expect(await response!.json()).toMatchObject({
+        resource: { status: "open" },
+        delivery: {
+          status: "not_sent",
+          message:
+            "Invoice issued. Invoice email delivery is paused for this studio.",
+        },
+      });
+      expect(mocks.upsert).not.toHaveBeenCalled();
+      expect(mocks.dispatch).not.toHaveBeenCalled();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("uses the same email deduplication key when the save is retried", async () => {
     await handleInvoiceCommands(fixture());

@@ -105,6 +105,36 @@ describe("event-aware notification recipients", () => {
       }),
     );
   });
+  it("delivers only the approved invoice to a designated payer with optional notices off", () => {
+    const payer = {
+      ...contact,
+      notificationPreferences: {
+        ...contact.notificationPreferences,
+        payments: false,
+      },
+    };
+    expect(
+      resolveNotificationRecipients(student, [payer], "invoice_issued")
+        .recipients,
+    ).toEqual([expect.objectContaining({ email: "payer@example.test" })]);
+    expect(
+      resolveNotificationRecipients(student, [payer], "payment_due").recipients,
+    ).toEqual([]);
+    expect(
+      resolveNotificationRecipients(
+        student,
+        [{ ...payer, canReceiveNotifications: false }],
+        "invoice_issued",
+      ).recipients,
+    ).toEqual([]);
+    expect(
+      resolveNotificationRecipients(
+        student,
+        [{ ...payer, isPrimaryPayer: false }],
+        "invoice_issued",
+      ).recipients,
+    ).toEqual([]);
+  });
   it("mandatory communication still cannot bypass work access", () => {
     expect(
       resolveNotificationRecipients(student, [contact], "assignment", {
