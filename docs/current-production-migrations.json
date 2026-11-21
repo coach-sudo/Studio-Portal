@@ -439,6 +439,12 @@
       "name": "payment_needs_review",
       "type": "boolean",
       "default": "false"
+    },
+    {
+      "table": "public.lessons",
+      "name": "direct_checkout_id",
+      "type": "uuid",
+      "default": null
     }
   ]
 }

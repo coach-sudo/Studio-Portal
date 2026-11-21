@@ -69,6 +69,56 @@ function client(rows: Record<string, unknown>) {
     },
   } as unknown as SupabaseClient;
 }
+describe("approved invoice delivery", () => {
+  const issued = {
+    ...message,
+    event_key: "invoice.issued",
+    entity_snapshot: {
+      invoiceId: "invoice",
+      invoiceVersion: 3,
+      approvedAt: "2026-10-05T12:00:00Z",
+    },
+  };
+  const row = {
+    student_id: issued.student_id,
+    studio_id: issued.studio_id,
+    status: "open",
+    version: 3,
+    recipient: { email: issued.recipient },
+  };
+  it("uses the transactional policy for approved current invoice emails, including queued legacy rows", async () => {
+    expect(messageIntent(issued)).toBe("invoice_issued");
+    expect(
+      await checkOutboxEligibility(client({ studio_invoices: row }), issued),
+    ).toEqual({ allowed: true });
+    expect(resolveEventRecipients).toHaveBeenLastCalledWith(
+      expect.anything(),
+      row.student_id,
+      "invoice_issued",
+    );
+  });
+  it("halts delivery after the document changes or the payer loses permission", async () => {
+    expect(
+      await checkOutboxEligibility(
+        client({
+          studio_invoices: {
+            ...row,
+            recipient: { email: "former@example.test" },
+          },
+        }),
+        issued,
+      ),
+    ).toEqual({ allowed: false, reason: "invoice_changed" });
+    vi.mocked(resolveEventRecipients).mockResolvedValueOnce({
+      recipients: [],
+      suppressed: [],
+      unresolved: [],
+    });
+    expect(
+      await checkOutboxEligibility(client({ studio_invoices: row }), issued),
+    ).toEqual({ allowed: false, reason: "recipient_permission_changed" });
+  });
+});
 function data(): ReadinessData {
   return {
     students: [

@@ -149,6 +149,13 @@ assert.deepEqual(
   manifest.expectedAddedOriginalTableColumns,
   "New original-table columns/defaults require an explicit reviewed upgrade expectation",
 );
+assert.equal(
+  query(
+    "select count(*) from public.lessons where direct_checkout_id is not null",
+  ),
+  "0",
+  "Original lessons must have no direct checkout reservations after upgrade",
+);
 assert.deepEqual(
   history(),
   files.map((f) => f.split("_")[0]),

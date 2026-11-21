@@ -21,6 +21,8 @@ export function messageIntent(
   message: Pick<Tables<"outbox_messages">, "recipient_intent" | "event_key">,
 ): RecipientIntent | "coach" | undefined {
   const explicit = message.recipient_intent;
+  if (message.event_key === "invoice.issued") return "invoice_issued";
+  if (explicit === "invoice_issued") return "payment_due";
   if (explicit === "coach") return "coach";
   if (recipientIntents.includes(explicit as RecipientIntent))
     return explicit as RecipientIntent;
@@ -56,21 +58,24 @@ export async function checkOutboxEligibility(
       return { allowed: false, reason: "approval_required" };
     const invoice = await client
       .from("studio_invoices")
-      .select("student_id,studio_id,status,version")
+      .select("student_id,studio_id,status,version,recipient")
       .eq("id", snapshot.invoiceId)
       .single();
     if (invoice.error) throw invoice.error;
     if (
       !invoice.data ||
       invoice.data.studio_id !== message.studio_id ||
+      invoice.data.student_id !== message.student_id ||
       ["void", "draft"].includes(invoice.data.status) ||
-      invoice.data.version !== snapshot.invoiceVersion
+      invoice.data.version !== snapshot.invoiceVersion ||
+      invoice.data.recipient?.email?.toLowerCase() !==
+        message.recipient.toLowerCase()
     )
       return { allowed: false, reason: "invoice_changed" };
     const recipients = await resolveEventRecipients(
       client,
       invoice.data.student_id,
-      "payment_due",
+      "invoice_issued",
     );
     return recipients.recipients.some(
       (r) => r.email.toLowerCase() === message.recipient.toLowerCase(),

@@ -698,9 +698,25 @@ test("whole-lesson payment selection stays readable across layouts and themes", 
       await expect(
         page.getByText("6 lessons selected · $510.00 total"),
       ).toBeVisible();
+      if (theme === "light") {
+        await page.getByRole("button", { name: "Review payment" }).click();
+        const review = page.getByRole("dialog", {
+          name: "Review selected lessons",
+        });
+        await expect(review.getByText("Total $510.00")).toBeVisible();
+        await checkView(page);
+        await page.screenshot({
+          path: testInfo.outputPath(`review-${layout}.png`),
+          animations: "disabled",
+        });
+        await review.getByRole("button", { name: "Back to selection" }).click();
+      }
     }
   }
-  await page
+  await page.getByRole("button", { name: "Review payment" }).click();
+  const review = page.getByRole("dialog", { name: "Review selected lessons" });
+  await expect(review.getByText("Total $510.00")).toBeVisible();
+  await review
     .getByRole("button", { name: "Continue to secure checkout" })
     .click();
   await expect(

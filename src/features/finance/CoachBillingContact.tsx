@@ -69,7 +69,7 @@ export function CoachBillingContact({
         </div>
       </dl>
       <div className="lesson-invoice-payer">
-        <p>{billing.deliveryError ?? "Invoice email delivery is available."}</p>
+        <p>{billing.deliveryError ?? "Review invoice email after issuance."}</p>
         {billing.issueError && (
           <InvoicePayerSetup
             student={student}

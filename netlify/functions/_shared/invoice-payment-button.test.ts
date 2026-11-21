@@ -8,6 +8,7 @@ it("includes a Pay invoice button targeting that specific invoice in email", () 
     {
       body: "Hello Payer,\nInvoice details",
       event_key: "invoice.issued",
+      student_id: "dependent",
       entity_snapshot: { invoiceId: "invoice-id" },
     },
     { name: "Studio" },
@@ -15,7 +16,7 @@ it("includes a Pay invoice button targeting that specific invoice in email", () 
   );
   expect(email.html).toContain("Pay invoice");
   expect(email.html).toContain(
-    "https://studio.test/portal/payments?invoice=invoice-id",
+    "https://studio.test/portal/payments?invoice=invoice-id&amp;student=dependent",
   );
 });
 it("exports a clickable PDF payment button to the same secure invoice link", async () => {

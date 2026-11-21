@@ -70,7 +70,9 @@ test("@a11y focused dialog, form validation, pagination, and live-region pattern
   await page.keyboard.press("Escape");
 
   await page.goto("/portal/settings");
-  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Settings", exact: true }),
+  ).toBeVisible();
   await expect(page.locator("form").first()).toBeVisible();
   await expectNoSeriousAxeViolations(page, "form");
 

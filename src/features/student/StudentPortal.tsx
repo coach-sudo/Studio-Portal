@@ -202,7 +202,8 @@ function PortalWorkspace({
 }: {
   role: Extract<Role, "student" | "guardian">;
   studentId: string;
-  contexts: { id: string; fullName: string; preferredName?: string | null }[];
+  contexts: (Pick<PortalContext, "id" | "fullName" | "preferredName"> &
+    Partial<Pick<PortalContext, "canViewFinance">>)[];
   access?: PortalContext;
 }) {
   const location = useLocation();
@@ -590,6 +591,11 @@ function PortalWorkspace({
                     key={person?.id}
                     data={data}
                     isDemo={isDemo}
+                    household={
+                      role === "guardian"
+                        ? contexts.filter((item) => item.canViewFinance)
+                        : undefined
+                    }
                     canManageLessons={
                       role !== "guardian" ||
                       (guardianSchedule && guardianManageLessons)
