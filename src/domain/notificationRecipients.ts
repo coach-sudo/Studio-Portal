@@ -80,7 +80,10 @@ export function resolveNotificationRecipients(
   ].includes(intent);
   const payer = finance ? paymentResponsibility(student, linked) : undefined;
   if (payer?.needsConfiguration) {
-    result.unresolved.push(payer.reason);
+    result.unresolved.push(
+      payer.reason,
+      "No eligible recipient remains for this event.",
+    );
     return result;
   }
   const primaryScheduling = linked.some(

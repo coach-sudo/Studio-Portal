@@ -15,6 +15,7 @@ import type { V2CommandContext } from "./types";
 import { handleTrainingCheckout } from "./training-checkout";
 import { trainingCheckout } from "../_shared/training-checkout";
 import { workerEnabled } from "../_shared/worker-controls";
+import { insertOutboxMessage } from "../_shared/outbox-queue";
 
 function invoiceEmailHold(billing: ReturnType<typeof invoiceBilling>) {
   return (
@@ -34,35 +35,26 @@ async function queueInvoiceEmail(
 ) {
   const ids: string[] = [];
   for (const recipient of recipients) {
-    const result = await service
-      .from("outbox_messages")
-      .upsert(
-        {
-          studio_id: invoice.studio_id,
-          student_id: invoice.student_id,
-          channel: "email",
-          recipient,
-          subject: `${invoice.branding.studioName} · Invoice ${invoice.number}`,
-          body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}&student=${invoice.student_id}\n\n${invoice.footer}`,
-          status: "queued",
-          send_at: new Date().toISOString(),
-          event_key: "invoice.issued",
-          dedupe_key: `${key}:${recipient}`,
-          recipient_intent: "invoice_issued",
-          entity_snapshot: {
-            invoiceId: invoice.id,
-            invoiceVersion: invoice.version,
-            approvedAt: new Date().toISOString(),
-          },
-          correlation_id: correlationId,
-        },
-        { onConflict: "dedupe_key", ignoreDuplicates: true },
-      )
-      .select("id");
-    if (result.error) throw result.error;
-    ids.push(
-      ...(result.data ?? []).map((message: { id: string }) => message.id),
-    );
+    const result = await insertOutboxMessage(service, {
+      studio_id: invoice.studio_id,
+      student_id: invoice.student_id,
+      channel: "email",
+      recipient,
+      subject: `${invoice.branding.studioName} · Invoice ${invoice.number}`,
+      body: `Hello ${invoice.recipient.name},\n\n${invoice.introduction}\n\nInvoice ${invoice.number}\nBalance due: ${new Intl.NumberFormat("en-US", { style: "currency", currency: invoice.currency }).format(invoiceDue(invoice) / 100)}\nDue: ${invoice.due_date}\n\nView or download your invoice: ${portalOrigin()}/portal/payments?invoice=${invoice.id}&student=${invoice.student_id}\n\n${invoice.footer}`,
+      status: "queued",
+      send_at: new Date().toISOString(),
+      event_key: "invoice.issued",
+      dedupe_key: `${key}:${recipient}`,
+      recipient_intent: "invoice_issued",
+      entity_snapshot: {
+        invoiceId: invoice.id,
+        invoiceVersion: invoice.version,
+        approvedAt: new Date().toISOString(),
+      },
+      correlation_id: correlationId,
+    });
+    if (result) ids.push(result.id);
   }
   return ids;
 }
