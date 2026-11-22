@@ -110,6 +110,17 @@ export function toAppError(error: unknown): AppError {
       cause: error,
     });
   if (
+    message === "INVALID_TRANSITION: Select the exact package to adjust." ||
+    message ===
+      "INVALID_TRANSITION: Select the exact package to add credits to."
+  )
+    return new AppError("VALIDATION_FAILED", {
+      status: 422,
+      message:
+        "Open Packages and reconciliation and select the specific package to review a correction.",
+      cause: error,
+    });
+  if (
     message.includes("INVALID_TRANSITION") &&
     message.toLowerCase().includes("pending")
   )

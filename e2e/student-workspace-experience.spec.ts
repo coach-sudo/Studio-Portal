@@ -227,12 +227,14 @@ test("@journey @mobile @a11y student context, household, credit truth and failur
     await page
       .getByRole("button", { name: "Manage credits", exact: true })
       .click();
-    await expect(
-      page
-        .getByText("Remaining", { exact: true })
-        .locator("..")
-        .getByText("0", { exact: true }),
-    ).toBeVisible();
+    for (const label of [
+      "Unused Credits",
+      "Available to Book",
+      "Reserved for Upcoming Lessons",
+    ])
+      await expect(
+        page.getByText(label, { exact: true }).locator("..").locator("strong"),
+      ).toHaveText("0");
     await expect(page.getByText("No upcoming lessons.")).toBeVisible();
     f.sql(`insert into packages(id,student_id,name,auto_apply) values('${packages[2]}','${f.secondStudent}','Legacy automatic package',true),('${packages[3]}','${f.secondStudent}','Legacy manual package',false);
       insert into package_credit_entries(package_id,kind,quantity,reason) values('${packages[2]}','purchase',1,'Mixed preference fixture'),('${packages[3]}','purchase',1,'Mixed preference fixture');`);

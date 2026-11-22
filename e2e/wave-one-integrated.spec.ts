@@ -62,10 +62,27 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
       available: number;
     };
     expect(totals).toMatchObject({ remaining: 2, reserved: 2, available: 0 });
-    for (const label of ["Remaining", "Available", "Reserved"] as const)
-      await expect(metric(label)).toHaveText(
-        String(totals[label.toLowerCase() as keyof typeof totals]),
-      );
+    await expect(metric("Unused Credits")).toHaveText(String(totals.remaining));
+    await expect(metric("Available to Book")).toHaveText(
+      String(totals.available),
+    );
+    await expect(metric("Reserved for Upcoming Lessons")).toHaveText(
+      String(totals.reserved),
+    );
+    const wallet = await f.db.rpc("student_credit_coverage", {
+      p_student: f.studentId,
+    });
+    expect(wallet.error).toBeNull();
+    expect(wallet.data).toMatchObject({
+      packages: expect.arrayContaining([
+        expect.objectContaining({
+          id: pkg,
+          available: 0,
+          reserved: 2,
+          used: 0,
+        }),
+      ]),
+    });
     const finance = await page.request.post(
       `${process.env.SUPABASE_URL}/rest/v1/rpc/student_financial_overview`,
       {
@@ -185,7 +202,9 @@ test("@journey @mobile @a11y Wave 1 credits, cancellation, protected deletion an
     });
     await openPayments(f.secondStudent);
     await expect(outstanding).toHaveText("$0.00");
-    await expect(metric("Remaining")).toHaveText("0");
+    await expect(metric("Unused Credits")).toHaveText("0");
+    await expect(metric("Available to Book")).toHaveText("0");
+    await expect(metric("Reserved for Upcoming Lessons")).toHaveText("0");
     await expect(page.getByText(f.rows[0].topic!, { exact: true })).toHaveCount(
       0,
     );

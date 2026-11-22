@@ -33,6 +33,21 @@ describe("structured API errors", () => {
     },
   );
 
+  it.each([
+    "Select the exact package to adjust.",
+    "Select the exact package to add credits to.",
+  ])("guides the coach to the package when the database says %s", (message) => {
+    expect(
+      toAppError({ message: "INVALID_TRANSITION: " + message }),
+    ).toMatchObject({
+      code: "VALIDATION_FAILED",
+      status: 422,
+      retryable: false,
+      message:
+        "Open Packages and reconciliation and select the specific package to review a correction.",
+    });
+  });
+
   it("returns only safe fields while logging the internal cause with correlation", async () => {
     const logging = vi
       .spyOn(console, "error")
