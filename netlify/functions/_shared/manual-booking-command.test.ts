@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { setTimeout as delay } from "node:timers/promises";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { formatStudioDateTime } from "../../../src/domain/presentation";
 const state = vi.hoisted(() => ({
   rpc: vi.fn(),
   google: vi.fn(),
@@ -277,6 +278,13 @@ function free(query: GoogleQuery, busy: { start: string; end: string }[] = []) {
   });
 }
 
+const previewSeries = () =>
+  call(
+    { ...seriesPayload, ends_at: windows[0].end },
+    undefined,
+    "check_conflicts",
+  );
+
 it("fits 52 dates in nine FreeBusy reads and revalidates at save including the last date", async () => {
   let saving = false;
   let active = 0;
@@ -301,21 +309,21 @@ it("fits 52 dates in nine FreeBusy reads and revalidates at save including the l
     ]);
   });
   const began = performance.now();
-  const preview = await call(
-    {
-      ...seriesPayload,
-      ends_at: windows[0].end,
-    },
-    undefined,
-    "check_conflicts",
-  );
+  const preview = await previewSeries();
   expect(preview.status).toBe(200);
   expect(await preview.json()).toMatchObject({
     resource: { conflicts: [], externalCalendarChecked: true },
   });
   expect(provider).toHaveBeenCalledTimes(9);
   saving = true;
-  expect((await call(seriesPayload)).status).toBe(409);
+  const response = await call({ ...seriesPayload, allow_conflict: true });
+  expect(response.status).toBe(409);
+  expect(await response.json()).toMatchObject({
+    code: "SLOT_UNAVAILABLE",
+    message: expect.stringContaining(
+      formatStudioDateTime(last.start, seriesPayload.timezone),
+    ),
+  });
   expect(provider).toHaveBeenCalledTimes(18);
   expect(peak).toBe(3);
   expect(performance.now() - began).toBeLessThan(12_000);
@@ -422,12 +430,74 @@ it("aborts outstanding reads at the shared deadline without writing the series",
   );
 });
 
-it("keeps the explicit coach override for a freshly confirmed Google conflict", async () => {
-  longSeries((query) =>
-    free(query, query.timeMax === windows[51].end ? [windows[51]] : []),
-  );
-  const approved = { ...seriesPayload, allow_conflict: true };
+it.each([
+  { label: "still busy", saveIndex: 0 },
+  { label: "busy on a different date", saveIndex: 18 },
+])(
+  "blocks a series that is $label at save despite a preview override",
+  async ({ saveIndex }) => {
+    const previewSlot = windows[0];
+    let slot = previewSlot;
+    const provider = longSeries((query) =>
+      free(
+        query,
+        slot.start >= query.timeMin && slot.end <= query.timeMax ? [slot] : [],
+      ),
+    );
+    const preview = await previewSeries();
+    expect(preview.status).toBe(200);
+    expect(await preview.json()).toMatchObject({
+      resource: { conflicts: [{ start: previewSlot.start, source: "google" }] },
+    });
+    slot = windows[saveIndex];
+    const response = await call({ ...seriesPayload, allow_conflict: true });
+    expect(response.status).toBe(409);
+    expect(await response.json()).toMatchObject({
+      code: "SLOT_UNAVAILABLE",
+      message: expect.stringContaining(
+        formatStudioDateTime(slot.start, seriesPayload.timezone),
+      ),
+    });
+    expect(provider).toHaveBeenCalledTimes(18);
+    expect(state.rpc.mock.calls.map(([name]) => name)).toEqual([
+      "manual_booking_series_plan",
+      "manual_booking_replay",
+      "manual_booking_series_plan",
+    ]);
+  },
+);
+
+it("saves a conflict-free series and returns its committed receipt on duplicate submission", async () => {
+  const provider = longSeries((query) => free(query));
+  const created = await call(seriesPayload);
+  expect(created.status).toBe(201);
+  const receipt = await created.json();
+  expect(receipt).toMatchObject({ lessonId: "first-lesson" });
+  expect(provider).toHaveBeenCalledTimes(9);
+  state.rpc.mockResolvedValueOnce({ data: receipt, error: null });
+
+  const duplicate = await call(seriesPayload);
+  expect(duplicate.status).toBe(201);
+  expect(await duplicate.json()).toEqual(receipt);
+  expect(provider).toHaveBeenCalledTimes(9);
+  expect(state.rpc.mock.calls.map(([name]) => name)).toEqual([
+    "manual_booking_replay",
+    "manual_booking_series_plan",
+    "command_create_manual_booking",
+    "manual_booking_replay",
+  ]);
+});
+
+it("preserves the explicit Google conflict override for an individual booking", async () => {
+  state.configured = true;
+  state.google.mockResolvedValue("synthetic-provider-token");
+  state.conflict.mockResolvedValue([
+    { id: "busy", summary: "Busy", ...windows[0] },
+  ]);
+  expect((await call()).status).toBe(409);
+  const approved = { ...payload, allow_conflict: true };
   expect((await call(approved)).status).toBe(201);
+  expect(state.conflict).toHaveBeenCalledTimes(1);
   expect(state.rpc).toHaveBeenLastCalledWith("command_create_manual_booking", {
     p_key: "e2e-stable-manual",
     p_value: approved,

@@ -475,7 +475,7 @@ export function ManualBookingDialog({
               );
               setConflicts(found);
               if (found.length) {
-                setApprovedTime(timeKey);
+                if (!recurrence) setApprovedTime(timeKey);
                 return;
               }
             } catch (reason) {
@@ -516,7 +516,7 @@ export function ManualBookingDialog({
                   attendance_confirmed: attendanceConfirmed,
                 }
               : {}),
-            allow_conflict: approvedTime === timeKey,
+            allow_conflict: !recurrence && approvedTime === timeKey,
           };
           const fingerprint = JSON.stringify(payload);
           if (attempt.current?.request !== fingerprint)
@@ -871,13 +871,17 @@ export function ManualBookingDialog({
                 {formatStudioTime(item.end, timezone)}.
                 {item.source === "studio"
                   ? "Choose another time; studio lesson overlaps cannot be overridden."
-                  : "A coach may override this Google-only conflict with the recorded reason."}
+                  : !recurrence
+                    ? "A coach may override this Google-only conflict with the recorded reason."
+                    : ""}
               </p>
             ))}
             <small>
-              {conflicts.some((item) => item.source === "studio")
-                ? "Local double-booking protection remains active."
-                : "Submit again to override this Google-only conflict, or choose another time."}
+              {recurrence
+                ? "Choose another start time or try again once these times are free."
+                : conflicts.some((item) => item.source === "studio")
+                  ? "Local double-booking protection remains active."
+                  : "Submit again to override this Google-only conflict, or choose another time."}
             </small>
           </div>
         )}
@@ -899,7 +903,7 @@ export function ManualBookingDialog({
               ? "Saving booking…"
               : checking
                 ? "Checking calendar…"
-                : conflicts.length
+                : !recurrence && conflicts.length
                   ? "Override Google conflict"
                   : "Create booking"}
           </button>
