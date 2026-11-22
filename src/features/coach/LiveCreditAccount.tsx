@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { Dialog, Section } from "../../components/Primitives";
 import { loadCreditCoverage } from "../../data/creditCoverage";
@@ -45,11 +45,18 @@ function CreditControls({
   identity: string;
 }) {
   const client = useQueryClient();
+  const formId = useId();
   const [page, setPage] = useState(1);
   const [automatic, setAutomatic] = useState<boolean>();
   const [adjusting, setAdjusting] = useState(false);
   const [reconciling, setReconciling] = useState(false);
-  const [total, setTotal] = useState(0);
+  const [adjustment, setAdjustment] = useState("set");
+  const [quantity, setQuantity] = useState("");
+  const [reviewed, setReviewed] = useState<{
+    total: number;
+    version: number;
+    balance: { remaining: number; available: number; reserved: number };
+  }>();
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -77,24 +84,49 @@ function CreditControls({
     staleTime: 0,
   });
   const current = coverage.isError ? undefined : coverage.data;
+  const balance = current?.summary;
+  const amount = quantity === "" ? NaN : Number(quantity);
+  const total =
+    adjustment === "set"
+      ? amount
+      : (balance?.remaining ?? 0) +
+        (adjustment === "remove" ? -amount : amount);
+  const canReview =
+    !!balance &&
+    !balance.needsReview &&
+    Number.isInteger(amount) &&
+    amount >= (adjustment === "set" ? 0 : 1) &&
+    total >= balance.reserved &&
+    total <= 100000 &&
+    total !== balance.remaining &&
+    reason.trim().length >= 3;
+
   async function save(
     command: "set_auto" | "apply_upcoming" | "set_total" | "reconcile",
   ) {
-    if (busy || !current || readOnly) return;
+    if (busy || !current || readOnly || (command === "set_total" && !reviewed))
+      return;
     const payload = {
       studentId,
       ...(command === "set_auto"
         ? { enabled: automatic }
         : command === "set_total"
-          ? { total, reason: reason.trim() }
+          ? {
+              total: reviewed?.total,
+              reason: reason.trim(),
+              reviewedBalance: reviewed?.balance,
+            }
           : {}),
     };
-    const signature = JSON.stringify([command, payload]);
+    const signature = JSON.stringify([command, payload, reviewed?.version]);
     if (intent.current?.signature !== signature)
       intent.current = {
         signature,
         key: crypto.randomUUID(),
-        version: current.summary.version,
+        version:
+          command === "set_total" && reviewed
+            ? reviewed.version
+            : current.summary.version,
       };
     setBusy(true);
     setNotice("");
@@ -132,8 +164,13 @@ function CreditControls({
         ]),
       ]);
     } catch (error) {
-      if (error instanceof ApiClientError && error.code === "VERSION_CONFLICT")
+      if (
+        error instanceof ApiClientError &&
+        error.code === "VERSION_CONFLICT"
+      ) {
         intent.current = null;
+        setReviewed(undefined);
+      }
       setNotice(
         `${error instanceof Error ? error.message : "Credit command failed."} Refresh coverage before starting a different change; retrying this same request is safe.`,
       );
@@ -185,9 +222,9 @@ function CreditControls({
         <>
           <div className="account-metrics">
             {[
-              ["Remaining", current.summary.remaining],
-              ["Available", current.summary.available],
-              ["Reserved", current.summary.reserved],
+              ["Unused Credits", current.summary.remaining],
+              ["Available to Book", current.summary.available],
+              ["Reserved for Upcoming Lessons", current.summary.reserved],
             ].map(([label, value]) => (
               <div key={label}>
                 <small>{label}</small>
@@ -259,11 +296,15 @@ function CreditControls({
               <button
                 disabled={busy || current.summary.needsReview}
                 onClick={() => {
-                  setTotal(current.summary.remaining);
+                  setAdjustment("set");
+                  setQuantity(String(current.summary.remaining));
+                  setReason("");
+                  setReviewed(undefined);
+                  setNotice("");
                   setAdjusting(true);
                 }}
               >
-                Adjust credits
+                Manage credits
               </button>
             </div>
           )}
@@ -398,62 +439,123 @@ function CreditControls({
           {notice && <p role="alert">{notice}</p>}
         </Dialog>
       )}
-      {adjusting && current && (
+      {adjusting && balance && (
         <Dialog
-          title="Adjust lesson credits"
+          title="Manage lesson credits"
           onClose={() => !busy && setAdjusting(false)}
         >
           <form
             className="workflow-form"
             onSubmit={(event) => {
               event.preventDefault();
-              void save("set_total");
+              if (reviewed) {
+                void save("set_total");
+              } else if (canReview) {
+                setNotice("");
+                setReviewed({
+                  total,
+                  version: balance.version,
+                  balance: {
+                    remaining: balance.remaining,
+                    reserved: balance.reserved,
+                    available: balance.available,
+                  },
+                });
+              }
             }}
           >
-            <label className="full">
-              Remaining total
-              <input
-                type="number"
-                required
-                min={current.summary.reserved}
-                max={100000}
-                step={1}
-                value={total}
-                onChange={(event) => setTotal(Number(event.target.value))}
-              />
-              <small>
-                Includes {current.summary.reserved} reserved credits, which
-                cannot be removed.
-              </small>
-            </label>
-            <label className="full">
-              Reason
-              <textarea
-                required
-                minLength={3}
-                maxLength={500}
-                value={reason}
-                onChange={(event) => setReason(event.target.value)}
-              />
-            </label>
+            {reviewed ? (
+              <div className="full">
+                <p>
+                  Unused Credits change from {reviewed.balance.remaining} to{" "}
+                  {reviewed.total}.
+                </p>
+                <p>
+                  Available to Book changes from {reviewed.balance.available} to{" "}
+                  {reviewed.total - reviewed.balance.reserved} before automatic
+                  reservations.
+                </p>
+                <p>
+                  Reserved for Upcoming Lessons: {reviewed.balance.reserved}
+                </p>
+                <p>Reason: {reason.trim()}</p>
+              </div>
+            ) : (
+              <>
+                <label className="full" htmlFor={formId + "-action"}>
+                  Adjustment
+                  <select
+                    id={formId + "-action"}
+                    value={adjustment}
+                    onChange={(event) => {
+                      setAdjustment(event.target.value);
+                      setQuantity(
+                        event.target.value === "set"
+                          ? String(balance.remaining)
+                          : "",
+                      );
+                    }}
+                  >
+                    <option value="add">Add Credits</option>
+                    <option value="remove">Remove Credits</option>
+                    <option value="set">Set Correct Balance</option>
+                  </select>
+                </label>
+                <label className="full" htmlFor={formId + "-quantity"}>
+                  {adjustment === "set"
+                    ? "New unused total"
+                    : "Number of credits"}
+                  <input
+                    id={formId + "-quantity"}
+                    type="number"
+                    required
+                    min={adjustment === "set" ? 0 : 1}
+                    max={100000}
+                    step={1}
+                    value={quantity}
+                    onChange={(event) => setQuantity(event.target.value)}
+                  />
+                  <small>
+                    {balance.remaining} unused, including {balance.reserved}{" "}
+                    reserved. Up to {Math.max(0, balance.available)} credits can
+                    be removed.
+                  </small>
+                </label>
+                {total < balance.reserved && (
+                  <p className="full" role="alert">
+                    This would remove reserved credits. Review upcoming coverage
+                    before changing the balance.
+                  </p>
+                )}
+                <label className="full" htmlFor={formId + "-reason"}>
+                  Reason
+                  <textarea
+                    id={formId + "-reason"}
+                    required
+                    minLength={3}
+                    maxLength={500}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                </label>
+              </>
+            )}
             <div className="form-actions full">
               <button
                 type="button"
                 disabled={busy}
-                onClick={() => setAdjusting(false)}
+                onClick={() => {
+                  if (reviewed) setReviewed(undefined);
+                  else setAdjusting(false);
+                }}
               >
-                Cancel
+                {reviewed ? "Back to edit" : "Cancel"}
               </button>
               <button
                 className="primary"
-                disabled={
-                  busy ||
-                  reason.trim().length < 3 ||
-                  !Number.isInteger(total) ||
-                  total < current.summary.reserved
-                }
+                disabled={busy || (!reviewed && !canReview)}
               >
-                Save credit adjustment
+                {reviewed ? "Confirm credit adjustment" : "Review adjustment"}
               </button>
             </div>
             {notice && (
