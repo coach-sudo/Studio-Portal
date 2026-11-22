@@ -599,23 +599,21 @@ async function createBooking(request: Request, context: Context) {
         throw new Error(
           "FORBIDDEN: This sign-in is not linked to the student being booked.",
         );
-      const { data: packages } = await db
-        .from("packages")
-        .select("id")
-        .eq("student_id", student.id);
-      let available = false;
-      for (const item of packages || []) {
-        const { data: balance } = await db.rpc("package_credit_balance", {
-          target_package: item.id,
-        });
-        if (Number(balance) >= occurrenceCount) {
-          available = true;
-          break;
-        }
-      }
-      if (!available)
+      if (student.email?.toLowerCase() !== input.guestEmail.toLowerCase())
+        throw new Error("FORBIDDEN: This sign-in is not linked to the student being booked.");
+      const { data: eligibility, error } = await db.rpc("wave3_booking_credit_check", {
+        p_actor: user.id,
+        p_student: student.id,
+        p_service: service.id,
+        p_starts: occurrenceStarts,
+        p_offering: input.offeringId || null,
+      });
+      if (error) throw error;
+      if (eligibility === "review")
+        throw new Error("INVALID_TRANSITION: Ask the studio to review the eligible shared packages.");
+      if (eligibility !== "eligible")
         throw new Error(
-          "VALIDATION_FAILED: Your package does not have enough lessons available.",
+          "VALIDATION_FAILED: No eligible package has enough credits for these lessons.",
         );
     }
     if (occurrenceStarts.length > 1) {

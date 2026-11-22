@@ -2996,6 +2996,7 @@ export type Database = {
       }
       package_credit_entries: {
         Row: {
+          covered_student_id: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -3008,6 +3009,7 @@ export type Database = {
           reverses_entry_id: string | null
         }
         Insert: {
+          covered_student_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3020,6 +3022,7 @@ export type Database = {
           reverses_entry_id?: string | null
         }
         Update: {
+          covered_student_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3032,6 +3035,13 @@ export type Database = {
           reverses_entry_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "package_credit_entries_covered_student_id_fkey"
+            columns: ["covered_student_id"]
+            isOneToOne: false
+            referencedRelation: "students"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "package_credit_entries_lesson_id_fkey"
             columns: ["lesson_id"]
@@ -5939,6 +5949,16 @@ export type Database = {
       void_studio_invoice: {
         Args: { p_invoice: string; p_version: number }
         Returns: Json
+      }
+      wave3_booking_credit_check: {
+        Args: {
+          p_actor: string
+          p_offering: string
+          p_service: string
+          p_starts: string[]
+          p_student: string
+        }
+        Returns: string
       }
     }
     Enums: {

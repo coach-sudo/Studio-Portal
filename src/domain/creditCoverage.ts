@@ -21,6 +21,30 @@ export const creditCoverageSchema = z
     previewEnable: z.boolean(),
     settingReasonCode: z.literal("mixed_settings_review").nullable(),
     lessonsVisible: z.boolean(),
+    packages: z
+      .array(
+        z.object({
+          id: z.string().uuid(),
+          name: z.string(),
+          expiresAt: z.iso.datetime({ offset: true }).nullable(),
+          shared: z.boolean(),
+          available: z.number().int().nonnegative(),
+          reserved: z.number().int().nonnegative(),
+          used: z.number().int().nonnegative(),
+          expired: z.number().int().nonnegative(),
+          needsReview: z.boolean(),
+          lessons: z.array(
+            z.object({
+              id: z.string().uuid(),
+              topic: z.string(),
+              startsAt: z.iso.datetime({ offset: true }),
+              status: z.string(),
+              units: z.number().int().positive(),
+            }),
+          ),
+        }),
+      )
+      .optional(),
     summary: z.object({
       available: z.number().int(),
       reserved: z.number().int().nonnegative(),

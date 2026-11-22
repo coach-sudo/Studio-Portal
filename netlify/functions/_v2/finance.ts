@@ -40,9 +40,17 @@ export async function handleFinanceCommands(
 
   if (
     domain === "credits" &&
-    ["set_total", "set_auto", "reconcile", "apply_upcoming"].includes(
-      input.command,
-    )
+    [
+      "set_total",
+      "set_auto",
+      "reconcile",
+      "apply_upcoming",
+      "package_review",
+      "package_correct",
+      "case_decide",
+      "sharing_options",
+      "set_sharing",
+    ].includes(input.command)
   ) {
     const studioId = await requireCoach();
     const studentId = String(input.payload.studentId || "");
