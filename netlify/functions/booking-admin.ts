@@ -15,16 +15,49 @@ const resources: Record<string, string> = {
   series: "recurring_series",
   participants: "lesson_participants",
 };
-async function googleObservation(startsAt: string, endsAt: string) {
+type BookingWindow = { start: string; end: string };
+
+function isRecurring(payload: Record<string, unknown>) {
+  return payload.recurrence != null && payload.recurrence !== "none";
+}
+
+async function bookingSeriesWindows(
+  db: ReturnType<typeof userClient>,
+  payload: Record<string, unknown>,
+) {
+  const { data, error } = await db.rpc("manual_booking_series_plan", {
+    p_value: payload,
+  });
+  if (error) throw error;
+  return (data as BookingWindow[]).map(({ start, end }) => ({
+    start: new Date(start).toISOString(),
+    end: new Date(end).toISOString(),
+  }));
+}
+
+async function inWindowBatches<T>(
+  windows: BookingWindow[],
+  query: (window: BookingWindow) => Promise<T[]>,
+) {
+  const results: T[] = [];
+  for (let i = 0; i < windows.length; i += 6) {
+    results.push(
+      ...(await Promise.all(windows.slice(i, i + 6).map(query))).flat(),
+    );
+  }
+  return results;
+}
+
+async function googleObservation(windows: BookingWindow[]) {
   if (!Netlify.env.get("GOOGLE_REFRESH_TOKEN"))
     return { conflicts: [], checked: false };
   try {
+    const token = await googleAccessToken();
     return {
-      conflicts: await googleCalendarConflicts(
-        await googleAccessToken(),
-        startsAt,
-        endsAt,
+      conflicts: await inWindowBatches(windows, ({ start, end }) =>
+        googleCalendarConflicts(token, start, end),
       ),
+
       checked: true,
     };
   } catch {
@@ -131,14 +164,23 @@ export default async (request: Request, context: Context) => {
         if (!lesson) throw new Error("FORBIDDEN");
         target = { status: lesson.status, offeringId: lesson.offering_id };
       }
-      const { data: localRows, error: localError } = await db
-        .from("lessons")
-        .select("id,topic,starts_at,ends_at,status,offering_id")
-        .eq("studio_id", membership.studio_id)
-        .in("status", ["draft", "scheduled"])
-        .lt("starts_at", endsAt.toISOString())
-        .gt("ends_at", startsAt.toISOString());
-      if (localError) throw localError;
+      const windows = isRecurring(body.payload)
+        ? await bookingSeriesWindows(db, body.payload)
+        : [{ start: startsAt.toISOString(), end: endsAt.toISOString() }];
+      const localRows = await inWindowBatches(
+        windows,
+        async ({ start, end }) => {
+          const { data, error } = await db
+            .from("lessons")
+            .select("id,topic,starts_at,ends_at,status,offering_id")
+            .eq("studio_id", membership.studio_id)
+            .in("status", ["draft", "scheduled"])
+            .lt("starts_at", end)
+            .gt("ends_at", start);
+          if (error) throw error;
+          return data || [];
+        },
+      );
       const local = (localRows || [])
         .filter((item) => item.id !== body.payload?.lesson_id)
         .map((item) => {
@@ -159,10 +201,7 @@ export default async (request: Request, context: Context) => {
       const observation =
         body.payload.historical === true
           ? { conflicts: [], checked: false }
-          : await googleObservation(
-              startsAt.toISOString(),
-              endsAt.toISOString(),
-            );
+          : await googleObservation(windows);
       const google = observation.conflicts.map((item) => ({
         ...item,
         source: "google",
@@ -218,6 +257,9 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "VALIDATION_FAILED: Choose a valid time and use Record Past Lesson for history.",
         );
+      const windows = isRecurring(body.payload)
+        ? await bookingSeriesWindows(db, body.payload)
+        : [{ start: startsAt.toISOString(), end: endsAt.toISOString() }];
       let external = "not_configured";
       if (startsAt <= new Date()) external = "not_checked";
       else if (
@@ -226,10 +268,7 @@ export default async (request: Request, context: Context) => {
       )
         external = "overridden";
       else if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
-        const { conflicts } = await googleObservation(
-          startsAt.toISOString(),
-          endsAt.toISOString(),
-        );
+        const { conflicts } = await googleObservation(windows);
         if (conflicts.length)
           throw new AppError("SLOT_UNAVAILABLE", {
             status: 409,
@@ -500,6 +539,12 @@ export default async (request: Request, context: Context) => {
       await requireTargetCoach(visible.studio_id);
       if (visible.version !== body.expectedVersion)
         throw new Error(`VERSION_CONFLICT:${body.expectedVersion}`);
+      if (visible.recurrence_rule?.bookingMode === "per_occurrence")
+        throw new AppError("REVIEW_REQUIRED", {
+          status: 409,
+          message:
+            "Open an upcoming lesson and review the affected occurrences before changing this series.",
+        });
       const next = String(body.payload.status);
       if (
         ![

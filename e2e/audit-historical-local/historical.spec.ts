@@ -75,6 +75,7 @@ for (const width of [320, 390, 768, 1440])
         status: 201,
         json: {
           resource: { id: "synthetic-booking" },
+          lessonId: "synthetic-lesson",
           sideEffects: "suppressed_historical",
         },
       });

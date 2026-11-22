@@ -48,7 +48,7 @@ export async function bookingAdminCommand(
 export async function createCoachBooking(
   payload: Record<string, unknown>,
   idempotencyKey: string,
-): Promise<{ bookingId: string; lessonId: string }> {
+): Promise<{ bookingId: string; lessonId: string; occurrenceCount?: number }> {
   const receipt = await sendBookingAdminCommand(
     "bookings",
     { command: "create_manual", payload },
@@ -60,7 +60,7 @@ export async function createCoachBooking(
     throw new Error(
       "The booking receipt is incomplete. Retry this booking to recover it.",
     );
-  return { bookingId, lessonId };
+  return { bookingId, lessonId, occurrenceCount: receipt.occurrences?.length };
 }
 
 export async function checkSchedulingConflicts(
@@ -76,6 +76,7 @@ export async function inspectSchedulingConflicts(
   endsAt: string,
   lessonId?: string,
   localOnly = false,
+  recurrence?: Record<string, unknown>,
 ): Promise<{
   conflicts: SchedulingConflict[];
   externalCalendarChecked: boolean;
@@ -87,6 +88,7 @@ export async function inspectSchedulingConflicts(
       ends_at: endsAt,
       lesson_id: lessonId,
       historical: localOnly,
+      ...recurrence,
     },
   });
   return {

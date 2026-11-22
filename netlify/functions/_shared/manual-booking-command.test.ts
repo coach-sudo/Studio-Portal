@@ -199,3 +199,68 @@ it.each(["create", "update", "delete"])(
     expect(state.rpc).not.toHaveBeenCalled();
   },
 );
+
+const seriesPayload = {
+  ...payload,
+  mark_paid: false,
+  recurrence: "weekly",
+  occurrence_count: 3,
+  service_version: 1,
+  timezone: "America/New_York",
+};
+const windows = [
+  { start: "2031-11-03T18:00:00.000Z", end: "2031-11-03T19:00:00.000Z" },
+  { start: "2031-11-10T18:00:00.000Z", end: "2031-11-10T19:00:00.000Z" },
+  { start: "2031-11-17T18:00:00.000Z", end: "2031-11-17T19:00:00.000Z" },
+];
+function mockSeriesPlan() {
+  state.rpc.mockImplementation(async (name) => ({
+    data:
+      name === "manual_booking_replay"
+        ? null
+        : name === "manual_booking_series_plan"
+          ? windows
+          : { resource: { id: "first-booking" }, lessonId: "first-lesson" },
+    error: null,
+  }));
+  state.configured = true;
+  state.google.mockResolvedValue("synthetic-provider-token");
+}
+
+it("checks every planned Google slot and rejects a conflict in the last occurrence before writing", async () => {
+  mockSeriesPlan();
+  state.conflict.mockImplementation(async (_token, start) =>
+    start === windows[2].start ? [{ id: "last-slot-conflict" }] : [],
+  );
+  expect((await call(seriesPayload)).status).toBe(409);
+  expect(state.google).toHaveBeenCalledTimes(1);
+  expect(state.conflict.mock.calls).toEqual(
+    windows.map(({ start, end }) => ["synthetic-provider-token", start, end]),
+  );
+  expect(state.rpc.mock.calls.map(([name]) => name)).toEqual([
+    "manual_booking_replay",
+    "manual_booking_series_plan",
+  ]);
+});
+
+it("makes one canonical write with the original repeat intent after all checks pass", async () => {
+  mockSeriesPlan();
+  expect((await call(seriesPayload)).status).toBe(201);
+  expect(state.rpc).toHaveBeenLastCalledWith("command_create_manual_booking", {
+    p_key: "e2e-stable-manual",
+    p_value: seriesPayload,
+    p_external_status: "checked",
+  });
+});
+
+it("passes a coach's explicit Google conflict override to the canonical operation", async () => {
+  mockSeriesPlan();
+  const approved = { ...seriesPayload, allow_conflict: true };
+  expect((await call(approved)).status).toBe(201);
+  expect(state.conflict).not.toHaveBeenCalled();
+  expect(state.rpc).toHaveBeenLastCalledWith("command_create_manual_booking", {
+    p_key: "e2e-stable-manual",
+    p_value: approved,
+    p_external_status: "overridden",
+  });
+});

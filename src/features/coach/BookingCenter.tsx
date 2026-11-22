@@ -33,7 +33,7 @@ import {
   type BookingAdminResource,
   type PlatformHealth,
 } from "../../data/bookingCommands";
-import { cancelDemoBooking } from "../../domain/booking";
+import { cancelDemoBooking, seriesDates } from "../../domain/booking";
 import { formatMoney } from "../../domain/finance";
 import type {
   AvailabilityRule,
@@ -280,13 +280,62 @@ export function BookingCenter() {
     payload: Record<string, unknown>,
     key: string,
   ) {
-    let receipt: { bookingId: string; lessonId: string };
+    let receipt: Awaited<ReturnType<typeof createCoachBooking>>;
     if (isDemo) {
+      const startsAt = String(payload.starts_at);
+      const cadence = payload.recurrence;
       const identity = { bookingId: uid("booking"), lessonId: uid("lesson") };
-      store.transact((draft) =>
-        createDemoManualBooking(draft, payload, identity),
-      );
-      receipt = identity;
+      const timezone = String(payload.timezone);
+      const starts =
+        cadence === "weekly" || cadence === "biweekly"
+          ? [
+              startsAt,
+              ...seriesDates(
+                startsAt,
+                cadence,
+                Number(payload.occurrence_count),
+                timezone,
+              ).slice(1),
+            ]
+          : [startsAt];
+      store.transact((draft) => {
+        const seriesId = starts.length > 1 ? uid("series") : undefined;
+        if (seriesId && (cadence === "weekly" || cadence === "biweekly")) {
+          draft.recurringSeries.push({
+            id: seriesId,
+            studioId: draft.studioId,
+            serviceId: String(payload.service_id),
+            studentId: String(payload.student_id),
+            kind: "fixed",
+            cadence,
+            status: "active",
+            startsOn: startsAt,
+            endsOn: starts.at(-1),
+            occurrenceCount: starts.length,
+            paymentPolicy: "pay_later",
+            recurrenceRule: {
+              intervalWeeks: cadence === "weekly" ? 1 : 2,
+              slots: [],
+              bookingMode: "per_occurrence",
+            },
+            studentCanModify: false,
+            discountMinor: 0,
+            version: 1,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+        starts.forEach((start, index) =>
+          createDemoManualBooking(
+            draft,
+            { ...payload, starts_at: start },
+            index === 0
+              ? identity
+              : { bookingId: uid("booking"), lessonId: uid("lesson") },
+            seriesId,
+          ),
+        );
+      });
+      receipt = { ...identity, occurrenceCount: starts.length };
     } else {
       receipt = await createCoachBooking(payload, key);
       await invalidateStudioDomains(queryClient, [
@@ -298,7 +347,11 @@ export function BookingCenter() {
     }
     setDialog(undefined);
     setNotice(
-      payload.historical ? "Past lesson recorded." : "Lesson scheduled.",
+      payload.historical
+        ? "Past lesson recorded."
+        : (receipt.occurrenceCount ?? 0) > 1
+          ? `${receipt.occurrenceCount} lessons scheduled.`
+          : "Lesson scheduled.",
     );
     setSearchParams(
       (previous) => {
@@ -484,7 +537,25 @@ export function BookingCenter() {
       {tab === "series" && (
         <Series
           data={data}
-          onManage={(item) => setDialog({ type: "series", item })}
+          onManage={(item) => {
+            if (item.recurrenceRule?.bookingMode !== "per_occurrence") {
+              setDialog({ type: "series", item });
+              return;
+            }
+            const next = data.lessons
+              .filter(
+                (lesson) =>
+                  lesson.seriesId === item.id &&
+                  lesson.status === "scheduled" &&
+                  Date.parse(lesson.startsAt) > Date.now(),
+              )
+              .sort(
+                (a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt),
+              )[0];
+            if (next && item.studentId) {
+              navigate(`/coach/students/${item.studentId}/lessons/${next.id}`);
+            } else setNotice("This series has no upcoming lessons to change.");
+          }}
         />
       )}
       {scheduleStudentId &&
@@ -2093,6 +2164,7 @@ function createDemoManualBooking(
   draft: StudioSnapshot,
   payload: Record<string, unknown>,
   { bookingId, lessonId }: { bookingId: string; lessonId: string },
+  seriesId?: string,
 ) {
   const service = draft.bookingServices.find(
       (item) => item.id === payload.service_id,
@@ -2163,6 +2235,7 @@ function createDemoManualBooking(
         ? String(payload.location_label || "Location to be confirmed")
         : "Google Meet pending",
     serviceId: service.id,
+    seriesId,
     meetingProvider: location,
     capacity: 1,
     version: 1,

@@ -301,175 +301,218 @@ test("revoked guardian relationship denies a fresh direct route", async ({
   await expect(page.locator("main")).not.toContainText("E2E Candidate Student");
 });
 
-test("profile scheduling uses the coach booking command and opens its receipt", async ({
-  page,
-  context,
-}, info) => {
-  const state = await installFixture(context, "coach");
-  const serviceId = "70000000-0000-4000-8000-000000000031";
-  const bookingId = "70000000-0000-4000-8000-000000000032";
-  const lessonId = "70000000-0000-4000-8000-000000000033";
-  state.bookingServices.push({
-    id: serviceId,
-    studio_id: ids.studio,
-    name: "Candidate private coaching",
-    category: "private",
-    duration_minutes: 45,
-    price_minor: 9000,
-    currency: "USD",
-    location_options: ["google_meet"],
-    default_location: "google_meet",
-    policy: {},
-    version: 1,
-  });
-  const requestKeys: string[] = [];
-  let conflict = true;
-  await context.route("**/api/v2/admin/booking/bookings", async (route) => {
-    const request = route.request();
-    const { command, payload } = request.postDataJSON();
-    expect(request.headers()["authorization"]).toMatch(/^Bearer /);
-    if (command === "check_conflicts") {
-      expect(Date.parse(payload.ends_at) - Date.parse(payload.starts_at)).toBe(
-        45 * 60000,
-      );
-      return route.fulfill({
-        json: {
-          resource: {
-            externalCalendarChecked: true,
-            conflicts: conflict
-              ? [
-                  {
-                    id: ids.lesson,
-                    summary: "Reserved studio time",
-                    start: payload.starts_at,
-                    end: payload.ends_at,
-                    source: "studio",
-                  },
-                ]
-              : [],
-          },
-        },
-      });
-    }
-    expect(command).toBe("create_manual");
-    expect(payload).toMatchObject({
-      student_id: ids.student,
-      service_id: serviceId,
-      timezone: "America/New_York",
-      price_minor: null,
-      mark_paid: false,
-    });
-    requestKeys.push(request.headers()["idempotency-key"]);
-    if (requestKeys.length > 1) {
-      expect(requestKeys[1]).toBe(requestKeys[0]);
-      return route.fulfill({
-        status: 201,
-        json: {
-          resource: state.bookings[0],
-          lessonId,
-        },
-      });
-    }
-    const time = {
-      starts_at: payload.starts_at,
-      ends_at: new Date(
-        Date.parse(payload.starts_at) + 45 * 60000,
-      ).toISOString(),
-    };
-    state.bookings.push({
-      id: bookingId,
+for (const cadence of ["none", "weekly", "biweekly"] as const) {
+  test(`profile scheduling uses the coach booking command and opens its receipt (${cadence})`, async ({
+    page,
+    context,
+  }, info) => {
+    const state = await installFixture(context, "coach");
+    const count = cadence === "none" ? 1 : 3;
+    const occurrences: {
+      bookingId: string;
+      lessonId: string;
+      startsAt: string;
+    }[] = [];
+    const serviceId = "70000000-0000-4000-8000-000000000031";
+    const bookingId = "70000000-0000-4000-8000-000000000032";
+    const lessonId = "70000000-0000-4000-8000-000000000033";
+    state.bookingServices.push({
+      id: serviceId,
       studio_id: ids.studio,
-      student_id: ids.student,
-      service_id: serviceId,
-      guest_name: "E2E Candidate Student",
-      reference: "SS-CANDIDATE-NEW",
-      location: "google_meet",
-      status: "confirmed",
-      payment_policy: "pay_later",
-      payment_status: "due",
-      total_minor: 9000,
-      paid_minor: 0,
-      currency: "USD",
-      version: 1,
-      ...time,
-    });
-    state.additionalLessons.push({
-      id: lessonId,
-      studio_id: ids.studio,
-      student_id: ids.student,
-      service_id: serviceId,
-      topic: "Candidate private coaching",
-      status: "scheduled",
-      location_type: "virtual",
-      location_label: "Google Meet pending",
+      name: "Candidate private coaching",
+      category: "private",
+      duration_minutes: 45,
       price_minor: 9000,
-      payment_status: "due",
+      currency: "USD",
+      location_options: ["google_meet"],
+      recurrence_options: ["none", "weekly", "biweekly"],
+      default_location: "google_meet",
+      policy: {},
       version: 1,
-      ...time,
     });
-    state.lessonParticipants.push({
-      id: "70000000-0000-4000-8000-000000000034",
-      lesson_id: lessonId,
-      booking_id: bookingId,
-      student_id: ids.student,
-      display_name: "E2E Candidate Student",
-      status: "confirmed",
+    const requestKeys: string[] = [];
+    let conflict = true;
+    await context.route("**/api/v2/admin/booking/bookings", async (route) => {
+      const request = route.request();
+      const { command, payload } = request.postDataJSON();
+      expect(request.headers()["authorization"]).toMatch(/^Bearer /);
+      if (cadence !== "none") {
+        expect(payload).toMatchObject({
+          student_id: ids.student,
+          service_id: serviceId,
+          service_version: 1,
+          recurrence: cadence,
+          occurrence_count: count,
+        });
+      }
+      if (command === "check_conflicts") {
+        expect(
+          Date.parse(payload.ends_at) - Date.parse(payload.starts_at),
+        ).toBe(45 * 60000);
+        return route.fulfill({
+          json: {
+            resource: {
+              externalCalendarChecked: true,
+              conflicts: conflict
+                ? [
+                    {
+                      id: ids.lesson,
+                      summary: "Reserved studio time",
+                      start: payload.starts_at,
+                      end: payload.ends_at,
+                      source: "studio",
+                    },
+                  ]
+                : [],
+            },
+          },
+        });
+      }
+      expect(command).toBe("create_manual");
+      expect(payload).toMatchObject({
+        student_id: ids.student,
+        service_id: serviceId,
+        timezone: "America/New_York",
+        price_minor: null,
+        mark_paid: false,
+      });
+      requestKeys.push(request.headers()["idempotency-key"]);
+      if (requestKeys.length > 1) {
+        expect(requestKeys[1]).toBe(requestKeys[0]);
+        return route.fulfill({
+          status: 201,
+          json: {
+            resource: state.bookings[0],
+            lessonId,
+            occurrences,
+          },
+        });
+      }
+      for (let index = 0; index < count; index++) {
+        const currentBookingId =
+          index === 0 ? bookingId : bookingId.slice(0, -2) + (40 + index);
+        const currentLessonId =
+          index === 0 ? lessonId : lessonId.slice(0, -2) + (50 + index);
+        const startsAt = new Date(
+          Date.parse(payload.starts_at) +
+            index * (cadence === "biweekly" ? 14 : 7) * 86400000,
+        ).toISOString();
+        occurrences.push({
+          bookingId: currentBookingId,
+          lessonId: currentLessonId,
+          startsAt,
+        });
+        const time = {
+          starts_at: startsAt,
+          ends_at: new Date(Date.parse(startsAt) + 45 * 60000).toISOString(),
+        };
+        state.bookings.push({
+          id: currentBookingId,
+          studio_id: ids.studio,
+          student_id: ids.student,
+          service_id: serviceId,
+          guest_name: "E2E Candidate Student",
+          reference: index === 0 ? "SS-CANDIDATE-NEW" : `SS-CANDIDATE-${index}`,
+          location: "google_meet",
+          status: "confirmed",
+          payment_policy: "pay_later",
+          payment_status: "due",
+          total_minor: 9000,
+          paid_minor: 0,
+          currency: "USD",
+          version: 1,
+          ...time,
+        });
+        state.additionalLessons.push({
+          id: currentLessonId,
+          studio_id: ids.studio,
+          student_id: ids.student,
+          service_id: serviceId,
+          topic: "Candidate private coaching",
+          status: "scheduled",
+          location_type: "virtual",
+          location_label: "Google Meet pending",
+          price_minor: 9000,
+          payment_status: "due",
+          version: 1,
+          ...time,
+        });
+        state.lessonParticipants.push({
+          id: "70000000-0000-4000-8000-00000000006" + index,
+          lesson_id: currentLessonId,
+          booking_id: currentBookingId,
+          student_id: ids.student,
+          display_name: "E2E Candidate Student",
+          status: "confirmed",
+        });
+      }
+      await route.abort("failed");
     });
-    await route.abort("failed");
-  });
-  await page.goto(studentPath);
-  await page.getByRole("link", { name: "Schedule lesson" }).press("Enter");
-  const dialog = page.getByRole("dialog", { name: "Create a booking" });
-  await expect(
-    dialog.getByRole("combobox", { name: "Student", exact: true }),
-  ).toHaveValue(ids.student);
-  await expect(
-    dialog.getByRole("combobox", { name: "Service", exact: true }),
-  ).toHaveValue(serviceId);
-  await expect(
-    dialog
-      .getByRole("combobox", { name: "Service", exact: true })
-      .locator("option:checked"),
-  ).toHaveText(/45 minutes/);
-  await expect(dialog.getByLabel("Custom price (USD)")).toHaveAttribute(
-    "placeholder",
-    "90",
-  );
-  await expect(dialog).toBeVisible();
-  expect(
-    await page.evaluate(() => document.documentElement.scrollWidth),
-  ).toBeLessThanOrEqual(page.viewportSize()!.width);
-  await page.screenshot({
-    path: info.outputPath("profile-booking-form.png"),
-    animations: "disabled",
-  });
+    await page.goto(studentPath);
+    await page.getByRole("link", { name: "Schedule lesson" }).press("Enter");
+    const dialog = page.getByRole("dialog", { name: "Create a booking" });
+    await expect(
+      dialog.getByRole("combobox", { name: "Student", exact: true }),
+    ).toHaveValue(ids.student);
+    await expect(
+      dialog.getByRole("combobox", { name: "Service", exact: true }),
+    ).toHaveValue(serviceId);
+    await expect(
+      dialog
+        .getByRole("combobox", { name: "Service", exact: true })
+        .locator("option:checked"),
+    ).toHaveText(/45 minutes/);
+    await expect(dialog.getByLabel("Custom price (USD)")).toHaveAttribute(
+      "placeholder",
+      "90",
+    );
+    await expect(dialog).toBeVisible();
+    if (cadence !== "none") {
+      await dialog
+        .getByRole("combobox", { name: "Repeat", exact: true })
+        .selectOption(cadence);
+      await dialog.getByLabel("Total lessons").fill(String(count));
+      await expect(
+        dialog.getByRole("combobox", { name: "Student", exact: true }),
+      ).toHaveValue(ids.student);
+    }
+    expect(
+      await page.evaluate(() => document.documentElement.scrollWidth),
+    ).toBeLessThanOrEqual(page.viewportSize()!.width);
+    await page.screenshot({
+      path: info.outputPath("profile-booking-form.png"),
+      animations: "disabled",
+    });
 
-  await dialog.getByRole("button", { name: "Create booking" }).click();
-  await expect(
-    dialog.getByText("Reserved studio time", { exact: false }),
-  ).toBeVisible();
-  expect(requestKeys).toHaveLength(0);
-  conflict = false;
-  const start = dialog.getByLabel("Starts");
-  const next = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16);
-  await start.fill(next);
-  await dialog.getByRole("button", { name: "Create booking" }).click();
-  await expect(dialog.getByRole("alert")).toBeVisible();
-  await dialog.getByRole("button", { name: "Create booking" }).click();
-  const confirmation = page.getByRole("dialog", { name: "SS-CANDIDATE-NEW" });
-  await expect(confirmation.getByText("due", { exact: true })).toBeVisible();
-  await expect(
-    confirmation.getByRole("link", { name: "Open lesson", exact: true }).last(),
-  ).toHaveAttribute("href", studentPath + "/lessons/" + lessonId);
-  expect(requestKeys).toHaveLength(2);
-  expect(state.bookings).toHaveLength(1);
-  expect(state.additionalLessons).toHaveLength(1);
-  expect(state.commands).not.toContain("create");
-  await page.screenshot({
-    path: info.outputPath("profile-booking-confirmed.png"),
-    animations: "disabled",
+    await dialog.getByRole("button", { name: "Create booking" }).click();
+    await expect(
+      dialog.getByText("Reserved studio time", { exact: false }),
+    ).toBeVisible();
+    expect(requestKeys).toHaveLength(0);
+    conflict = false;
+    const start = dialog.getByLabel("Starts");
+    const next = new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 16);
+    await start.fill(next);
+    await dialog.getByRole("button", { name: "Create booking" }).click();
+    await expect(dialog.getByRole("alert")).toBeVisible();
+    await dialog.getByRole("button", { name: "Create booking" }).click();
+    const confirmation = page.getByRole("dialog", { name: "SS-CANDIDATE-NEW" });
+    await expect(confirmation.getByText("due", { exact: true })).toBeVisible();
+    await expect(
+      confirmation
+        .getByRole("link", { name: "Open lesson", exact: true })
+        .last(),
+    ).toHaveAttribute("href", studentPath + "/lessons/" + lessonId);
+    expect(requestKeys).toHaveLength(2);
+    expect(state.bookings).toHaveLength(count);
+    expect(state.additionalLessons).toHaveLength(count);
+    expect(state.commands).not.toContain("create");
+    await page.screenshot({
+      path: info.outputPath("profile-booking-confirmed.png"),
+      animations: "disabled",
+    });
   });
-});
+}
 
 test("local-only lesson editing uses the real form and command envelope", async ({
   page,
