@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import console from "node:console";
+import process from "node:process";
 import { execFileSync, spawn } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { setTimeout as delay } from "node:timers/promises";

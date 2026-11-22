@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import { z } from "zod";
 import { Dialog } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
@@ -24,6 +24,7 @@ export function ShareCreditPackage({
   identity: string;
 }) {
   const client = useQueryClient();
+  const formId = useId();
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>();
   const [reason, setReason] = useState("");
@@ -165,9 +166,10 @@ export function ShareCreditPackage({
                   </p>
                 )}
                 {options.data.students.map((student) => (
-                  <label key={student.id}>
+                  <label key={student.id} htmlFor={formId + student.id}>
                     <input
                       type="checkbox"
+                      id={formId + student.id}
                       checked={chosen.includes(student.id)}
                       disabled={
                         (!student.eligible || !options.data.verifiedTerms) &&
@@ -186,9 +188,10 @@ export function ShareCreditPackage({
                   </label>
                 ))}
               </div>
-              <label className="full">
+              <label className="full" htmlFor={formId + "-reason"}>
                 Reason
                 <textarea
+                  id={formId + "-reason"}
                   required
                   minLength={3}
                   maxLength={500}
