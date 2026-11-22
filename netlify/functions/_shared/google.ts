@@ -13,8 +13,11 @@ const tokenResponseSchema = z
 const gmailResponseSchema = z
   .object({ id: z.string().optional(), error: googleErrorSchema })
   .passthrough();
+const providerInstant = z.iso.datetime({ offset: true });
 const freeBusyResponseSchema = z
   .object({
+    timeMin: z.string().optional(),
+    timeMax: z.string().optional(),
     error: googleErrorSchema,
     calendars: z
       .record(
@@ -72,7 +75,41 @@ function parseGooglePayload<T extends z.ZodType>(schema: T, value: unknown) {
   return parsed.data as z.infer<T>;
 }
 
-export async function googleAccessToken() {
+export class GoogleAvailabilityError extends Error {
+  constructor(
+    message: string,
+    readonly throttled = false,
+    readonly retryable = false,
+    readonly retryAfterMs = 0,
+  ) {
+    super(message);
+  }
+}
+
+function availabilityError(response: Response, reason?: string) {
+  const throttled =
+    response.status === 429 ||
+    ["rateLimitExceeded", "userRateLimitExceeded", "quotaExceeded"].includes(
+      reason ?? "",
+    );
+  const retryAfter = response.headers.get("retry-after");
+  const retryAfterMs = !retryAfter
+    ? 0
+    : /^\d+$/.test(retryAfter)
+      ? Number(retryAfter) * 1000
+      : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
+  return new GoogleAvailabilityError(
+    "Google availability could not be verified.",
+    throttled,
+    throttled ||
+      response.status >= 500 ||
+      reason === "internalError" ||
+      reason === "backendError",
+    retryAfterMs,
+  );
+}
+
+export async function googleAccessToken(signal?: AbortSignal) {
   const clientId =
       Netlify.env.get("GOOGLE_CLIENT_ID") ||
       Netlify.env.get("GOOGLE_OAUTH_CLIENT_ID"),
@@ -84,6 +121,7 @@ export async function googleAccessToken() {
     throw new Error("Google OAuth requires reconnecting in Settings.");
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
+    signal,
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({
       client_id: clientId,
@@ -92,6 +130,8 @@ export async function googleAccessToken() {
       grant_type: "refresh_token",
     }),
   });
+  if (signal && (response.status === 429 || response.status >= 500))
+    throw availabilityError(response);
   const body = parseGooglePayload(tokenResponseSchema, await response.json());
   if (!response.ok || !body.access_token)
     throw new Error(body.error_description || "Google token refresh failed.");
@@ -160,12 +200,14 @@ export async function googleFreeBusy(
   token: string,
   timeMin: string,
   timeMax: string,
+  options?: { signal: AbortSignal; requireComplete: true },
 ) {
   const calendarId = Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary";
   const response = await fetch(
     "https://www.googleapis.com/calendar/v3/freeBusy",
     {
       method: "POST",
+      signal: options?.signal,
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -178,10 +220,51 @@ export async function googleFreeBusy(
       }),
     },
   );
-  const payload = parseGooglePayload(
-    freeBusyResponseSchema,
-    await response.json(),
-  );
+  if (options && (response.status === 429 || response.status >= 500))
+    throw availabilityError(response);
+  const raw: unknown = await response.json();
+  if (options && !response.ok) {
+    const failure = z
+      .object({
+        error: z
+          .object({
+            errors: z
+              .array(z.object({ reason: z.string().optional() }))
+              .optional(),
+          })
+          .optional(),
+      })
+      .safeParse(raw);
+    throw availabilityError(response, failure.data?.error?.errors?.[0]?.reason);
+  }
+  const payload = parseGooglePayload(freeBusyResponseSchema, raw);
+  if (options) {
+    const calendars = payload.calendars ?? {};
+    const entries = Object.values(calendars);
+    // Google can resolve the primary alias to the account's actual calendar ID.
+    const calendar =
+      calendars[calendarId] ??
+      (calendarId === "primary" && entries.length === 1
+        ? entries[0]
+        : undefined);
+    if (calendar?.errors?.length)
+      throw availabilityError(response, calendar.errors[0].reason);
+    if (
+      payload.error ||
+      Date.parse(payload.timeMin ?? "") !== Date.parse(timeMin) ||
+      Date.parse(payload.timeMax ?? "") !== Date.parse(timeMax) ||
+      !calendar?.busy ||
+      calendar.busy.some(
+        ({ start, end }) =>
+          !providerInstant.safeParse(start).success ||
+          !providerInstant.safeParse(end).success ||
+          !(Date.parse(start) < Date.parse(end)),
+      )
+    ) {
+      throw availabilityError(response);
+    }
+    return calendar.busy;
+  }
   const calendarError = payload.calendars?.[calendarId]?.errors?.[0]?.reason;
   if (!response.ok || calendarError)
     throw new Error(
@@ -200,6 +283,7 @@ export async function googleCalendarConflicts(
   token: string,
   timeMin: string,
   timeMax: string,
+  signal?: AbortSignal,
 ) {
   const calendarId = Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary";
   const query = new URLSearchParams({
@@ -212,9 +296,12 @@ export async function googleCalendarConflicts(
   const response = await fetch(
     `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?${query}`,
     {
+      signal,
       headers: { Authorization: `Bearer ${token}` },
     },
   );
+  if (signal && (response.status === 429 || response.status >= 500))
+    throw availabilityError(response);
   const payload = parseGooglePayload(
     calendarEventsResponseSchema,
     await response.json(),

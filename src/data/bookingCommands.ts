@@ -12,7 +12,7 @@ export type BookingAdminResource =
   | "series"
   | "participants";
 
-export async function bookingAdminCommand(
+async function sendBookingAdminCommand(
   resource: BookingAdminResource,
   body: Record<string, unknown>,
   idempotencyKey?: string,
@@ -33,8 +33,34 @@ export async function bookingAdminCommand(
   });
   if (!response.ok)
     throw await readApiClientError(response, "The booking command failed.");
-  const payload = await response.json();
+  return response.json();
+}
+
+export async function bookingAdminCommand(
+  resource: BookingAdminResource,
+  body: Record<string, unknown>,
+  idempotencyKey?: string,
+) {
+  const payload = await sendBookingAdminCommand(resource, body, idempotencyKey);
   return payload.resource;
+}
+
+export async function createCoachBooking(
+  payload: Record<string, unknown>,
+  idempotencyKey: string,
+): Promise<{ bookingId: string; lessonId: string; occurrenceCount?: number }> {
+  const receipt = await sendBookingAdminCommand(
+    "bookings",
+    { command: "create_manual", payload },
+    idempotencyKey,
+  );
+  const bookingId = receipt.resource?.id;
+  const lessonId = receipt.lessonId;
+  if (typeof bookingId !== "string" || typeof lessonId !== "string")
+    throw new Error(
+      "The booking receipt is incomplete. Retry this booking to recover it.",
+    );
+  return { bookingId, lessonId, occurrenceCount: receipt.occurrences?.length };
 }
 
 export async function checkSchedulingConflicts(
@@ -50,6 +76,7 @@ export async function inspectSchedulingConflicts(
   endsAt: string,
   lessonId?: string,
   localOnly = false,
+  recurrence?: Record<string, unknown>,
 ): Promise<{
   conflicts: SchedulingConflict[];
   externalCalendarChecked: boolean;
@@ -61,6 +88,7 @@ export async function inspectSchedulingConflicts(
       ends_at: endsAt,
       lesson_id: lessonId,
       historical: localOnly,
+      ...recurrence,
     },
   });
   return {

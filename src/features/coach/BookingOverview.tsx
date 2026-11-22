@@ -1,3 +1,4 @@
+import { seriesDates } from "../../domain/booking";
 import { CheckCircle2, MoreHorizontal, RefreshCw } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { Dialog, EmptyState, Status } from "../../components/Primitives";
@@ -234,18 +235,22 @@ function BookingRow({
 export function ManualBookingDialog({
   data,
   isDemo,
+  initialStudentId,
   onClose,
   onSave,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
+  initialStudentId?: string;
   onClose: () => void;
   onSave: (
     payload: Record<string, unknown>,
-    key?: string,
+    key: string,
   ) => Promise<void> | void;
 }) {
-  const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
+  const [studentId, setStudentId] = useState(
+      initialStudentId ?? data.students[0]?.id ?? "",
+    ),
     [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
     [startsAt, setStartsAt] = useState(() => {
       try {
@@ -260,6 +265,8 @@ export function ManualBookingDialog({
     [timezone, setTimezone] = useState(data.settings.timezone || ""),
     [fold, setFold] = useState(""),
     [mode, setMode] = useState("schedule"),
+    [repeat, setRepeat] = useState("none"),
+    [occurrenceCount, setOccurrenceCount] = useState(6),
     [outcome, setOutcome] = useState("scheduled"),
     [financial, setFinancial] = useState("record_only"),
     [attendanceConfirmed, setAttendanceConfirmed] = useState(false),
@@ -287,8 +294,18 @@ export function ManualBookingDialog({
   useEffect(() => {
     setConflicts([]);
     setApprovedTime("");
-  }, [serviceId, location, studentId]);
+  }, [serviceId, location, studentId, repeat, occurrenceCount]);
   const service = data.bookingServices.find((item) => item.id === serviceId);
+  const recurrence =
+    mode === "schedule" && (repeat === "weekly" || repeat === "biweekly")
+      ? repeat
+      : undefined;
+  const allowedRepeats =
+    service?.category === "private"
+      ? service.recurrenceOptions.filter(
+          (option) => option === "weekly" || option === "biweekly",
+        )
+      : [];
   const formId = useId();
   const candidates = zonedInputInstants(startsAt, timezone);
   useEffect(() => {
@@ -301,7 +318,9 @@ export function ManualBookingDialog({
       description={
         mode === "historical"
           ? "Historical records are audited. Attendance and financial treatment are explicit; Calendar and notifications are suppressed."
-          : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
+          : initialStudentId
+            ? "Schedule for the selected student. Booking confirmations and calendar updates are queued after saving."
+            : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
       }
       onClose={onClose}
     >
@@ -338,6 +357,29 @@ export function ManualBookingDialog({
             setDateError("Confirm the actual lesson outcome explicitly.");
             return;
           }
+          if (
+            recurrence &&
+            (!service ||
+              !allowedRepeats.includes(recurrence) ||
+              !Number.isInteger(occurrenceCount) ||
+              occurrenceCount < 2 ||
+              occurrenceCount > 52)
+          ) {
+            setDateError(
+              "Choose an allowed repeat schedule and 2 to 52 lessons.",
+            );
+            return;
+          }
+          const repeatFields = recurrence
+            ? {
+                recurrence,
+                occurrence_count: occurrenceCount,
+                student_id: studentId,
+                service_id: serviceId,
+                service_version: service?.version,
+                timezone,
+              }
+            : undefined;
           const form = JSON.stringify([
             studentId,
             serviceId,
@@ -353,6 +395,7 @@ export function ManualBookingDialog({
             outcome,
             financial,
             attendanceConfirmed,
+            repeatFields,
           ]);
           if (attempt.current?.form === form) {
             setSaving(true);
@@ -373,18 +416,36 @@ export function ManualBookingDialog({
             parsedStart.getTime() +
               Number(service?.durationMinutes || 60) * 60_000,
           );
-          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}|${serviceId}|${location}|${studentId}`;
+          const timeKey = `${parsedStart.toISOString()}|${endsAt.toISOString()}|${serviceId}|${location}|${studentId}|${recurrence}|${occurrenceCount}|${service?.version}`;
           if (approvedTime !== timeKey) {
             setChecking(true);
             try {
+              const demoStarts =
+                !isDemo || !recurrence
+                  ? [parsedStart.toISOString()]
+                  : [
+                      parsedStart.toISOString(),
+                      ...seriesDates(
+                        parsedStart.toISOString(),
+                        recurrence,
+                        occurrenceCount,
+                        timezone,
+                      ).slice(1),
+                    ];
               const preview = isDemo
                 ? {
                     conflicts: data.lessons
                       .filter(
                         (lesson) =>
                           lesson.status === "scheduled" &&
-                          new Date(lesson.startsAt) < endsAt &&
-                          new Date(lesson.endsAt) > parsedStart,
+                          demoStarts.some(
+                            (start) =>
+                              Date.parse(lesson.startsAt) <
+                                Date.parse(start) +
+                                  endsAt.getTime() -
+                                  parsedStart.getTime() &&
+                              Date.parse(lesson.endsAt) > Date.parse(start),
+                          ),
                       )
                       .map((lesson) => ({
                         id: lesson.id,
@@ -400,6 +461,7 @@ export function ManualBookingDialog({
                     endsAt.toISOString(),
                     undefined,
                     historical,
+                    repeatFields,
                   );
               const found = preview.conflicts;
               setExternalNote(
@@ -442,7 +504,8 @@ export function ManualBookingDialog({
             location_label: locationLabel,
             price_minor:
               customPrice === "" ? null : Math.round(Number(customPrice) * 100),
-            mark_paid: markPaid,
+            mark_paid: recurrence ? false : markPaid,
+            ...repeatFields,
             reason,
             timezone,
             historical,
@@ -477,6 +540,12 @@ export function ManualBookingDialog({
           }
         }}
       >
+        {!data.bookingServices.length && (
+          <p className="inline-error full">
+            Add a booking service in Scheduling configuration before creating a
+            booking.
+          </p>
+        )}
         {!data.students.length && (
           <p className="inline-error full">
             Add a student to the roster before creating a coach booking.
@@ -553,6 +622,7 @@ export function ManualBookingDialog({
           Service
           <select
             id={`${formId}-service`}
+            aria-describedby={service ? `${formId}-duration` : undefined}
             required
             value={serviceId}
             onChange={(event) => {
@@ -560,6 +630,7 @@ export function ManualBookingDialog({
                 (item) => item.id === event.target.value,
               );
               setServiceId(event.target.value);
+              setRepeat("none");
               if (next) setLocation(next.defaultLocation);
             }}
           >
@@ -572,6 +643,11 @@ export function ManualBookingDialog({
               </option>
             ))}
           </select>
+          {service && (
+            <small id={`${formId}-duration`} aria-hidden="true">
+              {service.durationMinutes} minutes
+            </small>
+          )}
         </label>
         <label htmlFor={`${formId}-starts`}>
           Starts
@@ -612,6 +688,45 @@ export function ManualBookingDialog({
               ))}
             </select>
           </label>
+        )}
+        {mode === "schedule" && allowedRepeats.length > 0 && (
+          <>
+            <label htmlFor={`${formId}-repeat`}>
+              Repeat
+              <select
+                id={`${formId}-repeat`}
+                value={repeat}
+                onChange={(event) => setRepeat(event.target.value)}
+              >
+                <option value="none">Does not repeat</option>
+                {allowedRepeats.map((option) => (
+                  <option key={option} value={option}>
+                    {option === "weekly" ? "Weekly" : "Every other week"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {recurrence && (
+              <label htmlFor={`${formId}-count`}>
+                Total lessons
+                <input
+                  id={`${formId}-count`}
+                  type="number"
+                  required
+                  min={2}
+                  max={52}
+                  value={occurrenceCount || ""}
+                  onChange={(event) =>
+                    setOccurrenceCount(Number(event.target.value))
+                  }
+                />
+                <small>
+                  Includes the first lesson. Times repeat in the selected
+                  timezone.
+                </small>
+              </label>
+            )}
+          </>
         )}
         {mode === "historical" && (
           <>
@@ -721,9 +836,12 @@ export function ManualBookingDialog({
                 : ""
             }
           />
-          <small>Leave blank to use the current service price.</small>
+          <small>
+            Leave blank to apply the service rate and any pricing rule for this
+            student and time.
+          </small>
         </label>
-        {mode !== "historical" && (
+        {mode !== "historical" && !recurrence && (
           <label className="check-row" htmlFor={`${formId}-paid`}>
             <input
               id={`${formId}-paid`}
@@ -749,8 +867,8 @@ export function ManualBookingDialog({
             {conflicts.map((item) => (
               <p key={`${item.id}-${item.start}`}>
                 You have “{item.summary}” from{" "}
-                {formatStudioTime(item.start, data.settings.timezone)}–
-                {formatStudioTime(item.end, data.settings.timezone)} that day.
+                {formatStudioDateTime(item.start, timezone)}–
+                {formatStudioTime(item.end, timezone)}.
                 {item.source === "studio"
                   ? "Choose another time; studio lesson overlaps cannot be overridden."
                   : "A coach may override this Google-only conflict with the recorded reason."}

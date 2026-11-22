@@ -5567,6 +5567,7 @@ export type Database = {
         Args: { p_key: string; p_value: Json }
         Returns: Json
       }
+      manual_booking_series_plan: { Args: { p_value: Json }; Returns: Json }
       material_resource_workspace: {
         Args: { p_assignment?: string; p_id: string; p_student?: string }
         Returns: Json

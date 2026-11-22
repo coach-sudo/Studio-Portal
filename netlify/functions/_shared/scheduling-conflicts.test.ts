@@ -50,7 +50,8 @@ vi.mock("./supabase", () => ({
     throw Error("Conflict preview cannot write canonical records");
   },
 }));
-vi.mock("./google", () => ({
+vi.mock("./google", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./google")>()),
   googleAccessToken: fixture.access,
   googleCalendarConflicts: fixture.google,
 }));

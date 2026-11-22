@@ -304,6 +304,7 @@ export interface RecurringSeries extends Versioned {
     intervalWeeks: number;
     slots: { weekday: number; time: string }[];
     sourceSeriesId?: UUID;
+    bookingMode?: "per_occurrence";
     skippedOccurrenceStarts?: string[];
   };
   studentCanModify: boolean;

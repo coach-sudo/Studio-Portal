@@ -291,6 +291,32 @@ describe("calendar appointment details", () => {
     },
   );
 
+  it("shows package coverage without presenting it as a cash payment", async () => {
+    const user = userEvent.setup();
+    renderBookings("/coach/bookings", (draft) => {
+      const booking = draft.bookings.find(
+        (item) => item.id === "booking-maya",
+      )!;
+      booking.paymentPolicy = "credits";
+      booking.paymentStatus = "paid";
+      booking.paidMinor = 0;
+    });
+    fireEvent.change(await screen.findByLabelText("Search lessons"), {
+      target: { value: "Maya Kim" },
+    });
+    const appointment = document.querySelector<HTMLButtonElement>(
+      '.calendar-search-results [data-calendar-lesson="lesson-maya-next"]',
+    )!;
+    await user.click(appointment);
+    const drawer = within(
+      await screen.findByRole("dialog", { name: "SS-1048" }),
+    );
+    expect(
+      drawer.getByText("Covered by package", { exact: true }),
+    ).toBeInTheDocument();
+    expect(drawer.queryByText(/\$0.00 paid of/)).toBeNull();
+  });
+
   it("shows an unbooked lesson without fabricating booking or refund/cancel actions", async () => {
     renderBookings("/coach/bookings?lesson=lesson-liam-next");
     const drawer = within(

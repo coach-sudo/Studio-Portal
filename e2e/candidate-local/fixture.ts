@@ -120,6 +120,9 @@ export async function installFixture(
   };
   const state = {
     bookingServices: [] as Record<string, unknown>[],
+    bookings: [] as Record<string, unknown>[],
+    lessonParticipants: [] as Record<string, unknown>[],
+    additionalLessons: [] as Record<string, unknown>[],
     imports: [] as Record<string, unknown>[],
     pageErrors: [] as string[],
     requests: [] as string[],
@@ -229,6 +232,8 @@ export async function installFixture(
     if (role === "unrelated" || state.revoked) return [];
     if (table === "students") return [student];
     if (table === "booking_services") return state.bookingServices;
+    if (table === "bookings") return state.bookings;
+    if (table === "lesson_participants") return state.lessonParticipants;
     if (table === "memberships")
       return role === "coach"
         ? [
@@ -253,7 +258,8 @@ export async function installFixture(
     if (table === "linked_contacts") return [contact];
     if (table === "portal_accounts")
       return [{ user_id: identity, account_type: role }];
-    if (table === "lesson_list_rows") return state.empty ? [] : [lesson];
+    if (table === "lesson_list_rows")
+      return state.empty ? [] : [lesson, ...state.additionalLessons];
     return [];
   };
   const reply = (route: Route, data: unknown, status = 200, extra = {}) =>
@@ -304,10 +310,6 @@ export async function installFixture(
           },
         });
       if (state.allowLocalMutation && url.pathname === "/api/v2/lessons") {
-        if (body.command === "create")
-          return reply(route, {
-            resource: { ...lesson, id: "70000000-0000-4000-8000-000000000030" },
-          });
         if (body.command === "update_details") {
           lesson.topic = String(body.payload.topic);
           lesson.version++;
@@ -362,7 +364,8 @@ export async function installFixture(
       const rpc = url.pathname.split("/").pop();
       if (rpc === "portal_student_contexts") {
         const requested = req.postDataJSON()?.p_student;
-        const permitted = ["student", "guardian"].includes(role) && !state.revoked;
+        const permitted =
+          ["student", "guardian"].includes(role) && !state.revoked;
         const access = {
           id: student.id,
           fullName: student.full_name,
@@ -376,7 +379,10 @@ export async function installFixture(
         };
         return reply(route, {
           items: permitted ? [access] : [],
-          selected: permitted && (!requested || requested === student.id) ? access : null,
+          selected:
+            permitted && (!requested || requested === student.id)
+              ? access
+              : null,
           hasMore: false,
         });
       }
@@ -389,6 +395,8 @@ export async function installFixture(
           students: rows("students"),
           integrationImports: state.imports,
           bookingServices: state.bookingServices,
+          bookings: state.bookings,
+          lessonParticipants: state.lessonParticipants,
           lessons: domains.some((d) => ["lessons", "booking"].includes(d))
             ? rows("lesson_list_rows")
             : [],

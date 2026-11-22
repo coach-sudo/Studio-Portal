@@ -120,7 +120,7 @@ describe("interactive booking flows", () => {
       within(dialog).getByRole("button", { name: "Create booking" }),
     );
     expect(
-      await screen.findByText(/booking workspace has been updated/i),
+      await screen.findByRole("dialog", { name: /^SS-/ }),
     ).toBeInTheDocument();
     expect(screen.getAllByText("Maya Kim").length).toBeGreaterThan(0);
   });
