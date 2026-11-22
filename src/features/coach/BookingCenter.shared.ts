@@ -17,6 +17,9 @@ export const tabs: readonly [Tab, string][] = [
   ["classes", "Classes"],
   ["series", "Recurring"],
 ];
+export const scheduleStudentBookingHref = (studentId: string) =>
+  "/coach/bookings?" + new URLSearchParams({ scheduleStudent: studentId });
+
 export const uid = (prefix: string) => `${prefix}-${crypto.randomUUID()}`;
 export const serviceName = (data: StudioSnapshot, id: string) =>
   data.bookingServices.find((item) => item.id === id)?.name ?? "Booking";

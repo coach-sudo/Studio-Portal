@@ -148,27 +148,41 @@ describe("50 start-to-finish studio workflows", () => {
       ).toBeInTheDocument();
       expect(screen.getByText("paused")).toBeInTheDocument();
     });
-    it("06 schedules a lesson from the student record", async () => {
+    it("06 books from a student profile and opens the linked lesson", async () => {
       const user = userEvent.setup();
-      renderApp("/coach/students/student-maya");
+      renderApp("/coach/students/student-liam");
+      const schedule = await screen.findByRole("link", {
+        name: "Schedule lesson",
+      });
+      schedule.focus();
+      await user.keyboard("{Enter}");
+      const dialog = await screen.findByRole("dialog", {
+        name: "Create a booking",
+      });
+      expect(within(dialog).getByLabelText("Student")).toHaveValue(
+        "student-liam",
+      );
+      expect(within(dialog).getByLabelText("Service")).toHaveDisplayValue(
+        /minutes/,
+      );
       await user.click(
-        await screen.findByRole("button", { name: /Add lesson/i }),
+        within(dialog).getByRole("button", { name: "Create booking" }),
       );
-      const dialog = screen.getByRole("dialog");
-      await user.clear(within(dialog).getByLabelText("Lesson focus"));
-      await user.type(
-        within(dialog).getByLabelText("Lesson focus"),
-        "Callback prep",
+      const confirmation = await screen.findByRole("dialog", { name: /^SS-/ });
+      const openLesson = within(confirmation)
+        .getAllByRole("link", {
+          name: /^Open lesson$/,
+        })
+        .at(-1)!;
+      expect(openLesson).toHaveAttribute(
+        "href",
+        expect.stringMatching(
+          /^\/coach\/students\/student-liam\/lessons\/lesson-/,
+        ),
       );
-      await user.type(
-        within(dialog).getByLabelText("Start"),
-        "2026-09-10T15:00",
-      );
-      await user.click(
-        within(dialog).getByRole("button", { name: "Add lesson" }),
-      );
+      await user.click(openLesson);
       expect(
-        await screen.findByText("Lesson added to the schedule."),
+        await screen.findByRole("heading", { name: "Liam Foster" }),
       ).toBeInTheDocument();
     });
     it("07 assigns practice", async () => {

@@ -86,5 +86,45 @@ select is((select payment_status from public.bookings where studio_id='e7100000-
 select is((select count(*) from public.payment_entries where student_id='e7100000-0000-4000-8000-000000000011'),3::bigint,'Historical paid replay appends one payment');
 select is((select count(*) from public.calendar_projections where lesson_id in(select id from public.lessons where student_id='e7100000-0000-4000-8000-000000000011' and starts_at<'2021-01-01T00:00:00Z')),0::bigint,'No historical outcome projects into Calendar');
 select is((select count(*) from workspace_internal.manual_booking_effects where lesson_id in(select id from public.lessons where student_id='e7100000-0000-4000-8000-000000000011' and starts_at<'2021-01-01T00:00:00Z')),0::bigint,'No historical treatment creates a notification intent');
+-- Compare a coach create with a separate public hold/confirmation for the same learner and service.
+update public.booking_services set published=true where id='e7100000-0000-4000-8000-000000000012';
+update public.students set user_id='e7100000-0000-4000-8000-000000000002',portal_enabled=true
+where id='e7100000-0000-4000-8000-000000000011';
+insert into public.linked_contacts(studio_id,student_id,user_id,full_name,email,relationship_type,can_view_schedule,portal_enabled)
+values('e7100000-0000-4000-8000-000000000010','e7100000-0000-4000-8000-000000000011',
+ 'e7100000-0000-4000-8000-000000000003','Scheduling guardian','e2e-manual-guardian@example.test','guardian',true,true);
+
+set local role authenticated;
+select lives_ok($$select public.command_create_manual_booking('e2e-manual-compare',pg_temp.manual_value('2031-11-10T18:00:00Z',false))$$,
+ 'Coach schedules a comparable uncovered lesson');
+reset role;
+with held as (
+ select * from public.create_booking_hold('e7100000-0000-4000-8000-000000000012',null,'2031-11-11T18:00:00Z','2031-11-11T19:00:00Z')
+)
+insert into public.bookings(studio_id,reference,service_id,guest_name,guest_email,starts_at,ends_at,timezone,location,
+ payment_policy,total_minor,policy_snapshot,manage_token_hash,hold_ids)
+select studio_id,'SS-MANUAL-PARITY',service_id,'E2E manual learner','e2e-manual-student@example.test',starts_at,ends_at,
+ 'America/New_York','google_meet','pay_later',6000,'{}','synthetic-manual-parity-token',array[id] from held;
+select is((select public.confirm_booking(id,hold_ids[1],0,'test:public-parity')->>'duplicate'
+ from public.bookings where reference='SS-MANUAL-PARITY'),'false','A distinct public hold confirms without a payment');
+select is((select count(*) from public.lessons l join public.lesson_participants p on p.lesson_id=l.id
+ join public.bookings b on b.id=p.booking_id join public.calendar_projections c on c.lesson_id=l.id
+ where l.student_id='e7100000-0000-4000-8000-000000000011' and b.student_id=l.student_id
+ and l.starts_at in ('2031-11-10T18:00:00Z','2031-11-11T18:00:00Z') and l.status='scheduled' and b.status='confirmed'
+ and l.ends_at-l.starts_at=interval '60 minutes' and l.price_minor=6000 and l.paid_minor=0
+ and l.payment_status='due' and b.payment_status='due' and l.invoice_id is null and c.status='queued'),2::bigint,
+ 'Both paths keep one linked lesson per intent with equal duration and unpaid balance, no invoice and queued calendar work');
+
+set local role authenticated;
+select set_config('request.jwt.claim.sub','e7100000-0000-4000-8000-000000000002',true);
+select is((select count(*) from public.lessons where starts_at in ('2031-11-10T18:00:00Z','2031-11-11T18:00:00Z')),2::bigint,
+ 'Learner sees the same lessons through existing schedule access');
+select set_config('request.jwt.claim.sub','e7100000-0000-4000-8000-000000000003',true);
+select is((select count(*) from public.lessons where starts_at in ('2031-11-10T18:00:00Z','2031-11-11T18:00:00Z')),2::bigint,
+ 'Schedule-authorized guardian sees the same lessons');
+select set_config('request.jwt.claim.sub','e7100000-0000-4000-8000-000000000004',true);
+select is((select count(*) from public.lessons where starts_at in ('2031-11-10T18:00:00Z','2031-11-11T18:00:00Z')),0::bigint,
+ 'Unrelated account sees neither lesson');
+reset role;
 select * from finish();
 rollback;

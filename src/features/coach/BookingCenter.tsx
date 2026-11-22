@@ -27,6 +27,7 @@ import {
 } from "../../components/Primitives";
 import {
   bookingAdminCommand,
+  createCoachBooking,
   loadPlatformHealth,
   studioCommand,
   type BookingAdminResource,
@@ -91,6 +92,7 @@ export function BookingCenter() {
     element: HTMLElement | null;
     opened: boolean;
   } | null>(null);
+  const scheduleStudentId = searchParams.get("scheduleStudent");
   const requestedView = searchParams.get("view");
   const [tab, setTab] = useUrlChoice(
     "view",
@@ -111,6 +113,7 @@ export function BookingCenter() {
     bookingCenterDomains(
       tab,
       !dialog &&
+        !scheduleStudentId &&
         !searchParams.has("lesson") &&
         !searchParams.has("booking") &&
         (searchParams.get("calendarView") === "list" ||
@@ -234,22 +237,17 @@ export function BookingCenter() {
     payload: Record<string, unknown>,
     item: { id: string; version: number } | undefined,
     mutate: (draft: StudioSnapshot) => void,
-    idempotencyKey?: string,
   ) {
     setNotice("");
     try {
       if (isDemo) store.transact((draft) => mutate(draft));
       else {
-        await bookingAdminCommand(
-          resource,
-          {
-            command,
-            id: item?.id,
-            expectedVersion: item?.version,
-            payload,
-          },
-          idempotencyKey,
-        );
+        await bookingAdminCommand(resource, {
+          command,
+          id: item?.id,
+          expectedVersion: item?.version,
+          payload,
+        });
         await invalidateStudioDomains(queryClient, [
           "booking",
           "finance",
@@ -267,8 +265,51 @@ export function BookingCenter() {
           ? reason.message
           : "The change could not be saved.",
       );
-      if (command === "create_manual") throw reason;
     }
+  }
+
+  function closeManualBooking() {
+    if (scheduleStudentId) {
+      navigate("/coach/students/" + encodeURIComponent(scheduleStudentId), {
+        replace: true,
+      });
+    } else setDialog(undefined);
+  }
+
+  async function saveManualBooking(
+    payload: Record<string, unknown>,
+    key: string,
+  ) {
+    let receipt: { bookingId: string; lessonId: string };
+    if (isDemo) {
+      const identity = { bookingId: uid("booking"), lessonId: uid("lesson") };
+      store.transact((draft) =>
+        createDemoManualBooking(draft, payload, identity),
+      );
+      receipt = identity;
+    } else {
+      receipt = await createCoachBooking(payload, key);
+      await invalidateStudioDomains(queryClient, [
+        "booking",
+        "finance",
+        "lessons",
+        "messaging",
+      ]);
+    }
+    setDialog(undefined);
+    setNotice(
+      payload.historical ? "Past lesson recorded." : "Lesson scheduled.",
+    );
+    setSearchParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        next.delete("scheduleStudent");
+        next.set("booking", receipt.bookingId);
+        next.set("lesson", receipt.lessonId);
+        return next;
+      },
+      { replace: true },
+    );
   }
 
   async function saveBookingSettings(updates: Partial<StudioSettings>) {
@@ -446,22 +487,23 @@ export function BookingCenter() {
           onManage={(item) => setDialog({ type: "series", item })}
         />
       )}
-      {dialog?.type === "manual" && (
-        <ManualBookingDialog
-          data={data}
-          isDemo={isDemo}
-          onClose={() => setDialog(undefined)}
-          onSave={(payload, key) =>
-            run(
-              "bookings",
-              "create_manual",
-              payload,
-              undefined,
-              (draft) => createDemoManualBooking(draft, payload),
-              key,
-            )
-          }
-        />
+      {scheduleStudentId &&
+      !data.students.some((student) => student.id === scheduleStudentId) ? (
+        <p className="portal-notice" role="alert">
+          This student is unavailable for scheduling.{" "}
+          <Link to="/coach/students">Return to students</Link>
+        </p>
+      ) : (
+        (scheduleStudentId || dialog?.type === "manual") && (
+          <ManualBookingDialog
+            key={scheduleStudentId || "new-booking"}
+            data={data}
+            isDemo={isDemo}
+            initialStudentId={scheduleStudentId ?? undefined}
+            onClose={closeManualBooking}
+            onSave={saveManualBooking}
+          />
+        )
       )}
       {dialog?.type === "service" && (
         <ServiceDialog
@@ -1652,6 +1694,8 @@ function BookingDialog({
     data.lessonParticipants.find(
       (participant) => participant.bookingId === booking.id,
     )?.studentId;
+  const coveredByPackage =
+    booking.paymentPolicy === "credits" && booking.paymentStatus === "paid";
   return (
     <Drawer
       title={booking.reference}
@@ -1721,13 +1765,17 @@ function BookingDialog({
           <article>
             <div>
               <strong>Payment</strong>
-              <small>
-                {formatMoney(booking.paidMinor, booking.currency)} paid of{" "}
-                {formatMoney(booking.totalMinor, booking.currency)}
-              </small>
+              {!coveredByPackage && (
+                <small>
+                  {formatMoney(booking.paidMinor, booking.currency)} paid of{" "}
+                  {formatMoney(booking.totalMinor, booking.currency)}
+                </small>
+              )}
             </div>
             <Status tone={booking.paymentStatus === "paid" ? "good" : "warn"}>
-              {booking.paymentStatus.replaceAll("_", " ")}
+              {coveredByPackage
+                ? "Covered by package"
+                : booking.paymentStatus.replaceAll("_", " ")}
             </Status>
           </article>
         </div>
@@ -2044,6 +2092,7 @@ function createDemoOffering(draft: StudioSnapshot, offering: ServiceOffering) {
 function createDemoManualBooking(
   draft: StudioSnapshot,
   payload: Record<string, unknown>,
+  { bookingId, lessonId }: { bookingId: string; lessonId: string },
 ) {
   const service = draft.bookingServices.find(
       (item) => item.id === payload.service_id,
@@ -2061,8 +2110,6 @@ function createDemoManualBooking(
           ? service.priceMinor +
             Number(service.locationPriceAdjustments[location] || 0)
           : Number(payload.price_minor),
-    bookingId = uid("booking"),
-    lessonId = uid("lesson"),
     now = new Date().toISOString();
   const outcome = (
     payload.historical ? payload.historical_outcome : "scheduled"

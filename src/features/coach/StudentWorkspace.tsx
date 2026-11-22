@@ -54,6 +54,7 @@ import { useStudioMutation } from "../../hooks/useStudioMutation";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { belongsToStudent, now, uid } from "./StudentWorkspace.shared";
+import { scheduleStudentBookingHref } from "./BookingCenter.shared";
 import { studentWorkspaceDomains } from "./routeDomains";
 const Account = lazy(() =>
   import("./StudentWorkspaceAccount").then((module) => ({
@@ -131,7 +132,6 @@ export function StudentWorkspace() {
   const workspace = useWorkspaceNavigation();
   const [dialog, setDialog] = useState<
     | "edit"
-    | "lesson"
     | "assignment"
     | "material"
     | "lesson-files"
@@ -316,44 +316,6 @@ export function StudentWorkspace() {
         reason instanceof Error
           ? reason.message
           : "The invitation has already started sending.",
-      );
-    }
-  };
-  const addLesson = async (
-    lesson: Lesson,
-    recurrence: "none" | "weekly" | "biweekly" = "none",
-    occurrenceCount = 1,
-  ) => {
-    try {
-      if (isDemo) store.transact((draft) => draft.lessons.push(lesson));
-      else {
-        await studioCommand("lessons", {
-          command: "create",
-          expectedVersion: 0,
-          payload: {
-            studentId: student.id,
-            studentName: student.fullName,
-            studentEmail: student.email,
-            topic: lesson.topic,
-            startsAt: lesson.startsAt,
-            endsAt: lesson.endsAt,
-            locationType: lesson.locationType,
-            locationLabel: lesson.locationLabel,
-            recurrence,
-            occurrenceCount,
-            timezone: data.settings.timezone,
-          },
-          reason: "Coach created lesson",
-        });
-        void invalidateStudioDomains(queryClient, ["lessons"]);
-      }
-      setDialog(null);
-      setNotice("Lesson added to the schedule.");
-    } catch (reason) {
-      setNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Lesson could not be created.",
       );
     }
   };
@@ -586,14 +548,15 @@ export function StudentWorkspace() {
           </Status>
         </div>
         <div className="record-actions">
+          <Link
+            className="button-link primary"
+            to={scheduleStudentBookingHref(student.id)}
+          >
+            <Plus />
+            Schedule lesson
+          </Link>
           {!narrow && (
-            <>
-              <button className="primary" onClick={() => setDialog("lesson")}>
-                <Plus />
-                Add lesson
-              </button>
-              <button onClick={() => setDialog("note")}>Write note</button>
-            </>
+            <button onClick={() => setDialog("note")}>Write note</button>
           )}
           <details className="record-add-menu">
             <summary className="button-link">
@@ -609,12 +572,6 @@ export function StudentWorkspace() {
               <button onClick={() => setDialog("assignment")}>
                 Assign practice
               </button>
-              {narrow && (
-                <button onClick={() => setDialog("lesson")}>
-                  <Plus />
-                  Add lesson
-                </button>
-              )}
             </div>
           </details>
           <Link
@@ -914,13 +871,6 @@ export function StudentWorkspace() {
           </div>
         </Dialog>
       )}
-      {dialog === "lesson" && (
-        <LessonForm
-          student={student}
-          onClose={() => setDialog(null)}
-          onSave={addLesson}
-        />
-      )}
       {dialog === "assignment" && (
         <AssignmentForm
           student={student}
@@ -1176,158 +1126,6 @@ function StudentEditor({
           </button>
           <button className="primary" disabled={saving}>
             {saving ? "Saving…" : "Save details"}
-          </button>
-        </div>
-      </form>
-    </Drawer>
-  );
-}
-function LessonForm({
-  student,
-  onClose,
-  onSave,
-}: {
-  student: Student;
-  onClose: () => void;
-  onSave: (
-    l: Lesson,
-    recurrence: "none" | "weekly" | "biweekly",
-    occurrenceCount: number,
-  ) => void;
-}) {
-  const [topic, setTopic] = useState("Private coaching"),
-    [start, setStart] = useState(""),
-    [duration, setDuration] = useState(60),
-    [location, setLocation] = useState<"virtual" | "in_person">("virtual"),
-    [recurrence, setRecurrence] = useState<"none" | "weekly" | "biweekly">(
-      "none",
-    ),
-    [occurrenceCount, setOccurrenceCount] = useState(6),
-    [locationLabel, setLocationLabel] = useState("");
-  return (
-    <Drawer title="Add lesson" description={student.fullName} onClose={onClose}>
-      <form
-        className="workflow-form"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const startsAt = new Date(start).toISOString();
-          onSave(
-            {
-              id: uid("lesson"),
-              studioId: student.studioId,
-              studentId: student.id,
-              topic,
-              startsAt,
-              endsAt: new Date(
-                new Date(startsAt).getTime() + duration * 60000,
-              ).toISOString(),
-              status: "scheduled",
-              locationType: location,
-              locationLabel:
-                location === "virtual"
-                  ? "Google Meet pending"
-                  : locationLabel || "Location to be confirmed",
-              version: 1,
-              updatedAt: now(),
-            },
-            recurrence,
-            recurrence === "none" ? 1 : occurrenceCount,
-          );
-        }}
-      >
-        <label className="full">
-          Lesson focus
-          <input
-            required
-            value={topic}
-            onChange={(e) => setTopic(e.target.value)}
-          />
-        </label>
-        <label>
-          Start
-          <input
-            required
-            type="datetime-local"
-            value={start}
-            onChange={(e) => setStart(e.target.value)}
-          />
-        </label>
-        <label>
-          Duration
-          <select
-            value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          >
-            <option value={30}>30 minutes</option>
-            <option value={60}>60 minutes</option>
-            <option value={90}>90 minutes</option>
-          </select>
-        </label>
-        <label>
-          Location
-          <select
-            value={location}
-            onChange={(e) => setLocation(e.target.value as typeof location)}
-          >
-            <option value="virtual">Google Meet</option>
-            <option value="in_person">In person</option>
-          </select>
-        </label>
-        {location === "in_person" && (
-          <label className="full">
-            In-person location
-            <input
-              value={locationLabel}
-              onChange={(event) => setLocationLabel(event.target.value)}
-              placeholder="Address or meeting place (optional)"
-            />
-          </label>
-        )}
-        <label>
-          Repeat
-          <select
-            value={recurrence}
-            onChange={(event) =>
-              setRecurrence(event.target.value as typeof recurrence)
-            }
-          >
-            <option value="none">Does not repeat</option>
-            <option value="weekly">Weekly</option>
-            <option value="biweekly">Every other week</option>
-          </select>
-        </label>
-        {recurrence !== "none" && (
-          <label>
-            Total lessons
-            <input
-              type="number"
-              min="2"
-              max="52"
-              value={occurrenceCount}
-              onChange={(event) =>
-                setOccurrenceCount(Number(event.target.value))
-              }
-            />
-            <small>
-              Includes the first lesson. Times stay fixed in the studio timezone
-              through daylight-saving changes.
-            </small>
-          </label>
-        )}
-        <div className="form-actions full">
-          <button type="button" onClick={onClose}>
-            Cancel
-          </button>
-          <button
-            className="primary"
-            disabled={
-              recurrence !== "none" &&
-              (occurrenceCount < 2 || occurrenceCount > 52)
-            }
-          >
-            {recurrence === "none"
-              ? "Add lesson"
-              : `Add ${occurrenceCount} lessons`}
           </button>
         </div>
       </form>

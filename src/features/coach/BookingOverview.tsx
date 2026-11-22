@@ -234,18 +234,22 @@ function BookingRow({
 export function ManualBookingDialog({
   data,
   isDemo,
+  initialStudentId,
   onClose,
   onSave,
 }: {
   data: StudioSnapshot;
   isDemo: boolean;
+  initialStudentId?: string;
   onClose: () => void;
   onSave: (
     payload: Record<string, unknown>,
-    key?: string,
+    key: string,
   ) => Promise<void> | void;
 }) {
-  const [studentId, setStudentId] = useState(data.students[0]?.id ?? ""),
+  const [studentId, setStudentId] = useState(
+      initialStudentId ?? data.students[0]?.id ?? "",
+    ),
     [serviceId, setServiceId] = useState(data.bookingServices[0]?.id ?? ""),
     [startsAt, setStartsAt] = useState(() => {
       try {
@@ -301,7 +305,9 @@ export function ManualBookingDialog({
       description={
         mode === "historical"
           ? "Historical records are audited. Attendance and financial treatment are explicit; Calendar and notifications are suppressed."
-          : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
+          : initialStudentId
+            ? "Schedule one lesson for the selected student. Booking confirmation and calendar updates are queued after saving."
+            : "May override public notice and pricing. Future bookings are audited and queue calendar and email work."
       }
       onClose={onClose}
     >
@@ -477,6 +483,12 @@ export function ManualBookingDialog({
           }
         }}
       >
+        {!data.bookingServices.length && (
+          <p className="inline-error full">
+            Add a booking service in Scheduling configuration before creating a
+            booking.
+          </p>
+        )}
         {!data.students.length && (
           <p className="inline-error full">
             Add a student to the roster before creating a coach booking.
@@ -568,7 +580,7 @@ export function ManualBookingDialog({
             </option>
             {data.bookingServices.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name}
+                {item.name} · {item.durationMinutes} minutes
               </option>
             ))}
           </select>
@@ -721,7 +733,10 @@ export function ManualBookingDialog({
                 : ""
             }
           />
-          <small>Leave blank to use the current service price.</small>
+          <small>
+            Leave blank to apply the service rate and any pricing rule for this
+            student and time.
+          </small>
         </label>
         {mode !== "historical" && (
           <label className="check-row" htmlFor={`${formId}-paid`}>
