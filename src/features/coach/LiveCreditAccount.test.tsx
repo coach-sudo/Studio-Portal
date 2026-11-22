@@ -121,3 +121,61 @@ it("does not expose actions or logistics for finance-only read-only responses", 
   expect(screen.queryByRole("link")).not.toBeInTheDocument();
   client.clear();
 });
+
+it("reviews a removal before sending the confirmed total and balance", async () => {
+  const user = userEvent.setup();
+  const client = mount();
+  mocks.command.mockResolvedValue({ resource: {} });
+  await user.click(
+    await screen.findByRole("button", { name: "Manage credits" }),
+  );
+  await user.selectOptions(screen.getByLabelText("Adjustment"), "remove");
+  await user.type(screen.getByRole("spinbutton"), "1");
+  await user.type(screen.getByLabelText("Reason"), "Duplicate grant");
+  await user.click(screen.getByRole("button", { name: "Review adjustment" }));
+  expect(
+    await screen.findByText("Unused Credits change from 2 to 1."),
+  ).toBeInTheDocument();
+  expect(mocks.command).not.toHaveBeenCalled();
+  await user.click(
+    screen.getByRole("button", { name: "Confirm credit adjustment" }),
+  );
+  await screen.findByText(/Credit balance saved/);
+  expect(mocks.command).toHaveBeenCalledWith(
+    "credits",
+    expect.objectContaining({
+      command: "set_total",
+      expectedVersion: 1,
+      payload: {
+        studentId: sid,
+        total: 1,
+        reason: "Duplicate grant",
+        reviewedBalance: { remaining: 2, available: 2, reserved: 0 },
+      },
+    }),
+  );
+  client.clear();
+});
+
+it("blocks removing a reserved credit", async () => {
+  const user = userEvent.setup();
+  mocks.load.mockResolvedValue({
+    ...coverage(),
+    summary: { ...coverage().summary, reserved: 1, available: 1 },
+  });
+  const client = mount();
+  await user.click(
+    await screen.findByRole("button", { name: "Manage credits" }),
+  );
+  await user.selectOptions(screen.getByLabelText("Adjustment"), "remove");
+  await user.type(screen.getByRole("spinbutton"), "2");
+  await user.type(screen.getByLabelText("Reason"), "Duplicate grant");
+  expect(
+    screen.getByRole("button", { name: "Review adjustment" }),
+  ).toBeDisabled();
+  expect(screen.getByRole("alert")).toHaveTextContent(
+    "This would remove reserved credits",
+  );
+  expect(mocks.command).not.toHaveBeenCalled();
+  client.clear();
+});
