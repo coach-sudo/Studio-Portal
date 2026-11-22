@@ -104,5 +104,21 @@ insert into package_credit_entries(package_id,kind,quantity,reason)
 select is(pg_temp.find_case('purchase_source_unverified')->>'status','reopened','Material new evidence reopens an unresolved finding');
 select ok(not has_table_privilege('authenticated','credit_internal.reconciliation_cases','SELECT'),
   'Students and guardians cannot read the private case table');
+select is(process_stripe_checkout('evt_stage_b_first','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_first","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_first','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'false','First verified Stripe representation grants credits');
+select is(process_stripe_checkout('evt_stage_b_first','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_first","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_first','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'true','Repeated event ID is a no-op');
+select is(process_stripe_checkout('evt_stage_b_second','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_second","payment_intent":"pi_stage_b_shared"}}}',
+  'cs_stage_b_second','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicateEvidence',
+  'stripe_payment_intent','A second session backed by the same verified payment cannot issue credits');
+select is(process_stripe_checkout('evt_stage_b_separate','checkout.session.completed',
+  '{"data":{"object":{"id":"cs_stage_b_separate","payment_intent":"pi_stage_b_separate"}}}',
+  'cs_stage_b_separate','c3000000-0000-4000-8000-000000000001','c6000000-0000-4000-8000-000000000004',40000,'USD')->>'duplicate',
+  'false','A similar purchase with a different verified payment remains legitimate');
 select * from finish();
 rollback;

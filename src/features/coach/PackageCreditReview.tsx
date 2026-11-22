@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 import { z } from "zod";
+import { ShareCreditPackage } from "./ShareCreditPackage";
 import { Dialog } from "../../components/Primitives";
 import { ApiClientError } from "../../data/apiClientError";
 import { studioCommand } from "../../data/bookingCommands";
@@ -396,6 +397,12 @@ export function PackageCreditReview({
                   </ul>
                 </details>
               )}
+              <ShareCreditPackage
+                key={selected.id}
+                studentId={studentId}
+                packageId={selected.id}
+                identity={identity}
+              />
               {!!review.data.cases?.length && (
                 <section aria-label="Reconciliation cases">
                   <h4>Reconciliation cases</h4>

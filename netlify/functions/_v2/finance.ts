@@ -48,6 +48,8 @@ export async function handleFinanceCommands(
       "package_review",
       "package_correct",
       "case_decide",
+      "sharing_options",
+      "set_sharing",
     ].includes(input.command)
   ) {
     const studioId = await requireCoach();

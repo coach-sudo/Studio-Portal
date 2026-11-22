@@ -113,6 +113,7 @@ jobs:
       - run: node scripts/test-stripe-installment-concurrency.mjs
       - run: node scripts/test-lesson-payment-concurrency.mjs
       - run: node scripts/test-training-direct-concurrency.mjs
+      - run: node scripts/test-wave3-shared-credit-concurrency.mjs supabase_db_studio-portal
       - run: git diff --exit-code -- src/types/database.generated.ts
       - name: Retain migration verification evidence
         if: failure()

@@ -156,6 +156,13 @@ assert.equal(
   "0",
   "Original lessons must have no direct checkout reservations after upgrade",
 );
+assert.equal(
+  query(
+    "select count(*) from public.package_credit_entries where covered_student_id is not null",
+  ),
+  "0",
+  "Existing credit entries must not acquire synthetic beneficiary attribution on upgrade",
+);
 assert.deepEqual(
   history(),
   files.map((f) => f.split("_")[0]),

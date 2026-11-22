@@ -445,6 +445,12 @@
       "name": "direct_checkout_id",
       "type": "uuid",
       "default": null
+    },
+    {
+      "table": "public.package_credit_entries",
+      "name": "covered_student_id",
+      "type": "uuid",
+      "default": null
     }
   ]
 }
