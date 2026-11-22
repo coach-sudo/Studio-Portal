@@ -118,6 +118,38 @@ describe("calendar occurrence synchronization recovery", () => {
       }),
     );
   });
+  it("preserves a newer Google revision for inbound conflict review", async () => {
+    vi.stubGlobal("Netlify", { env: { get: () => "true" } });
+    const fetch = vi
+      .fn()
+      .mockResolvedValue(
+        Response.json({ id: "instance", etag: "new-revision" }),
+      );
+    vi.stubGlobal("fetch", fetch);
+    const { db, rpc } = client();
+    const claimed = item("scheduled", "instance");
+    const result = await projectCalendarItem(
+      db,
+      {
+        ...claimed,
+        projection: {
+          ...claimed.projection,
+          external_version: "saved-revision",
+        },
+      },
+      async () => "token",
+      "primary",
+    );
+    expect(result).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenLastCalledWith(
+      "finish_calendar_projection",
+      expect.objectContaining({
+        p_failed: true,
+        p_result: { errorCode: "calendar_external_change_requires_review" },
+      }),
+    );
+  });
   it("recovers a lost insert response through deterministic identity and updates the existing event", async () => {
     const fetch = vi
       .fn()

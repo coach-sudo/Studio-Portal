@@ -7,6 +7,7 @@ import {
 import { checkedAll, checkedQuery } from "./checked-query";
 import { z } from "zod";
 import { googleAccessToken } from "./google";
+import { syncInboundCalendar } from "./calendar-inbound";
 import { serviceClient } from "./supabase";
 import type { WorkerTelemetry } from "./worker-telemetry";
 import { zonedDateTimeToUtc } from "./timezone";
@@ -1407,12 +1408,27 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
   assertWorkerEnabled("provider-intake");
   telemetry?.stage("google_token");
   const token = await googleAccessToken();
+  const separateGmailGrant = Boolean(
+    Netlify.env.get("GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN"),
+  );
+  let gmailToken: Promise<string> | undefined;
   let calendarImported = 0,
     calendarReview = 0,
     gmailImported = 0,
     gmailReview = 0,
     gmailScope = true,
     failures = 0;
+  const incremental =
+    Netlify.env.get("GOOGLE_CALENDAR_INBOUND_ENABLED") === "true";
+  const calendarStudio =
+    Netlify.env.get("GOOGLE_CALENDAR_STUDIO_ID") ||
+    (studios?.length === 1 ? studios[0].id : undefined);
+  if (incremental && !studios?.some((studio) => studio.id === calendarStudio)) {
+    telemetry?.failure(
+      new Error("Calendar intake requires one configured studio"),
+    );
+    failures++;
+  }
   for (const studio of studios || []) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("student_identities");
@@ -1428,7 +1444,16 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     }
     telemetry?.stage("calendar_processing");
     try {
-      const calendar = await importCalendar(token, studio, students || []);
+      const calendar = incremental
+        ? studio.id === calendarStudio
+          ? await syncInboundCalendar(
+              db,
+              studio.id,
+              Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
+              token,
+            )
+          : { imported: 0, review: 0 }
+        : await importCalendar(token, studio, students || []);
       calendarImported += calendar.imported;
       calendarReview += calendar.review;
     } catch (error) {
@@ -1438,7 +1463,14 @@ export async function runProviderIntake(telemetry?: WorkerTelemetry) {
     assertWorkerEnabled("provider-intake");
     telemetry?.stage("gmail_processing");
     try {
-      const gmail = await scanGmail(token, studio, students || []);
+      if (separateGmailGrant) {
+        gmailToken ??= googleAccessToken("GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN");
+      }
+      const gmail = await scanGmail(
+        gmailToken ? await gmailToken : token,
+        studio,
+        students || [],
+      );
       gmailImported += gmail.imported;
       gmailReview += gmail.review;
       gmailScope = gmailScope && gmail.scope;

@@ -13,22 +13,29 @@ describe("Google provider adapter", () => {
               GOOGLE_OAUTH_CLIENT_ID: "client",
               GOOGLE_OAUTH_CLIENT_SECRET: "secret",
               GOOGLE_REFRESH_TOKEN: "refresh",
+              GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN: "gmail-readonly-refresh",
             }) as Record<string, string>
           )[name],
       },
     });
-    const request = vi
-      .fn()
-      .mockResolvedValue(
+    const request = vi.fn().mockImplementation(
+      async () =>
         new Response(JSON.stringify({ access_token: "token" }), {
           status: 200,
           headers: { "Content-Type": "application/json" },
         }),
-      );
+    );
     vi.stubGlobal("fetch", request);
     await expect(googleAccessToken()).resolves.toBe("token");
     expect(String(request.mock.calls[0][1]?.body)).toContain(
       "client_id=client",
+    );
+    expect(request.mock.calls[0][1]?.body.get("refresh_token")).toBe("refresh");
+    await expect(
+      googleAccessToken("GOOGLE_GMAIL_INTAKE_REFRESH_TOKEN"),
+    ).resolves.toBe("token");
+    expect(request.mock.calls[1][1]?.body.get("refresh_token")).toBe(
+      "gmail-readonly-refresh",
     );
   });
 
