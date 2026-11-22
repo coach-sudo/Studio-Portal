@@ -255,10 +255,15 @@ const longSeries = (
         key === "GOOGLE_CALENDAR_ID" ? calendarId : "synthetic-config",
     },
   });
-  const provider = vi.fn((url: string, init: RequestInit) => {
-    expect(url).toBe("https://www.googleapis.com/calendar/v3/freeBusy");
-    return perform(JSON.parse(String(init.body)) as GoogleQuery, init.signal!);
-  });
+  const provider = vi.fn(
+    (url: string, init: NonNullable<Parameters<typeof fetch>[1]>) => {
+      expect(url).toBe("https://www.googleapis.com/calendar/v3/freeBusy");
+      return perform(
+        JSON.parse(String(init.body)) as GoogleQuery,
+        init.signal!,
+      );
+    },
+  );
   vi.stubGlobal("fetch", provider);
   return provider;
 };
