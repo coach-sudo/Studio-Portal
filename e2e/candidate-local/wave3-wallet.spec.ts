@@ -66,7 +66,7 @@ for (const role of ["student", "guardian", "coach"] as const) {
                 expiresAt: "2031-05-01T14:00:00Z",
                 shared,
                 available: 4,
-                reserved: 1,
+                reserved: shared ? 2 : 1,
                 used: 2,
                 expired: 0,
                 needsReview: false,
