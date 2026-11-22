@@ -15,6 +15,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { ApiClientError } from "../../data/apiClientError";
 import "../../components/StudentFinancialSummary.css";
 import { StudentCreditHistory } from "../../components/StudentCreditHistory";
+import { PackageCreditReview } from "./PackageCreditReview";
 
 export function LiveCreditAccount(props: {
   studentId: string;
@@ -348,6 +349,13 @@ function CreditControls({
         </p>
       )}
       <StudentCreditHistory studentId={studentId} timezone={timezone} />
+      {!readOnly && (
+        <PackageCreditReview
+          studentId={studentId}
+          timezone={timezone}
+          identity={identity}
+        />
+      )}
       {!readOnly && (
         <details className="disclosure-section">
           <summary>Legacy reconciliation</summary>
