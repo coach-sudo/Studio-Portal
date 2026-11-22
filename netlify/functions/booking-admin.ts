@@ -1,9 +1,15 @@
+import { setTimeout as delay } from "node:timers/promises";
 import type { Config, Context } from "@netlify/functions";
 import Stripe from "stripe";
 import { AppError, apiError, correlationId, json } from "./_shared/http";
 import { bookingAdminCommandSchema } from "./_shared/schemas";
 import { serviceClient, userClient } from "./_shared/supabase";
-import { googleAccessToken, googleCalendarConflicts } from "./_shared/google";
+import {
+  GoogleAvailabilityError,
+  googleAccessToken,
+  googleCalendarConflicts,
+  googleFreeBusy,
+} from "./_shared/google";
 import { studioOverlapPolicy } from "../../src/domain/schedulingConflicts";
 
 const resources: Record<string, string> = {
@@ -38,35 +44,132 @@ async function bookingSeriesWindows(
 async function inWindowBatches<T>(
   windows: BookingWindow[],
   query: (window: BookingWindow) => Promise<T[]>,
+  concurrency = 6,
 ) {
   const results: T[] = [];
-  for (let i = 0; i < windows.length; i += 6) {
+  for (let i = 0; i < windows.length; i += concurrency) {
     results.push(
-      ...(await Promise.all(windows.slice(i, i + 6).map(query))).flat(),
+      ...(
+        await Promise.all(windows.slice(i, i + concurrency).map(query))
+      ).flat(),
     );
   }
   return results;
 }
 
-async function googleObservation(windows: BookingWindow[]) {
+const availabilityBudgetMs = 12_000;
+const availabilityRequestMs = 3_000;
+const occurrencesPerRead = 6;
+
+async function readGoogleAvailability<T>(
+  signal: AbortSignal,
+  read: (signal: AbortSignal) => Promise<T>,
+) {
+  for (let attempt = 0; ; attempt++) {
+    signal.throwIfAborted();
+    const request = AbortSignal.any([
+      signal,
+      AbortSignal.timeout(availabilityRequestMs),
+    ]);
+    try {
+      return await read(request);
+    } catch (failure) {
+      const error: unknown = request.aborted ? request.reason : failure;
+      const provider =
+        error instanceof GoogleAvailabilityError ? error : undefined;
+      const retryable =
+        provider?.retryable ||
+        (error instanceof Error && error.name === "TimeoutError");
+      if (
+        !retryable ||
+        attempt !== 0 ||
+        signal.aborted ||
+        (provider?.retryAfterMs ?? 0) > 1_000
+      )
+        throw error;
+      // Spread retries across batches and honor a short Retry-After within the deadline.
+      await delay(
+        Math.max(
+          250 + Math.floor(Math.random() * 250),
+          provider?.retryAfterMs ?? 0,
+        ),
+        undefined,
+        { signal },
+      );
+    }
+  }
+}
+
+async function googleObservation(windows: BookingWindow[], recurring: boolean) {
   if (!Netlify.env.get("GOOGLE_REFRESH_TOKEN"))
     return { conflicts: [], checked: false };
+  const remaining = new AbortController();
+  const deadline = AbortSignal.timeout(availabilityBudgetMs);
+  const signal = AbortSignal.any([deadline, remaining.signal]);
   try {
-    const token = await googleAccessToken();
-    return {
-      conflicts: await inWindowBatches(windows, ({ start, end }) =>
-        googleCalendarConflicts(token, start, end),
-      ),
+    const token = await readGoogleAvailability(signal, googleAccessToken);
+    if (!recurring) {
+      const { start, end } = windows[0];
+      return {
+        conflicts: await readGoogleAvailability(signal, (request) =>
+          googleCalendarConflicts(token, start, end, request),
+        ),
+        checked: true,
+      };
+    }
 
+    // Six biweekly lessons span about ten weeks. Keep each query bounded, and
+    // check only the exact occurrence instants inside each returned busy range.
+    const ranges: BookingWindow[] = [];
+    for (let i = 0; i < windows.length; i += occurrencesPerRead) {
+      const group = windows.slice(i, i + occurrencesPerRead);
+      ranges.push({ start: group[0].start, end: group[group.length - 1].end });
+    }
+    const busy = await inWindowBatches(
+      ranges,
+      ({ start, end }) =>
+        readGoogleAvailability(signal, (request) =>
+          googleFreeBusy(token, start, end, {
+            signal: request,
+            requireComplete: true,
+          }),
+        ),
+      3,
+    );
+    return {
+      conflicts: busy
+        .filter(({ start, end }) =>
+          windows.some(
+            (slot) =>
+              Date.parse(start) < Date.parse(slot.end) &&
+              Date.parse(end) > Date.parse(slot.start),
+          ),
+        )
+        .map(({ start, end }) => ({
+          id: `google-busy:${start}:${end}`,
+          summary: "Busy calendar time",
+          start,
+          end,
+        })),
       checked: true,
     };
-  } catch {
+  } catch (error) {
+    const throttled =
+      error instanceof GoogleAvailabilityError && error.throttled;
+    const timedOut =
+      deadline.aborted ||
+      (error instanceof Error && error.name === "TimeoutError");
     throw new AppError("CALENDAR_UNAVAILABLE", {
       status: 503,
-      message:
-        "Google conflict checks are unavailable. Reconnect Google and retry. Nothing was changed.",
+      message: throttled
+        ? "Google Calendar is limiting availability checks. Wait a moment and retry. Nothing was changed."
+        : timedOut
+          ? "Google Calendar took too long to confirm availability. Retry in a moment. Nothing was changed."
+          : "Google conflict checks are unavailable. Retry, or check the Calendar connection if this continues. Nothing was changed.",
       retryable: true,
     });
+  } finally {
+    remaining.abort();
   }
 }
 
@@ -201,7 +304,7 @@ export default async (request: Request, context: Context) => {
       const observation =
         body.payload.historical === true
           ? { conflicts: [], checked: false }
-          : await googleObservation(windows);
+          : await googleObservation(windows, isRecurring(body.payload));
       const google = observation.conflicts.map((item) => ({
         ...item,
         source: "google",
@@ -263,19 +366,23 @@ export default async (request: Request, context: Context) => {
       let external = "not_configured";
       if (startsAt <= new Date()) external = "not_checked";
       else if (
+        !isRecurring(body.payload) &&
         body.payload.allow_conflict &&
         Netlify.env.get("GOOGLE_REFRESH_TOKEN")
       )
         external = "overridden";
       else if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
-        const { conflicts } = await googleObservation(windows);
-        if (conflicts.length)
+        const { conflicts } = await googleObservation(
+          windows,
+          isRecurring(body.payload),
+        );
+        if (conflicts.length && !body.payload.allow_conflict)
           throw new AppError("SLOT_UNAVAILABLE", {
             status: 409,
             message:
               "Review the Google conflict or choose another time. Studio lesson overlaps cannot be overridden.",
           });
-        external = "checked";
+        external = conflicts.length ? "overridden" : "checked";
       }
       const created = await db.rpc("command_create_manual_booking", {
         p_key: key,
