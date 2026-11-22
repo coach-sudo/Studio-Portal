@@ -4,12 +4,12 @@
 
 Production served Git commit `34f8cf2415a28713af9dc6f650a6034108916f52` from locked Netlify deploy `6b01c8eac58a5046e4227dea`. The live health route agreed. Supabase recorded 89 migrations through `20261120192345_invoice_free_lesson_checkout.sql`. The live checkout, credit evaluator, invoice-save and explicit-credit functions matched the expected Wave 2 definitions and retained their private/service grants.
 
-| Source | Reused in this draft | Kept out of this draft |
-| --- | --- | --- |
-| [#94](https://github.com/coach-sudo/Studio-Portal/pull/94) | Coach add, remove and set-balance preview, locked balance comparison, before/after audit and retry tests | Old migration filename and older browser fixture failures |
-| [#95](https://github.com/coach-sudo/Studio-Portal/pull/95) | Lot terms for newly issued packages, reviewed package corrections, linked restorations, persistent cases and a verified same-intent fulfillment guard | Old evaluator and older booking/invoice assumptions. Historical package terms are preserved as unverified |
-| [#96](https://github.com/coach-sudo/Studio-Portal/pull/96) | Explicit roster, package-row serialization, beneficiary attribution and shared balance per lot | Nullable replacement package ownership, separate household entities, bulk transfer and broad scheduling overrides. The draft's settlement and evaluator bodies predate Wave 2 cash holds |
-| [#97](https://github.com/coach-sudo/Studio-Portal/pull/97) | Candidate input for future reminders is the guarded wallet, coverage reasons, and reconciliation state | All scheduler, delivery worker, template and outbox changes. The older reminder branch does not include current transactional invoice routing. Automated credit notifications remain off |
+| Source                                                     | Reused in this draft                                                                                                                                  | Kept out of this draft                                                                                                                                                                   |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [#94](https://github.com/coach-sudo/Studio-Portal/pull/94) | Coach add, remove and set-balance preview, locked balance comparison, before/after audit and retry tests                                              | Old migration filename and older browser fixture failures                                                                                                                                |
+| [#95](https://github.com/coach-sudo/Studio-Portal/pull/95) | Lot terms for newly issued packages, reviewed package corrections, linked restorations, persistent cases and a verified same-intent fulfillment guard | Old evaluator and older booking/invoice assumptions. Historical package terms are preserved as unverified                                                                                |
+| [#96](https://github.com/coach-sudo/Studio-Portal/pull/96) | Explicit roster, package-row serialization, beneficiary attribution and shared balance per lot                                                        | Nullable replacement package ownership, separate household entities, bulk transfer and broad scheduling overrides. The draft's settlement and evaluator bodies predate Wave 2 cash holds |
+| [#97](https://github.com/coach-sudo/Studio-Portal/pull/97) | Candidate input for future reminders is the guarded wallet, coverage reasons, and reconciliation state                                                | All scheduler, delivery worker, template and outbox changes. The older reminder branch does not include current transactional invoice routing. Automated credit notifications remain off |
 
 The earlier PRs remain drafts. Their provider, SQL and responsive test designs were reused where contracts still apply. Their exact-head check results do not transfer to this source.
 
@@ -24,13 +24,15 @@ The earlier PRs remain drafts. Their provider, SQL and responsive test designs w
 
 The Finance prototype places package counts beside eligibility and lesson context, with exact before/after confirmation in the coach's Billing view. This draft uses those priorities, existing Finance layout primitives, and the existing Payments and Billing destinations. Reconciliation and history remain in disclosures. Screenshot fixtures exercise the actual route and query hooks with synthetic responses. Postgres tests exercise the actual authorization and ledger behavior separately.
 
-| View | Desktop | Tablet | Mobile |
-| --- | --- | --- | --- |
-| Coach adjustment | [1440 px](wave3-evidence/coach-desktop.png) | [768 px](wave3-evidence/coach-tablet.png) | [390 px](wave3-evidence/coach-mobile.png) |
-| Adult student wallet | [1440 px](wave3-evidence/student-desktop.png) | [768 px](wave3-evidence/student-tablet.png) | [390 px](wave3-evidence/student-mobile.png) |
+| View                   | Desktop                                        | Tablet                                       | Mobile                                       |
+| ---------------------- | ---------------------------------------------- | -------------------------------------------- | -------------------------------------------- |
+| Coach adjustment       | [1440 px](wave3-evidence/coach-desktop.png)    | [768 px](wave3-evidence/coach-tablet.png)    | [390 px](wave3-evidence/coach-mobile.png)    |
+| Adult student wallet   | [1440 px](wave3-evidence/student-desktop.png)  | [768 px](wave3-evidence/student-tablet.png)  | [390 px](wave3-evidence/student-mobile.png)  |
 | Guardian shared wallet | [1440 px](wave3-evidence/guardian-desktop.png) | [768 px](wave3-evidence/guardian-tablet.png) | [390 px](wave3-evidence/guardian-mobile.png) |
 
 Local verification covered 263 focused pgTAP assertions, including 32 reconciliation and 20 shared-coverage checks, plus six Wave 2 separate-session races and a two-session race for the last shared credit. Typecheck, 24 focused Vitest tests, and nine browser cases passed. SQL lint passed at the error threshold. Production data was not copied.
+
+The verified synthetic Supabase branch `mzcpypiceoekmppsgtoe` recorded the exact 89 production migration versions plus the four candidate versions. The post-migration definitions, owners, security attributes and execution grants for 26 affected functions matched the local replay. The isolated branch passed 91 additional database assertions. Signed-in Supabase checks verified that the coach, adult student and guardian see the expected package balances and that schedule-only and unrelated accounts are denied. The guardian saw the same shared total from both sibling records, with lesson details scoped to each sibling.
 
 ## Open limitations and release gates
 
