@@ -38,6 +38,7 @@ import { type Snapshot } from "./StudentPortal.shared";
 import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
 import { StudentFinancialSummary } from "../../components/StudentFinancialSummary";
 import { HouseholdInvoiceSummary } from "./HouseholdInvoiceSummary";
+import { LessonCreditWallet } from "./LessonCreditWallet";
 import type { PortalContext } from "../../data/portalContext";
 
 export function Payments({
@@ -478,6 +479,16 @@ export function Payments({
           </Section>
         </details>
       )}
+      {!isDemo && !paying && !recurringOnly && student && (
+        <LessonCreditWallet
+          students={
+            household?.length
+              ? household
+              : [{ id: student.id, fullName: student.fullName }]
+          }
+          timezone={data.settings.timezone}
+        />
+      )}
       {!paying && !recurringOnly && packages.length > 0 && (
         <Section title="Your packages">
           <ListControls
@@ -505,8 +516,9 @@ export function Payments({
                   <div>
                     <strong>{learnerPackageText(pkg.name)}</strong>
                     <small>
-                      {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                      lessons remaining ·{" "}
+                      {isDemo &&
+                        `${packageSummary(pkg, data.creditEntries).remainingCredits} lessons remaining · `}
+
                       {formatMoney(pkg.priceMinor, pkg.currency)}
                       {pkg.expiresAt &&
                         ` · ${expired ? "expired" : "expires"} ${formatStudioDate(pkg.expiresAt, data.settings.timezone)}`}
