@@ -162,9 +162,7 @@ describe("50 start-to-finish studio workflows", () => {
       expect(within(dialog).getByLabelText("Student")).toHaveValue(
         "student-liam",
       );
-      expect(within(dialog).getByLabelText("Service")).toHaveDisplayValue(
-        /minutes/,
-      );
+      expect(within(dialog).getByText(/^[0-9]+ minutes$/)).toBeInTheDocument();
       await user.click(
         within(dialog).getByRole("button", { name: "Create booking" }),
       );

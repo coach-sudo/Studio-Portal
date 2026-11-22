@@ -110,6 +110,16 @@ for (const width of [320, 390, 768, 1440])
     expect(
       await dialog.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
     ).toBe(true);
+    const service = dialog.getByRole("combobox", {
+      name: "Service",
+      exact: true,
+    });
+    expect(
+      await service.evaluate((element) => {
+        const label = element.closest("label")!;
+        return label.scrollWidth <= label.clientWidth + 1;
+      }),
+    ).toBe(true);
     await page.screenshot({
       path: info.outputPath(`historical-${width}.png`),
       fullPage: true,

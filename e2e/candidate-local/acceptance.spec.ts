@@ -457,11 +457,7 @@ for (const cadence of ["none", "weekly", "biweekly"] as const) {
     await expect(
       dialog.getByRole("combobox", { name: "Service", exact: true }),
     ).toHaveValue(serviceId);
-    await expect(
-      dialog
-        .getByRole("combobox", { name: "Service", exact: true })
-        .locator("option:checked"),
-    ).toHaveText(/45 minutes/);
+    await expect(dialog.getByText("45 minutes", { exact: true })).toBeVisible();
     await expect(dialog.getByLabel("Custom price (USD)")).toHaveAttribute(
       "placeholder",
       "90",

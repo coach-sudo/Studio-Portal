@@ -622,6 +622,7 @@ export function ManualBookingDialog({
           Service
           <select
             id={`${formId}-service`}
+            aria-describedby={service ? `${formId}-duration` : undefined}
             required
             value={serviceId}
             onChange={(event) => {
@@ -638,10 +639,15 @@ export function ManualBookingDialog({
             </option>
             {data.bookingServices.map((item) => (
               <option key={item.id} value={item.id}>
-                {item.name} · {item.durationMinutes} minutes
+                {item.name}
               </option>
             ))}
           </select>
+          {service && (
+            <small id={`${formId}-duration`} aria-hidden="true">
+              {service.durationMinutes} minutes
+            </small>
+          )}
         </label>
         <label htmlFor={`${formId}-starts`}>
           Starts
