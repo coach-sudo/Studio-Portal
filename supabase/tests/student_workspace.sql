@@ -93,6 +93,13 @@ select throws_ok($$select public.student_credit_history('d3000000-0000-4000-8000
 reset role;
 select ok(not has_table_privilege('authenticated','lesson_ops.lesson_deletion_snapshots','select'),'Portal identity cannot list deleted record snapshots');
 select ok(not has_table_privilege('authenticated','credit_internal.credit_coverage_jobs','select'),'Portal identity cannot list private financial jobs');
+select ok(has_function_privilege('authenticated','public.student_credit_history(uuid,integer)','EXECUTE'),'Signed-in identities can reach the history RPC authorization check');
+select ok(not has_function_privilege('anon','public.student_credit_history(uuid,integer)','EXECUTE'),'Anonymous callers have no history RPC execute privilege');
+select ok(not has_function_privilege('service_role','public.student_credit_history(uuid,integer)','EXECUTE'),'The service role has no public history RPC execute privilege');
+select ok(not has_function_privilege('service_role','credit_internal.read_student_credit_history(uuid,integer)','EXECUTE'),'The service role remains denied at the private history reader');
+set local role service_role;
+select throws_ok($$select public.student_credit_history('d3000000-0000-4000-8000-000000000001')$$,'42501','permission denied for function student_credit_history','Service history calls are denied at the public entry point');
+select lives_ok($$select public.student_credit_coverage('d3000000-0000-4000-8000-000000000001')$$,'Authorized service coverage reads still work');
 reset role;
 select * from finish();
 rollback;
