@@ -28,7 +28,7 @@ const routes = [
   ],
   ["35 legacy notes route joins Today", "/coach/notes", /^Today$/i],
   ["36 global materials", "/coach/materials", /^Materials$/i],
-  ["37 payments workspace", "/coach/finance", /^Payments$/i],
+  ["37 Finance workspace", "/coach/finance", /^Finance$/i],
   ["38 actor publishing", "/coach/actor-pages", /Actor Pages/i],
   ["39 studio settings", "/coach/settings", /Settings/i],
   ["40 student record", "/coach/students/student-maya", /Maya Kim/i],

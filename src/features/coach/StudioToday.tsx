@@ -1,5 +1,5 @@
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
-import { formatMoney } from "../../domain/finance";
+import { CoachFinanceSnapshot } from "./FinanceCenter";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { recordLink } from "../../app/recordLinks";
 import {
@@ -296,15 +296,7 @@ export function TodayView({
         <span>
           {lessons.length} lessons · {operational.readyCount} ready
         </span>
-        <button onClick={() => navigate("/coach/finance")}>
-          {operational.financialAttention} financial exceptions
-          {operational.moneyAtRisk > 0 && (
-            <small>
-              {formatMoney(operational.moneyAtRisk, data.settings.currency)} at
-              risk
-            </small>
-          )}
-        </button>
+        <CoachFinanceSnapshot data={data} isDemo={isDemo} />
         <button onClick={() => navigate("/coach/inbox")}>
           {operational.upcomingCommunication} communications queued ·{" "}
           {data.outbox.filter((m) => m.status === "failed").length} failed

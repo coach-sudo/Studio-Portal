@@ -21,11 +21,12 @@ export function LiveCreditAccount(props: {
   studentId: string;
   timezone: string;
   readOnly: boolean;
+  initialPackageId?: string;
 }) {
   const identity = usePrivateIdentity();
   return identity ? (
     <CreditControls
-      key={`${identity}:${props.studentId}`}
+      key={`${identity}:${props.studentId}:${props.initialPackageId ?? ""}`}
       {...props}
       identity={identity}
     />
@@ -39,11 +40,13 @@ function CreditControls({
   timezone,
   readOnly,
   identity,
+  initialPackageId,
 }: {
   studentId: string;
   timezone: string;
   readOnly: boolean;
   identity: string;
+  initialPackageId?: string;
 }) {
   const client = useQueryClient();
   const formId = useId();
@@ -351,6 +354,7 @@ function CreditControls({
       <StudentCreditHistory studentId={studentId} timezone={timezone} />
       {!readOnly && (
         <PackageCreditReview
+          initialPackageId={initialPackageId}
           studentId={studentId}
           timezone={timezone}
           identity={identity}

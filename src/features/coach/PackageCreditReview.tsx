@@ -143,15 +143,17 @@ export function PackageCreditReview({
   studentId,
   identity,
   timezone,
+  initialPackageId,
 }: {
   studentId: string;
   identity: string;
   timezone: string;
+  initialPackageId?: string;
 }) {
   const client = useQueryClient();
   const formId = useId();
-  const [open, setOpen] = useState(false);
-  const [packageId, setPackageId] = useState("");
+  const [open, setOpen] = useState(Boolean(initialPackageId));
+  const [packageId, setPackageId] = useState(initialPackageId ?? "");
   const [page, setPage] = useState(1);
   const [finding, setFinding] = useState<string>();
   const [caseReasons, setCaseReasons] = useState<Record<string, string>>({});
@@ -315,6 +317,7 @@ export function PackageCreditReview({
   return (
     <details
       className="disclosure-section"
+      open={open}
       onToggle={(event) => setOpen(event.currentTarget.open)}
     >
       <summary>Packages and reconciliation</summary>

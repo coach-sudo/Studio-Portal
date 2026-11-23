@@ -1,6 +1,6 @@
 import { WritingArea } from "../../components/WritingArea";
 import { useQueryClient } from "@tanstack/react-query";
-import { CheckCircle2, CircleDollarSign } from "lucide-react";
+import { CircleDollarSign } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -10,11 +10,7 @@ import {
   Status,
 } from "../../components/Primitives";
 import { studioCommand } from "../../data/bookingCommands";
-import {
-  formatMoney,
-  packageSummary,
-  studentBalanceMinor,
-} from "../../domain/finance";
+import { formatMoney, packageSummary } from "../../domain/finance";
 import type {
   DiscountCode,
   PackageDefinition,
@@ -28,8 +24,7 @@ import { invalidateStudioDomains } from "../../hooks/useStudio";
 import { useStudioStore } from "../../state/StudioStore";
 
 import { studentName } from "./StudioOperations.shared";
-import { InvoiceWorkspace } from "../finance/InvoiceWorkspace";
-import { FinancialDashboard } from "./FinancialDashboard";
+import { FinanceCenter } from "./FinanceCenter";
 
 type PackageBuilderPayload = {
   id?: string;
@@ -220,181 +215,162 @@ export function FinanceView({
           {notice}
         </p>
       )}
-      <FinancialDashboard data={data} isDemo={isDemo} />
-      <InvoiceWorkspace data={data} isDemo={isDemo} />
-      <div className="two-section-grid">
-        <Section
-          title="Package catalog"
-          marked
-          aside={<button onClick={() => setDialog("new")}>Add package</button>}
-        >
-          <div className="table-list">
-            {data.packageDefinitions.map((definition) => {
-              const offer = packageOffer(definition, data);
-              return (
-                <article key={definition.id}>
-                  <CircleDollarSign />
-                  <div>
-                    <strong>{definition.name}</strong>
-                    <small>
-                      {definition.sessionCount} ×{" "}
-                      {definition.sessionDurationMinutes} minutes ·{" "}
-                      {offer
-                        ? formatMoney(offer.priceMinor, offer.currency)
-                        : "Price unavailable"}
-                    </small>
-                  </div>
-                  <Status
-                    tone={
-                      definition.active
-                        ? definition.visibility === "public"
-                          ? "good"
-                          : "warn"
-                        : "neutral"
-                    }
-                  >
-                    {definition.active ? definition.visibility : "archived"}
-                  </Status>
-                  {definition.giftable &&
-                    definition.visibility === "public" && (
-                      <a
-                        className="button-link"
-                        href={`/gift/${definition.id}`}
-                        target="_blank"
-                        rel="noreferrer"
+      <FinanceCenter
+        data={data}
+        isDemo={isDemo}
+        packages={
+          <div className="two-section-grid">
+            <Section
+              title="Package catalog"
+              marked
+              aside={
+                <button onClick={() => setDialog("new")}>Add package</button>
+              }
+            >
+              <div className="table-list">
+                {data.packageDefinitions.map((definition) => {
+                  const offer = packageOffer(definition, data);
+                  return (
+                    <article key={definition.id}>
+                      <CircleDollarSign />
+                      <div>
+                        <strong>{definition.name}</strong>
+                        <small>
+                          {definition.sessionCount} ×{" "}
+                          {definition.sessionDurationMinutes} minutes ·{" "}
+                          {offer
+                            ? formatMoney(offer.priceMinor, offer.currency)
+                            : "Price unavailable"}
+                        </small>
+                      </div>
+                      <Status
+                        tone={
+                          definition.active
+                            ? definition.visibility === "public"
+                              ? "good"
+                              : "warn"
+                            : "neutral"
+                        }
                       >
-                        Gift link
-                      </a>
-                    )}
-                  {definition.visibility === "public" &&
-                    definition.directPurchase && (
-                      <a
-                        className="button-link"
-                        href={`/package/${definition.id}`}
-                        target="_blank"
-                        rel="noreferrer"
-                      >
-                        Direct link
-                      </a>
-                    )}
-                  <button onClick={() => setDialog(definition)}>Edit</button>
-                </article>
-              );
-            })}
-            {!data.packageDefinitions.length && (
-              <EmptyState
-                title="No package products"
-                detail="Create reusable 4-, 6-, 8-, 10-, or custom-session packages here."
-              />
-            )}
-          </div>
-        </Section>
-        <Section title="Student packages">
-          <div className="table-list">
-            {data.packages.map((pkg) => (
-              <article key={pkg.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>
-                    {studentName(data, pkg.studentId)} · {pkg.name}
-                  </strong>
-                  <small>{formatMoney(pkg.priceMinor, pkg.currency)}</small>
-                </div>
-                <Status
-                  tone={
-                    packageSummary(pkg, data.creditEntries).remainingCredits <=
-                    1
-                      ? "warn"
-                      : "good"
-                  }
-                >
-                  {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
-                  available
-                </Status>
-                <button
-                  onClick={() =>
-                    navigate(`/coach/students/${pkg.studentId}/payments`)
-                  }
-                >
-                  Open
+                        {definition.active ? definition.visibility : "archived"}
+                      </Status>
+                      {definition.giftable &&
+                        definition.visibility === "public" && (
+                          <a
+                            className="button-link"
+                            href={`/gift/${definition.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Gift link
+                          </a>
+                        )}
+                      {definition.visibility === "public" &&
+                        definition.directPurchase && (
+                          <a
+                            className="button-link"
+                            href={`/package/${definition.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
+                            Direct link
+                          </a>
+                        )}
+                      <button onClick={() => setDialog(definition)}>
+                        Edit
+                      </button>
+                    </article>
+                  );
+                })}
+                {!data.packageDefinitions.length && (
+                  <EmptyState
+                    title="No package products"
+                    detail="Create reusable 4-, 6-, 8-, 10-, or custom-session packages here."
+                  />
+                )}
+              </div>
+            </Section>
+            <Section title="Student packages">
+              <div className="table-list">
+                {data.packages.map((pkg) => (
+                  <article key={pkg.id}>
+                    <CircleDollarSign />
+                    <div>
+                      <strong>
+                        {studentName(data, pkg.studentId)} · {pkg.name}
+                      </strong>
+                      <small>{formatMoney(pkg.priceMinor, pkg.currency)}</small>
+                    </div>
+                    <Status
+                      tone={
+                        packageSummary(pkg, data.creditEntries)
+                          .remainingCredits <= 1
+                          ? "warn"
+                          : "good"
+                      }
+                    >
+                      {packageSummary(pkg, data.creditEntries).remainingCredits}{" "}
+                      available
+                    </Status>
+                    <button
+                      onClick={() =>
+                        navigate(`/coach/students/${pkg.studentId}/payments`)
+                      }
+                    >
+                      Open
+                    </button>
+                  </article>
+                ))}
+                {!data.packages.length && (
+                  <EmptyState
+                    title="No student packages"
+                    detail="Purchased or coach-assigned package balances will appear here."
+                  />
+                )}
+              </div>
+            </Section>
+            <Section
+              title="Coupons & discounts"
+              marked
+              aside={
+                <button onClick={() => setDiscountDialog("new")}>
+                  Create code
                 </button>
-              </article>
-            ))}
-            {!data.packages.length && (
-              <EmptyState
-                title="No student packages"
-                detail="Purchased or coach-assigned package balances will appear here."
-              />
-            )}
+              }
+            >
+              <div className="table-list">
+                {data.discountCodes.map((code) => (
+                  <article key={code.id}>
+                    <CircleDollarSign />
+                    <div>
+                      <strong>{code.code}</strong>
+                      <small>
+                        {code.description || "Booking discount"} ·{" "}
+                        {code.discountType === "percent"
+                          ? `${code.amount}%`
+                          : formatMoney(code.amount, code.currency)}{" "}
+                        · {code.redemptionCount} used
+                      </small>
+                    </div>
+                    <Status tone={code.active ? "good" : "neutral"}>
+                      {code.active ? "active" : "inactive"}
+                    </Status>
+                    <button onClick={() => setDiscountDialog(code)}>
+                      Edit
+                    </button>
+                  </article>
+                ))}
+                {!data.discountCodes.length && (
+                  <EmptyState
+                    title="No discount codes"
+                    detail="Create optional codes that can apply to every service or selected services."
+                  />
+                )}
+              </div>
+            </Section>
           </div>
-        </Section>
-        <Section title="Balances">
-          <div className="table-list">
-            {data.students.map((student) => (
-              <article key={student.id}>
-                <CheckCircle2 />
-                <div>
-                  <strong>{student.fullName}</strong>
-                  <small>Payments, refunds, and adjustments</small>
-                </div>
-                <strong className="financial-amount">
-                  {formatMoney(studentBalanceMinor(student.id, data.payments))}
-                </strong>
-                <button
-                  onClick={() =>
-                    navigate(`/coach/students/${student.id}/payments`)
-                  }
-                >
-                  Open
-                </button>
-              </article>
-            ))}
-            {!data.students.length && (
-              <EmptyState
-                title="No balances yet"
-                detail="Add a student to begin tracking charges, payments, refunds, and adjustments."
-              />
-            )}
-          </div>
-        </Section>
-        <Section
-          title="Coupons & discounts"
-          marked
-          aside={
-            <button onClick={() => setDiscountDialog("new")}>
-              Create code
-            </button>
-          }
-        >
-          <div className="table-list">
-            {data.discountCodes.map((code) => (
-              <article key={code.id}>
-                <CircleDollarSign />
-                <div>
-                  <strong>{code.code}</strong>
-                  <small>
-                    {code.description || "Booking discount"} ·{" "}
-                    {code.discountType === "percent"
-                      ? `${code.amount}%`
-                      : formatMoney(code.amount, code.currency)}{" "}
-                    · {code.redemptionCount} used
-                  </small>
-                </div>
-                <Status tone={code.active ? "good" : "neutral"}>
-                  {code.active ? "active" : "inactive"}
-                </Status>
-                <button onClick={() => setDiscountDialog(code)}>Edit</button>
-              </article>
-            ))}
-            {!data.discountCodes.length && (
-              <EmptyState
-                title="No discount codes"
-                detail="Create optional codes that can apply to every service or selected services."
-              />
-            )}
-          </div>
-        </Section>
-      </div>
+        }
+      />
       {dialog && (
         <PackageDefinitionDialog
           value={dialog === "new" ? undefined : dialog}
