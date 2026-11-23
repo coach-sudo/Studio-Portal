@@ -1,7 +1,7 @@
 // @vitest-environment node
 import type { Context } from "@netlify/functions";
 import { beforeEach, expect, it, vi } from "vitest";
-import route from "./studio-system-health";
+import route from "../studio-system-health";
 
 const mocks = vi.hoisted(() => ({
   actor: { id: "00000000-0000-4000-8000-000000000004" },
@@ -13,7 +13,7 @@ const mocks = vi.hoisted(() => ({
   rpc: vi.fn(),
   service: vi.fn(),
 }));
-vi.mock("./_shared/supabase", () => ({
+vi.mock("./supabase", () => ({
   typedUserClient: () => ({
     auth: { getUser: mocks.verify },
     from: () => {
@@ -30,13 +30,13 @@ vi.mock("./_shared/supabase", () => ({
   }),
   serviceClient: mocks.service,
 }));
-vi.mock("./_shared/studio-health", () => ({
+vi.mock("./studio-health", () => ({
   googleConfigured: () => true,
   readStudioHealth: mocks.read,
   runStudioHealth: mocks.check,
   healthRpc: mocks.rpc,
 }));
-vi.mock("./_shared/worker-controls", () => ({ workerEnabled: () => true }));
+vi.mock("./worker-controls", () => ({ workerEnabled: () => true }));
 
 const studio = "00000000-0000-4000-8000-000000000001";
 const issue = "00000000-0000-4000-8000-000000000003";
