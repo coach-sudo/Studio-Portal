@@ -1,6 +1,6 @@
 import { ShieldCheck } from "lucide-react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { financeView } from "./FinanceCenter";
+import { financeView } from "../../data/financeCenter";
 import { PageHeader, PageSkeleton } from "../../components/Primitives";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { StudioSettings } from "./StudioSettings";

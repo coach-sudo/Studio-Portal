@@ -263,3 +263,17 @@ export function validFinanceRange(range: DateRange) {
     (utcDay(range.end).getTime() - utcDay(range.start).getTime()) / 86_400_000;
   return days >= 0 && days <= 365;
 }
+
+export function financeView(params: URLSearchParams) {
+  const view = params.get("view");
+  if (
+    view === "overview" ||
+    view === "payments" ||
+    view === "packages" ||
+    view === "attention"
+  )
+    return view;
+  return params.has("invoice") || params.has("billLesson")
+    ? "payments"
+    : "overview";
+}

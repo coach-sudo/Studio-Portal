@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -21,6 +21,7 @@ import {
   changeAttention,
   fetchReport,
   financePeriod,
+  financeView,
   issueLabels,
   reports,
   useFinanceAttention,
@@ -47,15 +48,6 @@ const views = [
   { id: "packages", title: "Packages & Credits", icon: Layers },
   { id: "attention", title: "Attention", icon: Bell },
 ] as const;
-export function financeView(params: URLSearchParams) {
-  return (
-    views.find((item) => item.id === params.get("view"))?.id ??
-    (params.has("invoice") || params.has("billLesson")
-      ? "payments"
-      : "overview")
-  );
-}
-
 const metrics: { key: string; label: string; report: ReportName }[] = [
   { key: "gross", label: "Gross collections", report: "gross" },
   { key: "refunds", label: "Refunds", report: "refunds" },
@@ -127,12 +119,14 @@ function useFinanceLocation(zone: string) {
 type Location = ReturnType<typeof useFinanceLocation>;
 
 function RangePicker({ location }: { location: Location }) {
+  const fieldId = useId();
   const { period, range, update } = location;
   return (
     <div className="finance-controls">
-      <label>
+      <label htmlFor={fieldId + "-period"}>
         Period
         <select
+          id={fieldId + "-period"}
           value={period}
           onChange={(e) => update({ period: e.target.value, page: undefined })}
         >
@@ -145,9 +139,10 @@ function RangePicker({ location }: { location: Location }) {
       </label>
       {period === "custom" && (
         <>
-          <label>
+          <label htmlFor={fieldId + "-from"}>
             From
             <input
+              id={fieldId + "-from"}
               type="date"
               value={range.start}
               onChange={(e) =>
@@ -155,9 +150,10 @@ function RangePicker({ location }: { location: Location }) {
               }
             />
           </label>
-          <label>
+          <label htmlFor={fieldId + "-to"}>
             To
             <input
+              id={fieldId + "-to"}
               type="date"
               value={range.end}
               onChange={(e) => update({ to: e.target.value, page: undefined })}
@@ -415,6 +411,7 @@ function CollectionsTrend({
   selected: string | null;
   setCurrency: (currency: string) => void;
 }) {
+  const fieldId = useId();
   const currencies = [...new Set(trend.map((row) => row.currency))];
   const currency =
     currencies.find((item) => item === selected) ?? currencies[0];
@@ -453,9 +450,10 @@ function CollectionsTrend({
       title="Collections trend"
       aside={
         currencies.length > 1 && (
-          <label>
+          <label htmlFor={fieldId + "-trend-currency"}>
             Currency{" "}
             <select
+              id={fieldId + "-trend-currency"}
               value={currency}
               onChange={(event) => setCurrency(event.target.value)}
             >
@@ -574,6 +572,7 @@ function ReportPanel({
   defaultReport: ReportName;
   scope: "payments" | "packages" | "context";
 }) {
+  const fieldId = useId();
   const { params, range, update } = location;
   const selected = asReport(params.get("report"));
   const choices =
@@ -676,9 +675,10 @@ function ReportPanel({
       <RangePicker location={location} />
       <div className="finance-controls">
         {choices && (
-          <label>
+          <label htmlFor={fieldId + "-report"}>
             Report
             <select
+              id={fieldId + "-report"}
               value={group}
               onChange={(event) =>
                 update({
@@ -699,9 +699,10 @@ function ReportPanel({
             </select>
           </label>
         )}
-        <label>
+        <label htmlFor={fieldId + "-search"}>
           Search
           <input
+            id={fieldId + "-search"}
             type="search"
             maxLength={120}
             value={filters.search || ""}
@@ -709,9 +710,10 @@ function ReportPanel({
             placeholder="Student, payer, or record"
           />
         </label>
-        <label>
+        <label htmlFor={fieldId + "-student"}>
           Student
           <select
+            id={fieldId + "-student"}
             value={filters.student || ""}
             onChange={(e) => filter("student", e.target.value)}
           >
@@ -723,9 +725,10 @@ function ReportPanel({
             ))}
           </select>
         </label>
-        <label>
+        <label htmlFor={fieldId + "-service"}>
           Service
           <select
+            id={fieldId + "-service"}
             value={filters.service || ""}
             onChange={(e) => filter("service", e.target.value)}
           >
@@ -738,9 +741,10 @@ function ReportPanel({
           </select>
         </label>
         {group !== "credits" && (
-          <label>
+          <label htmlFor={fieldId + "-currency"}>
             Currency
             <select
+              id={fieldId + "-currency"}
               value={filters.currency || ""}
               onChange={(e) => filter("currency", e.target.value)}
             >
@@ -754,9 +758,10 @@ function ReportPanel({
           </label>
         )}
         {types.length > 0 && (
-          <label>
+          <label htmlFor={fieldId + "-kind"}>
             Type
             <select
+              id={fieldId + "-kind"}
               value={filters.kind || ""}
               onChange={(e) => filter("kind", e.target.value)}
             >
@@ -770,9 +775,10 @@ function ReportPanel({
           </label>
         )}
         {group === "receivables" && (
-          <label>
+          <label htmlFor={fieldId + "-status"}>
             Status
             <select
+              id={fieldId + "-status"}
               value={filters.status || ""}
               onChange={(e) => filter("status", e.target.value)}
             >
@@ -791,9 +797,10 @@ function ReportPanel({
             </select>
           </label>
         )}
-        <label>
+        <label htmlFor={fieldId + "-sort"}>
           Sort
           <select
+            id={fieldId + "-sort"}
             value={filters.sort || "newest"}
             onChange={(e) => filter("sort", e.target.value)}
           >
@@ -803,8 +810,9 @@ function ReportPanel({
         </label>
       </div>
       {snapshot && (
-        <label className="finance-check">
+        <label className="finance-check" htmlFor={fieldId + "-date-filter"}>
           <input
+            id={fieldId + "-date-filter"}
             type="checkbox"
             checked={filters.filterDates}
             onChange={(e) => filter("filterDates", e.target.checked ? "1" : "")}
@@ -940,6 +948,7 @@ const severityNames: Record<number, string> = {
 };
 
 function Attention({ data, isDemo, location }: Props & { location: Location }) {
+  const fieldId = useId();
   const { params, update } = location;
   const queue = params.get("queue") || "open";
   const page = Math.min(10000, Math.max(1, Number(params.get("page")) || 1));
@@ -964,9 +973,10 @@ function Attention({ data, isDemo, location }: Props & { location: Location }) {
   return (
     <Section title="Financial attention">
       <div className="finance-controls">
-        <label>
+        <label htmlFor={fieldId + "-queue"}>
           Queue
           <select
+            id={fieldId + "-queue"}
             value={queue}
             onChange={(e) => setFilter("queue", e.target.value)}
           >
@@ -975,9 +985,10 @@ function Attention({ data, isDemo, location }: Props & { location: Location }) {
             <option value="history">Resolved and dismissed</option>
           </select>
         </label>
-        <label>
+        <label htmlFor={fieldId + "-issue-type"}>
           Issue type
           <select
+            id={fieldId + "-issue-type"}
             value={params.get("kind") || ""}
             onChange={(e) => setFilter("kind", e.target.value)}
           >
@@ -989,9 +1000,10 @@ function Attention({ data, isDemo, location }: Props & { location: Location }) {
             ))}
           </select>
         </label>
-        <label>
+        <label htmlFor={fieldId + "-severity"}>
           Severity
           <select
+            id={fieldId + "-severity"}
             value={params.get("severity") || ""}
             onChange={(e) => setFilter("severity", e.target.value)}
           >
@@ -1003,9 +1015,10 @@ function Attention({ data, isDemo, location }: Props & { location: Location }) {
             ))}
           </select>
         </label>
-        <label>
+        <label htmlFor={fieldId + "-student"}>
           Student
           <select
+            id={fieldId + "-student"}
             value={params.get("student") || ""}
             onChange={(e) => setFilter("student", e.target.value)}
           >
@@ -1065,6 +1078,7 @@ function IssueCard({
   item: FinanceIssue;
   data: StudioSnapshot;
 }) {
+  const fieldId = useId();
   const queryClient = useQueryClient();
   const [panel, setPanel] = useState<"snooze" | "dismiss">();
   const [days, setDays] = useState(1);
@@ -1168,9 +1182,10 @@ function IssueCard({
           }}
         >
           {panel === "snooze" ? (
-            <label>
+            <label htmlFor={fieldId + "-snooze"}>
               Snooze for
               <select
+                id={fieldId + "-snooze"}
                 value={days}
                 onChange={(e) => setDays(Number(e.target.value))}
               >
@@ -1180,9 +1195,10 @@ function IssueCard({
               </select>
             </label>
           ) : (
-            <label>
+            <label htmlFor={fieldId + "-reason"}>
               Reason
               <input
+                id={fieldId + "-reason"}
                 required
                 minLength={3}
                 maxLength={300}
