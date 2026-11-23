@@ -1,5 +1,6 @@
 import { ShieldCheck } from "lucide-react";
-import { useParams } from "react-router-dom";
+import { useParams, useSearchParams } from "react-router-dom";
+import { financeView } from "../../data/financeCenter";
 import { PageHeader, PageSkeleton } from "../../components/Primitives";
 import { useStudioRoute } from "../../hooks/useStudio";
 import { StudioSettings } from "./StudioSettings";
@@ -20,17 +21,22 @@ const configs: Record<string, { title: string }> = {
   lessons: { title: "Lessons" },
   notes: { title: "Notes" },
   materials: { title: "Materials" },
-  finance: { title: "Payments" },
+  finance: { title: "Finance" },
   "actor-pages": { title: "Actor Pages" },
   settings: { title: "Settings" },
 };
 export function CoachSection() {
+  const [params] = useSearchParams();
+  const finance = financeView(params);
   const { section = "today" } = useParams(),
     config = configs[section] ?? configs.today,
     { data, isDemo } = useStudioRoute(
       "coach",
       undefined,
-      coachSectionDomains(section),
+      section === "finance" &&
+        (finance === "overview" || finance === "attention")
+        ? ["identity", "students", "booking"]
+        : coachSectionDomains(section),
     );
   if (!data)
     return <PageSkeleton label={`Loading ${config.title.toLowerCase()}…`} />;

@@ -22,7 +22,7 @@ export const coachNavigation: NavigationItem[] = [
   { to: "/coach/studio", label: "Studio", icon: Building2 },
 ];
 export const studioNavigation: NavigationItem[] = [
-  { to: "/coach/finance", label: "Payments", icon: WalletCards },
+  { to: "/coach/finance", label: "Finance", icon: WalletCards },
   { to: "/coach/actor-pages", label: "Actor Pages", icon: Clapperboard },
   { to: "/coach/referrals", label: "Referrals", icon: Gift },
   { to: "/coach/campaigns", label: "Campaigns", icon: Megaphone },

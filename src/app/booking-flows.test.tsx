@@ -127,7 +127,7 @@ describe("interactive booking flows", () => {
 
   it("creates an editable lesson package product", async () => {
     const user = userEvent.setup();
-    renderApp("/coach/finance");
+    renderApp("/coach/finance?view=packages");
     await user.click(
       await screen.findByRole("button", { name: "Add package" }),
     );

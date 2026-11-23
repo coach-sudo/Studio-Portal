@@ -5,6 +5,7 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 import type { Role, StudioSnapshot } from "../domain/model";
+import { attentionKey, reportKey } from "../data/financeCenter";
 import {
   loadStudioSnapshot,
   studioDomains,
@@ -268,6 +269,12 @@ export async function invalidateStudioDomains(
     queryClient.invalidateQueries({ queryKey: ["student-workspace-summary"] }),
     queryClient.invalidateQueries({ queryKey: ["student-financial-summary"] }),
     queryClient.invalidateQueries({ queryKey: ["studio-financial-dashboard"] }),
+    ...(selected.has("finance")
+      ? [
+          queryClient.invalidateQueries({ queryKey: [reportKey] }),
+          queryClient.invalidateQueries({ queryKey: [attentionKey] }),
+        ]
+      : []),
     queryClient.invalidateQueries({ queryKey: ["communication-activity"] }),
     queryClient.invalidateQueries({ queryKey: ["communication-attention"] }),
     queryClient.invalidateQueries({ queryKey: ["household-access"] }),

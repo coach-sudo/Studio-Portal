@@ -24,11 +24,13 @@ export function CreditAccount({
   studentId,
   isDemo,
   readOnly = false,
+  initialPackageId,
 }: {
   data: StudioSnapshot;
   studentId: string;
   isDemo: boolean;
   readOnly?: boolean;
+  initialPackageId?: string;
 }) {
   return isDemo ? (
     <DemoCreditAccount
@@ -39,6 +41,7 @@ export function CreditAccount({
     />
   ) : (
     <LiveCreditAccount
+      initialPackageId={initialPackageId}
       studentId={studentId}
       timezone={data.settings.timezone}
       readOnly={readOnly}

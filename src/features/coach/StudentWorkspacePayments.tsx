@@ -55,6 +55,8 @@ export function Payments({
 }) {
   const fields = useId();
   const [params, setParams] = useSearchParams();
+  const selectedPayment = params.get("payment");
+  const selectedPackage = params.get("package") || undefined;
   const creditsDisclosure = useRef<HTMLDetailsElement>(null);
   const [openComposer, setOpenComposer] = useState(false);
   const [recording, setRecording] = useState(false);
@@ -137,6 +139,7 @@ export function Payments({
   const [assignBusy, setAssignBusy] = useState(false);
   const paymentPage = usePagedList(
     payments
+      .filter((entry) => !selectedPayment || entry.id === selectedPayment)
       .filter((entry) =>
         [entry.reason, entry.externalReference, entry.kind].some((value) =>
           value?.toLowerCase().includes(paymentSearch.trim().toLowerCase()),
@@ -428,6 +431,19 @@ export function Payments({
         <div className="student-billing-sidebar">
           <CoachBillingContact data={data} student={student} isDemo={isDemo} />
           <Section title="Payment history">
+            {selectedPayment && (
+              <button
+                onClick={() => {
+                  setParams((current) => {
+                    current.delete("payment");
+                    return current;
+                  });
+                  paymentPage.setPage(1);
+                }}
+              >
+                Show all payments
+              </button>
+            )}
             <label
               className="lesson-invoice-field"
               htmlFor={`${fields}-payment-search`}
@@ -507,9 +523,20 @@ export function Payments({
           onComposerDismiss={() => setOpenComposer(false)}
         />
       </details>
-      <details className="disclosure-section" ref={creditsDisclosure}>
+      <details
+        className="disclosure-section"
+        ref={creditsDisclosure}
+        open={
+          params.get("section") === "credits" || !!selectedPackage || undefined
+        }
+      >
         <summary>Manage credits</summary>
-        <CreditAccount data={data} studentId={student.id} isDemo={isDemo} />
+        <CreditAccount
+          data={data}
+          studentId={student.id}
+          isDemo={isDemo}
+          initialPackageId={selectedPackage}
+        />
       </details>
       {recording &&
         (paymentLesson ? (

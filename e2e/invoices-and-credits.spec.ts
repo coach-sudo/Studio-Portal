@@ -18,7 +18,7 @@ test.describe("Unified invoice acceptance", () => {
     const student = await openAs(browser, "student");
     const unrelated = await openAs(browser, "unrelated");
     try {
-      await coach.page.goto("/coach/finance");
+      await coach.page.goto("/coach/finance?view=payments");
       await coach.page
         .getByRole("button", {
           name: "Invoice services or packages",
