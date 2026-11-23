@@ -144,6 +144,15 @@ async function main() {
     ).trim(),
   );
   if (hasAutopay) schedules[autopayName] = "*/2 * * * *";
+  const healthMonitor = "studio-health-monitor";
+  const hasHealthMonitor = Boolean(
+    run(
+      "git",
+      ["ls-files", "--", `netlify/functions/${healthMonitor}.ts`],
+      root,
+    ).trim(),
+  );
+  if (hasHealthMonitor) schedules[healthMonitor] = "*/15 * * * *";
   assert.equal(
     functions.filter((f) => f.schedule).length,
     Object.keys(schedules).length,
@@ -170,6 +179,19 @@ async function main() {
     ),
   );
   assert.ok(!admin.schedule && admin.invocationMode !== "background");
+  if (hasHealthMonitor) {
+    const diagnostics = functions.find(
+      (f) => f.name === "studio-system-health",
+    );
+    assert.ok(
+      diagnostics?.routes?.some(
+        (route) => route.pattern === "/api/v2/studio-health/:action",
+      ),
+    );
+    assert.ok(
+      !diagnostics.schedule && diagnostics.invocationMode !== "background",
+    );
+  }
   const health = functions.find((f) => f.name === "healthz");
   assert.ok(health);
   const healthDir = join(evidence, "health-unpacked");
