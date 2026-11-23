@@ -4,6 +4,7 @@ import {
   WorkerDisabledError,
 } from "./worker-controls";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { GoogleAuthorizationError, GoogleAvailabilityError } from "./google";
 type CalendarEvent = {
   id?: string;
   etag?: string;
@@ -150,9 +151,16 @@ export async function projectCalendarItem(
       true,
       error instanceof WorkerDisabledError
         ? "worker_disabled"
-        : error instanceof Error && /^calendar_/.test(error.message)
-          ? error.message
-          : "calendar_sync_failed",
+        : error instanceof GoogleAuthorizationError
+          ? "calendar_authorization"
+          : error instanceof GoogleAvailabilityError && error.throttled
+            ? "calendar_lookup_429"
+            : error instanceof Error &&
+                ["AbortError", "TimeoutError"].includes(error.name)
+              ? "calendar_timeout"
+              : error instanceof Error && /^calendar_/.test(error.message)
+                ? error.message
+                : "calendar_sync_failed",
     );
     return false;
   }

@@ -22,6 +22,14 @@ export function BookingSetup({
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (saving) return;
+    if (
+      JSON.stringify(form.bookingDefaults) !==
+        JSON.stringify(value.bookingDefaults) &&
+      !window.confirm(
+        "Update booking defaults for new services? Review booking, cancellation and payment rules before saving.",
+      )
+    )
+      return;
     setSaving(true);
     try {
       await onSave({

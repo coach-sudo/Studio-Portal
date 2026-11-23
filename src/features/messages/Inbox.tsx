@@ -800,10 +800,16 @@ function Inbox({
     }
   };
 
+  const selectedDelivery = params.get("delivery");
   const history =
     role === "coach"
       ? [...data.outbox]
-          .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+          .sort(
+            (a, b) =>
+              Number(b.id === selectedDelivery) -
+                Number(a.id === selectedDelivery) ||
+              b.updatedAt.localeCompare(a.updatedAt),
+          )
           .slice(0, 8)
       : [];
   return (
@@ -1040,7 +1046,11 @@ function Inbox({
       </div>
       <CommunicationActivity isDemo={isDemo} />
       {role === "coach" && (
-        <details className="inbox-email-history">
+        <details
+          id="delivery-history"
+          className="inbox-email-history"
+          open={selectedDelivery ? true : undefined}
+        >
           <summary>Recent email</summary>
           <header>
             <div>

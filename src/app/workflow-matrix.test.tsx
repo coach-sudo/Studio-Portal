@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 import { StudentPortal } from "../features/student/StudentPortal";
 import { StudioStoreProvider } from "../state/StudioStore";
@@ -311,7 +311,7 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/settings");
       await user.click(
-        await screen.findByRole("button", { name: /Access and Privacy/i }),
+        await screen.findByRole("button", { name: /Security & Access/i }),
       );
       const toggle = screen.getByRole("switch", { name: /Drive folder/i });
       await user.click(toggle);
@@ -324,8 +324,14 @@ describe("50 start-to-finish studio workflows", () => {
       const user = userEvent.setup();
       renderApp("/coach/settings");
       await user.click(
+        await screen.findByRole("button", {
+          name: /Booking & Finance Configuration/i,
+        }),
+      );
+      await user.click(
         await screen.findByRole("button", { name: /Pricing and Billing/i }),
       );
+      vi.spyOn(window, "confirm").mockReturnValueOnce(true);
       const rate = screen.getByLabelText("60-minute lesson");
       await user.clear(rate);
       await user.type(rate, "135");

@@ -31,6 +31,7 @@ export async function dispatchOutbox(
         .update({ status: "sending", updated_at: new Date().toISOString() })
         .in("id", input.ids)
         .in("status", ["queued", "failed"])
+        .is("delivery_provider_started_at", null)
         .lte("send_at", new Date().toISOString())
         .select()
     : await db.rpc("claim_booking_reminders", {
@@ -56,6 +57,7 @@ export async function dispatchOutbox(
     }
   };
   for (const [index, message] of messages.entries()) {
+    let providerStarted = false;
     if (!workerEnabled("automations")) {
       await releaseUnstarted(messages.slice(index));
       return {
@@ -176,6 +178,22 @@ export async function dispatchOutbox(
         action,
       );
       assertWorkerEnabled("automations");
+      // Claim the provider boundary before sending. If the request or response
+      // is lost, both worker paths fail closed instead of sending twice.
+      const providerClaim = await client
+        .from("outbox_messages")
+        .update({ delivery_provider_started_at: new Date().toISOString() })
+        .eq("id", current.data.id)
+        .eq("status", "sending")
+        .eq("version", current.data.version)
+        .eq("updated_at", current.data.updated_at)
+        .is("delivery_provider_started_at", null)
+        .select("id")
+        .maybeSingle();
+      if (providerClaim.error) throw providerClaim.error;
+      if (!providerClaim.data) continue;
+      providerStarted = true;
+      assertWorkerEnabled("automations");
       const result = await sendGmail(token, {
         ...current.data,
         body: presented.text,
@@ -217,18 +235,21 @@ export async function dispatchOutbox(
           code: "PROVIDER_UNAVAILABLE",
         }),
       );
+      const category = providerStarted
+        ? "delivery_outcome_unverified"
+        : "delivery_preflight_failed";
       const attempt = await db.from("delivery_attempts").insert({
         outbox_message_id: message.id,
         provider: "gmail",
         response: {},
         succeeded: false,
-        error: "Delivery failed. Check the provider connection.",
+        error: category,
       });
       const updated = await db
         .from("outbox_messages")
         .update({
           status: "failed",
-          last_error: "Delivery failed. Check the provider connection.",
+          last_error: category,
           next_attempt_at: new Date(Date.now() + 15 * 60000).toISOString(),
         })
         .eq("id", message.id)

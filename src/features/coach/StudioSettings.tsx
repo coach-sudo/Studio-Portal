@@ -1,13 +1,9 @@
 import { WritingArea } from "../../components/WritingArea";
 import {
   CalendarClock,
-  CheckCircle2,
-  CircleDollarSign,
   Database,
   Megaphone,
   Palette,
-  RefreshCw,
-  Send,
   Settings2,
   ShieldCheck,
   Users,
@@ -15,20 +11,11 @@ import {
 import { useEffect, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Link, useSearchParams } from "react-router-dom";
-import {
-  EmptyState,
-  ListControls,
-  Section,
-  Status,
-  usePagedList,
-} from "../../components/Primitives";
+import { Section, Status } from "../../components/Primitives";
 import { TimezoneSelect } from "../../components/TimezoneSelect";
 import {
-  loadPlatformHealth,
   loadStorageHealth,
-  startProviderIntake,
   studioCommand,
-  type PlatformHealth,
   type StorageHealth,
 } from "../../data/bookingCommands";
 import type {
@@ -44,7 +31,7 @@ import {
 } from "../../hooks/useStudio";
 import { DailyPopupForm } from "./DailyPopupSettingsForm";
 import { AutomationSettings } from "./AutomationSettings";
-import { BookingSetup } from "./BookingSetup";
+
 import {
   canonicalSettingsPanel,
   type SettingsPanel as Panel,
@@ -55,6 +42,64 @@ import {
   validateStudioImage,
 } from "../../domain/settingsAssets";
 import { mergeStudioSettings } from "../../data/settings";
+import {
+  ConnectionsPanel,
+  SettingsOverview,
+  SystemHealthPanel,
+} from "./SystemHealth";
+
+const settingsAreas: {
+  id: Panel;
+  label: string;
+  description: string;
+  icon: typeof Palette;
+  sections: [Panel, string][];
+}[] = [
+  {
+    id: "profile",
+    label: "Studio Settings",
+    description: "Identity, branding and communications",
+    icon: Palette,
+    sections: [
+      ["profile", "Profile and branding"],
+      ["communications", "Communications and Notifications"],
+    ],
+  },
+  {
+    id: "integrations",
+    label: "Connections",
+    description: "Calendar, Stripe and Gmail",
+    icon: Settings2,
+    sections: [],
+  },
+  {
+    id: "booking",
+    label: "Booking & Finance Configuration",
+    description: "Scheduling and payment policies",
+    icon: CalendarClock,
+    sections: [
+      ["booking", "Booking defaults"],
+      ["pricing", "Pricing and Billing"],
+    ],
+  },
+  {
+    id: "health",
+    label: "System Health",
+    description: "Diagnostics and troubleshooting",
+    icon: Database,
+    sections: [
+      ["health", "Troubleshooting"],
+      ["data", "Studio data"],
+    ],
+  },
+  {
+    id: "access",
+    label: "Security & Access",
+    description: "Accounts and household permissions",
+    icon: ShieldCheck,
+    sections: [],
+  },
+];
 
 export const studioRecoverySummary = (data: StudioSnapshot) =>
   `${data.students.length} people · ${data.lessons.length} lessons · ${data.materials.length} materials.`;
@@ -73,15 +118,7 @@ export function StudioSettings({
     [panel, setPanel] = useState<Panel>(() =>
       canonicalSettingsPanel(searchParams.get("panel")),
     ),
-    [notice, setNotice] = useState(""),
-    [health, setHealth] = useState<PlatformHealth>({
-      mode: "demo",
-      supabase: false,
-      stripe: false,
-      googleCalendar: false,
-      gmail: false,
-      scheduledWorkers: false,
-    });
+    [notice, setNotice] = useState("");
   const [dirty, setDirty] = useState(false),
     [editorBase, setEditorBase] = useState(data.settings),
     [epoch, setEpoch] = useState(0);
@@ -118,21 +155,6 @@ export function StudioSettings({
         { replace: true },
       );
   }, [searchParams, panel, data.settings, setSearchParams, confirmDiscard]);
-  useEffect(() => {
-    if (!isDemo)
-      void loadPlatformHealth()
-        .then(setHealth)
-        .catch(() =>
-          setNotice(
-            "Integration status could not be loaded. Refresh connection status to retry.",
-          ),
-        );
-  }, []);
-  const refreshHealth = async () => {
-    const next = await loadPlatformHealth();
-    setHealth(next);
-    return next;
-  };
   const save = async (updates: Partial<Settings>, message: string) => {
     if (settingsMutation.isPending())
       throw new Error("Another Settings save is still running. Please wait.");
@@ -182,55 +204,13 @@ export function StudioSettings({
       throw reason;
     }
   };
-  const panels: Array<[Panel, string, typeof Palette, string]> = [
-    [
-      "profile",
-      "Studio Profile and Branding",
-      Palette,
-      "Identity, appearance and contact",
-    ],
-    [
-      "pricing",
-      "Pricing and Billing",
-      CircleDollarSign,
-      "Default rates, invoices and packages",
-    ],
-    [
-      "booking",
-      "Booking Rules and Availability",
-      CalendarClock,
-      "Booking policy and scheduling setup",
-    ],
-    [
-      "communications",
-      "Communications and Notifications",
-      Send,
-      "Automations, templates and daily popup",
-    ],
-    [
-      "integrations",
-      "Integrations",
-      Settings2,
-      "Configured status and recent evidence",
-    ],
-    [
-      "access",
-      "Access and Privacy",
-      ShieldCheck,
-      "Portal experience and Household access",
-    ],
-    [
-      "data",
-      "Data and Recovery",
-      Database,
-      "Storage, history and delivery recovery",
-    ],
-  ];
   const choosePanel = (key: string) =>
     setSearchParams((p) => {
       const next = new URLSearchParams(p);
       next.set("panel", key);
       next.delete("section");
+      next.delete("service");
+      next.delete("issue");
       return next;
     });
   useEffect(() => {
@@ -239,36 +219,36 @@ export function StudioSettings({
       setEpoch((n) => n + 1);
     }
   }, [data.settings, dirty]);
+  const area =
+    settingsAreas.find(
+      ({ id, sections }) =>
+        id === panel || sections.some(([key]) => key === panel),
+    ) ?? settingsAreas[0];
   return (
     <div className="settings-layout">
       <label className="settings-mobile-selector">
         Settings section
-        <select value={panel} onChange={(e) => choosePanel(e.target.value)}>
-          {panels.map(([key, label]) => (
-            <option key={key} value={key}>
+        <select value={area.id} onChange={(e) => choosePanel(e.target.value)}>
+          {settingsAreas.map(({ id, label }) => (
+            <option key={id} value={id}>
               {label}
             </option>
           ))}
         </select>
       </label>
       <aside className="settings-nav" aria-label="Settings categories">
-        {panels.map(([key, label, Icon, detail]) => (
+        {settingsAreas.map(({ id, label, icon: Icon, description }) => (
           <button
-            key={key}
-            className={panel === key ? "active" : ""}
-            onClick={() => {
-              setSearchParams((p) => {
-                const next = new URLSearchParams(p);
-                next.set("panel", key);
-                next.delete("section");
-                return next;
-              });
-            }}
+            key={id}
+            type="button"
+            className={area.id === id ? "active" : ""}
+            aria-current={area.id === id ? "page" : undefined}
+            onClick={() => choosePanel(id)}
           >
-            <Icon />
+            <Icon aria-hidden="true" />
             <span>
               <strong>{label}</strong>
-              <small>{detail}</small>
+              <small>{description}</small>
             </span>
           </button>
         ))}
@@ -287,7 +267,21 @@ export function StudioSettings({
             setDirty(true);
         }}
       >
-        <h2>{panels.find((p) => p[0] === panel)?.[1]}</h2>
+        <h2>{area.label}</h2>
+        {area.sections.length > 0 && (
+          <nav className="settings-subnav" aria-label={area.label}>
+            {area.sections.map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                aria-current={panel === key ? "page" : undefined}
+                onClick={() => choosePanel(key)}
+              >
+                {label}
+              </button>
+            ))}
+          </nav>
+        )}
         {settingsMutation.isPending() && <p role="status">Saving settings…</p>}
         {dirty && (
           <div className="portal-notice" role="status">
@@ -310,6 +304,9 @@ export function StudioSettings({
           </p>
         )}
         {panel === "profile" && (
+          <SettingsOverview studio={data.studioId} isDemo={isDemo} />
+        )}
+        {panel === "profile" && (
           <StudioForm
             key={epoch}
             value={editorBase}
@@ -319,6 +316,30 @@ export function StudioSettings({
             }
           />
         )}{" "}
+        {panel === "access" && (
+          <Section title="Account and household access" marked>
+            <p>
+              Coach sign-in is managed through the portal’s existing sign-in
+              options. Review a student’s household contacts for scheduling,
+              payer and profile permissions.
+            </p>
+            <div className="form-actions">
+              <Link to="/coach/students">
+                Review student and household access
+              </Link>
+              <Link to="/coach/settings?panel=integrations">
+                Review connected authorization
+              </Link>
+              <a
+                href="https://myaccount.google.com/security"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Google account security
+              </a>
+            </div>
+          </Section>
+        )}
         {panel === "access" && (
           <PortalForm
             key={epoch}
@@ -330,25 +351,24 @@ export function StudioSettings({
             }
           />
         )}{" "}
-        {panel === "booking" && (
-          <>
-            <BookingSetup
-              key={epoch}
-              value={editorBase}
-              onSave={(v) =>
-                save(
-                  v,
-                  "Booking defaults saved. Existing agreements are unchanged.",
-                )
-              }
-            />
+        {area.id === "booking" && (
+          <Section title="Manage booking and payment policies" marked>
             <div className="form-actions">
               <Link to="/coach/bookings?view=availability">
                 Manage availability
               </Link>
               <Link to="/coach/bookings?view=services">Manage services</Link>
+              <Link to="/coach/bookings?view=setup">
+                Open public booking setup
+              </Link>
+              <Link to="/coach/finance?view=payments">
+                Payments and invoices
+              </Link>
+              <Link to="/coach/finance?view=packages">
+                Manage packages and credits
+              </Link>
             </div>
-          </>
+          </Section>
         )}
         {panel === "pricing" && (
           <PricingForm
@@ -390,20 +410,19 @@ export function StudioSettings({
           </>
         )}{" "}
         {panel === "integrations" && (
-          <Integrations
-            health={health}
-            onNotice={setNotice}
-            onRefresh={async () => {
-              await Promise.all([
-                refreshHealth(),
-                invalidateStudioDomains(queryClient, [
-                  "identity",
-                  "administration",
-                ]),
-              ]);
-            }}
+          <ConnectionsPanel
+            studio={data.studioId}
+            isDemo={isDemo}
+            timezone={data.settings.timezone}
           />
-        )}{" "}
+        )}
+        {panel === "health" && (
+          <SystemHealthPanel
+            studio={data.studioId}
+            isDemo={isDemo}
+            timezone={data.settings.timezone}
+          />
+        )}
         {panel === "data" && (
           <DataPanel data={data} isDemo={isDemo} onNotice={setNotice} />
         )}
@@ -431,6 +450,13 @@ export function StudioForm({
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (uploading) return;
+    if (
+      (form.timezone !== value.timezone || form.currency !== value.currency) &&
+      !window.confirm(
+        "Change the studio timezone or currency? This can change booking time displays, report dates and defaults for future payments.",
+      )
+    )
+      return;
     setError("");
     try {
       if (logo) validateStudioImage(logo);
@@ -559,6 +585,7 @@ export function StudioForm({
             value={form.timezone}
             onChange={(timezone) => setForm({ ...form, timezone })}
           />
+          <small>Used for studio booking times and report dates.</small>
         </label>
         <label>
           Currency
@@ -571,6 +598,7 @@ export function StudioForm({
             <option>GBP</option>
             <option>EUR</option>
           </select>
+          <small>Default currency for future studio transactions.</small>
         </label>
         <fieldset className="full option-fieldset">
           <legend>Studio colors</legend>
@@ -818,7 +846,8 @@ function PricingForm({
   onSave: (v: Partial<Settings>) => void;
 }) {
   const [rates, setRates] = useState(value.lessonRatesMinor),
-    [reminders, setReminders] = useState(value.reminderHours.join(", "));
+    [reminders, setReminders] = useState(value.reminderHours.join(", ")),
+    [reminderError, setReminderError] = useState("");
   const dollars = (minor: number) => minor / 100;
   return (
     <Section title="Rates & reminders" marked>
@@ -826,13 +855,22 @@ function PricingForm({
         className="settings-form"
         onSubmit={(e) => {
           e.preventDefault();
-          onSave({
-            lessonRatesMinor: rates,
-            reminderHours: reminders
-              .split(",")
-              .map(Number)
-              .filter((v) => Number.isFinite(v) && v > 0),
-          });
+          const hours = reminders.trim()
+            ? reminders.split(",").map(Number)
+            : [];
+          if (hours.some((hour) => !Number.isFinite(hour) || hour <= 0)) {
+            setReminderError("Enter positive hours separated by commas.");
+            return;
+          }
+          if (
+            (JSON.stringify(rates) !== JSON.stringify(value.lessonRatesMinor) ||
+              JSON.stringify(hours) !== JSON.stringify(value.reminderHours)) &&
+            !window.confirm(
+              "Save default rates and reminder timing? Updated defaults can affect future lesson pricing and scheduled reminders.",
+            )
+          )
+            return;
+          onSave({ lessonRatesMinor: rates, reminderHours: hours });
         }}
       >
         {([30, 60, 90] as const).map((duration) => (
@@ -871,10 +909,17 @@ function PricingForm({
           Reminder hours before lesson
           <input
             value={reminders}
-            onChange={(e) => setReminders(e.target.value)}
+            onChange={(e) => {
+              setReminders(e.target.value);
+              setReminderError("");
+            }}
+            aria-invalid={!!reminderError}
+            aria-describedby="settings-reminder-help"
             placeholder="24, 2"
           />
-          <small>Separate multiple reminders with commas.</small>
+          <small id="settings-reminder-help">
+            {reminderError || "Separate multiple reminders with commas."}
+          </small>
         </label>
         <div className="form-actions full">
           <button className="primary">Save rates and reminders</button>
@@ -1083,170 +1128,6 @@ function EmailAutomationForm({
   );
 }
 
-function Integrations({
-  health,
-  onNotice,
-  onRefresh,
-}: {
-  health: PlatformHealth;
-  onNotice: (value: string) => void;
-  onRefresh: () => Promise<unknown>;
-}) {
-  const [syncing, setSyncing] = useState(false),
-    [repairing, setRepairing] = useState(false),
-    [refreshing, setRefreshing] = useState(false);
-  const sync = async () => {
-    if (syncing) return;
-    setSyncing(true);
-    try {
-      await startProviderIntake();
-      onNotice(
-        "Calendar and Gmail check started. High-confidence lessons will appear automatically; uncertain provider messages stay in Today for review.",
-      );
-      window.setTimeout(() => void onRefresh(), 15000);
-    } catch (reason) {
-      onNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Calendar and Gmail could not be checked.",
-      );
-    } finally {
-      setSyncing(false);
-    }
-  };
-  const repair = async () => {
-    if (repairing) return;
-    setRepairing(true);
-    try {
-      const result = await studioCommand("integrations", {
-        command: "retry_failed",
-        expectedVersion: 0,
-        reason: "Coach retried failed Calendar and email work",
-      });
-      await onRefresh();
-      const resource = result.resource || {};
-      onNotice(
-        `Queued ${Number(resource.calendar || 0)} Calendar and ${Number(resource.email || 0)} email job${Number(resource.calendar || 0) + Number(resource.email || 0) === 1 ? "" : "s"} for another attempt.`,
-      );
-    } catch (reason) {
-      onNotice(
-        reason instanceof Error
-          ? reason.message
-          : "Failed integration work could not be retried.",
-      );
-    } finally {
-      setRepairing(false);
-    }
-  };
-  const refresh = async () => {
-    if (refreshing) return;
-    setRefreshing(true);
-    try {
-      await onRefresh();
-      onNotice("Connection status refreshed.");
-    } catch (error) {
-      onNotice(
-        error instanceof Error
-          ? error.message
-          : "Connection status could not be refreshed.",
-      );
-    } finally {
-      setRefreshing(false);
-    }
-  };
-  const cards = [
-    [
-      "Google Calendar & Meet",
-      health.googleCalendar,
-      "Availability, invitations, Meet links, and event updates.",
-    ],
-    ["Gmail", health.gmail, "Confirmations, changes, and reminders."],
-    [
-      "Supabase",
-      health.supabase,
-      "Cross-device studio records and secure role access.",
-    ],
-    [
-      "Stripe",
-      health.stripe,
-      "Live charges, deposits, subscriptions, and refunds.",
-    ],
-    [
-      "Scheduled recovery",
-      health.scheduledWorkers,
-      "Retries, rolling series, and expired holds.",
-    ],
-  ] as const;
-  return (
-    <Section title="Integration health" marked>
-      {health.issues?.map((issue) => (
-        <p className="inline-error" key={issue}>
-          {issue}
-        </p>
-      ))}
-      <div className="settings-grid">
-        {cards.map(([name, ready, detail], index) => {
-          const key = [
-              "googleCalendar",
-              "gmail",
-              "supabase",
-              "stripe",
-              "scheduledWorkers",
-            ][index],
-            evidence = health.integrations?.[key],
-            working = evidence?.state === "working";
-          return (
-            <article key={name}>
-              {working ? <CheckCircle2 /> : <RefreshCw />}
-              <strong>{name}</strong>
-              <small>{detail}</small>
-              <Status tone={working ? "good" : "warn"}>
-                {evidence?.state.replaceAll("_", " ") ||
-                  (ready ? "configured — unverified" : "unconfigured")}
-              </Status>
-              {evidence?.lastSuccessAt && (
-                <small>
-                  Last success{" "}
-                  {new Date(evidence.lastSuccessAt).toLocaleString()}
-                </small>
-              )}
-            </article>
-          );
-        })}
-      </div>
-      <div className="form-actions">
-        <button
-          className="primary"
-          disabled={
-            syncing ||
-            !(
-              health.integrations?.googleCalendar?.configured ??
-              health.googleCalendar
-            )
-          }
-          onClick={() => void sync()}
-        >
-          <RefreshCw />
-          {syncing
-            ? "Checking Calendar & Gmail…"
-            : "Check Calendar & Gmail now"}
-        </button>
-      </div>
-      <div className="form-actions">
-        <button disabled={repairing} onClick={() => void repair()}>
-          <RefreshCw />
-          {repairing
-            ? "Queuing retries…"
-            : "Retry failed Calendar & email jobs"}
-        </button>
-        <button disabled={refreshing} onClick={() => void refresh()}>
-          <RefreshCw />
-          {refreshing ? "Refreshing…" : "Refresh connection status"}
-        </button>
-      </div>
-    </Section>
-  );
-}
 function DataPanel({
   data,
   isDemo,
@@ -1256,14 +1137,10 @@ function DataPanel({
   isDemo: boolean;
   onNotice: (v: string) => void;
 }) {
-  const messagePage = usePagedList(
-    [...data.outbox].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-  );
-  const queryClient = useQueryClient();
   const store = useStudioStore();
   const [storage, setStorage] = useState<StorageHealth>();
   const [storageError, setStorageError] = useState("");
-  const failed = data.outbox.filter((item) => item.status === "failed");
+
   const cleanupCount = storage
     ? Object.values(storage.cleanupCandidates).reduce(
         (total, value) => total + value,
@@ -1290,36 +1167,6 @@ function DataPanel({
   useEffect(() => {
     void refreshStorage();
   }, [isDemo]);
-  const retry = async () => {
-    try {
-      if (isDemo)
-        store.transact((draft) =>
-          draft.outbox
-            .filter((i) => i.status === "failed")
-            .forEach((i) => {
-              i.status = "queued";
-              i.lastError = undefined;
-              i.attempts += 1;
-            }),
-        );
-      else
-        await studioCommand("outbox", {
-          command: "retry_failed",
-          expectedVersion: 0,
-          reason: "Coach retried failed email delivery",
-        });
-      await invalidateStudioDomains(queryClient, ["messaging"]);
-      onNotice(
-        `${failed.length} failed message${failed.length === 1 ? "" : "s"} queued again.`,
-      );
-    } catch (error) {
-      onNotice(
-        error instanceof Error
-          ? error.message
-          : "Failed messages could not be queued for retry.",
-      );
-    }
-  };
   const reset = () => {
     if (
       window.confirm(
@@ -1446,66 +1293,6 @@ function DataPanel({
           )}
         </div>
       </Section>
-      <Section
-        title="Communication recovery"
-        aside={
-          <button disabled={!failed.length} onClick={() => void retry()}>
-            <RefreshCw />
-            Retry failed
-          </button>
-        }
-      >
-        <ListControls
-          page={messagePage.page}
-          pageCount={messagePage.pageCount}
-          pageSize={messagePage.pageSize}
-          total={messagePage.total}
-          onPage={messagePage.setPage}
-          onPageSize={messagePage.setPageSize}
-          label="messages"
-        />
-        <div className="table-list">
-          {messagePage.visible.map((message) => (
-            <article key={message.id}>
-              <Send />
-              <div>
-                <strong>{message.subject}</strong>
-                <small>
-                  {message.recipient} · {message.attempts} attempts
-                  {message.lastError ? ` · ${message.lastError}` : ""}
-                </small>
-              </div>
-              <Status
-                tone={
-                  message.status === "failed"
-                    ? "danger"
-                    : message.status === "sent"
-                      ? "good"
-                      : "neutral"
-                }
-              >
-                {message.status}
-              </Status>
-            </article>
-          ))}
-          {!data.outbox.length && (
-            <EmptyState
-              title="Delivery queue is clear"
-              detail="Confirmations and reminders will appear here only when attention is needed."
-            />
-          )}
-        </div>
-      </Section>
-      <div className="security-note">
-        <ShieldCheck />
-        <div>
-          <strong>Booking security remains server-side</strong>
-          <small>
-            Public booking writes never use this local store. Live booking data
-            continues to require Supabase and verified provider webhooks.
-          </small>
-        </div>
-      </div>
     </>
   );
 }

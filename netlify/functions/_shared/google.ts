@@ -7,7 +7,7 @@ const googleErrorSchema = z
 const tokenResponseSchema = z
   .object({
     access_token: z.string().min(1).optional(),
-    error_description: z.string().optional(),
+    error: z.string().optional(),
   })
   .passthrough();
 const gmailResponseSchema = z
@@ -109,6 +109,12 @@ function availabilityError(response: Response, reason?: string) {
   );
 }
 
+export class GoogleAuthorizationError extends Error {
+  constructor(readonly reason: "configuration" | "authorization") {
+    super("Google authorization requires review.");
+  }
+}
+
 export async function googleAccessToken(signal?: AbortSignal) {
   const clientId =
       Netlify.env.get("GOOGLE_CLIENT_ID") ||
@@ -118,7 +124,7 @@ export async function googleAccessToken(signal?: AbortSignal) {
       Netlify.env.get("GOOGLE_OAUTH_CLIENT_SECRET"),
     refreshToken = Netlify.env.get("GOOGLE_REFRESH_TOKEN");
   if (!clientId || !clientSecret || !refreshToken)
-    throw new Error("Google OAuth requires reconnecting in Settings.");
+    throw new GoogleAuthorizationError("configuration");
   const response = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
     signal,
@@ -133,8 +139,16 @@ export async function googleAccessToken(signal?: AbortSignal) {
   if (signal && (response.status === 429 || response.status >= 500))
     throw availabilityError(response);
   const body = parseGooglePayload(tokenResponseSchema, await response.json());
-  if (!response.ok || !body.access_token)
-    throw new Error(body.error_description || "Google token refresh failed.");
+  if (!response.ok || !body.access_token) {
+    if (
+      body.error === "invalid_grant" ||
+      body.error === "invalid_client" ||
+      body.error === "unauthorized_client" ||
+      response.status === 401
+    )
+      throw new GoogleAuthorizationError("authorization");
+    throw new Error("Google token refresh failed.");
+  }
   return body.access_token;
 }
 export async function sendGmail(

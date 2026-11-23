@@ -101,12 +101,12 @@ describe("interactive booking flows", () => {
     const user = userEvent.setup();
     renderApp("/coach/settings");
     await user.click(
-      await screen.findByRole("button", { name: /Integrations/i }),
+      await screen.findByRole("button", { name: /^Connections/ }),
     );
     expect(
-      await screen.findByRole("heading", { name: "Integration health" }),
+      await screen.findByRole("heading", { name: "Connections" }),
     ).toBeInTheDocument();
-    expect(screen.getAllByText("unconfigured").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Status unavailable")).toHaveLength(3);
   });
 
   it("creates a coach booking with an audited override form", async () => {

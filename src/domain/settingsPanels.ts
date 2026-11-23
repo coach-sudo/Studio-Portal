@@ -4,6 +4,7 @@ export const settingsPanels = [
   "booking",
   "communications",
   "integrations",
+  "health",
   "access",
   "data",
 ] as const;

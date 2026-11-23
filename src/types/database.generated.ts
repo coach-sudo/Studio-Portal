@@ -2811,6 +2811,7 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          delivery_provider_started_at: string | null
           entity_snapshot: Json
           event_key: string | null
           html_body: string | null
@@ -2840,6 +2841,7 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          delivery_provider_started_at?: string | null
           entity_snapshot?: Json
           event_key?: string | null
           html_body?: string | null
@@ -2869,6 +2871,7 @@ export type Database = {
           correlation_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          delivery_provider_started_at?: string | null
           entity_snapshot?: Json
           event_key?: string | null
           html_body?: string | null
@@ -4928,6 +4931,7 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          delivery_provider_started_at: string | null
           entity_snapshot: Json
           event_key: string | null
           html_body: string | null
@@ -4985,6 +4989,7 @@ export type Database = {
           correlation_id: string | null
           created_at: string
           dedupe_key: string | null
+          delivery_provider_started_at: string | null
           entity_snapshot: Json
           event_key: string | null
           html_body: string | null
@@ -5913,6 +5918,42 @@ export type Database = {
           p_student?: string
         }
         Returns: Json
+      }
+      studio_health_claim: {
+        Args: { p_automatic: boolean; p_studio: string }
+        Returns: string
+      }
+      studio_health_due: { Args: never; Returns: string[] }
+      studio_health_evidence: {
+        Args: { p_owner: boolean; p_service: string; p_studio: string }
+        Returns: Json
+      }
+      studio_health_finish: {
+        Args: {
+          p_automatic: boolean
+          p_lease: string
+          p_results: Json
+          p_studio: string
+        }
+        Returns: boolean
+      }
+      studio_health_read: {
+        Args: { p_issue?: string; p_studio: string }
+        Returns: Json
+      }
+      studio_health_retry: {
+        Args: {
+          p_actor: string
+          p_correlation: string
+          p_issue: string
+          p_service: string
+          p_studio: string
+        }
+        Returns: string
+      }
+      studio_health_studio_slug: {
+        Args: { p_studio: string }
+        Returns: string
       }
       studio_record_target: {
         Args: { p_id: string; p_kind: string; p_student?: string }

@@ -22,7 +22,7 @@ export default async () => {
       await projectCalendarItem(
         db,
         item,
-        googleAccessToken,
+        () => googleAccessToken(AbortSignal.timeout(3500)),
         Netlify.env.get("GOOGLE_CALENDAR_ID") || "primary",
       )
     )
