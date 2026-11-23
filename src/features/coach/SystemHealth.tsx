@@ -951,10 +951,11 @@ function IssueDetail({
       </button>
       {copyStatus && <p role="status">{copyStatus}</p>}
       {manualCopy && (
-        <div className="health-copy-fallback">
-          <label htmlFor="system-health-diagnostic-summary">
-            Diagnostic summary
-          </label>
+        <label
+          className="health-copy-fallback"
+          htmlFor="system-health-diagnostic-summary"
+        >
+          Diagnostic summary
           <textarea
             id="system-health-diagnostic-summary"
             readOnly
@@ -962,7 +963,7 @@ function IssueDetail({
             rows={8}
             onFocus={(event) => event.target.select()}
           />
-        </div>
+        </label>
       )}
     </div>
   );
