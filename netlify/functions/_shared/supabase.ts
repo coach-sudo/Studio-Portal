@@ -7,13 +7,27 @@ function environment() {
   return url;
 }
 
-export function typedUserClient(request: Request): SupabaseClient<Database> {
+export function typedUserClient(
+  request: Request,
+  signal?: AbortSignal,
+): SupabaseClient<Database> {
   const url = environment();
   const key = Netlify.env.get("SUPABASE_ANON_KEY");
   if (!key) throw new Error("Supabase is not configured.");
   return createClient<Database>(url, key, {
     global: {
       headers: { Authorization: request.headers.get("authorization") || "" },
+      ...(signal
+        ? {
+            fetch: (input, init) =>
+              fetch(input, {
+                ...init,
+                signal: init?.signal
+                  ? AbortSignal.any([signal, init.signal])
+                  : signal,
+              }),
+          }
+        : {}),
     },
     auth: { persistSession: false },
   });

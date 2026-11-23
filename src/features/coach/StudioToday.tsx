@@ -1,5 +1,6 @@
 import { localSchedulingConflicts } from "../../domain/schedulingConflicts";
 import { CoachFinanceSnapshot } from "./FinanceCenter";
+import { DashboardSystemAlerts } from "./SystemHealth";
 import { useWorkspaceNavigation } from "../../hooks/useWorkspaceLocation";
 import { recordLink } from "../../app/recordLinks";
 import {
@@ -298,10 +299,10 @@ export function TodayView({
         </span>
         <CoachFinanceSnapshot data={data} isDemo={isDemo} />
         <button onClick={() => navigate("/coach/inbox")}>
-          {operational.upcomingCommunication} communications queued ·{" "}
-          {data.outbox.filter((m) => m.status === "failed").length} failed
+          {operational.upcomingCommunication} communications queued
         </button>
       </aside>
+      <DashboardSystemAlerts studio={data.studioId} isDemo={isDemo} />
       <details>
         <summary>Week preview</summary>
         <div className="table-list">

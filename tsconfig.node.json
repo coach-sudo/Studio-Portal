@@ -34,6 +34,7 @@
     "src/domain/zonedInput.ts",
     "src/domain/studentSetup.ts",
     "src/domain/settingsPatch.ts",
+    "src/domain/systemHealth.ts",
     "src/domain/settingsAssets.ts",
     "src/domain/library.ts",
     "src/domain/packagePricing.ts",

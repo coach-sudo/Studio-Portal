@@ -31,6 +31,21 @@ beforeEach(() => {
     update: vi.fn(() => query),
     insert: vi.fn(() => query),
     eq: vi.fn(() => query),
+    is: vi.fn(() => query),
+    select: vi.fn(() => query),
+    single: vi.fn(async () => ({
+      data: {
+        id: "message",
+        studio_id: "studio",
+        version: 1,
+        updated_at: "2026-11-23",
+        status: "sending",
+        recipient: "fixture@example.test",
+        subject: "Fixture",
+        body: "Body",
+      },
+    })),
+    maybeSingle: vi.fn(async () => ({ data: { id: "message" } })),
     then: (resolve: (value: unknown) => void) => resolve({ error: null }),
   };
   mocks.db.from.mockReturnValue(query);
@@ -80,6 +95,53 @@ describe("outbox remains the sole delivery boundary", () => {
     expect(mocks.db.from).toHaveBeenCalledWith("outbox_messages");
     expect(mocks.token).not.toHaveBeenCalled();
     expect(mocks.send).not.toHaveBeenCalled();
+  });
+  it("records the provider boundary before sending and holds a lost response", async () => {
+    const log = vi.spyOn(console, "error").mockImplementation(() => {});
+    mocks.eligibility.mockResolvedValue({ allowed: true });
+    mocks.token.mockResolvedValue("synthetic");
+    vi.stubGlobal("Netlify", {
+      env: {
+        get: (key: string) =>
+          key === "DEPLOY_URL"
+            ? "https://synthetic-preview.netlify.app"
+            : undefined,
+      },
+    });
+    const query = mocks.db.from();
+    query.single
+      .mockResolvedValueOnce({
+        data: {
+          id: "message",
+          studio_id: "studio",
+          version: 1,
+          updated_at: "2026-11-23",
+          status: "sending",
+          recipient: "fixture@example.test",
+          subject: "Fixture",
+          body: "Body",
+        },
+      })
+      .mockResolvedValueOnce({
+        data: { name: "Fixture studio", settings: {} },
+      });
+    mocks.send.mockImplementationOnce(async () => {
+      expect(query.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          delivery_provider_started_at: expect.any(String),
+        }),
+      );
+      throw new Error("fixture provider response lost");
+    });
+    expect(await dispatchOutbox()).toMatchObject({ sent: 0 });
+    expect(mocks.send).toHaveBeenCalledOnce();
+    expect(query.update).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        status: "failed",
+        last_error: "delivery_outcome_unverified",
+      }),
+    );
+    log.mockRestore();
   });
   it("provider failures log only safe structured evidence, never a token or internal error", async () => {
     const log = vi.spyOn(console, "error").mockImplementation(() => {});

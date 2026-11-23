@@ -1,0 +1,240 @@
+.health-surface {
+  padding: clamp(16px, 2vw, 24px);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--app-surface, white);
+  min-width: 0;
+}
+.health-drawer > .health-stack {
+  padding: 18px clamp(18px, 4vw, 26px) 26px;
+}
+.health-copy-fallback {
+  display: grid;
+  gap: 8px;
+}
+.health-stack {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+}
+.health-intro,
+.health-surface p,
+.health-meta,
+.health-checks small,
+.health-issue-list small,
+.system-alerts small {
+  color: var(--muted);
+  line-height: 1.55;
+}
+.health-summary p,
+.health-connection p,
+.health-checks p,
+.settings-overview p {
+  margin: 6px 0;
+}
+.health-summary-title,
+.health-summary,
+.health-card-heading,
+.health-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.health-summary,
+.health-card-heading {
+  justify-content: space-between;
+}
+.health-summary > div {
+  flex: 1 1 270px;
+}
+.health-summary-title h3,
+.health-connection h3,
+.health-checks h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+.health-summary-title h3 {
+  font-size: 1.15rem;
+}
+.health-meta {
+  font-size: 0.83rem;
+}
+.health-connection-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 235px), 1fr));
+  gap: 14px;
+}
+.health-connection {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.health-connection > button {
+  margin-top: auto;
+  align-self: start;
+}
+.health-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  flex: 0 0 auto;
+  color: var(--forest);
+  background: var(--surface-sage, #eaf1e8);
+}
+.health-facts {
+  display: grid;
+  gap: 9px;
+  margin: 4px 0 12px;
+  overflow-wrap: anywhere;
+}
+.health-facts div {
+  display: grid;
+  gap: 2px;
+}
+.health-facts dt {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.health-facts dd {
+  margin: 0;
+  font-size: 0.93rem;
+  font-weight: 600;
+}
+.health-checks {
+  padding-block: 4px;
+}
+.health-checks article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 14px 0;
+}
+.health-checks article + article {
+  border-top: 1px solid var(--line);
+}
+.health-issue-list,
+.system-alerts,
+.settings-overview-connections,
+.settings-overview-issues {
+  padding: 0;
+  margin: 8px 0 0;
+  list-style: none;
+}
+.health-issue-list li + li,
+.system-alerts li + li,
+.settings-overview-connections li + li {
+  border-top: 1px solid var(--line);
+}
+.health-issue-list a,
+.system-alerts a,
+.settings-overview-connections li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  min-height: 44px;
+}
+.health-issue-list a > span:first-child,
+.system-alerts a > span,
+.settings-overview-connections li > a {
+  flex: 1;
+  min-width: 0;
+}
+.health-issue-list a,
+.system-alerts a {
+  text-decoration: none;
+}
+.health-issue-list a:hover strong,
+.system-alerts a:hover strong {
+  text-decoration: underline;
+}
+.health-issue-list a small,
+.system-alerts a small {
+  display: block;
+  margin-top: 3px;
+}
+.health-advanced {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+.health-advanced summary {
+  min-height: 44px;
+  padding-block: 11px;
+  cursor: pointer;
+}
+.health-copy {
+  justify-self: start;
+}
+.health-confirm {
+  background: var(--surface-sage, #eaf1e8);
+}
+.health-summary button,
+.health-stack button,
+.health-actions a,
+.health-stack .button-link {
+  min-height: 44px;
+}
+.health-actions a,
+.health-stack .button-link,
+.settings-shortcuts a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+}
+.settings-overview {
+  margin-bottom: 18px;
+}
+.settings-overview h3 {
+  margin: 0;
+}
+.settings-shortcuts,
+.settings-subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+}
+.settings-subnav {
+  margin: 0 0 18px;
+}
+.settings-subnav button {
+  min-height: 44px;
+}
+.settings-subnav [aria-current="page"] {
+  background: var(--forest);
+  color: var(--on-forest, white);
+}
+.settings-overview-issues a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+@media (max-width: 520px) {
+  .health-summary > button {
+    width: 100%;
+    justify-content: center;
+  }
+  .health-checks article {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .health-checks article > .status {
+    grid-column: 2;
+    justify-self: start;
+  }
+  .health-issue-list a {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+  .health-issue-list a > .status {
+    grid-row: 2;
+    justify-self: start;
+  }
+  .health-issue-list a > svg {
+    grid-row: 1;
+    grid-column: 2;
+  }
+}

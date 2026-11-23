@@ -775,10 +775,18 @@ test("@mobile @mobile-only @a11y Operational mobile surfaces retain hierarchy, r
     await expect(page).toHaveURL(
       new RegExp(`${path.replaceAll("/", "\\/")}(?:\\?|$)`),
     );
-    if (name === "settings")
+    if (name === "settings") {
+      await expect(
+        page.getByRole("combobox", { name: "Settings section" }),
+      ).toHaveValue("profile");
       await page
-        .getByRole("combobox", { name: "Settings section" })
-        .selectOption("communications");
+        .getByRole("navigation", { name: "Studio Settings" })
+        .getByRole("button", { name: "Communications and Notifications" })
+        .click();
+      await expect(
+        page.getByRole("heading", { name: "Automation rules" }),
+      ).toBeVisible();
+    }
     await expect(page.locator("main")).toBeVisible();
     if (name === "account") {
       const payerName = page.locator(".household-contact-row strong");

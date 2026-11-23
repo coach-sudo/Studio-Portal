@@ -46,6 +46,9 @@ describe("campaign and popup controls", () => {
     const user = userEvent.setup();
     renderApp("/coach/settings");
     await user.click(
+      await screen.findByRole("button", { name: /Studio Settings/i }),
+    );
+    await user.click(
       await screen.findByRole("button", {
         name: /Communications and Notifications/i,
       }),
