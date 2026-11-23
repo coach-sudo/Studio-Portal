@@ -5429,6 +5429,19 @@ export type Database = {
         }
         Returns: Json
       }
+      finance_attention: {
+        Args: { p_request?: Json; p_studio: string }
+        Returns: Json
+      }
+      finance_report: {
+        Args: {
+          p_end: string
+          p_filters?: Json
+          p_start: string
+          p_studio: string
+        }
+        Returns: Json
+      }
       find_student_duplicates: {
         Args: { p_email?: string; p_name: string; p_phone?: string }
         Returns: Json
