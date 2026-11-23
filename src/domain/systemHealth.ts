@@ -88,7 +88,8 @@ export type RepairResult =
   | "recent_retry"
   | "worker_disabled"
   | "check_in_progress"
-  | "retry_limit";
+  | "retry_limit"
+  | "connection_required";
 
 const issue = (title: string, impact: string, next: string) => ({
   title,

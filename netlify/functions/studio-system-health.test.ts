@@ -31,6 +31,7 @@ vi.mock("./_shared/supabase", () => ({
   serviceClient: mocks.service,
 }));
 vi.mock("./_shared/studio-health", () => ({
+  googleConfigured: () => true,
   readStudioHealth: mocks.read,
   runStudioHealth: mocks.check,
   healthRpc: mocks.rpc,

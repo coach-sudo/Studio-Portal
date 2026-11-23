@@ -127,7 +127,7 @@ async function googleCalendarProbe(calendar: string): Promise<Probe> {
       return { at, result: "unavailable" };
     const destination =
       typeof body.summary === "string"
-        ? body.summary.replace(/[\u0000-\u001F\u007F]/g, " ").slice(0, 100)
+        ? body.summary.replace(/\p{Cc}/gu, " ").slice(0, 100)
         : undefined;
     return {
       at,
@@ -308,9 +308,13 @@ export function deriveObservation(
         ? "Provider intake enabled"
         : "Provider intake intentionally disabled";
       if (!workers.jobs) observation.state = "unavailable";
-      else if (maintenance && maintenance.category !== "job_observed")
+      else if (maintenance && maintenance.category !== "job_observed") {
         problems.push(maintenance);
-      else if (!observed && maintenance)
+        observation.detail =
+          maintenance.category === "job_failed"
+            ? "The latest booking maintenance attempt failed."
+            : "Booking maintenance has stopped reporting.";
+      } else if (!observed && maintenance)
         problems.push({ ...maintenance, category: "job_stalled" });
       else if (!observed && !maintenance)
         observation.preserve = ["maintenance"];
@@ -341,11 +345,11 @@ export function deriveObservation(
       problem.retryable === true &&
       problem.phase === "open" &&
       (service === "calendar"
-        ? (!owner || workers.calendar) &&
+        ? (!owner || (workers.calendar && google)) &&
           lastGoogleCheck?.result !== "authorization"
         : service === "email" &&
           problem.scope === "transactional" &&
-          (!owner || workers.email) &&
+          (!owner || (workers.email && google)) &&
           lastGoogleCheck?.result !== "authorization");
     return { ...problem, severity, retryable };
   });

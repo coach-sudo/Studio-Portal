@@ -3,6 +3,7 @@ import { z } from "zod";
 import type { RepairResult } from "../../src/domain/systemHealth";
 import { apiError, AppError, json } from "./_shared/http";
 import {
+  googleConfigured,
   healthRpc,
   readStudioHealth,
   runStudioHealth,
@@ -96,6 +97,11 @@ export default async function studioSystemHealth(
     )
       return json({
         result: "worker_disabled" satisfies RepairResult,
+        correlationId: id,
+      });
+    if (!googleConfigured())
+      return json({
+        result: "connection_required" satisfies RepairResult,
         correlationId: id,
       });
     const result = await healthRpc<RepairResult>(db, "studio_health_retry", {

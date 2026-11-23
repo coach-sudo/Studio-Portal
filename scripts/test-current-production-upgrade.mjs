@@ -163,6 +163,13 @@ assert.equal(
   "0",
   "Existing credit entries must not acquire synthetic beneficiary attribution on upgrade",
 );
+assert.equal(
+  query(
+    "select count(*) from public.outbox_messages where delivery_provider_started_at is not null",
+  ),
+  "0",
+  "The Gmail submission fence must leave historical messages unreclassified",
+);
 assert.deepEqual(
   history(),
   files.map((f) => f.split("_")[0]),

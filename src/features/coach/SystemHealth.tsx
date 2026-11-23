@@ -286,6 +286,7 @@ export function ConnectionsPanel({
           selected === service && (
             <Dialog
               key={service}
+              className="health-drawer"
               presentation="drawer"
               title={healthLabels[service]}
               description={descriptions[service]}
@@ -589,6 +590,33 @@ export function SystemHealthPanel({
             and share diagnostics if scheduled checks remain unavailable.
           </p>
         )}
+      <section className="health-surface health-history">
+        <div className="health-summary-title">
+          <h3>
+            {service && healthServices.includes(service as HealthService)
+              ? healthLabels[service as HealthService] + " issues"
+              : "Issues and history"}
+          </h3>
+          {service && (
+            <Link to="/coach/settings?panel=health">Show all services</Link>
+          )}
+        </div>
+        {open.length ? (
+          <IssueList issues={open} timezone={timezone} />
+        ) : (
+          <p>
+            {data && !isError
+              ? "No active issues in the available evidence."
+              : "Issue history is currently unavailable."}
+          </p>
+        )}
+        {resolved.length > 0 && (
+          <details className="health-advanced">
+            <summary>Past issues ({resolved.length})</summary>
+            <IssueList issues={resolved} timezone={timezone} />
+          </details>
+        )}
+      </section>
       <div className="health-surface health-checks">
         {healthServices.map((key) => {
           const Icon = icons[key];
@@ -627,35 +655,9 @@ export function SystemHealthPanel({
           );
         })}
       </div>
-      <section className="health-surface health-history">
-        <div className="health-summary-title">
-          <h3>
-            {service && healthServices.includes(service as HealthService)
-              ? healthLabels[service as HealthService] + " issues"
-              : "Issues and history"}
-          </h3>
-          {service && (
-            <Link to="/coach/settings?panel=health">Show all services</Link>
-          )}
-        </div>
-        {open.length ? (
-          <IssueList issues={open} timezone={timezone} />
-        ) : (
-          <p>
-            {data && !isError
-              ? "No active issues in the available evidence."
-              : "Issue history is currently unavailable."}
-          </p>
-        )}
-        {resolved.length > 0 && (
-          <details className="health-advanced">
-            <summary>Past issues ({resolved.length})</summary>
-            <IssueList issues={resolved} timezone={timezone} />
-          </details>
-        )}
-      </section>
       {issueId && (
         <Dialog
+          className="health-drawer"
           presentation="drawer"
           title={current ? issuePreview(current) : "System Health issue"}
           onClose={close}
@@ -741,6 +743,8 @@ function IssueDetail({
             "A diagnostic check is running. Wait for its results before retrying.",
           retry_limit:
             "The studio has reached its recovery limit. Wait 15 minutes before queuing another retry.",
+          connection_required:
+            "Review the Google connection before queuing this recovery.",
         }[result],
       ),
     onError: () =>
@@ -947,15 +951,18 @@ function IssueDetail({
       </button>
       {copyStatus && <p role="status">{copyStatus}</p>}
       {manualCopy && (
-        <label>
-          Diagnostic summary
+        <div className="health-copy-fallback">
+          <label htmlFor="system-health-diagnostic-summary">
+            Diagnostic summary
+          </label>
           <textarea
+            id="system-health-diagnostic-summary"
             readOnly
             value={manualCopy}
             rows={8}
             onFocus={(event) => event.target.select()}
           />
-        </label>
+        </div>
       )}
     </div>
   );

@@ -44,4 +44,12 @@ Copy diagnostics includes the stable issue ID, allowlisted source and recovery r
 
 ## Verification
 
-Focused tests cover connection state, freshness, unavailable evidence, bounded run behavior, authorization rejection, issue identity, safe retries, the Gmail submission fence, and sanitized diagnostics. The PostgreSQL tests are in [coach_system_health.sql](../supabase/tests/coach_system_health.sql). Run them on an isolated Wave 4 baseline with the candidate migration applied. Direct security checks use a fresh publication and verified migration history before any protected hosted review.
+Focused tests cover connection state, freshness, unavailable evidence, bounded run behavior, authorization rejection, issue identity, safe retries, the Gmail submission fence, and sanitized diagnostics. The PostgreSQL suite passed 32 assertions on an isolated Wave 4 migration baseline. The upgrade expectations preserve historical outbox records with an unset submission fence. See [coach_system_health.sql](../supabase/tests/coach_system_health.sql).
+
+Local Chromium acceptance used real synthetic Supabase Auth accounts and the application’s actual diagnostics and recovery handlers. A coach could administer the selected studio, and adult students, dependents, authorized payers, schedule-only contacts, unrelated users and coaches from another studio received 403 on its diagnostics and repair routes. The separate coach could read their own studio. Check now completed in 150 ms in the local fixture with simulated Google. Fingerprints of bookings, payments, credits, projections, outbox and delivery receipts stayed unchanged across the automatic and manual checks. The run also verified keyboard use, unsaved changes, copy, exact Dashboard deep links, queued recovery and confirmation from new evidence. Axe found zero violations in the three captures and none overflowed horizontally.
+
+- [Desktop System Health at 1440 px](settings-health-evidence/desktop.png)
+- [Tablet Connections at 820 px](settings-health-evidence/tablet.png)
+- [Mobile troubleshooting at 390 px](settings-health-evidence/mobile.png)
+
+The acceptance branch is isolated from production and began without production data. Its migration history was aligned to all 97 Wave 4 versions before the candidate migration was applied. The automatic branch creation skipped the body of `20261005014016`. The acceptance branch was repaired by replaying the unchanged repository migration and then applying the remaining Wave 4 migrations. No production migration or deployment is included in this review.

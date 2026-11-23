@@ -2,8 +2,15 @@
   padding: clamp(16px, 2vw, 24px);
   border: 1px solid var(--line);
   border-radius: 16px;
-  background: var(--surface, white);
+  background: var(--app-surface, white);
   min-width: 0;
+}
+.health-drawer > .health-stack {
+  padding: 18px clamp(18px, 4vw, 26px) 26px;
+}
+.health-copy-fallback {
+  display: grid;
+  gap: 8px;
 }
 .health-stack {
   display: grid;
@@ -136,6 +143,14 @@
 .settings-overview-connections li > a {
   flex: 1;
   min-width: 0;
+}
+.health-issue-list a,
+.system-alerts a {
+  text-decoration: none;
+}
+.health-issue-list a:hover strong,
+.system-alerts a:hover strong {
+  text-decoration: underline;
 }
 .health-issue-list a small,
 .system-alerts a small {
