@@ -1,15 +1,34 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQuery,
+} from "@tanstack/react-query";
+import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, expect, it, vi } from "vitest";
 import { InvoiceWorkspace } from "./InvoiceWorkspace";
 import { StudioStoreProvider, useStudioStore } from "../../state/StudioStore";
 import { demoSnapshot } from "../../data/demo";
-const mocked = vi.hoisted(() => ({ command: vi.fn() }));
+import { attentionKey, reportKey } from "../../data/financeCenter";
+import type { Invoice } from "../../domain/invoices";
+const mocked = vi.hoisted(() => ({ command: vi.fn(), invoices: vi.fn() }));
 vi.mock("../../data/bookingCommands", () => ({
   studioCommand: mocked.command,
 }));
+vi.mock("../../data/invoices", async () => {
+  const { useQuery } = await import("@tanstack/react-query");
+  return {
+    useInvoices: (isDemo: boolean, demo: Invoice[]) => {
+      const query = useQuery({
+        queryKey: ["invoices", "live"],
+        enabled: !isDemo,
+        queryFn: () => mocked.invoices(),
+      });
+      return isDemo ? { data: demo } : query;
+    },
+  };
+});
 
 function renderWorkspace({
   live = false,
@@ -146,3 +165,145 @@ it("offers a draft but blocks sending when the household payer is missing", asyn
     screen.getAllByText("Draft saved. No email was sent.").length,
   ).toBeGreaterThan(0);
 });
+
+it.each([true, false])(
+  "refreshes the mounted Finance views only after invoice payment succeeds (%s)",
+  async (succeeds) => {
+    const user = userEvent.setup();
+    const invoice: Invoice = {
+      id: "live-invoice",
+      studio_id: demoSnapshot.studioId,
+      student_id: "student-sarah",
+      number: "INV-PAST-DUE",
+      status: "open",
+      currency: "USD",
+      issue_date: "2026-08-01",
+      due_date: "2026-08-10",
+      introduction: "",
+      notes: "",
+      footer: "",
+      branding: { studioName: "Fixture studio" },
+      recipient: { name: "Fixture payer" },
+      items: [],
+      total_minor: 9000,
+      paid_minor: 0,
+      credit_minor: 0,
+      version: 1,
+      created_at: "2026-08-01T00:00:00Z",
+    };
+    let settled = false;
+    mocked.invoices.mockResolvedValue([invoice]);
+    let resolvePayment!: (result: { resource: Invoice }) => void;
+    let rejectPayment!: (error: Error) => void;
+    const payment = new Promise<{ resource: Invoice }>((resolve, reject) => {
+      resolvePayment = resolve;
+      rejectPayment = reject;
+    });
+    mocked.command.mockReturnValue(payment);
+    const summary = vi.fn(async () =>
+      settled
+        ? "Collected $90, outstanding $0, overdue $0"
+        : "Collected $0, outstanding $90, overdue $90",
+    );
+    const attention = vi.fn(async () =>
+      settled ? "No overdue issues" : "One overdue issue",
+    );
+    const history = vi.fn(async () =>
+      settled ? "Payment in history" : "No payment in history",
+    );
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false, staleTime: Infinity } },
+    });
+    const overdueReport = [reportKey, "synthetic", "overdue"];
+    const unrelated = ["unrelated"];
+    client.setQueryData(overdueReport, "Overdue report before payment");
+    client.setQueryData(unrelated, "Unrelated data");
+    function MountedFinance() {
+      const overview = useQuery({
+        queryKey: [reportKey, "synthetic", "overview"],
+        queryFn: summary,
+      });
+      const report = useQuery({
+        queryKey: [reportKey, "synthetic", "collections"],
+        queryFn: history,
+      });
+      const issues = useQuery({
+        queryKey: [attentionKey, "synthetic"],
+        queryFn: attention,
+      });
+      return (
+        <>
+          <p>{overview.data}</p>
+          <p>{report.data}</p>
+          <p>{issues.data}</p>
+          <InvoiceWorkspace data={demoSnapshot} isDemo={false} />
+        </>
+      );
+    }
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter
+          initialEntries={["/coach/finance?view=payments&invoice=live-invoice"]}
+        >
+          <StudioStoreProvider>
+            <MountedFinance />
+          </StudioStoreProvider>
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByText("One overdue issue");
+    const record = await screen.findByRole("button", {
+      name: /^Record payment$/,
+    });
+    await user.click(record);
+    expect(record).toBeDisabled();
+    await user.click(record);
+    expect(mocked.command).toHaveBeenCalledExactlyOnceWith(
+      "invoices",
+      expect.objectContaining({
+        command: "record_payment",
+        entityId: invoice.id,
+        expectedVersion: 1,
+      }),
+    );
+    expect(summary).toHaveBeenCalledTimes(1);
+    expect(attention).toHaveBeenCalledTimes(1);
+    expect(screen.queryByText("Invoice updated.")).not.toBeInTheDocument();
+    if (succeeds) {
+      settled = true;
+      const paid = {
+        ...invoice,
+        status: "paid" as const,
+        paid_minor: 9000,
+        version: 2,
+      };
+      mocked.invoices.mockResolvedValue([paid]);
+      await act(async () => resolvePayment({ resource: paid }));
+      expect(
+        await screen.findByText("Collected $90, outstanding $0, overdue $0"),
+      ).toBeInTheDocument();
+      expect(await screen.findByText("Payment in history")).toBeInTheDocument();
+      expect(await screen.findByText("No overdue issues")).toBeInTheDocument();
+      expect(mocked.invoices).toHaveBeenCalledTimes(2);
+    } else {
+      await act(async () =>
+        rejectPayment(new Error("Payment could not be recorded.")),
+      );
+      expect(
+        await screen.findAllByText("Payment could not be recorded."),
+      ).not.toHaveLength(0);
+      expect(screen.queryByText("Invoice updated.")).not.toBeInTheDocument();
+      expect(
+        screen.getByText("Collected $0, outstanding $90, overdue $90"),
+      ).toBeInTheDocument();
+      expect(screen.getByText("One overdue issue")).toBeInTheDocument();
+      expect(history).toHaveBeenCalledTimes(1);
+      expect(summary).toHaveBeenCalledTimes(1);
+      expect(attention).toHaveBeenCalledTimes(1);
+      expect(mocked.invoices).toHaveBeenCalledTimes(1);
+    }
+    expect(client.getQueryState(overdueReport)?.isInvalidated).toBe(succeeds);
+    expect(client.getQueryState(unrelated)?.isInvalidated).toBe(false);
+    await waitFor(() => expect(mocked.command).toHaveBeenCalledTimes(1));
+  },
+);

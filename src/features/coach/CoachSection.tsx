@@ -35,7 +35,7 @@ export function CoachSection() {
       undefined,
       section === "finance" &&
         (finance === "overview" || finance === "attention")
-        ? ["identity", "booking"]
+        ? ["identity", "students", "booking"]
         : coachSectionDomains(section),
     );
   if (!data)

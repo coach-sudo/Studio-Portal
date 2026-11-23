@@ -142,7 +142,7 @@ export type AttentionAction = {
   until?: string;
   reason?: string;
 };
-const reportKey = "finance-report";
+export const reportKey = "finance-report";
 export const attentionKey = "finance-attention";
 
 async function call<T>(
