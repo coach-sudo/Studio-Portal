@@ -5951,10 +5951,7 @@ export type Database = {
         }
         Returns: string
       }
-      studio_health_studio_slug: {
-        Args: { p_studio: string }
-        Returns: string
-      }
+      studio_health_studio_slug: { Args: { p_studio: string }; Returns: string }
       studio_record_target: {
         Args: { p_id: string; p_kind: string; p_student?: string }
         Returns: Json
