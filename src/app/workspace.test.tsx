@@ -143,7 +143,7 @@ describe("connected workspace", () => {
     for (const label of [
       "Library",
       "Studio",
-      "Payments",
+      "Finance",
       "Actor Pages",
       "Referrals",
       "Campaigns",
