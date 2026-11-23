@@ -82,6 +82,59 @@ it("does not offer a local overlap override", async () => {
   ).toBeDisabled();
   expect(save).not.toHaveBeenCalled();
 });
+it("keeps the student selected and rechecks a recurring conflict instead of offering an override", async () => {
+  mock.preview.mockResolvedValue({
+    conflicts: [
+      {
+        id: "busy",
+        source: "google",
+        summary: "Busy calendar time",
+        start: "2026-11-13T12:00:00Z",
+        end: "2026-11-13T13:00:00Z",
+      },
+    ],
+    externalCalendarChecked: true,
+  });
+  const save = vi.fn().mockResolvedValue(undefined);
+  const student = demoSnapshot.students[1];
+  render(
+    <ManualBookingDialog
+      data={demoSnapshot}
+      isDemo={false}
+      initialStudentId={student.id}
+      onClose={vi.fn()}
+      onSave={save}
+    />,
+  );
+  fireEvent.change(screen.getByLabelText("Repeat"), {
+    target: { value: "biweekly" },
+  });
+  const form = screen
+    .getByRole("button", { name: "Create booking" })
+    .closest("form")!;
+  fireEvent.submit(form);
+  await screen.findByText(/Choose another start time or try again/);
+  expect(
+    screen.queryByRole("button", { name: "Override Google conflict" }),
+  ).not.toBeInTheDocument();
+
+  fireEvent.submit(form);
+  await waitFor(() => expect(mock.preview).toHaveBeenCalledTimes(2));
+  await screen.findByRole("button", { name: "Create booking" });
+  expect(save).not.toHaveBeenCalled();
+
+  mock.preview.mockResolvedValue({
+    conflicts: [],
+    externalCalendarChecked: true,
+  });
+  fireEvent.submit(form);
+  await waitFor(() => expect(save).toHaveBeenCalledOnce());
+  expect(save.mock.calls[0][0]).toMatchObject({
+    student_id: student.id,
+    recurrence: "biweekly",
+    allow_conflict: false,
+  });
+});
 it("records past wall time in the studio zone with explicit outcome and financial choices", async () => {
   mock.preview.mockResolvedValue({
     conflicts: [],

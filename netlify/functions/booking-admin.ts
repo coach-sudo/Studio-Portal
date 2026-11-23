@@ -11,6 +11,7 @@ import {
   googleFreeBusy,
 } from "./_shared/google";
 import { studioOverlapPolicy } from "../../src/domain/schedulingConflicts";
+import { formatStudioDateTime } from "../../src/domain/presentation";
 
 const resources: Record<string, string> = {
   services: "booking_services",
@@ -22,6 +23,13 @@ const resources: Record<string, string> = {
   participants: "lesson_participants",
 };
 type BookingWindow = { start: string; end: string };
+
+function overlaps(a: BookingWindow, b: BookingWindow) {
+  return (
+    Date.parse(a.start) < Date.parse(b.end) &&
+    Date.parse(a.end) > Date.parse(b.start)
+  );
+}
 
 function isRecurring(payload: Record<string, unknown>) {
   return payload.recurrence != null && payload.recurrence !== "none";
@@ -138,13 +146,7 @@ async function googleObservation(windows: BookingWindow[], recurring: boolean) {
     );
     return {
       conflicts: busy
-        .filter(({ start, end }) =>
-          windows.some(
-            (slot) =>
-              Date.parse(start) < Date.parse(slot.end) &&
-              Date.parse(end) > Date.parse(slot.start),
-          ),
-        )
+        .filter((busyTime) => windows.some((slot) => overlaps(busyTime, slot)))
         .map(({ start, end }) => ({
           id: `google-busy:${start}:${end}`,
           summary: "Busy calendar time",
@@ -360,29 +362,41 @@ export default async (request: Request, context: Context) => {
         throw new Error(
           "VALIDATION_FAILED: Choose a valid time and use Record Past Lesson for history.",
         );
-      const windows = isRecurring(body.payload)
+      const recurring = isRecurring(body.payload);
+      const windows = recurring
         ? await bookingSeriesWindows(db, body.payload)
         : [{ start: startsAt.toISOString(), end: endsAt.toISOString() }];
       let external = "not_configured";
-      if (startsAt <= new Date()) external = "not_checked";
+      if (!recurring && startsAt <= new Date()) external = "not_checked";
       else if (
-        !isRecurring(body.payload) &&
+        !recurring &&
         body.payload.allow_conflict &&
         Netlify.env.get("GOOGLE_REFRESH_TOKEN")
       )
         external = "overridden";
       else if (Netlify.env.get("GOOGLE_REFRESH_TOKEN")) {
-        const { conflicts } = await googleObservation(
-          windows,
-          isRecurring(body.payload),
-        );
-        if (conflicts.length && !body.payload.allow_conflict)
+        const { conflicts } = await googleObservation(windows, recurring);
+        if (conflicts.length && recurring) {
+          const dates = windows
+            .filter((slot) =>
+              conflicts.some((busyTime) => overlaps(slot, busyTime)),
+            )
+            .map(({ start }) =>
+              formatStudioDateTime(start, String(body.payload.timezone)),
+            )
+            .join(" · ");
+          throw new AppError("SLOT_UNAVAILABLE", {
+            status: 409,
+            message: `Google Calendar is busy during these occurrences: ${dates}. Choose another start time or clear the conflicts and try again. No lessons were scheduled.`,
+          });
+        }
+        if (conflicts.length)
           throw new AppError("SLOT_UNAVAILABLE", {
             status: 409,
             message:
               "Review the Google conflict or choose another time. Studio lesson overlaps cannot be overridden.",
           });
-        external = conflicts.length ? "overridden" : "checked";
+        external = "checked";
       }
       const created = await db.rpc("command_create_manual_booking", {
         p_key: key,
