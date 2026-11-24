@@ -186,6 +186,33 @@ export function SettingsOverview({
   );
 }
 
+function useHealthCheck(studio: string, refetch: () => unknown) {
+  const queryClient = useQueryClient();
+  const [result, setResult] = useState("");
+  const check = useMutation({
+    mutationFn: () => checkSystemHealth(studio),
+    onMutate: () => setResult(""),
+    onSuccess: ({ state, health }) => {
+      queryClient.setQueryData([...studioHealthKey(studio), "status"], health);
+      void queryClient.invalidateQueries({ queryKey: studioHealthKey(studio) });
+      setResult(
+        state === "completed"
+          ? "Check completed. Results are shown below."
+          : health.checking
+            ? "A check is already running. Results will update here."
+            : "A recent check is already available. Wait briefly before checking again.",
+      );
+    },
+    onError: () => {
+      setResult(
+        "The check could not be confirmed. Refresh to see the latest saved results.",
+      );
+      void refetch();
+    },
+  });
+  return { check, result };
+}
+
 export function ConnectionsPanel({
   studio,
   isDemo,
@@ -195,7 +222,10 @@ export function ConnectionsPanel({
   isDemo: boolean;
   timezone: string;
 }) {
-  const { data, isPending, isError } = useSystemHealth(studio, !isDemo);
+  const { data, isPending, isError, refetch } = useSystemHealth(
+    studio,
+    !isDemo,
+  );
   const [params, setParams] = useSearchParams();
   const selected = params.get("service");
   return (
@@ -211,8 +241,8 @@ export function ConnectionsPanel({
       )}
       {isError && (
         <p className="inline-error" role="status">
-          Connection evidence could not be loaded. You can try again in System
-          Health.
+          Connection evidence could not be loaded.{" "}
+          <button onClick={() => void refetch()}>Reload connections</button>
         </p>
       )}
       <div className="health-connection-grid">
@@ -302,6 +332,9 @@ export function ConnectionsPanel({
               }
             >
               <ConnectionDetail
+                studio={studio}
+                isDemo={isDemo}
+                refetch={refetch}
                 service={service}
                 health={isError ? undefined : data}
                 timezone={timezone}
@@ -314,14 +347,22 @@ export function ConnectionsPanel({
 }
 
 function ConnectionDetail({
+  studio,
+  isDemo,
+  refetch,
   service,
   health,
   timezone,
 }: {
+  studio: string;
+  isDemo: boolean;
+  refetch: () => unknown;
   service: HealthService;
   health?: StudioHealth;
   timezone: string;
 }) {
+  const { check, result } = useHealthCheck(studio, refetch);
+  const checking = check.isPending || health?.checking;
   const observation = observationFor(health, service);
   const issues =
     health?.issues.filter(
@@ -338,10 +379,21 @@ function ConnectionDetail({
       {service === "calendar" && (
         <>
           <p>
-            {observation?.destination ?? "Selected calendar unavailable."}{" "}
-            Calendar selection and authorization are managed by the deployment
-            operator.
+            {observation?.destination ?? "Selected calendar unavailable."} This
+            calendar is used for lesson events and availability checks.
           </p>
+          {!isDemo && (
+            <div className="health-stack">
+              <button
+                className="primary"
+                disabled={checking}
+                onClick={() => check.mutate()}
+              >
+                {checking ? "Testing�" : "Test Calendar connection"}
+              </button>
+              {result && <p role="status">{result}</p>}
+            </div>
+          )}
           <a
             className="button-link"
             href="https://calendar.google.com/"
@@ -375,7 +427,7 @@ function ConnectionDetail({
         className="button-link"
         to={"/coach/settings?panel=health&service=" + service}
       >
-        Check or troubleshoot
+        Review issues and eligible retries
       </Link>
       <details className="health-advanced">
         <summary>Advanced diagnostics</summary>
@@ -464,30 +516,8 @@ export function SystemHealthPanel({
   const [params, setParams] = useSearchParams();
   const issueId = params.get("issue");
   const service = params.get("service");
-  const queryClient = useQueryClient();
-  const [result, setResult] = useState("");
   const [manualCopy, setManualCopy] = useState("");
-  const check = useMutation({
-    mutationFn: () => checkSystemHealth(studio),
-    onMutate: () => setResult(""),
-    onSuccess: ({ state, health }) => {
-      queryClient.setQueryData([...studioHealthKey(studio), "status"], health);
-      void queryClient.invalidateQueries({ queryKey: studioHealthKey(studio) });
-      setResult(
-        state === "completed"
-          ? "Check completed. Results are shown below."
-          : health.checking
-            ? "A check is already running. Results will update here."
-            : "A recent check is already available. Wait briefly before checking again.",
-      );
-    },
-    onError: () => {
-      setResult(
-        "The check could not be confirmed. Refresh to see the latest saved results.",
-      );
-      void refetch();
-    },
-  });
+  const { check, result } = useHealthCheck(studio, refetch);
   const displayed = data?.issues.find(({ id }) => id === issueId);
   const detail = useSystemHealth(
     studio,

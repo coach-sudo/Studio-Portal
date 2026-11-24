@@ -17,14 +17,12 @@ describe("Google provider adapter", () => {
           )[name],
       },
     });
-    const request = vi
-      .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ access_token: "token" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
-        }),
-      );
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ access_token: "token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", request);
     await expect(googleAccessToken()).resolves.toBe("token");
     expect(String(request.mock.calls[0][1]?.body)).toContain(
@@ -41,31 +39,51 @@ describe("Google provider adapter", () => {
     });
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(
-            JSON.stringify({
-              calendars: { primary: { errors: [{ reason: "backendError" }] } },
-            }),
-            { status: 200, headers: { "Content-Type": "application/json" } },
-          ),
+      vi.fn().mockResolvedValue(
+        new Response(
+          JSON.stringify({
+            calendars: { primary: { errors: [{ reason: "backendError" }] } },
+          }),
+          { status: 200, headers: { "Content-Type": "application/json" } },
         ),
+      ),
     );
     await expect(
       googleFreeBusy("token", "2030-01-01T00:00:00Z", "2030-01-02T00:00:00Z"),
     ).rejects.toThrow("CALENDAR_UNAVAILABLE");
   });
 
-  it("sends Gmail messages as base64url MIME payloads", async () => {
-    const request = vi
+  it("retains busy times when Google resolves the primary alias", async () => {
+    vi.stubGlobal("Netlify", { env: { get: () => undefined } });
+    const start = "2030-01-01T00:00:00Z",
+      end = "2030-01-02T00:00:00Z";
+    const busy = [{ start, end }];
+    const fetch = vi
       .fn()
-      .mockResolvedValue(
-        new Response(JSON.stringify({ id: "gmail-1" }), {
-          status: 200,
-          headers: { "Content-Type": "application/json" },
+      .mockResolvedValueOnce(
+        Response.json({
+          timeMin: start,
+          timeMax: end,
+          calendars: { "fixture@example.test": { busy } },
         }),
+      )
+      .mockResolvedValueOnce(
+        Response.json({ timeMin: start, timeMax: end, calendars: {} }),
       );
+    vi.stubGlobal("fetch", fetch);
+    await expect(googleFreeBusy("token", start, end)).resolves.toEqual(busy);
+    await expect(googleFreeBusy("token", start, end)).rejects.toThrow(
+      "CALENDAR_UNAVAILABLE",
+    );
+  });
+
+  it("sends Gmail messages as base64url MIME payloads", async () => {
+    const request = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ id: "gmail-1" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
     vi.stubGlobal("fetch", request);
     await expect(
       sendGmail("token", {
