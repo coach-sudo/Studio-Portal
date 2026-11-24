@@ -16,6 +16,7 @@ import { Dialog, Section, Status } from "../../components/Primitives";
 import {
   checkSystemHealth,
   retryHealthIssue,
+  reviewCalendarConflict,
   studioHealthKey,
   useSystemHealth,
 } from "../../data/systemHealth";
@@ -686,6 +687,122 @@ export function SystemHealthPanel({
   );
 }
 
+const calendarReviewMessages = {
+  reviewed: "Review saved. Coach�D skipped replay for this conflict.",
+  changed:
+    "The event, lesson or conflict changed, or a safe decision could not be recorded. Check the latest comparison.",
+  unavailable: "There is no accessible mapped event to compare for this issue.",
+  configuration:
+    "Check the Google OAuth deployment configuration in Connections.",
+  authorization:
+    "Google authorization needs renewal. Open Connections for the recovery steps.",
+  permission:
+    "In Google Calendar, share the mapped calendar with the studio�s connected account, then compare again.",
+  throttled: "Google is limiting Calendar requests. Wait before trying again.",
+  event_missing:
+    "Google could not find the mapped event. Restore that exact event if it was removed, or ask the deployment administrator to review the mapping.",
+  ambiguous:
+    "The mapped event is cancelled, recurring, or lacks exact timing. Review the original event in Google Calendar before changing the lesson.",
+  provider_unavailable:
+    "Google Calendar could not be reached. Try again shortly.",
+};
+
+function CalendarConflictActions({
+  studio,
+  issue,
+  timezone,
+}: {
+  studio: string;
+  issue: string;
+  timezone: string;
+}) {
+  const queryClient = useQueryClient();
+  const review = useMutation({
+    mutationFn: (confirm?: { version: number; etag: string }) =>
+      reviewCalendarConflict(studio, issue, confirm),
+    onSuccess: ({ state }) => {
+      if (state === "reviewed")
+        void queryClient.invalidateQueries({
+          queryKey: studioHealthKey(studio),
+        });
+    },
+  });
+  const comparison =
+    review.data?.state === "comparison" ? review.data : undefined;
+  return (
+    <section
+      className="health-surface health-confirm"
+      aria-label="Calendar conflict review"
+    >
+      <h3>Compare the mapped event</h3>
+      <button
+        type="button"
+        onClick={() => review.mutate(undefined)}
+        disabled={review.isPending || review.data?.state === "reviewed"}
+      >
+        {review.isPending ? "Checking�" : "Check current Google event"}
+      </button>
+      {review.isError && (
+        <p role="status">
+          Coach�D could not confirm the result. Check the current event again.
+        </p>
+      )}
+      {review.data && review.data.state !== "comparison" && (
+        <p role="status">{calendarReviewMessages[review.data.state]}</p>
+      )}
+      {comparison && (
+        <>
+          <dl className="health-facts">
+            <div>
+              <dt>Coach�D lesson</dt>
+              <dd>
+                {timestamps(comparison.lesson.start, timezone)} �{" "}
+                {timestamps(comparison.lesson.end, timezone)}
+              </dd>
+            </div>
+            <div>
+              <dt>Google event</dt>
+              <dd>
+                {timestamps(comparison.event.start, timezone)} �{" "}
+                {timestamps(comparison.event.end, timezone)}
+              </dd>
+            </div>
+          </dl>
+          {comparison.eventUrl && (
+            <a href={comparison.eventUrl} target="_blank" rel="noreferrer">
+              Open mapped event in Google Calendar
+            </a>
+          )}
+          <p>
+            {comparison.historical
+              ? "Keep the completed lesson as recorded. Saving this review skips replay and leaves the Google event as it is."
+              : comparison.timingMatches
+                ? "The lesson and event times match. Saving this review skips replay of the held update."
+                : "If the Coach�D time is correct, update the mapped Google event to match, then check it again."}
+          </p>
+          {comparison.canConfirm && (
+            <button
+              type="button"
+              className="primary"
+              disabled={review.isPending}
+              onClick={() =>
+                review.mutate({
+                  version: comparison.version,
+                  etag: comparison.etag,
+                })
+              }
+            >
+              {comparison.historical
+                ? "Keep completed lesson as recorded"
+                : "Confirm matching times"}
+            </button>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
 function IssueDetail({
   issue,
   health,
@@ -869,6 +986,16 @@ function IssueDetail({
           </button>
         )}
       </div>
+      {available &&
+        issue.category === "calendar_review" &&
+        issue.lessonId &&
+        !issue.resolvedAt && (
+          <CalendarConflictActions
+            studio={studio}
+            issue={issue.id}
+            timezone={timezone}
+          />
+        )}
       {confirm && (
         <form className="health-surface health-confirm" onSubmit={submit}>
           <h3>

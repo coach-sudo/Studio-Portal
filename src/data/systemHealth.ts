@@ -73,3 +73,40 @@ export function retryHealthIssue(
     },
   );
 }
+
+export type CalendarConflictReview =
+  | {
+      state: "comparison";
+      historical: boolean;
+      canConfirm: boolean;
+      timingMatches: boolean;
+      lesson: { start: string; end: string };
+      event: { start: string; end: string };
+      eventUrl: string | null;
+      version: number;
+      etag: string;
+    }
+  | {
+      state:
+        | "reviewed"
+        | "changed"
+        | "unavailable"
+        | "configuration"
+        | "authorization"
+        | "permission"
+        | "throttled"
+        | "event_missing"
+        | "ambiguous"
+        | "provider_unavailable";
+    };
+
+export function reviewCalendarConflict(
+  studio: string,
+  issue: string,
+  confirm?: { version: number; etag: string },
+) {
+  return requestHealth<CalendarConflictReview>(studio, "calendar-review", {
+    body: { issue, confirm },
+    signal: AbortSignal.timeout(12_000),
+  });
+}

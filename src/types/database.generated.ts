@@ -5352,6 +5352,19 @@ export type Database = {
         }
         Returns: Json
       }
+      confirm_calendar_conflict_review: {
+        Args: {
+          p_actor: string
+          p_correlation: string
+          p_ends_at: string
+          p_event_id: string
+          p_lesson: string
+          p_starts_at: string
+          p_studio: string
+          p_version: number
+        }
+        Returns: string
+      }
       correct_lesson_datetime: {
         Args: { p_key: string; p_value: Json }
         Returns: Json

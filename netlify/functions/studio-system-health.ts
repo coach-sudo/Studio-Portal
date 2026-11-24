@@ -1,6 +1,10 @@
 import type { Config, Context } from "@netlify/functions";
 import { z } from "zod";
 import type { RepairResult } from "../../src/domain/systemHealth";
+import {
+  calendarReviewRequest,
+  reviewCalendarConflict,
+} from "./_shared/calendar-conflict-review";
 import { apiError, AppError, json } from "./_shared/http";
 import {
   googleConfigured,
@@ -42,7 +46,12 @@ export default async function studioSystemHealth(
         status: 400,
         message: "Select a studio.",
       });
-    if (action !== "status" && action !== "check" && action !== "retry")
+    if (
+      action !== "status" &&
+      action !== "check" &&
+      action !== "retry" &&
+      action !== "calendar-review"
+    )
       throw new AppError("NOT_FOUND", {
         status: 404,
         message: "Unknown System Health action.",
@@ -83,6 +92,26 @@ export default async function studioSystemHealth(
     }
     if (action === "check")
       return json(await runStudioHealth(db, studio.data, false));
+
+    if (action === "calendar-review") {
+      const payload = calendarReviewRequest.safeParse(
+        await request.json().catch(() => null),
+      );
+      if (!payload.success)
+        throw new AppError("VALIDATION_FAILED", {
+          status: 400,
+          message: "Choose a Calendar conflict to review.",
+        });
+      return json(
+        await reviewCalendarConflict(
+          db,
+          studio.data,
+          actor.data.user.id,
+          id,
+          payload.data,
+        ),
+      );
+    }
 
     const payload = repair.safeParse(await request.json().catch(() => null));
     if (!payload.success)
