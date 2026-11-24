@@ -182,6 +182,19 @@
   height: 26px;
   object-fit: contain;
 }
+@media (max-width: 850px) {
+  .actor-draft-preview .actor-public.actor-render-preview .actor-public-hero {
+    padding-block: 16px 32px;
+  }
+
+  .actor-draft-preview
+    .actor-public.actor-render-preview
+    :is(.actor-headshot, .actor-monogram) {
+    width: min(100%, 13rem, 32dvh);
+    max-height: 38dvh;
+    margin-inline: auto;
+  }
+}
 @media (max-width: 600px) {
   .actor-preview-hero {
     grid-template-columns: 1fr;

@@ -1,4 +1,4 @@
-import { useState, useRef, type FormEvent } from "react";
+import { useState, useRef, useLayoutEffect, type FormEvent } from "react";
 import { WritingArea } from "./WritingArea";
 import { Drawer } from "./Primitives";
 import { ActorProfilePreview } from "./ActorProfilePreview";
@@ -57,6 +57,13 @@ export function ActorBuilder({
   });
   const [submit, setSubmit] = useState(false);
   const [editorView, setEditorView] = useState<"edit" | "preview">("edit");
+  const layout = useRef<HTMLDivElement>(null);
+  const editScroll = useRef(0);
+  useLayoutEffect(() => {
+    if (layout.current)
+      layout.current.scrollTop =
+        editorView === "preview" ? 0 : editScroll.current;
+  }, [editorView]);
   const [viewport, setViewport] = useState<"desktop" | "mobile">("desktop"),
     [busy, setBusy] = useState(false),
     [error, setError] = useState("");
@@ -93,7 +100,11 @@ export function ActorBuilder({
       className="actor-builder-dialog"
       onClose={close}
     >
-      <div className="actor-builder-layout" data-editor-view={editorView}>
+      <div
+        ref={layout}
+        className="actor-builder-layout"
+        data-editor-view={editorView}
+      >
         <nav
           className="actor-builder-mobile-tabs"
           aria-label="Actor builder view"
@@ -108,7 +119,11 @@ export function ActorBuilder({
           <button
             type="button"
             aria-pressed={editorView === "preview"}
-            onClick={() => setEditorView("preview")}
+            onClick={() => {
+              if (editorView === "preview") return;
+              editScroll.current = layout.current?.scrollTop ?? 0;
+              setEditorView("preview");
+            }}
           >
             Preview page
           </button>
@@ -426,14 +441,16 @@ export function ActorBuilder({
           </div>
         </form>
         <aside className="actor-builder-preview">
-          <div className="form-actions">
+          <div className="form-actions actor-builder-viewport-controls">
             <button
+              type="button"
               aria-pressed={viewport === "desktop"}
               onClick={() => setViewport("desktop")}
             >
               Desktop preview
             </button>
             <button
+              type="button"
               aria-pressed={viewport === "mobile"}
               onClick={() => setViewport("mobile")}
             >
