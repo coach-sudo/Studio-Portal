@@ -415,12 +415,29 @@ function ConnectionDetail({
         </a>
       )}
       {service === "email" && (
-        <Link
-          className="button-link"
-          to="/coach/inbox?delivery=recent#delivery-history"
-        >
-          Open communication history
-        </Link>
+        <>
+          <Link
+            className="button-link"
+            to="/coach/inbox?delivery=recent#delivery-history"
+          >
+            Open communication history
+          </Link>
+          {observation?.authorization === "needs_review" && (
+            <Link
+              className="button-link"
+              to="/coach/settings?panel=integrations&service=calendar"
+            >
+              Check the shared Google authorization
+            </Link>
+          )}
+          {observation?.configured === false && (
+            <p>
+              Verify the Gmail API and <code>gmail.send</code> grant for the
+              studio account in Google Cloud. The deployment administrator
+              manages the shared Google credential in Netlify Functions.
+            </p>
+          )}
+        </>
       )}
       {issues.length > 0 && <IssueList issues={issues} timezone={timezone} />}
       <Link
