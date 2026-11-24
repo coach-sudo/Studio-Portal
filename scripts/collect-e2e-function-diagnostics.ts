@@ -5,8 +5,9 @@ import path from "node:path";
 const source = await readFile(
   path.join(process.env.RUNNER_TEMP!, "netlify-serve.log"),
   "utf8",
-).catch((error: NodeJS.ErrnoException) => {
-  if (error.code !== "ENOENT") throw error;
+).catch((error: unknown) => {
+  if (!(error instanceof Error && "code" in error && error.code === "ENOENT"))
+    throw error;
   console.log(
     "Function diagnostics unavailable because Netlify did not write a serve log.",
   );
