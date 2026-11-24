@@ -99,7 +99,7 @@ function availabilityError(response: Response, reason?: string) {
       ? Number(retryAfter) * 1000
       : Math.max(0, Date.parse(retryAfter) - Date.now()) || 0;
   return new GoogleAvailabilityError(
-    "Google availability could not be verified.",
+    "CALENDAR_UNAVAILABLE: Google availability could not be verified.",
     throttled,
     throttled ||
       response.status >= 500 ||
@@ -140,12 +140,9 @@ export async function googleAccessToken(signal?: AbortSignal) {
     throw availabilityError(response);
   const body = parseGooglePayload(tokenResponseSchema, await response.json());
   if (!response.ok || !body.access_token) {
-    if (
-      body.error === "invalid_grant" ||
-      body.error === "invalid_client" ||
-      body.error === "unauthorized_client" ||
-      response.status === 401
-    )
+    if (body.error === "invalid_client" || body.error === "unauthorized_client")
+      throw new GoogleAuthorizationError("configuration");
+    if (body.error === "invalid_grant" || response.status === 401)
       throw new GoogleAuthorizationError("authorization");
     throw new Error("Google token refresh failed.");
   }
@@ -221,7 +218,7 @@ export async function googleFreeBusy(
     "https://www.googleapis.com/calendar/v3/freeBusy",
     {
       method: "POST",
-      signal: options?.signal,
+      signal: options?.signal ?? AbortSignal.timeout(5000),
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
@@ -234,10 +231,10 @@ export async function googleFreeBusy(
       }),
     },
   );
-  if (options && (response.status === 429 || response.status >= 500))
+  if (response.status === 429 || response.status >= 500)
     throw availabilityError(response);
   const raw: unknown = await response.json();
-  if (options && !response.ok) {
+  if (!response.ok) {
     const failure = z
       .object({
         error: z
@@ -252,39 +249,29 @@ export async function googleFreeBusy(
     throw availabilityError(response, failure.data?.error?.errors?.[0]?.reason);
   }
   const payload = parseGooglePayload(freeBusyResponseSchema, raw);
-  if (options) {
-    const calendars = payload.calendars ?? {};
-    const entries = Object.values(calendars);
-    // Google can resolve the primary alias to the account's actual calendar ID.
-    const calendar =
-      calendars[calendarId] ??
-      (calendarId === "primary" && entries.length === 1
-        ? entries[0]
-        : undefined);
-    if (calendar?.errors?.length)
-      throw availabilityError(response, calendar.errors[0].reason);
-    if (
-      payload.error ||
-      Date.parse(payload.timeMin ?? "") !== Date.parse(timeMin) ||
-      Date.parse(payload.timeMax ?? "") !== Date.parse(timeMax) ||
-      !calendar?.busy ||
-      calendar.busy.some(
-        ({ start, end }) =>
-          !providerInstant.safeParse(start).success ||
-          !providerInstant.safeParse(end).success ||
-          !(Date.parse(start) < Date.parse(end)),
-      )
-    ) {
-      throw availabilityError(response);
-    }
-    return calendar.busy;
+  const calendars = payload.calendars ?? {};
+  const entries = Object.values(calendars);
+  // Google can resolve the primary alias to the account's actual calendar ID.
+  const calendar =
+    calendars[calendarId] ??
+    (calendarId === "primary" && entries.length === 1 ? entries[0] : undefined);
+  if (calendar?.errors?.length)
+    throw availabilityError(response, calendar.errors[0].reason);
+  if (
+    payload.error ||
+    Date.parse(payload.timeMin ?? "") !== Date.parse(timeMin) ||
+    Date.parse(payload.timeMax ?? "") !== Date.parse(timeMax) ||
+    !calendar?.busy ||
+    calendar.busy.some(
+      ({ start, end }) =>
+        !providerInstant.safeParse(start).success ||
+        !providerInstant.safeParse(end).success ||
+        !(Date.parse(start) < Date.parse(end)),
+    )
+  ) {
+    throw availabilityError(response);
   }
-  const calendarError = payload.calendars?.[calendarId]?.errors?.[0]?.reason;
-  if (!response.ok || calendarError)
-    throw new Error(
-      `CALENDAR_UNAVAILABLE (${response.status}: ${payload.error?.message || calendarError || "provider error"})`,
-    );
-  return payload.calendars?.[calendarId]?.busy ?? [];
+  return calendar.busy;
 }
 
 export interface GoogleCalendarConflict {

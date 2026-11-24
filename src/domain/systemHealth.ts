@@ -100,7 +100,7 @@ export const issueContent = {
   google_authorization: issue(
     "Google authorization needs renewal",
     "Calendar updates and Gmail delivery can stop when the studio’s Google authorization expires.",
-    "Ask the deployment operator to renew the studio Google authorization, then run Check now to verify access.",
+    "Have the deployment administrator renew offline Google consent using the same studio account and OAuth client. Replace GOOGLE_REFRESH_TOKEN in Netlify production Functions, publish through the normal release process, then test Calendar access in Connections.",
   ),
   google_configuration: issue(
     "Google is not configured",
@@ -115,7 +115,7 @@ export const issueContent = {
   google_missing: issue(
     "Selected calendar needs review",
     "The configured calendar could not be located on the Google account’s calendar list.",
-    "Review the calendar in Google Calendar. If the destination changed, ask the deployment operator to update the selected calendar before retrying.",
+    "In Google Calendar, check Settings and sharing for the configured calendar and restore access for the connected studio account. If the calendar was replaced, have the deployment administrator verify existing event mappings before changing GOOGLE_CALENDAR_ID in Netlify production Functions.",
   ),
   google_throttled: issue(
     "Google is limiting Calendar checks",
