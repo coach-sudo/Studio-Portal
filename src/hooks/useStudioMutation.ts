@@ -1,12 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 
-export type StudioMutationStatus = "idle" | "saving" | "saved" | "error";
-
-export interface StudioMutationState {
-  pendingKey: string;
-  status: StudioMutationStatus;
-  error: string;
-}
+type StudioMutationStatus = "idle" | "saving" | "saved" | "error";
 
 export interface StudioMutationOptions {
   optimistic?: () => void | (() => void);

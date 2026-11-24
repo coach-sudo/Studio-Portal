@@ -1,0 +1,32 @@
+# Coach'D Studio Portal
+
+React and TypeScript application for the coach, student, guardian and public portal. Netlify serves the Vite build and functions. Supabase manages authentication, data, authorization and migration history.
+
+## Develop locally
+
+1. Use Node 22, the version pinned in CI and Netlify. Run `npm ci --ignore-scripts`.
+2. Run `npm run dev` for the loopback demo. Use `.env.example` when configuring an isolated environment. Local checks use demo data or ephemeral fixtures.
+3. Before opening a draft, run the checks in [Production checks](.github/workflows/ci.yml) and review [release safety](docs/release-safety.md). Follow the existing `[skip netlify]` convention for a no-deploy draft. GitHub runs the migration and isolated browser checks. [Deployed browser checks](.github/workflows/deployed-browser.yml) documents the suite split.
+
+Published deployment state, the GitHub commit and applied Supabase migrations are independently verified at release time. The saved [current](docs/current-production-migrations.json) and [Wave One](docs/wave-one-production-migrations.json) migration manifests pin historical upgrade inputs for CI.
+
+## Redesign handoff
+
+- **Routes and roles.** Start with [App](src/app/App.tsx), [coach navigation](src/app/coachNavigation.ts), and [portal navigation](src/app/portalNavigation.ts). Preserve lazy route boundaries and compatibility redirects. Keep published actor pages and public booking flows within their existing eligibility and authorization rules.
+- **Shared UI.** Reuse page headings, sections, notices, loading states, `Dialog` and `Drawer` from [Primitives](src/components/Primitives.tsx). The shared overlay behavior manages scroll lock, nested focus, Escape and focus return. Verify keyboard order and restore focus to the initiating control after dismissal.
+- **Forms and editors.** [WritingArea](src/components/WritingArea.tsx) keeps textarea value, events and ref semantics. Preserve validation, dirty-draft behavior, explicit save states, duplicate-submission guards and existing upload handling. Keep the rich-text sanitization and private versus published boundaries at their existing entry points.
+- **Reads and writes.** [useStudio](src/hooks/useStudio.ts) keys read caches by role, student identity and route domains. [Route domains](src/features/coach/routeDomains.ts) scope coach reads. Retain both the legacy snapshot and the V2 query reader. The current CI builds the legacy flag and verifies V2 staging packaging. Preserve existing cache invalidation, error and loading states, identity boundaries and pagination. [useStudioMutation](src/hooks/useStudioMutation.ts) supplies pending-state and optimistic rollback behavior where already adopted.
+- **Style ownership.** [main.tsx](src/main.tsx) establishes the global cascade. Base styles, cohesion and app-system precede the [tokens](src/styles/tokens.css) and [product styles](src/styles/product.css). Keep feature and appearance overrides scoped. When touching the cascade, check dark and light themes, focus, and responsive widths.
+- **Protected domains.** Preserve booking and recurrence IDs, Calendar synchronization, Stripe idempotency, invoices and ledger history, credit and household rules, auth and RLS, draft visibility, signed material access, worker schedules, and Settings recovery contracts. Feature work that changes these surfaces needs its own release review.
+- **Regression anchors.** Start with the [route and delivery matrix](src/app/workflow-matrix.test.tsx), [route reader tests](src/hooks/useStudioRoute.test.tsx), [booking drawer tests](src/app/calendar-booking-drawer.test.tsx), [workspace browser journeys](e2e/operational-intelligence.spec.ts), [local contrast coverage](e2e/audit-contrast-local/contrast.spec.ts) and the CI database and concurrency jobs.
+- **Deferred architecture.** Plan broader stylesheet ownership, form/editor layout and query compatibility retirement independently. Start redesign work from the reviewed cleanup on current `main` once the cleanup drafts have been accepted and merged under the normal release process.
+
+## Documentation
+
+- [Release safety](docs/release-safety.md) and [Settings and System Health](docs/coach-settings-system-health.md) describe release procedures and the current Settings area. Use the observed deployment and repository state to verify instructions that reference a specific release.
+- The [modernization master plan](docs/studio-portal-modernization-master-plan.md) and [content-density review](docs/content-density/README.md) record previous work. Earlier Google Sheets and Acuity build plans describe the historical architecture.
+- [Cleanup register](docs/pre-redesign-cleanup.md) records evidence behind this cleanup and the deferred work.
+
+## Local cleanup
+
+Use `git worktree list --porcelain`, `git status --short --ignored`, and a path-scoped `git clean -ndx -- <path>` to inspect a candidate. `dist/` and TypeScript build information can be regenerated by the build once unused copies are verified. Keep release packages, browser evidence, credentials and unpublished work with their originating checkout until their owner approves disposition.

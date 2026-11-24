@@ -1857,9 +1857,7 @@
 .install-prompt > button:last-child svg {
   width: 16px;
 }
-.table-list > article {
-  min-width: 0;
-}
+.table-list > article,
 .table-list > article > div {
   min-width: 0;
 }
