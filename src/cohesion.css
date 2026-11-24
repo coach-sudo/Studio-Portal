@@ -1477,6 +1477,33 @@
   flex: 1 1 auto;
 }
 
+.lesson-history-row strong,
+.lesson-history-row small {
+  display: block;
+  white-space: normal;
+  overflow-wrap: break-word;
+}
+
+.lesson-history-statuses {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 7px;
+  min-width: 0;
+  max-width: 50%;
+}
+
+.lesson-history-statuses > .status {
+  max-width: 100%;
+  overflow-wrap: break-word;
+}
+
+.lesson-history-row > .open-label {
+  flex: none;
+  white-space: nowrap;
+}
+
 .lesson-facts {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1543,7 +1570,7 @@
 
   .table-list > a.lesson-history-row {
     display: grid;
-    grid-template-columns: 20px minmax(0, 1fr) auto;
+    grid-template-columns: 20px minmax(0, 1fr);
     align-items: start;
     gap: 7px 10px;
   }
@@ -1552,25 +1579,18 @@
     grid-column: 1;
   }
 
-  .lesson-history-row > div {
-    grid-column: 2 / -1;
-  }
-
-  .lesson-history-row strong,
-  .lesson-history-row small {
-    display: block;
-    white-space: normal;
-    overflow-wrap: anywhere;
-  }
-
-  .lesson-history-row > .status {
+  .lesson-history-row > div,
+  .lesson-history-row > .lesson-history-statuses,
+  .lesson-history-row > .open-label {
     grid-column: 2;
-    justify-self: start;
+  }
+
+  .lesson-history-row > .lesson-history-statuses {
+    max-width: none;
   }
 
   .lesson-history-row > .open-label {
-    grid-column: 3;
-    align-self: center;
+    justify-self: start;
   }
 }
 
