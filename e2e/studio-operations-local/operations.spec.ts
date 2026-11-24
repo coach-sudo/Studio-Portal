@@ -89,13 +89,18 @@ for (const width of [320, 390, 768, 1440])
     await builder
       .getByRole("button", { name: "Move media up", exact: true })
       .click();
-    if (width <= 850)
+    if (width <= 850) {
       await builder
         .getByRole("button", { name: "Preview page", exact: true })
         .click();
-    await builder
-      .getByRole("button", { name: "Mobile preview", exact: true })
-      .click();
+      await expect(
+        builder.getByRole("button", { name: "Mobile preview", exact: true }),
+      ).toBeHidden();
+    } else {
+      await builder
+        .getByRole("button", { name: "Mobile preview", exact: true })
+        .click();
+    }
     expect(
       await builder
         .locator(".actor-builder-viewport")
